@@ -146,7 +146,7 @@ async function live() {
   try { sh(`npx --yes vercel@latest --cwd apps/web --prod --yes ${e}${tok}`); }
   catch {
     fail("Vercel refused the deploy — its own message above says why.");
-    log(`  ${c.d}Common causes: the free plan's daily deploy limit, a name already taken, or a build error.${c.x}`);
+    log(`  ${c.d}Common causes: a plan limit (Hobby allows only once-a-day cron jobs), the daily deploy cap, or a build error.${c.x}`);
     log(`  ${c.d}Nothing local changed; fix the cause and run this option again.${c.x}`);
     return;
   }
@@ -164,13 +164,52 @@ async function live() {
 async function builds() {
   await checkTools(); await install();
   const env = loadEnv();
-  log(`\n${c.b}Build the phone app${c.x} ${c.d}(free Expo account; first run asks you to log in)${c.x}`);
+  log(`
+${c.b}Build the phone app${c.x} ${c.d}(free Expo account; first run asks you to log in)${c.x}`);
   const which = await ask("1 = Android APK (share on WhatsApp)  2 = Android Play Store  3 = iOS TestFlight/App Store", "1");
   const profile = which === "1" ? "preview" : "production";
   const p = which === "3" ? "ios" : "android";
   const cwd = join(ROOT, "apps/mobile");
-  if (!existsSync(join(cwd, "eas.json"))) writeFileSync(join(cwd, "eas.json"), JSON.stringify({ cli: { version: ">= 12.0.0" }, build: { preview: { distribution: "internal", android: { buildType: "apk" }, env: { EXPO_PUBLIC_SUPABASE_URL: env.PROD_SUPABASE_URL || env.SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY: env.PROD_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY, EXPO_PUBLIC_WEB_URL: env.PROD_WEB_URL || "" } }, production: { env: { EXPO_PUBLIC_SUPABASE_URL: env.PROD_SUPABASE_URL || env.SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY: env.PROD_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY, EXPO_PUBLIC_WEB_URL: env.PROD_WEB_URL || "" } } }, submit: { production: {} } }, null, 2));
-  sh(`npx --yes eas-cli@latest build -p ${p} --profile ${profile}`, { cwd });
+
+  // The address below is baked into the app that gets installed on real phones — photo scanning and
+  // share links call the web app through it — and a wrong one can only be fixed by building again.
+  const supa = env.PROD_SUPABASE_URL || env.SUPABASE_URL || "";
+  if (!env.PROD_WEB_URL || env.PROD_WEB_URL === supa) {
+    warn(env.PROD_WEB_URL === supa && supa
+      ? "The phone app's web address is set to the Supabase address — that is the database, not the app."
+      : "The phone app's web address is not set yet.");
+    log(`  ${c.d}It is the address option 3 printed after deploying, e.g. https://dineflow-web.vercel.app${c.x}`);
+    const fix = await ask("Web app address (blank = build anyway, photo scanning will not reach the app)", "");
+    if (fix) { env.PROD_WEB_URL = fix.replace(/\/$/, ""); saveEnv(env); }
+  }
+
+  // Rewritten every run, not only when missing: it carries the keys and addresses, and a stale copy
+  // from an earlier configuration ships the wrong ones into the APK without saying so.
+  const buildEnv = { EXPO_PUBLIC_SUPABASE_URL: supa, EXPO_PUBLIC_SUPABASE_ANON_KEY: env.PROD_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY, EXPO_PUBLIC_WEB_URL: env.PROD_WEB_URL || "" };
+  writeFileSync(join(cwd, "eas.json"), JSON.stringify({ cli: { version: ">= 12.0.0" }, build: { preview: { distribution: "internal", android: { buildType: "apk" }, env: buildEnv }, production: { env: buildEnv } }, submit: { production: {} } }, null, 2));
+
+  // Expo, like Vercel, exits rather than prompting when it has no credentials.
+  const signedIn = () => { try { execSync("npx --yes eas-cli@latest whoami", { stdio: "ignore", cwd, shell: true }); return true; } catch { return false; } };
+  if (!signedIn()) {
+    log(`
+${c.b}Signing in to Expo${c.x} ${c.d}(free account at expo.dev — email and password, right here)${c.x}`);
+    rl.pause();                                   // let the Expo prompt own the keyboard
+    try { sh("npx --yes eas-cli@latest login", { cwd }); } catch { /* reported by the check below */ }
+    rl.resume();
+    if (!signedIn()) {
+      fail("Not signed in to Expo, so there is no account to build under.");
+      log(`  ${c.d}Sign in yourself with${c.x} npx eas-cli login   ${c.d}then run this option again.${c.x}`);
+      return;
+    }
+    ok("Signed in to Expo.");
+  }
+
+  try { sh(`npx --yes eas-cli@latest build -p ${p} --profile ${profile}`, { cwd }); }
+  catch {
+    fail("The build did not start — the EAS message above says why.");
+    log(`  ${c.d}Common causes: the free plan's monthly build minutes, or a missing Android package name in app.json.${c.x}`);
+    return;
+  }
   ok("Build queued — the link to download/install appears above and at expo.dev.");
 }
 

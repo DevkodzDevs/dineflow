@@ -1,1 +1,1 @@
-{ "crons": [{ "path": "/api/ota/sync", "schedule": "*/15 * * * *" }] }
+{ "crons": [{ "path": "/api/ota/sync", "schedule": "0 21 * * *" }] }

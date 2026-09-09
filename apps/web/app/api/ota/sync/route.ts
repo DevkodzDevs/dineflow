@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 /**
  * Pulls every configured iCal feed and blocks those dates in DineFlow.
- * Called from the Channels page, and every 15 minutes by the Vercel cron in vercel.json.
+ * Called from the Channels page, and once a night by the Vercel cron in vercel.json (21:00 UTC,
+ * i.e. 02:30 IST). Vercel's Hobby plan allows a cron to run only once a day — for tighter syncing
+ * either move to Pro and set a quarter-hourly schedule in vercel.json, or call this route from any
+ * external scheduler (pass ?key=<CRON_SECRET>). The Channels page also syncs on demand.
  */
 const client = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
 

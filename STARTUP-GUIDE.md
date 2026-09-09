@@ -439,6 +439,13 @@ CLI when the launcher asks, and it deploys with your keys in one command. You ge
 `dineflow-yourname.vercel.app`. Put it in Supabase → Authentication → URL configuration as the site
 URL so sign-in links work.
 
+> **OTA calendars on a free Vercel plan.** Hobby accounts may run a scheduled job only once a day, so
+> the shipped schedule pulls Booking.com / Airbnb calendars nightly at 02:30 IST. The Channels page
+> also syncs the moment you open it. If you take same-day OTA bookings and want the old 15-minute
+> pull, either upgrade to Vercel Pro and set `"schedule": "*/15 * * * *"` in `apps/web/vercel.json`,
+> or point any free scheduler (cron-job.org, a GitHub Action) at
+> `https://your-app/api/ota/sync?key=CRON_SECRET`. Option 4 below has no such limit.
+
 **Option 4 — your own server with Docker.** Any Ubuntu box or VPS. The launcher builds the image and
 writes a `docker compose` you can start with one line. Point a domain at it and put it behind
 Caddy or Nginx for HTTPS.

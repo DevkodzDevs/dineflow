@@ -11,3 +11,6 @@ android/
 .dineflow.env
 packages/db/.env
 apps/mobile/eas.json
+
+.vercel
+.env*
