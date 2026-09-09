@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "DineFlow",
+    "slug": "dineflow",
+    "scheme": "dineflow",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#14261f"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.dineflow.app"
+    },
+    "android": {
+      "package": "in.dineflow.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#14261f"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "DineFlow uses the camera to scan barcodes, QR labels, products, dishes, rooms and ID cards."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "DineFlow can read a photo from your gallery to recognise a product."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

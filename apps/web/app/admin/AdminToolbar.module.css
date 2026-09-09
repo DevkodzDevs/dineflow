@@ -1,0 +1,154 @@
+/* The admin command bar. Row one is what you do — sections, find, the primary action. Row two is
+   what you are looking at — one-click status chips with live counts, and what they leave you with. */
+.bar { container-type: inline-size; }   /* the query measures the bar, so the container lives one level up */
+.panel {
+  border: .5px solid var(--color-separator); border-radius: 16px; background: var(--color-bg-2);
+  box-shadow: var(--shadow-inset-top), var(--shadow-card);
+}
+.top { display: flex; align-items: center; gap: 10px; padding: 7px; }
+
+/* ── sections: a segmented control, not a row of links ────────────────────── */
+.tabs { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 13px; background: var(--color-fill); flex-shrink: 0; }
+.tab {
+  display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 11px; border-radius: 10px;
+  font-size: 12.5px; font-weight: 600; letter-spacing: -0.005em; color: var(--color-label-2);
+  white-space: nowrap; transition: color var(--dur-fast), background var(--dur-fast);
+}
+.tab > svg { flex-shrink: 0; opacity: .8; }
+.tab:hover { color: var(--color-label); }
+.tab.active { background: var(--color-bg-2); color: var(--color-label); box-shadow: var(--shadow-inset-top), 0 1px 2px rgb(0 0 0 / .16); }
+.tab.active > svg { color: var(--color-tint); opacity: 1; }
+.count {
+  display: inline-grid; place-items: center; min-width: 19px; height: 18px; padding: 0 5px;
+  border-radius: 6px; background: var(--color-fill-2); color: var(--color-label-2);
+  font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.tab.active .count { background: var(--color-green-2); color: var(--color-tint); }
+
+/* ── find ─────────────────────────────────────────────────────────────────── */
+.search {
+  position: relative; display: flex; align-items: center; flex: 1;
+  min-width: 160px; max-width: 420px; margin-left: auto; height: 36px;
+  border: .5px solid var(--color-separator); border-radius: 11px; background: var(--color-fill);
+  transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.search:hover { background: var(--color-fill-2); }
+.search:focus-within { background: var(--color-fill); border-color: var(--color-tint); box-shadow: 0 0 0 3px var(--color-green-2); }
+.search > svg { position: absolute; left: 11px; color: var(--color-label-2); pointer-events: none; }
+
+/* The global field reset (the `input:not(…):not(…):not(…)` rule in globals.css, specificity 0-3-1)
+   outranks every class selector available here, so the field states its geometry with !important —
+   the same escape `.assist-input` takes. Without it the 48px min-height and 16px padding leak back
+   in and the placeholder slides under the search icon. */
+.panel .search input {
+  width: 100%; height: 34px !important; min-height: 0 !important; padding: 0 8px 0 33px !important;
+  border: 0 !important; border-radius: 10px !important; background-color: transparent !important;
+  box-shadow: none !important; outline: none !important; font-size: 13px !important; font-weight: 500 !important;
+}
+.panel .search input::placeholder { color: var(--color-label-2); }
+.kbd {
+  display: grid; place-items: center; min-width: 19px; height: 19px; margin-right: 8px; padding: 0 5px;
+  border: .5px solid var(--color-separator); border-radius: 6px; background: var(--color-fill-2);
+  color: var(--color-label-3); font-size: 11px; font-weight: 700; line-height: 1;
+}
+.search:focus-within .kbd { opacity: 0; }
+.clear {
+  display: grid; place-items: center; width: 19px; height: 19px; margin-right: 8px; flex-shrink: 0;
+  border-radius: 999px; background: var(--color-fill-2); color: var(--color-label-2); cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.clear:hover { background: var(--color-label-3); color: var(--color-bg-2); }
+
+/* ── actions ──────────────────────────────────────────────────────────────── */
+.actions { display: flex; align-items: center; gap: 7px; flex-shrink: 0; margin-left: auto; }  /* holds the right edge on the keys tab, which has no find field */
+.panel .action {
+  height: 36px; min-height: 36px; padding: 0 14px; border-radius: 11px; gap: 7px;
+  font-size: 12.5px; font-weight: 700; letter-spacing: -0.005em; color: #06120a;
+  background: linear-gradient(160deg, var(--color-tint-2), var(--color-tint));
+  border: .5px solid rgb(255 255 255 / .18);
+  box-shadow: var(--shadow-inset-top), 0 6px 18px -10px var(--color-tint);
+}
+.panel .action:hover { filter: brightness(1.05); }
+.action svg { flex-shrink: 0; }
+.pop { position: relative; flex-shrink: 0; }
+.more {
+  display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;
+  border: .5px solid var(--color-separator); border-radius: 11px; background: var(--color-fill);
+  color: var(--color-label-2); cursor: pointer; list-style: none;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.more::-webkit-details-marker { display: none; }
+.more:hover, .pop[open] .more { background: var(--color-fill-2); color: var(--color-label); }
+.menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; min-width: 218px; padding: 6px;
+  border: .5px solid var(--color-separator); border-radius: 14px; background: var(--color-bg-2);
+  box-shadow: var(--shadow-pop); animation: pop var(--dur-fast) var(--ease-out);
+}
+@keyframes pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+.menu button {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 7px 10px;
+  border-radius: 9px; font-size: 12.5px; font-weight: 600; text-align: left; cursor: pointer;
+}
+.menu button > svg { color: var(--color-label-2); flex-shrink: 0; }
+.menu button:hover { background: var(--color-fill); }
+.sep { margin-top: 5px; padding-top: 10px; box-shadow: 0 -1px 0 var(--color-separator) inset; border-radius: 0 0 9px 9px; }
+
+/* ── row two: status in one click, and the split of the estate read off the chips ── */
+.filters {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 9px; border-top: .5px solid var(--color-separator);
+  background: color-mix(in srgb, var(--color-fill) 45%, transparent);
+  border-radius: 0 0 15.5px 15.5px;
+}
+.chips { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  --chip: var(--color-label-3);
+  display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 11px; flex-shrink: 0;
+  border: .5px solid transparent; border-radius: 999px; background: var(--color-fill);
+  color: var(--color-label-2); font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+.chip:hover { background: var(--color-fill-2); color: var(--color-label); }
+.chip.on {
+  background: color-mix(in srgb, var(--chip) 15%, transparent);
+  border-color: color-mix(in srgb, var(--chip) 40%, transparent);
+  color: var(--color-label);
+}
+.dot { width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0; background: var(--chip); box-shadow: 0 0 0 3px color-mix(in srgb, var(--chip) 18%, transparent); }
+.chipCount { color: var(--color-label-3); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.chip.on .chipCount { color: color-mix(in srgb, var(--chip) 75%, var(--color-label)); }
+.meta {
+  display: flex; align-items: center; gap: 9px; flex-shrink: 0;
+  font-size: 12px; font-weight: 500; color: var(--color-label-2); white-space: nowrap;
+}
+.meta b { color: var(--color-label); font-weight: 700; }
+.reset {
+  display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 999px;
+  background: var(--color-fill); color: var(--color-label-2); font-size: 11.5px; font-weight: 600; cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.reset:hover { background: var(--color-fill-2); color: var(--color-label); }
+.tab:focus-visible, .action:focus-visible, .more:focus-visible, .menu button:focus-visible,
+.clear:focus-visible, .chip:focus-visible, .reset:focus-visible { outline: 2px solid var(--color-tint); outline-offset: 1px; }
+
+/* ── narrow: drop the hint, then split row one into sections + actions above and
+   find below — grid placement, so nothing depends on how flex happens to wrap ── */
+@container (max-width: 900px) { .kbd { display: none; } }
+@container (max-width: 760px) {
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; }
+  .tabs { grid-area: 1 / 1; justify-self: start; }
+  .actions { grid-area: 1 / 2; }
+  .search { grid-area: 2 / 1 / 2 / 3; max-width: none; min-width: 0; margin-left: 0; }
+}
+@container (max-width: 620px) {
+  .filters { flex-wrap: wrap; gap: 8px; }
+  .chips { flex-wrap: wrap; overflow-x: visible; }   /* wrap rather than scroll: no chip hides off-edge on a phone */
+  .meta { width: 100%; justify-content: space-between; }
+}
+/* below this the section names no longer clear the action button — icons + counts carry it */
+@container (max-width: 520px) { .tab { padding: 0 10px; } .tabLabel { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .tab, .search, .clear, .chip, .reset, .more, .panel .action { transition: none; }
+  .menu { animation: none; }
+}

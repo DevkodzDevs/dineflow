@@ -1,0 +1,43 @@
+/* Impersonation is a state the operator must never lose track of, so this bar is deliberately
+   theme-independent: --color-bezel is dark in BOTH themes, which lets the white text and amber
+   accent hold their contrast either way. (The old bar used `bg-ink`, which is #f4f4f1 in the dark
+   theme — white text on a near-white surface, contrast 1.03:1, effectively invisible.) */
+.bar {
+  display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap;   /* the column can be narrow beside the sidebar, so let it wrap rather than guess at viewport widths */
+  padding: 9px 10px 9px 12px; border-radius: 14px;
+  background: linear-gradient(100deg, color-mix(in srgb, #ffb340 12%, var(--color-bezel)), var(--color-bezel) 42%);
+  border: .5px solid rgb(255 255 255 / .14);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 8px 22px -14px rgb(0 0 0 / .9);
+  color: #ffffff; font-size: 13px; line-height: 1.35;
+}
+
+/* the live marker: amber, because this is a "you are not yourself right now" state */
+.shield {
+  position: relative; display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 999px; background: rgb(255 179 64 / .16); color: #ffb340;
+}
+.shield::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  border: 1px solid rgb(255 179 64 / .5); animation: breathe 2.4s var(--ease-out, ease-out) infinite;
+}
+@keyframes breathe { 0%, 100% { transform: scale(1); opacity: .55 } 50% { transform: scale(1.14); opacity: 0 } }
+
+.text { min-width: 0; flex: 1 1 280px; }   /* under ~280px of room the exit button drops to its own line */
+.text b { font-weight: 700; }
+.label { color: #ffb340; font-weight: 700; letter-spacing: .01em; }
+.note { color: rgb(255 255 255 / .62); }   /* 8.9:1 on the bezel — still comfortably readable */
+
+.exit {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0; height: 30px; padding: 0 12px;
+  border: .5px solid rgb(255 255 255 / .2); border-radius: 999px; background: rgb(255 255 255 / .1);
+  margin-left: auto; color: #ffffff; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.exit:hover { background: rgb(255 255 255 / .18); border-color: rgb(255 255 255 / .32); }
+.exit:focus-visible { outline: 2px solid #ffb340; outline-offset: 2px; }
+.exit[disabled] { opacity: .6; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .shield::after { animation: none; opacity: .5; }
+  .exit { transition: none; }
+}

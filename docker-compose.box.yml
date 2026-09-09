@@ -1,0 +1,148 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# DineFlow Box — the whole system on one computer in the building.
+# Start with:  node launcher.mjs box     (or launcher menu → 9)
+# Every device on the Wi-Fi then uses http://<this-computer>:3000 with no internet.
+# ═══════════════════════════════════════════════════════════════════════════
+name: dineflow-box
+services:
+  db:
+    image: supabase/postgres:15.6.1.143
+    restart: unless-stopped
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_PASSWORD: ${BOX_DB_PASSWORD}
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: 5432
+      JWT_SECRET: ${BOX_JWT_SECRET}
+      JWT_EXP: 3600
+    volumes:
+      - box-db:/var/lib/postgresql/data
+      - ./box/init:/docker-entrypoint-initdb.d:ro
+    healthcheck: { test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"], interval: 5s, timeout: 5s, retries: 20 }
+
+  auth:
+    image: supabase/gotrue:v2.164.0
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://${BOX_LAN_IP}:8000
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${BOX_DB_PASSWORD}@db:5432/postgres
+      GOTRUE_SITE_URL: http://${BOX_LAN_IP}:3000
+      GOTRUE_URI_ALLOW_LIST: "http://${BOX_LAN_IP}:3000,http://localhost:3000"
+      GOTRUE_JWT_SECRET: ${BOX_JWT_SECRET}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"          # no email server in the building — sign-ups confirm instantly
+      GOTRUE_SMS_AUTOCONFIRM: "true"
+
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${BOX_DB_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${BOX_JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+
+  realtime:
+    image: supabase/realtime:v2.33.58
+    container_name: realtime-dev.supabase-realtime
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${BOX_DB_PASSWORD}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: ${BOX_JWT_SECRET}
+      SECRET_KEY_BASE: ${BOX_SECRET_KEY_BASE}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+
+  meta:
+    image: supabase/postgres-meta:v0.84.2
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${BOX_DB_PASSWORD}
+
+  kong:
+    image: kong:2.8.1
+    restart: unless-stopped
+    ports: ["8000:8000/tcp"]
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: ${BOX_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${BOX_SERVICE_KEY}
+    volumes:
+      - ./box/kong.yml:/home/kong/temp.yml:ro
+    entrypoint: bash -c 'eval "echo \"$$(cat /home/kong/temp.yml)\"" > /home/kong/kong.yml && /docker-entrypoint.sh kong docker-start'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: http://${BOX_LAN_IP}:8000
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${BOX_ANON_KEY}
+        NEXT_PUBLIC_CLOUD_URL: ${CLOUD_URL:-}
+        NEXT_PUBLIC_BOX: "1"
+    restart: unless-stopped
+    depends_on: [kong]
+    ports: ["3000:3000"]
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: http://${BOX_LAN_IP}:8000
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${BOX_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${BOX_SERVICE_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DINEFLOW_BOX: "1"
+      NEXT_PUBLIC_CLOUD_URL: ${CLOUD_URL:-}
+      NEXT_PUBLIC_BOX: "1"
+
+  # The bridge: every minute, push the building's changes to the cloud and pull the world's
+  # (online orders, OTA/direct bookings, membership, Neighbours). Nightly backups too.
+  agent:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    working_dir: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./backups:/app/backups
+      - ${BOX_USB_PATH:-./backups}:/app/usb
+    environment:
+      DATABASE_URL: postgres://postgres:${BOX_DB_PASSWORD}@db:5432/postgres
+      CLOUD_URL: ${CLOUD_URL:-}
+      BOX_SYNC_TOKEN: ${BOX_SYNC_TOKEN:-}
+      BACKUP_HOUR: ${BACKUP_HOUR:-2}
+      SYNC_SECONDS: ${SYNC_SECONDS:-60}
+    command: sh -c "apk add --no-cache postgresql15-client >/dev/null && npm i -g postgres@3 >/dev/null 2>&1; node scripts/box-agent.mjs"
+
+volumes:
+  box-db:

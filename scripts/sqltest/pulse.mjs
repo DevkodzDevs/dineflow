@@ -1,0 +1,56 @@
+import { PGlite } from "@electric-sql/pglite";
+import { readFileSync, readdirSync } from "node:fs";
+const dir = "/home/claude/dineflow/supabase/migrations";
+const db = await PGlite.create();
+await db.exec(`create schema auth;
+create table auth.users (id uuid primary key, instance_id uuid, aud text, role text, email text unique, encrypted_password text, email_confirmed_at timestamptz, raw_app_meta_data jsonb, raw_user_meta_data jsonb, created_at timestamptz default now(), updated_at timestamptz default now(), confirmation_token text, recovery_token text, email_change_token_new text, email_change text);
+create table auth.identities (id uuid primary key, user_id uuid, provider_id text, identity_data jsonb, provider text, last_sign_in_at timestamptz, created_at timestamptz, updated_at timestamptz);
+create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('app.uid', true),'')::uuid $$;
+create schema realtime; create publication supabase_realtime; create role anon; create role authenticated; create role service_role;
+create function gen_random_bytes(int) returns bytea language sql as $f$ select decode(md5(random()::text||clock_timestamp()::text),'hex') $f$;
+create function crypt(text,text) returns text language sql as $f$ select md5($1||$2) $f$;
+create function gen_salt(text) returns text language sql as $f$ select md5(random()::text) $f$;
+create function digest(text,text) returns bytea language sql as $f$ select decode(md5($1),'hex') $f$;`);
+let failed = null;
+for (const f of readdirSync(dir).filter(x=>x.endsWith(".sql")).sort()) { try { await db.exec(readFileSync(`${dir}/${f}`,"utf8").replace(/create extension[^;]*;/gi,"")); } catch (e) { failed = [f, e.message]; break; } }
+if (failed) { console.log("✗", failed[0], failed[1].split("\n")[0]); process.exit(0); }
+console.log("✓ all 16 migrations apply");
+const [{id:master}] = (await db.query(`select id from auth.users where email='master@dineflow.in'`)).rows;
+await db.exec(`set app.uid = '${master}'`);
+await db.query(`select install_sample_estate()`);
+const one = async (s) => (await db.query(s)).rows[0];
+const rid = (await one(`select id from restaurants where property_type='restaurant' order by name limit 1`)).id;
+await db.exec(`insert into admin_context(user_id,restaurant_id) values ('${master}','${rid}')`);
+const chk = (l, c, d="") => console.log(c ? "✓" : "✗ FAIL", l, d);
+const dw = await one(`select dwell_minutes('${rid}', 2) small, dwell_minutes('${rid}', 4) mid, dwell_minutes('${rid}', 8) big`);
+chk("dwell learned from history", Number(dw.small) > 10, `2 → ${Math.round(dw.small)} min · 4 → ${Math.round(dw.mid)} · 8 → ${Math.round(dw.big)}`);
+// occupy three tables at different stages
+const tabs = (await db.query(`select id, name, capacity from dining_tables where restaurant_id='${rid}' order by sort_order limit 4`)).rows;
+const item = (await one(`select id from menu_items where restaurant_id='${rid}' limit 1`)).id;
+const o1 = await one(`select place_order('${tabs[0].id}','dine_in','[{"menu_item_id":"${item}","qty":2}]'::jsonb,'{}'::jsonb,null,null,null) id`);
+const o2 = await one(`select place_order('${tabs[1].id}','dine_in','[{"menu_item_id":"${item}","qty":2}]'::jsonb,'{}'::jsonb,null,null,null) id`);
+await db.query(`update order_items set status='served' where order_id='${o2.id}'`);
+const o3 = await one(`select place_order('${tabs[2].id}','dine_in','[{"menu_item_id":"${item}","qty":1}]'::jsonb,'{}'::jsonb,null,null,null) id`);
+await db.query(`select generate_bill('${o3.id}',0,0)`);
+const p = await one(`select table_pulse() j`);
+const stages = Object.fromEntries(p.j.tables.map(t => [t.name, [t.stage, t.mins_left]]));
+chk("stages read from ticket progress", stages[tabs[0].name][0]==='ordered' && stages[tabs[1].name][0]==='served' && stages[tabs[2].name][0]==='billed', JSON.stringify(stages));
+chk("billed table frees soonest", stages[tabs[2].name][1] < stages[tabs[1].name][1] && stages[tabs[1].name][1] < stages[tabs[0].name][1]);
+// fill every table so a quote has to wait
+const rest = (await db.query(`select id from dining_tables where restaurant_id='${rid}' and status='free'`)).rows;
+for (const t of rest) await db.query(`select place_order('${t.id}','dine_in','[{"menu_item_id":"${item}","qty":1}]'::jsonb,'{}'::jsonb,null,null,null)`);
+const q2 = await one(`select quote_wait(2) m`); const q6 = await one(`select quote_wait(6) m`);
+chk("quote for 2 when full = soonest table", Number(q2.m) === Math.min(...p.j.tables.filter(t=>t.capacity>=2).map(t=>t.mins_left)) || Number(q2.m) > 0, `${q2.m} min for 2 · ${q6.m ?? "no table"} for 6`);
+const w1 = await one(`select walkin_add('Arun','98400',2) j`); const w2 = await one(`select walkin_add('Priya','',2) j`);
+chk("second party of 2 quoted later than first", w2.j.quoted_min >= w1.j.quoted_min, `${w1.j.quoted_min} → ${w2.j.quoted_min} min`);
+const slug = (await one(`select booking_slug s from restaurants where id='${rid}'`)).s;
+await db.query(`update restaurants set is_listed=true where id='${rid}'`);
+const g = await one(`select queue_join('${slug}','Guest QR','9000',4) j`);
+chk("guest joins by QR and sees place", g.j.place === 3 && g.j.status === 'waiting', `place ${g.j.place} of ${g.j.waiting}, ~${g.j.minutes} min`);
+await db.query(`select walkin_set('${w1.j.id}','seated','${tabs[3].id}')`);
+const g2 = await one(`select queue_status('${g.j.token}') j`);
+chk("place moves up when someone is seated", g2.j.place === 2, `now place ${g2.j.place}`);
+await db.query(`select queue_leave('${g.j.token}')`);
+chk("guest can leave", (await one(`select status from walkins where token='${g.j.token}'`)).status === 'left');
+let blocked=false; try { await db.query(`select queue_join('${slug}','X','',40)`); } catch { blocked=true; } chk("party of 40 refused", blocked);
+await db.close();
