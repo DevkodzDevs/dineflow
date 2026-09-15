@@ -1,17 +1,18 @@
 "use client";
-import { useState, useTransition } from "react";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { useState, useTransition, useEffect } from "react";
+import { Plus, Trash2, Sparkles, QrCode } from "lucide-react";
 import { Button, Card, Field } from "@/components/ui";
 import { ThemePicker } from "@/components/ui/Theme";
-import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken } from "./actions";
+import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments } from "./actions";
 import { Server } from "lucide-react";
 
-type Rest = { id: string; name: string; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
+type Rest = { id: string; name: string; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number };
 
-export function SettingsClient({ restaurant, tables }: { restaurant: Rest; tables: Table[] }) {
+export function SettingsClient({ restaurant, tables, gateway }: { restaurant: Rest; tables: Table[]; gateway: { key_id: string; hasSecret: boolean; hasWebhook: boolean } }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [boxToken, setBoxToken] = useState<string | null>(null); const [pending, start] = useTransition();
+  const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
@@ -47,8 +48,26 @@ export function SettingsClient({ restaurant, tables }: { restaurant: Rest; table
           <p className="text-sm text-steel mb-2">If this property runs DineFlow on a computer in the building, issue a token and paste it into the Box launcher. The Box then works with <b>and</b> without internet: the building runs locally, and every minute the internet is up it swaps with this cloud copy — online orders and OTA bookings go down, rooms, menu, bookings and sealed months come up. {restaurant.runs_on_box ? <span className="text-mint font-semibold">Box connected{restaurant.box_last_seen ? ` · last seen ${new Date(restaurant.box_last_seen).toLocaleString("en-IN")}` : ""}.</span> : null}</p>
           <div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={pending} onClick={() => start(async () => { const r = await issueBoxToken(); if ("error" in r) setMsg(r.error!); else { setBoxToken(r.token!); navigator.clipboard.writeText(r.token!); setMsg("Box token copied. Paste it into the launcher on the Box."); } })}>Issue box token</Button>{boxToken && <span className="num text-xs break-all">{boxToken}</span>}</div>
         </div>
-        <div className="mt-4 pt-4 border-t border-line flex flex-wrap gap-2"><a href="/settings/storefront" className="chip">Storefront &amp; offers</a><a href="/settings/printers" className="chip">Thermal printers</a><a href="/channels" className="chip">Online orders & OTA channels</a><a href="/settings/booking-page" className="chip">Direct booking page</a></div>
+        <div className="mt-4 pt-4 border-t border-line flex flex-wrap gap-2"><a href="/settings/storefront" className="chip">Storefront &amp; offers</a><a href="/settings/printers" className="chip">Thermal printers</a><a href="/channels" className="chip">Online orders & OTA channels</a><a href="/settings/booking-page" className="chip">Direct booking page</a><a href="/tax" className="chip">Tax &amp; GST</a></div>
         <div className="mt-6 pt-4 border-t border-line text-xs text-steel flex items-center justify-between"><span>Membership: <b className="uppercase">{restaurant.membership}</b>{restaurant.membership_plan ? ` · ${restaurant.membership_plan}` : ""}{restaurant.membership === "trial" ? ` · ends ${restaurant.trial_ends_at.slice(0, 10)}` : restaurant.membership_ends_at ? ` · until ${restaurant.membership_ends_at.slice(0, 10)}` : ""}</span><a href="/membership" className="font-semibold underline text-ink">Manage</a></div>
+      </Card>
+      <Card>
+        <h3 className="text-xl mb-1 flex items-center gap-2"><QrCode size={18} /> Pay by scanning the bill</h3>
+        <p className="text-sm text-steel mb-4">Every bill carries a QR code. Scanning it opens the bill on the guest's phone with the ways to pay it. UPI needs only your UPI ID. Cards need a Razorpay account: add your own keys and the guest can pay by card, netbanking or wallet right there. Without either, the page still shows the bill and points them to the counter.</p>
+        <form className="space-y-4" action={(fd) => start(async () => { const r = await savePayments(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
+          <input type="hidden" name="id" value={restaurant.id} />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="UPI ID" hint="The one your bank or app gave you, e.g. hotel@okaxis"><input name="upi_vpa" defaultValue={restaurant.upi_vpa ?? ""} placeholder="name@bank" className="num" autoCapitalize="none" /></Field>
+            <Field label="Name shown in the UPI app" hint="Blank = the property name"><input name="upi_payee" defaultValue={restaurant.upi_payee ?? ""} /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Razorpay key ID" hint="Razorpay dashboard → Account & Settings → API keys"><input name="razorpay_key_id" defaultValue={gateway.key_id} placeholder="rzp_live_…" className="num" autoCapitalize="none" /></Field>
+            <Field label="Razorpay key secret" hint={gateway.hasSecret ? "Saved. Leave blank to keep it; type clear to remove it." : "Shown once, when the key is created"}><input name="razorpay_key_secret" type="password" autoComplete="new-password" placeholder={gateway.hasSecret ? "••••••••" : ""} /></Field>
+          </div>
+          <Field label="Razorpay webhook secret" hint={`Recommended. In Razorpay add a webhook for payment.captured pointing at ${origin || "https://<your-app>"}/api/webhooks/razorpay and paste its secret here. It marks the bill paid even when the guest closes the page early.${gateway.hasWebhook ? " Saved: leave blank to keep it, type clear to remove it." : ""}`}><input name="razorpay_webhook_secret" type="password" autoComplete="new-password" placeholder={gateway.hasWebhook ? "••••••••" : ""} /></Field>
+          {msg && <p className="text-sm">{msg}</p>}
+          <Button disabled={pending}>Save</Button>
+        </form>
       </Card>
       <Card>
         <h3 className="text-xl mb-4">Tables & zones</h3>

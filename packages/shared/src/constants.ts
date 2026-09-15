@@ -29,9 +29,9 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 /** Modules each property type gets. Restaurant modules are always present (hotels have dining). */
 export const MODULES_BY_TYPE: Record<PropertyType, string[]> = {
-  restaurant: ["dashboard", "tomorrow", "scan", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "staff", "settings"],
-  hotel: ["dashboard", "tomorrow", "scan", "frontdesk", "rooms", "housekeeping", "guests", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "staff", "settings"],
-  resort: ["dashboard", "tomorrow", "scan", "frontdesk", "rooms", "housekeeping", "guests", "facilities", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "staff", "settings"],
+  restaurant: ["dashboard", "tomorrow", "scan", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
+  hotel: ["dashboard", "tomorrow", "scan", "frontdesk", "rooms", "housekeeping", "guests", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
+  resort: ["dashboard", "tomorrow", "scan", "frontdesk", "rooms", "housekeeping", "guests", "facilities", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
 };
 
 /** What each role may open. Intersected with MODULES_BY_TYPE at runtime. */
@@ -56,7 +56,7 @@ export const MODULE_GROUPS: { title: string; keys: { key: string; label: string;
   { title: "Front of house", keys: [{ key: "orders", label: "Orders & tables", hint: "Take orders, the floor" }, { key: "reservations", label: "Reservations", hint: "Bookings from the storefront" }, { key: "pulse", label: "Pulse", hint: "Wait times and the walk-in queue" }, { key: "online-orders", label: "Online orders", hint: "Delivery and takeaway" }, { key: "channels", label: "Channels", hint: "Swiggy, Zomato, OTAs" }] },
   { title: "Hotel", keys: [{ key: "frontdesk", label: "Front desk", hint: "Check-in, folios" }, { key: "rooms", label: "Rooms", hint: "The board and keys" }, { key: "housekeeping", label: "Housekeeping", hint: "Turnaround" }, { key: "guests", label: "Guests", hint: "Guest records" }, { key: "facilities", label: "Facilities", hint: "Spa, pool, hall" }] },
   { title: "Kitchen & stock", keys: [{ key: "kitchen", label: "Kitchen", hint: "Tickets" }, { key: "menu", label: "Menu", hint: "Dishes and recipes" }, { key: "inventory", label: "Pantry", hint: "Stock, counts, leaks" }, { key: "scan", label: "Scan", hint: "Barcodes and photos" }, { key: "tomorrow", label: "Tomorrow", hint: "The brief" }] },
-  { title: "Money", keys: [{ key: "billing", label: "Billing", hint: "Bills, payments, shift close" }, { key: "invoices", label: "Invoices", hint: "GST invoices" }, { key: "reports", label: "Reports", hint: "Sales and costs" }, { key: "proof", label: "Proof of business", hint: "Sealed months, share links" }] },
+  { title: "Money", keys: [{ key: "billing", label: "Billing", hint: "Bills, payments, shift close" }, { key: "invoices", label: "Invoices", hint: "GST invoices" }, { key: "reports", label: "Reports", hint: "Sales and costs" }, { key: "tax", label: "Tax & GST", hint: "Returns, audit, documents" }, { key: "proof", label: "Proof of business", hint: "Sealed months, share links" }] },
   { title: "People & network", keys: [{ key: "labour", label: "Labour", hint: "Attendance, wages" }, { key: "staff", label: "Staff", hint: "Logins and roles" }, { key: "neighbours", label: "Neighbours", hint: "The district network" }] },
 ];
 /**

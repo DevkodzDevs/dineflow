@@ -22,7 +22,7 @@ export function StaffClient({ me, myRole, type, enabled, staff, invites }: { me:
       <div className="feather divide-y divide-line">
         {staff.map((p) => (
           <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-            <span className="h-10 w-10 rounded-full bg-ink text-white grid place-items-center font-display">{p.full_name.slice(0, 1)}</span>
+            <span className="h-10 w-10 rounded-full bg-ink text-on-label grid place-items-center font-display">{p.full_name.slice(0, 1)}</span>
             <div className="flex-1 min-w-0"><div className={cn("font-semibold truncate", !p.is_active && "text-steel line-through")}>{p.full_name}{p.id === me && <span className="text-xs text-steel font-normal"> (you)</span>}</div><div className="text-xs text-steel truncate">{p.email}</div></div>
             <span className="pill pill-gold">{ROLE_LABEL[p.role]}</span>
             {p.role !== "owner" && <span className="text-xs text-steel hidden sm:inline">{p.allowed_modules ? `${p.allowed_modules.length} sections` : "role default"}</span>}

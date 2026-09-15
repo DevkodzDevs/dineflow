@@ -13,7 +13,7 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
     <div className="min-h-dvh grid place-items-center p-6 aurora">
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg">
         <div className="glass p-8">
-          <div className="flex items-center gap-3"><span className="h-11 w-11 rounded-2xl bg-ink text-champagne grid place-items-center"><Crown size={20} /></span><div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{name}</div><h1 className="text-3xl">{locked ? "Membership login" : "Membership"}</h1></div></div>
+          <div className="flex items-center gap-3"><span className="h-11 w-11 rounded-2xl bg-ink text-on-label grid place-items-center"><Crown size={20} /></span><div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{name}</div><h1 className="text-3xl">{locked ? "Membership login" : "Membership"}</h1></div></div>
           <div className="hairline-gold my-6" />
           {state === "trial" && <p className="text-sm text-steel">Your <b className="text-ink">7-day trial</b> has {trialDays} day{trialDays === 1 ? "" : "s"} left. Activate now and nothing changes for your team — same logins, same data.</p>}
           {state === "expired" && <p className="text-sm text-steel">The temporary trial login for <b className="text-ink">{name}</b> has ended. Enter the membership key from DineFlow to continue — all your menus, rooms, stock and history are safe.</p>}

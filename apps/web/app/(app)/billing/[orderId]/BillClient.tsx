@@ -1,25 +1,27 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronLeft, Printer, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone } from "lucide-react";
 import { Button, Field, Card, cn, Pill } from "@/components/ui";
-import { computeBill, formatINR, PAYMENT_METHODS, type PaymentMethod } from "@dineflow/shared";
+import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, type PaymentMethod } from "@dineflow/shared";
 import { generateBill, settleBill, voidBill } from "../actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 import { usePrinters } from "@/lib/print/usePrinter";
 import { PrinterOutput } from "@/components/receipt/PrinterOutput";
 import type { ReceiptData } from "@/components/receipt/Receipt";
+import { QR, qrDataUrl } from "@/components/QR";
+import { useLive } from "@/lib/useLive";
 import { postOrderToRoom } from "../../frontdesk/actions";
 import { BedDouble, FileText } from "lucide-react";
 import { diningInvoice } from "../../invoices/actions";
 
 type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; notes?: string | null };
 type Order = { id: string; order_no: number; status: string; type: string; customer_name: string | null; created_at: string; dining_tables: { name: string } | null; order_items: Item[] };
-type Bill = { id: string; bill_no: number; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; payments: { method: string; amount: number; ref: string | null }[] } | null;
-type Rest = { name: string; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number };
+type Bill = { id: string; bill_no: number; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; payments: { method: string; amount: number; ref: string | null }[] } | null;
+type Rest = { name: string; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; legal_name?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; fssai_no?: string | null };
 
 export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: { order: Order; bill: Bill; restaurant: Rest; cashier: string; inHouse?: { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null }[] }) {
   const [roomFor, setRoomFor] = useState("");
@@ -27,8 +29,28 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
   const { online } = useOffline();
   const { printBill, hasPrinter } = usePrinters();
   const [justPrinted, setJustPrinted] = useState(false);
+  const lastBillId = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const id = bill?.id ?? null;
+    const first = lastBillId.current === undefined;   // opening a bill that already exists must not re-print it
+    const isNew = !first && !!id && id !== lastBillId.current;
+    lastBillId.current = id;
+    if (!isNew) return;
+    setJustPrinted(true);
+    const t = setTimeout(() => setJustPrinted(false), 2300);   // the feed lasts ~2s; re-arm for the next bill
+    return () => clearTimeout(t);
+  }, [bill?.id]);
+  // The pay link. The QR on the bill and on this screen opens it: the guest sees the total with UPI
+  // and card options. Origin is read after mount so the server and the browser render the same thing.
+  const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
+  const payUrl = bill?.pay_token && origin ? `${origin}/pay/${bill.pay_token}` : null;
+  const [qrPng, setQrPng] = useState<string | undefined>(undefined);
+  useEffect(() => { let on = true; if (!payUrl) { setQrPng(undefined); return; } qrDataUrl(payUrl, 180).then((png) => { if (on) setQrPng(png); }); return () => { on = false; }; }, [payUrl]);
+  useLive(["bills"], 15000);   // flips to Paid by itself when the guest pays by card, or claims a UPI payment
+  // what the paper says about the business: the registration it files under, and the words the rules require
+  const printRest = { name: restaurant.name, address: restaurant.address, phone: restaurant.phone, gstin: restaurant.gstin, fssai: restaurant.fssai_no ?? null, legalName: restaurant.legal_name ?? null, gstScheme: restaurant.gst_scheme ?? null, stateCode: restaurant.gst_state_code ?? null };
   const receiptData = (): ReceiptData => ({
-    restaurant, title: bill?.status === "paid" ? "Tax invoice" : "Bill", no: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL — DRAFT",
+    restaurant: printRest, title: billTitle(restaurant.gst_scheme, restaurant.gstin, bill?.status === "paid"), sac: SAC.restaurant, gstRate: Number(restaurant.gst_rate), no: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL — DRAFT",
     when: new Date(bill?.created_at ?? Date.now()).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }),
     where: order.dining_tables?.name ? `Table ${order.dining_tables.name}` : order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery",
     cashier,
@@ -37,11 +59,11 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
     cgst: Number(totals.cgst ?? bill?.cgst ?? 0), sgst: Number(totals.sgst ?? bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0),
     total: Number(totals.total ?? bill?.total ?? 0),
     payments: bill?.status === "paid" ? pays.map((p) => ({ method: p.method, amount: Number(p.amount), ref: p.ref })) : undefined,
-    qr: typeof window !== "undefined" ? window.location.href : null,
+    qr: payUrl,
     copyLabel: "Customer copy",
     offline: !online,
   });
-  const billData = () => ({ restaurant, billNo: bill ? `BILL-${bill.bill_no}` : "BILL", when: new Date().toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"), cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online });
+  const billData = () => ({ restaurant: printRest, gstRate: Number(restaurant.gst_rate), sac: SAC.restaurant, billNo: bill ? `BILL-${bill.bill_no}` : "BILL", when: new Date().toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"), cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng });
   const router = useRouter(); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   const [discPct, setDiscPct] = useState(0); const [discAmt, setDiscAmt] = useState(0);
   const live = order.order_items.filter((i) => i.status !== "cancelled");
@@ -73,9 +95,16 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
                 <p className="text-xs text-steel mt-2">Amount + GST goes on the guest folio; settled at check-out.</p></div>
             )}
           </Card>
-        ) : bill.status === "unpaid" ? (
+        ) : bill.status === "unpaid" ? (<>
           <Card>
             <div className="flex items-center justify-between"><h3 className="text-xl">Take payment</h3><Pill tone="pending">unpaid</Pill></div>
+            {bill.pay_claim_ref && (
+              <div className="mt-3 flex items-center gap-2 rounded-xl bg-mint-2 px-3 py-2 text-sm">
+                <Smartphone size={15} className="shrink-0 text-mint" />
+                <span className="min-w-0">Guest says they paid by UPI{bill.pay_claim_ref !== "UPI" && <> · ref <b className="num">{bill.pay_claim_ref}</b></>}. Check your UPI app, then</span>
+                <Button size="sm" variant="outline" className="ml-auto shrink-0" onClick={() => setPays([{ method: "upi", amount: totals.total, ref: bill.pay_claim_ref === "UPI" ? "" : bill.pay_claim_ref! }])}>Use it</Button>
+              </div>
+            )}
             <div className="mt-4 space-y-2">
               {pays.map((p, i) => (
                 <div key={i} className="grid grid-cols-[110px_1fr_1fr_32px] gap-2 items-center">
@@ -103,7 +132,19 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
             })}>Mark paid{!online && " (offline)"}</Button>
             <button className="mt-3 text-xs text-steel hover:text-chili w-full" disabled={pending} onClick={() => start(async () => { await voidBill(bill.id); router.refresh(); })}>Void bill and edit order</button>
           </Card>
-        ) : (
+          {payUrl && (
+            <Card className="mt-4">
+              <div className="flex items-center gap-4">
+                <QR value={payUrl} size={128} />
+                <div className="min-w-0">
+                  <h3 className="text-lg flex items-center gap-1.5"><QrCode size={16} /> Guest can scan to pay</h3>
+                  <p className="text-sm text-steel mt-1">Opens this bill on their phone with UPI and card options. Turn the screen to them — it is printed on the bill too.</p>
+                  <a href={payUrl} target="_blank" rel="noreferrer" className="text-[11px] text-steel underline break-all mt-1 inline-block">{payUrl}</a>
+                </div>
+              </div>
+            </Card>
+          )}
+        </>) : (
           <Card className="border-mint"><div className="flex items-center justify-between"><h3 className="text-xl">Paid</h3><Pill tone="ready">settled</Pill></div>
             <ul className="mt-3 text-sm space-y-1">{bill.payments.map((p, i) => <li key={i} className="flex justify-between"><span className="uppercase">{p.method}{p.ref ? ` · ${p.ref}` : ""}</span><span className="num">{formatINR(Number(p.amount))}</span></li>)}</ul>
             <div className="mt-4 grid grid-cols-2 gap-2"><input placeholder="Customer name (optional)" value={inv.name} onChange={(e) => setInv({ ...inv, name: e.target.value })} /><input placeholder="GSTIN (optional)" className="num uppercase" value={inv.gstin} onChange={(e) => setInv({ ...inv, gstin: e.target.value })} /></div>

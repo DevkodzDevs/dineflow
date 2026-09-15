@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC = ["/", "/login", "/signup", "/join", "/membership", "/offline"];
-const PUBLIC_PREFIX = ["/queue/", "/dine", "/book/", "/record/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/"];
+const PUBLIC_PREFIX = ["/queue/", "/dine", "/book/", "/record/", "/pay/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/"];
 
 export async function middleware(req: NextRequest) {
   req.headers.set("x-pathname", req.nextUrl.pathname);

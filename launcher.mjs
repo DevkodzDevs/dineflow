@@ -143,6 +143,22 @@ async function live() {
     ok(`Signed in to Vercel.`);
   }
 
+  // A deployment's own `-e` variables do not reach Edge Middleware, and this app creates its Supabase
+  // client there — so the deploy succeeds and then every request answers 500 MIDDLEWARE_INVOCATION_FAILED.
+  // Project-level variables do reach it, so set those first; they also survive future deploys.
+  const setVar = (k, v) => {
+    if (!v) return;
+    try { execSync(`npx --yes vercel@latest env rm ${k} production --yes --cwd apps/web${tok}`, { stdio: "ignore", cwd: ROOT, shell: true }); } catch { /* absent is fine */ }
+    try { execSync(`npx --yes vercel@latest env add ${k} production --cwd apps/web${tok}`, { input: `${v}
+`, stdio: ["pipe", "ignore", "ignore"], cwd: ROOT, shell: true }); }
+    catch { warn(`Could not store ${k} on Vercel — add it by hand under Project → Settings → Environment Variables.`); }
+  };
+  log(`${c.d}Storing the keys on the Vercel project (so middleware and future deploys see them)…${c.x}`);
+  setVar("NEXT_PUBLIC_SUPABASE_URL", prodUrl);
+  setVar("NEXT_PUBLIC_SUPABASE_ANON_KEY", prodKey);
+  setVar("SUPABASE_SERVICE_ROLE_KEY", env.SUPABASE_SERVICE_ROLE_KEY);
+  setVar("ANTHROPIC_API_KEY", env.ANTHROPIC_API_KEY);
+
   try { sh(`npx --yes vercel@latest --cwd apps/web --prod --yes ${e}${tok}`); }
   catch {
     fail("Vercel refused the deploy — its own message above says why.");

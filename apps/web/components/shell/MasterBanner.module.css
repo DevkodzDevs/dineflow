@@ -35,7 +35,7 @@
 }
 .exit:hover { background: rgb(255 255 255 / .18); border-color: rgb(255 255 255 / .32); }
 .exit:focus-visible { outline: 2px solid #ffb340; outline-offset: 2px; }
-.exit[disabled] { opacity: .6; cursor: default; }
+.exit[disabled] { opacity: .6; cursor: not-allowed; }
 
 @media (prefers-reduced-motion: reduce) {
   .shield::after { animation: none; opacity: .5; }

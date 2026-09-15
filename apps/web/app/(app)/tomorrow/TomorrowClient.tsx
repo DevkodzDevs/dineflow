@@ -119,7 +119,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
 
       {forecast.neighbourhood?.available && (
         <Link href="/neighbours?tab=signal" className="feather feather-lift flex items-center gap-3 p-4 mb-5 border-champagne/60 bg-gradient-to-r from-card to-champagne-2/40">
-          <span className="h-9 w-9 rounded-xl bg-ink text-champagne grid place-items-center shrink-0"><TrendingUp size={16} /></span>
+          <span className="h-9 w-9 rounded-xl bg-ink text-on-label grid place-items-center shrink-0"><TrendingUp size={16} /></span>
           <div className="flex-1 text-sm"><b>The neighbourhood is {forecast.neighbourhood.label}.</b> <span className="text-steel">{forecast.neighbourhood.detail} This brief has been nudged accordingly.</span></div>
           <span className="text-xs font-semibold text-steel">Area signal →</span>
         </Link>

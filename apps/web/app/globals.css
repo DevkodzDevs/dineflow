@@ -27,6 +27,7 @@
   --color-orange: #ffb340;
   --color-ink: #f4f4f1;              /* "ink" is the text colour everywhere */
   --color-on-label: #0a0a0d;         /* text that sits on a label-coloured surface (avatars, ink buttons, the active chip) */
+  --color-on-tint: #06120a;          /* text that sits on the green tint — dark enough for both the bright dark-theme green and the deeper paper one */
   --color-paper: #fdfcf8;            /* the receipt keeps real paper */
 
   /* legacy aliases so every existing screen keeps working */
@@ -87,6 +88,33 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .footnote { font-size: 12px; color: var(--color-label-2); }
 ::selection { background: rgb(76 217 100 / .35); color: var(--color-label); }
 :focus-visible { outline: 3px solid rgb(76 217 100 / .6); outline-offset: 2px; border-radius: 8px; }
+
+/* ── the hand: everything you can click shows the pointer ─────────────────
+   Tailwind v4's preflight leaves <button> on the arrow cursor, so every button,
+   link, chip, switch, tab, menu item and clickable control is covered here once.
+   Lives in the base layer so a `cursor-*` utility on any element still wins. */
+@layer base {
+  a[href], button, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"],
+  [role="option"], [role="switch"], [role="checkbox"], [role="radio"],
+  label[for], label:has(input), label:has(select), label:has(textarea), summary, select,
+  input[type="button"], input[type="submit"], input[type="reset"], input[type="checkbox"], input[type="radio"], input[type="file"], input[type="color"],
+  .btn, .chip, .switch, .segmented > button, .menu-item, .dt-th, .card-title .more, .scrim, [data-clickable] { cursor: pointer; }
+  ::file-selector-button { cursor: pointer; }
+  /* The buttons hidden inside native controls: the calendar and clock pickers on
+     date/time fields, the number steppers, the search clear cross and Edge's
+     password eye. Each gets its own rule on purpose — a browser that does not know
+     one of these vendor pseudo-elements would throw away the whole rule it sits in. */
+  ::-webkit-calendar-picker-indicator { cursor: pointer; }
+  ::-webkit-inner-spin-button { cursor: pointer; }
+  ::-webkit-outer-spin-button { cursor: pointer; }
+  ::-webkit-search-cancel-button { cursor: pointer; }
+  ::-webkit-clear-button { cursor: pointer; }
+  ::-webkit-file-upload-button { cursor: pointer; }
+  ::-ms-reveal { cursor: pointer; }
+  ::-ms-clear { cursor: pointer; }
+  /* the range track is clickable; its thumb keeps the grab hand defined further down */
+  input[type="range"] { cursor: pointer; }
+}
 
 /* ═══ THE FLIP TILE ═════════════════════════════════════════════════════
    One big number in a dark tile split by a hinge, like a split-flap board.
@@ -152,7 +180,7 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .wall { color: #f4f4f1; } .wall h1, .wall .flip-label, .wall .font-display { color: #f4f4f1; } .wall .flip-label { color: #9a9aa6; }
 [data-theme="paper"] .deck-card { box-shadow: 0 0 0 .5px rgb(0 0 0 / .1), 0 30px 80px -30px rgb(0 0 0 / .6); }
 [data-theme="paper"] .feather, [data-theme="paper"] .card, [data-theme="paper"] .group, [data-theme="paper"] .dt-shell { border-color: rgb(23 23 28 / .10); }
-[data-theme="paper"] .material { background: color-mix(in srgb, #ffffff 90%, transparent); border-color: rgb(23 23 28 / .08); }
+[data-theme="paper"] .material { background: color-mix(in srgb, #ffffff 94%, transparent); border-color: rgb(23 23 28 / .08); }
 [data-theme="paper"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), [data-theme="paper"] select, [data-theme="paper"] textarea { background: #f1f1ec; border-color: rgb(23 23 28 / .06); }
 [data-theme="paper"] input:focus, [data-theme="paper"] select:focus, [data-theme="paper"] textarea:focus { background: #ffffff; }
 [data-theme="paper"] .chip { background: rgb(23 23 28 / .06); } [data-theme="paper"] .chip:hover { background: rgb(23 23 28 / .10); }
@@ -168,7 +196,7 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 [data-theme="paper"] .paper.thermal { box-shadow: 0 2px 6px rgb(0 0 0 / .08), 0 12px 30px -16px rgb(0 0 0 / .25); }
 [data-theme="paper"] .wait-track { background: rgb(23 23 28 / .10); }
 [data-theme="paper"] ::selection { background: rgb(31 168 74 / .25); }
-[data-theme="paper"] .material { background: color-mix(in srgb, #ffffff 82%, transparent); }
+[data-theme="paper"] .material { background: color-mix(in srgb, #ffffff 94%, transparent); }
 
 [data-theme="paper"] .scrim { background: rgb(0 0 0 / .35); }
 [data-theme="paper"] .toast, [data-theme="paper"] .popover { background: #ffffff; }
@@ -197,9 +225,17 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .assist-input, .assist-input:hover, .assist-input:focus { background: transparent !important; border: 0 !important; box-shadow: none !important; outline: none !important; padding: 8px 0 !important; min-height: 0 !important; border-radius: 0 !important; }
 
 /* ── materials ─────────────────────────────────────────────────────────── */
-.material, .glass { background: color-mix(in srgb, var(--color-bg-2) 88%, transparent); backdrop-filter: blur(12px) saturate(140%); -webkit-backdrop-filter: blur(12px) saturate(140%); border: .5px solid var(--color-separator); box-shadow: var(--shadow-inset-top), var(--shadow-card); border-radius: var(--radius-lg); }
-.material-thick { background: color-mix(in srgb, var(--color-bg-2) 96%, transparent); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); }
-.material-bar { background: color-mix(in srgb, var(--color-bg) 92%, transparent); backdrop-filter: blur(12px) saturate(140%); -webkit-backdrop-filter: blur(12px) saturate(140%); border-bottom: .5px solid var(--color-separator); }
+.material, .glass { background: color-mix(in srgb, var(--color-bg-2) 93%, transparent); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); border: .5px solid var(--color-separator); box-shadow: var(--shadow-inset-top), var(--shadow-card); border-radius: var(--radius-lg); }
+.material-thick { background: color-mix(in srgb, var(--color-bg-2) 97%, transparent); -webkit-backdrop-filter: blur(28px) saturate(150%); backdrop-filter: blur(28px) saturate(150%); }
+.material-bar { background: color-mix(in srgb, var(--color-bg) 95%, transparent); -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%); border-bottom: .5px solid var(--color-separator); }
+/* A backdrop blur is the only thing stopping the page reading through these bars. Where the
+   browser will not do it — an older engine, or "reduce transparency" switched on in the OS —
+   the bar would go plain see-through, so give it the surface colour outright instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .material, .glass, .material-thick { background: var(--color-bg-2); }
+  .material-bar { background: var(--color-bg); }
+  [data-theme="paper"] .material, [data-theme="paper"] .glass, [data-theme="paper"] .material-thick { background: #ffffff; }
+}
 
 /* ── surfaces ─────────────────────────────────────────────────────────── */
 .feather, .card { background: var(--color-bg-2); border-radius: var(--radius-lg); border: .5px solid var(--color-separator); box-shadow: var(--shadow-inset-top), var(--shadow-card); }
@@ -244,7 +280,7 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 16px; font-weight: 700; font-size: 15px; letter-spacing: -0.01em; user-select: none; white-space: nowrap;
   transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast), box-shadow var(--dur-fast), filter var(--dur-fast); }
 .btn:active { transform: scale(.96); }
-.btn-filled { background: var(--color-tint); color: #06120a; box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 10px 24px -12px rgb(76 217 100 / .8); }
+.btn-filled { background: var(--color-tint); color: var(--color-on-tint); box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 10px 24px -12px rgb(76 217 100 / .8); }
 .btn-filled:hover { filter: brightness(1.05); }
 .btn-ink { background: var(--color-label); color: var(--color-on-label); box-shadow: inset 0 1px 0 rgb(255 255 255 / .5), 0 10px 22px -12px rgb(0 0 0 / .9); }
 .btn-tinted { background: rgb(76 217 100 / .16); color: var(--color-tint); }
@@ -294,7 +330,8 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; border-radius: 10px; font-size: 15px; text-align: left; transition: background var(--dur-fast); }
 .menu-item:hover, .menu-item[data-active="true"] { background: var(--color-fill); }
 .menu-item[aria-selected="true"] { color: var(--color-tint); font-weight: 600; }
-.grabber { width: 36px; height: 5px; border-radius: 99px; background: var(--color-fill-2); margin: 8px auto 4px; }
+.grabber { width: 36px; height: 5px; border-radius: 99px; background: var(--color-fill-2); margin: 8px auto 4px; cursor: grab; }
+.grabber:active { cursor: grabbing; }
 .sheet-enter { animation: sheetUp var(--dur-slow) var(--ease-ios) both; }
 @keyframes sheetUp { from { transform: translateY(24px); opacity: 0 } }
 .scrim { background: rgb(0 0 0 / .55); backdrop-filter: blur(2px); animation: fade var(--dur) both; }
@@ -318,7 +355,6 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .paper-row { display: flex; justify-content: space-between; gap: 10px; } .paper-total { font-size: 17px; font-weight: 700; letter-spacing: .02em; }
 .thermal { text-shadow: 0 0 .35px rgb(20 35 29 / .55); }
 .barcode { height: 38px; width: 100%; opacity: .85; background-image: repeating-linear-gradient(90deg, #14231d 0 2px, transparent 2px 4px, #14231d 4px 5px, transparent 5px 9px, #14231d 9px 12px, transparent 12px 14px, #14231d 14px 15px, transparent 15px 20px); }
-.qr-stub { width: 52px; height: 52px; flex: none; background-image: repeating-conic-gradient(#14231d 0 25%, transparent 0 50%), linear-gradient(#fdfcf8, #fdfcf8); background-size: 8px 8px, 100% 100%; opacity: .88; box-shadow: 0 0 0 3px var(--color-paper), 0 0 0 4px rgb(20 35 29 / .25); }
 .printer { position: relative; }
 .printer-body { background: linear-gradient(180deg, #223b33 0%, #16302a 45%, #0f221c 100%); border-radius: 18px 18px 6px 6px; padding: 13px 0 0; box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), 0 12px 28px -14px rgb(13 28 23 / .7); position: relative; overflow: hidden; }
 .printer-body::before { content: ""; position: absolute; left: 20px; top: 15px; width: 54px; height: 10px; border-radius: 3px; background: repeating-linear-gradient(90deg, rgb(255 255 255 / .1) 0 3px, transparent 3px 7px); }
@@ -327,9 +363,16 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .printer-slot { height: 15px; border-radius: 3px; background: #060d0b; box-shadow: inset 0 3px 6px rgb(0 0 0 / .9), inset 0 -1px 0 rgb(255 255 255 / .08); position: relative; z-index: 3; }
 .printer-teeth { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; z-index: 4; pointer-events: none; background: linear-gradient(135deg, transparent 3.4px, #2a4a40 3.5px) 0 0 / 10px 5px repeat-x, linear-gradient(225deg, transparent 3.4px, #2a4a40 3.5px) 5px 0 / 10px 5px repeat-x; }
 .printer-out { position: relative; z-index: 2; margin-top: -4px; transform-origin: top center; }
-@keyframes feed { from { transform: translateY(-100%) } to { transform: translateY(0) } }
+/* The sheet is revealed downwards rather than slid in from above: sliding shows the footer first
+   and the header last, which is the wrong way round for something coming off a printer. Growing the
+   window instead uncovers the receipt the way it is printed — masthead first, line by line. */
+@keyframes feedReveal { from { height: 0 } to { height: var(--paper-h, 100%) } }
 @keyframes jitter { 0%,100% { transform: translateX(0) } 25% { transform: translateX(.4px) } 75% { transform: translateX(-.4px) } }
-.feeding { animation: feed 1.9s steps(26, end) both, jitter .09s steps(2) 26 both; }
+/* The reveal and the shake have to sit on different elements: two animations in one list that both
+   drive the same property do not combine, the last simply wins — which is how the jitter came to
+   replace the feed entirely, leaving the paper motionless. */
+.feeding-reveal { animation: feedReveal 1.9s steps(26, end) both; }
+.feeding-shake { animation: jitter .09s steps(2) 26 both; }
 .keycard { position: relative; overflow: hidden; border-radius: 16px; border: .5px solid var(--color-separator); background: var(--color-bg-2); box-shadow: var(--shadow-inset-top), var(--shadow-card); transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur); }
 .keycard::after { content: none; }
 .keycard.occupied { background: var(--color-label); color: var(--color-on-label); border-color: var(--color-label); }
@@ -476,3 +519,17 @@ img, svg, video { max-width: 100%; }
 /* a surface that just received something — a ticket moved to Ready */
 @keyframes landed { 0% { box-shadow: 0 0 0 0 rgb(76 217 100 / .5) } 100% { box-shadow: 0 0 0 14px rgb(76 217 100 / 0) } }
 .landed { animation: landed .7s var(--ease-out) 1; }
+
+/* ── the hand, part two: controls that are switched off ───────────────────
+   These live OUTSIDE @layer base on purpose. Unlayered rules beat layered ones
+   whatever their specificity, and the pointer rules just above for `select`,
+   `input[type="checkbox"]` and `.switch` are unlayered — inside the base layer
+   these overrides lost to them and a disabled control still showed a hand. */
+button:disabled, select:disabled, textarea:disabled,
+input:disabled, input[type="checkbox"]:disabled, input[type="radio"]:disabled, input[type="range"]:disabled,
+a[aria-disabled="true"], [role="button"][aria-disabled="true"],
+.chip[aria-disabled="true"], .switch[aria-disabled="true"], label:has(input:disabled) { cursor: not-allowed; }
+/* a disabled .btn keeps hover alive only so the cursor can report it; a native
+   disabled button still refuses clicks and focus, so nothing becomes usable. */
+button.btn[disabled] { pointer-events: auto; cursor: not-allowed; }
+input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }

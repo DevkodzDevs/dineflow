@@ -52,15 +52,15 @@ export function PrinterOutput({ data, printing, onTear, label = "Counter printer
       </div>
 
       {/* ── paper: same width, same centre line, clipped to the slot ── */}
-      <div className="printer-out overflow-hidden" style={{ width: paperW, height: visible, transition: `height ${feeding ? 0 : 0.45}s var(--ease-out)` }}>
+      <div className={`printer-out overflow-hidden ${feeding && !reduce ? "feeding-reveal" : ""}`}
+        style={{ width: paperW, height: visible, ["--paper-h" as string]: `${h}px`, transition: `height ${feeding ? 0 : 0.45}s var(--ease-out)` }}>
         <motion.div
-          initial={reduce || !printing ? false : { y: -h }}
+          initial={false}
           animate={{ y: phase === "torn" ? -h - 48 : 0, opacity: phase === "torn" ? 0 : 1 }}
-          transition={reduce ? { duration: 0 } : phase === "torn" ? { duration: 0.45, ease: [0.16, 1, 0.3, 1] } : { duration: 2, ease: "linear" }}
-          className={feeding && !reduce ? "feeding" : ""}
+          transition={reduce ? { duration: 0 } : { duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           style={{ width: paperW, transformOrigin: "top center" }}
         >
-          <div className="relative" style={{ width: paperW }}>
+          <div className={`relative ${feeding && !reduce ? "feeding-shake" : ""}`} style={{ width: paperW }}>
             {/* shadow cast by the bezel onto the sheet, only across the paper */}
             <div className="absolute inset-x-0 top-0 h-6 z-10 pointer-events-none" style={{ background: "linear-gradient(180deg, rgb(13 28 23 / .38), rgb(13 28 23 / .06) 55%, transparent)" }} />
             <Receipt ref={paperRef} data={data} noTopEdge />

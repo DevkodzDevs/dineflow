@@ -6,13 +6,20 @@
  *   everything else GET → stale-while-revalidate
  * Writes are never touched here; they go through the IndexedDB outbox so they survive a reload.
  */
-const V = "dineflow-v13";
+const V = "dineflow-v14";   // renamed so the caches written by v13, which could hold failures, are dropped
 const SHELL = ["/", "/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/scan", "/tomorrow", "/inventory", "/menu", "/offline"];
 
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => { e.waitUntil((async () => { const keys = await caches.keys(); await Promise.all(keys.filter((k) => k !== V).map((k) => caches.delete(k))); if (self.registration.navigationPreload) await self.registration.navigationPreload.enable(); await self.clients.claim(); })()); });
 
-const put = async (req, res) => { try { const c = await caches.open(V); await c.put(req, res.clone()); } catch { /* quota */ } return res; };
+/* Only a good response is worth keeping. The previous version stored whatever came back, so a 404
+   for a build file that a deploy had just replaced was cached permanently, and that URL then failed
+   for good — the browser reported it as a missing chunk and the screen went blank. */
+const put = async (req, res) => {
+  if (!res || !res.ok || res.status === 206) return res;          // errors, redirects and partials are never cached
+  try { const c = await caches.open(V); await c.put(req, res.clone()); } catch { /* quota */ }
+  return res;
+};
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
@@ -21,7 +28,7 @@ self.addEventListener("fetch", (e) => {
 
   // build output is content-hashed: cache first, forever
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/fonts/")) {
-    e.respondWith(caches.match(e.request).then((m) => m || fetch(e.request).then((r) => put(e.request, r))));
+    e.respondWith(caches.match(e.request).then((m) => m || fetch(e.request).then((r) => put(e.request, r)).catch(() => new Response("", { status: 504 }))));
     return;
   }
   // pages: try the network, fall back to what we had, then to the offline page

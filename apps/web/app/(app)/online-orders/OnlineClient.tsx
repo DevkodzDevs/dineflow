@@ -11,7 +11,7 @@ import { usePrinters } from "@/lib/print/usePrinter";
 import { acceptOnline, rejectOnline, setOnlineStatus, mapDish } from "./actions";
 
 type OO = { id: string; external_id: string; display_id: string | null; status: string; customer_name: string | null; customer_phone: string | null; address: string | null; items: { menu_item_id: string | null; name: string; qty: number; price: number; note: string | null }[]; unmatched: string[]; gross: number; commission: number; payout: number; is_prepaid: boolean; placed_at: string; order_id: string | null; order_channels: { kind: string; label: string; prep_minutes: number } | null };
-const LOGO: Record<string, string> = { swiggy: "bg-[#fc8019] text-white", zomato: "bg-[#e23744] text-white", website: "bg-ink text-white", ondc: "bg-mint text-ink", other: "bg-porcelain-2 text-ink" };
+const LOGO: Record<string, string> = { swiggy: "bg-[#fc8019] text-white", zomato: "bg-[#e23744] text-white", website: "bg-ink text-on-label", ondc: "bg-mint text-on-tint", other: "bg-porcelain-2 text-ink" };
 
 export function OnlineClient({ orders, channels, menu }: { orders: OO[]; channels: { id: string; kind: string; label: string; is_live: boolean }[]; menu: { id: string; name: string; price: number }[] }) {
   const router = useRouter(); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);

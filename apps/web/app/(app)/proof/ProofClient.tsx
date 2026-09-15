@@ -122,7 +122,7 @@ export function ProofClient({ base, record, links, restaurant }: { base: string;
               const url = `${base}/record/${l.token}`;
               return (
                 <div key={l.id} className="flex flex-wrap items-center gap-3 py-3">
-                  <span className={cn("h-9 w-9 rounded-xl grid place-items-center shrink-0", dead ? "bg-porcelain-2 text-steel" : "bg-ink text-champagne")}><P.Icon size={16} /></span>
+                  <span className={cn("h-9 w-9 rounded-xl grid place-items-center shrink-0", dead ? "bg-porcelain-2 text-steel" : "bg-ink text-on-label")}><P.Icon size={16} /></span>
                   <div className="flex-1 min-w-[180px]">
                     <div className="font-semibold flex items-center gap-2">{l.label} {dead && <Pill tone="served">{l.revoked ? "revoked" : "expired"}</Pill>}</div>
                     <div className="text-xs text-steel">{P.l} · {mon(l.from_period)} – {mon(l.to_period)} · {l.show_costs ? "with costs" : "revenue only"} · expires {new Date(l.expires_at).toLocaleDateString("en-IN")}</div>

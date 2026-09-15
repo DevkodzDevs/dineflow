@@ -28,7 +28,7 @@ export function ReportsClient({ days, bills, items, ledger, closes }: { days: nu
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2">{[1, 7, 30, 90].map((d) => <Link key={d} href={`/reports?days=${d}`} className={cn("rounded-full px-4 h-9 grid place-items-center text-sm font-semibold", days === d ? "bg-ink text-white" : "bg-card border border-line")}>{d === 1 ? "Today" : `${d} days`}</Link>)}</div>
+      <div className="flex gap-2">{[1, 7, 30, 90].map((d) => <Link key={d} href={`/reports?days=${d}`} className={cn("rounded-full px-4 h-9 grid place-items-center text-sm font-semibold", days === d ? "bg-ink text-on-label" : "bg-card border border-line")}>{d === 1 ? "Today" : `${d} days`}</Link>)}</div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile label="Sales" value={formatINR(sales)} sub={`${bills.length} bills`} />
         <StatTile label="Avg bill" value={formatINR(bills.length ? sales / bills.length : 0)} delay={0.05} />

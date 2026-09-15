@@ -93,7 +93,7 @@ export function Assist() {
       <AnimatePresence>
         {open && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} className="fixed inset-0 z-40 bg-black/40 md:bg-transparent md:pointer-events-none" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} className="cursor-pointer fixed inset-0 z-40 bg-black/40 md:bg-transparent md:pointer-events-none" />
             <motion.aside role="dialog" aria-label={`Assist on ${screen}`} initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }} transition={{ type: "spring", stiffness: 300, damping: 32 }}
               className="fixed z-50 inset-x-2 bottom-2 md:inset-auto md:right-6 md:bottom-6 md:top-6 md:w-[420px] flex flex-col max-h-[88dvh] md:max-h-none rounded-[28px] bg-[var(--color-bg-2)] border border-[var(--color-separator)] shadow-[0_40px_100px_-30px_rgb(0_0_0/.9),0_0_0_1px_rgb(255_255_255/.04)]">
               <header className="flex items-center gap-3 px-4 pt-4 pb-3">

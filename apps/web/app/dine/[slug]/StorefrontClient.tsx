@@ -98,7 +98,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
                   <div className="flex flex-wrap gap-2">
                     {slotList.map((s) => (
                       <button key={s.time} disabled={s.full} onClick={() => setSlot(s)}
-                        className={cn("relative rounded-xl px-3.5 py-2 text-sm font-semibold transition border", slot?.time === s.time ? "bg-[var(--color-ink)] text-[var(--color-bg-2)] border-transparent" : "bg-[var(--color-bg-2)] border-[var(--color-separator)] hover:border-[var(--color-line-2)]", s.full && "opacity-35 line-through pointer-events-none")}>
+                        className={cn("relative rounded-xl px-3.5 py-2 text-sm font-semibold transition border", slot?.time === s.time ? "bg-[var(--color-ink)] text-[var(--color-bg-2)] border-transparent" : "bg-[var(--color-bg-2)] border-[var(--color-separator)] hover:border-[var(--color-line-2)]", s.full && "opacity-35 line-through cursor-not-allowed")}>
                         {s.time}
                         {s.offer_pct ? <span className="absolute -top-2 -right-1.5 pill pill-gold !text-[10px] !py-0">{s.offer_pct}% off</span> : null}
                       </button>

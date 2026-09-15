@@ -26,7 +26,7 @@ export function MenuClient({ categories, items, ingredients, recipes }: { catego
     <div className="space-y-5">
       <div className="toolbar"><div className="toolbar-group">
         {[{ id: "all", name: "All" }, ...categories].map((c) => (
-          <button key={c.id} onClick={() => setCat(c.id)} className={cn("rounded-full px-4 h-9 text-sm font-semibold transition", cat === c.id ? "bg-ink text-white" : "bg-card border border-line hover:bg-porcelain")}>{c.name}</button>
+          <button key={c.id} onClick={() => setCat(c.id)} className={cn("rounded-full px-4 h-9 text-sm font-semibold transition", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line hover:bg-porcelain")}>{c.name}</button>
         ))}
         <button onClick={() => setCatSheet(true)} className="rounded-full h-9 w-9 grid place-items-center border border-dashed border-steel/50 text-steel hover:text-ink" aria-label="Manage categories"><Plus size={16} /></button>
         </div><div className="toolbar-group toolbar-end"><Button onClick={() => setEditing({ is_veg: true, is_available: true, prep_minutes: 15, category_id: cat === "all" ? null : cat })}><Plus size={16} /> New dish</Button></div>

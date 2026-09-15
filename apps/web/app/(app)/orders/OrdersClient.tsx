@@ -38,7 +38,7 @@ export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Orde
                   <motion.div key={t.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
                     <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`}
                       className={cn("feather feather-lift block aspect-[5/4] p-3 flex flex-col relative overflow-hidden",
-                        t.status === "occupied" && "bg-ink text-white border-ink", t.status === "reserved" && "border-saffron border-dashed")}>
+                        t.status === "occupied" && "bg-ink text-on-label border-ink", t.status === "reserved" && "border-saffron border-dashed")}>
                       <div className="flex justify-between items-start"><span className="font-display text-2xl">{t.name}</span><span className={cn("text-[11px] flex items-center gap-1", t.status === "occupied" ? "text-white/60" : "text-steel")}><Users size={11} />{t.capacity}</span></div>
                       <div className="mt-auto">
                         {o ? (<><div className="num text-xs text-white/60">#{o.order_no} · {minsSince(o.created_at)}m</div><div className="num font-semibold">{formatINR(total)}</div></>)

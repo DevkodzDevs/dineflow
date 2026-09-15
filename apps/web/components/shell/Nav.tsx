@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, Info, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, Info, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
@@ -30,51 +31,93 @@ const ITEMS = [
   { key: "neighbours", href: "/neighbours", label: "Neighbours", Icon: Users2 },
   { key: "channels", href: "/channels", label: "Channels", Icon: Radio },
   { key: "reports", href: "/reports", label: "Reports", Icon: BarChart3 },
+  { key: "tax", href: "/tax", label: "Tax & GST", Icon: Landmark },
   { key: "staff", href: "/staff", label: "Staff", Icon: Users },
   { key: "settings", href: "/settings", label: "Settings", Icon: Settings },
 ];
 
-type Props = { name: string; role: Role; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null };
-
-export function Sidebar({ name, role, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo }: Props) {
-  const path = usePathname();
-  const mods = modulesFor(type, role, enabled, personal);
-  const allowed = ITEMS.filter((i) => mods.includes(i.key));
-  const hospitality = allowed.filter((i) => ["frontdesk", "rooms", "housekeeping", "guests", "facilities"].includes(i.key));
-  const dining = allowed.filter((i) => !hospitality.includes(i) && !["dashboard", "tomorrow", "scan", "reports", "staff", "settings", "labour", "invoices", "channels", "neighbours", "proof"].includes(i.key));
-  const manage = allowed.filter((i) => ["invoices", "labour", "proof", "neighbours", "channels", "reports", "staff", "settings"].includes(i.key));
-  const Group = ({ title, items }: { title?: string; items: typeof ITEMS }) => items.length ? (
+/** One titled block of the menu. Declared here, not inside Sidebar: a component created during
+ *  render is a new type every time, which unmounts and rebuilds the whole menu on each pass. */
+function Group({ title, items, path }: { title?: string; items: typeof ITEMS; path: string }) {
+  if (!items.length) return null;
+  return (
     <div className="mb-5">
       {title && <div className="px-3 pb-2 font-display text-[12px] tracking-[.12em] uppercase text-white/35 rail-hide">{title}</div>}
       {items.map(({ key, href, label, Icon }) => {
         const active = path.startsWith(href);
         return (
-          <Link key={key} href={href} className={cn("relative flex items-center gap-3 px-3 h-[42px] rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
-            {active && <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-[10px] bg-white/[.12] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/.12)]" transition={{ type: "spring", stiffness: 420, damping: 36 }} />}
+          <Link key={key} href={href} data-active={active ? "true" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
+            {active && <span className="absolute inset-0 rounded-[10px] bg-white/[.12] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/.12)]" />}
             {active && <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-[var(--color-tint)] shadow-[0_0_14px_rgb(76_217_100/.8)]" />}
             <Icon size={17} className="relative shrink-0" strokeWidth={active ? 2.2 : 1.8} /><span className="relative rail-hide">{label}</span>
           </Link>
         );
       })}
     </div>
-  ) : null;
+  );
+}
+
+/** useLayoutEffect runs before paint, which is what stops the menu flicking; on the server there is
+ *  no paint to be early for, and React warns if it is called there, so fall back to useEffect. */
+const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/** The menu is taller than the rail on most screens, so it scrolls — and its scrollbar is hidden,
+ *  which makes any jump feel like the menu moved on its own. A fresh page load starts it back at
+ *  the top and hides whichever row you just picked. Put it back where it was before the first
+ *  paint, and only nudge it if the selected row is actually out of sight. */
+function useKeepMenuInPlace(path: string) {
+  const ref = useRef<HTMLElement | null>(null);
+  useBeforePaint(() => {
+    const el = ref.current; if (!el) return;
+    try {
+      const saved = Number(sessionStorage.getItem("df-menu-scroll") ?? "");
+      if (Number.isFinite(saved) && saved > 0) el.scrollTop = saved;
+    } catch { /* private windows and blocked storage: the menu simply starts at the top */ }
+    const row = el.querySelector<HTMLElement>('a[data-active="true"]');
+    if (row) {
+      const r = row.getBoundingClientRect(), box = el.getBoundingClientRect();
+      // "nearest" leaves a row that is already on screen exactly where it is, rather than
+      // pulling it to the top; it only moves the menu when the row is genuinely out of sight
+      if (r.top < box.top || r.bottom > box.bottom) row.scrollIntoView({ block: "nearest" });
+    }
+    const remember = () => { try { sessionStorage.setItem("df-menu-scroll", String(el.scrollTop)); } catch {} };
+    el.addEventListener("scroll", remember, { passive: true });
+    return () => el.removeEventListener("scroll", remember);
+  }, [path]);
+  return ref;
+}
+
+type Props = { name: string; role: Role; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null };
+
+export function Sidebar({ name, role, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref }: Props) {
+  const path = usePathname();
+  const navRef = useKeepMenuInPlace(path);
+  const mods = modulesFor(type, role, enabled, personal);
+  const allowed = ITEMS.filter((i) => mods.includes(i.key));
+  const hospitality = allowed.filter((i) => ["frontdesk", "rooms", "housekeeping", "guests", "facilities"].includes(i.key));
+  const dining = allowed.filter((i) => !hospitality.includes(i) && !["dashboard", "tomorrow", "scan", "reports", "tax", "staff", "settings", "labour", "invoices", "channels", "neighbours", "proof"].includes(i.key));
+  const manage = allowed.filter((i) => ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"].includes(i.key));
   return (
     <aside className="hidden md:flex md:flex-col w-[256px] shrink-0 ink-panel sticky top-0 self-start h-dvh px-4 py-6 overflow-hidden">
       <Link href="/dashboard" className="px-2 flex items-center gap-2.5 min-w-0">
         {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 rounded-[10px] object-cover bg-white" /> : <span className="flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px] shrink-0"><span className="flip-face">{restaurant.slice(0, 1)}</span></span>}
         <div className="min-w-0"><div className="font-display text-[17px] leading-tight text-white tracking-wide rail-hide truncate">{restaurant}</div><div className="rail-hide text-[11px] text-white/45 mt-0.5 truncate">{PROPERTY_LABEL[type]}</div></div>
       </Link>
-      <nav className="mt-7 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] -mx-1 px-1 sidebar-scroll">
-        <Group items={allowed.filter((i) => ["dashboard", "tomorrow", "scan"].includes(i.key))} />
-        <Group title={type === "resort" ? "Resort" : "Hotel"} items={hospitality} />
-        <Group title="Dining" items={dining} />
-        <Group title="Manage" items={manage} />
+      <nav ref={navRef} className="mt-7 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] -mx-1 px-1 sidebar-scroll">
+        <Group items={allowed.filter((i) => ["dashboard", "tomorrow", "scan"].includes(i.key))} path={path} />
+        <Group title={type === "resort" ? "Resort" : "Hotel"} items={hospitality} path={path} />
+        <Group title="Dining" items={dining} path={path} />
+        <Group title="Manage" items={manage} path={path} />
       </nav>
       {/* the foot: one compact card — who you are, one line of status, and the two things you do from here */}
       <div className="mt-auto pt-3">
         <div className="rounded-2xl bg-white/[.06] border border-white/[.08] p-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base">{name.slice(0, 1)}</span>
+            {/* the avatar is the profile button, but only where the person may actually open settings —
+                a hand cursor over something that cannot be opened would promise a click that goes nowhere */}
+            {accountHref
+              ? <Link href={accountHref} title={`${name} · your settings`} aria-label={`${name} · your settings`} className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</Link>
+              : <span title={name} className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base">{name.slice(0, 1)}</span>}
             <div className="min-w-0 flex-1 rail-hide">
               <div className="text-[13px] text-white font-semibold truncate leading-tight">{name}</div>
               <div className="text-[11px] text-white/50 truncate leading-tight mt-0.5">{ROLE_LABEL[role]}{membership !== "none" && <> · <span className={cn(membership === "trial" ? "text-[var(--color-orange)]" : membership === "expired" ? "text-[var(--color-red)]" : "text-[var(--color-tint)]")}>{membership === "trial" ? `trial · ${daysLeft}d` : membership === "expired" ? "expired" : `${daysLeft}d left`}</span></>}</div>

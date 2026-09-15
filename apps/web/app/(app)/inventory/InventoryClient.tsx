@@ -33,7 +33,7 @@ export function InventoryClient({ ingredients, ledger, purchases }: { ingredient
 
       <div className="toolbar"><div className="toolbar-group">
         {(["stock", "purchases", "ledger"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={cn("rounded-full px-4 h-9 text-sm font-semibold capitalize transition", tab === t ? "bg-ink text-white" : "bg-card border border-line hover:bg-porcelain")}>{t}</button>
+          <button key={t} onClick={() => setTab(t)} className={cn("rounded-full px-4 h-9 text-sm font-semibold capitalize transition", tab === t ? "bg-ink text-on-label" : "bg-card border border-line hover:bg-porcelain")}>{t}</button>
         ))}
         </div><div className="toolbar-group toolbar-end">
           <Button variant="outline" onClick={() => setPurchase(true)}><PackagePlus size={16} /> Record purchase</Button>

@@ -1,3 +1,4 @@
+import { taxLabels, COMPOSITION_NOTE } from "@dineflow/shared";
 /** ESC/POS builder — produces the raw bytes a thermal printer understands (58 mm = 32 chars, 80 mm = 48). */
 const enc = new TextEncoder();
 export class Escpos {
@@ -35,13 +36,14 @@ export class Escpos {
 }
 
 const money = (n: number) => Number(n).toFixed(2);
-export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; offline?: boolean };
+export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string };   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
 
 export function buildBill(d: BillData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
   p.align("c").size(2).bold(true).line(d.restaurant.name).size(1).bold(false);
   if (d.restaurant.address) p.wrap(d.restaurant.address);
   if (d.restaurant.phone) p.line(d.restaurant.phone);
+  if (d.restaurant.legalName && d.restaurant.legalName !== d.restaurant.name) p.line(d.restaurant.legalName);
   if (d.restaurant.gstin) p.line("GSTIN " + d.restaurant.gstin);
   p.rule("=").align("l").row(d.billNo, d.tableOrType).row(d.when, d.cashier ? "by " + d.cashier : "");
   if (d.offline) p.align("c").bold(true).line("** OFFLINE COPY **").bold(false).align("l");
@@ -50,12 +52,17 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   p.rule().row("Subtotal", money(d.subtotal));
   if (d.discount > 0) p.row("Discount", "-" + money(d.discount));
   if (d.service) p.row("Service charge", money(d.service));
-  p.row("CGST", money(d.cgst)).row("SGST", money(d.sgst));
+  const lab = taxLabels(d.restaurant.stateCode), half = d.gstRate ? d.gstRate / 2 : null, comp = d.restaurant.gstScheme === "composition";
+  const tn = (k: "central" | "state") => lab[k] + (half !== null ? " @" + half + "%" : "");
+  if (!comp || d.cgst > 0) p.row(tn("central"), money(d.cgst));
+  if (!comp || d.sgst > 0) p.row(tn("state"), money(d.sgst));
   if (d.roundOff) p.row("Round off", money(d.roundOff));
   p.rule().size(2).bold(true).row("TOTAL", money(d.total)).size(1).bold(false);
   d.payments?.forEach((x) => p.row(x.method.toUpperCase(), money(x.amount)));
+  p.align("l").wrap((d.sac ? "SAC " + d.sac + " | " : "") + (lab.stateName ? "Place of supply: " + lab.stateName + " (" + d.restaurant.stateCode + ") | " : "") + "Reverse charge: No");
+  if (comp) p.bold(true).wrap(COMPOSITION_NOTE).bold(false);
   p.rule();
-  if (d.upiQr) p.align("c").line("Scan to pay").qr(d.upiQr).feed(1);
+  if (d.upiQr) p.align("c").line("Scan to pay (UPI / card)").qr(d.upiQr).feed(1);
   p.align("c").line(d.footer ?? "Thank you, visit again").line("").cut();
   return p.bytes();
 }

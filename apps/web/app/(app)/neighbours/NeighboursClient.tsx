@@ -143,7 +143,7 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
                 <motion.div key={w.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                   <Card lift className={cn("h-full", w.mine && "border-champagne")}>
                     <div className="flex items-start gap-3">
-                      <span className="h-11 w-11 rounded-2xl bg-ink text-champagne grid place-items-center font-display text-lg shrink-0">{w.name.slice(0, 1)}</span>
+                      <span className="h-11 w-11 rounded-2xl bg-ink text-on-label grid place-items-center font-display text-lg shrink-0">{w.name.slice(0, 1)}</span>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold truncate">{w.name}</div>
                         <div className="text-xs text-steel capitalize">{w.skill} · {formatINR(Number(w.daily_wage))}/day</div>

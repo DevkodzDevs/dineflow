@@ -18,7 +18,7 @@ export function AuthForm({ mode, action }: { mode: "login" | "signup" | "join"; 
   }[mode];
   return (
     <Reveal className="w-full max-w-sm">
-      <div className="lg:hidden flex items-center gap-2.5 mb-8"><span className="h-9 w-9 rounded-xl bg-saffron grid place-items-center text-ink font-display font-bold text-lg">D</span><span className="font-display text-xl">DineFlow</span></div>
+      <div className="lg:hidden flex items-center gap-2.5 mb-8"><span className="h-9 w-9 rounded-xl bg-saffron grid place-items-center text-on-tint font-display font-bold text-lg">D</span><span className="font-display text-xl">DineFlow</span></div>
       <h1 className="text-4xl">{copy.title}</h1>
       <p className="text-steel mt-2">{copy.sub}</p>
       <form action={act} className="mt-8 space-y-4">

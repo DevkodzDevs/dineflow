@@ -1,17 +1,21 @@
 "use client";
 import { forwardRef } from "react";
 import { formatINR } from "@/lib/format";
+import { QR } from "@/components/QR";
+import { taxLabels, COMPOSITION_NOTE } from "@dineflow/shared";
 
 export type ReceiptLine = { name: string; qty: number; price: number; note?: string | null; gstRate?: number };
 export type ReceiptData = {
-  restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; fssai?: string | null };
+  restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; fssai?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null };
   title?: string; no: string; when: string; where: string; cashier?: string; guest?: string | null;
   lines: ReceiptLine[];
   subtotal: number; discount?: number; service?: number; cgst: number; sgst: number; roundOff?: number; total: number;
   payments?: { method: string; amount: number; ref?: string | null }[];
   balance?: number; footer?: string; offline?: boolean; width?: 58 | 80;
-  qr?: string | null;            // link to the digital copy / UPI string
+  qr?: string | null;            // the pay link: /pay/<token>, with UPI and card options on the guest phone
   copyLabel?: string;            // "Customer copy" / "Merchant copy"
+  sac?: string;                  // Services Accounting Code: 996331 restaurant, 996311 accommodation
+  gstRate?: number;              // the rate the bill was raised at; each half is printed by name
 };
 
 export const PAPER_PX = { 58: 264, 80: 328 } as const;
@@ -35,6 +39,11 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
   const w = d.width ?? 80;
   const small = w === 58;
   const qtyTotal = d.lines.reduce((t, l) => t + l.qty, 0);
+  // Indian GST prints as two named halves. A composition dealer may not collect tax and must say so.
+  const lab = taxLabels(d.restaurant.stateCode);
+  const composition = d.restaurant.gstScheme === "composition";
+  const half = d.gstRate ? d.gstRate / 2 : null;
+  const taxName = (which: "central" | "state") => lab[which] + (half !== null ? " @ " + half + "%" : "");
   // GST summary grouped by rate, the way a compliant Indian tax invoice prints it
   const taxable = d.subtotal - (d.discount ?? 0);
   const groups = Object.values(d.lines.reduce((acc, l) => {
@@ -49,6 +58,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         {/* ── head ── */}
         <div className="text-center">
           <div className="font-display font-bold leading-tight tracking-tight" style={{ fontSize: small ? 16 : 19 }}>{d.restaurant.name}</div>
+          {d.restaurant.legalName && d.restaurant.legalName !== d.restaurant.name && <div className="text-[10px] opacity-70">{d.restaurant.legalName}</div>}
           {d.restaurant.address && <div className="text-[10.5px] leading-snug opacity-80">{d.restaurant.address}</div>}
           {d.restaurant.phone && <div className="text-[10.5px] opacity-80">{d.restaurant.phone}</div>}
           {d.restaurant.gstin && <div className="text-[10.5px] mt-0.5">GSTIN {d.restaurant.gstin}</div>}
@@ -77,8 +87,8 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         <div className="paper-row"><span className="opacity-80">Subtotal ({qtyTotal} item{qtyTotal === 1 ? "" : "s"})</span><span>{m(d.subtotal)}</span></div>
         {!!d.discount && d.discount > 0 && <div className="paper-row"><span className="opacity-80">Discount</span><span>-{m(d.discount)}</span></div>}
         {!!d.service && <div className="paper-row"><span className="opacity-80">Service charge</span><span>{m(d.service)}</span></div>}
-        <div className="paper-row"><span className="opacity-80">CGST</span><span>{m(d.cgst)}</span></div>
-        <div className="paper-row"><span className="opacity-80">SGST</span><span>{m(d.sgst)}</span></div>
+        {(!composition || d.cgst > 0) && <div className="paper-row"><span className="opacity-80">{taxName("central")}</span><span>{m(d.cgst)}</span></div>}
+        {(!composition || d.sgst > 0) && <div className="paper-row"><span className="opacity-80">{taxName("state")}</span><span>{m(d.sgst)}</span></div>}
         {!!d.roundOff && <div className="paper-row"><span className="opacity-80">Round off</span><span>{m(d.roundOff)}</span></div>}
         <div className="paper-hr-solid" />
         <div className="paper-row paper-total" style={{ fontSize: small ? 15 : 17 }}><span>TOTAL</span><span>{formatINR(d.total)}</span></div>
@@ -95,12 +105,17 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         {/* ── GST summary, as a compliant tax invoice must show ── */}
         <hr className="paper-rule" />
         <div className="text-[10px] uppercase tracking-wider opacity-70">Tax summary</div>
-        <div className="paper-row text-[10px] opacity-70 mt-0.5"><span>Rate</span><span>Taxable</span><span>CGST</span><span>SGST</span></div>
+        <div className="paper-row text-[10px] opacity-70 mt-0.5"><span>Rate</span><span>Taxable</span><span>{lab.central}</span><span>{lab.state}</span></div>
         {groups.map((g) => (
           <div key={g.rate} className="paper-row text-[10.5px]">
             <span>{g.rate}%</span><span>{m(g.taxable)}</span><span>{m((g.taxable * g.rate) / 200)}</span><span>{m((g.taxable * g.rate) / 200)}</span>
           </div>
         ))}
+
+        <div className="text-[9.5px] opacity-75 mt-1.5 leading-snug">
+          {d.sac && <>SAC {d.sac} · </>}{lab.stateName && <>Place of supply: {lab.stateName} ({d.restaurant.stateCode}) · </>}Reverse charge: No
+        </div>
+        {composition && <div className="text-[9.5px] font-bold mt-1 leading-snug">{COMPOSITION_NOTE}</div>}
 
         {/* ── foot ── */}
         <hr className="paper-rule" />
@@ -111,8 +126,8 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         </div>
         {d.qr && (
           <div className="flex items-center justify-center gap-3 mt-2.5">
-            <div className="qr-stub" aria-hidden />
-            <div className="text-[9.5px] leading-tight opacity-80 text-left">Scan for the<br />digital copy<br />& to pay</div>
+            <QR value={d.qr} size={small ? 64 : 76} />
+            <div className="text-[9.5px] leading-tight opacity-80 text-left">Scan to pay<br />UPI · card<br />& your e-bill</div>
           </div>
         )}
         <div className="mt-3"><div className="barcode" aria-hidden /><div className="text-center text-[9.5px] tracking-[0.3em] mt-1 opacity-80">{d.no.replace(/\D/g, "").padStart(10, "0").slice(-10)}</div></div>

@@ -68,7 +68,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       </div>
       {type === "dine_in" ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {tables.map((t) => <button key={t.id} onClick={() => setTableId(t.id)} className={cn("h-9 min-w-11 px-2 rounded-lg text-sm font-semibold border", tableId === t.id ? "bg-ink text-white border-ink" : t.status === "occupied" ? "bg-line/60 border-line text-steel" : "border-line hover:bg-porcelain")}>{t.name}</button>)}
+          {tables.map((t) => <button key={t.id} onClick={() => setTableId(t.id)} className={cn("h-9 min-w-11 px-2 rounded-lg text-sm font-semibold border", tableId === t.id ? "bg-ink text-on-label border-ink" : t.status === "occupied" ? "bg-line/60 border-line text-steel" : "border-line hover:bg-porcelain")}>{t.name}</button>)}
         </div>
       ) : type === "room_service" ? (
         <select className="mt-3" value={room} onChange={(e) => { setRoom(e.target.value); const g = inHouse.find((x) => x.id === e.target.value); setCustomer({ name: g ? `Room ${g.rooms?.number} · ${g.guests?.full_name}` : "", phone: "" }); }}><option value="">Choose in-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
@@ -82,7 +82,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
             <motion.div key={item.id} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}>
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{item.name}</div><div className="num text-xs text-steel">{formatINR(Number(item.price))} × {qty}</div></div>
-                <div className="flex items-center gap-1"><button onClick={() => add(item.id, -1)} className="h-8 w-8 rounded-lg border border-line grid place-items-center"><Minus size={14} /></button><span className="num w-6 text-center font-semibold">{qty}</span><button onClick={() => add(item.id, 1)} className="h-8 w-8 rounded-lg bg-ink text-white grid place-items-center"><Plus size={14} /></button></div>
+                <div className="flex items-center gap-1"><button onClick={() => add(item.id, -1)} className="h-8 w-8 rounded-lg border border-line grid place-items-center"><Minus size={14} /></button><span className="num w-6 text-center font-semibold">{qty}</span><button onClick={() => add(item.id, 1)} className="h-8 w-8 rounded-lg bg-ink text-on-label grid place-items-center"><Plus size={14} /></button></div>
               </div>
               <input className="mt-1.5 !py-1.5 !text-xs" placeholder="Note for kitchen (less spicy…)" value={notes[item.id] ?? ""} onChange={(e) => setNotes({ ...notes, [item.id]: e.target.value })} />
             </motion.div>
@@ -106,7 +106,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           <div className="relative ml-auto w-full max-w-xs"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel" /><input className="!pl-9" placeholder="Search dishes" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
-          {[{ id: "all", name: "All" }, ...categories].map((c) => <button key={c.id} onClick={() => setCat(c.id)} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold", cat === c.id ? "bg-ink text-white" : "bg-card border border-line")}>{c.name}</button>)}
+          {[{ id: "all", name: "All" }, ...categories].map((c) => <button key={c.id} onClick={() => setCat(c.id)} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line")}>{c.name}</button>)}
         </div>
         <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5">
           {visible.map((it) => {
@@ -115,7 +115,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
               <motion.button key={it.id} whileTap={{ scale: 0.97 }} onClick={() => add(it.id, 1)} className={cn("feather text-left p-3.5 relative transition-colors", qty > 0 && "border-saffron bg-saffron/5")}>
                 <div className="flex items-center gap-1.5 text-[11px]">{it.is_veg ? <Leaf size={12} className="text-mint" /> : <Drumstick size={12} className="text-chili" />}<span className="num text-steel">{formatINR(Number(it.price))}</span></div>
                 <div className="font-semibold text-sm mt-1 leading-snug">{it.name}</div>
-                <AnimatePresence>{qty > 0 && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute top-2 right-2 num h-6 min-w-6 px-1.5 rounded-full bg-saffron text-ink text-xs font-bold grid place-items-center">{qty}</motion.span>}</AnimatePresence>
+                <AnimatePresence>{qty > 0 && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute top-2 right-2 num h-6 min-w-6 px-1.5 rounded-full bg-saffron text-on-tint text-xs font-bold grid place-items-center">{qty}</motion.span>}</AnimatePresence>
               </motion.button>
             );
           })}
@@ -125,13 +125,13 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       <aside className="hidden lg:block feather p-5 sticky top-6 h-[calc(100dvh-3rem)]">{CartPanel}</aside>
       {/* mobile cart bar */}
       <div className="lg:hidden fixed bottom-[72px] inset-x-4 z-30">
-        <motion.button animate={{ y: count ? 0 : 80 }} onClick={() => setCartOpen(true)} className="w-full h-13 rounded-2xl bg-ink text-white flex items-center justify-between px-5 shadow-lift">
+        <motion.button animate={{ y: count ? 0 : 80 }} onClick={() => setCartOpen(true)} className="w-full h-13 rounded-2xl bg-ink text-on-label flex items-center justify-between px-5 shadow-lift">
           <span className="text-sm font-semibold">{count} items</span><span className="num font-semibold">{formatINR(total)}</span><span className="text-sm font-semibold text-saffron">Review →</span>
         </motion.button>
       </div>
       <AnimatePresence>
         {cartOpen && (<>
-          <motion.div className="lg:hidden fixed inset-0 z-40 bg-ink/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCartOpen(false)} />
+          <motion.div className="lg:hidden cursor-pointer fixed inset-0 z-40 bg-ink/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCartOpen(false)} />
           <motion.div className="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-[24px] p-5 h-[85dvh]" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}>{CartPanel}</motion.div>
         </>)}
       </AnimatePresence>

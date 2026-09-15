@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { QR } from "@/components/QR";
+export { QR };   // the booking-page and storefront settings import it from here
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Plus, HardHat, QrCode, Printer, Check, Banknote, Pencil } from "lucide-react";
@@ -43,7 +45,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
           {active.map((l, i) => { const a = todayAtt.find((x) => x.labourer_id === l.id); return (
             <motion.div key={l.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
               <Card lift className={cn("h-full", a && "border-mint")}>
-                <div className="flex items-start gap-3"><span className={cn("h-11 w-11 rounded-2xl grid place-items-center font-display text-lg", a ? "bg-mint-2 text-ink" : "bg-ink text-champagne")}>{l.full_name.slice(0, 1)}</span>
+                <div className="flex items-start gap-3"><span className={cn("h-11 w-11 rounded-2xl grid place-items-center font-display text-lg", a ? "bg-mint-2 text-ink" : "bg-ink text-on-label")}>{l.full_name.slice(0, 1)}</span>
                   <div className="flex-1 min-w-0"><div className="font-semibold truncate">{l.full_name}</div><div className="text-xs text-steel">{l.skill} · <span className="num">{l.code}</span> · {formatINR(Number(l.daily_wage))}/day</div></div>
                   <button onClick={() => setEdit(l)} className="text-steel hover:text-ink"><Pencil size={14} /></button></div>
                 <div className="mt-3 flex items-center gap-2 text-xs">{a ? <><Pill tone="ready">present</Pill><span className="num text-steel">{a.in_at ? new Date(a.in_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}{a.out_at ? ` → ${new Date(a.out_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} · ${a.hours} h` : ""}</span></> : <Pill tone="pending">absent</Pill>}
@@ -96,8 +98,3 @@ function Labels({ property, labourers, rooms, ingredients }: { property: string;
   );
 }
 
-export function QR({ value, size = 140, label }: { value: string; size?: number; label?: string }) {
-  const [src, setSrc] = useState<string | null>(null);
-  useEffect(() => { import("qrcode").then((q) => q.toDataURL(value, { width: size, margin: 1, color: { dark: "#10201a" } }).then(setSrc)); }, [value, size]);
-  return <div className="inline-flex flex-col items-center">{src ? <img src={src} width={size} height={size} alt={value} /> : <div className="shimmer rounded" style={{ width: size, height: size }} />}{label && <div className="text-xs mt-1">{label}</div>}</div>;
-}

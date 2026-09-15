@@ -23,7 +23,7 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
   return (
     <div className="space-y-6">
       <div className="toolbar"><div className="toolbar-group text-xs font-semibold">
-        {[["available", "Ready", "bg-card border border-line"], ["occupied", "Occupied", "bg-ink text-white"], ["reserved", "Arriving", "border border-dashed border-champagne bg-card"], ["cleaning", "Cleaning", "bg-sky-2"], ["maintenance", "Maintenance", "bg-chili-2 text-chili"]].map(([k, l, c]) => <span key={k} className={cn("rounded-full px-3 py-1.5", c)}>{l} <span className="num opacity-70">{counts(k)}</span></span>)}
+        {[["available", "Ready", "bg-card border border-line"], ["occupied", "Occupied", "bg-ink text-on-label"], ["reserved", "Arriving", "border border-dashed border-champagne bg-card"], ["cleaning", "Cleaning", "bg-sky-2"], ["maintenance", "Maintenance", "bg-chili-2 text-chili"]].map(([k, l, c]) => <span key={k} className={cn("rounded-full px-3 py-1.5", c)}>{l} <span className="num opacity-70">{counts(k)}</span></span>)}
         </div><div className="toolbar-group toolbar-end"><Button variant="outline" onClick={() => setTypeSheet(true)}>Room types & rates</Button><Button onClick={() => setEdit({ floor: floors.at(-1) ?? 1 })}><Plus size={16} /> Room</Button></div>
       </div>
       {floors.map((f) => (
@@ -58,15 +58,23 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
         <form className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveRoom(fd); if ("error" in r) setErr(r.error!); else setEdit(null); })}>
           {edit?.id && <input type="hidden" name="id" value={edit.id} />}
           <div className="grid grid-cols-2 gap-3"><Field label="Room number"><input name="number" defaultValue={edit?.number} required className="num" placeholder="101" /></Field><Field label="Floor"><input name="floor" type="number" defaultValue={edit?.floor ?? 1} className="num" /></Field></div>
-          <Field label="Type"><select name="room_type_id" defaultValue={edit?.room_type_id ?? ""}><option value="">—</option>{types.map((t) => <option key={t.id} value={t.id}>{t.name} · {formatINR(Number(t.base_rate))}</option>)}</select></Field>
+          <Field label="Type" hint={types.length === 0 ? "No room types yet. A type carries the nightly rate, so add one first." : undefined}>
+            <select name="room_type_id" defaultValue={edit?.room_type_id ?? ""} disabled={types.length === 0}>
+              <option value="">{types.length === 0 ? "— no room types yet —" : "—"}</option>
+              {types.map((t) => <option key={t.id} value={t.id}>{t.name} · {formatINR(Number(t.base_rate))}</option>)}
+            </select>
+          </Field>
+          {types.length === 0 && <Button type="button" variant="outline" onClick={() => { setEdit(null); setErr(null); setTypeSheet(true); }}><Plus size={14} /> Add a room type</Button>}
           <Field label="Notes"><input name="notes" defaultValue={edit?.notes ?? ""} placeholder="Sea view, connecting door…" /></Field>
           {err && <p className="text-sm text-chili">{err}</p>}
           <div className="flex gap-2"><Button className="flex-1" disabled={pending}>Save</Button>{edit?.id && edit.status === "available" && <Button type="button" variant="danger" onClick={() => start(async () => { await deleteRoom(edit.id!); setEdit(null); })}><Trash2 size={16} /></Button>}</div>
         </form>
       </Sheet>
-      <Sheet open={typeSheet} onClose={() => setTypeSheet(false)} title="Room types & rates">
-        <ul className="space-y-2 mb-5">{types.map((t) => <li key={t.id} className="feather p-3"><form className="grid grid-cols-[1fr_100px_60px_auto] gap-2 items-center" action={(fd) => start(async () => { await saveRoomType(fd); })}><input type="hidden" name="id" value={t.id} /><input name="name" defaultValue={t.name} /><input name="base_rate" type="number" defaultValue={t.base_rate} className="num" /><input name="capacity" type="number" defaultValue={t.capacity} className="num" /><Button size="sm" variant="outline">Save</Button></form></li>)}</ul>
-        <form className="grid grid-cols-[1fr_100px_60px_auto] gap-2 items-end" action={(fd) => start(async () => { await saveRoomType(fd); })}><Field label="Name"><input name="name" placeholder="Sea-view suite" required /></Field><Field label="Rate/night"><input name="base_rate" type="number" className="num" /></Field><Field label="Sleeps"><input name="capacity" type="number" defaultValue={2} className="num" /></Field><Button size="sm"><Plus size={14} /></Button></form>
+      <Sheet open={typeSheet} onClose={() => { setTypeSheet(false); setErr(null); }} title="Room types & rates">
+        {err && <p className="text-sm text-chili mb-3">{err}</p>}
+        {types.length === 0 && <p className="text-sm text-steel mb-3">Nothing here yet. Name a type, give it a nightly rate, and it becomes selectable on every room.</p>}
+        <ul className="space-y-2 mb-5">{types.map((t) => <li key={t.id} className="feather p-3"><form className="grid grid-cols-[1fr_100px_60px_auto] gap-2 items-center" action={(fd) => start(async () => { setErr(null); const r = await saveRoomType(fd); if (r && "error" in r) setErr(r.error!); })}><input type="hidden" name="id" value={t.id} /><input name="name" defaultValue={t.name} /><input name="base_rate" type="number" defaultValue={t.base_rate} className="num" /><input name="capacity" type="number" defaultValue={t.capacity} className="num" /><Button size="sm" variant="outline">Save</Button></form></li>)}</ul>
+        <form className="grid grid-cols-[1fr_100px_60px_auto] gap-2 items-end" action={(fd) => start(async () => { setErr(null); const r = await saveRoomType(fd); if (r && "error" in r) setErr(r.error!); })}><Field label="Name"><input name="name" placeholder="Sea-view suite" required /></Field><Field label="Rate/night"><input name="base_rate" type="number" className="num" /></Field><Field label="Sleeps"><input name="capacity" type="number" defaultValue={2} className="num" /></Field><Button size="sm"><Plus size={14} /></Button></form>
       </Sheet>
     </div>
   );

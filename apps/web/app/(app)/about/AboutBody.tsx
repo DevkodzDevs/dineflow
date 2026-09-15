@@ -35,7 +35,7 @@ export function AboutBody() {
       </section>
 
       <section className="feather p-6"><div className="card-title"><h3>Not built, on purpose</h3></div>
-        <p className="text-[14px] leading-relaxed text-[var(--color-label-2)]">A payment gateway (bills settle by cash, UPI QR, card machine or room folio) · direct Swiggy and Zomato partner APIs (they need partner approval; the webhook path through UrbanPiper works today) · real-time OTA APIs (they need certification; two-way iCal is built) · the WhatsApp Business API (the share sheet is free and works now). Each has a working substitute.</p>
+        <p className="text-[14px] leading-relaxed text-[var(--color-label-2)]">A payment gateway of our own — bills settle by cash, by UPI when the guest scans the bill, by card machine or by room folio; owners who want cards paid on the phone add their own Razorpay keys in Settings and the same QR handles it · direct Swiggy and Zomato partner APIs (they need partner approval; the webhook path through UrbanPiper works today) · real-time OTA APIs (they need certification; two-way iCal is built) · the WhatsApp Business API (the share sheet is free and works now). Each has a working substitute.</p>
         <p className="text-[12px] text-[var(--color-label-3)] mt-4">DineFlow · built for Tamil Nadu's restaurants, hotels and resorts · web, Android and iOS · works online and off.</p></section>
     </div>
   );
