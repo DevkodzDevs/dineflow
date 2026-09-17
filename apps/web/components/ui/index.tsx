@@ -9,6 +9,7 @@ export const cn = clsx;
 export { snap, glide, settle, flipT, fast, listV, itemV, pageV, sheetV, flipV, press, pressCard } from "@/lib/motion";
 import { snap, glide, settle, sheetV } from "@/lib/motion";
 export { Flip, FlipClock, Loader, PageLoader, Countdown, Waiting, reducedMotion } from "./flip";
+export { PasswordInput } from "./PasswordInput";
 import { Loader } from "./flip";
 /** A hairline at the very top that fills while the next page is on its way, then vanishes. */
 export function NavProgress() {

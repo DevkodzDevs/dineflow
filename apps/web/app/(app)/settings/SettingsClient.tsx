@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
-import { Plus, Trash2, Sparkles, QrCode } from "lucide-react";
+import { Plus, Trash2, Sparkles, QrCode, KeyRound } from "lucide-react";
 import { Button, Card, Field } from "@/components/ui";
 import { ThemePicker } from "@/components/ui/Theme";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments } from "./actions";
@@ -9,7 +9,9 @@ import { Server } from "lucide-react";
 type Rest = { id: string; name: string; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number };
 
-export function SettingsClient({ restaurant, tables, gateway }: { restaurant: Rest; tables: Table[]; gateway: { key_id: string; hasSecret: boolean; hasWebhook: boolean } }) {
+export function SettingsClient({ restaurant, tables, gateway, signInId, contactEmail }:
+  { restaurant: Rest; tables: Table[]; gateway: { key_id: string; hasSecret: boolean; hasWebhook: boolean };
+    signInId: string; contactEmail: string | null }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [boxToken, setBoxToken] = useState<string | null>(null); const [pending, start] = useTransition();
   const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
@@ -37,6 +39,18 @@ export function SettingsClient({ restaurant, tables, gateway }: { restaurant: Re
           {msg && <p className="text-sm">{msg}</p>}
           <Button disabled={pending}>Save</Button>
         </form>
+        <div className="mt-4 pt-4 border-t border-line">
+          <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1.5"><KeyRound size={12} /> Your password</div>
+          <p className="text-sm text-steel mb-2">
+            You sign in as <span className="num">{signInId}</span>.
+            {contactEmail
+              ? <> Changing your password sends a six-digit code to <span className="num">{contactEmail}</span> first.</>
+              : <> There is no contact address on this account yet, so a code cannot be sent. Ask Master control to add one before you try.</>}
+          </p>
+          <a href="/account/password" className="btn btn-gray !h-9 !px-3.5 !text-[13px] !rounded-[11px] inline-flex w-fit">
+            <KeyRound size={15} /> Change my password
+          </a>
+        </div>
         <div className="mt-4 pt-4 border-t border-line">
           <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Sample data</div>
           <p className="text-sm text-steel mb-2">Fills this property with a realistic menu, pantry with barcodes, tables, rooms and bookings, labourers, printers and demo delivery channels — everything you need to try every screen. Safe to run more than once; it never touches data you created.</p>

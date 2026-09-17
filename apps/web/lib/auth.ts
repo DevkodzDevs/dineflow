@@ -8,7 +8,7 @@ export type Session = {
   isAdmin: boolean;
   actingAs?: string | null;
   membership: Membership | "none";
-  profile: { id: string; full_name: string; role: Role; restaurant_id: string; allowed_modules?: string[] | null };
+  profile: { id: string; full_name: string; role: Role; restaurant_id: string; allowed_modules?: string[] | null; must_change_password?: boolean; is_active?: boolean };
   restaurant: { id: string; name: string; slug: string; property_type: PropertyType; gst_rate: number; room_gst_rate: number; service_charge_pct: number; gstin: string | null; address: string | null; phone: string | null; plan: string; trial_ends_at: string; membership: Membership; membership_plan: string | null; membership_ends_at: string | null; check_in_time: string; check_out_time: string; booking_slug?: string | null; tagline?: string | null; policies?: string | null; advance_pct?: number; booking_engine?: boolean; prep_buffer_pct?: number; brief_whatsapp?: string | null; district?: string | null; pincode?: string | null; network_alias?: string | null; runs_on_box?: boolean; box_last_seen?: string | null; enabled_modules?: string[] | null; legal_name?: string | null; pan?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; gst_monthly?: boolean | null; fssai_no?: string | null; ca_name?: string | null; ca_firm?: string | null; ca_membership_no?: string | null; ca_email?: string | null; ca_phone?: string | null; [k: string]: unknown; logo_url?: string | null; brand_colour?: string | null };
 };
 
@@ -19,7 +19,7 @@ export const requireSession = cache(async function requireSession(opts: { allowL
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const [{ data: profile }, { data: admin }] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, role, restaurant_id, allowed_modules").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("id, full_name, role, restaurant_id, allowed_modules, must_change_password, is_active").eq("id", user.id).maybeSingle(),
     supabase.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle(),
   ]);
   const isAdmin = !!admin;
@@ -33,6 +33,9 @@ export const requireSession = cache(async function requireSession(opts: { allowL
     prof = { id: user.id, full_name: (user.user_metadata?.full_name as string) ?? "Master", role: "owner", restaurant_id: acting, allowed_modules: null };
   }
   if (!prof) redirect("/join");
+  // Joined with a DineFlow code and not approved yet, or switched off by the owner. No tenant row
+  // resolves for them, so there is nothing to show — say why rather than bounce them to a form.
+  if (prof.is_active === false) redirect("/join?pending=1");
   const profile2 = prof;
   const [{ data: restaurant }, { data: state }] = await Promise.all([
     supabase.from("restaurants").select("*").eq("id", profile2.restaurant_id).single(),

@@ -3,14 +3,19 @@ import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Building2, Palmtree, UtensilsCrossed, KeyRound, Copy, Pause, Play, Clock, Search, MoreHorizontal } from "lucide-react";
-import { Button, Sheet, Field, StatTile, cn, Pill, Waiting } from "@/components/ui";
+import { Button, Sheet, Field, StatTile, cn, Pill, Waiting, PasswordInput } from "@/components/ui";
 import { formatINR, PROPERTY_LABEL, type PropertyType } from "@dineflow/shared";
 import { daysLeft } from "@/lib/format";
-import { issueKey, setMembership, actAs, setMasterPassword, createProperty, installEstate } from "./actions";
+import { issueKey, setMembership, actAs, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type PropertyDetail } from "./actions";
+import { Trash2 } from "lucide-react";
+import { PropertyDetailView } from "./PropertyDetail";
+import { RowActions } from "./RowActions";
+import { LoginIdField } from "./LoginIdField";
+import { loginAddressProblem } from "@dineflow/shared";
 import { Boxes } from "lucide-react";
 import { Plus, UtensilsCrossed as UC, Building2 as B2, Palmtree as PT } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { LogIn, KeyRound as KeyIcon, SlidersHorizontal, X } from "lucide-react";
+import { KeyRound as KeyIcon, X } from "lucide-react";
 import { MODULES_BY_TYPE, MODULE_GROUPS, ALWAYS_ON } from "@dineflow/shared";
 import { DataTable } from "@/components/ui/DataTable";
 import { setModules } from "./actions";
@@ -35,17 +40,26 @@ const shut = (e: { currentTarget: HTMLElement }) => { const d = e.currentTarget.
 
 const Icon = ({ t }: { t: PropertyType }) => (t === "hotel" ? <Building2 size={16} /> : t === "resort" ? <Palmtree size={16} /> : <UtensilsCrossed size={16} />);
 
-export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [] }: { tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
+export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [] }: { tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; codes?: { id: string; code: string | null }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
   const boxOf = (id: string) => boxes.find((b) => b.restaurant_id === id);
+  const codeOf = (id: string) => codes.find((c) => c.id === id)?.code ?? null;
   const [q, setQ] = useState(""); const [filter, setFilter] = useState("all");
   const [sel, setSel] = useState<T | null>(null); const [issued, setIssued] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const [sheet, setSheetState] = useState<"tenant" | "key" | "password" | "new" | "estate" | "access" | null>(null);
+  const [sheet, setSheetState] = useState<"tenant" | "key" | "password" | "new" | "estate" | "access" | "delete" | "detail" | null>(null);
   const router = useRouter();
   const [mods, setMods] = useState<string[] | null>(null);   // the set being edited in the Access sheet
   const [pw, setPw] = useState("");
-  const [np, setNp] = useState({ name: "", type: "resort" as "restaurant" | "hotel" | "resort", demo: true });
+  // off by default: a new property should open empty unless sample data is asked for
+  const [np, setNp] = useState({ name: "", type: "resort" as "restaurant" | "hotel" | "resort", demo: false, email: "", owner: "", contact: "" });
   const [estate, setEstate] = useState<{ name: string; type: string; email: string; password: string }[] | null>(null);
+  // shown once, straight after creating a property or resetting a password. Never readable again.
+  const [creds, setCreds] = useState<{ title: string; email: string; password: string; code?: string | null } | null>(null);
+  // the delete confirmation: what would be destroyed, and the name the operator has to type back
+  const [del, setDel] = useState<(DeletePreview & { id: string }) | null>(null);
+  const [delText, setDelText] = useState("");
+  const [detail, setDetail] = useState<PropertyDetail | null>(null);   // the full-record dialog
+  const [contact, setContact] = useState("");                          // editing where codes are sent
   const find = useRef<HTMLInputElement>(null);
   const match = (t: T) => filter === "all" || (filter === "box" ? boxes.some((b) => b.restaurant_id === t.id && b.runs_on_box)
     : filter === "expired" ? ["expired", "suspended"].includes(t.membership)
@@ -137,14 +151,22 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [] }
         <DataTable rows={list as unknown as Record<string, unknown>[]} rowKey="id" search={["name", "property_type", "membership"] as never} pageSize={20}
           empty={filtered ? "No properties match this filter" : "No properties yet — press New property"}
           columns={[
-            { key: "name", label: "Property", primary: true, render: (r) => { const t = r as unknown as T; return <div className="flex items-center gap-3"><span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0"><Icon t={t.property_type} /></span><div className="min-w-0"><div className="font-semibold truncate">{t.name}</div><div className="text-xs text-steel">{t.property_type}{boxes.find((b) => b.restaurant_id === t.id)?.runs_on_box ? " · on a Box" : ""}</div></div></div>; } },
+            { key: "name", label: "Property", primary: true, render: (r) => { const t = r as unknown as T; return <div className="flex items-center gap-3"><span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0"><Icon t={t.property_type} /></span><div className="min-w-0"><div className="font-semibold truncate">{t.name}</div><div className="text-xs text-steel truncate">{codeOf(t.id) ? <span className="num">{codeOf(t.id)}</span> : t.property_type}{boxes.find((b) => b.restaurant_id === t.id)?.runs_on_box ? " · on a Box" : ""}</div></div></div>; } },
             { key: "membership", label: "Membership", render: (r) => { const t = r as unknown as T; return <><Pill tone={tone(t.membership)}>{t.membership}</Pill><div className="text-xs text-steel mt-1 num">{t.membership === "trial" ? `${daysLeft(t.trial_ends_at)}d left` : t.membership_ends_at ? `${daysLeft(t.membership_ends_at)}d left` : ""}</div></>; } },
             { key: "sales_today", label: "Today", num: true, render: (r) => <span className="font-semibold">{formatINR(Number(r.sales_today))}</span> },
             { key: "sales_30d", label: "30 days", num: true, hideOnPhone: true, render: (r) => <span className="text-steel">{formatINR(Number(r.sales_30d))}</span> },
             { key: "open_orders", label: "Live", num: true, hideOnPhone: true, render: (r) => { const t = r as unknown as T; return <span className="text-steel">{t.open_orders} orders{t.rooms ? ` · ${t.occupied_rooms}/${t.rooms} rooms` : ""}</span>; } },
             { key: "users", label: "Users", num: true, hideOnPhone: true },
           ]}
-          actions={(r) => { const t = r as unknown as T; return <><Button size="sm" variant="outline" onClick={() => { setSel(t); setMods(access.find((x) => x.id === t.id)?.enabled_modules ?? null); setErr(null); setSheet("access"); }}><SlidersHorizontal size={14} /> Access</Button> <Button size="sm" variant="ink" disabled={pending} title="Opens the property in a new tab" onClick={() => { const tab = window.open("", "_blank"); start(async () => { const r = await actAs(t.id); if ("error" in r) { tab?.close(); setErr(r.error!); } else if (tab) tab.location.href = "/dashboard"; else router.push("/dashboard"); }); }}><LogIn size={14} /> Open</Button> <Button size="sm" variant="outline" onClick={() => { setSel(t); setIssued(null); setErr(null); setSheet("tenant"); }}>Manage</Button></>; }} />
+          actions={(r) => { const t = r as unknown as T; return (
+            <RowActions
+              name={t.name} code={codeOf(t.id)} pending={pending}
+              onOpen={() => { const tab = window.open("", "_blank"); start(async () => { const x = await actAs(t.id); if ("error" in x) { tab?.close(); setErr(x.error!); } else if (tab) tab.location.href = "/dashboard"; else router.push("/dashboard"); }); }}
+              onDetails={() => openDetail(t)}
+              onAccess={() => { setSel(t); setMods(access.find((x) => x.id === t.id)?.enabled_modules ?? null); setErr(null); setSheet("access"); }}
+              onManage={() => { setSel(t); setIssued(null); setErr(null); setSheet("tenant"); }}
+              onDelete={() => { setSel(t); setErr(null); setDelText(""); setDel(null); setSheet("delete"); start(async () => { const p = await deletePreview(t.id); if ("error" in p) setErr(p.error!); else setDel({ ...(p as DeletePreview), id: t.id }); }); }}
+            />); }} />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
           <div className="feather divide-y divide-line">
@@ -179,7 +201,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [] }
           );
         })()}
       </Sheet>
-      <Sheet open={sheet === "tenant" && !!sel} onClose={() => setSheet(null)} title={sel?.name ?? ""}>
+      <Sheet open={sheet === "tenant" && !!sel} onClose={() => { setSheet(null); setCreds(null); setDel(null); setDelText(""); setErr(null); }} title={sel?.name ?? ""}>
         {sel && (
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-3 text-sm"><div className="feather p-3"><div className="text-xs text-steel">Type</div><div className="font-semibold">{PROPERTY_LABEL[sel.property_type]}</div></div><div className="feather p-3"><div className="text-xs text-steel">Status</div><Pill tone={tone(sel.membership)}>{sel.membership}</Pill></div><div className="feather p-3"><div className="text-xs text-steel">30-day sales</div><div className="num font-semibold">{formatINR(Number(sel.sales_30d))}</div></div><div className="feather p-3"><div className="text-xs text-steel">Team</div><div className="num font-semibold">{sel.users} users</div></div></div>
@@ -198,7 +220,87 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [] }
               <div className="grid grid-cols-2 gap-2"><Button disabled={pending} onClick={() => start(async () => { const r = await issueKey("monthly", sel.id); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Monthly key</Button><Button disabled={pending} variant="ink" onClick={() => start(async () => { const r = await issueKey("yearly", sel.id); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Yearly key</Button></div>
               {issued && <div className="feather p-4 text-center"><div className="num text-2xl tracking-[0.2em] font-semibold">{issued}</div><button className="text-xs text-steel mt-1 underline" onClick={() => navigator.clipboard.writeText(issued)}>Copy and send to the owner</button></div>}
             </div>
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-steel">Owner login</div>
+              {creds ? (
+                <div className="feather p-4 space-y-3">
+                  <div><div className="text-[11px] uppercase tracking-wide text-steel">User ID</div><div className="num font-semibold break-all">{creds.email}</div></div>
+                  <div><div className="text-[11px] uppercase tracking-wide text-steel">Temporary password</div><div className="num font-semibold">{creds.password}</div></div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(`${creds.email} / ${creds.password}`)}><Copy size={14} /> Copy</Button>
+                    <Button size="sm" variant="plain" onClick={() => setCreds(null)}>Hide</Button>
+                  </div>
+                  <p className="text-xs text-steel">Shown once. They must choose their own password at the next sign-in.</p>
+                </div>
+              ) : (
+                <Button variant="outline" className="w-full" disabled={pending} onClick={() => start(async () => {
+                  setErr(null);
+                  const r = await resetPropertyPassword(sel.id);
+                  if ("error" in r) setErr(r.error!); else setCreds({ title: "", email: r.login_email, password: r.temp_password });
+                })}><KeyIcon size={15} /> Issue a new temporary password</Button>
+              )}
+              <Field label="Owner's real email" hint="Where the one-time code is sent when they change their password. Without it they cannot.">
+                <input value={contact} onChange={(e) => setContact(e.target.value)} type="email" placeholder="priya@gmail.com" />
+              </Field>
+              <Button size="sm" variant="outline" disabled={pending || !contact.trim()} onClick={() => start(async () => {
+                setErr(null);
+                const r = await setContactEmail(sel.id, contact);
+                if ("error" in r) setErr(r.error!); else { setContact(""); setErr(null); router.refresh(); }
+              })}>Save this address</Button>
+            </div>
+            <div className="space-y-2 pt-1 border-t border-line">
+              <div className="text-xs font-semibold uppercase tracking-wide text-chili">Danger zone</div>
+              <Button variant="danger" className="w-full" disabled={pending} onClick={() => {
+                setErr(null); setDelText(""); setDel(null); setSheet("delete");
+                start(async () => { const p = await deletePreview(sel.id); if ("error" in p) setErr(p.error!); else setDel({ ...(p as DeletePreview), id: sel.id }); });
+              }}><Trash2 size={15} /> Delete this property…</Button>
+            </div>
             {err && <p className="text-sm text-chili">{err}</p>}
+          </div>
+        )}
+      </Sheet>
+
+      <Sheet open={sheet === "detail" && !!sel} onClose={() => { setSheet(null); setDetail(null); setErr(null); }} title={sel ? `${sel.name} · full record` : "Details"} wide>
+        {err && <p className="text-sm text-chili mb-3">{err}</p>}
+        {detail ? <PropertyDetailView detail={detail} /> : !err && <p className="text-sm text-steel">Loading the record…</p>}
+      </Sheet>
+
+      {/* One confirmation, reached either from the Delete button on the row or from Manage.
+          The name has to be typed back: this wipes trading history, invoices and tax filings, and
+          a mis-aimed click should not be able to do that. */}
+      <Sheet open={sheet === "delete" && !!sel} onClose={() => { setSheet(null); setDel(null); setDelText(""); setErr(null); }} title={sel ? `Delete ${sel.name}?` : "Delete"}>
+        {sel && (
+          <div className="space-y-4">
+            <p className="text-sm">This removes <b>{sel.name}</b>, everything in it, and the logins that belong to it. <b>It cannot be undone.</b></p>
+            {!del ? <p className="text-sm text-steel">Counting what is in there…</p> : (<>
+              <div className="feather p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">What goes with it</div>
+                <ul className="text-sm grid grid-cols-2 gap-x-4 gap-y-1">
+                  {([["login", del.logins], ["menu item", del.menu_items], ["order", del.orders], ["bill", del.bills],
+                     ["invoice", del.invoices], ["booking", del.bookings], ["guest", del.guests], ["room", del.rooms],
+                     ["staff record", del.staff], ["tax document", del.tax_docs], ["tax filing", del.tax_filings],
+                     ["sealed month", del.sealed_months]] as const).map(([label, n]) => (
+                    <li key={label} className={n > 0 ? "" : "text-steel"}>
+                      <span className="num font-semibold">{n}</span> {label}{n === 1 ? "" : "s"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <Field label={`Type “${del.name}” to confirm`}>
+                <input value={delText} onChange={(e) => setDelText(e.target.value)} placeholder={del.name} autoFocus autoComplete="off" />
+              </Field>
+            </>)}
+            {err && <p className="text-sm text-chili">{err}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={() => { setSheet(null); setDel(null); setDelText(""); }}>Keep it</Button>
+              <Button variant="danger" disabled={pending || !del || delText.trim().toLowerCase() !== del.name.trim().toLowerCase()}
+                onClick={() => start(async () => {
+                  setErr(null);
+                  const r = await deleteProperty(sel.id, delText);
+                  if ("error" in r) setErr(r.error!);
+                  else { setDel(null); setDelText(""); setSel(null); setSheet(null); router.refresh(); }
+                })}><Trash2 size={15} /> Delete for good</Button>
+            </div>
           </div>
         )}
       </Sheet>
@@ -225,21 +327,43 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [] }
           </>)}
         </div>
       </Sheet>
-      <Sheet open={sheet === "new"} onClose={() => setSheet(null)} title="Create a property">
+      <Sheet open={sheet === "new"} onClose={() => { setSheet(null); setCreds(null); }} title={creds ? "Give these to the owner" : "Create a property"}>
         <div className="space-y-4">
-          <p className="text-sm text-steel">This creates a property owned by Master control and opens it straight away, so you can test every screen without signing up as a client.</p>
-          <Field label="Property name"><input value={np.name} onChange={(e) => setNp({ ...np, name: e.target.value })} placeholder="Kanyakumari Bay Resort" autoFocus /></Field>
-          <Field label="Type"><div className="grid grid-cols-3 gap-2">
-            {([["restaurant", "Restaurant", UC], ["hotel", "Hotel", B2], ["resort", "Resort", PT]] as const).map(([v, l, I]) => (
-              <button key={v} type="button" onClick={() => setNp({ ...np, type: v })} className={cn("feather feather-lift flex flex-col items-center gap-1.5 py-3 text-xs font-semibold", np.type === v && "!border-saffron shadow-glow")}><I size={18} />{l}</button>
-            ))}
-          </div></Field>
-          <label className={cn("feather p-3 flex gap-3 cursor-pointer text-sm", np.demo && "border-mint")}>
-            <input type="checkbox" checked={np.demo} onChange={(e) => setNp({ ...np, demo: e.target.checked })} className="!w-auto mt-0.5" />
-            <span><b>Fill it with sample data</b><br /><span className="text-steel text-xs">Menu with recipes, pantry with barcodes, tables and live orders, rooms with bookings, labourers, printers, demo channels. Recommended for testing.</span></span>
-          </label>
-          {err && <p className="text-sm text-chili">{err}</p>}
-          <Button className="w-full" disabled={pending || !np.name} onClick={() => start(async () => { const r = await createProperty(np.name, np.type, np.demo); if ("error" in r) setErr(r.error!); else router.push("/dashboard"); })}>Create and open it</Button>
+          {creds ? (<>
+            <p className="text-sm text-steel">{creds.title} The password is shown <b>once</b> — it is stored only as a hash and cannot be read again. If it is lost, issue a new one from the property&rsquo;s row.</p>
+            <div className="feather p-4 space-y-3">
+              {creds.code && <div><div className="text-[11px] uppercase tracking-wide text-steel">DineFlow code</div><div className="num text-lg font-semibold break-all">{creds.code}</div></div>}
+              <div><div className="text-[11px] uppercase tracking-wide text-steel">User ID</div><div className="num text-lg font-semibold break-all">{creds.email}</div></div>
+              <div><div className="text-[11px] uppercase tracking-wide text-steel">Temporary password</div><div className="num text-lg font-semibold">{creds.password}</div></div>
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => navigator.clipboard.writeText([creds.code && `DineFlow code: ${creds.code}`, `User ID: ${creds.email}`, `Temporary password: ${creds.password}`].filter(Boolean).join("\n"))}><Copy size={15} /> Copy all</Button>
+            <p className="text-xs text-steel">They sign in at the normal login screen and are asked to choose their own password before anything else opens.</p>
+            <Button className="w-full" onClick={() => { setCreds(null); setSheet(null); router.push("/dashboard"); }}>Done, open the property</Button>
+          </>) : (<>
+            <p className="text-sm text-steel">This creates the property <b>and its owner login</b>, then opens it. The owner can sign in as themselves and will see only their own property.</p>
+            <Field label="Property name"><input value={np.name} onChange={(e) => setNp({ ...np, name: e.target.value })} placeholder="Kanyakumari Bay Resort" autoFocus /></Field>
+            <Field label="Type"><div className="grid grid-cols-3 gap-2">
+              {([["restaurant", "Restaurant", UC], ["hotel", "Hotel", B2], ["resort", "Resort", PT]] as const).map(([v, l, I]) => (
+                <button key={v} type="button" onClick={() => setNp({ ...np, type: v })} className={cn("feather feather-lift flex flex-col items-center gap-1.5 py-3 text-xs font-semibold", np.type === v && "!border-saffron shadow-glow")}><I size={18} />{l}</button>
+              ))}
+            </div></Field>
+            <Field label="Owner's name" hint="Optional — shown in the app and on the bill"><input value={np.owner} onChange={(e) => setNp({ ...np, owner: e.target.value })} placeholder="Priya Kumar" /></Field>
+            <LoginIdField value={np.email} onChange={(v) => setNp({ ...np, email: v })} name={np.name} type={np.type} />
+            <Field label="Owner's real email" hint="Where the one-time code goes when they change their password. Not used to sign in.">
+              <input value={np.contact} onChange={(e) => setNp({ ...np, contact: e.target.value })} type="email" placeholder="priya@gmail.com" />
+            </Field>
+            <label className={cn("feather p-3 flex gap-3 cursor-pointer text-sm", np.demo && "border-mint")}>
+              <input type="checkbox" checked={np.demo} onChange={(e) => setNp({ ...np, demo: e.target.checked })} className="!w-auto mt-0.5" />
+              <span><b>Fill it with sample data</b><br /><span className="text-steel text-xs">Categories and tables, a menu with recipes, pantry with barcodes, live orders, rooms with bookings, labourers, printers and demo channels. Leave this off and the property opens completely empty.</span></span>
+            </label>
+            {err && <p className="text-sm text-chili">{err}</p>}
+            <Button className="w-full" disabled={pending || !np.name || !!loginAddressProblem(np.email)} onClick={() => start(async () => {
+              setErr(null);
+              const r = await createProperty(np.name, np.type, np.demo, np.email, np.owner, np.contact);
+              if ("error" in r) setErr(r.error!);
+              else { setCreds({ title: `${np.name} is ready.`, email: r.login_email, password: r.temp_password, code: r.code }); setNp({ name: "", type: "resort", demo: false, email: "", owner: "", contact: "" }); }
+            })}>Create property and login</Button>
+          </>)}
         </div>
       </Sheet>
       <Sheet open={sheet === "password"} onClose={() => setSheet(null)} title="Change the master password">
@@ -260,5 +384,10 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [] }
       </Sheet>
     </div>
   );
-  function setSheet(v: "tenant" | "key" | "password" | "new" | "estate" | "access" | null) { setSheetState(v); }
+  function setSheet(v: "tenant" | "key" | "password" | "new" | "estate" | "access" | "delete" | "detail" | null) { setSheetState(v); }
+  /** open the full-record dialog for a property */
+  function openDetail(t: T) {
+    setSel(t); setErr(null); setDetail(null); setSheet("detail");
+    start(async () => { const r = await propertyDetail(t.id); if ("error" in r) setErr(r.error!); else setDetail(r.detail); });
+  }
 }

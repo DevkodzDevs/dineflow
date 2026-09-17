@@ -23,13 +23,103 @@ export async function setMasterPassword(pw: string) {
   if (error) return { error: error.message }; return { ok: true };
 }
 
-/** Master control can create a property itself — no public sign-up needed. */
-export async function createProperty(name: string, type: "restaurant" | "hotel" | "resort", demo: boolean) {
+export type NewProperty = { id: string; slug: string; code: string; login_email: string; temp_password: string; owner_name: string; contact_email: string | null; demo_seeded: boolean };
+
+/**
+ * Master control can create a property itself — no public sign-up needed. It comes with its own
+ * owner login, so the property can be signed into as itself rather than only through Master control.
+ * The temporary password comes back exactly once; it is stored only as a hash and cannot be read
+ * again. If it is lost, issue a new one with resetPropertyPassword.
+ */
+export async function createProperty(
+  name: string, type: "restaurant" | "hotel" | "resort", demo: boolean,
+  ownerEmail?: string, ownerName?: string, contactEmail?: string,
+) {
   const s = await createClient();
-  const { data, error } = await s.rpc("admin_create_property", { p_name: name, p_type: type, p_demo: demo });
+  const { data, error } = await s.rpc("admin_create_property", {
+    p_name: name, p_type: type, p_demo: demo,
+    p_owner_email: ownerEmail?.trim() || null, p_owner_name: ownerName?.trim() || null,
+    p_contact_email: contactEmail?.trim() || null,
+  });
   if (error) return { error: error.message };
   revalidatePath("/", "layout");
-  return { ok: true, ...(data as { id: string; slug: string }) };
+  return { ok: true, ...(data as NewProperty) };
+}
+
+export type PropertyDetail = {
+  property: Record<string, string | number | boolean | null>;
+  tax: Record<string, string | number | boolean | null>;
+  users: { name: string; login_id: string; contact_email: string | null; role: string;
+           is_active: boolean; must_change_password: boolean;
+           last_sign_in_at: string | null; created_at: string }[];
+  contents: Record<string, number>;
+};
+
+/** Everything Master control holds about one property, for the detail dialog. Read only. */
+export async function propertyDetail(restaurantId: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("admin_property_detail", { p_restaurant_id: restaurantId });
+  if (error) return { error: error.message };
+  return { ok: true, detail: data as PropertyDetail };
+}
+
+/**
+ * Is this sign-in id usable and free? The database applies the same normalising rules the form
+ * shows, so the address reported back is exactly the one that would be created.
+ */
+export async function checkLoginId(raw: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("admin_login_id_available", { p_id: raw });
+  if (error) return { error: error.message };
+  return data as { ok: boolean; address: string | null; note: string };
+}
+
+/** Set or correct where this property's one-time password codes are posted. */
+export async function setContactEmail(restaurantId: string, contactEmail: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("admin_set_contact_email", {
+    p_restaurant_id: restaurantId, p_contact_email: contactEmail.trim() || null,
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true, ...(data as { contact_email: string | null }) };
+}
+
+export type DeletePreview = {
+  name: string; type: string; logins: number; menu_items: number; orders: number; bills: number;
+  invoices: number; bookings: number; guests: number; rooms: number; staff: number;
+  tax_docs: number; tax_filings: number; sealed_months: number;
+};
+
+/** What deleting this property would destroy. Counts only — this call changes nothing. */
+export async function deletePreview(restaurantId: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("admin_delete_preview", { p_restaurant_id: restaurantId });
+  if (error) return { error: error.message };
+  return { ok: true, ...(data as DeletePreview) };
+}
+
+/**
+ * Delete a property, everything it holds and the logins that belong to it. Irreversible.
+ * The name has to be passed back, so the database refuses a delete aimed at the wrong id.
+ */
+export async function deleteProperty(restaurantId: string, confirmName: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("admin_delete_property", {
+    p_restaurant_id: restaurantId, p_confirm_name: confirmName,
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true, ...(data as { name: string }) };
+}
+
+/** A fresh temporary password for a property whose owner is locked out. Shown once, like the first. */
+export async function resetPropertyPassword(restaurantId: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("admin_reset_property_password", { p_restaurant_id: restaurantId });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true, ...(data as { login_email: string; temp_password: string }) };
 }
 
 /** Six ready-made properties with their own owner logins, 60 days of history, one district. */

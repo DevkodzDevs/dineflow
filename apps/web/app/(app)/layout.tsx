@@ -14,6 +14,9 @@ import { AssistLazy as Assist } from "@/components/assist/AssistLazy";
 const ROUTE_MODULE: Record<string, string> = { dashboard: "dashboard", orders: "orders", "online-orders": "online-orders", kitchen: "kitchen", billing: "billing", invoices: "invoices", menu: "menu", inventory: "inventory", scan: "scan", tomorrow: "tomorrow", frontdesk: "frontdesk", rooms: "rooms", housekeeping: "housekeeping", guests: "guests", facilities: "facilities", reservations: "reservations", pulse: "pulse", channels: "channels", labour: "labour", proof: "proof", neighbours: "neighbours", reports: "reports", staff: "staff", settings: "settings", tax: "tax" };
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const s = await requireSession();
+  // An owner signing in on a temporary password from Master control gets no further than this until
+  // they have chosen one of their own. /account/password sits outside this layout so it can render.
+  if (s.profile.must_change_password) redirect("/account/password");
   const path = (await headers()).get("x-pathname") ?? "";
   const key = ROUTE_MODULE[path.split("/")[1] ?? ""];
   const mods = modulesFor(s.restaurant.property_type, s.profile.role, s.restaurant.enabled_modules ?? null, s.profile.allowed_modules ?? null);

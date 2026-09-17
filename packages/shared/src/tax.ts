@@ -79,8 +79,11 @@ export const billTitle = (scheme: GstScheme | string | null | undefined, gstin: 
 
 /** Indian financial year for a date: April to March, written 2025-26. */
 export const financialYear = (d: Date | string) => {
-  const x = typeof d === "string" ? new Date(d) : d;
-  const y = x.getMonth() >= 3 ? x.getFullYear() : x.getFullYear() - 1;
+  // A plain "YYYY-MM-DD" (or "YYYY-MM") is read as written: `new Date("2026-04-01")` is UTC midnight,
+  // which a server west of UTC would report as 31 March and file under the wrong year.
+  const m = typeof d === "string" ? /^(\d{4})-(\d{2})/.exec(d) : null;
+  const [year, month] = m ? [Number(m[1]), Number(m[2]) - 1] : (() => { const x = typeof d === "string" ? new Date(d) : d; return [x.getFullYear(), x.getMonth()]; })();
+  const y = month >= 3 ? year : year - 1;
   return `${y}-${String((y + 1) % 100).padStart(2, "0")}`;
 };
 export const fyStartYear = (fy: string) => Number(fy.slice(0, 4));

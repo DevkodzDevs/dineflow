@@ -1,12 +1,16 @@
 "use server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { toLoginAddress } from "@dineflow/shared";
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40) + "-" + Math.random().toString(36).slice(2, 6);
 
 export async function login(_: unknown, fd: FormData) {
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email: String(fd.get("email")), password: String(fd.get("password")) });
+  // Typing the bare code is enough: dine-htl-mano-00001 becomes the full sign-in address, while a
+  // real email typed in full is left alone. Same rule the create form shows.
+  const email = toLoginAddress(String(fd.get("email") ?? ""));
+  const { error } = await supabase.auth.signInWithPassword({ email, password: String(fd.get("password")) });
   if (error) return { error: error.message };
   // the master's credentials open Master control and nothing else; owners open their own property
   const { data: master } = await supabase.rpc("is_master");
@@ -27,7 +31,9 @@ export async function signup(_: unknown, fd: FormData) {
 
 export async function join(_: unknown, fd: FormData) {
   const supabase = await createClient();
-  const code = String(fd.get("code")).trim().toUpperCase();
+  // Not upper-cased any more: an invite code is hex and case-insensitive on the way in, but a
+  // DineFlow code is lower case and matching it is done case-insensitively in the database.
+  const code = String(fd.get("code")).trim();
   const fullName = String(fd.get("full_name"));
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -35,7 +41,10 @@ export async function join(_: unknown, fd: FormData) {
     if (error) return { error: error.message };
     if (!data.session) return { error: "Check your inbox to confirm your email, then come back to this page." };
   }
-  const { error } = await supabase.rpc("join_restaurant", { p_code: code, p_full_name: fullName });
+  const { data, error } = await supabase.rpc("join_restaurant", { p_code: code, p_full_name: fullName });
   if (error) return { error: error.message };
-  redirect("/dashboard");
+  // A DineFlow code gets you in the door but switched off, so there is nothing to show on the
+  // dashboard yet. An invite code carries its role and goes straight through.
+  const joined = data as { pending?: boolean } | null;
+  redirect(joined?.pending ? "/join?pending=1" : "/dashboard");
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Landmark, Plus, Trash2, Undo2, UserRound } from "lucide-react";
 import { Button, Card, Field, Pill, Sheet, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
-import { DOC_KINDS, GST_STATES, statutoryCalendar, taxLabels, type CalendarItem } from "@dineflow/shared";
+import { DOC_KINDS, GST_STATES, financialYear, statutoryCalendar, taxLabels, type CalendarItem } from "@dineflow/shared";
 import { saveTaxProfile, saveDoc, deleteDoc, markFiled, unmarkFiled } from "./actions";
 import { Guide } from "./Guide";
 
@@ -30,10 +30,19 @@ export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings,
   const scheme = r.gst_scheme ?? "regular";
   const lab = taxLabels(r.gst_state_code);
   const calendar = useMemo(() => statutoryCalendar({ fy, scheme, stateCode: r.gst_state_code, monthlyGst: r.gst_monthly !== false, hasStaff: staffCount > 1 }), [fy, scheme, r.gst_state_code, r.gst_monthly, staffCount]);
+  // The Returns tab follows the month, which may sit in a different financial year from the Calendar tab's
+  // `fy` (stepping back from April lands in March of the year before). Its GST returns come from the
+  // month's own year; a quarterly (QRMP) filer is matched on the quarter the month belongs to.
+  const monthReturns = useMemo(() => {
+    const mfy = financialYear(month + "-01");
+    const cal = mfy === fy ? calendar : statutoryCalendar({ fy: mfy, scheme, stateCode: r.gst_state_code, monthlyGst: r.gst_monthly !== false, hasStaff: staffCount > 1 });
+    const quarter = `Q${Math.floor(((Number(month.slice(5, 7)) + 8) % 12) / 3) + 1} ${mfy}`;
+    return cal.filter((c) => (c.form === "GSTR-1" || c.form === "GSTR-3B") && (c.period === month || c.period === quarter));
+  }, [month, fy, calendar, scheme, r.gst_state_code, r.gst_monthly, staffCount]);
   const filedKey = useMemo(() => new Map(filings.filter((f) => f.filed_on).map((f) => [`${f.form}|${f.period}`, f])), [filings]);
   const status = (c: CalendarItem) => { const f = filedKey.get(`${c.form}|${c.period}`); if (f) return { kind: "filed" as const, f }; const d = daysBetween(today, c.due); return d < 0 ? { kind: "overdue" as const, days: -d } : { kind: "due" as const, days: d }; };
   const overdue = calendar.filter((c) => !c.optional && status(c).kind === "overdue");
-  const upcoming = calendar.filter((c) => status(c).kind === "due").slice(0, 6);
+  const upcoming = calendar.filter((c) => !c.optional && status(c).kind === "due").slice(0, 6);
   const expiring = docs.filter((d) => d.expires_on && daysBetween(today, d.expires_on) <= 60);
 
   const go = (q: Record<string, string>) => { const p = new URLSearchParams({ tab, month, fy, ...q }); router.push(`/tax?${p.toString()}`); };
@@ -46,7 +55,7 @@ export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings,
       {msg && <p className={cn("text-sm mb-4", /error|not|fail|cannot/i.test(msg) ? "text-[var(--color-red)]" : "text-[var(--color-green)]")}>{msg}</p>}
 
       {tab === "overview" && <Overview r={r} scheme={scheme} lab={lab} summary={summary} month={month} overdue={overdue} upcoming={upcoming} expiring={expiring} today={today} docsCount={docs.length} />}
-      {tab === "returns" && <Returns r={r} lab={lab} month={month} summary={summary} error={summaryError} go={go} calendar={calendar} status={status} onFile={(c, filedOn, ack) => start(async () => { const x = await markFiled(c.form, c.period, c.due, filedOn, ack); setMsg("error" in x ? x.error! : `${c.form} for ${c.period} marked filed.`); })} pending={pending} />}
+      {tab === "returns" && <Returns r={r} lab={lab} month={month} today={today} summary={summary} error={summaryError} go={go} monthly={monthReturns} status={status} onFile={(c, filedOn, ack) => start(async () => { const x = await markFiled(c.form, c.period, c.due, filedOn, ack); setMsg("error" in x ? x.error! : `${c.form} for ${c.period} marked filed.`); })} pending={pending} />}
       {tab === "calendar" && <Calendar fy={fy} go={go} calendar={calendar} status={status} today={today} pending={pending}
         onFile={(c, filedOn, ack) => start(async () => { const x = await markFiled(c.form, c.period, c.due, filedOn, ack); setMsg("error" in x ? x.error! : `${c.form} for ${c.period} marked filed.`); })}
         onUndo={(c) => start(async () => { const x = await unmarkFiled(c.form, c.period); setMsg("error" in x ? x.error! : `${c.form} for ${c.period} is open again.`); })} />}
@@ -111,10 +120,9 @@ function Overview({ r, scheme, lab, summary, month, overdue, upcoming, expiring,
 const Stat = ({ label, value }: { label: string; value: string }) => <div><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)]">{label}</div><div className="num text-xl font-semibold mt-0.5">{value}</div></div>;
 
 /* ── Returns: the month's figures in GSTR shape ────────────────────────────── */
-function Returns({ r, lab, month, summary, error, go, calendar, status, onFile, pending }: { r: Rest; lab: ReturnType<typeof taxLabels>; month: string; summary: Summary; error: string | null; go: (q: Record<string, string>) => void; calendar: CalendarItem[]; status: (c: CalendarItem) => { kind: string; f?: Filing }; onFile: (c: CalendarItem, filedOn: string, ack: string) => void; pending: boolean }) {
+function Returns({ r, lab, month, today, summary, error, go, monthly, status, onFile, pending }: { r: Rest; lab: ReturnType<typeof taxLabels>; month: string; today: string; summary: Summary; error: string | null; go: (q: Record<string, string>) => void; monthly: CalendarItem[]; status: (c: CalendarItem) => { kind: string; f?: Filing; days?: number }; onFile: (c: CalendarItem, filedOn: string, ack: string) => void; pending: boolean }) {
   const rows = [...(summary?.dining ?? []), ...(summary?.stay ?? [])];
   const t = (k: keyof Totals) => Number(summary?.dining_totals?.[k] ?? 0) + Number(summary?.stay_totals?.[k] ?? 0);
-  const monthly = calendar.filter((c) => c.period === month && (c.form === "GSTR-1" || c.form === "GSTR-3B"));
   const csv = () => {
     const lines = [["Period", month], ["GSTIN", r.gstin ?? ""], [], ["SAC", "Supply", "Rate %", "Invoices", "Taxable value", lab.central, lab.state, "Invoice value"],
       ...rows.map((x) => [x.sac, x.kind === "dining" ? "Restaurant service" : "Accommodation", x.rate, x.count, n2(x.taxable), n2(x.cgst), n2(x.sgst), n2(x.total)]),
@@ -133,7 +141,7 @@ function Returns({ r, lab, month, summary, error, go, calendar, status, onFile, 
       </div>
       {error && <p className="text-sm text-[var(--color-red)]">Could not build the summary: {error}</p>}
       <Card>
-        <div className="card-title"><h3>Outward supplies</h3><span className="footnote">GSTR-1 table 7 (B2C) · GSTR-3B table 3.1(a)</span></div>
+        <div className="card-title"><h3>Outward supplies</h3><span className="footnote">All sales · GSTR-3B table 3.1(a). In GSTR-1 the B2B invoices below go in table 4, the rest in table 7.</span></div>
         <div className="table-wrap"><table className="w-full text-sm"><thead className="text-xs uppercase tracking-wide text-[var(--color-label-2)] border-b border-[var(--color-separator)]"><tr><th className="text-left py-2">SAC</th><th className="text-left py-2">Supply</th><th className="text-right py-2">Rate</th><th className="text-right py-2">Nos.</th><th className="text-right py-2">Taxable</th><th className="text-right py-2">{lab.central}</th><th className="text-right py-2">{lab.state}</th><th className="text-right py-2">Value</th></tr></thead>
           <tbody>
             {rows.length === 0 && <tr><td colSpan={8} className="py-6 text-center text-[var(--color-label-2)]">No paid bills or stay invoices in this month.</td></tr>}
@@ -150,8 +158,8 @@ function Returns({ r, lab, month, summary, error, go, calendar, status, onFile, 
         )}
       </Card>
       {monthly.length > 0 && <Card>
-        <div className="card-title"><h3>Filed for {monthLabel(month)}?</h3></div>
-        <div className="grid sm:grid-cols-2 gap-3">{monthly.map((c) => <FileRow key={c.form} c={c} st={status(c)} onFile={onFile} pending={pending} />)}</div>
+        <div className="card-title"><h3>Filed for {monthLabel(month)}?</h3>{monthly[0]?.period !== month && <span className="footnote">Quarterly filer: the quarter this month belongs to</span>}</div>
+        <div className="grid sm:grid-cols-2 gap-3">{monthly.map((c) => <FileRow key={c.form + c.period} c={c} st={status(c)} onFile={onFile} pending={pending} today={today} />)}</div>
       </Card>}
     </div>
   );
@@ -219,7 +227,7 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
   const essentials = DOC_KINDS.filter((k) => ["gst_reg", "pan", "fssai", "trade_licence", "shop_estab"].includes(k.key) && !held.has(k.key));
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2"><h3 className="text-xl">On file</h3><Button className="ml-auto" onClick={() => setEdit({ kind: "gst_reg" })}><Plus size={15} /> Add a document</Button></div>
+      <div className="flex items-center gap-2"><h3 className="text-xl">On file</h3><Button className="ml-auto" onClick={() => setEdit({ kind: "gst_reg", title: kindOf("gst_reg")?.label })}><Plus size={15} /> Add a document</Button></div>
       {essentials.length > 0 && <Card><div className="card-title"><h3>Not on file yet</h3></div><div className="flex flex-wrap gap-2">{essentials.map((k) => <button key={k.key} className="chip" onClick={() => setEdit({ kind: k.key, title: k.label })}>+ {k.label}</button>)}</div></Card>}
       {docs.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">Nothing here yet. Add the number, the dates and a link to where the signed copy lives — DigiLocker, Drive, or your CA's portal — so anyone at the counter can find it when an officer asks.</p> : (
         <div className="grid md:grid-cols-2 gap-3">{docs.map((d) => { const k = kindOf(d.kind); const left = d.expires_on ? daysBetween(today, d.expires_on) : null; return (
@@ -241,7 +249,7 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
         <form className="space-y-4" action={(fd) => { onSave(fd); setEdit(null); }}>
           {edit?.id && <input type="hidden" name="id" value={edit.id} />}
           <Field label="What is it" hint={kindOf(edit?.kind ?? "other")?.hint}><select name="kind" defaultValue={edit?.kind ?? "gst_reg"} onChange={(e) => setEdit({ ...edit, kind: e.target.value, title: edit?.title || kindOf(e.target.value)?.label })}>{DOC_KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}</select></Field>
-          <Field label="Title"><input name="title" defaultValue={edit?.title ?? ""} required placeholder="e.g. FSSAI state licence 2025-30" /></Field>
+          <Field label="Title"><input name="title" value={edit?.title ?? ""} onChange={(e) => setEdit({ ...edit, title: e.target.value })} required placeholder="e.g. FSSAI state licence 2025-30" /></Field>
           <div className="grid grid-cols-2 gap-3"><Field label="Number"><input name="number" className="num" defaultValue={edit?.number ?? ""} /></Field><Field label="Issued by"><input name="issuer" defaultValue={edit?.issuer ?? ""} placeholder="FSSAI · Commercial Taxes Dept · Corporation" /></Field></div>
           <div className="grid grid-cols-2 gap-3"><Field label="Issued on"><input name="issued_on" type="date" className="num" defaultValue={edit?.issued_on ?? ""} /></Field><Field label="Expires on" hint="Leave blank for a document that does not expire"><input name="expires_on" type="date" className="num" defaultValue={edit?.expires_on ?? ""} /></Field></div>
           <Field label="Period" hint="For a return or a yearly filing: FY 2025-26, 2026-08, Q1 2026-27"><input name="period" className="num" defaultValue={edit?.period ?? ""} /></Field>
@@ -259,7 +267,6 @@ function Profile({ r, role, pending, onSave }: { r: Rest; role: string; pending:
   const [scheme, setScheme] = useState(r.gst_scheme ?? "regular");
   return (
     <form className="grid lg:grid-cols-2 gap-4 items-start" action={onSave}>
-      <input type="hidden" name="id" value={r.id} />
       <Card>
         <div className="card-title"><h3><Landmark size={18} className="inline mr-2 -mt-1" />GST registration</h3></div>
         <div className="space-y-4">

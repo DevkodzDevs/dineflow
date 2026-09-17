@@ -20,7 +20,7 @@ export default async function TaxPage({ searchParams }: { searchParams: Promise<
     s.from("compliance_filings").select("*").order("due_on"),
     s.from("compliance_docs").select("*").order("kind").order("expires_on"),
     s.rpc("gst_summary", { p_from: `${month}-01`, p_to: lastDay(month) }),
-    s.from("profiles").select("id", { count: "exact", head: true }),
+    s.from("profiles").select("id", { count: "exact", head: true }).eq("restaurant_id", session.profile.restaurant_id),
   ]);
   return (
     <>

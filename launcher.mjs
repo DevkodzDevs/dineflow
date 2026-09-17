@@ -7,7 +7,7 @@
  * Works on Windows, macOS and Linux. Needs only Node 20+.
  */
 import { execSync, spawn } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, rmSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout, platform } from "node:process";
 import { join, dirname } from "node:path";
@@ -23,6 +23,44 @@ const has = (cmd) => { try { execSync(`${cmd} --version`, { stdio: "ignore", she
 const open = (url) => { try { sh(platform === "win32" ? `start "" "${url}"` : platform === "darwin" ? `open "${url}"` : `xdg-open "${url}"`, { stdio: "ignore" }); } catch { log(`   Open: ${url}`); } };
 const envPath = join(ROOT, ".dineflow.env");
 import { networkInterfaces } from "node:os";
+import { createServer } from "node:net";
+
+/**
+ * Port 3000 being taken is the commonest way starting up goes wrong — a copy left running from
+ * earlier, a dev server in another window, or something else entirely. Crashing with EADDRINUSE
+ * tells the owner nothing they can act on, so these three helpers let the launcher work it out.
+ */
+const portBusy = (port) => new Promise((resolve) => {
+  const s = createServer();
+  s.once("error", (e) => resolve(e.code === "EADDRINUSE"));
+  s.once("listening", () => s.close(() => resolve(false)));
+  // No host, so this binds :: the way Next does. Probing 0.0.0.0 instead finds the port free on
+  // Windows even while something holds :::3000 — which is the exact clash being checked for.
+  s.listen(port);
+});
+/** Is the thing already on that port our own app, or somebody else's? */
+const isDineFlow = async (port) => {
+  try { return (await fetch(`http://localhost:${port}/api/health`, { signal: AbortSignal.timeout(2500) })).ok; }
+  catch { return false; }
+};
+/** The first free port from here upward, or null if the whole range is taken. */
+const freePort = async (from) => { for (let p = from; p < from + 20; p++) if (!(await portBusy(p))) return p; return null; };
+/**
+ * Decide where to listen. Returns the port, or null when the answer is "it is already running and
+ * has been opened for you" — in which case the caller should simply stop.
+ */
+const choosePort = async (want = 3000) => {
+  if (!(await portBusy(want))) return want;
+  if (await isDineFlow(want)) {
+    ok(`DineFlow is already running on http://localhost:${want} — opening that instead of starting a second copy.`);
+    open(`http://localhost:${want}/login`);
+    return null;
+  }
+  const p = await freePort(want + 1);
+  if (!p) { fail(`Ports ${want}–${want + 20} are all in use. Close something and try again.`); return null; }
+  warn(`Something else is already using port ${want}, so DineFlow will run on ${p} instead.`);
+  return p;
+};
 const lanIp = () => { for (const l of Object.values(networkInterfaces())) for (const i of l ?? []) if (i.family === "IPv4" && !i.internal) return i.address; return "localhost"; };
 const loadEnv = () => existsSync(envPath) ? Object.fromEntries(readFileSync(envPath, "utf8").split("\n").filter((l) => l.includes("=")).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; })) : {};
 const saveEnv = (e) => writeFileSync(envPath, Object.entries(e).map(([k, v]) => `${k}=${v}`).join("\n") + "\n");
@@ -91,19 +129,46 @@ async function local() {
   const { execSync } = await import("node:child_process");
   const stamp = join(ROOT, "apps/web/.next/BUILD_ID");
   const newest = (dir) => { let t = 0; for (const f of readdirSync(dir, { withFileTypes: true })) { if (f.name === "node_modules" || f.name === ".next") continue; const p = join(dir, f.name); t = Math.max(t, f.isDirectory() ? newest(p) : statSync(p).mtimeMs); } return t; };
-  const stale = !existsSync(stamp) || statSync(stamp).mtimeMs < Math.max(newest(join(ROOT, "apps/web/app")), newest(join(ROOT, "apps/web/components")), newest(join(ROOT, "apps/web/lib")), newest(join(ROOT, "packages/shared/src")));
-  if (stale) { log(`\n${c.b}Building the app once${c.x} ${c.d}(about a minute; later starts skip this)${c.x}`); execSync("pnpm --filter @dineflow/web build", { stdio: "inherit", cwd: ROOT, shell: true }); }
-  log(`\n${c.b}Starting web app${c.x} → http://localhost:3000  ${c.d}(Ctrl+C to stop)${c.x}`);
-  setTimeout(() => open("http://localhost:3000/login"), 2500);
+  const outdated = !existsSync(stamp) || statSync(stamp).mtimeMs < Math.max(newest(join(ROOT, "apps/web/app")), newest(join(ROOT, "apps/web/components")), newest(join(ROOT, "apps/web/lib")), newest(join(ROOT, "packages/shared/src")));
+  // A build can be up to date and still unusable: if the live-reload server has written Turbopack
+  // chunks over it, every page throws "Cannot find module '[turbopack]_runtime.js'" the moment it is
+  // asked for. The timestamps cannot see that, so the folder itself is checked, and a mixed one is
+  // thrown away rather than started.
+  const mixed = existsSync(stamp) && (() => {
+    const hunt = (dir, depth = 0) => {
+      if (depth > 4 || !existsSync(dir)) return false;
+      for (const f of readdirSync(dir, { withFileTypes: true })) {
+        if (f.name.includes("turbopack")) return true;
+        if (f.isDirectory() && hunt(join(dir, f.name), depth + 1)) return true;
+      }
+      return false;
+    };
+    return hunt(join(ROOT, "apps/web/.next/server"));
+  })();
+  if (mixed) warn("The last build was mixed with live-reload output and cannot be served. Rebuilding it.");
+  if (outdated || mixed) {
+    if (mixed) rmSync(join(ROOT, "apps/web/.next"), { recursive: true, force: true });
+    log(`\n${c.b}Building the app once${c.x} ${c.d}(about a minute; later starts skip this)${c.x}`);
+    execSync("pnpm --filter @dineflow/web build", { stdio: "inherit", cwd: ROOT, shell: true });
+  }
+  const port = await choosePort(3000);
+  if (port === null) { rl.close(); return; }   // already running, or nowhere free to listen
+  log(`\n${c.b}Starting web app${c.x} → http://localhost:${port}  ${c.d}(Ctrl+C to stop)${c.x}`);
+  setTimeout(() => open(`http://localhost:${port}/login`), 2500);
   rl.close();
-  spawn("pnpm", ["--filter", "@dineflow/web", "start"], { stdio: "inherit", cwd: ROOT, shell: true });
+  spawn("pnpm", ["--filter", "@dineflow/web", "start"], { stdio: "inherit", cwd: ROOT, shell: true, env: { ...process.env, PORT: String(port) } });
 }
 
 /** For developers: the live-reload server. Pages compile on first visit; keep .next between runs and the second start is far faster. */
 async function develop() {
-  await checkTools(); await install(); rl.close();
-  log(`\n${c.b}Development server${c.x} → http://localhost:3000  ${c.d}(live reload; first page compiles in a few seconds, then instant)${c.x}`);
-  spawn("pnpm", ["dev:web"], { stdio: "inherit", cwd: ROOT, shell: true });
+  await checkTools(); await install();
+  const port = await choosePort(3000);
+  if (port === null) { rl.close(); return; }
+  rl.close();
+  log(`\n${c.b}Development server${c.x} → http://localhost:${port}  ${c.d}(live reload; first page compiles in a few seconds, then instant)${c.x}`);
+  // Its own build folder: dev writes Turbopack output, and mixing that into the production .next
+  // leaves option 1 with a build that starts and then fails on every page.
+  spawn("pnpm", ["dev:web"], { stdio: "inherit", cwd: ROOT, shell: true, env: { ...process.env, PORT: String(port), NEXT_DIST_DIR: ".next-dev" } });
 }
 
 async function mobile() {

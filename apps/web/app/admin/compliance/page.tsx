@@ -13,11 +13,17 @@ export const dynamic = "force-dynamic";
  */
 export default async function CompliancePage() {
   await requireAdmin(); const s = await createClient(); const today = todayIST(); const fy = financialYear(today);
-  const [{ data: props }, { data: filings }, { data: docs }] = await Promise.all([
+  // Tenant policies no longer let one property read another's rows, so the cross-property figures
+  // come from an RPC that checks the caller is Master control before it answers.
+  const [{ data: props }, { data: overview }] = await Promise.all([
     s.from("restaurants").select("id, name, property_type, gstin, legal_name, pan, gst_scheme, gst_state_code, gst_monthly, fssai_no, ca_name, ca_phone, is_shadow").order("name"),
-    s.from("compliance_filings").select("restaurant_id, form, period, filed_on"),
-    s.from("compliance_docs").select("restaurant_id, kind, expires_on"),
+    s.rpc("admin_compliance_overview"),
   ]);
+  const o = (overview ?? { filings: [], docs: [] }) as {
+    filings: { restaurant_id: string; form: string; period: string; filed_on: string | null }[];
+    docs: { restaurant_id: string; kind: string; expires_on: string | null }[];
+  };
+  const filings = o.filings, docs = o.docs;
   const days = (a: string, b: string) => Math.round((new Date(b + "T00:00:00").getTime() - new Date(a + "T00:00:00").getTime()) / 86400000);
   const rows = (props ?? []).filter((p) => !p.is_shadow).map((p) => {
     const filed = new Set((filings ?? []).filter((f) => f.restaurant_id === p.id && f.filed_on).map((f) => `${f.form}|${f.period}`));
