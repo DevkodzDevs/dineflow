@@ -1,0 +1,25 @@
+-- ═══════════ Fix: Proof of business could not seal a month ═══════════
+--
+-- Pressing "Seal" on the Proof of business screen calls seal_all_periods → seal_period →
+-- period_hash, and period_hash hashes the month's figures with digest() from pgcrypto. Supabase
+-- installs pgcrypto into the `extensions` schema, not `public`. seal_period is declared
+-- `security definer set search_path = public`, and period_hash has no search_path of its own, so it
+-- inherits that narrowed one — and digest() is then invisible:
+--
+--     ERROR: function digest(text, unknown) does not exist
+--
+-- Sealing has therefore never worked on a stock Supabase project. It is not visible at signup
+-- because nothing else on the hot path needs pgcrypto at call time: the gen_random_bytes() defaults
+-- on bills.pay_token and order_channels.webhook_token had their function reference resolved when the
+-- column was defined, so they keep working regardless of search_path.
+--
+-- The fix is to give period_hash a search_path that includes the extensions schema. This is an
+-- ALTER, deliberately not a CREATE OR REPLACE: the body must stay byte-for-byte as it was, or every
+-- month already sealed would hash differently and verification would report tampering. A search_path
+-- entry naming a schema that does not exist is ignored, so this is also correct on a database where
+-- pgcrypto lives in public.
+--
+-- verify_periods() and the share-link verifier call period_hash too, so they are fixed by the same
+-- change.
+
+alter function period_hash(jsonb, text, uuid) set search_path = public, extensions;
