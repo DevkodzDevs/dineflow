@@ -52,6 +52,28 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 /** Modules the master may switch off per property. The rest are always on: an owner must always be able to land somewhere and reach settings. */
 export const ALWAYS_ON = ["dashboard", "settings"] as const;
+
+/** Plan presets — a quick way to set which modules a property gets. */
+export type PlanPreset = "basic" | "premium" | "advanced" | "all";
+export const PLAN_PRESETS: { key: PlanPreset; label: string; hint: string; modules: string[] }[] = [
+  { key: "basic", label: "Basic", hint: "Orders, billing, menu, kitchen and reports",
+    modules: ["orders", "billing", "menu", "kitchen", "reports", "scan", "inventory"] },
+  { key: "premium", label: "Premium", hint: "Basic + reservations, online orders, invoices, tax, staff",
+    modules: ["orders", "billing", "menu", "kitchen", "reports", "scan", "inventory",
+              "reservations", "pulse", "online-orders", "channels", "invoices", "tax", "staff", "labour", "tomorrow"] },
+  { key: "advanced", label: "Advanced", hint: "Everything the property type supports",
+    modules: [] }, // empty means all — resolved at runtime from MODULES_BY_TYPE
+  { key: "all", label: "All", hint: "Every module, no restrictions",
+    modules: [] },
+];
+
+/** Property type filter for the access sheet. */
+export const PROPERTY_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "restaurant", label: "Restaurant" },
+  { key: "hotel", label: "Hotel" },
+  { key: "resort", label: "Resort" },
+] as const;
 export const MODULE_GROUPS: { title: string; keys: { key: string; label: string; hint: string }[] }[] = [
   { title: "Front of house", keys: [{ key: "orders", label: "Orders & tables", hint: "Take orders, the floor" }, { key: "reservations", label: "Reservations", hint: "Bookings from the storefront" }, { key: "pulse", label: "Pulse", hint: "Wait times and the walk-in queue" }, { key: "online-orders", label: "Online orders", hint: "Delivery and takeaway" }, { key: "channels", label: "Channels", hint: "Swiggy, Zomato, OTAs" }] },
   { title: "Hotel", keys: [{ key: "frontdesk", label: "Front desk", hint: "Check-in, folios" }, { key: "rooms", label: "Rooms", hint: "The board and keys" }, { key: "housekeeping", label: "Housekeeping", hint: "Turnaround" }, { key: "guests", label: "Guests", hint: "Guest records" }, { key: "facilities", label: "Facilities", hint: "Spa, pool, hall" }] },

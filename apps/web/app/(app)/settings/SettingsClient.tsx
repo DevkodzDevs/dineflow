@@ -1,103 +1,291 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
-import { Plus, Trash2, Sparkles, QrCode, KeyRound } from "lucide-react";
-import { Button, Card, Field } from "@/components/ui";
+import Link from "next/link";
+import { Plus, Trash2, Sparkles, QrCode, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink } from "lucide-react";
+import { Button, Card, Field, Pill, cn } from "@/components/ui";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments } from "./actions";
-import { Server } from "lucide-react";
 
 type Rest = { id: string; name: string; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number };
+type Tab = "general" | "payments" | "tables" | "advanced";
+
+const TABS: { key: Tab; label: string; icon: typeof Building2 }[] = [
+  { key: "general", label: "General", icon: Building2 },
+  { key: "payments", label: "Payments", icon: CreditCard },
+  { key: "tables", label: "Tables", icon: LayoutGrid },
+  { key: "advanced", label: "Advanced", icon: Server },
+];
+
+function Section({ icon, title, children, description }: { icon: React.ReactNode; title: string; children: React.ReactNode; description?: string }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2.5">
+        <span className="h-8 w-8 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel">{icon}</span>
+        <div>
+          <h3 className="text-base font-semibold">{title}</h3>
+          {description && <p className="text-xs text-steel mt-0.5">{description}</p>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function QuickLink({ href, icon, label, hint }: { href: string; icon: React.ReactNode; label: string; hint: string }) {
+  return (
+    <Link href={href} className="group rounded-2xl border border-[var(--color-separator)] p-4 flex items-center gap-3 hover:border-[var(--color-label-3)] hover:bg-[var(--color-fill)]/50 transition-colors">
+      <span className="h-10 w-10 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel group-hover:text-[var(--color-label)] transition-colors">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold">{label}</div>
+        <div className="text-xs text-steel mt-0.5">{hint}</div>
+      </div>
+      <ChevronRight size={16} className="text-steel shrink-0" />
+    </Link>
+  );
+}
 
 export function SettingsClient({ restaurant, tables, gateway, signInId, contactEmail }:
   { restaurant: Rest; tables: Table[]; gateway: { key_id: string; hasSecret: boolean; hasWebhook: boolean };
     signInId: string; contactEmail: string | null }) {
   const [msg, setMsg] = useState<string | null>(null);
-  const [boxToken, setBoxToken] = useState<string | null>(null); const [pending, start] = useTransition();
+  const [boxToken, setBoxToken] = useState<string | null>(null);
+  const [pending, start] = useTransition();
   const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
+  const [tab, setTab] = useState<Tab>("general");
+  const isHotel = restaurant.property_type !== "restaurant";
+
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
-        <div className="card-title"><h3>Appearance</h3></div>
-        <p className="text-[13px] text-[var(--color-label-2)] -mt-2 mb-4">Applies to this device. Guest pages are always bright.</p>
-        <ThemePicker />
-      </Card>
-      <Card>
-        <h3 className="text-xl mb-4">Restaurant & taxes</h3>
-        <form className="space-y-4" action={(fd) => start(async () => { const r = await saveRestaurant(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
-          <input type="hidden" name="id" value={restaurant.id} />
-          <Field label="Property type" hint="Hotel and resort unlock Front desk, Rooms, Housekeeping, Guests (and Facilities for resorts)."><select name="property_type" defaultValue={restaurant.property_type}><option value="restaurant">Restaurant</option><option value="hotel">Hotel</option><option value="resort">Resort</option></select></Field>
-          <Field label="Name"><input name="name" defaultValue={restaurant.name} required /></Field>
-          <Field label="Logo" hint="A square image address (PNG or SVG, at least 256 px). It replaces the mark in the sidebar and on bills. Leave blank to use your initial."><input name="logo_url" defaultValue={restaurant.logo_url ?? ""} placeholder="https://…/logo.png" /></Field>
-          <Field label="Brand colour" hint="Optional. Used for the active menu item and the confirm button on your screens."><input name="brand_colour" defaultValue={restaurant.brand_colour ?? ""} placeholder="#c9302c" /></Field>
-          <Field label="Address (printed on bills)"><input name="address" defaultValue={restaurant.address ?? ""} /></Field>
-          <div className="grid grid-cols-2 gap-3"><Field label="Phone"><input name="phone" defaultValue={restaurant.phone ?? ""} /></Field><Field label="GSTIN"><input name="gstin" defaultValue={restaurant.gstin ?? ""} className="num uppercase" /></Field></div>
-          <div className="grid grid-cols-2 gap-3"><Field label="GST rate %" hint="5% for most restaurants; split as CGST + SGST"><input name="gst_rate" type="number" step="0.01" defaultValue={restaurant.gst_rate} className="num" /></Field><Field label="Service charge %"><input name="service_charge_pct" type="number" step="0.01" defaultValue={restaurant.service_charge_pct} className="num" /></Field></div>
-          {restaurant.property_type !== "restaurant" && <div className="grid grid-cols-3 gap-3"><Field label="Room GST %"><input name="room_gst_rate" type="number" step="0.01" defaultValue={restaurant.room_gst_rate} className="num" /></Field><Field label="Check-in"><input name="check_in_time" type="time" defaultValue={restaurant.check_in_time?.slice(0, 5)} className="num" /></Field><Field label="Check-out"><input name="check_out_time" type="time" defaultValue={restaurant.check_out_time?.slice(0, 5)} className="num" /></Field></div>}
-          {restaurant.property_type === "restaurant" && <><input type="hidden" name="room_gst_rate" value={restaurant.room_gst_rate} /><input type="hidden" name="check_in_time" value={restaurant.check_in_time} /><input type="hidden" name="check_out_time" value={restaurant.check_out_time} /></>}
-          <div className="grid grid-cols-2 gap-3"><Field label="Prep buffer %" hint="Extra portions the Tomorrow brief adds"><input name="prep_buffer_pct" type="number" className="num" defaultValue={restaurant.prep_buffer_pct ?? 10} /></Field><Field label="WhatsApp for the brief" hint="Where 'Send to the team' opens"><input name="brief_whatsapp" className="num" defaultValue={restaurant.brief_whatsapp ?? ""} placeholder="98400 11223" /></Field></div>
-          {msg && <p className="text-sm">{msg}</p>}
-          <Button disabled={pending}>Save</Button>
-        </form>
-        <div className="mt-4 pt-4 border-t border-line">
-          <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1.5"><KeyRound size={12} /> Your password</div>
-          <p className="text-sm text-steel mb-2">
-            You sign in as <span className="num">{signInId}</span>.
-            {contactEmail
-              ? <> Changing your password sends a six-digit code to <span className="num">{contactEmail}</span> first.</>
-              : <> There is no contact address on this account yet, so a code cannot be sent. Ask Master control to add one before you try.</>}
-          </p>
-          <a href="/account/password" className="btn btn-gray !h-9 !px-3.5 !text-[13px] !rounded-[11px] inline-flex w-fit">
-            <KeyRound size={15} /> Change my password
-          </a>
+    <div className="space-y-6">
+      {/* tab bar */}
+      <div className="flex gap-1 p-1 bg-[var(--color-fill)] rounded-2xl w-fit max-w-full overflow-x-auto">
+        {TABS.map((t) => (
+          <button key={t.key} onClick={() => { setTab(t.key); setMsg(null); }}
+            className={cn("shrink-0 h-9 px-4 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors",
+              tab === t.key ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>
+            <t.icon size={15} /> {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* feedback */}
+      {msg && (
+        <div className={cn("rounded-xl px-4 py-2.5 text-sm",
+          /error|fail|not/i.test(msg) ? "bg-[var(--color-red-2)] text-[var(--color-red)]" : "bg-[var(--color-green-2)] text-[var(--color-green)]")}>
+          {msg}
         </div>
-        <div className="mt-4 pt-4 border-t border-line">
-          <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Sample data</div>
-          <p className="text-sm text-steel mb-2">Fills this property with a realistic menu, pantry with barcodes, tables, rooms and bookings, labourers, printers and demo delivery channels — everything you need to try every screen. Safe to run more than once; it never touches data you created.</p>
-          <div className="flex gap-2"><Button variant="outline" disabled={pending} onClick={() => start(async () => { const r = await loadDemoData(); setMsg(r.error ? r.error : `Loaded: ${r.dishes} dishes, ${r.ingredients} pantry items, ${r.rooms ?? 0} rooms, ${r.labourers} workers`); })}><Sparkles size={15} /> Load demo data</Button>
-          <Button variant="ghost" disabled={pending} onClick={() => { if (confirm("Remove the demo channels and sample online orders?")) start(async () => { await removeDemoData(); setMsg("Demo channels removed"); }); }}><Trash2 size={15} /> Remove demo channels</Button></div>
-        </div>
-        <div className="mt-4 pt-4 border-t border-line">
-          <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1.5"><Server size={12} /> Runs on a Box (no-internet mode)</div>
-          <p className="text-sm text-steel mb-2">If this property runs DineFlow on a computer in the building, issue a token and paste it into the Box launcher. The Box then works with <b>and</b> without internet: the building runs locally, and every minute the internet is up it swaps with this cloud copy — online orders and OTA bookings go down, rooms, menu, bookings and sealed months come up. {restaurant.runs_on_box ? <span className="text-mint font-semibold">Box connected{restaurant.box_last_seen ? ` · last seen ${new Date(restaurant.box_last_seen).toLocaleString("en-IN")}` : ""}.</span> : null}</p>
-          <div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={pending} onClick={() => start(async () => { const r = await issueBoxToken(); if ("error" in r) setMsg(r.error!); else { setBoxToken(r.token!); navigator.clipboard.writeText(r.token!); setMsg("Box token copied. Paste it into the launcher on the Box."); } })}>Issue box token</Button>{boxToken && <span className="num text-xs break-all">{boxToken}</span>}</div>
-        </div>
-        <div className="mt-4 pt-4 border-t border-line flex flex-wrap gap-2"><a href="/settings/storefront" className="chip">Storefront &amp; offers</a><a href="/settings/printers" className="chip">Thermal printers</a><a href="/channels" className="chip">Online orders & OTA channels</a><a href="/settings/booking-page" className="chip">Direct booking page</a><a href="/tax" className="chip">Tax &amp; GST</a></div>
-        <div className="mt-6 pt-4 border-t border-line text-xs text-steel flex items-center justify-between"><span>Membership: <b className="uppercase">{restaurant.membership}</b>{restaurant.membership_plan ? ` · ${restaurant.membership_plan}` : ""}{restaurant.membership === "trial" ? ` · ends ${restaurant.trial_ends_at.slice(0, 10)}` : restaurant.membership_ends_at ? ` · until ${restaurant.membership_ends_at.slice(0, 10)}` : ""}</span><a href="/membership" className="font-semibold underline text-ink">Manage</a></div>
-      </Card>
-      <Card>
-        <h3 className="text-xl mb-1 flex items-center gap-2"><QrCode size={18} /> Pay by scanning the bill</h3>
-        <p className="text-sm text-steel mb-4">Every bill carries a QR code. Scanning it opens the bill on the guest's phone with the ways to pay it. UPI needs only your UPI ID. Cards need a Razorpay account: add your own keys and the guest can pay by card, netbanking or wallet right there. Without either, the page still shows the bill and points them to the counter.</p>
-        <form className="space-y-4" action={(fd) => start(async () => { const r = await savePayments(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
-          <input type="hidden" name="id" value={restaurant.id} />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="UPI ID" hint="The one your bank or app gave you, e.g. hotel@okaxis"><input name="upi_vpa" defaultValue={restaurant.upi_vpa ?? ""} placeholder="name@bank" className="num" autoCapitalize="none" /></Field>
-            <Field label="Name shown in the UPI app" hint="Blank = the property name"><input name="upi_payee" defaultValue={restaurant.upi_payee ?? ""} /></Field>
+      )}
+
+      {/* ═══════ GENERAL ═══════ */}
+      {tab === "general" && (
+        <div className="space-y-6">
+          {/* appearance */}
+          <Card>
+            <Section icon={<Palette size={16} />} title="Appearance" description="Applies to this device. Guest pages are always bright.">
+              <ThemePicker />
+            </Section>
+          </Card>
+
+          {/* property info */}
+          <Card>
+            <Section icon={<Building2 size={16} />} title="Property details">
+              <form className="space-y-4" action={(fd) => start(async () => { const r = await saveRestaurant(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
+                <input type="hidden" name="id" value={restaurant.id} />
+                <Field label="Property type" hint="Hotel and resort unlock Front desk, Rooms, Housekeeping, Guests.">
+                  <select name="property_type" defaultValue={restaurant.property_type}>
+                    <option value="restaurant">Restaurant</option><option value="hotel">Hotel</option><option value="resort">Resort</option>
+                  </select>
+                </Field>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Name"><input name="name" defaultValue={restaurant.name} required /></Field>
+                  <Field label="Phone"><input name="phone" defaultValue={restaurant.phone ?? ""} className="num" /></Field>
+                </div>
+                <Field label="Address"><input name="address" defaultValue={restaurant.address ?? ""} /></Field>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Logo URL" hint="Square PNG or SVG, at least 256 px"><input name="logo_url" defaultValue={restaurant.logo_url ?? ""} placeholder="https://…/logo.png" /></Field>
+                  <Field label="Brand colour" hint="Hex, e.g. #c9302c"><input name="brand_colour" defaultValue={restaurant.brand_colour ?? ""} placeholder="#c9302c" className="num" /></Field>
+                </div>
+
+                <div className="pt-3 border-t border-[var(--color-separator)]">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Tax & billing</div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <Field label="GSTIN"><input name="gstin" defaultValue={restaurant.gstin ?? ""} className="num uppercase" /></Field>
+                    <Field label="GST rate %" hint="5% for most; split as CGST + SGST"><input name="gst_rate" type="number" step="0.01" defaultValue={restaurant.gst_rate} className="num" /></Field>
+                  </div>
+                  <div className={cn("grid gap-3 mt-3", isHotel ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
+                    <Field label="Service charge %"><input name="service_charge_pct" type="number" step="0.01" defaultValue={restaurant.service_charge_pct} className="num" /></Field>
+                    {isHotel && <Field label="Room GST %"><input name="room_gst_rate" type="number" step="0.01" defaultValue={restaurant.room_gst_rate} className="num" /></Field>}
+                    {isHotel && <Field label="Check-in / out"><div className="grid grid-cols-2 gap-2"><input name="check_in_time" type="time" defaultValue={restaurant.check_in_time?.slice(0, 5)} className="num" /><input name="check_out_time" type="time" defaultValue={restaurant.check_out_time?.slice(0, 5)} className="num" /></div></Field>}
+                  </div>
+                  {!isHotel && <><input type="hidden" name="room_gst_rate" value={restaurant.room_gst_rate} /><input type="hidden" name="check_in_time" value={restaurant.check_in_time} /><input type="hidden" name="check_out_time" value={restaurant.check_out_time} /></>}
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Prep buffer %" hint="Extra the Tomorrow brief adds"><input name="prep_buffer_pct" type="number" className="num" defaultValue={restaurant.prep_buffer_pct ?? 10} /></Field>
+                  <Field label="WhatsApp for the brief" hint="'Send to the team' opens this"><input name="brief_whatsapp" className="num" defaultValue={restaurant.brief_whatsapp ?? ""} placeholder="98400 11223" /></Field>
+                </div>
+
+                <Button className="w-full sm:w-auto" disabled={pending}>Save changes</Button>
+              </form>
+            </Section>
+          </Card>
+
+          {/* account & security */}
+          <Card>
+            <Section icon={<Shield size={16} />} title="Account & security">
+              <div className="rounded-xl bg-[var(--color-fill)] p-4 flex items-start gap-4">
+                <KeyRound size={18} className="text-steel shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold">Your password</div>
+                  <p className="text-xs text-steel mt-1">
+                    Signed in as <span className="num">{signInId}</span>.
+                    {contactEmail
+                      ? <> Codes go to <span className="num">{contactEmail}</span>.</>
+                      : <> No contact address — ask Master control to add one.</>}
+                  </p>
+                </div>
+                <a href="/account/password" className="btn btn-gray !h-9 !px-3.5 !text-[13px] !rounded-[11px] shrink-0">
+                  Change
+                </a>
+              </div>
+              <div className="text-xs text-steel flex items-center justify-between px-1">
+                <span>Membership: <b className="uppercase">{restaurant.membership}</b>{restaurant.membership_plan ? ` · ${restaurant.membership_plan}` : ""}{restaurant.membership === "trial" ? ` · ends ${restaurant.trial_ends_at.slice(0, 10)}` : restaurant.membership_ends_at ? ` · until ${restaurant.membership_ends_at.slice(0, 10)}` : ""}</span>
+                <Link href="/membership" className="font-semibold underline text-[var(--color-label)]">Manage</Link>
+              </div>
+            </Section>
+          </Card>
+
+          {/* quick links */}
+          <div className="grid sm:grid-cols-2 gap-3">
+            <QuickLink href="/settings/storefront" icon={<ExternalLink size={16} />} label="Storefront & offers" hint="Your listing, delivery, offers" />
+            <QuickLink href="/settings/printers" icon={<Download size={16} />} label="Thermal printers" hint="Bill and KOT printers" />
+            <QuickLink href="/channels" icon={<Wifi size={16} />} label="Online orders & OTA" hint="Swiggy, Zomato, Booking.com" />
+            <QuickLink href="/settings/booking-page" icon={<ExternalLink size={16} />} label="Direct booking page" hint="Your own booking link" />
+            <QuickLink href="/tax" icon={<Building2 size={16} />} label="Tax & GST" hint="Returns, filings, documents" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Razorpay key ID" hint="Razorpay dashboard → Account & Settings → API keys"><input name="razorpay_key_id" defaultValue={gateway.key_id} placeholder="rzp_live_…" className="num" autoCapitalize="none" /></Field>
-            <Field label="Razorpay key secret" hint={gateway.hasSecret ? "Saved. Leave blank to keep it; type clear to remove it." : "Shown once, when the key is created"}><input name="razorpay_key_secret" type="password" autoComplete="new-password" placeholder={gateway.hasSecret ? "••••••••" : ""} /></Field>
-          </div>
-          <Field label="Razorpay webhook secret" hint={`Recommended. In Razorpay add a webhook for payment.captured pointing at ${origin || "https://<your-app>"}/api/webhooks/razorpay and paste its secret here. It marks the bill paid even when the guest closes the page early.${gateway.hasWebhook ? " Saved: leave blank to keep it, type clear to remove it." : ""}`}><input name="razorpay_webhook_secret" type="password" autoComplete="new-password" placeholder={gateway.hasWebhook ? "••••••••" : ""} /></Field>
-          {msg && <p className="text-sm">{msg}</p>}
-          <Button disabled={pending}>Save</Button>
-        </form>
-      </Card>
-      <Card>
-        <h3 className="text-xl mb-4">Tables & zones</h3>
-        <ul className="space-y-2 mb-4">
-          {tables.map((t) => (
-            <li key={t.id} className="flex items-center gap-2 text-sm"><span className="font-display text-lg w-12">{t.name}</span><span className="text-steel flex-1">{t.zone} · seats {t.capacity}</span><button className="text-steel hover:text-chili" disabled={pending} onClick={() => start(() => { deleteTable(t.id); })} aria-label="Delete"><Trash2 size={15} /></button></li>
-          ))}
-        </ul>
-        <form className="grid grid-cols-[1fr_70px_1fr_auto] gap-2 items-end" action={(fd) => start(async () => { await saveTable(fd); })}>
-          <input type="hidden" name="sort_order" value={tables.length + 1} />
-          <Field label="Name"><input name="name" placeholder="T9" required /></Field>
-          <Field label="Seats"><input name="capacity" type="number" defaultValue={4} className="num" /></Field>
-          <Field label="Zone"><input name="zone" placeholder="AC hall" defaultValue="Main" /></Field>
-          <Button disabled={pending} aria-label="Add table"><Plus size={16} /></Button>
-        </form>
-      </Card>
+        </div>
+      )}
+
+      {/* ═══════ PAYMENTS ═══════ */}
+      {tab === "payments" && (
+        <Card>
+          <Section icon={<CreditCard size={16} />} title="Pay by scanning the bill"
+            description="Every bill carries a QR code. Scanning it opens the bill on the guest's phone.">
+            <form className="space-y-4" action={(fd) => start(async () => { const r = await savePayments(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
+              <input type="hidden" name="id" value={restaurant.id} />
+
+              <div className="rounded-xl bg-[var(--color-fill)] p-4 space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-steel">UPI</div>
+                <p className="text-xs text-steel">Add your UPI ID and every bill gets a scannable QR. Nothing else needed.</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="UPI ID"><input name="upi_vpa" defaultValue={restaurant.upi_vpa ?? ""} placeholder="hotel@okaxis" className="num" autoCapitalize="none" /></Field>
+                  <Field label="Payee name" hint="Blank = property name"><input name="upi_payee" defaultValue={restaurant.upi_payee ?? ""} /></Field>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-[var(--color-fill)] p-4 space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-steel">Razorpay (cards, netbanking, wallets)</div>
+                <p className="text-xs text-steel">Optional. Add your API keys from Razorpay dashboard → Account & Settings → API keys.</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Key ID"><input name="razorpay_key_id" defaultValue={gateway.key_id} placeholder="rzp_live_…" className="num" autoCapitalize="none" /></Field>
+                  <Field label="Key secret" hint={gateway.hasSecret ? "Saved. Blank keeps it; 'clear' removes." : ""}>
+                    <PasswordInput name="razorpay_key_secret" autoComplete="new-password" placeholder={gateway.hasSecret ? "••••••••" : ""} />
+                  </Field>
+                </div>
+                <Field label="Webhook secret" hint={`Add a webhook for payment.captured at ${origin || "https://…"}/api/webhooks/razorpay${gateway.hasWebhook ? ". Saved." : ""}`}>
+                  <PasswordInput name="razorpay_webhook_secret" autoComplete="new-password" placeholder={gateway.hasWebhook ? "••••••••" : ""} />
+                </Field>
+              </div>
+
+              <Button className="w-full sm:w-auto" disabled={pending}>Save payment settings</Button>
+            </form>
+          </Section>
+        </Card>
+      )}
+
+      {/* ═══════ TABLES ═══════ */}
+      {tab === "tables" && (
+        <Card>
+          <Section icon={<LayoutGrid size={16} />} title="Tables & zones"
+            description={`${tables.length} table${tables.length === 1 ? "" : "s"} across ${new Set(tables.map((t) => t.zone)).size} zone${new Set(tables.map((t) => t.zone)).size === 1 ? "" : "s"}.`}>
+
+            {tables.length > 0 && (
+              <div className="rounded-xl border border-[var(--color-separator)] divide-y divide-[var(--color-separator)]">
+                {tables.map((t) => (
+                  <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="h-9 w-9 rounded-lg bg-[var(--color-fill)] grid place-items-center font-display text-sm font-bold shrink-0">{t.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm">{t.zone}</span>
+                      <span className="text-xs text-steel ml-2">seats {t.capacity}</span>
+                    </div>
+                    <button className="h-8 w-8 grid place-items-center rounded-lg text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors"
+                      disabled={pending} onClick={() => start(() => { deleteTable(t.id); })} aria-label={`Delete ${t.name}`}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <form className="rounded-xl bg-[var(--color-fill)] p-4"
+              action={(fd) => start(async () => { await saveTable(fd); })}>
+              <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Add a table</div>
+              <input type="hidden" name="sort_order" value={tables.length + 1} />
+              <div className="grid grid-cols-[1fr_80px_1fr_auto] gap-2 items-end">
+                <Field label="Name"><input name="name" placeholder="T9" required /></Field>
+                <Field label="Seats"><input name="capacity" type="number" defaultValue={4} className="num" /></Field>
+                <Field label="Zone"><input name="zone" placeholder="AC hall" defaultValue="Main" /></Field>
+                <Button disabled={pending} aria-label="Add table"><Plus size={16} /></Button>
+              </div>
+            </form>
+          </Section>
+        </Card>
+      )}
+
+      {/* ═══════ ADVANCED ═══════ */}
+      {tab === "advanced" && (
+        <div className="space-y-6">
+          {/* box mode */}
+          <Card>
+            <Section icon={<Server size={16} />} title="Runs on a Box"
+              description="A computer in the building that works with and without internet.">
+              <div className="rounded-xl bg-[var(--color-fill)] p-4 space-y-3">
+                <p className="text-xs text-steel leading-relaxed">
+                  Issue a token and paste it into the Box launcher. The Box then works offline: orders, billing and the kitchen run locally.
+                  Every minute the internet is up it syncs with this cloud copy.
+                  {restaurant.runs_on_box && <span className="text-[var(--color-tint)] font-semibold"> Box connected{restaurant.box_last_seen ? ` · last seen ${new Date(restaurant.box_last_seen).toLocaleString("en-IN")}` : ""}.</span>}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={pending} onClick={() => start(async () => {
+                    const r = await issueBoxToken();
+                    if ("error" in r) setMsg(r.error!);
+                    else { setBoxToken(r.token!); navigator.clipboard.writeText(r.token!); setMsg("Box token copied to clipboard."); }
+                  })}>Issue box token</Button>
+                  {boxToken && <span className="num text-xs text-steel break-all">{boxToken}</span>}
+                </div>
+              </div>
+            </Section>
+          </Card>
+
+          {/* sample data */}
+          <Card>
+            <Section icon={<Sparkles size={16} />} title="Sample data"
+              description="Fill the property with a realistic menu, pantry, tables, rooms, bookings and channels for testing.">
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" disabled={pending} onClick={() => start(async () => {
+                  const r = await loadDemoData();
+                  setMsg(r.error ? r.error : `Loaded: ${r.dishes} dishes, ${r.ingredients} pantry items, ${r.rooms ?? 0} rooms, ${r.labourers} workers`);
+                })}><Sparkles size={15} /> Load demo data</Button>
+                <Button variant="ghost" disabled={pending} onClick={() => {
+                  if (confirm("Remove the demo channels and sample online orders?"))
+                    start(async () => { await removeDemoData(); setMsg("Demo channels removed."); });
+                }}><Trash2 size={15} /> Remove demo channels</Button>
+              </div>
+            </Section>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

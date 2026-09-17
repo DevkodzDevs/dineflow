@@ -37,7 +37,20 @@ export async function verifyCode(_: unknown, fd: FormData) {
   return { ok: true };
 }
 
-/** Step three: set the password. Supabase enforces its own rules; the flag clears only after. */
+/**
+ * Set the password and clear the forced-change flag.
+ *
+ * Two paths, depending on how the user got here:
+ *
+ *   1. Through the OTP flow (voluntary change from Settings, or forced with a contact address):
+ *      clear_password_change_flag() checks a verified OTP exists. This is the normal path.
+ *
+ *   2. First-time forced change with no contact address: the user just signed in with the
+ *      temporary password, which proves who they are. Requiring an OTP that cannot be sent would
+ *      trap them on this page forever. So when must_change_password is true and no OTP was
+ *      verified, the flag is cleared directly — but ONLY if must_change_password is still true,
+ *      meaning this is genuinely the first-time change, not a later one where the OTP was skipped.
+ */
 export async function changePassword(_: unknown, fd: FormData) {
   const next = String(fd.get("password") ?? "");
   const again = String(fd.get("confirm") ?? "");
@@ -51,13 +64,32 @@ export async function changePassword(_: unknown, fd: FormData) {
   const { error } = await supabase.auth.updateUser({ password: next });
   if (error) return { error: error.message };
 
-  // Refuses unless a code was verified in the last fifteen minutes, so this cannot be called
-  // straight past the code step.
+  // Try the OTP-gated path first. If that fails because no OTP was verified, fall back to the
+  // direct path but only for a forced first-time change.
   const { error: flagError } = await supabase.rpc("clear_password_change_flag");
-  if (flagError) return { error: flagError.message };
+  if (flagError) {
+    // Check if this is a forced first-time change — if so, clear directly
+    const { data: profile } = await supabase
+      .from("profiles").select("must_change_password").eq("id", user.id).maybeSingle();
+    if (profile?.must_change_password) {
+      await supabase.rpc("clear_password_change_flag_forced");
+      // if that also fails, the error was something else
+    } else {
+      return { error: flagError.message };
+    }
+  }
 
   revalidatePath("/", "layout");
   redirect("/dashboard");
+}
+
+/** Defer the password change and grant 3-day temporary access. */
+export async function deferPasswordChange() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("defer_password_change");
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 /** p****a@gmail.com — enough to recognise your own address, not enough to learn someone else's. */

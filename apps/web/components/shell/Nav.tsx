@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, Info, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity } from "lucide-react";
+import { Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
@@ -109,24 +109,22 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
         <Group title="Dining" items={dining} path={path} />
         <Group title="Manage" items={manage} path={path} />
       </nav>
-      {/* the foot: one compact card — who you are, one line of status, and the two things you do from here */}
-      <div className="mt-auto pt-3">
-        <div className="rounded-2xl bg-white/[.06] border border-white/[.08] p-2.5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {/* the avatar is the profile button, but only where the person may actually open settings —
-                a hand cursor over something that cannot be opened would promise a click that goes nowhere */}
-            {accountHref
-              ? <Link href={accountHref} title={`${name} · your settings`} aria-label={`${name} · your settings`} className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</Link>
-              : <span title={name} className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base">{name.slice(0, 1)}</span>}
-            <div className="min-w-0 flex-1 rail-hide">
-              <div className="text-[13px] text-white font-semibold truncate leading-tight">{name}</div>
-              <div className="text-[11px] text-white/50 truncate leading-tight mt-0.5">{ROLE_LABEL[role]}{membership !== "none" && <> · <span className={cn(membership === "trial" ? "text-[var(--color-orange)]" : membership === "expired" ? "text-[var(--color-red)]" : "text-[var(--color-tint)]")}>{membership === "trial" ? `trial · ${daysLeft}d` : membership === "expired" ? "expired" : `${daysLeft}d left`}</span></>}</div>
-            </div>
-            <form action="/logout" method="post" className="rail-hide"><button aria-label="Sign out" title="Sign out" className="h-8 w-8 grid place-items-center rounded-full text-white/50 hover:text-white hover:bg-white/10 transition"><LogOut size={15} /></button></form>
+      {/* the foot: who you are, and the actions that belong here */}
+      <div className="mt-auto pt-3 space-y-1.5">
+        <div className="flex items-center gap-2.5 px-2 min-w-0">
+          {accountHref
+            ? <Link href={accountHref} title={`${name} · your settings`} className="h-10 w-10 shrink-0 rounded-[14px] bg-[var(--color-tint)] text-white grid place-items-center font-display text-lg transition hover:brightness-110">{name.slice(0, 1)}</Link>
+            : <span title={name} className="h-10 w-10 shrink-0 rounded-[14px] bg-[var(--color-tint)] text-white grid place-items-center font-display text-lg">{name.slice(0, 1)}</span>}
+          <div className="min-w-0 flex-1 rail-hide">
+            <div className="text-[13px] text-white font-semibold truncate leading-tight">{name}</div>
+            <div className="text-[11px] text-white/50 truncate leading-tight mt-0.5">{ROLE_LABEL[role]}{membership !== "none" && <> · <span className={cn(membership === "trial" ? "text-[var(--color-orange)]" : membership === "expired" ? "text-[var(--color-red)]" : "text-[var(--color-tint)]")}>{membership === "trial" ? `trial · ${daysLeft}d` : membership === "expired" ? "expired" : `${daysLeft}d left`}</span></>}</div>
           </div>
-          {isAdmin && <Link href="/admin" className="rail-hide mt-2 flex items-center justify-center gap-1.5 h-8 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={13} /> Master control</Link>}
         </div>
-        <Link href="/about" className="rail-hide mt-2 flex items-center justify-center gap-1.5 text-[11px] text-white/35 hover:text-white/70 transition"><Info size={12} /> About DineFlow</Link>
+        <div className="rail-hide flex items-center gap-1 px-1">
+          {accountHref && <Link href={accountHref} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl text-[12px] font-semibold text-white/70 hover:bg-white/10 hover:text-white transition"><Settings size={13} /> Settings</Link>}
+          <form action="/logout" method="post" className="flex-1"><button className="w-full flex items-center justify-center gap-1.5 h-8 rounded-xl text-[12px] font-semibold text-white/70 hover:bg-white/10 hover:text-white transition"><LogOut size={13} /> Sign out</button></form>
+        </div>
+        {isAdmin && <Link href="/admin" className="rail-hide flex items-center justify-center gap-1.5 h-8 mx-1 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={13} /> Master control</Link>}
       </div>
     </aside>
   );

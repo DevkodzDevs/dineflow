@@ -33,13 +33,21 @@ export const sanitiseLocalPart = (raw: string) =>
     .replace(/^[-._]+|[-._]+$/g, "");
 
 /**
- * A readable id suggested from the property name and its type, with no index on the end.
+ * A readable id suggested from the property name and the owner's name. No dashes, just lowercase
+ * letters and digits run together, so it reads more like a username than a serial number:
+ *
+ *     "Tan Resort" + "Priya Kumar"  →  tanresortpriya
+ *     "manoooo"    + ""             →  manoooo
+ *
  * Leaving the field empty is still the better path: the database then issues the next numbered
- * code, which is guaranteed unique. This is for an operator who wants to choose.
+ * DineFlow code, which is guaranteed unique. This is for an operator who wants something friendly.
  */
-export const suggestLoginId = (name: string, type: PropertyType) => {
-  const stem = sanitiseLocalPart((name ?? "").replace(/[^A-Za-z0-9]+/g, "-")).slice(0, 24).replace(/-+$/, "");
-  return stem ? `dine-${TYPE_CODE[type]}-${stem}` : "";
+export const suggestLoginId = (name: string, _type: PropertyType, ownerName?: string) => {
+  const clean = (s: string) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const propPart = clean(name).slice(0, 14);
+  const ownerPart = clean(ownerName ?? "").slice(0, 10);
+  const combined = propPart + ownerPart;
+  return combined.length >= 3 ? combined : "";
 };
 
 /**

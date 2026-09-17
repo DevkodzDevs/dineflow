@@ -13,15 +13,16 @@ import { checkLoginId } from "./actions";
  * real mailbox. The line under the field always states the address that will actually be created,
  * because the two differ often enough that guessing is unfair.
  *
- * Availability is checked against the database, debounced, and only once the value stops changing.
+ * Suggestions are built from the property name and the owner's name, with no dashes:
+ *   "Tan Resort" + "Priya Kumar"  →  tanresortpriya
  */
-export function LoginIdField({ value, onChange, name, type }:
-  { value: string; onChange: (v: string) => void; name: string; type: PropertyType }) {
+export function LoginIdField({ value, onChange, name, type, ownerName }:
+  { value: string; onChange: (v: string) => void; name: string; type: PropertyType; ownerName?: string }) {
   const [state, setState] = useState<{ ok: boolean; note: string } | null>(null);
   const [checking, setChecking] = useState(false);
   const seq = useRef(0);
 
-  const suggestion = suggestLoginId(name, type);
+  const suggestion = suggestLoginId(name, type, ownerName);
   const problem = loginAddressProblem(value);
   const preview = toLoginAddress(value);
   const typedOwnDomain = value.includes("@");
@@ -33,7 +34,6 @@ export function LoginIdField({ value, onChange, name, type }:
     const t = setTimeout(async () => {
       setChecking(true);
       const r = await checkLoginId(value);
-      // a slower earlier request must not overwrite a newer answer
       if (mine !== seq.current) return;
       setChecking(false);
       setState("error" in r ? { ok: false, note: r.error! } : { ok: r.ok, note: r.note });
@@ -42,10 +42,10 @@ export function LoginIdField({ value, onChange, name, type }:
   }, [value, problem]);
 
   const hint = value.trim() === ""
-    ? "Leave this blank and a numbered DineFlow code is assigned, such as dine-htl-zeph-00007."
+    ? "Leave this blank and a numbered DineFlow code is assigned automatically."
     : typedOwnDomain
       ? "You typed a full address, so it is used as it is."
-      : `The domain ${"@dineflow.local"} is added for you.`;
+      : "@dineflow.local is added for you.";
 
   return (
     <Field label="Sign-in ID" hint={hint}>
@@ -53,7 +53,7 @@ export function LoginIdField({ value, onChange, name, type }:
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={suggestion || "dine-htl-zeph"}
+          placeholder={suggestion || "tanresortpriya"}
           spellCheck={false}
           autoCapitalize="none"
           autoCorrect="off"

@@ -51,6 +51,9 @@ export type PropertyDetail = {
   tax: Record<string, string | number | boolean | null>;
   users: { name: string; login_id: string; contact_email: string | null; role: string;
            is_active: boolean; must_change_password: boolean;
+           temp_password: string | null; temp_password_issued: string | null;
+           temp_password_expires: string | null; temp_password_lockout: string | null;
+           temp_password_locked_out: boolean; temp_password_expired: boolean;
            last_sign_in_at: string | null; created_at: string }[];
   contents: Record<string, number>;
 };
@@ -72,6 +75,15 @@ export async function checkLoginId(raw: string) {
   const { data, error } = await s.rpc("admin_login_id_available", { p_id: raw });
   if (error) return { error: error.message };
   return data as { ok: boolean; address: string | null; note: string };
+}
+
+/** Master control edits a property's details. Only changed fields need to be sent. */
+export async function updateProperty(restaurantId: string, fields: Record<string, string>) {
+  const s = await createClient();
+  const { error } = await s.rpc("admin_update_property", { p_restaurant_id: restaurantId, p_fields: fields });
+  if (error) return { error: error.message };
+  bump();
+  return { ok: true };
 }
 
 /** Set or correct where this property's one-time password codes are posted. */

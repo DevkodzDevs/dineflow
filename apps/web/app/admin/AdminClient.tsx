@@ -16,7 +16,7 @@ import { Boxes } from "lucide-react";
 import { Plus, UtensilsCrossed as UC, Building2 as B2, Palmtree as PT } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { KeyRound as KeyIcon, X } from "lucide-react";
-import { MODULES_BY_TYPE, MODULE_GROUPS, ALWAYS_ON } from "@dineflow/shared";
+import { MODULES_BY_TYPE, MODULE_GROUPS, ALWAYS_ON, PLAN_PRESETS, PROPERTY_FILTERS, type PlanPreset } from "@dineflow/shared";
 import { DataTable } from "@/components/ui/DataTable";
 import { setModules } from "./actions";
 import styles from "./AdminToolbar.module.css";
@@ -185,21 +185,9 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
       )}
 
       <Sheet open={sheet === "access" && !!sel} onClose={() => setSheet(null)} title={sel ? `Access · ${sel.name}` : ""} wide>
-        {sel && (() => {
-          const allowedByType = MODULES_BY_TYPE[sel.property_type];
-          const all = mods === null; const on = (k: string) => all || (mods ?? []).includes(k) || (ALWAYS_ON as readonly string[]).includes(k);
-          const toggle = (k: string) => { const base = all ? allowedByType.filter((x) => !(ALWAYS_ON as readonly string[]).includes(x)) : (mods ?? []); setMods(base.includes(k) ? base.filter((x) => x !== k) : [...base, k]); };
-          return (
-            <div className="space-y-5">
-              <p className="text-sm text-steel">What this property's owner and staff can open. Switch a module off and it leaves their menu and cannot be reached by URL. <b>Control room</b> and <b>Settings</b> are always on.</p>
-              <div className="toolbar !mb-0"><div className="toolbar-group"><span className={`chip ${all ? "on" : ""}`} onClick={() => setMods(null)}>Everything</span><span className={`chip ${!all ? "on" : ""}`} onClick={() => setMods(allowedByType.filter((x) => !(ALWAYS_ON as readonly string[]).includes(x)))}>Choose</span></div><div className="toolbar-group toolbar-end"><span className="text-xs text-steel">{all ? `${allowedByType.length} of ${allowedByType.length}` : `${(mods ?? []).filter((k) => allowedByType.includes(k)).length + ALWAYS_ON.length} of ${allowedByType.length}`} on</span></div></div>
-              {MODULE_GROUPS.map((g) => { const keys = g.keys.filter((k) => allowedByType.includes(k.key)); if (!keys.length) return null; return (
-                <div key={g.title}><div className="eyebrow mb-2">{g.title}</div><div className="group">{keys.map((k, i) => <label key={k.key} className="row cursor-pointer"><div className="flex-1"><div className="text-[15px]">{k.label}</div><div className="text-[13px] text-steel">{k.hint}</div></div><span className="switch" data-on={on(k.key) ? "true" : "false"} onClick={() => toggle(k.key)} /></label>)}</div></div>); })}
-              <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setModules(sel.id, mods); if ("error" in r) setErr(r.error!); else { setSheet(null); router.refresh(); } })}>Save access</Button><Button variant="gray" onClick={() => setSheet(null)}>Cancel</Button></div>
-              {err && <p className="text-sm text-chili">{err}</p>}
-            </div>
-          );
-        })()}
+        {sel && <AccessPanel sel={sel} mods={mods} setMods={setMods} pending={pending} err={err}
+          onSave={() => start(async () => { const r = await setModules(sel.id, mods); if ("error" in r) setErr(r.error!); else { setSheet(null); router.refresh(); } })}
+          onCancel={() => setSheet(null)} access={access} />}
       </Sheet>
       <Sheet open={sheet === "tenant" && !!sel} onClose={() => { setSheet(null); setCreds(null); setDel(null); setDelText(""); setErr(null); }} title={sel?.name ?? ""}>
         {sel && (
@@ -262,7 +250,9 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
 
       <Sheet open={sheet === "detail" && !!sel} onClose={() => { setSheet(null); setDetail(null); setErr(null); }} title={sel ? `${sel.name} · full record` : "Details"} wide>
         {err && <p className="text-sm text-chili mb-3">{err}</p>}
-        {detail ? <PropertyDetailView detail={detail} /> : !err && <p className="text-sm text-steel">Loading the record…</p>}
+        {detail && sel ? <PropertyDetailView detail={detail} restaurantId={sel.id}
+          onRefresh={() => { if (!sel) return; start(async () => { const r = await propertyDetail(sel.id); if (!("error" in r)) setDetail(r.detail); }); }} />
+          : !err && <p className="text-sm text-steel">Loading the record…</p>}
       </Sheet>
 
       {/* One confirmation, reached either from the Delete button on the row or from Manage.
@@ -348,16 +338,28 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
               ))}
             </div></Field>
             <Field label="Owner's name" hint="Optional — shown in the app and on the bill"><input value={np.owner} onChange={(e) => setNp({ ...np, owner: e.target.value })} placeholder="Priya Kumar" /></Field>
-            <LoginIdField value={np.email} onChange={(v) => setNp({ ...np, email: v })} name={np.name} type={np.type} />
-            <Field label="Owner's real email" hint="Where the one-time code goes when they change their password. Not used to sign in.">
-              <input value={np.contact} onChange={(e) => setNp({ ...np, contact: e.target.value })} type="email" placeholder="priya@gmail.com" />
+            <LoginIdField value={np.email} onChange={(v) => setNp({ ...np, email: v })} name={np.name} type={np.type} ownerName={np.owner} />
+            <Field label="Owner's real email *" hint="Required. Where the one-time code goes when they change their password. Not used to sign in.">
+              <input value={np.contact} onChange={(e) => setNp({ ...np, contact: e.target.value })} type="email" required placeholder="owner@gmail.com" className={cn(!np.contact.trim() && np.name && "!border-[var(--color-orange)]")} />
             </Field>
-            <label className={cn("feather p-3 flex gap-3 cursor-pointer text-sm", np.demo && "border-mint")}>
-              <input type="checkbox" checked={np.demo} onChange={(e) => setNp({ ...np, demo: e.target.checked })} className="!w-auto mt-0.5" />
-              <span><b>Fill it with sample data</b><br /><span className="text-steel text-xs">Categories and tables, a menu with recipes, pantry with barcodes, live orders, rooms with bookings, labourers, printers and demo channels. Leave this off and the property opens completely empty.</span></span>
-            </label>
+            {/* sample data toggle — a proper switch instead of a bare checkbox */}
+            <button type="button" onClick={() => setNp({ ...np, demo: !np.demo })}
+              className={cn("w-full rounded-2xl border p-4 text-left transition-colors",
+                np.demo ? "border-[var(--color-tint)] bg-[var(--color-green-2)]" : "border-[var(--color-separator)] hover:border-[var(--color-label-3)]")}>
+              <div className="flex items-start gap-3">
+                <span className={cn("mt-0.5 shrink-0 h-5 w-9 rounded-full transition-colors relative",
+                  np.demo ? "bg-[var(--color-tint)]" : "bg-[var(--color-fill-2)]")}>
+                  <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                    np.demo ? "translate-x-4" : "translate-x-0.5")} />
+                </span>
+                <div className="min-w-0">
+                  <div className={cn("text-sm font-semibold", np.demo && "text-[var(--color-tint)]")}>Fill it with sample data</div>
+                  <div className="text-xs text-steel mt-0.5 leading-relaxed">Menu with recipes, pantry, tables, rooms, bookings, labour, printers and demo channels. Leave this off and the property opens completely empty.</div>
+                </div>
+              </div>
+            </button>
             {err && <p className="text-sm text-chili">{err}</p>}
-            <Button className="w-full" disabled={pending || !np.name || !!loginAddressProblem(np.email)} onClick={() => start(async () => {
+            <Button className="w-full" disabled={pending || !np.name || !np.contact.trim() || !!loginAddressProblem(np.email)} onClick={() => start(async () => {
               setErr(null);
               const r = await createProperty(np.name, np.type, np.demo, np.email, np.owner, np.contact);
               if ("error" in r) setErr(r.error!);
@@ -390,4 +392,120 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
     setSel(t); setErr(null); setDetail(null); setSheet("detail");
     start(async () => { const r = await propertyDetail(t.id); if ("error" in r) setErr(r.error!); else setDetail(r.detail); });
   }
+}
+
+/* ── Access panel: plan presets + per-module toggles ──────────────────────── */
+function AccessPanel({ sel, mods, setMods, pending, err, onSave, onCancel, access }: {
+  sel: T; mods: string[] | null; setMods: (v: string[] | null) => void;
+  pending: boolean; err: string | null; onSave: () => void; onCancel: () => void;
+  access: { id: string; enabled_modules: string[] | null }[];
+}) {
+  const [plan, setPlan] = useState<PlanPreset | "custom">(mods === null ? "all" : "custom");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const allowedByType = MODULES_BY_TYPE[sel.property_type];
+  const all = mods === null;
+  const on = (k: string) => all || (mods ?? []).includes(k) || (ALWAYS_ON as readonly string[]).includes(k);
+  const count = all ? allowedByType.length : (mods ?? []).filter((k) => allowedByType.includes(k)).length + ALWAYS_ON.length;
+
+  const toggle = (k: string) => {
+    const base = all ? allowedByType.filter((x) => !(ALWAYS_ON as readonly string[]).includes(x)) : (mods ?? []);
+    setMods(base.includes(k) ? base.filter((x) => x !== k) : [...base, k]);
+    setPlan("custom");
+  };
+
+  const applyPlan = (p: PlanPreset) => {
+    setPlan(p);
+    if (p === "all" || p === "advanced") { setMods(null); return; }
+    const preset = PLAN_PRESETS.find((x) => x.key === p);
+    if (preset) setMods(preset.modules.filter((m) => allowedByType.includes(m)));
+  };
+
+  // filter modules by property type context
+  const visibleGroups = MODULE_GROUPS.map((g) => {
+    let keys = g.keys.filter((k) => allowedByType.includes(k.key));
+    if (typeFilter === "restaurant") keys = keys.filter((k) => MODULES_BY_TYPE.restaurant.includes(k.key));
+    else if (typeFilter === "hotel") keys = keys.filter((k) => MODULES_BY_TYPE.hotel.includes(k.key));
+    else if (typeFilter === "resort") keys = keys.filter((k) => MODULES_BY_TYPE.resort.includes(k.key));
+    return { ...g, keys };
+  }).filter((g) => g.keys.length > 0);
+
+  return (
+    <div className="space-y-5">
+      {/* plan presets */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Plan</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {PLAN_PRESETS.map((p) => (
+            <button key={p.key} type="button" onClick={() => applyPlan(p.key)}
+              className={cn("rounded-2xl border p-3 text-left transition-all",
+                plan === p.key
+                  ? "border-[var(--color-tint)] bg-[var(--color-green-2)] shadow-[0_0_0_1px_var(--color-tint)]"
+                  : "border-[var(--color-separator)] hover:border-[var(--color-label-3)]")}>
+              <div className="flex items-center gap-2">
+                <span className={cn("h-4 w-4 rounded-full border-2 grid place-items-center shrink-0 transition-colors",
+                  plan === p.key ? "border-[var(--color-tint)]" : "border-[var(--color-label-3)]")}>
+                  {plan === p.key && <span className="h-2 w-2 rounded-full bg-[var(--color-tint)]" />}
+                </span>
+                <span className={cn("text-sm font-semibold", plan === p.key && "text-[var(--color-tint)]")}>{p.label}</span>
+              </div>
+              <div className="text-[11px] text-steel mt-1.5 leading-snug">{p.hint}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* type filter + count */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex gap-1 p-1 bg-[var(--color-fill)] rounded-xl">
+          {PROPERTY_FILTERS.map((f) => (
+            <button key={f.key} onClick={() => setTypeFilter(f.key)}
+              className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-colors",
+                typeFilter === f.key ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-steel hover:text-[var(--color-label)]")}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-steel ml-auto num">{count} of {allowedByType.length} on</span>
+      </div>
+
+      <p className="text-xs text-steel">Switch a module off and it leaves the menu. <b>Dashboard</b> and <b>Settings</b> are always on.</p>
+
+      {/* module toggles */}
+      {visibleGroups.map((g) => (
+        <div key={g.title}>
+          <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">{g.title}</div>
+          <div className="rounded-2xl border border-[var(--color-separator)] divide-y divide-[var(--color-separator)]">
+            {g.keys.map((k) => {
+              const isOn = on(k.key);
+              const locked = (ALWAYS_ON as readonly string[]).includes(k.key);
+              return (
+                <button key={k.key} type="button" disabled={locked}
+                  onClick={() => !locked && toggle(k.key)}
+                  className={cn("w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
+                    !locked && "hover:bg-[var(--color-fill)]/50 cursor-pointer",
+                    locked && "opacity-60 cursor-default")}>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium">{k.label}</div>
+                    <div className="text-xs text-steel mt-0.5">{k.hint}</div>
+                  </div>
+                  <span className={cn("shrink-0 h-6 w-11 rounded-full relative transition-colors",
+                    isOn ? "bg-[var(--color-tint)]" : "bg-[var(--color-fill-2)]")}>
+                    <span className={cn("absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                      isOn ? "translate-x-[22px]" : "translate-x-1")} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* actions */}
+      {err && <p className="text-sm text-chili">{err}</p>}
+      <div className="flex gap-2 sticky bottom-0 py-3 bg-[var(--color-bg-2)]">
+        <Button className="flex-1" disabled={pending} onClick={onSave}>Save access</Button>
+        <Button variant="gray" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
 }

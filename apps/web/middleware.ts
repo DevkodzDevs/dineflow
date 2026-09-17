@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC = ["/", "/login", "/signup", "/join", "/forgot", "/membership", "/offline"];
 const PUBLIC_PREFIX = ["/queue/", "/dine", "/book/", "/record/", "/pay/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/"];
+/** Pages a signed-in user must always be able to reach, even with must_change_password set. Without
+ *  this the password-change screen has no way out: the middleware bounces /login to /dashboard, and
+ *  the app layout bounces /dashboard back to /account/password. */
+const ALWAYS_REACHABLE = ["/account/password", "/logout", "/join"];
 
 /**
  * The addresses people actually type. "signin" is at least as natural a guess as "login", and a
@@ -35,9 +39,14 @@ export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const isPublic = PUBLIC.includes(path) || PUBLIC_PREFIX.some((x) => path.startsWith(x));
   if (!user && !isPublic) return NextResponse.redirect(new URL("/login", req.url));
-  if (user && (path === "/login" || path === "/signup" || path === "/")) {
-    const { data: master } = await supabase.rpc("is_master");
-    return NextResponse.redirect(new URL(master ? "/admin" : "/dashboard", req.url));
+  if (user) {
+    // A signed-in user on /login, /signup or / is sent where they belong.
+    // But NOT if they are on a page they must always be able to reach (password change, sign out).
+    const reachable = ALWAYS_REACHABLE.some((p) => path.startsWith(p));
+    if (!reachable && (path === "/login" || path === "/signup" || path === "/")) {
+      const { data: master } = await supabase.rpc("is_master");
+      return NextResponse.redirect(new URL(master ? "/admin" : "/dashboard", req.url));
+    }
   }
   return res;
 }

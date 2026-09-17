@@ -19,7 +19,7 @@ export const requireSession = cache(async function requireSession(opts: { allowL
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const [{ data: profile }, { data: admin }] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, role, restaurant_id, allowed_modules, must_change_password, is_active").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("id, full_name, role, restaurant_id, allowed_modules, must_change_password, is_active, temp_access_until").eq("id", user.id).maybeSingle(),
     supabase.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle(),
   ]);
   const isAdmin = !!admin;

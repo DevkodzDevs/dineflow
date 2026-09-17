@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
 import { toLoginAddress } from "@dineflow/shared";
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40) + "-" + Math.random().toString(36).slice(2, 6);
@@ -10,6 +11,13 @@ export async function login(_: unknown, fd: FormData) {
   // Typing the bare code is enough: dine-htl-mano-00001 becomes the full sign-in address, while a
   // real email typed in full is left alone. Same rule the create form shows.
   const email = toLoginAddress(String(fd.get("email") ?? ""));
+  // Enforce temp password lockout before the sign-in attempt. If the password has been live for more
+  // than 4 days without the owner changing it, the hash is scrambled and the attempt will fail with
+  // "Invalid login credentials" — which is the right answer, because the password genuinely no
+  // longer works. The owner must ask Master control for a new one.
+  if (serviceRoleConfigured()) {
+    try { await adminClient().rpc("enforce_temp_password_lockout"); } catch { /* best-effort */ }
+  }
   const { error } = await supabase.auth.signInWithPassword({ email, password: String(fd.get("password")) });
   if (error) return { error: error.message };
   // the master's credentials open Master control and nothing else; owners open their own property

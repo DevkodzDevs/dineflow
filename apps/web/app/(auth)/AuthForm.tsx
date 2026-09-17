@@ -3,7 +3,8 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button, Field, PasswordInput, Reveal, cn } from "@/components/ui";
-import { UtensilsCrossed, Building2, Palmtree } from "lucide-react";
+import { UtensilsCrossed, Building2, Palmtree, Sparkles } from "lucide-react";
+import { DemoDialog } from "./demo/DemoDialog";
 
 type Action = (s: unknown, fd: FormData) => Promise<{ error?: string } | void>;
 
@@ -11,6 +12,7 @@ export function AuthForm({ mode, action, pendingApproval }:
   { mode: "login" | "signup" | "join"; action: Action; pendingApproval?: boolean }) {
   const [state, act, pending] = useActionState(action as never, null as { error?: string } | null);
   const [ptype, setPtype] = useState("restaurant");
+  const [showDemo, setShowDemo] = useState(false);
   const showMasterHint = mode === "login" && (process.env.NEXT_PUBLIC_SHOW_MASTER_HINT === "1");
   const copy = {
     login: { title: "Welcome back", sub: "Sign in to your restaurant.", cta: "Sign in" },
@@ -61,11 +63,19 @@ export function AuthForm({ mode, action, pendingApproval }:
         {state?.error && <p className="text-sm text-chili bg-chili-2 rounded-xl px-3 py-2">{state.error}</p>}
         <Button size="lg" className="w-full" disabled={pending}>{pending ? "One moment…" : copy.cta}</Button>
       </form>
+      {mode === "login" && (
+        <button type="button" onClick={() => setShowDemo(true)}
+          className="mt-5 w-full flex items-center justify-center gap-2 h-12 rounded-2xl border border-dashed border-[var(--color-tint)]/40 text-sm font-semibold text-[var(--color-tint)] hover:bg-[var(--color-green-2)] transition-colors">
+          <Sparkles size={15} /> Try Demo
+          <span className="text-xs font-normal text-steel">8 hours, no sign-up</span>
+        </button>
+      )}
       <div className="mt-6 text-sm text-steel space-x-3">
         {mode !== "login" && <Link href="/login" className="underline">Sign in</Link>}
         {mode !== "signup" && <Link href="/signup" className="underline">Open a restaurant</Link>}
         {mode !== "join" && <Link href="/join" className="underline">Join with code</Link>}
       </div>
+      {showDemo && <DemoDialog open={showDemo} onClose={() => setShowDemo(false)} />}
     </Reveal>
   );
 }
