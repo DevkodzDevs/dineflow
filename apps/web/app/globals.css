@@ -121,24 +121,24 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
    <div class="flip"><span class="flip-face">20</span><span class="flip-pin left"></span><span class="flip-pin right"></span></div>
    <div class="flip-label">covers</div>
    ═══════════════════════════════════════════════════════════════════════ */
-.flip { --tile: clamp(72px, calc((100vw - 64px) / 3), 128px);   /* three tiles fill a phone edge to edge (108 px at 390); capped at 128 on anything wider */ position: relative; display: inline-grid; place-items: center; min-width: var(--tile); height: var(--tile); padding: 0 .16em;
+.flip { --tile: clamp(72px, calc((100vw - 64px) / 3), 128px);   /* three tiles fill a phone edge to edge (108 px at 390); capped at 128 on anything wider */ position: relative; display: inline-grid; place-items: center; min-width: var(--tile); height: var(--tile); padding: 0;
   border-radius: calc(var(--tile) * .19); background: linear-gradient(180deg, #1c1d24, #141519);
   border: 3px solid #0a0a0d; box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .04), 0 18px 40px -20px rgb(0 0 0 / .95);
-  font-family: var(--font-display); font-weight: 600; font-size: calc(var(--tile) * .68); line-height: 1; letter-spacing: -.01em; color: #f4f4f1; font-variant-numeric: tabular-nums; }
+  font-family: var(--font-display); font-weight: 600; font-size: calc(var(--tile) * .60); line-height: 1; letter-spacing: -.01em; color: #f4f4f1; font-variant-numeric: tabular-nums; }
 .flip::after { content: none; }
-.flip-stage { position: relative; z-index: 1; display: flex; gap: .07em; perspective: 1100px; }
+.flip-stage { position: relative; z-index: 1; display: flex; gap: 0; perspective: 1100px; }
 .flip-face { position: relative; z-index: 1; display: block; }
 /* ── one flap per character: two separate plates with a 2 px gap at the hinge, each plate a card of its own ── */
-.flap { position: relative; display: inline-block; min-width: .56em; height: 1em; line-height: 1; transform-style: preserve-3d; contain: layout paint; }
-.flap-narrow { min-width: .28em; }   /* a dot or a colon takes a slim plate */
-.flap-size { visibility: hidden; display: inline-block; padding: 0 .07em; height: 1em; white-space: pre; }   /* sizes the flap to its glyph */
-.flap-half { position: absolute; left: 0; right: 0; height: calc(50% - 1px); overflow: hidden; backface-visibility: hidden; }
+.flap { position: relative; display: inline-block; width: 0.7em; height: 1em; line-height: 1; transform-style: preserve-3d; contain: layout paint; }
+.flap-narrow { width: 0.35em; }   /* a dot or a colon takes a slim plate */
+.flap-size { visibility: hidden; display: inline-block; padding: 0; height: 1em; white-space: pre; width: 0.7em; }   /* sizes the flap to its glyph */
+.flap-half { position: absolute; left: 0; right: 0; height: calc(50% - 1px); overflow: hidden; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; }
 .flap-half > span { position: absolute; left: 0; right: 0; height: 1em; display: flex; align-items: center; justify-content: center; }
-.flap-top { top: 0; border-radius: .09em .09em .025em .025em; background: linear-gradient(180deg, #34353f 0%, #2a2b34 100%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .09), inset 0 -1px 0 rgb(0 0 0 / .55); }
+.flap-top { top: 0; border-radius: .09em .09em .025em .025em; background: linear-gradient(180deg, #3a3b46 0%, #2c2d37 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), inset 0 -1px 0 rgb(0 0 0 / .65); }
 .flap-top > span { top: 0; }
-.flap-bottom { bottom: 0; border-radius: .025em .025em .09em .09em; background: linear-gradient(180deg, #1e1f26 0%, #181920 100%);
-  box-shadow: inset 0 1px 0 rgb(0 0 0 / .6), inset 0 -1px 0 rgb(255 255 255 / .03); }
+.flap-bottom { bottom: 0; border-radius: .025em .025em .09em .09em; background: linear-gradient(180deg, #1a1b22 0%, #131419 100%);
+  box-shadow: inset 0 1px 0 rgb(0 0 0 / .7), inset 0 -1px 0 rgb(255 255 255 / .02); }
 .flap-bottom > span { bottom: 0; }
 /* the turn: the old top plate folds down onto the hinge and darkens; then the new bottom plate falls the rest of the way, catching light as it lands */
 .flap-turn-top { transform-origin: 50% calc(100% + 1px); animation: flapTop .3s cubic-bezier(.55, 0, .9, .35) both; z-index: 3; will-change: transform; }
@@ -150,10 +150,10 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 @keyframes flapBottom { 0% { transform: rotateX(90deg) } 100% { transform: rotateX(0) } }
 @keyframes flapShadeTop { 0% { opacity: 0 } 100% { opacity: 1 } }
 @keyframes flapShadeBottom { 0% { opacity: 1 } 100% { opacity: 0 } }
-.flip.xs .flap { min-width: .58em; } .flip.sm .flap { min-width: .57em; }
-.flip-pin { position: absolute; top: 50%; width: 6px; height: calc(var(--tile) * .24); margin-top: calc(var(--tile) * -.12); border-radius: 3px; background: linear-gradient(180deg, #3a3b45, #1a1b22); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), 0 0 0 2px #0a0a0d; z-index: 2; }
-.flip-pin.left { left: -2px; } .flip-pin.right { right: -2px; }
-.flip.sm { --tile: 56px; border-width: 2px; } .flip.xs { --tile: 40px; border-width: 2px; font-weight: 500; }
+.flip.xs .flap { width: 0.7em; } .flip.sm .flap { width: 0.7em; }
+.flip-pin { position: absolute; top: 50%; width: 8px; height: calc(var(--tile) * .28); margin-top: calc(var(--tile) * -.14); border-radius: 4px; background: linear-gradient(180deg, #4a4b56, #2a2b33); box-shadow: inset 0 1px 0 rgb(255 255 255 / .15), inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 2px #0a0a0d; z-index: 2; }
+.flip-pin.left { left: -3px; } .flip-pin.right { right: -3px; }
+.flip.sm { --tile: 56px; border-width: 2px; font-size: calc(var(--tile) * .58); } .flip.xs { --tile: 40px; border-width: 2px; font-weight: 500; font-size: calc(var(--tile) * .56); }
 .flip.live { color: #4cd964; } .flip.alert { color: #ff453a; }
 .flip-label { font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-label-2); text-align: center; margin-top: 12px; font-weight: 500; }
 .flip-row { display: flex; gap: clamp(10px, 2.4vw, 24px); align-items: flex-start; justify-content: flex-start; flex-wrap: wrap; }
