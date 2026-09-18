@@ -136,10 +136,10 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .flap-half > span { position: absolute; left: 0; right: 0; height: 1em; display: flex; align-items: center; justify-content: center; }
 .flap-top { top: 0; border-radius: .09em .09em .025em .025em; background: linear-gradient(180deg, #34353f 0%, #2a2b34 100%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .09), inset 0 -1px 0 rgb(0 0 0 / .55); }
-.flap-top > span { top: 0; }
+.flap-top > span { top: -0.04em; }
 .flap-bottom { bottom: 0; border-radius: .025em .025em .09em .09em; background: linear-gradient(180deg, #1e1f26 0%, #181920 100%);
   box-shadow: inset 0 1px 0 rgb(0 0 0 / .6), inset 0 -1px 0 rgb(255 255 255 / .03); }
-.flap-bottom > span { bottom: 0; }
+.flap-bottom > span { bottom: -0.04em; }
 /* the turn: the old top plate folds down onto the hinge and darkens; then the new bottom plate falls the rest of the way, catching light as it lands */
 .flap-turn-top { transform-origin: 50% calc(100% + 1px); animation: flapTop .3s cubic-bezier(.55, 0, .9, .35) both; z-index: 3; will-change: transform; }
 .flap-turn-bottom { transform-origin: 50% -1px; transform: rotateX(90deg); animation: flapBottom .36s .27s cubic-bezier(.15, .75, .3, 1.18) both; z-index: 3; will-change: transform; }
