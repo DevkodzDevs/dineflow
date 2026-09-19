@@ -1,30 +1,36 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { clsx } from "clsx";
 const cn = (...a: Parameters<typeof clsx>) => clsx(...a);
 /* ── The flip family, kept in a module of its own so a page that only needs a clock (the sign-in wall)
    compiles without the whole kit — no animation library, no icon set. ──────────────────────────── */
 function Flap({ ch, delay }: { ch: string; delay: number }) {
   const [cur, setCur] = useState(ch); const [prev, setPrev] = useState<string | null>(null); const [n, setN] = useState(0);
-  useEffect(() => { if (ch === cur) return; setPrev(cur); setCur(ch); setN((x) => x + 1); const t = setTimeout(() => setPrev(null), 520 + delay); return () => clearTimeout(t); }, [ch, cur, delay]);
+  useEffect(() => { if (ch === cur) return; setPrev(cur); setCur(ch); setN((x) => x + 1); const t = setTimeout(() => setPrev(null), 700 + delay); return () => clearTimeout(t); }, [ch, cur, delay]);
   const turning = prev !== null;
   return (
-    <span className={cn("flap", /^[.:·\-–]$/.test(cur) && "flap-narrow")} data-turning={turning}>
+    <span className={cn("flap", /^[.:·\/\-–]$/.test(cur) && "flap-narrow")} data-turning={turning}>
       {/* an invisible copy of the widest character in play sizes the flap to the glyph — a % or ₹ gets a wider plate than a 1 */}
       <span className="flap-size" aria-hidden>{turning && prev && prev.length ? (prev > cur ? prev : cur) : cur}</span>
       <span className="flap-half flap-top"><span>{cur}</span></span>
       <span className="flap-half flap-bottom"><span>{turning ? prev : cur}</span></span>
-      {turning && <span key={`t${n}`} className="flap-half flap-top flap-turn-top" style={{ animationDelay: `${delay}ms` }}><span>{prev}</span></span>}
-      {turning && <span key={`b${n}`} className="flap-half flap-bottom flap-turn-bottom" style={{ animationDelay: `${delay}ms` }}><span>{cur}</span></span>}
+      {turning && <span key={`t${n}`} className="flap-half flap-top flap-turn-top" style={{ "--d": `${delay}ms` } as CSSProperties}><span>{prev}</span></span>}
+      {turning && <span key={`b${n}`} className="flap-half flap-bottom flap-turn-bottom" style={{ "--d": `${delay}ms` } as CSSProperties}><span>{cur}</span></span>}
     </span>
   );
 }
-export function Flip({ value, label, size = "md", tone, className, pad }: { value: number | string; label?: string; size?: "md" | "sm" | "xs"; tone?: "live" | "alert"; className?: string; pad?: number }) {
-  const text = typeof value === "number" && pad ? String(value).padStart(pad, "0") : String(value);
+export function Flip({ value, label, size = "md", tone, className, pad = 2 }: { value: number | string; label?: string; size?: "md" | "sm" | "xs"; tone?: "live" | "alert"; className?: string; pad?: number }) {
+  const raw = String(value);
+  /* A lone digit gets a leading zero. A split-flap unit reads as a pair of cards — a single card
+     marooned in its housing sat wrong beside the two-card tiles, and a board that flickers between
+     one card and two is worse still. Only plain digits are padded: "2/12", "0%", "1.5", "now" and
+     "✓" are left exactly as they are. Pass pad={0} to opt a tile out. */
+  const text = pad > 0 && /^\d+$/.test(raw) ? raw.padStart(pad, "0") : raw;
   const chars = text.split("");
   return (
     <div className={cn("inline-flex flex-col items-center", className)}>
-      <div className={cn("flip", size !== "md" && size, tone)} aria-live="polite" aria-label={label ? `${text} ${label}` : text}>
+      {/* the padded zero is decoration, so the label a screen reader hears keeps the real value */}
+      <div className={cn("flip", size !== "md" && size, tone)} aria-live="polite" aria-label={label ? `${raw} ${label}` : raw}>
         <span className="flip-stage">{chars.map((c, i) => <Flap key={`${chars.length}-${i}`} ch={c} delay={(chars.length - 1 - i) * 70} />)}</span>
         <span className="flip-pin left" /><span className="flip-pin right" />
       </div>

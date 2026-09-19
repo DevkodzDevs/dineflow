@@ -12,7 +12,10 @@ type S = { online: boolean; pending: number; syncing: boolean; lastError: string
 const Ctx = createContext<S>({ online: true, pending: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 });
 export const useOffline = () => useContext(Ctx);
 
-export function OfflineProvider({ children }: { children: React.ReactNode }) {
+/** Screens worth having on the device when the line drops, in the order they matter to a service. */
+const OFFLINE_SCREENS = ["/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/inventory", "/tomorrow", "/scan"];
+
+export function OfflineProvider({ children, modules }: { children: React.ReactNode; modules?: string[] }) {
   const [s, setS] = useState<S>({ online: true, pending: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 });
   useEffect(() => { const stop = startSync(); const un = subscribe(setS); return () => { stop?.(); un(); }; }, []);
   useEffect(() => {
@@ -26,10 +29,40 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     navigator.serviceWorker.addEventListener("message", onMsg);
     return () => navigator.serviceWorker.removeEventListener("message", onMsg);
   }, []);
-  // Warm the offline cache with what the POS and kitchen need, so a screen that was never
-  // opened on this device still has menu, tables and rooms when the connection drops.
+  /**
+   * Warm the offline cache with what the POS and kitchen need, so a screen that was never opened on
+   * this device still has menu, tables and rooms when the connection drops.
+   *
+   * The warming must never compete with the screen someone is waiting for. This used to fire all
+   * eleven screens at once the instant the app mounted — and a screen is a whole page render, so the
+   * server took eleven sessions, eleven sets of queries and eleven React trees for pages nobody had
+   * asked for, while the one that had been asked for queued behind them. That is what made the app
+   * feel like it hung on load. Now it waits for the browser to fall idle, skips screens this person
+   * cannot open anyway, and walks the rest one at a time with a breath in between, so at most one
+   * speculative render is ever in flight.
+   */
+  const screens = (modules ?? []).length
+    ? OFFLINE_SCREENS.filter((u) => modules!.includes(u.split("/")[1]))
+    : OFFLINE_SCREENS;
+  const screenKey = screens.join(",");
   useEffect(() => {
-    const warmCache = async () => {
+    let cancelled = false;
+    const list = screenKey ? screenKey.split(",") : [];
+    type Idle = { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    const whenIdle = (fn: () => void) => {
+      const w = window as Window & Idle;
+      if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout: 8000 });
+      else setTimeout(fn, 3000);
+    };
+    // on a metered or 2G connection, warming costs the user more than it saves them
+    const tooSlow = () => {
+      const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+      return Boolean(c?.saveData) || /(^|-)2g$/.test(c?.effectiveType ?? "");
+    };
+    const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    const warm = async () => {
+      if (cancelled || !navigator.onLine || tooSlow()) return;
       try {
         const sb = createClient();
         const [m, c, t, r, ing, lab] = await Promise.all([
@@ -40,15 +73,23 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           sb.from("ingredients").select("id, name, unit, current_stock, reorder_level").eq("is_active", true),
           sb.from("labourers").select("id, code, full_name, skill, daily_wage"),
         ]);
+        if (cancelled) return;
         if (m.data) await cacheSet("menu_items", m.data); if (c.data) await cacheSet("categories", c.data);
         if (t.data) await cacheSet("tables", t.data); if (r.data) await cacheSet("rooms", r.data);
         if (ing.data) await cacheSet("ingredients", ing.data); if (lab.data) await cacheSet("labourers", lab.data);
-        // and pre-load the key screens into the service-worker cache
-        ["/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/inventory", "/tomorrow", "/scan"].forEach((u) => fetch(u, { credentials: "include" }).catch(() => {}));
       } catch { /* offline right now — nothing to warm */ }
+      // then the screens themselves, one at a time, into the service worker's cache
+      for (const u of list) {
+        if (cancelled || !navigator.onLine || document.visibilityState !== "visible") return;
+        try { await fetch(u, { credentials: "include" }); } catch { return; }
+        await pause(800);
+      }
     };
-    void warmCache(); const t = setInterval(warmCache, 10 * 60 * 1000); return () => clearInterval(t);
-  }, []);
+
+    whenIdle(() => { void warm(); });
+    const t = setInterval(() => whenIdle(() => { void warm(); }), 30 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [screenKey]);
   const [retryIn, setRetryIn] = useState<number | null>(null);
   useEffect(() => { const un = onQueue((jobs) => { const soonest = jobs.map((j) => j.nextTry ?? 0).filter(Boolean).sort()[0]; setRetryIn(soonest ? Math.max(1, Math.round((soonest - Date.now()) / 1000)) : null); }); return () => { un(); }; }, []);
   const show = !s.online || s.pending > 0 || !!s.lastError || s.justSynced > 0;

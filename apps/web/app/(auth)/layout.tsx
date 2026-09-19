@@ -3,8 +3,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-dvh grid lg:grid-cols-[1.1fr_1fr] deck">
       <section className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden wall">
-        <div className="flex items-center gap-2.5">
-          <span className="flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px]"><span className="flip-face">D</span></span>
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-192.png" alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-xl" />
           <span className="font-display text-2xl tracking-wide">DineFlow</span>
         </div>
         <div className="relative">

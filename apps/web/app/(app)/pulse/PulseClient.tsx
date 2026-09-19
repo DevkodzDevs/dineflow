@@ -6,6 +6,7 @@ import { Button, Card, Flip, useToast } from "@/components/ui";
 import { motion, AnimatePresence } from "framer-motion";
 import { listV, itemV } from "@/lib/motion";
 import { useLive } from "@/lib/useLive";
+import { fmtSince } from "@/lib/format";
 import { addWalkin, setWalkin, quote } from "./actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
@@ -22,7 +23,6 @@ export function PulseClient({ pulse, queue, slug, base, listed }: { pulse: Pulse
   const [party, setParty] = useState(2); const [q, setQ] = useState<number | null | undefined>(undefined);
   const [form, setForm] = useState({ name: "", phone: "" }); const [seat, setSeat] = useState<W | null>(null);
   useEffect(() => { let on = true; quote(party).then((m) => { if (on) setQ(m); }); return () => { on = false; }; }, [party, pulse]);
-  const mins = (iso: string) => Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   const busy = pulse.tables.filter((t) => t.stage !== "free");
   const joinUrl = `${base}/queue/${slug}`;
 
@@ -65,7 +65,7 @@ export function PulseClient({ pulse, queue, slug, base, listed }: { pulse: Pulse
             <div className="flex items-start gap-3">
               <span className="flip xs !min-w-10 !h-10 !text-[18px] !rounded-[10px]"><span className="flip-face">{i + 1}</span></span>
               <div className="flex-1 min-w-0"><div className="font-semibold text-[15px] truncate">{w.name} <span className="text-steel font-normal">· {w.party}</span></div>
-                <div className="text-xs text-steel">{mins(w.joined_at)} min waiting{w.quoted_min != null && ` · quoted ${w.quoted_min}`}{w.status === "called" && " · called"}</div></div>
+                <div className="text-xs text-steel">{fmtSince(w.joined_at)} waiting{w.quoted_min != null && ` · quoted ${w.quoted_min}`}{w.status === "called" && " · called"}</div></div>
               {w.phone && <a href={`tel:${w.phone}`} className="h-9 w-9 rounded-full bg-[var(--color-fill)] grid place-items-center"><Phone size={15} /></a>}
             </div>
             <div className="flex gap-2 mt-3">

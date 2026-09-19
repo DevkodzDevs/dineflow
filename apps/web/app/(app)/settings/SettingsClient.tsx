@@ -157,7 +157,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           </Card>
 
           {/* quick links */}
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-2 2xl:grid-cols-3 gap-3">
             <QuickLink href="/settings/storefront" icon={<ExternalLink size={16} />} label="Storefront & offers" hint="Your listing, delivery, offers" />
             <QuickLink href="/settings/printers" icon={<Download size={16} />} label="Thermal printers" hint="Bill and KOT printers" />
             <QuickLink href="/channels" icon={<Wifi size={16} />} label="Online orders & OTA" hint="Swiggy, Zomato, Booking.com" />

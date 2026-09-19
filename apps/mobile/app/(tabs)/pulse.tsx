@@ -3,7 +3,7 @@ import { View, Text, Pressable, TextInput } from "react-native";
 import { Bell, Armchair, X, UserPlus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase";
-import { useLive } from "@/lib/live";
+import { useLive, since } from "@/lib/live";
 import { enqueue, onQueue } from "@/lib/queue";
 import { cacheGet, cacheSet } from "@/lib/cache";
 import { Screen, Inset, Cell, Value, Flip, Chips, Sheet, Button, IconButton, Countdown } from "@/components/ui";
@@ -29,7 +29,6 @@ export default function Pulse() {
     if (p) setPulse(p as P); setQueue((q ?? []) as W[]); setQuote(m as number | null); void cacheSet("pulse", { p, q });
   };
   useLive(["orders", "order_items", "bills", "dining_tables", "walkins"], () => { void load(); });
-  const mins = (iso: string) => Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   const set = async (w: W, status: "called" | "seated" | "left", table?: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setAct(null);
     setQueue((q) => status === "called" ? q.map((x) => x.id === w.id ? { ...x, status: "called" } : x) : q.filter((x) => x.id !== w.id));
@@ -55,7 +54,7 @@ export default function Pulse() {
         <Chips value={party} onChange={(n) => { setParty(n); supabase.rpc("quote_wait", { p_party: n }).then(({ data }) => setQuote(data as number | null)); }} options={[1, 2, 3, 4, 5, 6, 8].map((n) => ({ v: n, label: String(n) }))} />
       </View>
       <Inset header={queue.length ? `Queue · ${queue.length}` : "Queue"} footer={queue.length ? "Tap a party to call, seat, or take them off." : "Nobody waiting. Tap + to add a party."}>
-        {queue.map((w, i) => <Cell key={w.id} first={i === 0} leading={<Flip value={i + 1} size={36} />} title={`${w.name} · ${w.party}`} detail={`${mins(w.joined_at)} min waiting${w.quoted_min != null ? ` · quoted ${w.quoted_min}` : ""}${w.status === "called" ? " · called" : ""}`} onPress={() => setAct(w)} trailing={w.status === "called" ? <Value tone="live">called</Value> : undefined} />)}
+        {queue.map((w, i) => <Cell key={w.id} first={i === 0} leading={<Flip value={i + 1} size={36} />} title={`${w.name} · ${w.party}`} detail={`${since(w.joined_at)} waiting${w.quoted_min != null ? ` · quoted ${w.quoted_min}` : ""}${w.status === "called" ? " · called" : ""}`} onPress={() => setAct(w)} trailing={w.status === "called" ? <Value tone="live">called</Value> : undefined} />)}
       </Inset>
       <Inset header="Tables · when they free up">
         {pulse.tables.map((t, i) => <Cell key={t.id} first={i === 0} leading={<Text style={{ fontFamily: F.display, fontSize: 20, color: C.label }}>{t.name}</Text>} title={`${t.capacity} seats`} detail={t.stage === "free" ? "" : t.stage} trailing={t.stage === "free" ? <Value tone="live">free now</Value> : <Value>{t.mins_left} min</Value>} chevron={false} />)}

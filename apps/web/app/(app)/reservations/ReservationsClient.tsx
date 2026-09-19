@@ -95,7 +95,7 @@ export function ReservationsClient({ day, list, tables, reviews }: { day: string
       <Sheet open={!!seating} onClose={() => setSeating(null)} title={`Seat ${seating?.guest_name ?? ""}`}>
         <div className="space-y-4">
           <p className="text-sm text-[var(--color-label-2)]">Pick a table — it turns occupied on the floor, and you can take their order straight away.</p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {tables.map((t) => (
               <button key={t.id} disabled={t.status === "occupied"} onClick={() => seating && act(seating, "seated", t.id)}
                 className={cn("card p-3 text-center disabled:opacity-35", t.capacity < (seating?.party_size ?? 0) && "border-[var(--color-red)]/40")}>

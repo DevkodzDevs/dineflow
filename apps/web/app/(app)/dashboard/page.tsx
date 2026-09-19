@@ -54,7 +54,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <span className="text-sm font-semibold text-steel">Open →</span>
         </Link>
       )}
-      <div className={`grid grid-cols-2 gap-3 ${hotel ? "lg:grid-cols-4 xl:grid-cols-7" : "lg:grid-cols-4"}`}>
+      <div className={`grid grid-cols-2 gap-3 ${hotel ? "lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7" : "lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"}`}>
         {hotel && <Tile href="/rooms" label="Occupancy" value={`${occ}%`} sub={`${inHouse.length} in house · ${rooms?.filter((r) => r.status === "available").length ?? 0} ready`} tone={occ >= 80 ? "good" : undefined} gold />}
         {hotel && <Tile href="/frontdesk" label="Arrivals · departures" value={`${arrivals.length} · ${departures.length}`} sub={arrivals.length ? "waiting to check in" : "all arrived"} gold />}
         {hotel && <Tile href="/housekeeping" label="Housekeeping" value={String(hkCount)} sub={hkCount ? "rooms to turn" : "all rooms ready"} tone={hkCount > 3 ? "alert" : undefined} gold />}
@@ -62,8 +62,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         {late > 0 && <Tile href="/kitchen" label="Running late" value={String(late)} sub="tickets over 15 minutes" tone="alert" />}
         <Tile href="/inventory" label="Low stock" value={String(low?.length ?? 0)} tone={low?.length ? "alert" : "good"} sub={low?.length ? low.slice(0, 2).map((l) => l.name).join(", ") : "Pantry healthy"} />
       </div>
-      <div className="grid gap-4 mt-4 lg:grid-cols-3">
-        <div className="feather p-5 lg:col-span-2">
+      <div className="grid gap-4 mt-4 lg:grid-cols-3 2xl:grid-cols-4">
+        <div className="feather p-5 lg:col-span-2 2xl:col-span-3">
           <div className="flex items-center justify-between mb-3"><h3 className="text-xl">Live floor</h3><Link href="/orders" className="text-xs font-semibold text-steel hover:text-ink">Open orders →</Link></div>
           {!open?.length ? <p className="text-sm text-steel">No open orders right now.</p> : (
             <div className="grid sm:grid-cols-2 gap-2">
@@ -85,5 +85,14 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 }
 
 function Tile({ href, label, value, sub, tone }: { href: string; label: string; value: string; sub?: string; tone?: "alert" | "good"; gold?: boolean }) {
-  return <Link href={href} className={`feather feather-lift block p-5 ${tone === "alert" ? "border-chili/50" : tone === "good" ? "border-mint/50" : ""}`}><div className="text-[13px] text-steel">{label}</div><div className={`mt-1.5 text-[34px] leading-none num ${tone === "alert" ? "text-chili" : ""}`}>{value}</div>{sub && <div className={`mt-2 text-xs truncate ${tone === "alert" ? "text-chili" : "text-steel"}`}>{sub}</div>}</Link>;
+  /* The label gets two lines' worth of room whether it needs them or not, so every big number in the
+     row sits on the same line — "Arrivals · departures" wrapping used to shove its value down alone.
+     The sub line wraps to two rather than truncating: "1 in house · 12 r…" told nobody anything. */
+  return (
+    <Link href={href} className={`feather feather-lift flex flex-col p-5 2xl:p-6 ${tone === "alert" ? "border-chili/50" : tone === "good" ? "border-mint/50" : ""}`}>
+      <div className="text-[13px] 2xl:text-sm text-steel leading-snug line-clamp-2 min-h-[2.6em]">{label}</div>
+      <div className={`mt-1.5 text-[34px] 2xl:text-[40px] leading-none num ${tone === "alert" ? "text-chili" : ""}`}>{value}</div>
+      {sub && <div className={`mt-2 text-xs 2xl:text-sm leading-snug line-clamp-2 ${tone === "alert" ? "text-chili" : "text-steel"}`}>{sub}</div>}
+    </Link>
+  );
 }

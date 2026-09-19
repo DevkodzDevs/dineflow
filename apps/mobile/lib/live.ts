@@ -39,3 +39,20 @@ export function useLiveCached<T>(key: string, tables: string[], load: () => Prom
 }
 
 export const mins = (iso: string) => Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+/** The same age as plain text, for a line of detail rather than a tile. */
+export const since = (iso: string) => {
+  const m = mins(iso);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return m % 60 ? `${h}h ${m % 60}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  return h % 24 ? `${d}d ${h % 24}h` : `${d}d`;
+};
+/** A ticket's age for a flip tile: minutes up to an hour, then hours, then days. A raw count read
+ *  "5656 min" on a ticket left open over a weekend, which tells a cook nothing. */
+export const age = (iso: string): { value: string; label: string } => {
+  const m = mins(iso);
+  if (m < 60) return { value: String(m), label: "min" };
+  const h = Math.floor(m / 60);
+  return h < 24 ? { value: `${h}h`, label: "ago" } : { value: `${Math.floor(h / 24)}d`, label: "ago" };
+};

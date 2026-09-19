@@ -44,7 +44,10 @@ export function Button({ variant = "primary", size = "md", className, loading, c
 }
 
 /* ── Flip: one number in a split-flap tile. When the value changes the face turns over. ────
-   <Flip value={covers} label="covers" /> · size "md" | "sm" | "xs" · tone "live" | "alert"   */
+   <Flip value={covers} label="covers" /> · size "md" | "sm" | "xs" · tone "live" | "alert"
+   A plain number shows on at least two cards — 6 reads "06" — so a tile never sits on one lonely
+   card next to two-card neighbours. pad={n} sets the width; pad={0} leaves the value alone. Only
+   plain digits are padded: "2/12", "0%", "1.5" and "now" are shown exactly as given.   */
 /* ── Flip: a split-flap tile. Each character is its own flap; when a character changes, the top half
    of the old one folds down and the bottom half of the new one falls in — digit by digit, so 19 → 20
    turns two flaps and 11 → 12 turns one. ─────────────────────────────────────────────────────── */

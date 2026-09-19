@@ -35,7 +35,14 @@ export async function middleware(req: NextRequest) {
       setAll: (all: { name: string; value: string; options?: Record<string, unknown> }[]) => { all.forEach(({ name, value }) => req.cookies.set(name, value)); res = NextResponse.next({ request: req }); all.forEach(({ name, value, options }) => res.cookies.set(name, value, options as never)); },
     },
   });
-  const { data: { user } } = await supabase.auth.getUser();
+  /**
+   * getClaims() verifies the token's signature against the project's public keys, which it caches, so
+   * on a project with asymmetric keys this gate costs no network call at all — where getUser() asked
+   * the auth server on every single navigation. Projects still on a shared secret fall back to exactly
+   * that call inside getClaims(), so this is never slower and never less checked.
+   */
+  const { data: claims } = await supabase.auth.getClaims();
+  const user = claims ? { id: claims.claims.sub } : null;
   const path = req.nextUrl.pathname;
   const isPublic = PUBLIC.includes(path) || PUBLIC_PREFIX.some((x) => path.startsWith(x));
   if (!user && !isPublic) return NextResponse.redirect(new URL("/login", req.url));

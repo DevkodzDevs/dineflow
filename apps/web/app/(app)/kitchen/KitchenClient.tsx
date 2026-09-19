@@ -2,11 +2,11 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, Check, Bell, Printer } from "lucide-react";
+import { Flame, Check, Bell, Printer, Boxes } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Ticket } from "@/components/ui/Ticket";
 import { Button, cn } from "@/components/ui";
-import { minsSince } from "@/lib/format";
+import { minsSince, fmtAge, fmtQty } from "@/lib/format";
 import { Flip, listV, itemV, glide } from "@/components/ui";
 import { LayoutGroup } from "framer-motion";
 import { setKotStatus, setItemStatus } from "../orders/actions";
@@ -17,12 +17,41 @@ import { usePrinters } from "@/lib/print/usePrinter";
 type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string;
   orders: { order_no: number; type: string; customer_name: string | null; dining_tables: { name: string } | null } | null;
   order_items: { id: string; name_snapshot: string; qty: number; status: string; notes: string | null }[] };
+/** Per ticket: what its dishes draw from the pantry, whether the shelf covers it, whether it has drawn already. */
+export type Needs = Record<string, { started: boolean; unmapped: string[]; needs: { ingredient_id: string; name: string; unit: string; need: number; stock: number; short: boolean }[] }>;
 
-export function KitchenClient({ initial: raw }: { initial: Kot[] }) {
+/** The pantry lines under a ticket. Before the fire: what starting it will draw, with anything the shelf
+ *  cannot cover in red. After: a note that the pantry has moved. Dishes with no recipe are named, so the
+ *  owner knows their stock will not move rather than wondering later why the count came up long. */
+function NeedsPanel({ n, col }: { n?: Needs[string]; col: Kot["status"] }) {
+  if (!n) return null;
+  if (col !== "pending") {
+    return n.started ? <div className="mt-2 pt-2 border-t border-dashed border-[var(--color-line)] text-[11px] text-steel flex items-center gap-1.5"><Boxes size={12} /> Pantry updated{n.unmapped.length > 0 && <span> · no recipe for {n.unmapped.join(", ")}</span>}</div> : null;
+  }
+  if (!n.needs.length && !n.unmapped.length) return null;
+  const short = n.needs.filter((x) => x.short); const shown = n.needs.slice(0, 6); const more = n.needs.length - shown.length;
+  return (
+    <div className="mt-2 pt-2 border-t border-dashed border-[var(--color-line)]">
+      <div className="text-[10.5px] uppercase tracking-[0.14em] text-steel mb-1 flex items-center gap-1.5"><Boxes size={12} /> From the pantry
+        {short.length > 0 && <span className="ml-auto normal-case tracking-normal font-semibold text-chili">short on {short.length}</span>}</div>
+      <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[12px]">
+        {shown.map((x) => (
+          <li key={x.ingredient_id} className={cn("flex justify-between gap-2", x.short && "text-chili font-semibold")}>
+            <span className="truncate">{x.name}</span>
+            <span className="num shrink-0">{fmtQty(x.need, x.unit)}{x.short && <span className="text-[10px] font-normal opacity-80"> / {fmtQty(x.stock, x.unit)} left</span>}</span>
+          </li>))}
+      </ul>
+      {more > 0 && <div className="text-[11px] text-steel mt-0.5">+{more} more</div>}
+      {n.unmapped.length > 0 && <div className="text-[11px] text-steel mt-1">No recipe yet: {n.unmapped.join(", ")} — the pantry won't move for {n.unmapped.length === 1 ? "it" : "these"}.</div>}
+    </div>
+  );
+}
+
+export function KitchenClient({ initial: raw, needs, stale = 0 }: { initial: Kot[]; needs: Needs; stale?: number }) {
   const { printKot } = usePrinters();
   const [pending, start] = useTransition();
   const [, tick] = useState(0);
-  useLive(["kots", "order_items"], 15000);
+  useLive(["kots", "order_items", "ingredients"], 15000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 15000); return () => clearInterval(t); }, []);
   // Optimistic: the ticket jumps columns the moment you tap; the server catches up behind it.
   const [optimistic, setOptimistic] = useState<Record<string, Kot["status"] | "served">>({});
@@ -42,7 +71,7 @@ export function KitchenClient({ initial: raw }: { initial: Kot[] }) {
     <div>
       <div className="flex items-end justify-between mb-5">
         <div><div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel">Kitchen display</div><h1 className="text-3xl md:text-4xl">{initial.length ? `${initial.length} ticket${initial.length > 1 ? "s" : ""} live` : "All clear"}</h1></div>
-        <div className="num text-sm text-steel">{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
+        <div className="text-right"><div className="num text-sm text-steel">{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>{stale > 0 && <div className="text-[11px] text-chili mt-0.5" title="Older than a day and never marked ready — they are not on the board">{stale} older ticket{stale > 1 ? "s" : ""} still open</div>}</div>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {cols.map(({ key, title, Icon }) => {
@@ -53,9 +82,9 @@ export function KitchenClient({ initial: raw }: { initial: Kot[] }) {
               <motion.div className="space-y-4" variants={listV} initial="hidden" animate="show">
                 <AnimatePresence mode="popLayout">
                   {list.map((k) => {
-                    const age = minsSince(k.created_at); const late = key !== "ready" && age >= 15;
+                    const age = minsSince(k.created_at); const late = key !== "ready" && age >= 15; const since = fmtAge(k.created_at);
                     return (
-                      <Ticket key={k.id} layoutId={k.id} no={k.kot_no} title={where(k)} meta={`Order #${k.orders?.order_no}`} tone={late ? "alert" : key} aside={<Flip value={age} label="min" size="xs" tone={late ? "alert" : key === "ready" ? "live" : undefined} />}
+                      <Ticket key={k.id} layoutId={k.id} no={k.kot_no} title={where(k)} meta={`Order #${k.orders?.order_no}`} tone={late ? "alert" : key} aside={<Flip value={since.value} label={since.label} size="xs" tone={late ? "alert" : key === "ready" ? "live" : undefined} />}
                         footer={
                           <div className="flex gap-2">
                             {key === "pending" ? <Button className="flex-1" disabled={pending} onClick={() => move(k.id, "preparing")}><Flame size={16} /> Start cooking</Button>
@@ -71,6 +100,7 @@ export function KitchenClient({ initial: raw }: { initial: Kot[] }) {
                             {i.status === "ready" && key !== "ready" && <Check size={16} className="text-mint mt-1" />}
                           </button>
                         ))}
+                        <NeedsPanel n={needs[k.id]} col={key} />
                       </Ticket>
                     );
                   })}

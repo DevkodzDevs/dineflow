@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Empty, Pill, StatTile } from "@/components/ui";
-import { formatINR, fmtTime, minsSince, todayIST } from "@/lib/format";
+import { formatINR, fmtTime, fmtSince, todayIST } from "@/lib/format";
 import { DayClose } from "./DayClose";
 
 export const metadata = { title: "Billing" };
@@ -38,7 +38,7 @@ export default async function BillingPage() {
               return (
                 <Link key={o.id} href={`/billing/${o.id}`} className="feather feather-lift flex items-center gap-4 p-4">
                   <div className="font-display text-2xl w-14">{t?.name ?? (o.type === "takeaway" ? "TA" : "DL")}</div>
-                  <div className="flex-1 min-w-0"><div className="font-semibold truncate">Order #{o.order_no}{o.customer_name ? ` · ${o.customer_name}` : ""}</div><div className="text-xs text-steel num">{minsSince(o.created_at)} min open</div></div>
+                  <div className="flex-1 min-w-0"><div className="font-semibold truncate">Order #{o.order_no}{o.customer_name ? ` · ${o.customer_name}` : ""}</div><div className="text-xs text-steel num">{fmtSince(o.created_at)} open</div></div>
                   <div className="num font-semibold">{formatINR(total)}</div>
                 </Link>
               );

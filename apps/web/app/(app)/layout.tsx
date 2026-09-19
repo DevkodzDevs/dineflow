@@ -22,22 +22,45 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const path = (await headers()).get("x-pathname") ?? "";
   const key = ROUTE_MODULE[path.split("/")[1] ?? ""];
   const mods = modulesFor(s.restaurant.property_type, s.profile.role, s.restaurant.enabled_modules ?? null, s.profile.allowed_modules ?? null);
-  if (key && !mods.includes(key)) redirect("/dashboard?locked=" + key);
+  /**
+   * Send someone who lands on a locked section to one they actually have. This used to redirect
+   * everyone to /dashboard, which loops forever for a role whose ceiling has no dashboard: the page
+   * it arrives at is locked too, so the layout redirects again, and the browser gives up on a blank
+   * screen. Now it picks the first section they hold — and if they hold none, it says so plainly
+   * rather than bouncing them between two closed doors.
+   */
+  if (key && !mods.includes(key)) {
+    const home = mods.find((m) => m !== key && ROUTE_MODULE[m]);
+    if (home) redirect(`/${home}?locked=${key}`);
+    return (
+      <div className="min-h-dvh grid place-items-center p-6 text-center">
+        <div className="feather p-8 max-w-md">
+          <h1 className="text-2xl mb-2">Nothing is switched on yet</h1>
+          <p className="text-sm text-steel">Your account is active, but no sections have been opened for it. Ask whoever added you to set your access in Staff.</p>
+          <form action="/logout" method="post" className="mt-6"><button className="btn btn-outline">Sign out</button></form>
+        </div>
+      </div>
+    );
+  }
   // the profile avatar becomes a button only for people whose role can open settings
   const accountHref = mods.includes("settings") ? "/settings" : null;
-  const supabase = await createClient();
-  const { count } = await supabase.from("kots").select("id", { count: "exact", head: true }).in("status", ["pending", "preparing"]).lt("created_at", new Date(Date.now() - 15 * 60000).toISOString());
+  // the late-ticket badge rides along with the session now; it used to cost a query of its own here
+  const count = s.lateKots;
   const dl = s.membership === "trial" ? daysLeft(s.restaurant.trial_ends_at) : daysLeft(s.restaurant.membership_ends_at);
+  const boxSync = process.env.DINEFLOW_BOX ? (await (await createClient()).from("sync_state").select("cursor, note").eq("key", "pull").maybeSingle()).data : null;
+  // mods is passed to OfflineProvider so it only warms screens this person can open — a waiter has
+  // no use for the rooms board, and warming it costs a whole server render
+
   return (
-   <OfflineProvider>
+   <OfflineProvider modules={mods}>
    <ToastProvider>
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
       <Sidebar name={s.profile.full_name} role={s.profile.role} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} />
-      <main className="deck-card flex-1 min-w-0 px-4 md:px-8 pt-4 pb-28 md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
+      <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-28 md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
         {s.isAdmin && s.actingAs && <MasterBanner property={s.restaurant.name} />}
-        <TopBar membership={s.membership} daysLeft={dl} alerts={count ?? 0} name={s.profile.full_name} accountHref={accountHref} boxSync={process.env.DINEFLOW_BOX ? (await supabase.from("sync_state").select("cursor, note").eq("key", "pull").maybeSingle()).data : null} />
+        <TopBar membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} />
         {children}
       </div></main>
       <BottomNav role={s.profile.role} type={s.restaurant.property_type} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} />

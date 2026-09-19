@@ -19,7 +19,7 @@ export function Board({ greet, property, tiles, money, moneySub }: {
   return (
     <section className="mb-8">
       <div className="flex items-baseline justify-between gap-4 flex-wrap">
-        <div><div className="text-[15px] text-[var(--color-label-2)]">{greet}</div><h1 className="text-[30px] md:text-[40px]">{property}</h1></div>
+        <div><div className="text-[15px] text-[var(--color-label-2)]">{greet}</div><h1 className="text-[30px] md:text-[40px] 2xl:text-[48px]">{property}</h1></div>
         <div className="dateline">{date} <span className="uppercase">{day}</span> <span className="num text-[var(--color-label)] ml-2">{time}</span></div>
       </div>
       <div className="mt-6 grid xl:grid-cols-[auto_1fr] gap-6 xl:gap-12 items-start">
@@ -28,7 +28,7 @@ export function Board({ greet, property, tiles, money, moneySub }: {
         </div>
         <div className="xl:pt-1 xl:border-l xl:border-[var(--color-separator)] xl:pl-12">
           <div className="text-[13px] text-[var(--color-label-2)]">Taken today</div>
-          <div className="num text-[44px] md:text-[64px] leading-none mt-1">{money}</div>
+          <div className="num text-[44px] md:text-[64px] 2xl:text-[80px] leading-none mt-1">{money}</div>
           <div className="text-sm text-[var(--color-label-2)] mt-2">{moneySub}</div>
         </div>
       </div>

@@ -87,7 +87,11 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .large-title { font-family: var(--font-display); font-size: clamp(30px, 4.6vw, 44px); line-height: 1.02; font-weight: 500; }
 .footnote { font-size: 12px; color: var(--color-label-2); }
 ::selection { background: rgb(76 217 100 / .35); color: var(--color-label); }
-:focus-visible { outline: 3px solid rgb(76 217 100 / .6); outline-offset: 2px; border-radius: 8px; }
+/* No border-radius here. Setting one forced every focused element to an 8 px corner while the outline
+   still traced the element's own shape, so on anything rounder — a table card at 22 px, a pill, a
+   round avatar — the ring cut across the corners and left green arcs poking out of them. An outline
+   follows the element's real radius on its own. */
+:focus-visible { outline: 3px solid rgb(76 217 100 / .6); outline-offset: 2px; }
 
 /* ── the hand: everything you can click shows the pointer ─────────────────
    Tailwind v4's preflight leaves <button> on the arrow cursor, so every button,
@@ -121,39 +125,50 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
    <div class="flip"><span class="flip-face">20</span><span class="flip-pin left"></span><span class="flip-pin right"></span></div>
    <div class="flip-label">covers</div>
    ═══════════════════════════════════════════════════════════════════════ */
-.flip { --tile: clamp(72px, calc((100vw - 64px) / 3), 128px);   /* three tiles fill a phone edge to edge (108 px at 390); capped at 128 on anything wider */ position: relative; display: inline-grid; place-items: center; min-width: var(--tile); height: var(--tile); padding: 0 .16em;
+.flip { --tile: clamp(72px, calc((100vw - 64px) / 3), 128px);   /* the tile height, and the base every card measures from (108 px at 390); capped at 128 on anything wider */ position: relative; display: inline-grid; place-items: center; min-width: calc(var(--tile) * .6); height: var(--tile); padding: 0 .1em;
+  /* the housing hugs its cards: a lone card in a full square tile left ~40px of bare face
+     either side (45% covered) while a two-card tile ran 75%. A .6 floor puts one card at 74%,
+     so every tile reads at the same density whatever it holds, and the radius still has a
+     straight edge to sit on. Two or more cards overrun the floor and size themselves. */
+  --fh: 1.3em; --fw: .75em; --fp: .06em; --ink: .047em; --hinge: max(.75px, .013em);
   border-radius: calc(var(--tile) * .19); background: linear-gradient(180deg, #1c1d24, #141519);
   border: 3px solid #0a0a0d; box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .04), 0 18px 40px -20px rgb(0 0 0 / .95);
-  font-family: var(--font-display); font-weight: 600; font-size: calc(var(--tile) * .68); line-height: 1; letter-spacing: -.01em; color: #f4f4f1; font-variant-numeric: tabular-nums; }
+  font-family: var(--font-display); font-weight: 600; font-size: calc(var(--tile) * .59); line-height: 1; letter-spacing: -.01em; color: #f4f4f1; }
 .flip::after { content: none; }
-.flip-stage { position: relative; z-index: 1; display: flex; gap: .07em; perspective: 1100px; }
+.flip-stage { position: relative; z-index: 1; display: flex; gap: .145em; }
 .flip-face { position: relative; z-index: 1; display: block; }
-/* ── one flap per character: two separate plates with a 2 px gap at the hinge, each plate a card of its own ── */
-.flap { position: relative; display: inline-block; min-width: .56em; height: 1em; line-height: 1; transform-style: preserve-3d; contain: layout paint; }
-.flap-narrow { min-width: .28em; }   /* a dot or a colon takes a slim plate */
-.flap-size { visibility: hidden; display: inline-block; padding: 0 .07em; height: 1em; white-space: pre; }   /* sizes the flap to its glyph */
-.flap-half { position: absolute; left: 0; right: 0; height: calc(50% - 1px); overflow: hidden; backface-visibility: hidden; }
-.flap-half > span { position: absolute; left: 0; right: 0; height: 1em; display: flex; align-items: center; justify-content: center; }
+/* ── one flap per character: two plates of a single card, split by a hairline hinge ──
+   --fw is the card width, --fp the sizer's side padding. Every digit is narrower than --fw so a
+   row of them is one width: Oswald ships no tnum, its digits are proportional (at 600 a "1" is
+   .384em against a "0" at .543em), and left to size themselves the cards come out ragged.
+   --ink drops the glyph onto the hinge. At line-height 1 Oswald puts its baseline at .952em and
+   its cap at .142em, so a digit's ink sits .047em below the middle of the box. Both halves take
+   that nudge in opposite directions — same glyph, same place, one unbroken numeral. */
+.flap { position: relative; display: inline-block; min-width: var(--fw, .75em); height: var(--fh, 1.3em); line-height: 1;
+  perspective: 5em; contain: layout; }
+.flap-narrow { --fw: .5em; --fp: .04em; }   /* a dot, a colon or a slash takes a slim card */
+.flap-size { visibility: hidden; display: inline-block; padding: 0 var(--fp, .06em); height: var(--fh, 1.3em); white-space: pre; }   /* sizes the flap to its glyph */
+.flap-half { position: absolute; left: 0; right: 0; height: calc(50% - var(--hinge, 1px)); overflow: hidden; backface-visibility: hidden; }
+.flap-half > span { position: absolute; left: 0; right: 0; height: var(--fh, 1.3em); display: flex; align-items: center; justify-content: center; }
 .flap-top { top: 0; border-radius: .09em .09em .025em .025em; background: linear-gradient(180deg, #34353f 0%, #2a2b34 100%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .09), inset 0 -1px 0 rgb(0 0 0 / .55); }
-.flap-top > span { top: -0.04em; }
+.flap-top > span { top: calc(var(--ink, .047em) * -1); }
 .flap-bottom { bottom: 0; border-radius: .025em .025em .09em .09em; background: linear-gradient(180deg, #1e1f26 0%, #181920 100%);
   box-shadow: inset 0 1px 0 rgb(0 0 0 / .6), inset 0 -1px 0 rgb(255 255 255 / .03); }
-.flap-bottom > span { bottom: -0.04em; }
+.flap-bottom > span { bottom: var(--ink, .047em); }
 /* the turn: the old top plate folds down onto the hinge and darkens; then the new bottom plate falls the rest of the way, catching light as it lands */
-.flap-turn-top { transform-origin: 50% calc(100% + 1px); animation: flapTop .3s cubic-bezier(.55, 0, .9, .35) both; z-index: 3; will-change: transform; }
-.flap-turn-bottom { transform-origin: 50% -1px; transform: rotateX(90deg); animation: flapBottom .36s .27s cubic-bezier(.15, .75, .3, 1.18) both; z-index: 3; will-change: transform; }
+.flap-turn-top { transform-origin: 50% calc(100% + var(--hinge, 1px)); animation: flapTop .3s var(--d, 0ms) cubic-bezier(.55, 0, .9, .35) both; z-index: 3; will-change: transform; }
+.flap-turn-bottom { transform-origin: 50% calc(var(--hinge, 1px) * -1); transform: rotateX(90deg); animation: flapBottom .36s calc(var(--d, 0ms) + .27s) cubic-bezier(.15, .75, .3, 1.18) both; z-index: 3; will-change: transform; }
 .flap-turn-top::after, .flap-turn-bottom::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
-.flap-turn-top::after { background: linear-gradient(180deg, rgb(0 0 0 / 0), rgb(0 0 0 / .6)); animation: flapShadeTop .3s linear both; }
-.flap-turn-bottom::after { background: linear-gradient(0deg, rgb(0 0 0 / 0), rgb(0 0 0 / .6)); animation: flapShadeBottom .36s .27s linear both; }
+.flap-turn-top::after { background: linear-gradient(180deg, rgb(0 0 0 / 0), rgb(0 0 0 / .6)); animation: flapShadeTop .3s var(--d, 0ms) linear both; }
+.flap-turn-bottom::after { background: linear-gradient(0deg, rgb(0 0 0 / 0), rgb(0 0 0 / .6)); animation: flapShadeBottom .36s calc(var(--d, 0ms) + .27s) linear both; }
 @keyframes flapTop { 0% { transform: rotateX(0) } 100% { transform: rotateX(-90deg) } }
 @keyframes flapBottom { 0% { transform: rotateX(90deg) } 100% { transform: rotateX(0) } }
 @keyframes flapShadeTop { 0% { opacity: 0 } 100% { opacity: 1 } }
 @keyframes flapShadeBottom { 0% { opacity: 1 } 100% { opacity: 0 } }
-.flip.xs .flap { min-width: .58em; } .flip.sm .flap { min-width: .57em; }
 .flip-pin { position: absolute; top: 50%; width: 6px; height: calc(var(--tile) * .24); margin-top: calc(var(--tile) * -.12); border-radius: 3px; background: linear-gradient(180deg, #3a3b45, #1a1b22); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), 0 0 0 2px #0a0a0d; z-index: 2; }
 .flip-pin.left { left: -2px; } .flip-pin.right { right: -2px; }
-.flip.sm { --tile: 56px; border-width: 2px; } .flip.xs { --tile: 40px; border-width: 2px; font-weight: 500; }
+.flip.sm { --tile: 56px; --fw: .72em; border-width: 2px; } .flip.xs { --tile: 40px; --fw: .70em; border-width: 2px; font-weight: 500; }
 .flip.live { color: #4cd964; } .flip.alert { color: #ff453a; }
 .flip-label { font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-label-2); text-align: center; margin-top: 12px; font-weight: 500; }
 .flip-row { display: flex; gap: clamp(10px, 2.4vw, 24px); align-items: flex-start; justify-content: flex-start; flex-wrap: wrap; }
@@ -466,6 +481,10 @@ td.dt-actions > * { vertical-align: middle; }
 .table-wrap table:not(.dt) { min-width: 640px; }
 .table-wrap td, .table-wrap th, .num, .pill, .btn { white-space: nowrap; }   /* a number or a label never breaks in the middle */
 img, svg, video { max-width: 100%; }
+/* A long unbroken string — a sign-in id, a URL, a dish name typed without spaces — must wrap rather
+   than widen the page. Without this one cell drags a whole row past the edge of a phone, and the
+   whole screen scrolls sideways to follow it. */
+body { overflow-wrap: break-word; }
 /* page furniture: one place that decides the rhythm, so no screen invents its own */
 .page-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 @media (max-width: 640px) { .page-actions { width: 100%; } .page-actions > .btn { flex: 1 1 auto; } }

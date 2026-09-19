@@ -1,5 +1,23 @@
-export const ROLES = ["owner", "manager", "cashier", "waiter", "chef", "store", "frontdesk", "housekeeping"] as const;
+export const ROLES = ["owner", "manager", "supervisor", "supervisor_2", "employee", "cashier", "waiter", "chef", "store", "frontdesk", "housekeeping"] as const;
 export type Role = (typeof ROLES)[number];
+
+/**
+ * The ladder. Someone may only manage — and only hand out — a rank strictly below their own, so a
+ * supervisor runs the second-level supervisors and employees under them and can never touch a peer,
+ * a manager or the owner. An owner is exempt from the strictly-below rule so one owner can hand the
+ * property to another. Mirrors role_rank() in migration 0058, which is what actually enforces it.
+ */
+export const ROLE_RANK: Record<Role, number> = {
+  owner: 100, manager: 80, supervisor: 60, supervisor_2: 40,
+  employee: 20, cashier: 20, waiter: 20, chef: 20, store: 20, frontdesk: 20, housekeeping: 20,
+};
+/** Can this role manage anyone at all, and open the Staff screen to do it? */
+export const canManagePeople = (role: Role) => ROLE_RANK[role] >= ROLE_RANK.supervisor_2;
+/** The roles `me` is allowed to appoint someone to. */
+export const rolesIMayAssign = (me: Role): Role[] =>
+  ROLES.filter((r) => (me === "owner" ? true : ROLE_RANK[r] < ROLE_RANK[me]));
+/** May `me` change this person's access at all? */
+export const canManage = (me: Role, target: Role) => canManagePeople(me) && (me === "owner" || ROLE_RANK[target] < ROLE_RANK[me]);
 
 export const PROPERTY_TYPES = ["restaurant", "hotel", "resort"] as const;
 export type PropertyType = (typeof PROPERTY_TYPES)[number];
@@ -34,20 +52,62 @@ export const MODULES_BY_TYPE: Record<PropertyType, string[]> = {
   resort: ["dashboard", "tomorrow", "scan", "frontdesk", "rooms", "housekeeping", "guests", "facilities", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
 };
 
-/** What each role may open. Intersected with MODULES_BY_TYPE at runtime. */
+/**
+ * The most each role may ever be given — the ceiling a tick list cannot pass. The three supervisory
+ * ranks have a wide ceiling on purpose: their sections are chosen by whoever appoints them, not fixed
+ * by the job title, which is the point of the ladder. Mirrors role_modules.ceiling in migration 0058.
+ */
 export const ROLE_ACCESS: Record<Role, string[]> = {
   owner: MODULES_BY_TYPE.resort,
   manager: MODULES_BY_TYPE.resort.filter((m) => m !== "settings"),
-  cashier: ["scan", "reservations", "pulse", "pulse", "orders", "online-orders", "billing", "invoices", "reports", "frontdesk"],
-  waiter: ["scan", "orders", "reservations", "pulse"],
-  chef: ["scan", "kitchen", "menu", "online-orders", "tomorrow"],
-  store: ["scan", "inventory", "labour", "tomorrow", "neighbours"],
-  frontdesk: ["scan", "frontdesk", "rooms", "guests", "facilities", "housekeeping", "reservations", "invoices", "labour", "channels"],
-  housekeeping: ["scan", "housekeeping", "rooms"],
+  supervisor: MODULES_BY_TYPE.resort.filter((m) => m !== "settings"),
+  supervisor_2: MODULES_BY_TYPE.resort.filter((m) => !["settings", "tax", "channels"].includes(m)),
+  employee: MODULES_BY_TYPE.resort.filter((m) => !["settings", "staff", "tax", "reports", "proof", "neighbours", "channels"].includes(m)),
+  // every role keeps "dashboard": it is where the app puts you when you sign in and where it sends
+  // you off a section you cannot open, so a role without it has nowhere to land. This list and
+  // role_modules.ceiling in migration 0058 must agree — they drifted once and a housekeeper signing
+  // in was redirected to a dashboard they did not have, then redirected again, forever.
+  cashier: ["dashboard", "scan", "reservations", "pulse", "orders", "online-orders", "billing", "invoices", "reports", "frontdesk"],
+  waiter: ["dashboard", "scan", "orders", "reservations", "pulse"],
+  chef: ["dashboard", "scan", "kitchen", "menu", "online-orders", "tomorrow"],
+  store: ["dashboard", "scan", "inventory", "labour", "tomorrow", "neighbours"],
+  frontdesk: ["dashboard", "scan", "frontdesk", "rooms", "guests", "facilities", "housekeeping", "reservations", "invoices", "labour", "channels"],
+  housekeeping: ["dashboard", "scan", "housekeeping", "rooms"],
+};
+
+/**
+ * What a role holds until someone ticks a narrower set. For the job roles this is simply their
+ * ceiling — a waiter is a waiter. For the supervisory ranks it is a modest starting point, so an
+ * unconfigured supervisor is not silently handed the till and the books. Mirrors role_modules.default_set.
+ */
+export const ROLE_DEFAULT: Record<Role, string[]> = {
+  ...({} as Record<Role, string[]>),
+  owner: ROLE_ACCESS.owner,
+  manager: ROLE_ACCESS.manager,
+  supervisor: ["dashboard", "scan", "orders", "kitchen", "billing", "pulse", "reservations", "inventory", "staff", "reports"],
+  supervisor_2: ["dashboard", "scan", "orders", "kitchen", "pulse", "reservations", "staff"],
+  employee: ["dashboard", "scan", "orders", "pulse"],
+  cashier: ROLE_ACCESS.cashier,
+  waiter: ROLE_ACCESS.waiter,
+  chef: ROLE_ACCESS.chef,
+  store: ROLE_ACCESS.store,
+  frontdesk: ROLE_ACCESS.frontdesk,
+  housekeeping: ROLE_ACCESS.housekeeping,
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
-  owner: "Owner", manager: "Manager", cashier: "Cashier", waiter: "Waiter", chef: "Chef", store: "Store keeper", frontdesk: "Front desk", housekeeping: "Housekeeping",
+  owner: "Owner", manager: "Manager", supervisor: "Supervisor", supervisor_2: "Supervisor (2nd level)", employee: "Employee",
+  cashier: "Cashier", waiter: "Waiter", chef: "Chef", store: "Store keeper", frontdesk: "Front desk", housekeeping: "Housekeeping",
+};
+/** A line of help under each role in the Staff screen, so the ladder explains itself. */
+export const ROLE_HINT: Record<Role, string> = {
+  owner: "The property is theirs. Every section, including Settings.",
+  manager: "Runs the place day to day. Everything except Settings.",
+  supervisor: "Runs a shift or a department, and the team under it.",
+  supervisor_2: "Runs a team inside a department. Manages employees only.",
+  employee: "Does the work. Manages nobody.",
+  cashier: "Till, bills and invoices.", waiter: "Takes orders on the floor.", chef: "The kitchen screen and the menu.",
+  store: "Pantry, stock and labour.", frontdesk: "Arrivals, rooms and guests.", housekeeping: "Room turnaround.",
 };
 
 /** Modules the master may switch off per property. The rest are always on: an owner must always be able to land somewhere and reach settings. */
@@ -85,11 +145,19 @@ export const MODULE_GROUPS: { title: string; keys: { key: string; label: string;
  * What this person can open here: the property type's modules ∩ the role's modules ∩ what the master
  * switched on. `enabled` = null means the master hasn't restricted anything.
  */
-export const modulesFor = (type: PropertyType, role: Role, enabled?: string[] | null, allowed?: string[] | null) =>
-  MODULES_BY_TYPE[type].filter((m) =>
+/**
+ * What one person can actually open: the property type ∩ the role's ceiling ∩ the master's set for
+ * the property ∩ the ticks whoever appointed them left. With no ticks the role's default applies —
+ * which for a supervisor is deliberately narrower than their ceiling, so an unconfigured one starts
+ * modest and is widened on purpose rather than by omission. Mirrors effective_modules() in 0058.
+ */
+export const modulesFor = (type: PropertyType, role: Role, enabled?: string[] | null, allowed?: string[] | null) => {
+  const granted = allowed ?? ROLE_DEFAULT[role];
+  return MODULES_BY_TYPE[type].filter((m) =>
     ROLE_ACCESS[role].includes(m)
     && (!enabled || enabled.includes(m) || (ALWAYS_ON as readonly string[]).includes(m))          // the master's set for the property
-    && (role === "owner" || !allowed || allowed.includes(m) || m === "dashboard"));              // the owner's ticks for this person
+    && (role === "owner" || granted.includes(m) || m === "dashboard"));                           // the ticks left for this person
+};
 
 export const INGREDIENT_CATEGORIES = ["vegetable", "fruit", "grocery", "dairy", "meat", "seafood", "beverage", "packaged", "cleaning", "other"] as const;
 export const LABOUR_SKILLS = ["cook helper", "cleaner", "housekeeping", "gardener", "security", "driver", "porter", "electrician", "plumber", "other"] as const;

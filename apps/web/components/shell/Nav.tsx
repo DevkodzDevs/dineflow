@@ -97,6 +97,15 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
   const hospitality = allowed.filter((i) => ["frontdesk", "rooms", "housekeeping", "guests", "facilities"].includes(i.key));
   const dining = allowed.filter((i) => !hospitality.includes(i) && !["dashboard", "tomorrow", "scan", "reports", "tax", "staff", "settings", "labour", "invoices", "channels", "neighbours", "proof"].includes(i.key));
   const manage = allowed.filter((i) => ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"].includes(i.key));
+  const who = (
+    <>
+      <span className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-tint)] text-white grid place-items-center font-display text-[17px] leading-none">{name.slice(0, 1)}</span>
+      <span className="rail-hide min-w-0 flex-1">
+        <span className="block text-[13px] font-semibold text-white truncate leading-tight">{name}</span>
+        <span className="block text-[11px] text-white/50 truncate leading-tight">{ROLE_LABEL[role]}{membership !== "none" && <> · <span className={cn(membership === "trial" ? "text-[var(--color-orange)]" : membership === "expired" ? "text-[var(--color-red)]" : "text-[var(--color-tint)]")}>{membership === "trial" ? `trial · ${daysLeft}d` : membership === "expired" ? "expired" : `${daysLeft}d left`}</span></>}</span>
+      </span>
+    </>
+  );
   return (
     <aside className="hidden md:flex md:flex-col w-[256px] shrink-0 ink-panel sticky top-0 self-start h-dvh px-4 py-6 overflow-hidden">
       <Link href="/dashboard" className="px-2 flex items-center gap-2.5 min-w-0">
@@ -109,22 +118,20 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
         <Group title="Dining" items={dining} path={path} />
         <Group title="Manage" items={manage} path={path} />
       </nav>
-      {/* the foot: who you are, and the actions that belong here */}
-      <div className="mt-auto pt-3 space-y-1.5">
-        <div className="flex items-center gap-2.5 px-2 min-w-0">
+      {/* the foot: who you are, and the way out. Settings keeps its own row up in Manage,
+          so the second button for it down here was only costing a row of height. */}
+      <div className="mt-auto pt-3">
+        {isAdmin && <Link href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
+        {/* p-[7px] plus the 1px border puts the card at exactly 52px across — the width the rail
+            leaves once it collapses, so the avatar alone still sits square inside it */}
+        <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[.04] p-[7px]">
           {accountHref
-            ? <Link href={accountHref} title={`${name} · your settings`} className="h-10 w-10 shrink-0 rounded-[14px] bg-[var(--color-tint)] text-white grid place-items-center font-display text-lg transition hover:brightness-110">{name.slice(0, 1)}</Link>
-            : <span title={name} className="h-10 w-10 shrink-0 rounded-[14px] bg-[var(--color-tint)] text-white grid place-items-center font-display text-lg">{name.slice(0, 1)}</span>}
-          <div className="min-w-0 flex-1 rail-hide">
-            <div className="text-[13px] text-white font-semibold truncate leading-tight">{name}</div>
-            <div className="text-[11px] text-white/50 truncate leading-tight mt-0.5">{ROLE_LABEL[role]}{membership !== "none" && <> · <span className={cn(membership === "trial" ? "text-[var(--color-orange)]" : membership === "expired" ? "text-[var(--color-red)]" : "text-[var(--color-tint)]")}>{membership === "trial" ? `trial · ${daysLeft}d` : membership === "expired" ? "expired" : `${daysLeft}d left`}</span></>}</div>
-          </div>
+            ? <Link href={accountHref} title={`${name} · settings`} className="flex items-center gap-2.5 min-w-0 flex-1 rounded-xl transition hover:brightness-125">{who}</Link>
+            : <span className="flex items-center gap-2.5 min-w-0 flex-1">{who}</span>}
+          <form action="/logout" method="post" className="rail-hide shrink-0">
+            <button title="Sign out" aria-label="Sign out" className="h-8 w-8 grid place-items-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white transition"><LogOut size={15} /></button>
+          </form>
         </div>
-        <div className="rail-hide flex items-center gap-1 px-1">
-          {accountHref && <Link href={accountHref} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl text-[12px] font-semibold text-white/70 hover:bg-white/10 hover:text-white transition"><Settings size={13} /> Settings</Link>}
-          <form action="/logout" method="post" className="flex-1"><button className="w-full flex items-center justify-center gap-1.5 h-8 rounded-xl text-[12px] font-semibold text-white/70 hover:bg-white/10 hover:text-white transition"><LogOut size={13} /> Sign out</button></form>
-        </div>
-        {isAdmin && <Link href="/admin" className="rail-hide flex items-center justify-center gap-1.5 h-8 mx-1 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={13} /> Master control</Link>}
       </div>
     </aside>
   );

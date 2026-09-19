@@ -86,9 +86,13 @@ async function configure() {
   env.SUPABASE_SERVICE_ROLE_KEY = await ask("SUPABASE_SERVICE_ROLE_KEY (optional)", env.SUPABASE_SERVICE_ROLE_KEY || "");
   log(`${c.d}Optional — real photo recognition on the Scan page. Press Enter to skip: photos then return a clearly-marked sample result and barcodes/QR still work for real.${c.x}`);
   env.ANTHROPIC_API_KEY = await ask("ANTHROPIC_API_KEY", env.ANTHROPIC_API_KEY || "");
+  log(`\n${c.b}Sending one-time codes${c.x} ${c.d}(resend.com → API keys)${c.x}`);
+  log(`${c.d}Used to confirm a new member of staff's email, and to reset a forgotten password. Press Enter to skip — the app then shows codes on screen instead of posting them, which is fine on this machine but must not be how you run it for real.${c.x}`);
+  env.RESEND_API_KEY = await ask("RESEND_API_KEY (optional)", env.RESEND_API_KEY || "");
+  if (env.RESEND_API_KEY) env.EMAIL_FROM = await ask("EMAIL_FROM (a sender you verified at Resend)", env.EMAIL_FROM || "DineFlow <no-reply@yourdomain.in>");
   saveEnv(env);
   mkdirSync(join(ROOT, "apps/web"), { recursive: true });
-  writeFileSync(join(ROOT, "apps/web/.env.local"), `NEXT_PUBLIC_SUPABASE_URL=${env.SUPABASE_URL}\nNEXT_PUBLIC_SUPABASE_ANON_KEY=${env.SUPABASE_ANON_KEY}\n${env.ANTHROPIC_API_KEY ? `ANTHROPIC_API_KEY=${env.ANTHROPIC_API_KEY}\n` : ""}${env.SUPABASE_SERVICE_ROLE_KEY ? `SUPABASE_SERVICE_ROLE_KEY=${env.SUPABASE_SERVICE_ROLE_KEY}\n` : ""}`);
+  writeFileSync(join(ROOT, "apps/web/.env.local"), `NEXT_PUBLIC_SUPABASE_URL=${env.SUPABASE_URL}\nNEXT_PUBLIC_SUPABASE_ANON_KEY=${env.SUPABASE_ANON_KEY}\n${env.ANTHROPIC_API_KEY ? `ANTHROPIC_API_KEY=${env.ANTHROPIC_API_KEY}\n` : ""}${env.SUPABASE_SERVICE_ROLE_KEY ? `SUPABASE_SERVICE_ROLE_KEY=${env.SUPABASE_SERVICE_ROLE_KEY}\n` : ""}${env.RESEND_API_KEY ? `RESEND_API_KEY=${env.RESEND_API_KEY}\nEMAIL_FROM=${env.EMAIL_FROM}\n` : "DINEFLOW_OTP_ECHO=1\n"}`);
   const ip = lanIp();
   writeFileSync(join(ROOT, "apps/mobile/.env"), `EXPO_PUBLIC_SUPABASE_URL=${env.SUPABASE_URL}\nEXPO_PUBLIC_SUPABASE_ANON_KEY=${env.SUPABASE_ANON_KEY}\nEXPO_PUBLIC_WEB_URL=${env.PROD_WEB_URL || `http://${ip}:3000`}\n`);
   if (env.DATABASE_URL) writeFileSync(join(ROOT, "packages/db/.env"), `DATABASE_URL=${env.DATABASE_URL}\n`);

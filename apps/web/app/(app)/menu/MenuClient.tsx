@@ -1,10 +1,11 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
-import { Plus, Leaf, Drumstick, Pencil, FlaskConical, Trash2 } from "lucide-react";
+import { Plus, Leaf, Drumstick, Pencil, FlaskConical, Trash2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button, Card, Field, Sheet, Empty, cn } from "@/components/ui";
+import { Button, Card, Field, Sheet, Empty, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
-import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory } from "./actions";
+import { findStandardRecipe } from "@dineflow/shared";
+import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe } from "./actions";
 
 type Cat = { id: string; name: string; sort_order: number };
 type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; prep_minutes: number; description: string | null };
@@ -48,7 +49,9 @@ export function MenuClient({ categories, items, ingredients, recipes }: { catego
                     <div className="num font-semibold">{formatINR(Number(it.price))}</div>
                   </div>
                   <p className="text-xs text-steel mt-1 line-clamp-2 min-h-[2lh]">{it.description || `${it.prep_minutes} min prep`}</p>
-                  <div className="mt-3 text-[11px] text-steel">{(recipeMap[it.id]?.length ?? 0)} ingredient{recipeMap[it.id]?.length === 1 ? "" : "s"} mapped</div>
+                  {(recipeMap[it.id]?.length ?? 0) > 0
+                    ? <div className="mt-3 text-[11px] text-steel">{recipeMap[it.id].length} ingredient{recipeMap[it.id].length === 1 ? "" : "s"} mapped</div>
+                    : <div className="mt-3 text-[11px] text-chili font-medium">No recipe · pantry won't move{findStandardRecipe(it.name) ? " · standard recipe available" : ""}</div>}
                   <div className="mt-auto pt-4 flex items-center gap-1.5">
                     <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer mr-auto normal-case tracking-normal">
                       <input type="checkbox" className="w-4 h-4 accent-saffron" checked={it.is_available} onChange={(e) => start(() => { toggleAvailable(it.id, e.target.checked); })} />
@@ -115,11 +118,28 @@ export function MenuClient({ categories, items, ingredients, recipes }: { catego
 function RecipeEditor({ item, ingredients, initial, onDone }: { item: Item; ingredients: Ing[]; initial: Rec[]; onDone: () => void }) {
   const [rows, setRows] = useState<{ ingredient_id: string; qty: number }[]>(initial.length ? initial.map((r) => ({ ingredient_id: r.ingredient_id, qty: Number(r.qty) })) : [{ ingredient_id: "", qty: 0 }]);
   const [pending, start] = useTransition();
+  const toast = useToast();
   const unit = (id: string) => ingredients.find((i) => i.id === id)?.unit ?? "";
-  if (ingredients.length === 0) return <p className="text-sm text-steel">Add ingredients in Pantry first, then map them here.</p>;
+  // the library's plate for this dish, if it knows one — offered before any hand-mapping
+  const std = useMemo(() => findStandardRecipe(item.name), [item.name]);
+  const useStandard = () => start(async () => {
+    const r = await applyStandardRecipe(item.id, item.name);
+    if (!r.ok) { toast(r.error ?? "Could not map the recipe", "err"); return; }
+    toast(`${r.mapped} ingredients mapped from "${r.dish}"${r.created ? ` · ${r.created} added to the pantry` : ""}${r.skipped.length ? ` · skipped ${r.skipped.join(", ")}: the pantry keeps it in another unit` : ""}`);
+    onDone();
+  });
+  const standard = std && (
+    <div className="rounded-xl bg-[var(--color-fill)] p-3 flex items-center gap-3">
+      <Sparkles size={16} className="text-saffron shrink-0" />
+      <div className="text-sm flex-1 min-w-0">Standard recipe for <b>{std.dish}</b>: {std.lines.length} ingredients for one plate{ingredients.length === 0 ? ", added to the pantry for you" : ""}.</div>
+      <Button size="sm" variant="outline" disabled={pending} onClick={useStandard}>Use it</Button>
+    </div>
+  );
+  if (ingredients.length === 0) return <div className="space-y-3">{standard}<p className="text-sm text-steel">{std ? "Or add" : "Add"} ingredients in Pantry first, then map them here.</p></div>;
   return (
     <div className="space-y-3">
-      <p className="text-sm text-steel">Per 1 plate of <b>{item.name}</b>. Every sale subtracts these amounts from the pantry.</p>
+      {standard}
+      <p className="text-sm text-steel">Per 1 plate of <b>{item.name}</b>. Starting a ticket in the kitchen subtracts these amounts from the pantry.</p>
       {rows.map((r, i) => (
         <div key={i} className="grid grid-cols-[1fr_96px_36px] gap-2 items-center">
           <select value={r.ingredient_id} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, ingredient_id: e.target.value } : x)))}>

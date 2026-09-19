@@ -3,7 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { Flame, Check } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase";
-import { useLive, mins } from "@/lib/live";
+import { useLive, mins, age as fmtAge } from "@/lib/live";
 import { enqueue, onQueue } from "@/lib/queue";
 import { cacheGet, cacheSet } from "@/lib/cache";
 import { Screen, Chips, Flip, Button } from "@/components/ui";
@@ -48,11 +48,11 @@ export default function Kitchen() {
       </View>
       <View style={{ paddingHorizontal: 16, gap: 12 }}>
         {list.length === 0 && <Text style={{ fontFamily: F.sans, color: C.label2, paddingVertical: 24, textAlign: "center" }}>Nothing here right now.</Text>}
-        {list.map((k) => { const age = mins(k.created_at); const isLate = col !== "ready" && age >= 15; return (
+        {list.map((k) => { const age = mins(k.created_at); const isLate = col !== "ready" && age >= 15; const since = fmtAge(k.created_at); return (
           <View key={k.id} style={{ backgroundColor: C.paper, borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: isLate ? "#ff453a" : col === "ready" ? "#4cd964" : col === "preparing" ? "#ffb340" : "#c8c8c0" }}>
             <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
               <View style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 11, letterSpacing: 1.6, color: "#6b6b66" }}>KOT #{k.kot_no} · ORDER #{k.orders?.order_no}</Text><Text style={{ fontFamily: F.sansBold, fontWeight: "700", fontSize: 20, color: "#14231d", marginTop: 2 }}>{where(k)}</Text></View>
-              <Flip value={age} label="min" size={44} tone={isLate ? "alert" : col === "ready" ? "live" : undefined} />
+              <Flip value={since.value} label={since.label} size={44} tone={isLate ? "alert" : col === "ready" ? "live" : undefined} />
             </View>
             <View style={{ borderTopWidth: 1, borderStyle: "dashed", borderColor: "rgba(20,35,29,.25)", marginVertical: 10 }} />
             {k.order_items.filter((i) => i.status !== "cancelled").map((i) => (

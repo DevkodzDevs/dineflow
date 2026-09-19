@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { menuItemSchema } from "@dineflow/shared";
+import { menuItemSchema, findStandardRecipe } from "@dineflow/shared";
 
 const ok = () => { revalidatePath("/menu"); revalidatePath("/orders"); return { ok: true }; };
 
@@ -33,6 +33,18 @@ export async function toggleAvailable(id: string, value: boolean) {
 export async function deleteMenuItem(id: string) {
   const s = await createClient(); const { error } = await s.from("menu_items").delete().eq("id", id);
   if (error) return { error: error.message }; return ok();
+}
+/** Give a dish the library's standard recipe for one plate. Ingredients the pantry lacks are created on the
+ *  way, so this works on a brand-new property with an empty pantry; the reply says how many were added. */
+export async function applyStandardRecipe(menuItemId: string, dishName: string) {
+  const std = findStandardRecipe(dishName);
+  if (!std) return { error: `No standard recipe for "${dishName}" yet — map its ingredients by hand.` };
+  const s = await createClient();
+  const { data, error } = await s.rpc("apply_standard_recipe", { p_menu_item: menuItemId, p_lines: std.lines });
+  if (error) return { error: error.message };
+  revalidatePath("/menu"); revalidatePath("/inventory"); revalidatePath("/kitchen");
+  const r = (data ?? {}) as { created?: number; mapped?: number; skipped?: string[] };
+  return { ok: true, dish: std.dish, created: r.created ?? 0, mapped: r.mapped ?? 0, skipped: r.skipped ?? [] };
 }
 /** Replace the whole recipe of a dish: [{ingredient_id, qty}] */
 export async function saveRecipe(menuItemId: string, rows: { ingredient_id: string; qty: number }[]) {

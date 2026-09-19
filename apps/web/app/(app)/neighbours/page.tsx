@@ -6,11 +6,15 @@ export const dynamic = "force-dynamic";
 
 export default async function Neighbours({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams;
-  const s = await createClient(); const session = await requireSession();
+  const s = await createClient();
   const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
   const onBox = !!process.env.DINEFLOW_BOX;
   // On a Box the district lives in the cloud; the agent brings the results down every minute the internet is up.
-  const cache = onBox ? (await s.from("neighbours_cache").select("payload, fetched_at").eq("kind", "all").maybeSingle()).data : null;
+  // Neither of these needs the other, so they go together rather than one after the other.
+  const [session, cache] = await Promise.all([
+    requireSession(),
+    onBox ? s.from("neighbours_cache").select("payload, fetched_at").eq("kind", "all").maybeSingle().then((r) => r.data) : Promise.resolve(null),
+  ]);
   const cached = (cache?.payload ?? {}) as { status?: unknown; prices?: unknown[]; surplus?: unknown[]; standby?: unknown[]; demand?: unknown };
   const [{ data: status }, { data: prices }, { data: surplus }, { data: standby }, { data: demand }, { data: ingredients }, { data: labourers }] = await Promise.all([
     onBox ? Promise.resolve({ data: cached.status ?? (await s.rpc("network_status")).data }) : s.rpc("network_status"),

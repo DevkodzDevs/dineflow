@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Ticket } from "@/components/ui/Ticket";
 import { Button, Pill, Card } from "@/components/ui";
-import { formatINR, fmtTime, minsSince } from "@/lib/format";
+import { formatINR, fmtTime, fmtSince } from "@/lib/format";
 import { setItemStatus, cancelOrder } from "../actions";
 
 type Item = { id: string; kot_id: string | null; name_snapshot: string; qty: number; price_snapshot: number; status: string; notes: string | null };
@@ -25,7 +25,7 @@ export function OrderDetail({ order }: { order: Order }) {
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div className="grid gap-4 sm:grid-cols-2">
         {[...order.kots].sort((a, b) => a.kot_no - b.kot_no).map((k) => (
-          <Ticket key={k.id} no={k.kot_no} title={`${fmtTime(k.created_at)} · ${minsSince(k.created_at)} min ago`} tone={tone(k.status)}
+          <Ticket key={k.id} no={k.kot_no} title={`${fmtTime(k.created_at)} · ${fmtSince(k.created_at)} ago`} tone={tone(k.status)}
             footer={<div className="flex justify-between items-center"><Pill tone={tone(k.status)}>{k.status}</Pill>
               {k.status === "ready" && order.status === "open" && <Button size="sm" variant="ink" disabled={pending} onClick={() => start(async () => { for (const i of order.order_items.filter((x) => x.kot_id === k.id && x.status === "ready")) await setItemStatus(i.id, "served"); })}>Mark served</Button>}</div>}>
             {order.order_items.filter((i) => i.kot_id === k.id).map((i) => (

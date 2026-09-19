@@ -21,7 +21,12 @@ export function AuthForm({ mode, action, pendingApproval }:
   }[mode];
   return (
     <Reveal className="w-full max-w-sm">
-      <div className="lg:hidden flex items-center gap-2.5 mb-8"><span className="h-9 w-9 rounded-xl bg-saffron grid place-items-center text-on-tint font-display font-bold text-lg">D</span><span className="font-display text-xl">DineFlow</span></div>
+      {/* the left panel carries the brand from lg up; below that this is the only place it appears */}
+      <div className="lg:hidden flex items-center gap-2.5 mb-8">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon-192.png" alt="" width={36} height={36} className="h-9 w-9 shrink-0 rounded-[10px]" />
+        <span className="font-display text-xl">DineFlow</span>
+      </div>
       <h1 className="text-4xl">{pendingApproval ? "Waiting for approval" : copy.title}</h1>
       <p className="text-steel mt-2">
         {pendingApproval

@@ -3,7 +3,7 @@ import { View, Text, Pressable, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { Plus, ShoppingBag } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
-import { useLive, mins } from "@/lib/live";
+import { useLive, since } from "@/lib/live";
 import { cacheGet, cacheSet } from "@/lib/cache";
 import { Screen, Chips, IconButton, Flip } from "@/components/ui";
 import { C, F, shadow } from "@/lib/theme";
@@ -42,13 +42,13 @@ export default function Tables() {
         {list.map((t) => { const o = byTable[t.id]; const s = o ? stage(o) : "free"; return (
           <Pressable key={t.id} onPress={() => router.push(o ? `/order/${o.id}` : { pathname: "/order/new", params: { table: t.id } } as never)} style={({ pressed }) => ({ width: cardW, aspectRatio: 1.25, borderRadius: 18, padding: 14, backgroundColor: C.card, borderWidth: 1, borderColor: o ? tone(s) : C.line, justifyContent: "space-between", transform: [{ scale: pressed ? 0.97 : 1 }], ...shadow })}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}><Text style={{ fontFamily: F.display, fontSize: 30, color: C.label }}>{t.name}</Text><Text style={{ fontFamily: F.sans, fontSize: 12, color: C.label2 }}>{t.capacity} seats</Text></View>
-            {o ? <View><Text style={{ fontFamily: F.display, fontSize: 20, color: C.label }}>{formatINR(total(o))}</Text><Text style={{ fontFamily: F.sans, fontSize: 12, color: tone(s) }}>{s} · {mins(o.created_at)} min</Text></View>
+            {o ? <View><Text style={{ fontFamily: F.display, fontSize: 20, color: C.label }}>{formatINR(total(o))}</Text><Text style={{ fontFamily: F.sans, fontSize: 12, color: tone(s) }}>{s} · {since(o.created_at)}</Text></View>
                : <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.tint }} /><Text style={{ fontFamily: F.sans, fontSize: 13, color: C.label2 }}>free · tap to order</Text></View>}
           </Pressable>); })}
       </View>
       {takeaways.length > 0 && <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
         <Text style={{ fontFamily: F.display, fontSize: 13, letterSpacing: 0.8, color: C.label2, marginBottom: 8 }}>Takeaway & delivery · {takeaways.length}</Text>
-        <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 0.5, borderColor: C.line, overflow: "hidden" }}>{takeaways.map((o, i) => <Pressable key={o.id} onPress={() => router.push(`/order/${o.id}`)} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52, paddingHorizontal: 16, borderTopWidth: i ? 0.5 : 0, borderTopColor: C.line }}><Flip value={o.order_no % 100} size={36} pad={2} /><View style={{ flex: 1 }}><Text style={{ fontFamily: F.sans, fontSize: 15, color: C.label }}>{o.customer_name ?? o.type}</Text><Text style={{ fontFamily: F.sans, fontSize: 12, color: tone(stage(o)) }}>{stage(o)} · {mins(o.created_at)} min</Text></View><Text style={{ fontFamily: F.display, fontSize: 17, color: C.label }}>{formatINR(total(o))}</Text></Pressable>)}</View>
+        <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 0.5, borderColor: C.line, overflow: "hidden" }}>{takeaways.map((o, i) => <Pressable key={o.id} onPress={() => router.push(`/order/${o.id}`)} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52, paddingHorizontal: 16, borderTopWidth: i ? 0.5 : 0, borderTopColor: C.line }}><Flip value={o.order_no % 100} size={36} pad={2} /><View style={{ flex: 1 }}><Text style={{ fontFamily: F.sans, fontSize: 15, color: C.label }}>{o.customer_name ?? o.type}</Text><Text style={{ fontFamily: F.sans, fontSize: 12, color: tone(stage(o)) }}>{stage(o)} · {since(o.created_at)}</Text></View><Text style={{ fontFamily: F.display, fontSize: 17, color: C.label }}>{formatINR(total(o))}</Text></Pressable>)}</View>
       </View>}
       <View style={{ position: "absolute", right: 20, bottom: 110 }}><Pressable onPress={() => router.push("/order/new")} style={({ pressed }) => ({ width: 56, height: 56, borderRadius: 28, backgroundColor: C.tint, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.94 : 1 }], ...shadow })} accessibilityLabel="New order"><Plus size={26} color={C.onTint} /></Pressable></View>
     </Screen>

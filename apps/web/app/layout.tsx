@@ -15,6 +15,19 @@ export const metadata: Metadata = {
   title: { default: "DineFlow", template: "%s · DineFlow" },
   description: "Pantry, kitchen, orders and billing — one live control room for your restaurant.",
   manifest: "/manifest.json",
+  applicationName: "DineFlow",
+  // the manifest listed icon-192 and icon-512 for months while neither file existed, so an installed
+  // app fell back to a screenshot of the page; these are the real mark
+  icons: {
+    icon: [
+      { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: { capable: true, title: "DineFlow", statusBarStyle: "black-translucent" },
+  openGraph: { title: "DineFlow", description: "One live control room for your restaurant.", images: ["/icon-512.png"], type: "website" },
 };
 export const viewport: Viewport = { themeColor: "#0a0a0d", width: "device-width", initialScale: 1, viewportFit: "cover" };
 

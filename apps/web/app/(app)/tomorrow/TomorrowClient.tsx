@@ -142,8 +142,11 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
                 <motion.div key={d.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }} className="flex items-center gap-3 py-2.5">
                   <span className="num font-display text-2xl w-12 shrink-0">{d.qty}</span>
                   <span className="flex-1 font-medium truncate">{d.name}</span>
+                  {/* 80px left 48px of room after the base input's 16px side padding, which clipped
+                      the word "made" itself; wider box, tighter padding, and centred so it reads */}
                   <input type="number" placeholder="made" value={made[d.id] ?? ""} onChange={(e) => setMade({ ...made, [d.id]: Number(e.target.value) })}
-                    className="num !w-20 !py-1.5 !text-sm no-print" />
+                    aria-label={`Portions actually made of ${d.name}`}
+                    className="num !w-24 !py-1.5 !px-2.5 !text-sm text-center shrink-0 no-print" />
                 </motion.div>
               ))}
             </div>

@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, X, Bike, Clock, Link2, AlertTriangle } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Button, Card, Pill, StatTile, Sheet, Field, cn, Empty } from "@/components/ui";
-import { formatINR, minsSince } from "@/lib/format";
+import { formatINR, fmtSince } from "@/lib/format";
 import { usePrinters } from "@/lib/print/usePrinter";
 import { acceptOnline, rejectOnline, setOnlineStatus, mapDish } from "./actions";
 
@@ -42,7 +42,7 @@ export function OnlineClient({ orders, channels, menu }: { orders: OO[]; channel
             <motion.div key={o.id} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
               <Card className={cn("h-full", o.status === "new" && "border-saffron shadow-glow")}>
                 <div className="flex items-center gap-2"><span className={cn("px-2 py-0.5 rounded-lg text-[11px] font-bold capitalize", LOGO[o.order_channels?.kind ?? "other"])}>{o.order_channels?.label ?? "Online"}</span>
-                  <span className="num text-xs text-steel">#{o.display_id ?? o.external_id}</span><span className="ml-auto num text-xs text-steel flex items-center gap-1"><Clock size={11} /> {minsSince(o.placed_at)}m</span></div>
+                  <span className="num text-xs text-steel">#{o.display_id ?? o.external_id}</span><span className="ml-auto num text-xs text-steel flex items-center gap-1"><Clock size={11} /> {fmtSince(o.placed_at)}</span></div>
                 <div className="mt-2 font-semibold">{o.customer_name || "Customer"} {o.is_prepaid ? <Pill tone="ready">prepaid</Pill> : <Pill tone="alert">collect cash</Pill>}</div>
                 {o.address && <div className="text-xs text-steel truncate">{o.address}</div>}
                 <ul className="mt-2 text-sm space-y-0.5">{o.items.map((i, n) => <li key={n} className={cn("flex gap-2", !i.menu_item_id && "text-chili")}><span className="num w-6">{i.qty}×</span><span className="flex-1">{i.name}{i.note ? <span className="text-xs text-steel"> · {i.note}</span> : null}</span><span className="num">{formatINR(i.qty * Number(i.price))}</span></li>)}</ul>

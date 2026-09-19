@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Plus } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
-import { useLive, mins } from "@/lib/live";
+import { useLive, since } from "@/lib/live";
 import { Ticket } from "@/components/Ticket";
 import { Button, Pill, Inset, Cell, DeckHandle, Flip } from "@/components/ui";
 import { C, F, shadow } from "@/lib/theme";
@@ -32,7 +32,7 @@ export default function OrderDetail() {
           <Flip value={live.length} label="items" size={56} />
         </View>
         {o.kots.map((k, ki) => { const its = kotItems(k.id); const ready = its.filter((i) => i.status === "ready").length; return (
-          <Inset key={k.id} header={`KOT #${k.kot_no} · ${k.status} · ${mins(k.created_at)} min`} footer={ready ? `${ready} ready to carry out` : undefined}>
+          <Inset key={k.id} header={`KOT #${k.kot_no} · ${k.status} · ${since(k.created_at)}`} footer={ready ? `${ready} ready to carry out` : undefined}>
             {its.map((i, idx) => <Cell key={i.id} first={idx === 0} leading={<Text style={{ fontFamily: F.display, fontSize: 20, color: C.label }}>{i.qty}</Text>} title={i.name_snapshot} detail={i.notes ?? undefined} trailing={<Pill tone={tone(i.status)} label={i.status} />} chevron={false} />)}
             {ready > 0 && <View style={{ padding: 12 }}><Button title="Mark served" icon={<Check size={16} color={C.onTint} />} onPress={() => serve(k.id)} /></View>}
           </Inset>); })}
