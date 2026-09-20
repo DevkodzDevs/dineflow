@@ -9,6 +9,17 @@
 # --frozen-lockfile, and a lockfile that lists a workspace the upload has removed is a different
 # failure. So the packages remain and only their build output goes.
 
+# ── stated outright rather than trusted to a default ──
+# Vercel does ignore these on its own, but this deploy already failed once on a file-size limit and
+# the local .next/cache alone holds a 105 MB and a 125 MB webpack pack. Vercel installs its own
+# dependencies and runs its own build, so uploading either is useless as well as fatal.
+node_modules
+**/node_modules
+.next
+**/.next
+.vercel
+.git
+
 # ── the desktop app's build output: 340 MB, and the reason the deploy was refused ──
 # The web app serves this installer from disk at /api/download/windows when it is present, which is
 # what lets a till download it over the LAN. On Vercel it is absent, the route answers 404, and the
