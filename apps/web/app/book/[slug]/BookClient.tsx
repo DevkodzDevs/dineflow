@@ -4,10 +4,11 @@ import { createClient } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { BedDouble, Users, Check, Phone, MapPin, CalendarDays } from "lucide-react";
 import { Button, Field, cn } from "@/components/ui";
+import { roomGstFor } from "@dineflow/shared";
 import { formatINR } from "@/lib/format";
 
 type RT = { id: string; name: string; base_rate: number; capacity: number; amenities: string[] };
-type P = { id: string; name: string; tagline: string | null; address: string | null; phone: string | null; cover_url: string | null; policies: string | null; check_in_time: string; check_out_time: string; room_gst_rate: number; advance_pct: number; room_types: RT[] };
+type P = { id: string; name: string; tagline: string | null; address: string | null; phone: string | null; cover_url: string | null; policies: string | null; check_in_time: string; check_out_time: string; room_gst_rate: number; room_gst_rate_high?: number; room_gst_threshold?: number; advance_pct: number; room_types: RT[] };
 const sb = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
 
 export function BookClient({ slug, property }: { slug: string; property: P }) {
@@ -67,7 +68,7 @@ export function BookClient({ slug, property }: { slug: string; property: P }) {
               <motion.button key={rt.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} disabled={out} onClick={() => setPick(rt)}
                 className={cn("feather feather-lift p-5 text-left disabled:opacity-50 disabled:cursor-not-allowed", pick?.id === rt.id && "!border-saffron shadow-glow")}>
                 <div className="flex items-start justify-between"><span className="h-11 w-11 rounded-2xl bg-champagne-2 grid place-items-center"><BedDouble size={19} /></span>
-                  <div className="text-right"><div className="num text-2xl font-semibold">{formatINR(rate)}</div><div className="text-xs text-steel">per night + {property.room_gst_rate}% GST</div></div></div>
+                  <div className="text-right"><div className="num text-2xl font-semibold">{formatINR(rate)}</div><div className="text-xs text-steel">per night + {roomGstFor(rate, property.room_gst_rate, property.room_gst_rate_high, property.room_gst_threshold)}% GST</div></div></div>
                 <h3 className="text-xl mt-3 font-sans font-semibold">{rt.name}</h3>
                 <div className="text-xs text-steel flex items-center gap-1 mt-1"><Users size={12} /> sleeps {rt.capacity}{rt.amenities?.length ? ` · ${rt.amenities.slice(0, 3).join(" · ")}` : ""}</div>
                 <div className="mt-3 text-sm">{out ? <span className="text-chili font-semibold">Not available for these dates</span> : free <= 2 ? <span className="text-chili font-semibold">Only {free} left</span> : <span className="text-mint font-semibold">{free} rooms available</span>}</div>
@@ -87,7 +88,7 @@ export function BookClient({ slug, property }: { slug: string; property: P }) {
               <span className="text-sm text-steel">{pick.name} · {nights} night{nights > 1 ? "s" : ""} × {formatINR(Number(avail[pick.id]?.rate ?? pick.base_rate))}</span>
               <span className="num text-3xl font-semibold">{formatINR(nights * Number(avail[pick.id]?.rate ?? pick.base_rate))}</span>
             </div>
-            <p className="text-xs text-steel mt-1">Pay at the property. {property.room_gst_rate}% GST is added on the final invoice.</p>
+            <p className="text-xs text-steel mt-1">Pay at the property. {roomGstFor(Number(avail[pick.id]?.rate ?? pick.base_rate), property.room_gst_rate, property.room_gst_rate_high, property.room_gst_threshold)}% GST is added on the final invoice.</p>
             {property.policies && <p className="text-xs text-steel mt-2">{property.policies}</p>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
             <Button size="lg" className="w-full mt-4" disabled={busy || !g.full_name || !g.phone} onClick={book}>{busy ? "Confirming…" : "Confirm booking"}</Button>

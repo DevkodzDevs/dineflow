@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ChevronLeft, LogIn, LogOut, Plus, Printer, UtensilsCrossed } from "lucide-react";
-import { Button, Card, Field, Pill, cn } from "@/components/ui";
+import { Button, Card, Pill, cn } from "@/components/ui";
 import { Receipt } from "@/components/receipt/Receipt";
 import { formatINR, PAYMENT_METHODS, type PaymentMethod } from "@dineflow/shared";
 import { checkIn, checkOut, addCharge, postOrderToRoom } from "../actions";

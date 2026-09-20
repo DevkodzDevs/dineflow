@@ -10,6 +10,7 @@ export type ReceiptData = {
   title?: string; no: string; when: string; where: string; cashier?: string; guest?: string | null;
   lines: ReceiptLine[];
   subtotal: number; discount?: number; service?: number; cgst: number; sgst: number; roundOff?: number; total: number;
+  promiseFee?: number; promiseWaived?: number; promiseMinutes?: number;   // the on-time promise, when the order took one
   payments?: { method: string; amount: number; ref?: string | null }[];
   balance?: number; footer?: string; offline?: boolean; width?: 58 | 80;
   qr?: string | null;            // the pay link: /pay/<token>, with UPI and card options on the guest phone
@@ -86,6 +87,8 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         <hr className="paper-rule" />
         <div className="paper-row"><span className="opacity-80">Subtotal ({qtyTotal} item{qtyTotal === 1 ? "" : "s"})</span><span>{m(d.subtotal)}</span></div>
         {!!d.discount && d.discount > 0 && <div className="paper-row"><span className="opacity-80">Discount</span><span>-{m(d.discount)}</span></div>}
+        {!!d.promiseWaived && d.promiseWaived > 0 && <div className="paper-row"><span className="opacity-80">On-time promise not met — food free</span><span>-{m(d.promiseWaived)}</span></div>}
+        {!!d.promiseFee && d.promiseFee > 0 && <div className="paper-row"><span className="opacity-80">On-time promise{d.promiseMinutes ? ` (${d.promiseMinutes} min)` : ""}</span><span>{m(d.promiseFee)}</span></div>}
         {!!d.service && <div className="paper-row"><span className="opacity-80">Service charge</span><span>{m(d.service)}</span></div>}
         {(!composition || d.cgst > 0) && <div className="paper-row"><span className="opacity-80">{taxName("central")}</span><span>{m(d.cgst)}</span></div>}
         {(!composition || d.sgst > 0) && <div className="paper-row"><span className="opacity-80">{taxName("state")}</span><span>{m(d.sgst)}</span></div>}
@@ -101,6 +104,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         </>)}
         {d.balance !== undefined && d.balance > 0.01 && <div className="paper-row font-bold mt-1"><span>BALANCE DUE</span><span>{m(d.balance)}</span></div>}
         {!!d.discount && d.discount > 0 && <div className="text-center text-[10.5px] font-bold mt-1.5">You saved {formatINR(d.discount)}</div>}
+        {!!d.promiseWaived && d.promiseWaived > 0 && <div className="text-center text-[10.5px] font-bold mt-1.5">We were late. This meal is on us.</div>}
 
         {/* ── GST summary, as a compliant tax invoice must show ── */}
         <hr className="paper-rule" />

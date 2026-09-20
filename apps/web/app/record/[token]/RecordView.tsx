@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { ShieldCheck, ShieldAlert, Printer, Clock, Ban } from "lucide-react";
-import { Button, Card, Pill } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 
 type P = { period: string; rooms_revenue: number; dining_revenue: number; delivery_revenue: number; total_revenue: number; gst_collected: number; covers: number; invoices_issued: number; occupancy_pct: number | null; avg_ticket: number | null; days_traded: number; supplier_paid: number | null; wages_paid: number | null; hash: string };

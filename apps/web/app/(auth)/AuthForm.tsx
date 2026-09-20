@@ -13,7 +13,6 @@ export function AuthForm({ mode, action, pendingApproval }:
   const [state, act, pending] = useActionState(action as never, null as { error?: string } | null);
   const [ptype, setPtype] = useState("restaurant");
   const [showDemo, setShowDemo] = useState(false);
-  const showMasterHint = mode === "login" && (process.env.NEXT_PUBLIC_SHOW_MASTER_HINT === "1");
   const copy = {
     login: { title: "Welcome back", sub: "Sign in to your restaurant.", cta: "Sign in" },
     signup: { title: "Open your property", sub: "7-day free trial. No card needed.", cta: "Start free trial" },
@@ -23,8 +22,11 @@ export function AuthForm({ mode, action, pendingApproval }:
     <Reveal className="w-full max-w-sm">
       {/* the left panel carries the brand from lg up; below that this is the only place it appears */}
       <div className="lg:hidden flex items-center gap-2.5 mb-8">
+        {/* the card behind this one flips with the theme, so the mark ships in two inks */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon-192.png" alt="" width={36} height={36} className="h-9 w-9 shrink-0 rounded-[10px]" />
+        <img src="/mark.png" alt="" width={36} height={36} className="mark-board h-9 w-9 shrink-0 object-contain" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/mark-ink.png" alt="" width={36} height={36} className="mark-paper h-9 w-9 shrink-0 object-contain" />
         <span className="font-display text-xl">DineFlow</span>
       </div>
       <h1 className="text-4xl">{pendingApproval ? "Waiting for approval" : copy.title}</h1>

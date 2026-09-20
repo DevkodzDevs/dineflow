@@ -1,6 +1,9 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { z } from "zod/v4";
+import { askJson, VOICE } from "@/lib/ai";
+import { requireSession } from "@/lib/auth";
 const bump = () => ["/reservations", "/orders", "/dashboard"].forEach((p) => revalidatePath(p));
 
 export async function setReservation(id: string, status: "confirmed" | "seated" | "completed" | "cancelled" | "no_show", tableId?: string | null) {
@@ -26,4 +29,19 @@ export async function deleteOffer(id: string) { const s = await createClient(); 
 export async function replyReview(id: string, reply: string) {
   const s = await createClient(); const { error } = await s.from("reviews").update({ reply, replied_at: new Date().toISOString() }).eq("id", id);
   if (error) return { error: error.message }; revalidatePath("/reservations"); return { ok: true };
+}
+
+/* ── AI: draft the public reply to a review ───────────────────────────────────────────────── */
+const replySchema = z.object({ reply: z.string().max(400) });
+/** A draft in the proprietor's voice for the person to edit and post. It is never posted from here. */
+export async function draftReviewReply(id: string) {
+  const session = await requireSession(); const s = await createClient();
+  const { data: v } = await s.from("reviews").select("guest_name, rating, body").eq("id", id).maybeSingle();
+  if (!v) return { error: "That review is gone." };
+  const r = await askJson({
+    schema: replySchema, effort: "low",
+    system: `You draft the owner's public reply to a guest review of ${session.restaurant.name}, a ${session.restaurant.property_type} in India. ${VOICE} Two to four sentences. Thank them by name if there is one. If they raised a problem, name it plainly and say what changes — no excuses, no "we strive". If it was praise, be brief and specific to what they liked. Never offer money, discounts or free food. Never argue.`,
+    user: `Guest: ${v.guest_name ?? "(no name)"}\nRating: ${v.rating} of 5\nReview: ${v.body ?? "(rating only, no words)"}`,
+  });
+  return r.ok ? { ok: true as const, reply: r.data.reply } : { error: r.error };
 }

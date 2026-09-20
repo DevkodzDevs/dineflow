@@ -3,7 +3,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ChevronLeft, Printer, Share2, Pencil } from "lucide-react";
-import { Button, Field, Pill, Sheet } from "@/components/ui";
+import { Button, Field, Pill, Sheet, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { taxLabels, billTitle, SAC, COMPOSITION_NOTE } from "@dineflow/shared";
 import { updateInvoiceGuest } from "../actions";
@@ -19,7 +19,8 @@ export function InvoiceView({ inv, restaurant, cashier }: { inv: Inv; restaurant
   const title = billTitle(restaurant.gst_scheme, restaurant.gstin, true);
   const sac = inv.kind === "stay" ? SAC.accommodation : SAC.restaurant;
   const gstGroups = Object.values(inv.lines.reduce((m, l) => { const k = String(l.gst_rate); (m[k] ??= { rate: l.gst_rate, taxable: 0, gst: 0 }); m[k].taxable += Number(l.amount); m[k].gst += Number(l.gst); return m; }, {} as Record<string, { rate: number; taxable: number; gst: number }>));
-  const share = async () => { const text = `${restaurant.name} · ${no} · ${formatINR(Number(inv.total))} · ${window.location.href}`; if (navigator.share) await navigator.share({ title: no, text }); else { await navigator.clipboard.writeText(text); alert("Link copied"); } };
+  const toast = useToast();
+  const share = async () => { const text = `${restaurant.name} · ${no} · ${formatINR(Number(inv.total))} · ${window.location.href}`; if (navigator.share) await navigator.share({ title: no, text }); else { await navigator.clipboard.writeText(text); toast("Link copied"); } };
   return (
     <div className="max-w-3xl mx-auto">
       <div className="no-print flex items-center gap-3 mb-6">

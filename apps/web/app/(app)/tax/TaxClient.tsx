@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Landmark, Plus, Trash2, Undo2, UserRound } from "lucide-react";
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Landmark, Plus, Undo2, UserRound } from "lucide-react";
 import { Button, Card, Field, Pill, Sheet, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DOC_KINDS, GST_STATES, financialYear, statutoryCalendar, taxLabels, type CalendarItem } from "@dineflow/shared";
@@ -10,7 +10,7 @@ import { saveTaxProfile, saveDoc, deleteDoc, markFiled, unmarkFiled } from "./ac
 import { Guide } from "./Guide";
 
 export type Tab = "overview" | "returns" | "calendar" | "documents" | "profile" | "guide";
-type Rest = { id: string; name: string; property_type: string; gstin: string | null; legal_name?: string | null; pan?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; gst_monthly?: boolean | null; fssai_no?: string | null; gst_rate: number; room_gst_rate?: number; ca_name?: string | null; ca_firm?: string | null; ca_membership_no?: string | null; ca_email?: string | null; ca_phone?: string | null };
+type Rest = { id: string; name: string; property_type: string; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; gstin: string | null; legal_name?: string | null; pan?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; gst_monthly?: boolean | null; fssai_no?: string | null; gst_rate: number; room_gst_rate?: number; ca_name?: string | null; ca_firm?: string | null; ca_membership_no?: string | null; ca_email?: string | null; ca_phone?: string | null };
 type Filing = { id: string; form: string; period: string; due_on: string; filed_on: string | null; ack_no: string | null };
 type Doc = { id: string; kind: string; title: string; number: string | null; issuer: string | null; issued_on: string | null; expires_on: string | null; period: string | null; url: string | null; notes: string | null };
 type Row = { sac: string; kind: string; rate: number; count: number; taxable: number; cgst: number; sgst: number; total: number };
@@ -81,11 +81,13 @@ function Overview({ r, scheme, lab, summary, month, overdue, upcoming, expiring,
           <dt className="text-[var(--color-label-2)]">PAN</dt><dd className="num">{r.pan || <span className="text-[var(--color-label-3)]">—</span>}</dd>
           <dt className="text-[var(--color-label-2)]">State</dt><dd>{lab.stateName ? `${lab.stateName} (${r.gst_state_code}) · ${lab.central} + ${lab.state}` : <span className="text-[var(--color-label-3)]">—</span>}</dd>
           <dt className="text-[var(--color-label-2)]">FSSAI</dt><dd className="num">{r.fssai_no || <span className="text-[var(--color-label-3)]">—</span>}</dd>
-          <dt className="text-[var(--color-label-2)]">Rates in use</dt><dd className="num">Dining {r.gst_rate}%{r.property_type !== "restaurant" && ` · Rooms ${r.room_gst_rate ?? 12}%`}</dd>
+          <dt className="text-[var(--color-label-2)]">Rates in use</dt><dd className="num">Dining {r.gst_rate}%{r.property_type !== "restaurant" && ` · Rooms ${r.room_gst_rate ?? 5}% up to ₹${Number(r.room_gst_threshold ?? 7500).toLocaleString("en-IN")}, ${r.room_gst_rate_high ?? 18}% above · Extras ${r.facility_gst_rate ?? 18}%`}</dd>
           <dt className="text-[var(--color-label-2)]">Chartered Accountant</dt><dd>{r.ca_name ? <>{r.ca_name}{r.ca_firm && `, ${r.ca_firm}`}{r.ca_phone && <span className="num text-[var(--color-label-2)]"> · {r.ca_phone}</span>}</> : <span className="text-[var(--color-label-3)]">—</span>}</dd>
         </dl>
         {missing.length > 0 && <p className="text-sm mt-4 text-[var(--color-orange)]">Still to fill in: {missing.join(", ")}. <Link href="/tax?tab=profile" className="underline">Open the profile</Link>.</p>}
-        {r.property_type !== "restaurant" && Number(r.room_gst_rate ?? 12) === 12 && <p className="text-xs mt-3 text-[var(--color-label-2)]">Rooms are set to 12%. Since 22 September 2025 rooms up to ₹7,500 a night carry 5% and rooms above it 18%. Check with your CA and change it in Settings if it applies.</p>}
+        {!r.gstin?.trim() && <p className="text-xs mt-3 text-[var(--color-orange)]">No GSTIN is saved, so no CGST or SGST is added to any bill or invoice — collecting tax without a registration is not allowed. Add the GSTIN in the profile if this property is registered.</p>}
+        {r.gst_scheme === "composition" && <p className="text-xs mt-3 text-[var(--color-label-2)]">On the composition scheme this property issues a bill of supply and charges no tax to the guest; the levy is paid out of its own takings through CMP-08.</p>}
+        {r.property_type !== "restaurant" && <p className="text-xs mt-3 text-[var(--color-label-2)]">Each night is taxed on what that night was sold for: {r.room_gst_rate ?? 5}% at or below ₹{Number(r.room_gst_threshold ?? 7500).toLocaleString("en-IN")}, {r.room_gst_rate_high ?? 18}% above it. Confirm the rates with your CA before you file.</p>}
       </Card>
 
       <Card>

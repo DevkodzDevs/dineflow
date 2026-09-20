@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Check, Copy, KeyRound, Clock, AlertTriangle, ShieldCheck, Mail, Pencil, X, User, Building2, FileText, BarChart3, Save } from "lucide-react";
-import { Button, Field, Pill, cn } from "@/components/ui";
+import { Check, Copy, KeyRound, Clock, AlertTriangle, ShieldCheck, Pencil, X, User, Building2, FileText, BarChart3, Save } from "lucide-react";
+import { Button, Pill, cn } from "@/components/ui";
 import type { PropertyDetail } from "./actions";
 import { resetPropertyPassword, setContactEmail, updateProperty } from "./actions";
 

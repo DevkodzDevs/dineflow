@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import { useMemo } from "react";
 import dynamic from "next/dynamic";
 // Charts are ~105 kB and nobody needs them before the page paints; they arrive a beat later.
 const SalesChart = dynamic(() => import("./Charts").then((m) => m.SalesChart), { ssr: false, loading: () => <div className="h-56 shimmer rounded-2xl" /> });

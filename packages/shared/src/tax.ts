@@ -63,6 +63,23 @@ export const INVOICE_MUST_SHOW = [
 /** Rule 49: a composition dealer issues a bill of supply, not a tax invoice, and must print this line. */
 export const COMPOSITION_NOTE = "Composition taxable person, not eligible to collect tax on supplies";
 
+/**
+ * Who may collect tax. Only a regular registered dealer: section 10(4) of the CGST Act forbids a
+ * composition taxable person from collecting any tax from the recipient, and an unregistered
+ * business has no authority to. Both still charge for the food or the room — just nothing on top.
+ * This is the same rule as the database's gst_collectable(); the screens and the bill must agree.
+ */
+export const gstCollectable = (scheme?: GstScheme | string | null, gstin?: string | null) =>
+  (scheme ?? "regular") === "regular" && !!gstin && gstin.trim() !== "";
+
+/**
+ * Which accommodation slab one night falls in. Since 22 September 2025: 5% at or below ₹7,500 for
+ * that unit that day, 18% above it — decided by the value actually charged, which is what has
+ * settled it since "declared tariff" was dropped in October 2019. Mirrors room_gst_for() in SQL.
+ */
+export const roomGstFor = (nightly: number, low = 5, high = 18, threshold = 7500) =>
+  (Number(nightly) || 0) > threshold ? high : low;
+
 export const taxLabels = (stateCode?: string | null) => {
   const st = stateCode ? GST_STATES[stateCode] : undefined;
   return { central: "CGST", state: st?.ut ? "UTGST" : "SGST", stateName: st?.name ?? null };

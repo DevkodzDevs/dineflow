@@ -1,21 +1,22 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, X, Bike, Clock, Link2, AlertTriangle } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { Button, Card, Pill, StatTile, Sheet, Field, cn, Empty } from "@/components/ui";
+import { Button, Card, Pill, StatTile, Sheet, cn, Empty } from "@/components/ui";
 import { formatINR, fmtSince } from "@/lib/format";
 import { usePrinters } from "@/lib/print/usePrinter";
-import { acceptOnline, rejectOnline, setOnlineStatus, mapDish } from "./actions";
+import { acceptOnline, rejectOnline, setOnlineStatus, mapDish, suggestDishMap } from "./actions";
+import { AiButton } from "@/components/ui/AiButton";
 
 type OO = { id: string; external_id: string; display_id: string | null; status: string; customer_name: string | null; customer_phone: string | null; address: string | null; items: { menu_item_id: string | null; name: string; qty: number; price: number; note: string | null }[]; unmatched: string[]; gross: number; commission: number; payout: number; is_prepaid: boolean; placed_at: string; order_id: string | null; order_channels: { kind: string; label: string; prep_minutes: number } | null };
 const LOGO: Record<string, string> = { swiggy: "bg-[#fc8019] text-white", zomato: "bg-[#e23744] text-white", website: "bg-ink text-on-label", ondc: "bg-mint text-on-tint", other: "bg-porcelain-2 text-ink" };
 
-export function OnlineClient({ orders, channels, menu }: { orders: OO[]; channels: { id: string; kind: string; label: string; is_live: boolean }[]; menu: { id: string; name: string; price: number }[] }) {
-  const router = useRouter(); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
+export function OnlineClient({ orders, channels, menu, ai = false }: { orders: OO[]; channels: { id: string; kind: string; label: string; is_live: boolean }[]; menu: { id: string; name: string; price: number }[]; ai?: boolean }) {
+  const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   const [fix, setFix] = useState<{ order: OO; line: string } | null>(null);
+  const [hint, setHint] = useState<{ line: string; menu_item_id: string | null; name: string | null; confidence: number } | null>(null); const [hinting, setHinting] = useState(false);
   const { printKot } = usePrinters();
   useLive(["online_orders"], 30000);
   const newCount = orders.filter((o) => o.status === "new").length; const prev = useRef(newCount);
@@ -59,7 +60,16 @@ export function OnlineClient({ orders, channels, menu }: { orders: OO[]; channel
       )}
       {err && <p className="text-sm text-chili">{err}</p>}
       <Sheet open={!!fix} onClose={() => setFix(null)} title={`Map "${fix?.line ?? ""}"`}>
-        <p className="text-sm text-steel mb-3">Pick the dish on your menu that this aggregator line means. Future orders match automatically and deduct stock.</p>
+        <div className="flex items-start gap-3 mb-3">
+          <p className="text-sm text-steel flex-1">Pick the dish on your menu that this aggregator line means. Future orders match automatically and deduct stock.</p>
+          {ai && <AiButton label="Find it" busy={hinting} onClick={() => { setHinting(true); void suggestDishMap([fix!.line]).then((r) => { if ("error" in r) setErr(r.error!); else setHint(r.matches?.[0] ?? null); }).finally(() => setHinting(false)); }} />}
+        </div>
+        {hint && hint.line === fix?.line && (
+          <div className="mb-3 rounded-xl border border-[var(--color-tint)]/40 bg-[var(--color-green-2)] p-3 text-sm flex items-center gap-3">
+            <span className="flex-1 min-w-0">{hint.menu_item_id ? <>Looks like <b>{hint.name}</b> <span className="num text-xs text-steel">· {hint.confidence}% sure</span></> : <>Nothing on the menu is this dish — add it in Menu first.</>}</span>
+            {hint.menu_item_id && <Button size="sm" disabled={pending} onClick={() => start(async () => { await mapDish(hint.menu_item_id!, fix!.order.order_channels?.kind ?? "other", fix!.line); setHint(null); setFix(null); })}>Map it</Button>}
+          </div>
+        )}
         <div className="space-y-2 max-h-96 overflow-y-auto">{menu.map((m) => <button key={m.id} className="feather feather-lift w-full text-left p-3 flex justify-between" disabled={pending} onClick={() => start(async () => { await mapDish(m.id, fix!.order.order_channels?.kind ?? "other", fix!.line); setFix(null); })}><span>{m.name}</span><span className="num text-steel">{formatINR(Number(m.price))}</span></button>)}</div>
       </Sheet>
     </div>

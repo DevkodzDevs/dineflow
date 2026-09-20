@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Plus, Printer as P, Bluetooth, Usb, Wifi, Monitor, Trash2, Play, Info } from "lucide-react";
-import { Button, Sheet, Field, Card, Pill, cn, Empty } from "@/components/ui";
+import { Button, Sheet, Field, Card, Pill, Empty } from "@/components/ui";
 import { buildBill } from "@/lib/print/escpos";
 import { billHtml } from "@/lib/print/html";
 import { sendToPrinter } from "@/lib/print/transport";

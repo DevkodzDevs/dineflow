@@ -193,6 +193,10 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .deck { background: #0a0a0d; }
 /* the wall is always graphite, whatever the theme — so is everything written on it */
 .wall { color: #f4f4f1; } .wall h1, .wall .flip-label, .wall .font-display { color: #f4f4f1; } .wall .flip-label { color: #9a9aa6; }
+/* the brand mark sits bare on the surface — no tile, no ring — so it ships in two inks: paper-white for the board, graphite for the bright room */
+.mark-paper { display: none; }
+[data-theme="paper"] .mark-board { display: none; }
+[data-theme="paper"] .mark-paper { display: block; }
 [data-theme="paper"] .deck-card { box-shadow: 0 0 0 .5px rgb(0 0 0 / .1), 0 30px 80px -30px rgb(0 0 0 / .6); }
 [data-theme="paper"] .feather, [data-theme="paper"] .card, [data-theme="paper"] .group, [data-theme="paper"] .dt-shell { border-color: rgb(23 23 28 / .10); }
 [data-theme="paper"] .material { background: color-mix(in srgb, #ffffff 94%, transparent); border-color: rgb(23 23 28 / .08); }
@@ -271,6 +275,48 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .hairline-gold { height: 1px; background: linear-gradient(90deg, transparent, var(--color-separator), transparent); }
 .hairline { height: .5px; background: var(--color-separator); }
 .aurora { position: relative; }   /* retired: the wall is plain graphite now */
+
+/* ── the glance row ───────────────────────────────────────────────────── */
+/* One card per number, and every card is a door. The head is a single line — icon,
+   label, and an arrow that shows up on hover — so a short label no longer leaves a
+   hole where the old two-line reserve was. The foot is pinned to the bottom, which
+   keeps every number and every caption on the same line across the row, whatever
+   the copy does. A tile only takes colour when it is saying something: green when
+   there is nothing to do, amber when there is, red when it cannot wait — and the
+   colour always arrives with words beside it, never on its own. */
+/* The row sizes itself: a restaurant shows one tile here and a resort six, and any fixed
+   column count leaves a hole at every count but one. Tiles grow to share the width and
+   wrap at 158px; the 400px ceiling is what stops a lone tile spanning the whole screen. */
+.stat-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.stat { flex: 1 1 158px; min-width: 0; max-width: 400px; --stat: var(--color-label-3); position: relative; display: flex; flex-direction: column; padding: 16px; overflow: hidden; }
+/* a tile that needs a person takes the colour on its own edge — a top bar cannot follow
+   a 22px corner without growing ears at both ends, and this reads from further away anyway */
+.stat:is(.stat-warn, .stat-alert) { border-color: color-mix(in srgb, var(--stat) 40%, transparent); background: color-mix(in srgb, var(--stat) 5%, var(--color-bg-2)); }
+.stat-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.stat-chip { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0; background: var(--color-fill); color: var(--color-label-2); }
+.stat:is(.stat-good, .stat-warn, .stat-alert) .stat-chip { background: color-mix(in srgb, var(--stat) 16%, transparent); color: var(--stat); }
+.stat-label { flex: 1; min-width: 0; font-size: 13px; color: var(--color-label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-go { flex-shrink: 0; color: var(--color-label-3); opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
+.stat:hover .stat-go, .stat:focus-visible .stat-go { opacity: 1; transform: none; }
+.stat-value { display: flex; align-items: baseline; gap: 5px; margin-top: 14px; font-size: 34px; line-height: 1; }
+.stat-alert .stat-value { color: var(--color-red); }
+.stat-unit { font-family: var(--font-sans); font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--color-label-2); }
+.stat-sep { color: var(--color-label-3); margin: 0 1px; }
+.stat-base { margin-top: auto; padding-top: 14px; }
+.stat-meter { display: block; height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--stat) 20%, transparent); overflow: hidden; }
+.stat-meter > i { display: block; height: 100%; border-radius: 99px; background: var(--stat); transition: width var(--dur-slow) var(--ease-out); }
+.stat-foot { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1.35; color: var(--color-label-2); }
+.stat-meter + .stat-foot { margin-top: 10px; }
+.stat:is(.stat-good, .stat-warn, .stat-alert) .stat-foot { color: var(--stat); }
+.stat-dot { width: 6px; height: 6px; border-radius: 99px; background: currentColor; flex-shrink: 0; }
+/* min-width:0 is load-bearing: a -webkit-box clamp reports its whole unwrapped line as
+   its minimum width, which would hold the tile wider than the phone it is on */
+.stat-sub { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.stat-good { --stat: var(--color-green); }
+.stat-warn { --stat: var(--color-orange); }
+.stat-alert { --stat: var(--color-red); }
+@media (max-width: 640px) { .stat { padding: 14px; } .stat-value { margin-top: 12px; font-size: 28px; } .stat-base { padding-top: 12px; } }
+@media (min-width: 1536px) { .stat { padding: 18px; } .stat-value { font-size: 40px; } }
 
 /* grouped list */
 .group { background: var(--color-bg-2); border-radius: var(--radius-md); border: .5px solid var(--color-separator); overflow: hidden; box-shadow: var(--shadow-card); }

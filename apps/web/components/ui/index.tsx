@@ -7,7 +7,7 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 
 export const cn = clsx;
 export { snap, glide, settle, flipT, fast, listV, itemV, pageV, sheetV, flipV, press, pressCard } from "@/lib/motion";
-import { snap, glide, settle, sheetV } from "@/lib/motion";
+import { snap, glide, sheetV } from "@/lib/motion";
 export { Flip, FlipClock, Loader, PageLoader, Countdown, Waiting, reducedMotion } from "./flip";
 export { PasswordInput } from "./PasswordInput";
 import { Loader } from "./flip";

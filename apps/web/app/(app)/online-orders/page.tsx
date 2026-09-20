@@ -1,3 +1,4 @@
+import { aiEnabled } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { OnlineClient } from "./OnlineClient";
@@ -10,5 +11,5 @@ export default async function OnlineOrders() {
     s.from("order_channels").select("*"),
     s.from("menu_items").select("id, name, price").eq("is_active", true).order("name"),
   ]);
-  return (<><PageHeader eyebrow="Swiggy · Zomato · your website" title="Online" accent="orders" sub="Orders arrive here, you accept, and the kitchen gets the same ticket as a table order." /><OnlineClient orders={(orders ?? []) as never} channels={channels ?? []} menu={menu ?? []} /></>);
+  return (<><PageHeader eyebrow="Swiggy · Zomato · your website" title="Online" accent="orders" sub="Orders arrive here, you accept, and the kitchen gets the same ticket as a table order." /><OnlineClient ai={aiEnabled()} orders={(orders ?? []) as never} channels={channels ?? []} menu={menu ?? []} /></>);
 }

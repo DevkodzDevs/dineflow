@@ -3,9 +3,9 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone } from "lucide-react";
+import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone, Timer } from "lucide-react";
 import { Button, Field, Card, cn, Pill } from "@/components/ui";
-import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, type PaymentMethod } from "@dineflow/shared";
+import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, type PaymentMethod } from "@dineflow/shared";
 import { generateBill, settleBill, voidBill } from "../actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
@@ -19,8 +19,8 @@ import { BedDouble, FileText } from "lucide-react";
 import { diningInvoice } from "../../invoices/actions";
 
 type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; notes?: string | null };
-type Order = { id: string; order_no: number; status: string; type: string; customer_name: string | null; created_at: string; dining_tables: { name: string } | null; order_items: Item[] };
-type Bill = { id: string; bill_no: number; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; payments: { method: string; amount: number; ref: string | null }[] } | null;
+type Order = { id: string; order_no: number; status: string; type: string; customer_name: string | null; created_at: string; promised_at?: string | null; served_at?: string | null; promise_minutes?: number | null; promise_pct?: number | null; dining_tables: { name: string } | null; order_items: Item[] };
+type Bill = { id: string; bill_no: number; promise_fee?: number; promise_waived?: number; promise_kept?: boolean | null; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; payments: { method: string; amount: number; ref: string | null }[] } | null;
 type Rest = { name: string; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; legal_name?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; fssai_no?: string | null };
 
 export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: { order: Order; bill: Bill; restaurant: Rest; cashier: string; inHouse?: { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null }[] }) {
@@ -50,7 +50,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
   // what the paper says about the business: the registration it files under, and the words the rules require
   const printRest = { name: restaurant.name, address: restaurant.address, phone: restaurant.phone, gstin: restaurant.gstin, fssai: restaurant.fssai_no ?? null, legalName: restaurant.legal_name ?? null, gstScheme: restaurant.gst_scheme ?? null, stateCode: restaurant.gst_state_code ?? null };
   const receiptData = (): ReceiptData => ({
-    restaurant: printRest, title: billTitle(restaurant.gst_scheme, restaurant.gstin, bill?.status === "paid"), sac: SAC.restaurant, gstRate: Number(restaurant.gst_rate), no: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL — DRAFT",
+    restaurant: printRest, title: billTitle(restaurant.gst_scheme, restaurant.gstin, bill?.status === "paid"), sac: SAC.restaurant, gstRate: taxRate, no: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL — DRAFT",
     when: new Date(bill?.created_at ?? Date.now()).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }),
     where: order.dining_tables?.name ? `Table ${order.dining_tables.name}` : order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery",
     cashier,
@@ -58,16 +58,33 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
     subtotal: Number(totals.subtotal ?? bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0),
     cgst: Number(totals.cgst ?? bill?.cgst ?? 0), sgst: Number(totals.sgst ?? bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0),
     total: Number(totals.total ?? bill?.total ?? 0),
+    promiseFee: Number(bill?.promise_fee ?? preview.promiseFee ?? 0),
+    promiseWaived: Number(bill?.promise_waived ?? preview.promiseWaived ?? 0),
+    promiseMinutes: order.promise_minutes ?? undefined,
     payments: bill?.status === "paid" ? pays.map((p) => ({ method: p.method, amount: Number(p.amount), ref: p.ref })) : undefined,
     qr: payUrl,
     copyLabel: "Customer copy",
     offline: !online,
   });
-  const billData = () => ({ restaurant: printRest, gstRate: Number(restaurant.gst_rate), sac: SAC.restaurant, billNo: bill ? `BILL-${bill.bill_no}` : "BILL", when: new Date().toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"), cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng });
+  const billData = () => ({ restaurant: printRest, gstRate: taxRate, sac: SAC.restaurant, billNo: bill ? `BILL-${bill.bill_no}` : "BILL", when: new Date().toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"), cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng });
   const router = useRouter(); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
+  /* A composition dealer or an unregistered business may not collect tax, so the preview must not
+     show any — the bill the server raises will not have it either. */
+  const taxRate = gstCollectable(restaurant.gst_scheme, restaurant.gstin) ? Number(restaurant.gst_rate) : 0;
   const [discPct, setDiscPct] = useState(0); const [discAmt, setDiscAmt] = useState(0);
+  /* The on-time promise. The system's own reading comes first: a recorded delivery settled against
+     the deadline. With no delivery recorded the promise stands — a bill raised long after a quiet
+     lunch must not hand back the food because nobody tapped "Picked up" — and the cashier, with the
+     guest in front of them, can say otherwise. Whatever is showing here is what the bill is raised on. */
+  const promisedAt = order.promised_at ? new Date(order.promised_at) : null;
+  const servedAt = order.served_at ? new Date(order.served_at) : null;
+  const autoKept = promisedAt ? (servedAt ? servedAt <= promisedAt : true) : null;
+  const [keptOverride, setKeptOverride] = useState<boolean | null>(null);
+  const kept = keptOverride ?? autoKept;
+  const lateBy = promisedAt && servedAt ? Math.round((servedAt.getTime() - promisedAt.getTime()) / 60000) : null;
+  const hhmm = (d: Date) => d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
   const live = order.order_items.filter((i) => i.status !== "cancelled");
-  const preview = computeBill({ lines: live.map((i) => ({ price: Number(i.price_snapshot), qty: i.qty })), discountPct: discPct, discountAmount: discAmt, serviceChargePct: Number(restaurant.service_charge_pct), gstRate: Number(restaurant.gst_rate) });
+  const preview = computeBill({ lines: live.map((i) => ({ price: Number(i.price_snapshot), qty: i.qty })), discountPct: discPct, discountAmount: discAmt, serviceChargePct: Number(restaurant.service_charge_pct), gstRate: taxRate, promiseKept: kept, promisePct: Number(order.promise_pct ?? 0) });
   const totals = bill ? { subtotal: Number(bill.subtotal), discount: Number(bill.discount_amount), serviceCharge: Number(bill.service_charge), cgst: Number(bill.cgst), sgst: Number(bill.sgst), roundOff: Number(bill.round_off), total: Number(bill.total) } : preview;
   const [pays, setPays] = useState<{ method: PaymentMethod; amount: number; ref: string }[]>([{ method: "upi", amount: totals.total, ref: "" }]);
   const paid = pays.reduce((t, p) => t + Number(p.amount || 0), 0);
@@ -84,10 +101,33 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
           <Card>
             <h3 className="text-xl">Discount</h3>
             <div className="grid grid-cols-2 gap-3 mt-3"><Field label="Percent"><input type="number" min={0} max={100} value={discPct || ""} onChange={(e) => setDiscPct(Number(e.target.value))} className="num" placeholder="0" /></Field><Field label="Flat (₹)"><input type="number" min={0} value={discAmt || ""} onChange={(e) => setDiscAmt(Number(e.target.value))} className="num" placeholder="0" /></Field></div>
+            {promisedAt && (
+              <div className={cn("mt-4 rounded-2xl border p-3.5", kept ? "border-[var(--color-tint)]/40 bg-[var(--color-green-2)]" : "border-[var(--color-red)]/40 bg-[var(--color-red-2)]")}>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Timer size={15} className={kept ? "text-[var(--color-tint)]" : "text-[var(--color-red)]"} />
+                  On-time promise · {order.promise_minutes} min
+                </div>
+                <p className="text-xs text-steel mt-1.5">
+                  Promised by {hhmm(promisedAt)}.{" "}
+                  {servedAt
+                    ? lateBy !== null && lateBy > 0
+                      ? `Delivered ${hhmm(servedAt)} — ${lateBy} min late.`
+                      : `Delivered ${hhmm(servedAt)}, on time.`
+                    : "No delivery was recorded, so the promise stands."}
+                </p>
+                <p className={cn("text-xs font-semibold mt-1.5", kept ? "text-[var(--color-tint)]" : "text-[var(--color-red)]")}>
+                  {kept ? `Kept — ${order.promise_pct}% added to the food.` : "Missed — the food is free and nothing is charged for the promise."}
+                </p>
+                <button type="button" onClick={() => setKeptOverride(!kept)}
+                  className="mt-2.5 text-xs font-semibold underline text-steel hover:text-[var(--color-label)]">
+                  {kept ? "We were late — make this meal free" : "It was on time after all — charge it"}
+                </button>
+              </div>
+            )}
             <p className="text-xs text-steel mt-3">GST {restaurant.gst_rate}% split as CGST + SGST{Number(restaurant.service_charge_pct) > 0 && <>, service charge {restaurant.service_charge_pct}%</>}. Change these in Settings.</p>
             {live.some((i) => i.status === "pending" || i.status === "preparing") && <p className="text-xs text-chili mt-2">Some items are still in the kitchen.</p>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
-            <Button size="lg" className="w-full mt-5" disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt); if ("error" in r) setErr(r.error!); else { setPays([{ method: "upi", amount: 0, ref: "" }]); router.refresh(); } })}>Generate bill</Button>
+            <Button size="lg" className="w-full mt-5" disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt, kept); if ("error" in r) setErr(r.error!); else { setPays([{ method: "upi", amount: 0, ref: "" }]); router.refresh(); } })}>Generate bill</Button>
             {inHouse.length > 0 && order.status === "open" && (
               <div className="mt-4 pt-4 border-t border-dashed border-line"><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1"><BedDouble size={12} /> Or charge to a room</div>
                 <div className="flex gap-2"><select value={roomFor} onChange={(e) => setRoomFor(e.target.value)}><option value="">In-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
@@ -160,4 +200,3 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
     </div>
   );
 }
-const Row = ({ k, v }: { k: string; v: number }) => <div className="flex justify-between text-xs"><span>{k}</span><span>{v.toFixed(2)}</span></div>;

@@ -3,7 +3,6 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CloudOff, RefreshCw, Check, AlertTriangle } from "lucide-react";
 import { onQueue } from "./sync";
-import { Countdown } from "@/components/ui";
 import { startSync, subscribe, flush } from "./sync";
 import { cacheSet } from "./db";
 import { createClient } from "@/lib/supabase/client";
@@ -90,8 +89,18 @@ export function OfflineProvider({ children, modules }: { children: React.ReactNo
     const t = setInterval(() => whenIdle(() => { void warm(); }), 30 * 60 * 1000);
     return () => { cancelled = true; clearInterval(t); };
   }, [screenKey]);
+  /* How long until the outbox tries again. The queue only tells us when it changes, so the seconds
+     are ticked here — a number frozen at "45s" for a minute is worse than no number at all. The sort
+     needs its comparator: Array.sort() compares timestamps as strings, which picks the wrong job the
+     moment two of them straddle a digit boundary. */
   const [retryIn, setRetryIn] = useState<number | null>(null);
-  useEffect(() => { const un = onQueue((jobs) => { const soonest = jobs.map((j) => j.nextTry ?? 0).filter(Boolean).sort()[0]; setRetryIn(soonest ? Math.max(1, Math.round((soonest - Date.now()) / 1000)) : null); }); return () => { un(); }; }, []);
+  useEffect(() => {
+    let soonest = 0;
+    const tick = () => setRetryIn(soonest ? Math.max(0, Math.round((soonest - Date.now()) / 1000)) : null);
+    const un = onQueue((jobs) => { soonest = jobs.map((j) => j.nextTry ?? 0).filter(Boolean).sort((a, b) => a - b)[0] ?? 0; tick(); });
+    const i = setInterval(tick, 1000);
+    return () => { un(); clearInterval(i); };
+  }, []);
   const show = !s.online || s.pending > 0 || !!s.lastError || s.justSynced > 0;
   return (
     <Ctx.Provider value={s}>
@@ -103,7 +112,7 @@ export function OfflineProvider({ children, modules }: { children: React.ReactNo
               {s.justSynced > 0 && s.online && s.pending === 0 ? <><Check size={16} className="text-mint" /> Back online · {s.justSynced} sent</>
                 : !s.online ? <><CloudOff size={16} /> Working offline{s.pending > 0 && <span className="num font-normal opacity-80">· {s.pending} waiting</span>}</>
                 : s.syncing ? <><motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><RefreshCw size={15} /></motion.span> Syncing {s.pending}…</>
-                : s.pending > 0 ? <><RefreshCw size={15} /> {s.pending} to send <button onClick={() => flush()} className="underline">retry</button></>
+                : s.pending > 0 ? <><RefreshCw size={15} /> {s.pending} to send{retryIn ? <span className="num font-normal opacity-80"> · retry in {retryIn}s</span> : null} <button onClick={() => flush()} className="underline">retry</button></>
                 : <><Check size={15} className="text-mint" /> All synced</>}
               {s.lastError && <span className="flex items-center gap-1 text-chili font-normal"><AlertTriangle size={13} /> {s.lastError}</span>}
             </div>

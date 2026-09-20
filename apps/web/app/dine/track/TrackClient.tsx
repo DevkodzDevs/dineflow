@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ChevronLeft, Search, Phone, Clock, Check } from "lucide-react";
+import { ChevronLeft, Search, Phone } from "lucide-react";
 import { Button, Field, Pill, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { track } from "../actions";

@@ -3,7 +3,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Sun, ChefHat, ShoppingBasket, Printer, Share2, Check, TrendingUp, Info, ChevronLeft, ChevronRight, Sparkles, Target } from "lucide-react";
-import { Button, Card, Pill, StatTile, cn, Empty } from "@/components/ui";
+import { Button, Card, StatTile, cn, Empty } from "@/components/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { formatINR } from "@/lib/format";
 import { usePrinters } from "@/lib/print/usePrinter";

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { formatINR, todayIST } from "@/lib/format";
 import { Live } from "./Live";
-import { Sun } from "lucide-react";
+import { Sun, BedDouble, ConciergeBell, Sparkles, Bike, Timer, Boxes, ChevronRight, type LucideIcon } from "lucide-react";
 import { Board } from "./Board";
 export const metadata = { title: "Control room" };
 export const dynamic = "force-dynamic";
@@ -29,6 +29,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const arrivals = (bookings ?? []).filter((b: { status: string; check_in: string }) => b.status === "reserved" && b.check_in <= today);
   const departures = inHouse.filter((b: { check_out: string }) => b.check_out <= today);
   const occ = rooms?.length ? Math.round((rooms.filter((r) => r.status === "occupied").length / rooms.length) * 100) : 0;
+  const ready = rooms?.filter((r) => r.status === "available").length ?? 0;
   const topMap = new Map<string, number>(); (top ?? []).forEach((i) => topMap.set(i.name_snapshot, (topMap.get(i.name_snapshot) ?? 0) + i.qty));
   const topList = [...topMap].sort((a, b) => b[1] - a[1]).slice(0, 5);
   const occupied = (tables ?? []).filter((t) => t.status === "occupied").length;
@@ -54,13 +55,21 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <span className="text-sm font-semibold text-steel">Open →</span>
         </Link>
       )}
-      <div className={`grid grid-cols-2 gap-3 ${hotel ? "lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7" : "lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"}`}>
-        {hotel && <Tile href="/rooms" label="Occupancy" value={`${occ}%`} sub={`${inHouse.length} in house · ${rooms?.filter((r) => r.status === "available").length ?? 0} ready`} tone={occ >= 80 ? "good" : undefined} gold />}
-        {hotel && <Tile href="/frontdesk" label="Arrivals · departures" value={`${arrivals.length} · ${departures.length}`} sub={arrivals.length ? "waiting to check in" : "all arrived"} gold />}
-        {hotel && <Tile href="/housekeeping" label="Housekeeping" value={String(hkCount)} sub={hkCount ? "rooms to turn" : "all rooms ready"} tone={hkCount > 3 ? "alert" : undefined} gold />}
-        {(online ?? []).length > 0 && <Tile href="/online-orders" label="Online orders" value={String((online ?? []).filter((o) => o.status === "new").length)} sub={`${formatINR((online ?? []).reduce((t, o) => t + Number(o.gross), 0))} today`} tone={(online ?? []).some((o) => o.status === "new") ? "alert" : undefined} />}
-        {late > 0 && <Tile href="/kitchen" label="Running late" value={String(late)} sub="tickets over 15 minutes" tone="alert" />}
-        <Tile href="/inventory" label="Low stock" value={String(low?.length ?? 0)} tone={low?.length ? "alert" : "good"} sub={low?.length ? low.slice(0, 2).map((l) => l.name).join(", ") : "Pantry healthy"} />
+      {/* The glance row: whatever needs a person right now, biggest first. The tiles
+          size themselves — three of them or six, the row always fills the width. */}
+      <div className="stat-row">
+        {hotel && <Tile href="/rooms" icon={BedDouble} label="Occupancy" value={occ} unit="%" meter={occ} tone={occ >= 80 ? "good" : undefined}
+          sub={`${inHouse.length} in house · ${ready} ready`} />}
+        {hotel && <Tile href="/frontdesk" icon={ConciergeBell} label="Front desk" tone={arrivals.length + departures.length === 0 ? "good" : undefined}
+          value={<>{arrivals.length}<span className="stat-unit">in</span><span className="stat-sep">·</span>{departures.length}<span className="stat-unit">out</span></>}
+          sub={arrivals.length ? "Waiting to check in" : departures.length ? "Due to check out" : "Nothing due today"} />}
+        {hotel && <Tile href="/housekeeping" icon={Sparkles} label="Housekeeping" value={hkCount} tone={hkCount > 3 ? "alert" : hkCount ? "warn" : "good"}
+          sub={hkCount ? "Rooms still to turn" : "All rooms ready"} />}
+        {(online ?? []).length > 0 && <Tile href="/online-orders" icon={Bike} label="Online orders" value={(online ?? []).filter((o) => o.status === "new").length}
+          tone={(online ?? []).some((o) => o.status === "new") ? "alert" : undefined} sub={`${formatINR((online ?? []).reduce((t, o) => t + Number(o.gross), 0))} today`} />}
+        {late > 0 && <Tile href="/kitchen" icon={Timer} label="Running late" value={late} tone="alert" sub="Tickets over 15 minutes" />}
+        <Tile href="/inventory" icon={Boxes} label="Low stock" value={low?.length ?? 0} tone={low?.length ? "alert" : "good"}
+          sub={low?.length ? low.slice(0, 2).map((l) => l.name).join(", ") : "Pantry healthy"} />
       </div>
       <div className="grid gap-4 mt-4 lg:grid-cols-3 2xl:grid-cols-4">
         <div className="feather p-5 lg:col-span-2 2xl:col-span-3">
@@ -84,15 +93,26 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   );
 }
 
-function Tile({ href, label, value, sub, tone }: { href: string; label: string; value: string; sub?: string; tone?: "alert" | "good"; gold?: boolean }) {
-  /* The label gets two lines' worth of room whether it needs them or not, so every big number in the
-     row sits on the same line — "Arrivals · departures" wrapping used to shove its value down alone.
-     The sub line wraps to two rather than truncating: "1 in house · 12 r…" told nobody anything. */
+function Tile({ href, icon: Icon, label, value, unit, sub, tone, meter }: {
+  href: string; icon: LucideIcon; label: string; value: React.ReactNode; unit?: string;
+  sub: string; tone?: "good" | "warn" | "alert"; meter?: number;
+}) {
+  /* Head, number, foot — in that order, and the foot is pinned to the bottom so every
+     tile in the row lines up whether its caption runs to one line or two. The meter
+     only appears where the number really is a share of something (occupancy is; a
+     count of low-stock items is not), because a bar with no denominator is a lie. */
   return (
-    <Link href={href} className={`feather feather-lift flex flex-col p-5 2xl:p-6 ${tone === "alert" ? "border-chili/50" : tone === "good" ? "border-mint/50" : ""}`}>
-      <div className="text-[13px] 2xl:text-sm text-steel leading-snug line-clamp-2 min-h-[2.6em]">{label}</div>
-      <div className={`mt-1.5 text-[34px] 2xl:text-[40px] leading-none num ${tone === "alert" ? "text-chili" : ""}`}>{value}</div>
-      {sub && <div className={`mt-2 text-xs 2xl:text-sm leading-snug line-clamp-2 ${tone === "alert" ? "text-chili" : "text-steel"}`}>{sub}</div>}
+    <Link href={href} className={`feather feather-lift stat${tone ? ` stat-${tone}` : ""}`}>
+      <div className="stat-head">
+        <span className="stat-chip"><Icon size={15} strokeWidth={2} /></span>
+        <span className="stat-label">{label}</span>
+        <ChevronRight size={15} className="stat-go" />
+      </div>
+      <div className="stat-value num">{value}{unit && <span className="stat-unit">{unit}</span>}</div>
+      <div className="stat-base">
+        {meter !== undefined && <span className="stat-meter"><i style={{ width: `${Math.min(100, Math.max(0, meter))}%` }} /></span>}
+        <div className="stat-foot"><span className="stat-dot" /><span className="stat-sub">{sub}</span></div>
+      </div>
     </Link>
   );
 }

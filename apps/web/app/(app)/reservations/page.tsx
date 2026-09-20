@@ -1,3 +1,4 @@
+import { aiEnabled } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { todayIST } from "@/lib/format";
@@ -13,5 +14,5 @@ export default async function Reservations({ searchParams }: { searchParams: Pro
     s.from("dining_tables").select("id, name, capacity, status").order("sort_order"),
     s.from("reviews").select("*").order("created_at", { ascending: false }).limit(10),
   ]);
-  return <ReservationsClient day={day} list={(list ?? []) as never} tables={tables ?? []} reviews={(reviews ?? []) as never} />;
+  return <ReservationsClient day={day} list={(list ?? []) as never} tables={tables ?? []} reviews={(reviews ?? []) as never} ai={aiEnabled()} />;
 }

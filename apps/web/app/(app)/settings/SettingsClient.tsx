@@ -1,13 +1,14 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Sparkles, QrCode, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink } from "lucide-react";
-import { Button, Card, Field, Pill, cn } from "@/components/ui";
+import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone } from "lucide-react";
+import { Button, Card, Field, cn } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
+import { InstallApp } from "@/components/InstallApp";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments } from "./actions";
 
-type Rest = { id: string; name: string; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
+type Rest = { id: string; name: string; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number };
 type Tab = "general" | "payments" | "tables" | "advanced";
 
@@ -49,6 +50,8 @@ function QuickLink({ href, icon, label, hint }: { href: string; icon: React.Reac
 export function SettingsClient({ restaurant, tables, gateway, signInId, contactEmail }:
   { restaurant: Rest; tables: Table[]; gateway: { key_id: string; hasSecret: boolean; hasWebhook: boolean };
     signInId: string; contactEmail: string | null }) {
+  const [promise, setPromise] = useState<boolean>(restaurant.promise_enabled ?? false);
+  const [gstinOn, setGstinOn] = useState<boolean>(!!restaurant.gstin?.trim());
   const [msg, setMsg] = useState<string | null>(null);
   const [boxToken, setBoxToken] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -87,6 +90,20 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             </Section>
           </Card>
 
+          {/* install — sits beside Appearance because it is the other thing that belongs to the
+              device in front of you rather than to the property */}
+          <Card>
+            <Section icon={<MonitorSmartphone size={16} />} title="Install on this device" description="Applies to this device. Every phone and till installs itself.">
+              <InstallApp />
+              {/* the address to hand staff: it works out what they are holding and gives them the one file for it */}
+              <Link href="/get" className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3.5 hover:border-[var(--color-label-3)] hover:bg-[var(--color-fill)] transition-colors">
+                <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Download size={16} /></span>
+                <span className="flex-1 min-w-0"><span className="block text-sm font-semibold">Installers for everyone else</span><span className="block text-xs text-steel mt-0.5">A page to send staff — Windows, Android or iPhone, it gives them the right one</span></span>
+                <ChevronRight size={16} className="text-steel shrink-0" />
+              </Link>
+            </Section>
+          </Card>
+
           {/* property info */}
           <Card>
             <Section icon={<Building2 size={16} />} title="Property details">
@@ -108,17 +125,54 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                 </div>
 
                 <div className="pt-3 border-t border-[var(--color-separator)]">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">On-time promise</div>
+                  <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
+                    <input type="checkbox" name="promise_enabled" className="w-4 h-4 accent-saffron mt-0.5" defaultChecked={restaurant.promise_enabled ?? false} onChange={(e) => setPromise(e.target.checked)} />
+                    <span>Offer guests a delivery deadline<span className="block text-xs text-steel mt-0.5">A guest can be offered “on your table in {restaurant.promise_minutes ?? 30} minutes, or the food is free”. They pay the percentage below for it. Miss the deadline and the whole bill comes to zero — the fee included.</span></span>
+                  </label>
+                  {promise && (
+                    <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                      <Field label="Minutes promised" hint="From the moment the order is taken to the food reaching the guest">
+                        <input name="promise_minutes" type="number" min={5} max={240} step={1} defaultValue={restaurant.promise_minutes ?? 30} className="num" />
+                      </Field>
+                      <Field label="Charged for it %" hint="Added to the food after any discount, and taxed with it">
+                        <input name="promise_pct" type="number" min={0} max={50} step="0.5" defaultValue={restaurant.promise_pct ?? 5} className="num" />
+                      </Field>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-[var(--color-separator)]">
                   <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Tax & billing</div>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <Field label="GSTIN"><input name="gstin" defaultValue={restaurant.gstin ?? ""} className="num uppercase" /></Field>
+                    <Field label="GSTIN" hint={gstinOn ? undefined : "Empty — no tax is added to any bill"}><input name="gstin" defaultValue={restaurant.gstin ?? ""} className="num uppercase" onChange={(e) => setGstinOn(e.target.value.trim() !== "")} /></Field>
                     <Field label="GST rate %" hint="5% for most; split as CGST + SGST"><input name="gst_rate" type="number" step="0.01" defaultValue={restaurant.gst_rate} className="num" /></Field>
                   </div>
+                  {!gstinOn && (
+                    <p className="text-xs mt-2 text-[var(--color-orange)]">
+                      No GSTIN is saved, so bills carry no CGST or SGST. That is the law for a business that is not registered — collecting tax without a registration is not allowed. If you are registered, type the GSTIN above and tax starts appearing on the next bill.
+                    </p>
+                  )}
                   <div className={cn("grid gap-3 mt-3", isHotel ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
                     <Field label="Service charge %"><input name="service_charge_pct" type="number" step="0.01" defaultValue={restaurant.service_charge_pct} className="num" /></Field>
-                    {isHotel && <Field label="Room GST %"><input name="room_gst_rate" type="number" step="0.01" defaultValue={restaurant.room_gst_rate} className="num" /></Field>}
+                    {isHotel && <Field label="Room GST % (up to the slab)" hint="5% since 22 Sep 2025"><input name="room_gst_rate" type="number" step="0.01" defaultValue={restaurant.room_gst_rate} className="num" /></Field>}
                     {isHotel && <Field label="Check-in / out"><div className="grid grid-cols-2 gap-2"><input name="check_in_time" type="time" defaultValue={restaurant.check_in_time?.slice(0, 5)} className="num" /><input name="check_out_time" type="time" defaultValue={restaurant.check_out_time?.slice(0, 5)} className="num" /></div></Field>}
                   </div>
-                  {!isHotel && <><input type="hidden" name="room_gst_rate" value={restaurant.room_gst_rate} /><input type="hidden" name="check_in_time" value={restaurant.check_in_time} /><input type="hidden" name="check_out_time" value={restaurant.check_out_time} /></>}
+                  {isHotel && (
+                    <div className="grid sm:grid-cols-3 gap-3 mt-3">
+                      <Field label="Slab at ₹ / night" hint="Above this, the higher rate applies">
+                        <input name="room_gst_threshold" type="number" step="1" defaultValue={restaurant.room_gst_threshold ?? 7500} className="num" />
+                      </Field>
+                      <Field label="Room GST % above the slab" hint="18% since 22 Sep 2025">
+                        <input name="room_gst_rate_high" type="number" step="0.01" defaultValue={restaurant.room_gst_rate_high ?? 18} className="num" />
+                      </Field>
+                      <Field label="Extras GST %" hint="Spa, laundry, transport on the folio">
+                        <input name="facility_gst_rate" type="number" step="0.01" defaultValue={restaurant.facility_gst_rate ?? 18} className="num" />
+                      </Field>
+                    </div>
+                  )}
+                  {isHotel && <p className="text-xs text-steel mt-2">Each night is taxed on the rate that night was sold at, so a ₹4,000 room and a ₹9,000 suite carry different rates on the same invoice — which is what the law asks for.</p>}
+                  {!isHotel && <><input type="hidden" name="room_gst_rate" value={restaurant.room_gst_rate} /><input type="hidden" name="room_gst_rate_high" value={restaurant.room_gst_rate_high ?? 18} /><input type="hidden" name="room_gst_threshold" value={restaurant.room_gst_threshold ?? 7500} /><input type="hidden" name="facility_gst_rate" value={restaurant.facility_gst_rate ?? 18} /><input type="hidden" name="check_in_time" value={restaurant.check_in_time} /><input type="hidden" name="check_out_time" value={restaurant.check_out_time} /></>}
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-3">

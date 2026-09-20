@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC = ["/", "/login", "/signup", "/join", "/forgot", "/membership", "/offline"];
+const PUBLIC = ["/", "/login", "/signup", "/join", "/forgot", "/membership", "/offline", "/get"];
 const PUBLIC_PREFIX = ["/queue/", "/dine", "/book/", "/record/", "/pay/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/"];
 /** Pages a signed-in user must always be able to reach, even with must_change_password set. Without
  *  this the password-change screen has no way out: the middleware bounces /login to /dashboard, and

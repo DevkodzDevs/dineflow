@@ -55,6 +55,7 @@ export const stockMoveSchema = z.object({
 
 export const newOrderSchema = z.object({
   type: z.enum(ORDER_TYPES),
+  promise: z.boolean().optional(),   // the guest took the on-time promise
   table_id: z.string().uuid().nullable().optional(),
   customer_name: z.string().max(80).optional().nullable(),
   customer_phone: z.string().max(20).optional().nullable(),

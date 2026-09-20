@@ -1,20 +1,21 @@
 "use client";
 import { useState, useTransition } from "react";
-import { motion } from "framer-motion";
 import { Copy, ExternalLink, Percent, Plus, Trash2, UtensilsCrossed, Bike, ShoppingBag, Globe } from "lucide-react";
 import { Button, Card, Field, Switch, Sheet, Pill, cn, useToast } from "@/components/ui";
 import { QR } from "../../labour/LabourClient";
 import { formatINR } from "@/lib/format";
-import { saveStorefront } from "./actions";
+import { saveStorefront, suggestTagline } from "./actions";
+import { AiButton } from "@/components/ui/AiButton";
 import { saveOffer, deleteOffer } from "../../reservations/actions";
 
 type R = { booking_slug: string | null; name: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; photos: string[]; is_listed: boolean; dining_enabled: boolean; delivery_enabled: boolean; takeaway_enabled: boolean; opens_at: string; closes_at: string; slot_minutes: number; seats_per_slot: number | null; min_order: number; delivery_fee: number; packing_charge: number; delivery_radius_km: number; rating: number | null; rating_count: number };
 type O = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; from_time: string | null; to_time: string | null; code: string | null; is_active: boolean };
 
-export function StorefrontSettings({ base, r, offers }: { base: string; r: R; offers: O[] }) {
+export function StorefrontSettings({ base, r, offers, ai = false }: { base: string; r: R; offers: O[]; ai?: boolean }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [on, setOn] = useState({ listed: r.is_listed, dining: r.dining_enabled, delivery: r.delivery_enabled, takeaway: r.takeaway_enabled });
   const [offer, setOffer] = useState<Partial<O> | null>(null);
+  const [tagline, setTagline] = useState(r.tagline ?? ""); const [tagBusy, setTagBusy] = useState(false);
   const url = `${base}/dine/${r.booking_slug ?? ""}`;
 
   return (
@@ -42,7 +43,8 @@ export function StorefrontSettings({ base, r, offers }: { base: string; r: R; of
           <Card>
             <h2 className="text-xl mb-4">How you appear</h2>
             <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Tagline"><input name="tagline" defaultValue={r.tagline ?? ""} placeholder="Coastal Tamil food, cooked to order" /></Field>
+              <Field label="Tagline"><div className="flex gap-2 items-center"><input name="tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Coastal Tamil food, cooked to order" className="flex-1 min-w-0" />
+                {ai && <AiButton label="Write one" busy={tagBusy} onClick={() => { setTagBusy(true); void suggestTagline().then((x) => { if ("error" in x) toast(x.error!, "err"); else { setTagline(x.tagline!); if (x.alternatives?.length) toast(`Or: ${x.alternatives.join(" · ")}`, "info"); } }).finally(() => setTagBusy(false)); }} />}</div></Field>
               <Field label="Cuisines" hint="Comma separated — guests search on these"><input name="cuisines" defaultValue={r.cuisines?.join(", ")} placeholder="South Indian, Chettinad, Seafood" /></Field>
               <Field label="Price for two (₹)"><input name="price_for_two" type="number" className="num" defaultValue={r.price_for_two ?? ""} /></Field>
               <Field label="Photos" hint="Image links, one per line. First is the cover."><textarea name="photos" rows={2} defaultValue={r.photos?.join("\n")} placeholder="https://…" /></Field>

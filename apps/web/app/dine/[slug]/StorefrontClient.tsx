@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, Minus, Plus, Bike, ShoppingBag, UtensilsCrossed, BedDouble, Leaf, Drumstick, Users, CalendarDays, PartyPopper } from "lucide-react";
+import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, Minus, Plus, Bike, ShoppingBag, UtensilsCrossed, BedDouble, Leaf, Drumstick, Users, CalendarDays } from "lucide-react";
 import { Button, Field, Segmented, Sheet, Select, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { slots as fetchSlots, reserve, placeOrder } from "../actions";

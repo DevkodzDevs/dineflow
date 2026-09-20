@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Plus, Waves, Flower2, Tent, Pencil, Clock } from "lucide-react";
-import { Button, Sheet, Field, Card, Pill, cn } from "@/components/ui";
+import { Button, Sheet, Field, Card, Pill } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveFacility, bookFacility, cancelFacilityBooking } from "./actions";
 

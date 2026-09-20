@@ -2,22 +2,24 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarDays, Users, Phone, Check, X, Armchair, Plus, Star, PartyPopper, Percent, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button, Card, Field, Pill, StatTile, Sheet, Select, Segmented, cn, Empty, useToast } from "@/components/ui";
+import { Users, Phone, X, Armchair, Plus, Star, PartyPopper, Percent, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button, Card, Field, Pill, StatTile, Sheet, Segmented, cn, Empty, useToast } from "@/components/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { useLive } from "@/lib/useLive";
-import { setReservation, addWalkIn, replyReview } from "./actions";
+import { setReservation, addWalkIn, replyReview, draftReviewReply } from "./actions";
+import { AiButton } from "@/components/ui/AiButton";
 
 type R = { id: string; reservation_no: number; guest_name: string; guest_phone: string; on_date: string; at_time: string; party_size: number; occasion: string | null; note: string | null; status: string; table_id: string | null; offer_label: string | null; discount_pct: number; source: string; created_at: string };
 type T = { id: string; name: string; capacity: number; status: string };
 type V = { id: string; guest_name: string | null; rating: number; body: string | null; reply: string | null; created_at: string };
 
-export function ReservationsClient({ day, list, tables, reviews }: { day: string; list: R[]; tables: T[]; reviews: V[] }) {
+export function ReservationsClient({ day, list, tables, reviews, ai = false }: { day: string; list: R[]; tables: T[]; reviews: V[]; ai?: boolean }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [tab, setTab] = useState<"today" | "reviews">("today");
   const [walkIn, setWalkIn] = useState(false); const [seating, setSeating] = useState<R | null>(null);
   const [w, setW] = useState({ name: "", phone: "", date: day, time: "19:30", party: 2, note: "" });
   const [replyTo, setReplyTo] = useState<V | null>(null); const [reply, setReply] = useState("");
+  const [drafting, setDrafting] = useState(false);
   useLive(["reservations"], 30000);
 
   const upcoming = list.filter((r) => ["requested", "confirmed"].includes(r.status));
@@ -123,7 +125,10 @@ export function ReservationsClient({ day, list, tables, reviews }: { day: string
 
       <Sheet open={!!replyTo} onClose={() => setReplyTo(null)} title="Reply publicly">
         <div className="space-y-4">
-          <p className="text-sm text-[var(--color-label-2)]">Your reply appears under the review on your public page. Keep it short and human.</p>
+          <div className="flex items-start gap-3">
+            <p className="text-sm text-[var(--color-label-2)] flex-1">Your reply appears under the review on your public page. Keep it short and human.</p>
+            {ai && <AiButton label="Draft it" busy={drafting} onClick={() => { setDrafting(true); void draftReviewReply(replyTo!.id).then((r) => { if ("error" in r) toast(r.error!, "err"); else setReply(r.reply); }).finally(() => setDrafting(false)); }} />}
+          </div>
           <textarea rows={4} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Thank you for coming — sorry the biryani was late that evening, we have added a second cook on weekends." />
           <Button className="w-full" loading={pending} disabled={!reply} onClick={() => start(async () => { await replyReview(replyTo!.id, reply); setReplyTo(null); toast("Reply posted"); })}>Post reply</Button>
         </div>

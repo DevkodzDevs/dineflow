@@ -1,21 +1,19 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, Check, Bell, Printer, Boxes } from "lucide-react";
+import { Flame, Check, Bell, Printer, Boxes, Timer } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Ticket } from "@/components/ui/Ticket";
 import { Button, cn } from "@/components/ui";
 import { minsSince, fmtAge, fmtQty } from "@/lib/format";
-import { Flip, listV, itemV, glide } from "@/components/ui";
-import { LayoutGroup } from "framer-motion";
+import { Flip, listV } from "@/components/ui";
 import { setKotStatus, setItemStatus } from "../orders/actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 import { usePrinters } from "@/lib/print/usePrinter";
 
 type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string;
-  orders: { order_no: number; type: string; customer_name: string | null; dining_tables: { name: string } | null } | null;
+  orders: { order_no: number; type: string; customer_name: string | null; promised_at: string | null; dining_tables: { name: string } | null } | null;
   order_items: { id: string; name_snapshot: string; qty: number; status: string; notes: string | null }[] };
 /** Per ticket: what its dishes draw from the pantry, whether the shelf covers it, whether it has drawn already. */
 export type Needs = Record<string, { started: boolean; unmapped: string[]; needs: { ingredient_id: string; name: string; unit: string; need: number; stock: number; short: boolean }[] }>;
@@ -83,8 +81,13 @@ export function KitchenClient({ initial: raw, needs, stale = 0 }: { initial: Kot
                 <AnimatePresence mode="popLayout">
                   {list.map((k) => {
                     const age = minsSince(k.created_at); const late = key !== "ready" && age >= 15; const since = fmtAge(k.created_at);
+                    /* A promised ticket carries a deadline the kitchen has to beat, and missing it
+                       costs the property the whole bill — so it outranks the usual 15-minute nudge. */
+                    const due = k.orders?.promised_at ? new Date(k.orders.promised_at) : null;
+                    const leftMin = due ? Math.round((due.getTime() - Date.now()) / 60000) : null;
+                    const overdue = leftMin !== null && leftMin < 0;
                     return (
-                      <Ticket key={k.id} layoutId={k.id} no={k.kot_no} title={where(k)} meta={`Order #${k.orders?.order_no}`} tone={late ? "alert" : key} aside={<Flip value={since.value} label={since.label} size="xs" tone={late ? "alert" : key === "ready" ? "live" : undefined} />}
+                      <Ticket key={k.id} layoutId={k.id} no={k.kot_no} title={where(k)} meta={`Order #${k.orders?.order_no}`} tone={late || overdue ? "alert" : key} aside={<Flip value={since.value} label={since.label} size="xs" tone={late ? "alert" : key === "ready" ? "live" : undefined} />}
                         footer={
                           <div className="flex gap-2">
                             {key === "pending" ? <Button className="flex-1" disabled={pending} onClick={() => move(k.id, "preparing")}><Flame size={16} /> Start cooking</Button>
@@ -92,6 +95,13 @@ export function KitchenClient({ initial: raw, needs, stale = 0 }: { initial: Kot
                             : <Button className="flex-1" variant="outline" disabled={pending} onClick={() => move(k.id, "served")}>Picked up</Button>}
                             <Button variant="ghost" title="Reprint this ticket" onClick={() => { void printKot({ kotNo: `KOT ${k.kot_no}`, when: new Date(k.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: where(k), reprint: true, items: k.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, note: i.notes })) }); }}><Printer size={16} /></Button>
                           </div>}>
+                        {leftMin !== null && (
+                          <div className={cn("mb-2 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold",
+                            overdue ? "bg-[var(--color-red-2)] text-[var(--color-red)]" : leftMin <= 5 ? "bg-[rgb(255_179_64/.18)] text-[var(--color-orange)]" : "bg-[var(--color-green-2)] text-[var(--color-tint)]")}>
+                            <Timer size={12} />
+                            {overdue ? `Promised ${Math.abs(leftMin)} min ago — this bill is now free` : `Promised in ${leftMin} min`}
+                          </div>
+                        )}
                         {k.order_items.filter((i) => i.status !== "cancelled").map((i) => (
                           <button key={i.id} disabled={pending || key === "ready"} onClick={() => { const next = i.status === "ready" ? "preparing" : "ready"; if (!online) { void enqueue("item_status", { ids: [i.id], status: next }, `Kitchen · ${i.name_snapshot}`); return; } start(() => { setItemStatus(i.id, next); }); }}
                             className={cn("w-full flex items-start gap-2 text-left rounded-lg px-1.5 py-1 -mx-1.5 transition", key !== "ready" && "hover:bg-porcelain", i.status === "ready" && "text-steel")}>

@@ -3,7 +3,7 @@ import { useState, useTransition, useEffect } from "react";
 import { Phone, Bell, Armchair, X, QrCode, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button, Card, Flip, useToast } from "@/components/ui";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { listV, itemV } from "@/lib/motion";
 import { useLive } from "@/lib/useLive";
 import { fmtSince } from "@/lib/format";

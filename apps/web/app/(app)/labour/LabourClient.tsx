@@ -1,10 +1,10 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { QR } from "@/components/QR";
 export { QR };   // the booking-page and storefront settings import it from here
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, HardHat, QrCode, Printer, Check, Banknote, Pencil } from "lucide-react";
+import { Plus, QrCode, Printer, Check, Banknote, Pencil } from "lucide-react";
 import { Button, Sheet, Field, Card, Pill, StatTile, cn, Empty } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { LABOUR_SKILLS } from "@dineflow/shared";

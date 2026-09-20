@@ -86,7 +86,7 @@ export async function changePassword(_: unknown, fd: FormData) {
 /** Defer the password change and grant 3-day temporary access. */
 export async function deferPasswordChange() {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("defer_password_change");
+  const { error } = await supabase.rpc("defer_password_change");
   if (error) return { error: error.message };
   revalidatePath("/", "layout");
   return { ok: true };

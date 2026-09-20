@@ -1,6 +1,5 @@
 "use client";
 import { motion } from "framer-motion";
-import { itemV, glide } from "@/lib/motion";
 import { cn } from "./index";
 import type { ReactNode } from "react";
 

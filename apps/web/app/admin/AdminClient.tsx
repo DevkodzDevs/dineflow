@@ -1,9 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type FocusEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Building2, Palmtree, UtensilsCrossed, KeyRound, Copy, Pause, Play, Clock, Search, MoreHorizontal } from "lucide-react";
-import { Button, Sheet, Field, StatTile, cn, Pill, Waiting, PasswordInput } from "@/components/ui";
+import { Button, Sheet, Field, StatTile, cn, Pill, Waiting } from "@/components/ui";
 import { formatINR, PROPERTY_LABEL, type PropertyType } from "@dineflow/shared";
 import { daysLeft } from "@/lib/format";
 import { issueKey, setMembership, actAs, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type PropertyDetail } from "./actions";
@@ -41,7 +40,6 @@ const shut = (e: { currentTarget: HTMLElement }) => { const d = e.currentTarget.
 const Icon = ({ t }: { t: PropertyType }) => (t === "hotel" ? <Building2 size={16} /> : t === "resort" ? <Palmtree size={16} /> : <UtensilsCrossed size={16} />);
 
 export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [] }: { tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; codes?: { id: string; code: string | null }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
-  const boxOf = (id: string) => boxes.find((b) => b.restaurant_id === id);
   const codeOf = (id: string) => codes.find((c) => c.id === id)?.code ?? null;
   const [q, setQ] = useState(""); const [filter, setFilter] = useState("all");
   const [sel, setSel] = useState<T | null>(null); const [issued, setIssued] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
@@ -395,7 +393,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
 }
 
 /* ── Access panel: plan presets + per-module toggles ──────────────────────── */
-function AccessPanel({ sel, mods, setMods, pending, err, onSave, onCancel, access }: {
+function AccessPanel({ sel, mods, setMods, pending, err, onSave, onCancel }: {
   sel: T; mods: string[] | null; setMods: (v: string[] | null) => void;
   pending: boolean; err: string | null; onSave: () => void; onCancel: () => void;
   access: { id: string; enabled_modules: string[] | null }[];

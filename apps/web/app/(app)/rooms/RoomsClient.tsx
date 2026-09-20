@@ -1,11 +1,10 @@
 "use client";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Sparkles, Wrench, Check, Trash2 } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { Button, Sheet, Field, cn, Pill } from "@/components/ui";
+import { Button, Sheet, Field, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveRoom, setRoomStatus, deleteRoom, saveRoomType } from "./actions";
 
@@ -14,7 +13,7 @@ type RT = { id: string; name: string; base_rate: number; capacity: number };
 type Bk = { id: string; room_id: string; check_out: string; guests: { full_name: string } | null };
 
 export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: RT[]; bookings: Bk[] }) {
-  const router = useRouter(); const [pending, start] = useTransition();
+  const [pending, start] = useTransition();
   const [edit, setEdit] = useState<Partial<Room> | null>(null); const [typeSheet, setTypeSheet] = useState(false); const [err, setErr] = useState<string | null>(null);
   useLive(["rooms"].map(String));
   const floors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b);

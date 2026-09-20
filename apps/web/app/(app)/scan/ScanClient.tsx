@@ -28,7 +28,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
       const back = devices.find((d) => /back|rear|environment/i.test(d.label)) ?? devices[0];
       const controls = await reader.decodeFromVideoDevice(back?.deviceId, videoRef.current!, (res) => { if (res) { const text = res.getText(); controls.stop(); readerRef.current = null; handleCode(text, "barcode"); } });
       readerRef.current = controls;
-    } catch (e) { setErr("Camera not available — allow camera access, or use Upload / type a code."); setMode("idle"); }
+    } catch { setErr("Camera not available — allow camera access, or use Upload / type a code."); setMode("idle"); }
   };
   const stopCamera = () => { readerRef.current?.stop(); readerRef.current = null; const v = videoRef.current; (v?.srcObject as MediaStream | null)?.getTracks().forEach((t) => t.stop()); if (v) v.srcObject = null; };
   useEffect(() => { const code = new URLSearchParams(window.location.search).get("code"); if (code) handleCode(code, "manual"); return () => stopCamera(); }, []); // eslint-disable-line react-hooks/exhaustive-deps

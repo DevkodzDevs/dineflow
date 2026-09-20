@@ -1,0 +1,54 @@
+name: CI
+
+# The gate. Nothing in this repo checked itself before: `pnpm lint` exited 1 on a setup prompt, and
+# a build was only ever run by hand, so a change that broke a screen could reach a till unopposed.
+# These three run on every push and every pull request, and they are the same three commands anyone
+# can run locally — no CI-only magic to drift out of sync.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+        # The desktop shell is a Windows artefact built by hand on a Windows machine; CI never makes
+        # one, and without this every run would pull 115 MB of Electron binary to sit unused.
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      # The build needs the public Supabase pair to exist at module scope; they are public by
+      # definition (they ship to every browser) and these placeholders never resolve to a project,
+      # so a build can be proved without handing CI a key to real data.
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key-for-build-only

@@ -1,6 +1,5 @@
 "use client";
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Wrench, Check, Play, Plus } from "lucide-react";
 import { useLive } from "@/lib/useLive";
@@ -10,7 +9,7 @@ import { setTask, addTask } from "./actions";
 
 type Task = { id: string; kind: string; status: string; notes: string | null; created_at: string; rooms: { number: string; floor: number } | null };
 export function HousekeepingClient({ tasks, rooms, done }: { tasks: Task[]; rooms: { id: string; number: string; status: string }[]; done: { id: string; kind: string; done_at: string; rooms: { number: string } | null }[] }) {
-  const router = useRouter(); const [pending, start] = useTransition(); const [f, setF] = useState({ room: "", kind: "clean", notes: "" });
+  const [pending, start] = useTransition(); const [f, setF] = useState({ room: "", kind: "clean", notes: "" });
   useLive(["housekeeping_tasks"].map(String));
   const cols = [{ key: "pending", title: "To do" }, { key: "in_progress", title: "In progress" }];
   return (

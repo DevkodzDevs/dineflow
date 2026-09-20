@@ -14,7 +14,7 @@ type L = { id: string; token: string; label: string; purpose: string; from_perio
 const PURPOSE = { bank: { l: "Bank / loan", Icon: Landmark }, supplier: { l: "Supplier credit", Icon: Truck }, landlord: { l: "Landlord", Icon: Building2 }, investor: { l: "Investor", Icon: Briefcase }, other: { l: "Other", Icon: FileCheck2 } } as const;
 const mon = (d: string) => new Date(d).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
 
-export function ProofClient({ base, record, links, restaurant }: { base: string; record: Rec; links: L[]; restaurant: { name: string } }) {
+export function ProofClient({ base, record, links }: { base: string; record: Rec; links: L[]; restaurant: { name: string } }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
   const [sheet, setSheet] = useState(false);

@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Users } from "lucide-react";
 import { useLive } from "@/lib/useLive";
@@ -13,7 +12,6 @@ type Table = { id: string; name: string; capacity: number; zone: string; status:
 type Order = { id: string; order_no: number; type: string; table_id: string | null; customer_name: string | null; created_at: string; order_items: { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string }[] };
 
 export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Order[] }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [, tick] = useState(0);
   useLive(["orders", "order_items", "dining_tables"], 30000);

@@ -1,11 +1,13 @@
 import { FlipClock } from "@/components/ui/flip";
+import { SignedOutCleanup } from "@/components/SignedOutCleanup";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh grid lg:grid-cols-[1.1fr_1fr] deck">
+      <SignedOutCleanup />
       <section className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden wall">
         <div className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-192.png" alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-xl" />
+          <img src="/mark.png" alt="" width={40} height={40} className="h-10 w-10 shrink-0 object-contain" />
           <span className="font-display text-2xl tracking-wide">DineFlow</span>
         </div>
         <div className="relative">

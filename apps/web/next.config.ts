@@ -26,7 +26,22 @@ const config: NextConfig = {
     return [
       { source: "/fonts/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },
-      { source: "/(.*)", headers: [{ key: "X-Content-Type-Options", value: "nosniff" }, { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }] },
+      /**
+       * Applied to every response. X-Frame-Options and the frame-ancestors directive keep the app out
+       * of someone else's iframe, which is what a clickjacked "settle bill" button needs to exist.
+       * Permissions-Policy keeps the camera (the scanner) and the microphone (Assist's voice input)
+       * for this origin and shuts the rest: nothing in the app asks for a location, so nothing can.
+       * HSTS is set only in production: on localhost it would pin a certificate the dev server
+       * has not got, and lock the machine out of http://localhost for six months.
+       */
+      { source: "/(.*)", headers: [
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+        { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), interest-cohort=()" },
+        ...(process.env.NODE_ENV === "production" ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }] : []),
+      ] },
     ];
   },
 };

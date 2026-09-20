@@ -1,3 +1,4 @@
+import { aiEnabled } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { MenuClient } from "./MenuClient";
@@ -15,7 +16,7 @@ export default async function MenuPage() {
   return (
     <>
       <PageHeader eyebrow="What you serve" title="Menu & recipes" />
-      <MenuClient categories={categories ?? []} items={items ?? []} ingredients={ingredients ?? []} recipes={recipes ?? []} />
+      <MenuClient categories={categories ?? []} items={items ?? []} ingredients={ingredients ?? []} recipes={recipes ?? []} ai={aiEnabled()} />
     </>
   );
 }

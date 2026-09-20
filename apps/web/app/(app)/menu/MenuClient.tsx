@@ -1,21 +1,40 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Plus, Leaf, Drumstick, Pencil, FlaskConical, Trash2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Card, Field, Sheet, Empty, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { findStandardRecipe } from "@dineflow/shared";
-import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe } from "./actions";
+import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe } from "./actions";
+import { AiButton } from "@/components/ui/AiButton";
 
 type Cat = { id: string; name: string; sort_order: number };
 type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; prep_minutes: number; description: string | null };
 type Ing = { id: string; name: string; unit: string };
 type Rec = { menu_item_id: string; ingredient_id: string; qty: number };
 
-export function MenuClient({ categories, items, ingredients, recipes }: { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[] }) {
+export function MenuClient({ categories, items, ingredients, recipes, ai = false }: { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; ai?: boolean }) {
   const [cat, setCat] = useState<string>("all");
   const [editing, setEditing] = useState<Partial<Item> | null>(null);
   const [recipeFor, setRecipeFor] = useState<Item | null>(null);
+  /* The dish form is uncontrolled (defaultValue), which is right for a form a person types into. To
+     fill it from the model, the values are written straight onto the inputs — the same thing the
+     person would have typed — so nothing about how the form saves changes. */
+  const toast = useToast();
+  const formRef = useRef<HTMLFormElement>(null); const [filling, setFilling] = useState(false);
+  const fillDish = async () => {
+    const f = formRef.current; if (!f) return;
+    const name = (f.elements.namedItem("name") as HTMLInputElement | null)?.value ?? "";
+    setFilling(true);
+    try {
+      const r = await suggestDish(name);
+      if ("error" in r) { toast(r.error!, "err"); return; }
+      const set = (n: string, v: string) => { const el = f.elements.namedItem(n) as HTMLInputElement | HTMLTextAreaElement | null; if (el) el.value = v; };
+      set("description", r.description); set("price", String(r.price_inr)); set("prep_minutes", String(r.prep_minutes));
+      const veg = f.elements.namedItem("is_veg") as HTMLInputElement | null; if (veg) veg.checked = r.is_veg;
+      toast("Filled in — check it and save");
+    } finally { setFilling(false); }
+  };
   const [catSheet, setCatSheet] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -69,9 +88,10 @@ export function MenuClient({ categories, items, ingredients, recipes }: { catego
 
       {/* dish editor */}
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? "Edit dish" : "New dish"}>
-        <form className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveMenuItem(fd); if (r && "error" in r) setErr(r.error!); else setEditing(null); })}>
+        <form ref={formRef} className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveMenuItem(fd); if (r && "error" in r) setErr(r.error!); else setEditing(null); })}>
           {editing?.id && <input type="hidden" name="id" value={editing.id} />}
-          <Field label="Dish name"><input name="name" defaultValue={editing?.name} required autoFocus /></Field>
+          <Field label="Dish name"><div className="flex gap-2 items-center"><input name="name" defaultValue={editing?.name} required autoFocus className="flex-1 min-w-0" />
+            {ai && <AiButton label="Fill the rest" busy={filling} onClick={() => { void fillDish(); }} />}</div></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Price (₹)"><input name="price" type="number" step="0.01" min="0" defaultValue={editing?.price} required /></Field>
             <Field label="Prep minutes"><input name="prep_minutes" type="number" min="0" defaultValue={editing?.prep_minutes ?? 15} /></Field>
@@ -94,7 +114,7 @@ export function MenuClient({ categories, items, ingredients, recipes }: { catego
 
       {/* recipe editor */}
       <Sheet open={!!recipeFor} onClose={() => setRecipeFor(null)} title={`Recipe · ${recipeFor?.name ?? ""}`}>
-        {recipeFor && <RecipeEditor item={recipeFor} ingredients={ingredients} initial={recipeMap[recipeFor.id] ?? []} onDone={() => setRecipeFor(null)} />}
+        {recipeFor && <RecipeEditor item={recipeFor} ingredients={ingredients} initial={recipeMap[recipeFor.id] ?? []} onDone={() => setRecipeFor(null)} ai={ai} />}
       </Sheet>
 
       {/* categories */}
@@ -115,13 +135,25 @@ export function MenuClient({ categories, items, ingredients, recipes }: { catego
   );
 }
 
-function RecipeEditor({ item, ingredients, initial, onDone }: { item: Item; ingredients: Ing[]; initial: Rec[]; onDone: () => void }) {
+function RecipeEditor({ item, ingredients, initial, onDone, ai = false }: { item: Item; ingredients: Ing[]; initial: Rec[]; onDone: () => void; ai?: boolean }) {
   const [rows, setRows] = useState<{ ingredient_id: string; qty: number }[]>(initial.length ? initial.map((r) => ({ ingredient_id: r.ingredient_id, qty: Number(r.qty) })) : [{ ingredient_id: "", qty: 0 }]);
   const [pending, start] = useTransition();
   const toast = useToast();
   const unit = (id: string) => ingredients.find((i) => i.id === id)?.unit ?? "";
   // the library's plate for this dish, if it knows one — offered before any hand-mapping
   const std = useMemo(() => findStandardRecipe(item.name), [item.name]);
+  const [proposing, setProposing] = useState(false);
+  /* The model proposes lines from this property's own pantry; the server has already thrown away any
+     id it invented. The person still reads the amounts and presses Save. */
+  const propose = async () => {
+    setProposing(true);
+    try {
+      const r = await suggestRecipe(item.name);
+      if ("error" in r) { toast(r.error!, "err"); return; }
+      setRows(r.rows);
+      toast(r.missing.length ? `${r.rows.length} lines proposed · not stocked: ${r.missing.join(", ")}` : `${r.rows.length} lines proposed — check the amounts`);
+    } finally { setProposing(false); }
+  };
   const useStandard = () => start(async () => {
     const r = await applyStandardRecipe(item.id, item.name);
     if (!r.ok) { toast(r.error ?? "Could not map the recipe", "err"); return; }
@@ -139,7 +171,10 @@ function RecipeEditor({ item, ingredients, initial, onDone }: { item: Item; ingr
   return (
     <div className="space-y-3">
       {standard}
-      <p className="text-sm text-steel">Per 1 plate of <b>{item.name}</b>. Starting a ticket in the kitchen subtracts these amounts from the pantry.</p>
+      <div className="flex items-start gap-3">
+        <p className="text-sm text-steel flex-1">Per 1 plate of <b>{item.name}</b>. Starting a ticket in the kitchen subtracts these amounts from the pantry.</p>
+        {ai && <AiButton label="Propose" busy={proposing} onClick={() => { void propose(); }} />}
+      </div>
       {rows.map((r, i) => (
         <div key={i} className="grid grid-cols-[1fr_96px_36px] gap-2 items-center">
           <select value={r.ingredient_id} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, ingredient_id: e.target.value } : x)))}>

@@ -6,9 +6,10 @@ import { z } from "zod";
 
 const bump = () => ["/billing", "/orders", "/reports", "/dashboard"].forEach((p) => revalidatePath(p));
 
-export async function generateBill(orderId: string, discountPct: number, discountAmount: number) {
+/** promiseKept is the cashier's word on an on-time promise. Left undefined the bill decides for itself. */
+export async function generateBill(orderId: string, discountPct: number, discountAmount: number, promiseKept?: boolean | null) {
   const s = await createClient();
-  const { data, error } = await s.rpc("generate_bill", { p_order_id: orderId, p_discount_pct: discountPct, p_discount_amount: discountAmount });
+  const { data, error } = await s.rpc("generate_bill", { p_order_id: orderId, p_discount_pct: discountPct, p_discount_amount: discountAmount, p_promise_kept: promiseKept ?? null });
   if (error) return { error: error.message }; bump(); return { ok: true, billId: data as string };
 }
 export async function voidBill(billId: string) {

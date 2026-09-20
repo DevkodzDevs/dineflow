@@ -2,8 +2,8 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Star, MapPin, Clock, Percent, UtensilsCrossed, Bike, BedDouble, Ticket } from "lucide-react";
-import { Segmented, Button, cn } from "@/components/ui";
+import { Search, Star, MapPin, Percent, UtensilsCrossed, Bike, BedDouble, Ticket } from "lucide-react";
+import { Segmented } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { discover } from "./actions";
 

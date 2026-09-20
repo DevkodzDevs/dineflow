@@ -109,7 +109,7 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
   return (
     <aside className="hidden md:flex md:flex-col w-[256px] shrink-0 ink-panel sticky top-0 self-start h-dvh px-4 py-6 overflow-hidden">
       <Link href="/dashboard" className="px-2 flex items-center gap-2.5 min-w-0">
-        {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 rounded-[10px] object-cover bg-white" /> : <span className="flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px] shrink-0"><span className="flip-face">{restaurant.slice(0, 1)}</span></span>}
+        {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 object-contain" /> : <span className="flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px] shrink-0"><span className="flip-face">{restaurant.slice(0, 1)}</span></span>}
         <div className="min-w-0"><div className="font-display text-[17px] leading-tight text-white tracking-wide rail-hide truncate">{restaurant}</div><div className="rail-hide text-[11px] text-white/45 mt-0.5 truncate">{PROPERTY_LABEL[type]}</div></div>
       </Link>
       <nav ref={navRef} className="mt-7 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] -mx-1 px-1 sidebar-scroll">

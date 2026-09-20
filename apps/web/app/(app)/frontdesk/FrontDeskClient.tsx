@@ -1,11 +1,10 @@
 "use client";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { Plus, LogIn, CalendarDays, Moon, Users } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { Button, Sheet, Field, StatTile, Pill, cn, Empty } from "@/components/ui";
+import { Button, Sheet, Field, StatTile, Pill, cn, Empty, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { createBooking, checkIn, cancelBooking } from "./actions";
 
@@ -16,7 +15,7 @@ type G = { id: string; full_name: string; phone: string | null };
 
 export function FrontDeskClient({ today, bookings, rooms, types, guests }: { today: string; bookings: Booking[]; rooms: Room[]; types: RT[]; guests: G[] }) {
   const router = useRouter(); const [pending, start] = useTransition();
-  const [open, setOpen] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState(false); const toast = useToast();
   useLive(["bookings", "rooms"].map(String));
   const arrivals = bookings.filter((b) => b.status === "reserved" && b.check_in <= today);
   const departures = bookings.filter((b) => b.status === "checked_in" && b.check_out <= today);
@@ -44,7 +43,7 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests }: { tod
       <div className="flex items-center gap-2"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Today</div><div className="ml-auto"><Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button></div></div>
       <div className="grid gap-6 lg:grid-cols-2">
         <section><div className="text-sm font-semibold mb-3 flex items-center gap-2"><LogIn size={15} /> Arrivals <span className="num text-steel">{arrivals.length}</span></div>
-          <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} action={<Button size="sm" variant="ink" disabled={pending} onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) alert(r.error); }); }}>Check in</Button>} />)}{arrivals.length === 0 && <p className="text-sm text-steel">No pending arrivals.</p>}</div>
+          <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} action={<Button size="sm" variant="ink" disabled={pending} onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}>Check in</Button>} />)}{arrivals.length === 0 && <p className="text-sm text-steel">No pending arrivals.</p>}</div>
           <div className="text-sm font-semibold mt-6 mb-3 flex items-center gap-2"><CalendarDays size={15} /> Upcoming <span className="num text-steel">{upcoming.length}</span></div>
           <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} action={<button className="text-xs text-steel hover:text-chili" onClick={(e) => { e.preventDefault(); if (confirm("Cancel this booking?")) start(() => { cancelBooking(b.id); }); }}>cancel</button>} />)}{upcoming.length === 0 && <p className="text-sm text-steel">Nothing upcoming.</p>}</div></section>
         <section><div className="text-sm font-semibold mb-3 flex items-center gap-2"><Moon size={15} /> In house <span className="num text-steel">{inHouse.length}</span></div>
@@ -58,7 +57,7 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests }: { tod
   );
 }
 
-function BookingForm({ today, rooms, types, guests, onDone }: { today: string; rooms: Room[]; types: RT[]; guests: G[]; onDone: (id: string) => void }) {
+function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: Room[]; types: RT[]; guests: G[]; onDone: (id: string) => void }) {
   const tomorrow = new Date(Date.now() + 86400000 + 5.5 * 3600e3).toISOString().slice(0, 10);
   const [f, setF] = useState({ check_in: today, check_out: tomorrow, room_id: "", adults: 2, children: 0, rate: 0, advance: 0, source: "walk_in", notes: "" });
   const [g, setG] = useState({ id: "", full_name: "", phone: "", email: "", id_type: "Aadhaar", id_last4: "", address: "" });
