@@ -1,0 +1,36 @@
+# What Vercel does NOT need in order to build the web app.
+#
+# Without this file Vercel uploads the whole repository — 420 MB, including a 180 MB Electron binary —
+# and refuses the deploy outright, because no single file may exceed 100 MB:
+#
+#     Error: File size limit exceeded (100 MB)
+#
+# Every package.json stays, on purpose. Vercel runs pnpm with CI=1, which makes it use
+# --frozen-lockfile, and a lockfile that lists a workspace the upload has removed is a different
+# failure. So the packages remain and only their build output goes.
+
+# ── the desktop app's build output: 340 MB, and the reason the deploy was refused ──
+# The web app serves this installer from disk at /api/download/windows when it is present, which is
+# what lets a till download it over the LAN. On Vercel it is absent, the route answers 404, and the
+# /get page falls back to NEXT_PUBLIC_DOWNLOAD_WINDOWS. Both paths are intended.
+apps/desktop/dist
+
+# ── other build output nothing here needs ──
+apps/mobile/.expo
+apps/mobile/android
+apps/mobile/ios
+**/.turbo
+**/dist
+**/.next-dev
+
+# ── source material, not the product: 49 MB of artwork and the written guides ──
+design
+backups
+*.pdf
+*.docx
+
+# ── local-only, and never any business of a deployment ──
+box
+*.bat
+*.command
+start.sh

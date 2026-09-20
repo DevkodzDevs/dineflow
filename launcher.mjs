@@ -223,6 +223,9 @@ async function live() {
     catch { warn(`Could not store ${k} on Vercel — add it by hand under Project → Settings → Environment Variables.`); }
   };
   log(`${c.d}Storing the keys on the Vercel project (so middleware and future deploys see them)…${c.x}`);
+  // The desktop app is a workspace here, so Vercel's install would otherwise fetch ~300 MB of
+  // Electron binary on every build for a package it never builds. The source install still works.
+  setVar("ELECTRON_SKIP_BINARY_DOWNLOAD", "1");
   setVar("NEXT_PUBLIC_SUPABASE_URL", prodUrl);
   setVar("NEXT_PUBLIC_SUPABASE_ANON_KEY", prodKey);
   setVar("SUPABASE_SERVICE_ROLE_KEY", env.SUPABASE_SERVICE_ROLE_KEY);
