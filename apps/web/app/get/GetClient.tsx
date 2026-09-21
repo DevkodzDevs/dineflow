@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Apple, Check, Copy, Download, ExternalLink, Monitor, Share, Smartphone, SquarePlus } from "lucide-react";
+import { Apple, BookOpen, Check, Copy, Download, ExternalLink, Monitor, Share, Smartphone, SquarePlus } from "lucide-react";
 import { QR } from "@/components/QR";
 
 /**
@@ -109,6 +109,17 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
             {kind !== "ios" && <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open this page in Safari on the device" href={null} />}
           </div>
         </div>
+
+        {/* the printed manual, for whoever is setting the place up rather than using it */}
+        <a href="/DineFlow-Manual.pdf" download
+          className="mt-8 flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1f2027] p-3.5 hover:border-white/25 transition-colors">
+          <span className="h-9 w-9 rounded-xl bg-white/[.07] grid place-items-center shrink-0 text-[#9a9aa6]"><BookOpen size={16} /></span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-semibold text-[#f4f4f1]">The manual</span>
+            <span className="block text-xs text-[#62626e] mt-0.5">Every screen explained, with pictures · PDF</span>
+          </span>
+          <Download size={15} className="text-[#62626e] shrink-0" />
+        </a>
 
         <div className="mt-8 flex flex-col items-center gap-3">
           <div className="bg-white p-2.5 rounded-xl"><QR value={pageUrl} size={116} /></div>

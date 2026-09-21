@@ -40,6 +40,9 @@ backups
 *.pdf
 *.docx
 
+# …except the manual, which the app serves for download at /DineFlow-Manual.pdf
+!apps/web/public/*.pdf
+
 # ── local-only, and never any business of a deployment ──
 box
 *.bat
