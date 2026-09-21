@@ -154,31 +154,23 @@ function WrongWindow({ spot, url }: { spot: Where; url: string }) {
 }
 
 function Primary({ kind, links, canPrompt, onPwa }: { kind: Kind; links: Links; canPrompt: boolean; onPwa: () => void }) {
-  if (kind === "windows" && links.windows) return (
-    <Big href={links.windows} icon={<Download size={20} />} title="Download for Windows" note="DineFlow-Setup.exe · 79 MB · installs in one click" />
-  );
-
-  /* Windows, and no installer to give it. Saying "use your browser's menu" here is the wrong answer
-     to the one question this page exists to answer, so it says what is actually missing instead. */
-  if (kind === "windows") return (
-    <div className="feather p-5 !bg-[#1f2027] !border-white/10">
-      <div className="flex items-center gap-3">
-        <Monitor size={18} className="text-[#9a9aa6] shrink-0" />
-        <p className="text-sm text-[#f4f4f1] font-semibold flex-1">No Windows installer is published yet</p>
-      </div>
-      <p className="text-sm text-[#9a9aa6] mt-3">Build one on the machine running DineFlow and this button appears by itself:</p>
-      <p className="mt-2 text-[12.5px]"><code className="bg-white/[.07] rounded px-1.5 py-0.5 text-[#cfcfd6]">pnpm --filter @dineflow/desktop dist</code></p>
-      <p className="text-xs text-[#62626e] mt-3">Or install it as a browser app instead — Chrome and Edge show an install icon at the right of the address bar, on an https address or on localhost.</p>
-    </div>
-  );
-
-  if (kind === "android" && links.android) return (
-    <Big href={links.android} icon={<Download size={20} />} title="Download for Android" note="Open the file when it finishes, and allow the install" />
+  /* The browser's own install comes first on every platform that offers it — Windows, Android, Mac,
+     Linux. It is one click, it raises no warning, it needs no file to be downloaded or trusted, and
+     it updates itself the moment the site does. A packaged installer can do none of those things, so
+     it belongs underneath as the answer for a browser that cannot do this, not above as the headline. */
+  if (canPrompt) return (
+    <button onClick={onPwa} className="w-full feather !bg-[var(--color-tint)] !border-transparent text-[#06120a] p-5 flex items-center gap-4 text-left transition hover:brightness-105">
+      <Download size={20} className="shrink-0" />
+      <span>
+        <span className="block font-semibold text-[17px]">Install DineFlow</span>
+        <span className="block text-[13px] opacity-75 mt-0.5">One tap · no download, no warnings, updates itself</span>
+      </span>
+    </button>
   );
 
   if (kind === "ios") return (
     <div className="feather p-5 !bg-[#1f2027] !border-white/10">
-      <p className="text-sm text-[#9a9aa6]">Safari installs from its own menu — it gives no button to a page. Three taps:</p>
+      <p className="text-sm text-[#9a9aa6]">Safari installs from its own menu — Apple gives a page no button to do it with. Three taps:</p>
       <ol className="mt-4 space-y-3 text-[15px] text-[#f4f4f1]">
         <Step icon={<Share size={15} />} n="1">Tap <b>Share</b>, at the bottom of the screen</Step>
         <Step icon={<SquarePlus size={15} />} n="2">Choose <b>Add to Home Screen</b></Step>
@@ -187,13 +179,26 @@ function Primary({ kind, links, canPrompt, onPwa }: { kind: Kind; links: Links; 
     </div>
   );
 
-  // Chrome and Edge, on any platform, can install the app itself — and on a Mac or Linux box that
-  // is the only thing there is, since nobody builds a desktop package for those here.
-  if (canPrompt) return (
-    <button onClick={onPwa} className="w-full feather !bg-[var(--color-tint)] !border-transparent text-[#06120a] p-5 flex items-center gap-4 text-left transition hover:brightness-110">
-      <Download size={20} className="shrink-0" />
-      <span><span className="block font-semibold text-[17px]">Install DineFlow</span><span className="block text-[13px] opacity-75 mt-0.5">Adds it to this device</span></span>
-    </button>
+  /* No install prompt here — Firefox, or Safari on a Mac. The packaged file is the fallback, and its
+     warning is named rather than discovered: an unsigned installer stops Windows in its tracks, and
+     somebody who was told to expect one click will assume the file is unsafe and abandon it. */
+  if (kind === "windows" && links.windows) return (
+    <div>
+      <Big href={links.windows} icon={<Download size={20} />} title="Download for Windows" note="DineFlow-Setup.exe · 79 MB" />
+      <p className="text-xs text-[#62626e] mt-3 leading-relaxed">
+        Windows will say <i>“Windows protected your PC”</i> because this installer is not signed yet.
+        Choose <b>More info</b>, then <b>Run anyway</b>. Installing from Chrome or Edge instead avoids that entirely.
+      </p>
+    </div>
+  );
+
+  if (kind === "android" && links.android) return (
+    <div>
+      <Big href={links.android} icon={<Download size={20} />} title="Download for Android" note="APK · open the file when it finishes" />
+      <p className="text-xs text-[#62626e] mt-3 leading-relaxed">
+        Android will ask permission to install from this source. Opening this page in <b>Chrome</b> installs it in one tap with nothing to allow.
+      </p>
+    </div>
   );
 
   return (
