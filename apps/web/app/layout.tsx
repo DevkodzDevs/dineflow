@@ -45,6 +45,10 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: { capable: true, title: "DineFlow", statusBarStyle: "black-translucent" },
+  /* Next emits the standardised `mobile-web-app-capable`, which Safari only began honouring through
+     the manifest in iOS 16.4. An older iPad — and hotels keep those for years — needs the original
+     spelling, or "Add to Home Screen" opens the app with browser furniture still around it. */
+  other: { "apple-mobile-web-app-capable": "yes" },
   openGraph: { title: "DineFlow", description: "One live control room for your restaurant.", images: ["/icon-512.png"], type: "website" },
 };
 export const viewport: Viewport = { themeColor: "#0a0a0d", width: "device-width", initialScale: 1, viewportFit: "cover" };

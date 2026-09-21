@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Apple, Check, Download, Monitor, Share, Smartphone, SquarePlus } from "lucide-react";
+import { Apple, Check, Copy, Download, ExternalLink, Monitor, Share, Smartphone, SquarePlus } from "lucide-react";
 import { QR } from "@/components/QR";
 
 /**
@@ -27,15 +27,39 @@ function detect(): Kind {
   return "other";
 }
 
+/**
+ * Which window the page is sitting in, which decides whether installing is possible at all.
+ *
+ * The common way this page gets opened is the one that cannot work: somebody sends the link over
+ * WhatsApp, the person taps it, and WhatsApp renders it inside itself. That window has no install
+ * prompt, no Share menu that offers the Home Screen, and no address bar to escape from — so the
+ * install button would simply do nothing, and the person would conclude the app is broken. There is
+ * no way to leave an in-app browser from script either, so the only honest answer is to say what
+ * happened and make the address trivial to carry out by hand.
+ */
+type Where = "inapp" | "ios-other" | "normal";
+function where(kind: Kind): Where {
+  if (typeof navigator === "undefined") return "normal";
+  const ua = navigator.userAgent;
+  if (/FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|LinkedInApp|Snapchat|Twitter|MicroMessenger|; wv\)/i.test(ua)) return "inapp";
+  // On an iPhone only Safari has "Add to Home Screen" where people expect it; the others hide it or
+  // lack it, and sending someone hunting through the wrong menu is the struggle worth avoiding.
+  if (kind === "ios" && /CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)) return "ios-other";
+  return "normal";
+}
+
 type PromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 
 export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string }) {
   const [kind, setKind] = useState<Kind | null>(null);
+  const [spot, setSpot] = useState<Where>("normal");
   const [canPrompt, setCanPrompt] = useState(false);
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    setKind(detect());
+    const k = detect();
+    setKind(k);
+    setSpot(where(k));
     setInstalled(matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
     // the root layout catches this in <head> long before this page mounts
     setCanPrompt(Boolean((window as Window & { __dfInstall?: unknown }).__dfInstall));
@@ -69,7 +93,13 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
           </p>
         </div>
 
-        {!installed && <div className="mt-8"><Primary kind={kind} links={links} canPrompt={canPrompt} onPwa={installPwa} /></div>}
+        {!installed && (
+          <div className="mt-8">
+            {spot === "normal"
+              ? <Primary kind={kind} links={links} canPrompt={canPrompt} onPwa={installPwa} />
+              : <WrongWindow spot={spot} url={pageUrl} />}
+          </div>
+        )}
 
         <div className="mt-8 pt-6 border-t border-white/10">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#62626e] text-center">Another device</div>
@@ -86,6 +116,40 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
         </div>
       </div>
     </main>
+  );
+}
+
+/**
+ * The page is open somewhere that cannot install. Nothing here can fix that from script — an in-app
+ * browser gives no way out — so it says plainly what is wrong and hands over the address in one tap.
+ */
+function WrongWindow({ spot, url }: { spot: Where; url: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2500); }
+    catch { /* an old browser with no clipboard: the address is printed below to read out */ }
+  };
+  const inApp = spot === "inapp";
+  return (
+    <div className="feather p-5 !bg-[#1f2027] !border-white/10">
+      <p className="text-[15px] text-[#f4f4f1] font-semibold">
+        {inApp ? "This window can't install apps" : "Open this in Safari to install"}
+      </p>
+      <p className="text-sm text-[#9a9aa6] mt-1.5 leading-relaxed">
+        {inApp
+          ? "You've opened the link inside another app's browser — WhatsApp, Instagram or similar. Those windows have no install option at all. Open it in Chrome or Safari instead and the button appears."
+          : "On an iPhone, only Safari can add an app to the Home Screen. Copy the address below and paste it into Safari."}
+      </p>
+      <div className="mt-4 rounded-xl bg-black/30 px-3 py-2.5 text-[13px] text-[#cfcfd6] break-all num">{url}</div>
+      <button onClick={copy} className="mt-3 w-full h-11 rounded-xl bg-[var(--color-tint)] text-[#06120a] font-semibold flex items-center justify-center gap-2">
+        {copied ? <><Check size={16} /> Copied — now paste it into {inApp ? "your browser" : "Safari"}</> : <><Copy size={16} /> Copy the address</>}
+      </button>
+      {inApp && (
+        <p className="text-xs text-[#62626e] mt-3 flex items-center gap-1.5">
+          <ExternalLink size={12} className="shrink-0" /> Many of these apps also have “Open in browser” in their ⋯ menu.
+        </p>
+      )}
+    </div>
   );
 }
 
