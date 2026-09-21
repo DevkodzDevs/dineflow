@@ -2,10 +2,10 @@
 import { getClient } from "@/lib/supabase/lazy";
 import { allJobs, delJob, putJob, metaSet, type Job, type JobKind } from "./db";
 
-type State = { online: boolean; pending: number; syncing: boolean; lastError: string | null; lastSyncAt: number | null; justSynced: number };
+type State = { online: boolean; pending: number; held: number; syncing: boolean; lastError: string | null; lastSyncAt: number | null; justSynced: number };
 type Listener = (s: State) => void;
 const listeners = new Set<Listener>();
-let state: State = { online: true, pending: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 };
+let state: State = { online: true, pending: 0, held: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 };
 const emit = () => listeners.forEach((l) => l(state));
 export const subscribe = (l: Listener) => { listeners.add(l); l(state); return () => listeners.delete(l); };
 const set = (p: Partial<State>) => { state = { ...state, ...p }; emit(); };
@@ -14,7 +14,20 @@ const set = (p: Partial<State>) => { state = { ...state, ...p }; emit(); };
 type QueueListener = (jobs: Job[]) => void;
 const qls = new Set<QueueListener>();
 export const onQueue = (l: QueueListener) => { qls.add(l); void allJobs().then(l); return () => qls.delete(l); };
-const pushQueue = async () => { const j = await allJobs(); set({ pending: j.length }); qls.forEach((l) => l(j)); };
+// "pending" is what the outbox is still working on; anything held is waiting on a person instead
+const pushQueue = async () => { const j = await allJobs(); set({ pending: j.filter((x) => !x.held).length, held: j.filter((x) => x.held).length }); qls.forEach((l) => l(j)); };
+
+/** The jobs the outbox has stopped trying on its own, newest first. */
+export const heldJobs = async (): Promise<Job[]> => (await allJobs()).filter((j) => j.held).sort((a, b) => (b.heldAt ?? 0) - (a.heldAt ?? 0));
+
+/** Put a held job back in the queue and try it straight away. */
+export async function retryJob(id: string) {
+  const j = (await allJobs()).find((x) => x.id === id); if (!j) return;
+  await putJob({ ...j, held: false, heldAt: undefined, tries: 0, nextTry: undefined });
+  await pushQueue(); set({ lastError: null }); void flush();
+}
+/** Throw a held job away. Only ever a person's decision, never the outbox's. */
+export async function discardJob(id: string) { await delJob(id); await pushQueue(); }
 
 /** Queue a write. Returns at once — the person keeps working whether or not there is a connection. */
 export async function enqueue(kind: JobKind, args: Record<string, unknown>, label: string) {
@@ -43,8 +56,14 @@ async function run(job: Job) {
   }
 }
 
+/**
+ * The write already landed — a retry of something the server had taken. Every queued write carries
+ * a client id for exactly this, so the second attempt is refused as a duplicate. Nothing is lost by
+ * forgetting it, and keeping it would show the person a failure that never happened.
+ */
+const alreadyDone = (msg: string) => /duplicate|already exists|already/i.test(msg);
 /** A rejection that will never succeed however many times we try — bad data, not a bad connection. */
-const permanent = (msg: string) => /duplicate|violates|not found|permission|invalid input|already/i.test(msg);
+const permanent = (msg: string) => /violates|not found|permission|invalid input|malformed|syntax/i.test(msg);
 
 let running = false;
 export async function flush(): Promise<number> {
@@ -54,11 +73,19 @@ export async function flush(): Promise<number> {
   try {
     const jobs = (await allJobs()).sort((a, b) => a.at - b.at);
     for (const j of jobs) {
+      if (j.held) continue;                                              // waiting on a person, not on us
       if (j.nextTry && Date.now() < j.nextTry) continue;                 // still backing off
       try { await run(j); await delJob(j.id); sent++; set({ lastError: null }); await pushQueue(); }
       catch (e) {
         const msg = (e as { message?: string }).message ?? "failed";
-        if (permanent(msg) || j.tries >= 6) { await delJob(j.id); set({ lastError: `Dropped "${j.label}": ${msg}` }); await pushQueue(); }
+        if (alreadyDone(msg)) { await delJob(j.id); await pushQueue(); }
+        else if (permanent(msg) || j.tries >= 6) {
+          /* Held, not dropped. This used to delete the job outright, so an order taken from a guest
+             on a bad connection could disappear with nothing but a toast to say so. It now stays in
+             the outbox until somebody sends it again or decides to throw it away. */
+          await putJob({ ...j, held: true, heldAt: Date.now(), error: msg, nextTry: undefined });
+          set({ lastError: `"${j.label}" needs attention: ${msg}` }); await pushQueue();
+        }
         else {
           const wait = Math.min(60000, 2 ** j.tries * 1000);              // 1s, 2s, 4s … capped at a minute
           await putJob({ ...j, tries: j.tries + 1, error: msg, nextTry: Date.now() + wait });

@@ -6,7 +6,13 @@
  */
 const DB = "dineflow", VERSION = 3;
 export type JobKind = "place_order" | "settle_bill" | "generate_bill" | "stock" | "punch" | "item_status" | "kot_status" | "walkin_add" | "walkin_set" | "stock_count" | "hk_status" | "table_status";
-export type Job = { id: string; kind: JobKind; args: Record<string, unknown>; at: number; tries: number; error?: string; label: string; nextTry?: number };
+/**
+ * A queued write. `held` is set when the outbox has given up trying on its own: the job stays in
+ * the store, stops being retried, and waits for a person to send it again or throw it away. It is
+ * never removed without either succeeding or somebody deciding — an order taken from a guest is
+ * not something software should discard quietly.
+ */
+export type Job = { id: string; kind: JobKind; args: Record<string, unknown>; at: number; tries: number; error?: string; label: string; nextTry?: number; held?: boolean; heldAt?: number };
 export type Cached<T> = { v: T; at: number };
 
 let dbp: Promise<IDBDatabase> | null = null;

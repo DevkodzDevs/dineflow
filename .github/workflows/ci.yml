@@ -44,6 +44,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Test
+        run: pnpm test
+
       # The build needs the public Supabase pair to exist at module scope; they are public by
       # definition (they ship to every browser) and these placeholders never resolve to a project,
       # so a build can be proved without handing CI a key to real data.

@@ -1,21 +1,22 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CloudOff, RefreshCw, Check, AlertTriangle } from "lucide-react";
+import { CloudOff, RefreshCw, Check, AlertTriangle, RotateCcw, Trash2, ChevronUp } from "lucide-react";
 import { onQueue } from "./sync";
-import { startSync, subscribe, flush } from "./sync";
+import { startSync, subscribe, flush, retryJob, discardJob } from "./sync";
+import type { Job } from "./db";
 import { cacheSet } from "./db";
 import { getClient } from "@/lib/supabase/lazy";
 
-type S = { online: boolean; pending: number; syncing: boolean; lastError: string | null; lastSyncAt: number | null; justSynced: number };
-const Ctx = createContext<S>({ online: true, pending: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 });
+type S = { online: boolean; pending: number; held: number; syncing: boolean; lastError: string | null; lastSyncAt: number | null; justSynced: number };
+const Ctx = createContext<S>({ online: true, pending: 0, held: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 });
 export const useOffline = () => useContext(Ctx);
 
 /** Screens worth having on the device when the line drops, in the order they matter to a service. */
 const OFFLINE_SCREENS = ["/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/inventory", "/tomorrow", "/scan"];
 
 export function OfflineProvider({ children, modules }: { children: React.ReactNode; modules?: string[] }) {
-  const [s, setS] = useState<S>({ online: true, pending: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 });
+  const [s, setS] = useState<S>({ online: true, pending: 0, held: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 });
   useEffect(() => { const stop = startSync(); const un = subscribe(setS); return () => { stop?.(); un(); }; }, []);
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -94,25 +95,66 @@ export function OfflineProvider({ children, modules }: { children: React.ReactNo
      needs its comparator: Array.sort() compares timestamps as strings, which picks the wrong job the
      moment two of them straddle a digit boundary. */
   const [retryIn, setRetryIn] = useState<number | null>(null);
+  const [heldJobs, setHeldJobs] = useState<Job[]>([]);
+  const [showHeld, setShowHeld] = useState(false);
   useEffect(() => {
     let soonest = 0;
     const tick = () => setRetryIn(soonest ? Math.max(0, Math.round((soonest - Date.now()) / 1000)) : null);
-    const un = onQueue((jobs) => { soonest = jobs.map((j) => j.nextTry ?? 0).filter(Boolean).sort((a, b) => a - b)[0] ?? 0; tick(); });
+    const un = onQueue((jobs) => {
+      soonest = jobs.filter((j) => !j.held).map((j) => j.nextTry ?? 0).filter(Boolean).sort((a, b) => a - b)[0] ?? 0; tick();
+      setHeldJobs(jobs.filter((j) => j.held).sort((a, b) => (b.heldAt ?? 0) - (a.heldAt ?? 0)));
+    });
     const i = setInterval(tick, 1000);
     return () => { un(); clearInterval(i); };
   }, []);
-  const show = !s.online || s.pending > 0 || !!s.lastError || s.justSynced > 0;
+  const show = !s.online || s.pending > 0 || s.held > 0 || !!s.lastError || s.justSynced > 0;
   return (
     <Ctx.Provider value={s}>
       {children}
       <AnimatePresence>
         {show && (
-          <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }} className="no-print fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 z-50">
+          <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }} className="no-print fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 z-50 w-[min(94vw,32rem)]">
+            {/* Writes the outbox has stopped retrying. They are kept, not dropped, so the person who
+                took the order decides what happens to it — send it again, or throw it away knowing. */}
+            <AnimatePresence>
+              {showHeld && heldJobs.length > 0 && (
+                <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 12, opacity: 0 }}
+                  className="glass mb-2 p-3 max-h-[50dvh] overflow-y-auto">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-chili mb-2 flex items-center gap-1.5">
+                    <AlertTriangle size={13} /> Waiting on you · {heldJobs.length}
+                  </div>
+                  <ul className="space-y-2">
+                    {heldJobs.map((j) => (
+                      <li key={j.id} className="rounded-xl border border-[var(--color-separator)] p-2.5">
+                        <div className="text-sm font-semibold">{j.label}</div>
+                        <div className="text-[11px] text-steel mt-0.5">
+                          taken {new Date(j.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · tried {j.tries} time{j.tries === 1 ? "" : "s"}
+                        </div>
+                        {j.error && <div className="text-[11px] text-chili mt-1 break-words">{j.error}</div>}
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => void retryJob(j.id)} className="btn btn-gray !h-8 !px-3 !text-[12px] !rounded-[10px] flex-1"><RotateCcw size={13} /> Send again</button>
+                          <button onClick={() => { if (confirm(`Throw away "${j.label}"? It will not reach the till or the kitchen.`)) void discardJob(j.id); }}
+                            className="btn btn-danger !h-8 !px-3 !text-[12px] !rounded-[10px]"><Trash2 size={13} /></button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <div className={`glass flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold ${s.online ? "" : "!bg-ink/90 text-white !border-ink"}`}>
+              {s.held > 0 && (
+                <button onClick={() => setShowHeld((v) => !v)} className="flex items-center gap-1.5 text-chili">
+                  <AlertTriangle size={14} /> {s.held} waiting on you
+                  <ChevronUp size={13} className={showHeld ? "rotate-180 transition-transform" : "transition-transform"} />
+                </button>
+              )}
               {s.justSynced > 0 && s.online && s.pending === 0 ? <><Check size={16} className="text-mint" /> Back online · {s.justSynced} sent</>
                 : !s.online ? <><CloudOff size={16} /> Working offline{s.pending > 0 && <span className="num font-normal opacity-80">· {s.pending} waiting</span>}</>
                 : s.syncing ? <><motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><RefreshCw size={15} /></motion.span> Syncing {s.pending}…</>
                 : s.pending > 0 ? <><RefreshCw size={15} /> {s.pending} to send{retryIn ? <span className="num font-normal opacity-80"> · retry in {retryIn}s</span> : null} <button onClick={() => flush()} className="underline">retry</button></>
+                /* nothing queued, but something is parked: saying "all synced" beside it would be a lie */
+                : s.held > 0 ? null
                 : <><Check size={15} className="text-mint" /> All synced</>}
               {s.lastError && <span className="flex items-center gap-1 text-chili font-normal"><AlertTriangle size={13} /> {s.lastError}</span>}
             </div>
