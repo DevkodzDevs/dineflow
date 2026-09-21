@@ -5,15 +5,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button, Card, Field, Sheet, Empty, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { findStandardRecipe } from "@dineflow/shared";
-import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe } from "./actions";
+import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
 
-type Cat = { id: string; name: string; sort_order: number };
-type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; prep_minutes: number; description: string | null };
+type Cat = { id: string; name: string; sort_order: number; station?: string | null };
+type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; prep_minutes: number; description: string | null; station?: string | null };
 type Ing = { id: string; name: string; unit: string };
 type Rec = { menu_item_id: string; ingredient_id: string; qty: number };
 
-export function MenuClient({ categories, items, ingredients, recipes, ai = false }: { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; ai?: boolean }) {
+export function MenuClient({ categories, items, ingredients, recipes, ai = false, stations = [] }: { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; ai?: boolean; stations?: string[] }) {
   const [cat, setCat] = useState<string>("all");
   const [editing, setEditing] = useState<Partial<Item> | null>(null);
   const [recipeFor, setRecipeFor] = useState<Item | null>(null);
@@ -99,6 +99,11 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
           <Field label="Category">
             <select name="category_id" defaultValue={editing?.category_id ?? ""}><option value="">— none —</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           </Field>
+          {stations.length > 0 && (
+            <Field label="Kitchen station" hint="Leave on the category's station unless this dish is made somewhere else">
+              <select name="station" defaultValue={editing?.station ?? ""}><option value="">— same as its category —</option>{stations.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+            </Field>
+          )}
           <Field label="Description"><textarea name="description" rows={2} defaultValue={editing?.description ?? ""} /></Field>
           <div className="flex gap-6">
             <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_veg" className="w-4 h-4 accent-saffron" defaultChecked={editing?.is_veg ?? true} /> Vegetarian</label>
@@ -121,7 +126,9 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
       <Sheet open={catSheet} onClose={() => setCatSheet(false)} title="Categories">
         <ul className="space-y-2 mb-5">
           {categories.map((c) => (
-            <li key={c.id} className="flex items-center justify-between rounded-xl border border-line px-3 py-2 text-sm"><span>{c.name}</span>
+            <li key={c.id} className="flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-2 text-sm"><span className="flex-1 min-w-0 truncate">{c.name}</span>
+              {/* the station this category's dishes print at; "any" keeps them on the expo view only */}
+              {stations.length > 0 && <select value={c.station ?? ""} onChange={(e) => start(() => { setCategoryStation(c.id, e.target.value || null); })} className="!w-36 !h-8 !py-0 text-xs" title="Kitchen station"><option value="">any station</option>{stations.map((s) => <option key={s} value={s}>{s}</option>)}</select>}
               <button className="text-steel hover:text-chili" onClick={() => start(() => { deleteCategory(c.id); })} aria-label="Delete"><Trash2 size={15} /></button></li>
           ))}
         </ul>

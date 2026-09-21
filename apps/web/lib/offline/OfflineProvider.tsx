@@ -5,7 +5,7 @@ import { CloudOff, RefreshCw, Check, AlertTriangle } from "lucide-react";
 import { onQueue } from "./sync";
 import { startSync, subscribe, flush } from "./sync";
 import { cacheSet } from "./db";
-import { createClient } from "@/lib/supabase/client";
+import { getClient } from "@/lib/supabase/lazy";
 
 type S = { online: boolean; pending: number; syncing: boolean; lastError: string | null; lastSyncAt: number | null; justSynced: number };
 const Ctx = createContext<S>({ online: true, pending: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 });
@@ -63,7 +63,7 @@ export function OfflineProvider({ children, modules }: { children: React.ReactNo
     const warm = async () => {
       if (cancelled || !navigator.onLine || tooSlow()) return;
       try {
-        const sb = createClient();
+        const sb = await getClient();
         const [m, c, t, r, ing, lab] = await Promise.all([
           sb.from("menu_items").select("id, name, price, is_veg, category_id, is_available").eq("is_active", true),
           sb.from("categories").select("id, name, sort_order"),

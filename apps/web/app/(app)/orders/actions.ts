@@ -32,6 +32,17 @@ export async function setKotStatus(kotId: string, status: "preparing" | "ready" 
   const { error } = await s.from("order_items").update({ status }).eq("kot_id", kotId).neq("status", "cancelled");
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
+/** A station bumps only its own lines; the ticket as a whole follows once every station is done. */
+export async function setItemsStatus(ids: string[], status: "preparing" | "ready") {
+  if (!ids.length) return { ok: true };
+  const s = await createClient(); const { error } = await s.from("order_items").update({ status }).in("id", ids).neq("status", "cancelled");
+  if (error) return { error: error.message }; bump(); return { ok: true };
+}
+/** A ticket bumped by mistake comes back to "ready" — the recall key every kitchen screen has. */
+export async function recallKot(kotId: string) {
+  const s = await createClient(); const { error } = await s.rpc("recall_kot", { p_kot_id: kotId });
+  if (error) return { error: error.message }; bump(); return { ok: true };
+}
 export async function cancelOrder(id: string) {
   const s = await createClient();
   await s.from("order_items").update({ status: "cancelled" }).eq("order_id", id);

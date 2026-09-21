@@ -5,8 +5,9 @@ import type { ReactNode } from "react";
 
 /** The KOT ticket: DineFlow's signature surface — real thermal paper, torn top edge, mono numbers. */
 export function Ticket({ no, title, meta, tone = "pending", children, footer, className, layoutId, aside }:
-  { no: string | number; title: string; meta?: string; tone?: "pending" | "preparing" | "ready" | "served" | "alert"; children: ReactNode; footer?: ReactNode; className?: string; layoutId?: string; aside?: ReactNode }) {
-  const bar = { pending: "bg-line-2", preparing: "bg-saffron", ready: "bg-mint", served: "bg-steel", alert: "bg-chili" }[tone];
+  { no: string | number; title: string; meta?: string; tone?: "pending" | "preparing" | "ready" | "served" | "alert" | "warn"; children: ReactNode; footer?: ReactNode; className?: string; layoutId?: string; aside?: ReactNode }) {
+  // "warn" is the amber between fine and late: the ticket is past the hurry-up mark but not yet past the target
+  const bar = { pending: "bg-line-2", preparing: "bg-saffron", ready: "bg-mint", served: "bg-steel", alert: "bg-chili", warn: "bg-saffron" }[tone];
   return (
     <motion.article layout layoutId={layoutId}
       initial={{ opacity: 0, scale: 0.96, y: 10, filter: "blur(4px)" }}

@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { getClient } from "@/lib/supabase/lazy";
 import { buildBill, buildKot, type BillData, type KotData } from "./escpos";
 import { billHtml, kotHtml } from "./html";
 import { sendToPrinter, type PrinterCfg } from "./transport";
@@ -11,7 +11,7 @@ export function usePrinters() {
   useEffect(() => {
     (async () => {
       const cached = await cacheGet<PrinterCfg[]>("printers"); if (cached) setPrinters(cached.v);
-      const { data } = await createClient().from("printers").select("id, name, transport, width, address, copies, kind, is_default, station").eq("is_active", true);
+      const { data } = await (await getClient()).from("printers").select("id, name, transport, width, address, copies, kind, is_default, station").eq("is_active", true);
       if (data) { setPrinters(data as never); void cacheSet("printers", data); }
     })();
   }, []);

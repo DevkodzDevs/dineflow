@@ -8,7 +8,9 @@ import { Button, Sheet, Field, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveRoom, setRoomStatus, deleteRoom, saveRoomType } from "./actions";
 
-type Room = { id: string; number: string; floor: number; status: string; room_type_id: string | null; notes: string | null; room_types: { name: string; base_rate: number } | null };
+type Room = { id: string; number: string; floor: number; status: string; condition?: string | null; room_type_id: string | null; notes: string | null; room_types: { name: string; base_rate: number } | null };
+/** Housekeeping's word on the room, as a dot beside the number: red dirty, amber clean-awaiting-inspection, green inspected, blue pickup. */
+const CONDITION_DOT: Record<string, string> = { dirty: "bg-chili", clean: "bg-saffron", inspected: "bg-mint", pickup: "bg-sky" };
 type RT = { id: string; name: string; base_rate: number; capacity: number };
 type Bk = { id: string; room_id: string; check_out: string; guests: { full_name: string } | null };
 
@@ -31,7 +33,7 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
             {rooms.filter((r) => r.floor === f).map((r, i) => { const b = byRoom[r.id]; return (
               <motion.div key={r.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}>
                 <Link href={b ? `/frontdesk/${b.id}` : "/frontdesk"} className={cn("keycard feather-lift block aspect-[5/4] p-3 flex flex-col", r.status)}>
-                  <div className="flex justify-between items-start"><span className="font-display text-2xl">{r.number}</span><span className={cn("text-[10px] font-semibold", r.status === "occupied" ? "text-white/60" : "text-steel")}>{r.room_types?.name}</span></div>
+                  <div className="flex justify-between items-start"><span className="font-display text-2xl">{r.number}{r.condition && r.status !== "maintenance" && <span title={`Housekeeping: ${r.condition}`} className={cn("inline-block h-2 w-2 rounded-full ml-1.5 align-middle", CONDITION_DOT[r.condition] ?? "bg-steel")} />}</span><span className={cn("text-[10px] font-semibold", r.status === "occupied" ? "text-white/60" : "text-steel")}>{r.room_types?.name}</span></div>
                   <div className="mt-auto text-xs">
                     {r.status === "occupied" && b ? <><div className="font-semibold truncate">{b.guests?.full_name}</div><div className="num text-white/60">out {b.check_out.slice(5)}</div></>
                       : r.status === "cleaning" ? <span className="flex items-center gap-1 text-ink"><Sparkles size={12} /> cleaning</span>

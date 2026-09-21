@@ -554,7 +554,16 @@ body { overflow-wrap: break-word; }
 .nav-progress { position: fixed; top: 0; left: 0; height: 2px; width: 0; background: linear-gradient(90deg, #4cd964, #8ff0a1); box-shadow: 0 0 12px rgb(76 217 100 / .8); z-index: 100; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .nav-progress.on { opacity: 1; animation: navFill 6s cubic-bezier(.1, .9, .2, 1) forwards; }
 @keyframes navFill { 0% { width: 0 } 15% { width: 40% } 50% { width: 78% } 100% { width: 94% } }
-.paper .flip-label { color: #6b6b66; }   /* a tile label on a white ticket needs a darker grey */
+.paper .flip-label { color: #6b6b66; }
+
+/* A button standing on the ticket takes its colours from the paper, not from the app's surface.
+   The ticket is real paper — always light, whatever the theme — so in dark mode .btn-gray was
+   near-white text on a near-white ticket, which is how "Picked up" became invisible on the
+   kitchen board, and .btn-plain came out tint-green against it. */
+.paper .btn-gray { background: rgb(20 35 29 / .08); color: #14231d; }
+.paper .btn-gray:hover { background: rgb(20 35 29 / .14); }
+.paper .btn-plain { color: #14231d; }
+.paper .btn-plain:hover { background: rgb(20 35 29 / .08); }   /* a tile label on a white ticket needs a darker grey */
 /* the track under a timed wait: signal green emptying (or filling) on a hairline */
 .wait-track { height: 3px; border-radius: 99px; background: var(--color-fill-2); margin-top: 10px; overflow: hidden; }
 .wait-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4cd964, #8ff0a1); box-shadow: 0 0 10px rgb(76 217 100 / .6); transition: width .25s linear; }

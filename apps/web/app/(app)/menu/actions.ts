@@ -15,6 +15,11 @@ export async function saveCategory(fd: FormData) {
   const q = id ? s.from("categories").update(row).eq("id", id) : s.from("categories").insert(row);
   const { error } = await q; if (error) return { error: error.message }; return ok();
 }
+/** Station routing: the kitchen board shows a category's dishes only on the station that makes them. */
+export async function setCategoryStation(id: string, station: string | null) {
+  const s = await createClient(); const { error } = await s.from("categories").update({ station: station || null }).eq("id", id);
+  if (error) return { error: error.message }; revalidatePath("/kitchen"); return ok();
+}
 export async function deleteCategory(id: string) {
   const s = await createClient(); const { error } = await s.from("categories").delete().eq("id", id);
   if (error) return { error: error.message }; return ok();
@@ -24,6 +29,7 @@ export async function saveMenuItem(fd: FormData) {
   const parsed = menuItemSchema.safeParse({
     name: fd.get("name"), category_id: fd.get("category_id") || null, price: fd.get("price"),
     is_veg: fd.get("is_veg") === "on", is_available: fd.get("is_available") === "on", prep_minutes: fd.get("prep_minutes"), description: fd.get("description") || null,
+    station: fd.get("station") || null,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const id = fd.get("id") as string | null;

@@ -2,18 +2,20 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, LogIn, CalendarDays, Moon, Users } from "lucide-react";
+import { Plus, LogIn, CalendarDays, Moon, Users, Star, ClipboardCheck } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Button, Sheet, Field, StatTile, Pill, cn, Empty, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { createBooking, checkIn, cancelBooking } from "./actions";
 
-type Room = { id: string; number: string; floor: number; status: string; room_type_id: string | null; room_types: { name: string; base_rate: number; capacity: number } | null };
-type Booking = { id: string; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; guests: { full_name: string; phone: string | null } | null; rooms: { number: string; room_types: { name: string } | null } | null };
+type Room = { id: string; number: string; floor: number; status: string; condition?: string | null; room_type_id: string | null; room_types: { name: string; base_rate: number; capacity: number } | null };
+type Booking = { id: string; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; guests: { full_name: string; phone: string | null; vip?: boolean; preferences?: string | null } | null; rooms: { number: string; condition?: string | null; room_types: { name: string } | null } | null };
 type RT = { id: string; name: string; base_rate: number; capacity: number };
-type G = { id: string; full_name: string; phone: string | null };
+type G = { id: string; full_name: string; phone: string | null; vip?: boolean };
+/** housekeeping's word on a room, as the front desk needs to read it at a glance */
+const CONDITION_DOT: Record<string, string> = { dirty: "bg-chili", clean: "bg-saffron", inspected: "bg-mint", pickup: "bg-sky" };
 
-export function FrontDeskClient({ today, bookings, rooms, types, guests }: { today: string; bookings: Booking[]; rooms: Room[]; types: RT[]; guests: G[] }) {
+export function FrontDeskClient({ today, bookings, rooms, types, guests, inspectRule = false }: { today: string; bookings: Booking[]; rooms: Room[]; types: RT[]; guests: G[]; inspectRule?: boolean }) {
   const router = useRouter(); const [pending, start] = useTransition();
   const [open, setOpen] = useState(false); const toast = useToast();
   useLive(["bookings", "rooms"].map(String));
@@ -23,14 +25,24 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests }: { tod
   const upcoming = bookings.filter((b) => b.status === "reserved" && b.check_in > today);
   const occ = rooms.length ? Math.round((rooms.filter((r) => r.status === "occupied").length / rooms.length) * 100) : 0;
 
-  const Row = ({ b, action }: { b: Booking; action?: React.ReactNode }) => (
-    <Link href={`/frontdesk/${b.id}`} className="feather feather-lift flex items-center gap-4 p-4">
-      <div className="keycard h-12 w-14 grid place-items-center font-display text-lg shrink-0">{b.rooms?.number}</div>
-      <div className="flex-1 min-w-0"><div className="font-semibold truncate">{b.guests?.full_name}</div><div className="text-xs text-steel num">#{b.booking_no} · {b.check_in.slice(5)} → {b.check_out.slice(5)} · {b.rooms?.room_types?.name} · <Users size={10} className="inline" /> {b.adults + b.children}</div></div>
-      <div className="num text-sm font-semibold hidden sm:block">{formatINR(Number(b.rate))}/n</div>
-      {action}
-    </Link>
-  );
+  /* An arrival's row says whether its room is actually ready — the thing a five-star desk checks
+     before it says "welcome" — and a VIP is marked before the desk has to remember. */
+  const Row = ({ b, action }: { b: Booking; action?: React.ReactNode }) => {
+    const cond = b.status === "reserved" ? b.rooms?.condition : null;
+    return (
+      <Link href={`/frontdesk/${b.id}`} className="feather feather-lift flex items-center gap-4 p-4">
+        <div className="keycard h-12 w-14 grid place-items-center font-display text-lg shrink-0 relative">{b.rooms?.number}{cond && <span title={`Housekeeping: ${cond}`} className={cn("absolute top-1 right-1 h-2 w-2 rounded-full", CONDITION_DOT[cond] ?? "bg-steel")} />}</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold truncate flex items-center gap-1.5">{b.guests?.vip && <Star size={13} className="text-champagne fill-current shrink-0" aria-label="VIP" />}{b.guests?.full_name}</div>
+          <div className="text-xs text-steel num">#{b.booking_no} · {b.check_in.slice(5)} → {b.check_out.slice(5)} · {b.rooms?.room_types?.name} · <Users size={10} className="inline" /> {b.adults + b.children}</div>
+          {b.guests?.preferences && <div className="text-xs text-champagne truncate mt-0.5">{b.guests.preferences}</div>}
+          {cond && cond !== "inspected" && <div className={cn("text-[11px] mt-0.5", cond === "dirty" ? "text-chili" : "text-[var(--color-orange)]")}>{cond === "dirty" ? "Room not cleaned yet" : cond === "clean" ? (inspectRule ? "Room awaits inspection" : "Room cleaned") : "Room needs a touch-up"}</div>}
+        </div>
+        <div className="num text-sm font-semibold hidden sm:block">{formatINR(Number(b.rate))}/n</div>
+        {action}
+      </Link>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -40,7 +52,11 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests }: { tod
         <StatTile label="In house" value={String(inHouse.length)} sub={`${occ}% occupancy`} tone={occ >= 80 ? "good" : undefined} delay={0.1} />
         <StatTile label="Rooms ready" value={String(rooms.filter((r) => r.status === "available").length)} sub={`${rooms.filter((r) => r.status === "cleaning").length} being cleaned`} delay={0.15} />
       </div>
-      <div className="flex items-center gap-2"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Today</div><div className="ml-auto"><Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button></div></div>
+      <div className="flex items-center gap-2"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Today</div>
+        <div className="ml-auto flex items-center gap-2">
+          <Link href="/frontdesk/night-audit" className="h-11 px-4 rounded-full grid place-items-center text-sm font-semibold bg-card border border-line hover:bg-[var(--color-fill)] transition-colors"><span className="flex items-center gap-1.5"><ClipboardCheck size={16} /> Night audit</span></Link>
+          <Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>
+        </div></div>
       <div className="grid gap-6 lg:grid-cols-2">
         <section><div className="text-sm font-semibold mb-3 flex items-center gap-2"><LogIn size={15} /> Arrivals <span className="num text-steel">{arrivals.length}</span></div>
           <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} action={<Button size="sm" variant="ink" disabled={pending} onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}>Check in</Button>} />)}{arrivals.length === 0 && <p className="text-sm text-steel">No pending arrivals.</p>}</div>
@@ -70,11 +86,11 @@ function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: R
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3"><Field label="Check-in"><input type="date" value={f.check_in} min={today} onChange={(e) => setF({ ...f, check_in: e.target.value })} className="num" /></Field><Field label="Check-out"><input type="date" value={f.check_out} min={f.check_in} onChange={(e) => setF({ ...f, check_out: e.target.value })} className="num" /></Field></div>
       <Field label={`Room · ${nights} night${nights > 1 ? "s" : ""}`}>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-40 overflow-y-auto">{free.map((r) => <button key={r.id} type="button" onClick={() => pickRoom(r)} className={cn("keycard h-12 text-sm font-semibold", r.status, f.room_id === r.id && "!border-saffron shadow-glow")}><div className="font-display">{r.number}</div><div className="text-[9px] opacity-70 -mt-0.5">{r.room_types?.name?.slice(0, 8)}</div></button>)}</div>
+        <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-40 overflow-y-auto">{free.map((r) => <button key={r.id} type="button" onClick={() => pickRoom(r)} title={r.condition ? `Housekeeping: ${r.condition}` : undefined} className={cn("keycard h-12 text-sm font-semibold relative", r.status, f.room_id === r.id && "!border-saffron shadow-glow")}>{r.condition && <span className={cn("absolute top-1 right-1 h-1.5 w-1.5 rounded-full", CONDITION_DOT[r.condition] ?? "bg-steel")} />}<div className="font-display">{r.number}</div><div className="text-[9px] opacity-70 -mt-0.5">{r.room_types?.name?.slice(0, 8)}</div></button>)}</div>
       </Field>
       <div className="grid grid-cols-3 gap-3"><Field label="Rate / night"><input type="number" className="num" value={f.rate || ""} onChange={(e) => setF({ ...f, rate: Number(e.target.value) })} /></Field><Field label="Adults"><input type="number" min={1} className="num" value={f.adults} onChange={(e) => setF({ ...f, adults: Number(e.target.value) })} /></Field><Field label="Children"><input type="number" min={0} className="num" value={f.children} onChange={(e) => setF({ ...f, children: Number(e.target.value) })} /></Field></div>
       <div className="hairline-gold" />
-      <Field label="Returning guest"><select value={g.id} onChange={(e) => pickGuest(e.target.value)}><option value="">— new guest —</option>{guests.map((x) => <option key={x.id} value={x.id}>{x.full_name}{x.phone ? ` · ${x.phone}` : ""}</option>)}</select></Field>
+      <Field label="Returning guest"><select value={g.id} onChange={(e) => pickGuest(e.target.value)}><option value="">— new guest —</option>{guests.map((x) => <option key={x.id} value={x.id}>{x.vip ? "★ " : ""}{x.full_name}{x.phone ? ` · ${x.phone}` : ""}</option>)}</select></Field>
       <div className="grid grid-cols-2 gap-3"><Field label="Guest name"><input value={g.full_name} onChange={(e) => setG({ ...g, full_name: e.target.value })} required /></Field><Field label="Phone"><input value={g.phone} onChange={(e) => setG({ ...g, phone: e.target.value })} /></Field></div>
       {!g.id && <div className="grid grid-cols-3 gap-3"><Field label="ID type"><select value={g.id_type} onChange={(e) => setG({ ...g, id_type: e.target.value })}><option>Aadhaar</option><option>Passport</option><option>Driving licence</option><option>Voter ID</option></select></Field><Field label="ID last 4"><input maxLength={4} className="num" value={g.id_last4} onChange={(e) => setG({ ...g, id_last4: e.target.value })} /></Field><Field label="Email"><input value={g.email} onChange={(e) => setG({ ...g, email: e.target.value })} /></Field></div>}
       <div className="grid grid-cols-2 gap-3"><Field label="Advance received"><input type="number" className="num" value={f.advance || ""} onChange={(e) => setF({ ...f, advance: Number(e.target.value) })} /></Field><Field label="Source"><select value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })}><option value="walk_in">Walk-in</option><option value="phone">Phone</option><option value="ota">OTA (MMT / Booking.com)</option><option value="agent">Agent</option></select></Field></div>

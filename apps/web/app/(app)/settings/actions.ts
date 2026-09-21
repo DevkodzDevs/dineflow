@@ -8,7 +8,13 @@ export async function saveRestaurant(fd: FormData) {
   // only ever affects the next order taken — never a promise already made.
   const promiseMinutes = Math.min(240, Math.max(5, Number(fd.get("promise_minutes") || 30)));
   const promisePct = Math.min(50, Math.max(0, Number(fd.get("promise_pct") || 0)));
+  // kitchen control: the stations tickets route to, and the two clocks a ticket is coloured by.
+  // "Late" can never come before "hurry", whatever was typed.
+  const stations = [...new Set(String(fd.get("kds_stations") ?? "").split(/[,\n]/).map((x) => x.trim()).filter(Boolean))].slice(0, 12);
+  const warnAt = Math.min(120, Math.max(1, Number(fd.get("kds_warn_minutes") || 10)));
+  const lateAt = Math.min(240, Math.max(warnAt, Number(fd.get("kds_target_minutes") || 15)));
   const { error } = await s.from("restaurants").update({
+    kds_stations: stations, kds_warn_minutes: warnAt, kds_target_minutes: lateAt, hk_inspect_required: fd.get("hk_inspect_required") === "on",
     promise_enabled: fd.get("promise_enabled") === "on", promise_minutes: promiseMinutes, promise_pct: promisePct,
     room_gst_rate_high: Number(fd.get("room_gst_rate_high") || 18), room_gst_threshold: Number(fd.get("room_gst_threshold") || 7500),
     facility_gst_rate: Number(fd.get("facility_gst_rate") || 18), name: String(fd.get("name")), logo_url: String(fd.get("logo_url") ?? "").trim() || null, brand_colour: (String(fd.get("brand_colour") ?? "").trim().match(/^#[0-9a-f]{6}$/i)?.[0]) ?? null, gstin: fd.get("gstin") || null, address: fd.get("address") || null, phone: fd.get("phone") || null, gst_rate: Number(fd.get("gst_rate")), service_charge_pct: Number(fd.get("service_charge_pct")), property_type: String(fd.get("property_type")), room_gst_rate: Number(fd.get("room_gst_rate") || 12), check_in_time: String(fd.get("check_in_time") || "12:00"), check_out_time: String(fd.get("check_out_time") || "11:00"), prep_buffer_pct: Number(fd.get("prep_buffer_pct") || 10), brief_whatsapp: (fd.get("brief_whatsapp") as string) || null }).eq("id", String(fd.get("id")));

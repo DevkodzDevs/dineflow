@@ -1,5 +1,5 @@
 "use client";
-import { createClient } from "@/lib/supabase/client";
+import { getClient } from "@/lib/supabase/lazy";
 import { allJobs, delJob, putJob, metaSet, type Job, type JobKind } from "./db";
 
 type State = { online: boolean; pending: number; syncing: boolean; lastError: string | null; lastSyncAt: number | null; justSynced: number };
@@ -24,7 +24,8 @@ export async function enqueue(kind: JobKind, args: Record<string, unknown>, labe
 }
 
 async function run(job: Job) {
-  const s = createClient();
+  // only reached when there is a queued write to send, which is long after the screen has painted
+  const s = await getClient();
   const fail = (e: { message?: string } | null) => { if (e) throw e; };
   switch (job.kind) {
     case "place_order": { const a = job.args as Record<string, never>; fail((await s.rpc("place_order", { p_table_id: a.table_id, p_type: a.type, p_items: a.items, p_customer: a.customer, p_note: a.note, p_client_id: a.client_id, p_placed_at: a.placed_at, p_promise: a.promise ?? false })).error); break; }

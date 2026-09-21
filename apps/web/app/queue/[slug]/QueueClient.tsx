@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { getClient } from "@/lib/supabase/lazy";
 import { Flip, Countdown } from "@/components/ui";
 
 type S = { token: string; name: string; party: number; status: "waiting" | "called" | "seated" | "left"; place: number; waiting: number; minutes: number | null; table: string | null; restaurant: string };
@@ -8,11 +8,12 @@ type S = { token: string; name: string; party: number; status: "waiting" | "call
 /** The guest's page: join with a name and party size, then watch your place move up. Refreshes itself every 20 s. */
 export function QueueClient({ slug, name, initial }: { slug: string; name: string | null; initial: S | null }) {
   const [s, setS] = useState<S | null>(initial); const [form, setForm] = useState({ name: "", phone: "", party: 2 }); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
-  const sb = createClient();
-  useEffect(() => { if (!s || s.status === "seated" || s.status === "left") return; const i = setInterval(async () => { const { data } = await sb.rpc("queue_status", { p_token: s.token }); if (data) setS(data as S); }, 20000); return () => clearInterval(i); }, [s, sb]);
+  /* A guest opens this on their own phone, often on mobile data, and all it has to do at first is
+     show a name and a form. The client is fetched when they actually press something. */
+  useEffect(() => { if (!s || s.status === "seated" || s.status === "left") return; const i = setInterval(async () => { const { data } = await (await getClient()).rpc("queue_status", { p_token: s.token }); if (data) setS(data as S); }, 20000); return () => clearInterval(i); }, [s]);
   useEffect(() => { if (s?.token) history.replaceState(null, "", `?t=${s.token}`); }, [s?.token]);
-  const join = async () => { setBusy(true); setErr(null); const { data, error } = await sb.rpc("queue_join", { p_slug: slug, p_name: form.name, p_phone: form.phone, p_party: form.party }); setBusy(false); if (error) setErr(error.message); else setS(data as S); };
-  const leave = async () => { if (!s) return; await sb.rpc("queue_leave", { p_token: s.token }); setS({ ...s, status: "left" }); };
+  const join = async () => { setBusy(true); setErr(null); const { data, error } = await (await getClient()).rpc("queue_join", { p_slug: slug, p_name: form.name, p_phone: form.phone, p_party: form.party }); setBusy(false); if (error) setErr(error.message); else setS(data as S); };
+  const leave = async () => { if (!s) return; await (await getClient()).rpc("queue_leave", { p_token: s.token }); setS({ ...s, status: "left" }); };
 
   if (!name) return <main className="min-h-dvh grid place-items-center p-6"><p className="text-[var(--color-label-2)]">This place isn't taking a queue right now.</p></main>;
   return (

@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import { getClient } from "@/lib/supabase/lazy";
 import { Ticket } from "@/components/ui/Ticket";
 import { Button, Pill, Card } from "@/components/ui";
 import { formatINR, fmtTime, fmtSince } from "@/lib/format";
@@ -13,9 +14,14 @@ type Order = { id: string; status: string; created_at: string; kots: { id: strin
 export function OrderDetail({ order }: { order: Order }) {
   const router = useRouter(); const [pending, start] = useTransition();
   useEffect(() => {
-    const sb = createClient();
-    const ch = sb.channel(`order-${order.id}`).on("postgres_changes", { event: "*", schema: "public", table: "order_items", filter: `order_id=eq.${order.id}` }, () => router.refresh()).subscribe();
-    return () => { sb.removeChannel(ch); };
+    // the socket arrives just after the screen does, so the ticket paints without waiting for it
+    let sb: SupabaseClient | null = null, ch: RealtimeChannel | null = null, gone = false;
+    void (async () => {
+      const c = await getClient(); if (gone) return;
+      sb = c;
+      ch = c.channel(`order-${order.id}`).on("postgres_changes", { event: "*", schema: "public", table: "order_items", filter: `order_id=eq.${order.id}` }, () => router.refresh()).subscribe();
+    })();
+    return () => { gone = true; if (sb && ch) sb.removeChannel(ch); };
   }, [order.id, router]);
   const live = order.order_items.filter((i) => i.status !== "cancelled");
   const total = live.reduce((s, i) => s + Number(i.price_snapshot) * i.qty, 0);

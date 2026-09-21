@@ -8,7 +8,7 @@ import { ThemePicker } from "@/components/ui/Theme";
 import { InstallApp } from "@/components/InstallApp";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments } from "./actions";
 
-type Rest = { id: string; name: string; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
+type Rest = { id: string; name: string; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number };
 type Tab = "general" | "payments" | "tables" | "advanced";
 
@@ -141,6 +141,28 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                     </div>
                   )}
                 </div>
+
+                {/* what a chain's kitchen video system is configured with: the stations, and the clock */}
+                <div className="pt-3 border-t border-[var(--color-separator)]">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Kitchen control</div>
+                  <Field label="Stations" hint="Comma-separated. Each station gets its own view of the kitchen board — Grill, Tandoor, Fry, Bar, Dessert. Point categories at them on the Menu page.">
+                    <input name="kds_stations" defaultValue={(restaurant.kds_stations ?? []).join(", ")} placeholder="Grill, Tandoor, Bar" />
+                  </Field>
+                  <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                    <Field label="Hurry after (minutes)" hint="The ticket turns amber"><input name="kds_warn_minutes" type="number" min={1} max={120} step={1} defaultValue={restaurant.kds_warn_minutes ?? 10} className="num" /></Field>
+                    <Field label="Late after (minutes)" hint="The ticket turns red and counts against speed of service"><input name="kds_target_minutes" type="number" min={1} max={240} step={1} defaultValue={restaurant.kds_target_minutes ?? 15} className="num" /></Field>
+                  </div>
+                </div>
+
+                {isHotel && (
+                  <div className="pt-3 border-t border-[var(--color-separator)]">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Rooms division</div>
+                    <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
+                      <input type="checkbox" name="hk_inspect_required" className="w-4 h-4 accent-saffron mt-0.5" defaultChecked={restaurant.hk_inspect_required ?? false} />
+                      <span>A supervisor inspects every room before it is sold<span className="block text-xs text-steel mt-0.5">The five-star rule. A cleaned room waits as “clean” until an owner, manager or supervisor signs it off on the Housekeeping page, and check-in is refused until then. Off, a finished clean puts the room back on sale at once.</span></span>
+                    </label>
+                  </div>
+                )}
 
                 <div className="pt-3 border-t border-[var(--color-separator)]">
                   <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Tax & billing</div>

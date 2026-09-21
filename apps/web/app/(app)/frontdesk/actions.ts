@@ -24,6 +24,11 @@ export async function addCharge(bookingId: string, kind: "extra" | "discount", d
   const s = await createClient(); const { error } = await s.from("booking_charges").insert({ booking_id: bookingId, kind, description, amount: kind === "discount" ? -Math.abs(amount) : amount });
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
+/** The close of the hotel's business date: no-shows marked, their rooms released, the day's numbers kept. */
+export async function runNightAudit(date: string, markNoShows: boolean, notes: string) {
+  const s = await createClient(); const { data, error } = await s.rpc("run_night_audit", { p_date: date, p_mark_no_shows: markNoShows, p_notes: notes.trim() || null });
+  if (error) return { error: error.message }; bump(); revalidatePath("/reports"); revalidatePath("/frontdesk/night-audit"); return { ok: true, audit: data as unknown };
+}
 export async function postOrderToRoom(orderId: string, bookingId: string) {
   const s = await createClient(); const { error } = await s.rpc("post_order_to_room", { p_order_id: orderId, p_booking_id: bookingId }); if (error) return { error: error.message };
   ["/orders", "/billing", "/kitchen"].forEach((p) => revalidatePath(p)); bump(); return { ok: true };

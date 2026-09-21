@@ -9,6 +9,8 @@ export const menuItemSchema = z.object({
   is_available: z.coerce.boolean().default(true),
   prep_minutes: z.coerce.number().int().min(0).max(240).default(15),
   description: z.string().max(300).optional().nullable(),
+  /** kitchen station this dish routes to; empty means its category's station */
+  station: z.string().max(40).optional().nullable(),
 });
 
 export const ingredientSchema = z.object({
