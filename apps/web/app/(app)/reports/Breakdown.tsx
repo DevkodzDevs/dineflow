@@ -27,7 +27,8 @@ export function BreakdownView({ d }: { d: Breakdown | null }) {
   const hours = Array.from({ length: 24 }, (_, h) => d.by_hour.find((x) => Number(x.h) === h) ?? { h, rev: 0, bills: 0 });
   // the working day: from the first hour with a bill to the last, so a lunch-only place is not a wall of empty midnight bars
   const lit = hours.filter((x) => Number(x.bills) > 0).map((x) => Number(x.h));
-  const from = lit.length ? Math.min(...lit) : 8, to = lit.length ? Math.max(...lit) : 22;
+  // two quiet hours either side, so a single busy hour reads as a peak rather than one wall of colour
+  const from = lit.length ? Math.max(0, Math.min(...lit) - 2) : 8, to = lit.length ? Math.min(23, Math.max(...lit) + 2) : 22;
   const day = hours.slice(from, to + 1);
   return (
     <div className="space-y-4">
