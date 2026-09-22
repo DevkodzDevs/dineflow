@@ -9,12 +9,15 @@ import { slots as fetchSlots, reserve, placeOrder } from "../actions";
 import { OptionChooser } from "@/components/OptionChooser";
 import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
 
-type Item = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; variants?: Variant[]; addon_groups?: AddonGroup[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
+/** As the storefront sends it: the add-on groups are carried once on the property, and a dish
+ *  names the ones it offers by id. `resolve` below puts them back together for the screen. */
+type RawItem = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; variants?: Variant[]; addon_group_ids?: string[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
+type Item = Omit<RawItem, "addon_group_ids"> & { addon_groups?: AddonGroup[] };
 /** One basket line: a dish with the size and extras it was chosen with. */
 type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
-type Cat = { id: string; name: string; items: Item[] };
+type Cat = { id: string; name: string; items: RawItem[] };
 type Offer = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; code: string | null };
-type D = { table?: { id: string; name: string; zone: string } | null; slug: string; name: string; type: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
+type D = { table?: { id: string; name: string; zone: string } | null; slug: string; name: string; type: string; tagline: string | null; addon_groups?: AddonGroup[]; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
 type Slot = { time: string; left: number; full: boolean; offer_id: string | null; offer: string | null; offer_pct: number | null };
 
 const today = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
@@ -39,7 +42,14 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
   const [chooser, setChooser] = useState<Item | null>(null);
   const [omode, setOmode] = useState<"delivery" | "takeaway" | "dine_in">(tableToken && d.table ? "dine_in" : d.delivery ? "delivery" : "takeaway");
   const [addr, setAddr] = useState(""); const [cartOpen, setCartOpen] = useState(false);
-  const flat = useMemo(() => d.menu.flatMap((c) => c.items), [d.menu]);
+  /* The groups arrive once; a dish names the ones it offers. Rebuilt here, so everything below —
+     the tiles, the chooser, the pricing — sees a dish with its add-ons on it, as it always did. */
+  const menu = useMemo(() => {
+    const byId = new Map((d.addon_groups ?? []).map((g) => [g.id, g]));
+    const resolve = (i: RawItem): Item => ({ ...i, addon_groups: (i.addon_group_ids ?? []).map((id) => byId.get(id)).filter((g): g is AddonGroup => !!g) });
+    return d.menu.map((c) => ({ ...c, items: c.items.map(resolve) }));
+  }, [d.menu, d.addon_groups]);
+  const flat = useMemo(() => menu.flatMap((c) => c.items), [menu]);
   const lines = cart.filter((l) => l.qty > 0);
   const sub = lines.reduce((t, l) => t + linePrice(l.item, l.variant, l.addons) * l.qty, 0);
   const bestOffer = d.offers.filter((o) => [omode === "dine_in" ? "dining" : "delivery", "both"].includes(o.scope) && sub >= Number(o.min_order)).sort((a, b) => Number(b.value) - Number(a.value))[0];
@@ -161,7 +171,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
         {/* ── ORDER ONLINE ── */}
         {mode === "order" && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-            {d.menu.map((c) => c.items.length > 0 && (
+            {menu.map((c) => c.items.length > 0 && (
               <section key={c.id} className="mb-6">
                 <h2 className="text-xl mb-3">{c.name}</h2>
                 <div className="space-y-2">
