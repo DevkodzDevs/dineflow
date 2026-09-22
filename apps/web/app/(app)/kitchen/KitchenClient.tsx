@@ -2,20 +2,20 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, Check, Bell, Printer, Boxes, Timer, Tv, RotateCcw } from "lucide-react";
+import { Flame, Check, Bell, Printer, Boxes, Timer, Tv, RotateCcw, PauseCircle } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Ticket } from "@/components/ui/Ticket";
 import { Button, cn } from "@/components/ui";
 import { minsSince, fmtAge, fmtQty, fmtSince } from "@/lib/format";
 import { lineExtras } from "@dineflow/shared";
 import { Flip, listV } from "@/components/ui";
-import { setKotStatus, setItemStatus, setItemsStatus, recallKot } from "../orders/actions";
+import { setKotStatus, setItemStatus, setItemsStatus, recallKot, fireKot } from "../orders/actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 import { usePrinters } from "@/lib/print/usePrinter";
 
-type Line = { id: string; name_snapshot: string; qty: number; status: string; notes: string | null; addons?: { name: string }[] | null; components?: { name: string; qty: number }[] | null; menu_items?: { station: string | null; categories: { station: string | null } | null } | null };
-type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string;
+type Line = { id: string; name_snapshot: string; qty: number; status: string; notes: string | null; course?: number; addons?: { name: string }[] | null; components?: { name: string; qty: number }[] | null; menu_items?: { station: string | null; categories: { station: string | null } | null } | null };
+type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string; held?: boolean;
   orders: { order_no: number; type: string; customer_name: string | null; promised_at: string | null; dining_tables: { name: string } | null } | null;
   order_items: Line[] };
 export type Bumped = { id: string; kot_no: number; served_at: string; orders: { order_no: number; type: string; customer_name: string | null; dining_tables: { name: string } | null } | null };
@@ -90,13 +90,22 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
     if (!online) { void enqueue("item_status", { ids, status }, `Kitchen · ${station} · ${status}`); return; }
     start(async () => { await setItemsStatus(ids, status); });
   };
+  /* A held course fired from here leaves the strip at once; the server restarts its clock and prints it. */
+  const [fired, setFired] = useState<Record<string, true>>({});
+  const fire = (id: string) => {
+    setFired((f) => ({ ...f, [id]: true }));
+    if (!online) { void enqueue("kot_fire", { id }, "Kitchen · fire course"); return; }
+    start(async () => { await fireKot(id); });
+  };
+  const heldList = raw.filter((k) => k.held && !fired[k.id]);
+  const courseOf = (k: Kot) => Math.max(1, ...k.order_items.map((i) => i.course ?? 1));
   const recall = (id: string) => {
     setRecalled((r) => ({ ...r, [id]: true }));
     setOptimistic((o) => { const n = { ...o }; delete n[id]; return n; });
     start(async () => { await recallKot(id); });
   };
 
-  const initial = raw.map((k) => (optimistic[k.id] ? { ...k, status: optimistic[k.id] as Kot["status"] } : k)).filter((k) => optimistic[k.id] !== "served");
+  const initial = raw.filter((k) => !k.held || fired[k.id]).map((k) => (optimistic[k.id] ? { ...k, status: optimistic[k.id] as Kot["status"] } : k)).filter((k) => optimistic[k.id] !== "served");
   // the stations the owner named, plus any a line still carries from before a rename
   const known = useMemo(() => { const set = new Set(stations); raw.forEach((k) => k.order_items.forEach((i) => { const s = stationOf(i); if (s) set.add(s); })); return [...set]; }, [raw, stations]);
   // a remembered station that no longer exists falls back to everything rather than an empty board
@@ -156,6 +165,20 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
             </button>
           ))}
           {unrouted > 0 && view === "all" && <span className="text-[11px] text-steel ml-1">{unrouted} line{unrouted > 1 ? "s" : ""} with no station — set one on the Menu page</span>}
+        </div>
+      )}
+
+      {heldList.length > 0 && (
+        <div className="mb-4 rounded-2xl border border-dashed border-line p-3">
+          <div className="text-[10.5px] uppercase tracking-[0.14em] text-steel mb-2 flex items-center gap-1.5"><PauseCircle size={12} /> Held courses · fire when the table is ready for them</div>
+          <div className="flex flex-wrap gap-2">
+            {heldList.map((k) => (
+              <div key={k.id} className="rounded-xl bg-card border border-line pl-3 pr-1.5 py-1.5 text-sm flex items-center gap-3">
+                <span><b>{where(k)}</b> · course {courseOf(k)} · {k.order_items.filter(live).map((i) => `${i.qty} ${i.name_snapshot}`).join(", ")}</span>
+                <Button size="sm" disabled={pending} onClick={() => fire(k.id)}><Flame size={14} /> Fire</Button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

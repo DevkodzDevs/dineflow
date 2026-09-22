@@ -5,7 +5,7 @@
  *   meta   — sync bookkeeping (last successful flush, last reconcile)
  */
 const DB = "dineflow", VERSION = 3;
-export type JobKind = "place_order" | "settle_bill" | "generate_bill" | "stock" | "punch" | "item_status" | "kot_status" | "walkin_add" | "walkin_set" | "stock_count" | "hk_status" | "table_status";
+export type JobKind = "place_order" | "settle_bill" | "generate_bill" | "stock" | "punch" | "item_status" | "kot_status" | "walkin_add" | "walkin_set" | "stock_count" | "hk_status" | "table_status" | "kot_fire";
 /**
  * A queued write. `held` is set when the outbox has given up trying on its own: the job stays in
  * the store, stops being retried, and waits for a person to send it again or throw it away. It is

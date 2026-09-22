@@ -46,6 +46,7 @@ async function run(job: Job) {
     case "settle_bill": { const a = job.args as Record<string, never>; fail((await s.rpc("settle_bill", { p_bill_id: a.bill_id, p_payments: a.payments, p_client_id: a.client_id })).error); break; }
     case "item_status": { const a = job.args as { ids: string[]; status: string }; fail((await s.from("order_items").update({ status: a.status }).in("id", a.ids)).error); break; }
     case "kot_status": { const a = job.args as { id: string; status: string }; fail((await s.from("kots").update({ status: a.status }).eq("id", a.id)).error); break; }
+    case "kot_fire": { const a = job.args as { id: string }; fail((await s.rpc("fire_kot", { p_kot_id: a.id })).error); break; }
     case "table_status": { const a = job.args as { id: string; status: string }; fail((await s.from("dining_tables").update({ status: a.status }).eq("id", a.id)).error); break; }
     case "hk_status": { const a = job.args as { id: string; status: string }; fail((await s.from("housekeeping_tasks").update({ status: a.status }).eq("id", a.id)).error); break; }
     case "walkin_add": { const a = job.args as Record<string, never>; fail((await s.rpc("walkin_add", { p_name: a.name, p_phone: a.phone, p_party: a.party })).error); break; }

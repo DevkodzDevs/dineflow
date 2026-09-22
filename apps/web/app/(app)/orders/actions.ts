@@ -50,6 +50,28 @@ export async function cancelOrder(id: string) {
   if (o?.table_id) await s.from("dining_tables").update({ status: "free" }).eq("id", o.table_id);
   bump(); return { ok: true };
 }
+/** The whole order goes to another table. */
+export async function moveOrder(orderId: string, tableId: string) {
+  const s = await createClient(); const { error } = await s.rpc("move_order", { p_order_id: orderId, p_table_id: tableId });
+  if (error) return { error: error.message }; bump(); return { ok: true as const };
+}
+/** This order's lines and tickets join another open order; this one closes as merged. */
+export async function mergeOrders(fromId: string, intoId: string) {
+  const s = await createClient(); const { error } = await s.rpc("merge_orders", { p_from: fromId, p_into: intoId });
+  if (error) return { error: error.message }; bump(); return { ok: true as const };
+}
+/** Chosen lines — whole or in part — move to a new order on the same table, billed on its own. */
+export async function splitOrder(orderId: string, lines: { id: string; qty?: number }[]) {
+  const s = await createClient(); const { data, error } = await s.rpc("split_order", { p_order_id: orderId, p_lines: lines });
+  if (error) return { error: error.message };
+  const { data: o } = await s.from("orders").select("order_no").eq("id", data as string).maybeSingle();
+  bump(); return { ok: true as const, orderId: data as string, orderNo: o?.order_no as number | undefined };
+}
+/** A held course goes to the kitchen now. */
+export async function fireKot(kotId: string) {
+  const s = await createClient(); const { error } = await s.rpc("fire_kot", { p_kot_id: kotId });
+  if (error) return { error: error.message }; bump(); return { ok: true as const };
+}
 export async function setTableStatus(id: string, status: "free" | "reserved") {
   const s = await createClient(); await s.from("dining_tables").update({ status }).eq("id", id); bump(); return { ok: true };
 }

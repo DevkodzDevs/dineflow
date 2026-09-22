@@ -67,11 +67,12 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   return p.bytes();
 }
 
-export type KotData = { kotNo: string; when: string; tableOrType: string; waiter?: string; station?: string | null; items: { name: string; qty: number; note?: string | null; extras?: string[] }[]; reprint?: boolean };
+export type KotData = { kotNo: string; when: string; tableOrType: string; waiter?: string; station?: string | null; items: { name: string; qty: number; note?: string | null; extras?: string[] }[]; reprint?: boolean; heading?: string };
 export function buildKot(d: KotData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
   p.align("c").size(2).bold(true).line(d.reprint ? "KOT (REPRINT)" : "KOT").size(1).line(d.station ?? "").bold(false).rule("=").align("l");
   p.size(2).bold(true).line(d.tableOrType).size(1).bold(false).row(d.kotNo, d.when);
+  if (d.heading) p.bold(true).line(d.heading).bold(false);
   if (d.waiter) p.line("Waiter: " + d.waiter);
   p.rule();
   d.items.forEach((i) => { p.size(2).bold(true).line(`${i.qty}  ${i.name}`.slice(0, p.cols)).size(1).bold(false); i.extras?.forEach((x) => p.wrap("   " + x.toUpperCase(), 3)); if (i.note) p.wrap("   > " + i.note.toUpperCase(), 3); });

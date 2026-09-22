@@ -67,6 +67,7 @@ export const newOrderSchema = z.object({
     menu_item_id: z.string().uuid(), qty: z.number().int().positive(), notes: z.string().max(120).optional(),
     variant_id: z.string().uuid().nullable().optional(),          // the size or style it is sold in
     addon_ids: z.array(z.string().uuid()).max(20).optional(),      // extras picked from the dish's groups
+    course: z.number().int().min(1).max(9).optional(),             // 1 goes now; later courses are held until fired
   })).min(1),
 });
 

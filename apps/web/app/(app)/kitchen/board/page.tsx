@@ -13,6 +13,6 @@ export default async function BoardPage() {
   const s = await createClient(); const session = await requireSession();
   const since = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
   const { data } = await s.from("kots").select("id, kot_no, status, created_at, ready_at, orders(order_no, type, customer_name, dining_tables(name))")
-    .in("status", ["pending", "preparing", "ready"]).gte("created_at", since).order("created_at").limit(120);
+    .in("status", ["pending", "preparing", "ready"]).eq("held", false).gte("created_at", since).order("created_at").limit(120);
   return <BoardClient kots={(data ?? []) as never} name={session.restaurant.name} />;
 }
