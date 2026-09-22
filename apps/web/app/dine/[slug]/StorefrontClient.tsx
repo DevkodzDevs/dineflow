@@ -14,14 +14,16 @@ type Item = { id: string; name: string; price: number; is_veg: boolean; descript
 type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
 type Cat = { id: string; name: string; items: Item[] };
 type Offer = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; code: string | null };
-type D = { slug: string; name: string; type: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
+type D = { table?: { id: string; name: string; zone: string } | null; slug: string; name: string; type: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
 type Slot = { time: string; left: number; full: boolean; offer_id: string | null; offer: string | null; offer_pct: number | null };
 
 const today = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
 
-export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order" }) {
+export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order"; tableToken?: string | null }) {
+  /* Reached from the code on a table: the menu is for ordering at that table and nothing else — no booking tab, no delivery, no address. */
+  const atTable = !!(tableToken && d.table);
   const toast = useToast();
-  const [mode, setMode] = useState<"book" | "order">(d.dining ? tab : "order");
+  const [mode, setMode] = useState<"book" | "order">(tableToken && d.table ? "order" : d.dining ? tab : "order");
   const [pending, start] = useTransition();
   const [done, setDone] = useState<{ kind: "book" | "order"; data: Record<string, unknown> } | null>(null);
 
@@ -35,14 +37,14 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
   /* ── ordering ── */
   const [cart, setCart] = useState<CartLine[]>([]);
   const [chooser, setChooser] = useState<Item | null>(null);
-  const [omode, setOmode] = useState<"delivery" | "takeaway">(d.delivery ? "delivery" : "takeaway");
+  const [omode, setOmode] = useState<"delivery" | "takeaway" | "dine_in">(tableToken && d.table ? "dine_in" : d.delivery ? "delivery" : "takeaway");
   const [addr, setAddr] = useState(""); const [cartOpen, setCartOpen] = useState(false);
   const flat = useMemo(() => d.menu.flatMap((c) => c.items), [d.menu]);
   const lines = cart.filter((l) => l.qty > 0);
   const sub = lines.reduce((t, l) => t + linePrice(l.item, l.variant, l.addons) * l.qty, 0);
-  const bestOffer = d.offers.filter((o) => ["delivery", "both"].includes(o.scope) && sub >= Number(o.min_order)).sort((a, b) => Number(b.value) - Number(a.value))[0];
+  const bestOffer = d.offers.filter((o) => [omode === "dine_in" ? "dining" : "delivery", "both"].includes(o.scope) && sub >= Number(o.min_order)).sort((a, b) => Number(b.value) - Number(a.value))[0];
   const disc = bestOffer ? (bestOffer.kind === "flat_pct" ? Math.round((sub * Number(bestOffer.value)) / 100) : Math.min(Number(bestOffer.value), sub)) : 0;
-  const fee = (omode === "delivery" ? Number(d.delivery_fee) : 0) + Number(d.packing_charge);
+  const fee = omode === "dine_in" ? 0 : (omode === "delivery" ? Number(d.delivery_fee) : 0) + Number(d.packing_charge);
   const gst = Math.round(((sub - disc) * Number(d.gst_rate)) / 100);
   const total = Math.round(sub - disc + fee + gst);
   const qtyOf = (id: string) => cart.filter((l) => l.item.id === id).reduce((t, l) => t + l.qty, 0);
@@ -60,6 +62,12 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
   };
 
   if (done) return <Confirmation kind={done.kind} data={done.data} name={d.name} slug={slug} />;
+  const tableBanner = atTable && (
+    <div className="mb-5 rounded-2xl border border-[var(--color-tint)] bg-[var(--color-green-2)] px-4 py-3 flex items-center gap-3">
+      <UtensilsCrossed size={18} className="text-[var(--color-tint)] shrink-0" />
+      <div className="min-w-0"><div className="font-semibold">Ordering at Table {d.table!.name}</div><div className="text-xs text-[var(--color-label-2)]">Add what you would like and place the order — it goes to the kitchen and comes to your table. Pay at the table when you are done.</div></div>
+    </div>
+  );
 
   return (
     <div className="min-h-dvh bg-[var(--color-bg)] pb-32">
@@ -93,13 +101,14 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
           </div>
         )}
 
-        <div className="flex items-center gap-2 mb-5 flex-wrap">
+        {tableBanner}
+        {!atTable && <div className="flex items-center gap-2 mb-5 flex-wrap">
           <Segmented value={mode} onChange={setMode} options={[
             ...(d.dining ? [{ value: "book" as const, label: <span className="flex items-center gap-1.5"><UtensilsCrossed size={13} /> Book a table</span> }] : []),
             ...(d.delivery || d.takeaway ? [{ value: "order" as const, label: <span className="flex items-center gap-1.5"><Bike size={13} /> Order online</span> }] : []),
           ]} />
           {d.rooms && <Link href={`/book/${slug}`} className="chip"><BedDouble size={14} /> Book a room</Link>}
-        </div>
+        </div>}
 
         {/* ── BOOK A TABLE ── */}
         {mode === "book" && (
@@ -205,7 +214,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
 
       <Sheet open={cartOpen} onClose={() => setCartOpen(false)} title="Your order">
         <div className="space-y-4">
-          {(d.delivery && d.takeaway) && <Segmented value={omode} onChange={setOmode} className="w-full" options={[{ value: "delivery", label: "Delivery" }, { value: "takeaway", label: "Takeaway" }]} />}
+          {atTable ? <p className="text-sm font-semibold">Table {d.table!.name} · dine-in</p> : (d.delivery && d.takeaway) && <Segmented value={omode as "delivery" | "takeaway"} onChange={setOmode} className="w-full" options={[{ value: "delivery", label: "Delivery" }, { value: "takeaway", label: "Takeaway" }]} />}
           <div className="divide-y divide-[var(--color-separator)]">
             {lines.map((l) => (
               <div key={l.key} className="flex items-center gap-3 py-2.5">
@@ -226,17 +235,17 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
             <Row k={`GST ${d.gst_rate}%`} v={gst} />
             <div className="flex justify-between text-lg font-bold pt-2 border-t border-[var(--color-label)]"><span>To pay</span><span>{formatINR(total)}</span></div>
           </div>
-          {sub < Number(d.min_order) && <p className="text-sm text-[var(--color-red)]">Add {formatINR(Number(d.min_order) - sub)} more — the minimum order here is {formatINR(d.min_order)}.</p>}
+          {!atTable && sub < Number(d.min_order) && <p className="text-sm text-[var(--color-red)]">Add {formatINR(Number(d.min_order) - sub)} more — the minimum order here is {formatINR(d.min_order)}.</p>}
           <div className="grid sm:grid-cols-2 gap-3">
             <Field label="Name"><input value={guest.full_name} onChange={(e) => setGuest({ ...guest, full_name: e.target.value })} /></Field>
             <Field label="Phone"><input value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} className="num" /></Field>
           </div>
           {omode === "delivery" && <Field label="Delivery address"><textarea rows={2} value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Door number, street, landmark" /></Field>}
           <Field label="Note for the kitchen"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Less spicy, no onion…" /></Field>
-          <p className="text-xs text-[var(--color-label-2)]">Pay on {omode === "delivery" ? "delivery" : "pickup"} — cash, UPI or card. The restaurant confirms within a few minutes.</p>
-          <Button size="lg" className="w-full" loading={pending} disabled={!guest.full_name || !guest.phone || sub < Number(d.min_order) || (omode === "delivery" && !addr)}
+          <p className="text-xs text-[var(--color-label-2)]">{atTable ? "Pay at the table when you are done — cash, UPI or card." : `Pay on ${omode === "delivery" ? "delivery" : "pickup"} — cash, UPI or card. The restaurant confirms within a few minutes.`}</p>
+          <Button size="lg" className="w-full" loading={pending} disabled={!guest.full_name || !guest.phone || (!atTable && sub < Number(d.min_order)) || (omode === "delivery" && !addr)}
             onClick={() => start(async () => {
-              const r = await placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null);
+              const r = await placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null, atTable ? tableToken : null);
               if ("error" in r) toast(r.error!, "err"); else { setCartOpen(false); setDone({ kind: "order", data: r.order as Record<string, unknown> }); }
             })}>Place order · {formatINR(total)}</Button>
         </div>
@@ -250,7 +259,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
 const Row = ({ k, v, good }: { k: string; v: number; good?: boolean }) => <div className="flex justify-between"><span className="text-[var(--color-label-2)]">{k}</span><span className={good ? "text-[var(--color-green)]" : ""}>{formatINR(v)}</span></div>;
 
 function Confirmation({ kind, data, name, slug }: { kind: "book" | "order"; data: Record<string, unknown>; name: string; slug: string }) {
-  const d = data as never as { no?: number; ref?: string; date?: string; time?: string; party?: number; offer?: string; discount_pct?: number; total?: number; eta?: number; mode?: string; phone?: string; address?: string };
+  const d = data as never as { no?: number; ref?: string; date?: string; time?: string; party?: number; offer?: string; discount_pct?: number; total?: number; eta?: number; mode?: string; table?: string; accepted?: boolean; order_no?: number; phone?: string; address?: string };
   return (
     <div className="min-h-dvh grid place-items-center p-6 aurora">
       <motion.div initial={{ opacity: 0, y: 14, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 26 }} className="material-thick p-8 max-w-md w-full text-center rounded-[28px]">
@@ -269,7 +278,7 @@ function Confirmation({ kind, data, name, slug }: { kind: "book" | "order"; data
             <div className="flex justify-between text-base font-bold pt-1.5 border-t border-[var(--color-separator)]"><span>To pay</span><span className="num">{formatINR(Number(d.total ?? 0))}</span></div>
           </>)}
         </div>
-        <p className="text-sm text-[var(--color-label-2)] mt-4">{kind === "book" ? "Show this number at the door. The restaurant has your booking on their screen already." : "The kitchen has it. Pay on delivery — cash, UPI or card."}</p>
+        <p className="text-sm text-[var(--color-label-2)] mt-4">{kind === "book" ? "Show this number at the door. The restaurant has your booking on their screen already." : d.mode === "dine_in" ? (d.accepted ? `The kitchen has it${d.order_no ? ` as order #${d.order_no}` : ""}. It comes to Table ${d.table ?? ""}. Pay at the table when you are done.` : `The counter will confirm it in a moment and send it to the kitchen. It comes to Table ${d.table ?? ""}.`) : "The kitchen has it. Pay on delivery — cash, UPI or card."}</p>
         <div className="flex gap-2 mt-5">
           {d.phone && <a href={`tel:${d.phone}`} className="flex-1"><Button variant="gray" className="w-full"><Phone size={15} /> Call</Button></a>}
           <Link href={`/dine/${slug}`} className="flex-1"><Button className="w-full">Done</Button></Link>

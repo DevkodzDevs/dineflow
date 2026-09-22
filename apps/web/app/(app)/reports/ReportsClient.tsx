@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 const SalesChart = dynamic(() => import("./Charts").then((m) => m.SalesChart), { ssr: false, loading: () => <div className="h-56 shimmer rounded-2xl" /> });
 const TopChart = dynamic(() => import("./Charts").then((m) => m.TopChart), { ssr: false, loading: () => <div className="h-56 shimmer rounded-2xl" /> });
 import { Card, StatTile, cn } from "@/components/ui";
+import { BreakdownView, type Breakdown } from "./Breakdown";
 import { formatINR } from "@/lib/format";
 
 /** Already added up by report_summary() in the database, so the size of the window stops mattering. */
@@ -25,7 +26,7 @@ export type HotelKpis = { rooms: number; sellable?: number; ooo?: number; days: 
   by_day: { day: string; occupied: number; total: number; occ_pct: number; revenue: number; adr: number; revpar: number }[] };
 export type AuditRow = { business_date: string; occupancy_pct: number; adr: number; revpar: number; room_revenue: number; no_shows: number; discrepancies: number };
 
-export function ReportsClient({ days, summary, closes, kitchen = null, hotel = null, audits = [] }: { days: number; summary: Summary; closes: Close[]; kitchen?: KitchenSpeed | null; hotel?: HotelKpis | null; audits?: AuditRow[] }) {
+export function ReportsClient({ days, summary, closes, kitchen = null, hotel = null, audits = [], breakdown = null }: { days: number; summary: Summary; closes: Close[]; kitchen?: KitchenSpeed | null; hotel?: HotelKpis | null; audits?: AuditRow[]; breakdown?: Breakdown | null }) {
   const { sales, bills: billCount, by_day: byDay, top, consumption, cogs, waste_cost: wasteCost } = summary;
   return (
     <div className="space-y-6">
@@ -42,6 +43,9 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
         <Card><h3 className="text-xl mb-3">Top dishes</h3>
           <TopChart data={top} /></Card>
       </div>
+
+      {/* the breakdown: where, when and how the money came in */}
+      <BreakdownView d={breakdown} />
 
       {/* what the chains manage the kitchen by, and what every hotel opens its morning meeting with */}
       <div className={cn("grid gap-4", hotel && "lg:grid-cols-2")}>

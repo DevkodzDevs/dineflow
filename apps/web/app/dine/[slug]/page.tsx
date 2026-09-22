@@ -6,19 +6,20 @@ export const dynamic = "force-dynamic";
 const anon = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
 
 /** Shared with the page below, so a visit costs one storefront lookup rather than two. */
-const storefront = cache(async (slug: string) => (await anon().rpc("dine_storefront", { p_slug: slug })).data);
+/** `table` is the code on a table: it opens the menu for that table, listed or not. */
+const storefront = cache(async (slug: string, table: string | null = null) => (await anon().rpc("dine_storefront", { p_slug: slug, p_table: table })).data);
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params; const data = await storefront(slug);
   const d = data as { name?: string; cuisines?: string[] } | null;
   return d ? { title: `${d.name} · book a table or order in`, description: (d.cuisines ?? []).join(", ") } : { title: "Not found" };
 }
-export default async function Storefront({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string }> }) {
-  const { slug } = await params; const { tab } = await searchParams;
+export default async function Storefront({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string; t?: string }> }) {
+  const { slug } = await params; const { tab, t } = await searchParams;
   const [data, { data: slots }] = await Promise.all([
-    storefront(slug),
+    storefront(slug, t ?? null),
     anon().rpc("dine_slots", { p_slug: slug, p_date: new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10), p_party: 2 }),
   ]);
   if (!data) notFound();
-  return <StorefrontClient slug={slug} d={data as never} initialSlots={(slots ?? []) as never} tab={(tab as never) ?? "book"} />;
+  return <StorefrontClient slug={slug} d={data as never} initialSlots={(slots ?? []) as never} tab={(tab as never) ?? "book"} tableToken={t ?? null} />;
 }

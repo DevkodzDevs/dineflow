@@ -1,15 +1,15 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake } from "lucide-react";
+import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode } from "lucide-react";
 import { Button, Card, Field, cn } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
 import { InstallApp } from "@/components/InstallApp";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments, saveLoyalty } from "./actions";
 
-type Rest = { id: string; name: string; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
-type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number };
+type Rest = { id: string; name: string; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
+type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number; qr_token?: string | null };
 type Tab = "general" | "payments" | "tables" | "advanced";
 
 const TABS: { key: Tab; label: string; icon: typeof Building2 }[] = [
@@ -297,6 +297,14 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
       {/* ═══════ TABLES ═══════ */}
       {tab === "tables" && (
         <Card>
+          <Section icon={<QrCode size={16} />} title="Order from the table"
+            description="Every table has its own QR code. A guest scans it, sees the menu on their phone, and the order lands on that table — in Online orders, or straight in the kitchen when the website channel accepts on its own.">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/settings/table-qr" className="btn btn-primary"><QrCode size={16} /> Print table codes</Link>
+              <Link href="/channels" className="btn btn-gray">Accept on their own · Channels</Link>
+              {!restaurant.booking_slug && <span className="text-xs text-steel">Set the property&apos;s web name under Storefront first.</span>}
+            </div>
+          </Section>
           <Section icon={<LayoutGrid size={16} />} title="Tables & zones"
             description={`${tables.length} table${tables.length === 1 ? "" : "s"} across ${new Set(tables.map((t) => t.zone)).size} zone${new Set(tables.map((t) => t.zone)).size === 1 ? "" : "s"}.`}>
 
@@ -309,6 +317,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                       <span className="text-sm">{t.zone}</span>
                       <span className="text-xs text-steel ml-2">seats {t.capacity}</span>
                     </div>
+                    {t.qr_token && restaurant.booking_slug && <a href={`/dine/${restaurant.booking_slug}?t=${t.qr_token}`} target="_blank" rel="noreferrer" className="h-8 px-2 grid place-items-center rounded-lg text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] transition-colors text-[11px] font-semibold" title="Open what a guest sees when they scan this table's code"><QrCode size={14} /></a>}
                     <button className="h-8 w-8 grid place-items-center rounded-lg text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors"
                       disabled={pending} onClick={() => start(() => { deleteTable(t.id); })} aria-label={`Delete ${t.name}`}>
                       <Trash2 size={14} />
