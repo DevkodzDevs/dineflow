@@ -4,7 +4,7 @@ import { formatINR } from "@/lib/format";
 import { QR } from "@/components/QR";
 import { taxLabels, COMPOSITION_NOTE } from "@dineflow/shared";
 
-export type ReceiptLine = { name: string; qty: number; price: number; note?: string | null; gstRate?: number };
+export type ReceiptLine = { name: string; qty: number; price: number; note?: string | null; gstRate?: number; extras?: string[] };
 export type ReceiptData = {
   restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; fssai?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null };
   title?: string; no: string; when: string; where: string; cashier?: string; guest?: string | null;
@@ -78,6 +78,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
           {d.lines.map((l, i) => (
             <div key={i}>
               <div className="paper-row"><span className="truncate" style={{ maxWidth: "46%" }}>{l.name}</span><span className="opacity-80">{l.qty} × {m(l.price)}</span><span>{m(l.qty * l.price)}</span></div>
+              {l.extras?.map((x, j) => <div key={j} className="pl-2 text-[10.5px] opacity-70">{x}</div>)}
               {l.note && <div className="pl-2 text-[10.5px] opacity-70">{l.note}</div>}
             </div>
           ))}

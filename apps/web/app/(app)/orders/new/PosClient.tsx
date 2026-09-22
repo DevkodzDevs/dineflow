@@ -2,23 +2,29 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer } from "lucide-react";
+import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers } from "lucide-react";
 import { Button, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { placeOrder, parseOrder } from "../actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 import { usePrinters } from "@/lib/print/usePrinter";
+import { OptionChooser } from "@/components/OptionChooser";
+import { hasOptions, defaultVariant, linePrice, lineKey, lineName, lineExtras, optionProblem, tilePrice, type Optioned, type Variant, type Addon } from "@dineflow/shared";
 import Link from "next/link";
 
 type Cat = { id: string; name: string };
-type Item = { id: string; name: string; price: number; is_veg: boolean; category_id: string | null; is_available: boolean };
+type Item = Optioned & { is_veg: boolean; category_id: string | null; is_available: boolean };
 type Table = { id: string; name: string; status: string };
 type Guest = { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null };
 /** What the pantry can still cover, keyed by dish. A dish that is absent has no recipe: it moves no
  *  stock, so there is nothing true to say about it, and it is always sellable. */
 type Cover = { portions: number; short: { name: string; unit: string; per: number; stock: number }[] };
 type Running = { id: string; order_no: number; table_id: string };
+/** One line of the ticket: a dish with the size and extras it was chosen with. The same dish as
+ *  Half and as Full is two lines. `ask` marks a line that still owes a required choice — a voice
+ *  order can put a dish on the ticket before anyone has said which bread. */
+type Line = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number; note: string; ask?: boolean };
 
 export function PosClient({ categories, items, tables, initialTable, inHouse = [], stock = {}, running = [], ai = false, promise = null }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null }) {
   const router = useRouter();
@@ -26,8 +32,10 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   const [room, setRoom] = useState("");
   const [tableId, setTableId] = useState<string | null>(initialTable);
   const [cat, setCat] = useState("all"); const [q, setQ] = useState("");
-  const [cart, setCart] = useState<Record<string, number>>({});
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [lines, setLines] = useState<Line[]>([]);
+  /* The question a dish asks before it goes on the ticket. `replace` is the line being answered
+     for — a voice-added dish that still owes a choice — and goes away when the answer lands. */
+  const [chooser, setChooser] = useState<{ item: Item; replace?: string; qty?: number; note?: string } | null>(null);
   const [customer, setCustomer] = useState({ name: "", phone: "" });
   const [err, setErr] = useState<string | null>(null);
   const { online } = useOffline();
@@ -44,9 +52,32 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   /* The on-time promise, when the property offers one. Off unless the guest asks for it: it is a
      deadline the kitchen has to meet and a charge the guest has to agree to, so it is never a default. */
   const [promised, setPromised] = useState(false);
+
+  /* ── the ticket ── */
+  const qtyOf = (id: string) => lines.filter((l) => l.item.id === id).reduce((s, l) => s + l.qty, 0);
+  const putLine = (item: Item, variant: Variant | null, addons: Addon[], d: number, note = "", replace?: string) => {
+    setWarned(false);
+    setLines((ls) => {
+      const base = replace ? ls.filter((l) => l.key !== replace) : ls;
+      const key = lineKey(item.id, variant?.id, addons.map((a) => a.id));
+      const at = base.findIndex((l) => l.key === key);
+      if (at < 0) return d > 0 ? [...base, { key, item, variant, addons, qty: d, note, ask: optionProblem(item, addons) !== null }] : base;
+      const next = [...base]; const n = next[at].qty + d;
+      if (n <= 0) next.splice(at, 1); else next[at] = { ...next[at], qty: n, note: note || next[at].note };
+      return next;
+    });
+  };
+  const bump = (key: string, d: number) => { setWarned(false); setLines((ls) => ls.map((l) => (l.key === key ? { ...l, qty: l.qty + d } : l)).filter((l) => l.qty > 0)); };
+  const setNote = (key: string, note: string) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, note } : l)));
+  /** Tapping a tile: a dish that asks a question opens it; the rest go straight on the ticket. */
+  const tap = (it: Item) => (hasOptions(it) ? setChooser({ item: it }) : putLine(it, null, [], 1));
+  /** The minus on a cart line for a dish that was tapped by voice takes one off its last line, whichever size. */
+  const askFor = (l: Line) => setChooser({ item: l.item, replace: l.key, qty: l.qty, note: l.note });
+
   /* Taking the order in words. The model turns "two biryani, one Jain, table four" into cart lines
      on this menu; everything lands in the same cart, notes and table the waiter would have tapped
-     in, and the same Send button is still the only thing that reaches the kitchen. */
+     in, and the same Send button is still the only thing that reaches the kitchen. A dish sold in
+     sizes lands in its default size; one with a required choice is flagged until it is made. */
   const toast = useToast();
   const [said, setSaid] = useState(""); const [hearing, setHearing] = useState(false); const [reading, setReading] = useState(false);
   const [unresolved, setUnresolved] = useState<string[]>([]);
@@ -59,8 +90,17 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       const r = await parseOrder(text);
       if ("error" in r) { toast(r.error!, "err"); return; }
       // add to what is already on the ticket rather than replacing it — a second sentence is a second round
-      setCart((c) => { const n = { ...c }; for (const l of r.lines) n[l.menu_item_id] = (n[l.menu_item_id] ?? 0) + l.qty; return n; });
-      setNotes((c) => { const n = { ...c }; for (const l of r.lines) if (l.note) n[l.menu_item_id] = c[l.menu_item_id] ? `${c[l.menu_item_id]} · ${l.note}` : l.note; return n; });
+      setLines((prev) => {
+        const n = [...prev];
+        for (const l of r.lines) {
+          const item = items.find((i) => i.id === l.menu_item_id); if (!item) continue;
+          const v = defaultVariant(item); const key = lineKey(item.id, v?.id, []);
+          const at = n.findIndex((x) => x.key === key);
+          if (at >= 0) n[at] = { ...n[at], qty: n[at].qty + l.qty, note: l.note ? (n[at].note ? `${n[at].note} · ${l.note}` : l.note) : n[at].note };
+          else n.push({ key, item, variant: v, addons: [], qty: l.qty, note: l.note ?? "", ask: optionProblem(item, []) !== null });
+        }
+        return n;
+      });
       setWarned(false);
       if (r.order_type) setType(r.order_type);
       if (r.table_id) { const t = tables.find((x) => x.id === r.table_id); if (t) pickTable(t); }
@@ -81,15 +121,16 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   };
 
   const visible = useMemo(() => items.filter((i) => i.is_available && (cat === "all" || i.category_id === cat) && i.name.toLowerCase().includes(q.toLowerCase())), [items, cat, q]);
-  const lines = Object.entries(cart).filter(([, n]) => n > 0).map(([id, qty]) => ({ item: items.find((i) => i.id === id)!, qty }));
-  const total = lines.reduce((s, l) => s + Number(l.item.price) * l.qty, 0);
+  const unit = (l: Line) => linePrice(l.item, l.variant, l.addons);
+  const total = lines.reduce((s, l) => s + unit(l) * l.qty, 0);
   const count = lines.reduce((s, l) => s + l.qty, 0);
-  const add = (id: string, d: number) => { setWarned(false); setCart((c) => ({ ...c, [id]: Math.max(0, (c[id] ?? 0) + d) })); };
   const coverOf = (id: string) => stock[id];
-  /** Dishes on this ticket the pantry cannot cover, with how far short it is. */
-  const shortfalls = lines
-    .map(({ item, qty }) => ({ item, qty, cover: coverOf(item.id) }))
-    .filter((l) => l.cover && l.qty > l.cover.portions);
+  /** Dishes on this ticket the pantry cannot cover, with how far short it is — counted across sizes. */
+  const shortfalls = (() => {
+    const by = new Map<string, { item: Item; qty: number }>();
+    lines.forEach((l) => by.set(l.item.id, { item: l.item, qty: (by.get(l.item.id)?.qty ?? 0) + l.qty }));
+    return [...by.values()].map((x) => ({ ...x, cover: coverOf(x.item.id) })).filter((x) => x.cover && x.qty > x.cover.portions);
+  })();
   const pickTable = (t: Table) => {
     setTableId(t.id);
     const open = running.find((o) => o.table_id === t.id);
@@ -99,22 +140,25 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   const submit = () => start(async () => {
     setErr(null);
     if (type === "dine_in" && !tableId) return setErr("Pick a table");
+    // a dish that still owes a choice cannot go: the kitchen would not know which bread, and the bill which price
+    const owed = lines.find((l) => l.ask);
+    if (owed) { askFor(owed); return setErr(`${owed.item.name} needs a choice first`); }
     // The pantry gets one say, and only one. Warning and then standing aside is the whole point:
     // the shelf is the authority here, not the count.
     if (shortfalls.length > 0 && !warned) return setWarned(true);
     if (type === "room_service" && !room) return setErr("Pick the guest room");
     const label = type === "dine_in" ? (tables.find((t) => t.id === tableId)?.name ?? "Table") : type === "room_service" ? customer.name : type.replace("_", " ");
     const payload = { type, promise: promised, table_id: type === "dine_in" ? tableId : null, customer_name: customer.name || null, customer_phone: customer.phone || null,
-      items: lines.map((l) => ({ menu_item_id: l.item.id, qty: l.qty, notes: notes[l.item.id] || undefined })) };
+      items: lines.map((l) => ({ menu_item_id: l.item.id, qty: l.qty, notes: l.note || undefined, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })) };
 
     // The kitchen ticket prints from this device, so it works with or without internet.
-    try { await printKot({ kotNo: "KOT", when: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: label, items: lines.map((l) => ({ name: l.item.name, qty: l.qty, note: notes[l.item.id] || null })) }); }
+    try { await printKot({ kotNo: "KOT", when: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: label, items: lines.map((l) => ({ name: lineName(l.item, l.variant), qty: l.qty, note: l.note || null, extras: lineExtras({ addons: l.addons, components: l.item.components }) })) }); }
     catch { /* never block an order because a printer is off */ }
 
     if (!online) {
       // Offline: keep the order on this device and send it the moment the connection returns.
       await enqueue("place_order", { ...payload, client_id: crypto.randomUUID(), placed_at: new Date().toISOString() }, `Order · ${label} · ${count} items`);
-      setCart({}); setNotes({});
+      setLines([]);
       router.push("/orders?queued=1");
       return;
     }
@@ -151,14 +195,19 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       <div className="mt-4 flex-1 overflow-y-auto ticket-rail pl-4 space-y-3">
         <AnimatePresence initial={false}>
           {lines.length === 0 && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-steel">Tap dishes to add them to this ticket.</motion.p>}
-          {lines.map(({ item, qty }) => (
-            <motion.div key={item.id} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}>
+          {lines.map((l) => (
+            <motion.div key={l.key} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}>
               <div className="flex items-center gap-2">
-                <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{item.name}</div><div className="num text-xs text-steel">{formatINR(Number(item.price))} × {qty}</div>
-                  {coverOf(item.id) && qty > coverOf(item.id)!.portions && <div className="text-[11px] font-semibold text-[var(--color-orange)]">pantry covers {coverOf(item.id)!.portions}</div>}</div>
-                <div className="flex items-center gap-1"><button onClick={() => add(item.id, -1)} className="h-8 w-8 rounded-lg border border-line grid place-items-center"><Minus size={14} /></button><span className="num w-6 text-center font-semibold">{qty}</span><button onClick={() => add(item.id, 1)} className="h-8 w-8 rounded-lg bg-ink text-on-label grid place-items-center"><Plus size={14} /></button></div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">{lineName(l.item, l.variant)}</div>
+                  {lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <div key={j} className="text-[11px] text-steel truncate">{x}</div>)}
+                  <div className="num text-xs text-steel">{formatINR(unit(l))} × {l.qty}</div>
+                  {coverOf(l.item.id) && qtyOf(l.item.id) > coverOf(l.item.id)!.portions && <div className="text-[11px] font-semibold text-[var(--color-orange)]">pantry covers {coverOf(l.item.id)!.portions}</div>}
+                  {l.ask && <button type="button" onClick={() => askFor(l)} className="mt-0.5 text-[11px] font-semibold text-[var(--color-orange)] underline">Choose options</button>}
+                </div>
+                <div className="flex items-center gap-1"><button onClick={() => bump(l.key, -1)} className="h-8 w-8 rounded-lg border border-line grid place-items-center"><Minus size={14} /></button><span className="num w-6 text-center font-semibold">{l.qty}</span><button onClick={() => bump(l.key, 1)} className="h-8 w-8 rounded-lg bg-ink text-on-label grid place-items-center"><Plus size={14} /></button></div>
               </div>
-              <input className="mt-1.5 !py-1.5 !text-xs" placeholder="Note for kitchen (less spicy…)" value={notes[item.id] ?? ""} onChange={(e) => setNotes({ ...notes, [item.id]: e.target.value })} />
+              <input className="mt-1.5 !py-1.5 !text-xs" placeholder="Note for kitchen (less spicy…)" value={l.note} onChange={(e) => setNote(l.key, e.target.value)} />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -223,10 +272,12 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         </div>
         <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5">
           {visible.map((it) => {
-            const qty = cart[it.id] ?? 0;
+            const qty = qtyOf(it.id); const tp = tilePrice(it); const asks = hasOptions(it);
             return (
-              <motion.button key={it.id} whileTap={{ scale: 0.97 }} onClick={() => add(it.id, 1)} className={cn("feather text-left p-3.5 relative transition-colors", qty > 0 && "border-saffron bg-saffron/5")}>
-                <div className="flex items-center gap-1.5 text-[11px]">{it.is_veg ? <Leaf size={12} className="text-mint" /> : <Drumstick size={12} className="text-chili" />}<span className="num text-steel">{formatINR(Number(it.price))}</span></div>
+              <motion.button key={it.id} whileTap={{ scale: 0.97 }} onClick={() => tap(it)} className={cn("feather text-left p-3.5 relative transition-colors", qty > 0 && "border-saffron bg-saffron/5")}>
+                <div className="flex items-center gap-1.5 text-[11px]">{it.is_veg ? <Leaf size={12} className="text-mint" /> : <Drumstick size={12} className="text-chili" />}<span className="num text-steel">{tp.from ? "from " : ""}{formatINR(tp.price)}</span>
+                  {/* a dish that asks a question, or is a meal of other dishes, says so on the tile */}
+                  <span className="ml-auto flex items-center gap-1 text-steel">{it.is_combo && <Layers size={11} aria-label="Combo" />}{asks && <SlidersHorizontal size={11} aria-label="Has options" />}</span></div>
                 <div className="font-semibold text-sm mt-1 leading-snug">{it.name}</div>
                 {(() => {
                   const c = coverOf(it.id);
@@ -255,6 +306,9 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           <motion.div className="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-[24px] p-5 h-[85dvh]" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}>{CartPanel}</motion.div>
         </>)}
       </AnimatePresence>
+      {/* the question a dish asks: size, extras, how many */}
+      <OptionChooser item={chooser?.item ?? null} initialQty={chooser?.qty ?? 1} initialNote={chooser?.note ?? ""} onClose={() => setChooser(null)}
+        onAdd={(v, a, n, note) => { if (chooser) putLine(chooser.item, v, a, n, note, chooser.replace); }} />
     </div>
   );
 }

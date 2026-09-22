@@ -7,13 +7,14 @@ import { useLive } from "@/lib/useLive";
 import { Ticket } from "@/components/ui/Ticket";
 import { Button, cn } from "@/components/ui";
 import { minsSince, fmtAge, fmtQty, fmtSince } from "@/lib/format";
+import { lineExtras } from "@dineflow/shared";
 import { Flip, listV } from "@/components/ui";
 import { setKotStatus, setItemStatus, setItemsStatus, recallKot } from "../orders/actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 import { usePrinters } from "@/lib/print/usePrinter";
 
-type Line = { id: string; name_snapshot: string; qty: number; status: string; notes: string | null; menu_items?: { station: string | null; categories: { station: string | null } | null } | null };
+type Line = { id: string; name_snapshot: string; qty: number; status: string; notes: string | null; addons?: { name: string }[] | null; components?: { name: string; qty: number }[] | null; menu_items?: { station: string | null; categories: { station: string | null } | null } | null };
 type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string;
   orders: { order_no: number; type: string; customer_name: string | null; promised_at: string | null; dining_tables: { name: string } | null } | null;
   order_items: Line[] };
@@ -191,7 +192,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                             {key === "pending" ? <Button className="flex-1" disabled={pending} onClick={() => advance(k)}><Flame size={16} /> {view === "all" ? "Start cooking" : `Start ${view}`}</Button>
                             : key === "preparing" ? <Button className="flex-1" variant="ink" disabled={pending || stationDone} onClick={() => advance(k)}><Check size={16} /> {view === "all" ? "All ready" : stationDone ? `${view} done` : `${view} ready`}</Button>
                             : <Button className="flex-1" variant="outline" disabled={pending} onClick={() => move(k.id, "served")}>Picked up</Button>}
-                            <Button variant="ghost" title="Reprint this ticket" onClick={() => { void printKot({ kotNo: `KOT ${k.kot_no}`, when: new Date(k.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: where(k), reprint: true, items: k.order_items.filter(live).map((i) => ({ name: i.name_snapshot, qty: i.qty, note: i.notes })) }); }}><Printer size={16} /></Button>
+                            <Button variant="ghost" title="Reprint this ticket" onClick={() => { void printKot({ kotNo: `KOT ${k.kot_no}`, when: new Date(k.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: where(k), reprint: true, items: k.order_items.filter(live).map((i) => ({ name: i.name_snapshot, qty: i.qty, note: i.notes, extras: lineExtras(i) })) }); }}><Printer size={16} /></Button>
                           </div>}>
                         {warn && !due && (
                           <div className="mb-2 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold bg-[rgb(255_179_64/.18)] text-[var(--color-orange)]"><Timer size={12} /> {age} min on the board — {lateAt - age} min to target</div>
@@ -210,7 +211,9 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                           <button key={i.id} disabled={pending || key === "ready"} onClick={() => { const next = i.status === "ready" ? "preparing" : "ready"; if (!online) { void enqueue("item_status", { ids: [i.id], status: next }, `Kitchen · ${i.name_snapshot}`); return; } start(() => { setItemStatus(i.id, next); }); }}
                             className={cn("w-full flex items-start gap-2 text-left rounded-lg px-1.5 py-1 -mx-1.5 transition", key !== "ready" && "hover:bg-porcelain", i.status === "ready" && "text-steel")}>
                             <span className="num text-lg font-bold leading-6 w-8">{i.qty}</span>
-                            <span className="flex-1"><span className={cn("text-base font-semibold leading-6", i.status === "ready" && "line-through")}>{i.name_snapshot}</span>{i.notes && <span className="block text-xs text-chili font-medium">{i.notes}</span>}</span>
+                            <span className="flex-1"><span className={cn("text-base font-semibold leading-6", i.status === "ready" && "line-through")}>{i.name_snapshot}</span>
+                              {lineExtras(i).map((x, j) => <span key={j} className={cn("block text-xs font-medium", x.startsWith("+") ? "text-chili" : "text-steel")}>{x}</span>)}
+                              {i.notes && <span className="block text-xs text-chili font-medium">{i.notes}</span>}</span>
                             {i.status === "ready" && key !== "ready" && <Check size={16} className="text-mint mt-1" />}
                           </button>
                         ))}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone, Timer } from "lucide-react";
 import { Button, Field, Card, cn, Pill } from "@/components/ui";
-import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, type PaymentMethod } from "@dineflow/shared";
+import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod } from "@dineflow/shared";
 import { generateBill, settleBill, voidBill } from "../actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
@@ -18,7 +18,7 @@ import { postOrderToRoom } from "../../frontdesk/actions";
 import { BedDouble, FileText } from "lucide-react";
 import { diningInvoice } from "../../invoices/actions";
 
-type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; notes?: string | null };
+type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; notes?: string | null; addons?: { name: string; price: number }[] | null; components?: { name: string; qty: number }[] | null };
 type Order = { id: string; order_no: number; status: string; type: string; customer_name: string | null; created_at: string; promised_at?: string | null; served_at?: string | null; promise_minutes?: number | null; promise_pct?: number | null; dining_tables: { name: string } | null; order_items: Item[] };
 type Bill = { id: string; bill_no: number; promise_fee?: number; promise_waived?: number; promise_kept?: boolean | null; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; payments: { method: string; amount: number; ref: string | null }[] } | null;
 type Rest = { name: string; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; legal_name?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; fssai_no?: string | null };
@@ -54,7 +54,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
     when: new Date(bill?.created_at ?? Date.now()).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }),
     where: order.dining_tables?.name ? `Table ${order.dining_tables.name}` : order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery",
     cashier,
-    lines: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null })),
+    lines: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null, extras: lineExtras(i) })),
     subtotal: Number(totals.subtotal ?? bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0),
     cgst: Number(totals.cgst ?? bill?.cgst ?? 0), sgst: Number(totals.sgst ?? bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0),
     total: Number(totals.total ?? bill?.total ?? 0),
@@ -66,7 +66,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
     copyLabel: "Customer copy",
     offline: !online,
   });
-  const billData = () => ({ restaurant: printRest, gstRate: taxRate, sac: SAC.restaurant, billNo: bill ? `BILL-${bill.bill_no}` : "BILL", when: new Date().toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"), cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng });
+  const billData = () => ({ restaurant: printRest, gstRate: taxRate, sac: SAC.restaurant, billNo: bill ? `BILL-${bill.bill_no}` : "BILL", when: new Date().toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"), cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null, extras: lineExtras(i) })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng });
   const router = useRouter(); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   /* A composition dealer or an unregistered business may not collect tax, so the preview must not
      show any — the bill the server raises will not have it either. */

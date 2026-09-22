@@ -1,19 +1,22 @@
 "use client";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Plus, Leaf, Drumstick, Pencil, FlaskConical, Trash2, Sparkles } from "lucide-react";
+import { Plus, Leaf, Drumstick, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Card, Field, Sheet, Empty, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { findStandardRecipe } from "@dineflow/shared";
 import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
+import { OptionsEditor, GroupsManager, ComboParts } from "./Options";
+import type { VariantRow, GroupRow, LinkRow, ComboRow } from "@/lib/menuOptions";
 
 type Cat = { id: string; name: string; sort_order: number; station?: string | null };
-type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; prep_minutes: number; description: string | null; station?: string | null };
+type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; prep_minutes: number; description: string | null; station?: string | null; is_combo?: boolean };
 type Ing = { id: string; name: string; unit: string };
 type Rec = { menu_item_id: string; ingredient_id: string; qty: number };
 
-export function MenuClient({ categories, items, ingredients, recipes, ai = false, stations = [] }: { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; ai?: boolean; stations?: string[] }) {
+export function MenuClient({ categories, items, ingredients, recipes, ai = false, stations = [], variants = [], groups = [], links = [], combos = [] }:
+  { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; ai?: boolean; stations?: string[]; variants?: VariantRow[]; groups?: GroupRow[]; links?: LinkRow[]; combos?: ComboRow[] }) {
   const [cat, setCat] = useState<string>("all");
   const [editing, setEditing] = useState<Partial<Item> | null>(null);
   const [recipeFor, setRecipeFor] = useState<Item | null>(null);
@@ -36,6 +39,16 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
     } finally { setFilling(false); }
   };
   const [catSheet, setCatSheet] = useState(false);
+  /* Options: the sizes a dish is sold in and the add-on groups it offers; the groups themselves are
+     managed in their own sheet. A combo's parts are edited inside the dish form. */
+  const [optionsFor, setOptionsFor] = useState<Item | null>(null);
+  const [groupsSheet, setGroupsSheet] = useState(false);
+  const [combo, setCombo] = useState(false);
+  const [parts, setParts] = useState<{ menu_item_id: string; qty: number }[]>([]);
+  const openEditor = (it: Partial<Item>) => { setEditing(it); setCombo(!!it.is_combo); setParts(it.id ? combos.filter((c) => c.combo_id === it.id).map((c) => ({ menu_item_id: c.menu_item_id, qty: c.qty })) : []); };
+  const variantsOf = (id: string) => variants.filter((v) => v.menu_item_id === id);
+  const groupsOf = (id: string) => links.filter((l) => l.menu_item_id === id).map((l) => l.group_id);
+  const partsOf = (id: string) => combos.filter((c) => c.combo_id === id);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -49,11 +62,11 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
           <button key={c.id} onClick={() => setCat(c.id)} className={cn("rounded-full px-4 h-9 text-sm font-semibold transition", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line hover:bg-porcelain")}>{c.name}</button>
         ))}
         <button onClick={() => setCatSheet(true)} className="rounded-full h-9 w-9 grid place-items-center border border-dashed border-steel/50 text-steel hover:text-ink" aria-label="Manage categories"><Plus size={16} /></button>
-        </div><div className="toolbar-group toolbar-end"><Button onClick={() => setEditing({ is_veg: true, is_available: true, prep_minutes: 15, category_id: cat === "all" ? null : cat })}><Plus size={16} /> New dish</Button></div>
+        </div><div className="toolbar-group toolbar-end"><Button variant="outline" onClick={() => setGroupsSheet(true)}><SlidersHorizontal size={16} /> Add-ons</Button><Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15, category_id: cat === "all" ? null : cat })}><Plus size={16} /> New dish</Button></div>
       </div>
 
       {visible.length === 0 ? (
-        <Empty title="No dishes yet" hint="Add your first dish, then map its ingredients so stock drops automatically." action={<Button onClick={() => setEditing({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
+        <Empty title="No dishes yet" hint="Add your first dish, then map its ingredients so stock drops automatically." action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
       ) : (
         <motion.div layout className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <AnimatePresence>
@@ -65,19 +78,27 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
                       {it.is_veg ? <Leaf size={16} className="text-mint shrink-0" /> : <Drumstick size={16} className="text-chili shrink-0" />}
                       <h3 className="font-sans font-semibold text-base truncate">{it.name}</h3>
                     </div>
-                    <div className="num font-semibold">{formatINR(Number(it.price))}</div>
+                    <div className="num font-semibold">{(() => { const vs = variantsOf(it.id); if (!vs.length) return formatINR(Number(it.price)); const lo = Math.min(...vs.map((v) => Number(v.price))); return <><span className="text-[11px] text-steel font-normal">from </span>{formatINR(lo)}</>; })()}</div>
                   </div>
                   <p className="text-xs text-steel mt-1 line-clamp-2 min-h-[2lh]">{it.description || `${it.prep_minutes} min prep`}</p>
                   {(recipeMap[it.id]?.length ?? 0) > 0
                     ? <div className="mt-3 text-[11px] text-steel">{recipeMap[it.id].length} ingredient{recipeMap[it.id].length === 1 ? "" : "s"} mapped</div>
                     : <div className="mt-3 text-[11px] text-chili font-medium">No recipe · pantry won't move{findStandardRecipe(it.name) ? " · standard recipe available" : ""}</div>}
+                  {(variantsOf(it.id).length > 0 || groupsOf(it.id).length > 0 || it.is_combo) && (
+                    <div className="mt-2 flex flex-wrap gap-1 text-[10.5px] text-steel">
+                      {it.is_combo && <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 flex items-center gap-1"><Layers size={10} /> combo · {partsOf(it.id).length} part{partsOf(it.id).length === 1 ? "" : "s"}</span>}
+                      {variantsOf(it.id).length > 0 && <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5">{variantsOf(it.id).map((v) => v.name).join(" / ")}</span>}
+                      {groupsOf(it.id).length > 0 && <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5">{groupsOf(it.id).length} add-on group{groupsOf(it.id).length === 1 ? "" : "s"}</span>}
+                    </div>
+                  )}
                   <div className="mt-auto pt-4 flex items-center gap-1.5">
                     <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer mr-auto normal-case tracking-normal">
                       <input type="checkbox" className="w-4 h-4 accent-saffron" checked={it.is_available} onChange={(e) => start(() => { toggleAvailable(it.id, e.target.checked); })} />
                       {it.is_available ? "Available" : "Sold out"}
                     </label>
+                    <Button size="sm" variant="ghost" onClick={() => setOptionsFor(it)} aria-label="Sizes and add-ons" title="Sizes and add-ons"><SlidersHorizontal size={15} /></Button>
                     <Button size="sm" variant="ghost" onClick={() => setRecipeFor(it)} aria-label="Recipe"><FlaskConical size={15} /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(it)} aria-label="Edit"><Pencil size={15} /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => openEditor(it)} aria-label="Edit"><Pencil size={15} /></Button>
                   </div>
                 </Card>
               </motion.div>
@@ -109,12 +130,25 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
             <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_veg" className="w-4 h-4 accent-saffron" defaultChecked={editing?.is_veg ?? true} /> Vegetarian</label>
             <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_available" className="w-4 h-4 accent-saffron" defaultChecked={editing?.is_available ?? true} /> Available now</label>
           </div>
+          <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_combo" className="w-4 h-4 accent-saffron" checked={combo} onChange={(e) => setCombo(e.target.checked)} /> Combo — a meal made of other dishes</label>
+          {combo && <ComboParts items={items.filter((m) => m.id !== editing?.id && !m.is_combo)} rows={parts} onChange={setParts} />}
+          <input type="hidden" name="parts" value={JSON.stringify(parts)} />
           {err && <p className="text-sm text-chili">{err}</p>}
           <div className="flex gap-2 pt-2">
             <Button className="flex-1" disabled={pending}>Save dish</Button>
             {editing?.id && <Button type="button" variant="danger" onClick={() => start(async () => { await deleteMenuItem(editing.id!); setEditing(null); })}><Trash2 size={16} /></Button>}
           </div>
         </form>
+      </Sheet>
+
+      {/* sizes and add-ons for one dish */}
+      <Sheet open={!!optionsFor} onClose={() => setOptionsFor(null)} title={`Options · ${optionsFor?.name ?? ""}`}>
+        {optionsFor && <OptionsEditor key={optionsFor.id} itemId={optionsFor.id} itemName={optionsFor.name} variants={variantsOf(optionsFor.id)} groups={groups} linked={groupsOf(optionsFor.id)} onDone={() => setOptionsFor(null)} onManageGroups={() => { setOptionsFor(null); setGroupsSheet(true); }} />}
+      </Sheet>
+
+      {/* the property's add-on groups */}
+      <Sheet open={groupsSheet} onClose={() => setGroupsSheet(false)} title="Add-on groups" wide>
+        <GroupsManager groups={groups} ingredients={ingredients} categories={categories} />
       </Sheet>
 
       {/* recipe editor */}

@@ -6,8 +6,12 @@ import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, Minus, Plus, B
 import { Button, Field, Segmented, Sheet, Select, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { slots as fetchSlots, reserve, placeOrder } from "../actions";
+import { OptionChooser } from "@/components/OptionChooser";
+import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
 
-type Item = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean };
+type Item = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; variants?: Variant[]; addon_groups?: AddonGroup[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
+/** One basket line: a dish with the size and extras it was chosen with. */
+type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
 type Cat = { id: string; name: string; items: Item[] };
 type Offer = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; code: string | null };
 type D = { slug: string; name: string; type: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
@@ -29,18 +33,31 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
   useEffect(() => { start(async () => { const r = await fetchSlots(slug, date, party); if ("slots" in r) { setSlotList(r.slots as Slot[]); setSlot(null); } }); }, [slug, date, party]); // eslint-disable-line
 
   /* ── ordering ── */
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const [chooser, setChooser] = useState<Item | null>(null);
   const [omode, setOmode] = useState<"delivery" | "takeaway">(d.delivery ? "delivery" : "takeaway");
   const [addr, setAddr] = useState(""); const [cartOpen, setCartOpen] = useState(false);
   const flat = useMemo(() => d.menu.flatMap((c) => c.items), [d.menu]);
-  const lines = Object.entries(cart).filter(([, q]) => q > 0).map(([id, qty]) => ({ item: flat.find((i) => i.id === id)!, qty })).filter((l) => l.item);
-  const sub = lines.reduce((t, l) => t + Number(l.item.price) * l.qty, 0);
+  const lines = cart.filter((l) => l.qty > 0);
+  const sub = lines.reduce((t, l) => t + linePrice(l.item, l.variant, l.addons) * l.qty, 0);
   const bestOffer = d.offers.filter((o) => ["delivery", "both"].includes(o.scope) && sub >= Number(o.min_order)).sort((a, b) => Number(b.value) - Number(a.value))[0];
   const disc = bestOffer ? (bestOffer.kind === "flat_pct" ? Math.round((sub * Number(bestOffer.value)) / 100) : Math.min(Number(bestOffer.value), sub)) : 0;
   const fee = (omode === "delivery" ? Number(d.delivery_fee) : 0) + Number(d.packing_charge);
   const gst = Math.round(((sub - disc) * Number(d.gst_rate)) / 100);
   const total = Math.round(sub - disc + fee + gst);
-  const add = (id: string, n: number) => setCart((c) => ({ ...c, [id]: Math.max(0, (c[id] ?? 0) + n) }));
+  const qtyOf = (id: string) => cart.filter((l) => l.item.id === id).reduce((t, l) => t + l.qty, 0);
+  const put = (item: Item, variant: Variant | null, addons: Addon[], n: number) => setCart((c) => {
+    const key = lineKey(item.id, variant?.id, addons.map((a) => a.id)); const at = c.findIndex((l) => l.key === key);
+    if (at < 0) return n > 0 ? [...c, { key, item, variant, addons, qty: n }] : c;
+    const next = [...c]; const q = next[at].qty + n; if (q <= 0) next.splice(at, 1); else next[at] = { ...next[at], qty: q }; return next;
+  });
+  const bumpLine = (key: string, n: number) => setCart((c) => c.map((l) => (l.key === key ? { ...l, qty: l.qty + n } : l)).filter((l) => l.qty > 0));
+  /** The tile's own + and −: a dish that asks a question opens it; − takes one off its last line, whichever size. */
+  const add = (id: string, n: number) => {
+    const item = flat.find((i) => i.id === id); if (!item) return;
+    if (n > 0) { if (hasOptions(item)) setChooser(item); else put(item, null, [], n); }
+    else { const last = [...cart].reverse().find((l) => l.item.id === id); if (last) bumpLine(last.key, n); }
+  };
 
   if (done) return <Confirmation kind={done.kind} data={done.data} name={d.name} slug={slug} />;
 
@@ -143,13 +160,14 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
                     <div key={i.id} className={cn("card p-4 flex items-start gap-4", !i.available && "opacity-50")}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">{i.is_veg ? <Leaf size={13} className="text-[var(--color-green)]" /> : <Drumstick size={13} className="text-[var(--color-red)]" />}<span className="font-semibold">{i.name}</span></div>
-                        <div className="num text-sm text-[var(--color-label-2)] mt-0.5">{formatINR(i.price)}</div>
+                        <div className="num text-sm text-[var(--color-label-2)] mt-0.5">{tilePrice(i).from ? "from " : ""}{formatINR(tilePrice(i).price)}{hasOptions(i) && <span className="ml-2 text-[11px] font-sans">customisable</span>}</div>
+                        {i.is_combo && (i.components?.length ?? 0) > 0 && <p className="text-xs text-[var(--color-label-2)] mt-1">Comes with {i.components!.map((c) => `${c.qty}× ${c.name}`).join(", ")}</p>}
                         {i.description && <p className="text-xs text-[var(--color-label-2)] mt-1">{i.description}</p>}
                       </div>
-                      {i.available ? (cart[i.id] ? (
+                      {i.available ? (qtyOf(i.id) ? (
                         <div className="flex items-center gap-1 bg-[var(--color-tint)] rounded-xl h-9 px-1 shrink-0">
                           <button onClick={() => add(i.id, -1)} className="h-7 w-7 grid place-items-center rounded-lg"><Minus size={14} /></button>
-                          <span className="num w-6 text-center font-bold text-sm">{cart[i.id]}</span>
+                          <span className="num w-6 text-center font-bold text-sm">{qtyOf(i.id)}</span>
                           <button onClick={() => add(i.id, 1)} className="h-7 w-7 grid place-items-center rounded-lg"><Plus size={14} /></button>
                         </div>
                       ) : <Button size="sm" variant="tinted" onClick={() => add(i.id, 1)}>Add</Button>) : <span className="pill pill-served shrink-0">sold out</span>}
@@ -190,14 +208,14 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
           {(d.delivery && d.takeaway) && <Segmented value={omode} onChange={setOmode} className="w-full" options={[{ value: "delivery", label: "Delivery" }, { value: "takeaway", label: "Takeaway" }]} />}
           <div className="divide-y divide-[var(--color-separator)]">
             {lines.map((l) => (
-              <div key={l.item.id} className="flex items-center gap-3 py-2.5">
-                <span className="flex-1 text-sm">{l.item.name}</span>
+              <div key={l.key} className="flex items-center gap-3 py-2.5">
+                <span className="flex-1 min-w-0 text-sm"><span className="block truncate">{lineName(l.item, l.variant)}</span>{lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <span key={j} className="block text-xs text-[var(--color-label-2)] truncate">{x}</span>)}</span>
                 <div className="flex items-center gap-1 bg-[var(--color-fill)] rounded-lg h-8 px-1">
-                  <button onClick={() => add(l.item.id, -1)} className="h-6 w-6 grid place-items-center"><Minus size={13} /></button>
+                  <button onClick={() => bumpLine(l.key, -1)} className="h-6 w-6 grid place-items-center"><Minus size={13} /></button>
                   <span className="num w-5 text-center text-sm font-semibold">{l.qty}</span>
-                  <button onClick={() => add(l.item.id, 1)} className="h-6 w-6 grid place-items-center"><Plus size={13} /></button>
+                  <button onClick={() => bumpLine(l.key, 1)} className="h-6 w-6 grid place-items-center"><Plus size={13} /></button>
                 </div>
-                <span className="num text-sm w-16 text-right">{formatINR(Number(l.item.price) * l.qty)}</span>
+                <span className="num text-sm w-16 text-right">{formatINR(linePrice(l.item, l.variant, l.addons) * l.qty)}</span>
               </div>
             ))}
           </div>
@@ -218,11 +236,13 @@ export function StorefrontClient({ slug, d, initialSlots, tab }: { slug: string;
           <p className="text-xs text-[var(--color-label-2)]">Pay on {omode === "delivery" ? "delivery" : "pickup"} — cash, UPI or card. The restaurant confirms within a few minutes.</p>
           <Button size="lg" className="w-full" loading={pending} disabled={!guest.full_name || !guest.phone || sub < Number(d.min_order) || (omode === "delivery" && !addr)}
             onClick={() => start(async () => {
-              const r = await placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty })), omode, note, bestOffer?.id ?? null);
+              const r = await placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null);
               if ("error" in r) toast(r.error!, "err"); else { setCartOpen(false); setDone({ kind: "order", data: r.order as Record<string, unknown> }); }
             })}>Place order · {formatINR(total)}</Button>
         </div>
       </Sheet>
+      {/* the question a dish asks: size, extras, how many */}
+      <OptionChooser item={chooser} withNote={false} onClose={() => setChooser(null)} onAdd={(v, a, q) => { if (chooser) put(chooser, v, a, q); }} />
     </div>
   );
 }

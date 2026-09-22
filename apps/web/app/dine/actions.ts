@@ -14,7 +14,7 @@ export async function reserve(slug: string, guest: { full_name: string; phone: s
   const { data, error } = await anon().rpc("dine_reserve", { p_slug: slug, p_guest: guest, p_date: date, p_time: time, p_party: party, p_occasion: occasion || null, p_note: note || null, p_offer: offer });
   if (error) return { error: error.message }; return { ok: true, booking: data as never };
 }
-export async function placeOrder(slug: string, guest: { full_name: string; phone: string; address?: string }, items: { id: string; qty: number; note?: string }[], mode: string, note: string, offer: string | null) {
+export async function placeOrder(slug: string, guest: { full_name: string; phone: string; address?: string }, items: { id: string; qty: number; note?: string; variant_id?: string | null; addon_ids?: string[] }[], mode: string, note: string, offer: string | null) {
   const { data, error } = await anon().rpc("dine_order", { p_slug: slug, p_guest: guest, p_items: items, p_mode: mode, p_note: note || null, p_offer: offer });
   if (error) return { error: error.message }; return { ok: true, order: data as never };
 }

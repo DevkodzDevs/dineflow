@@ -36,7 +36,7 @@ export class Escpos {
 }
 
 const money = (n: number) => Number(n).toFixed(2);
-export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string };   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
+export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null; extras?: string[] }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string };   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
 
 export function buildBill(d: BillData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
@@ -48,7 +48,7 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   p.rule("=").align("l").row(d.billNo, d.tableOrType).row(d.when, d.cashier ? "by " + d.cashier : "");
   if (d.offline) p.align("c").bold(true).line("** OFFLINE COPY **").bold(false).align("l");
   p.rule();
-  d.items.forEach((i) => { p.cols3(i.name, `${i.qty} x ${money(i.price)}`, money(i.qty * i.price)); if (i.note) p.wrap("  " + i.note, 2); });
+  d.items.forEach((i) => { p.cols3(i.name, `${i.qty} x ${money(i.price)}`, money(i.qty * i.price)); i.extras?.forEach((x) => p.wrap("  " + x, 2)); if (i.note) p.wrap("  " + i.note, 2); });
   p.rule().row("Subtotal", money(d.subtotal));
   if (d.discount > 0) p.row("Discount", "-" + money(d.discount));
   if (d.service) p.row("Service charge", money(d.service));
@@ -67,14 +67,14 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   return p.bytes();
 }
 
-export type KotData = { kotNo: string; when: string; tableOrType: string; waiter?: string; station?: string | null; items: { name: string; qty: number; note?: string | null }[]; reprint?: boolean };
+export type KotData = { kotNo: string; when: string; tableOrType: string; waiter?: string; station?: string | null; items: { name: string; qty: number; note?: string | null; extras?: string[] }[]; reprint?: boolean };
 export function buildKot(d: KotData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
   p.align("c").size(2).bold(true).line(d.reprint ? "KOT (REPRINT)" : "KOT").size(1).line(d.station ?? "").bold(false).rule("=").align("l");
   p.size(2).bold(true).line(d.tableOrType).size(1).bold(false).row(d.kotNo, d.when);
   if (d.waiter) p.line("Waiter: " + d.waiter);
   p.rule();
-  d.items.forEach((i) => { p.size(2).bold(true).line(`${i.qty}  ${i.name}`.slice(0, p.cols)).size(1).bold(false); if (i.note) p.wrap("   > " + i.note.toUpperCase(), 3); });
+  d.items.forEach((i) => { p.size(2).bold(true).line(`${i.qty}  ${i.name}`.slice(0, p.cols)).size(1).bold(false); i.extras?.forEach((x) => p.wrap("   " + x.toUpperCase(), 3)); if (i.note) p.wrap("   > " + i.note.toUpperCase(), 3); });
   p.rule().feed(1).cut();
   return p.bytes();
 }

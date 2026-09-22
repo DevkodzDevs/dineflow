@@ -9,6 +9,8 @@ export const menuItemSchema = z.object({
   is_available: z.coerce.boolean().default(true),
   prep_minutes: z.coerce.number().int().min(0).max(240).default(15),
   description: z.string().max(300).optional().nullable(),
+  /** a dish made of other dishes, sold at one price; its parts are kept in combo_items */
+  is_combo: z.coerce.boolean().default(false),
   /** kitchen station this dish routes to; empty means its category's station */
   station: z.string().max(40).optional().nullable(),
 });
@@ -61,7 +63,11 @@ export const newOrderSchema = z.object({
   table_id: z.string().uuid().nullable().optional(),
   customer_name: z.string().max(80).optional().nullable(),
   customer_phone: z.string().max(20).optional().nullable(),
-  items: z.array(z.object({ menu_item_id: z.string().uuid(), qty: z.number().int().positive(), notes: z.string().max(120).optional() })).min(1),
+  items: z.array(z.object({
+    menu_item_id: z.string().uuid(), qty: z.number().int().positive(), notes: z.string().max(120).optional(),
+    variant_id: z.string().uuid().nullable().optional(),          // the size or style it is sold in
+    addon_ids: z.array(z.string().uuid()).max(20).optional(),      // extras picked from the dish's groups
+  })).min(1),
 });
 
 export const paymentSchema = z.object({
