@@ -15,6 +15,7 @@ export type ReceiptData = {
   balance?: number; footer?: string; offline?: boolean; width?: 58 | 80;
   qr?: string | null;            // the pay link: /pay/<token>, with UPI and card options on the guest phone
   copyLabel?: string;            // "Customer copy" / "Merchant copy"
+  loyalty?: string;              // "You earned 50 points on this visit"
   sac?: string;                  // Services Accounting Code: 996331 restaurant, 996311 accommodation
   gstRate?: number;              // the rate the bill was raised at; each half is printed by name
 };
@@ -105,6 +106,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         </>)}
         {d.balance !== undefined && d.balance > 0.01 && <div className="paper-row font-bold mt-1"><span>BALANCE DUE</span><span>{m(d.balance)}</span></div>}
         {!!d.discount && d.discount > 0 && <div className="text-center text-[10.5px] font-bold mt-1.5">You saved {formatINR(d.discount)}</div>}
+        {d.loyalty && <div className="text-center text-[10.5px] font-bold mt-1">{d.loyalty}</div>}
         {!!d.promiseWaived && d.promiseWaived > 0 && <div className="text-center text-[10.5px] font-bold mt-1.5">We were late. This meal is on us.</div>}
 
         {/* ── GST summary, as a compliant tax invoice must show ── */}

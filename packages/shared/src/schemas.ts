@@ -55,6 +55,7 @@ export const stockMoveSchema = z.object({
   qty: z.coerce.number().positive(),
   reason: z.enum(["purchase", "wastage", "adjustment", "opening"]),
   note: z.string().max(200).optional(),
+  sub_reason: z.string().max(30).optional(),   // for wastage: why
 });
 
 export const newOrderSchema = z.object({

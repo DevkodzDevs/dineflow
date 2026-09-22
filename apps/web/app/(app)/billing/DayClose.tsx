@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
-import { Lock, Copy, Check } from "lucide-react";
+import { Lock, Copy, Check, MessageCircle } from "lucide-react";
 import { Button, Sheet, Field, Flip, useToast } from "@/components/ui";
 import { shiftExpected, shiftClose, type ShiftExpected } from "./actions";
 import { formatINR } from "@/lib/format";
@@ -23,7 +23,7 @@ export function DayClose({ today, lastClosed }: { today: string; lastClosed: str
           <div className="space-y-5">
             <div className="flip-row justify-center"><Flip value={Math.abs(Math.round(done.variance))} label={done.variance < -0.5 ? "short" : done.variance > 0.5 ? "over" : "exact"} tone={Math.abs(done.variance) < 1 ? "live" : done.variance < 0 ? "alert" : undefined} /></div>
             <p className="text-[15px] leading-relaxed rounded-2xl bg-[var(--color-fill)] p-4">{done.summary}</p>
-            <div className="flex gap-2"><Button className="flex-1" onClick={() => { navigator.clipboard.writeText(done.summary); setCopied(true); }}>{copied ? <Check size={16} /> : <Copy size={16} />} {copied ? "Copied" : "Copy for WhatsApp"}</Button><Button variant="gray" onClick={() => setOpen(false)}>Done</Button></div>
+            <div className="flex gap-2"><Button className="flex-1" onClick={() => { navigator.clipboard.writeText(done.summary); setCopied(true); }}>{copied ? <Check size={16} /> : <Copy size={16} />} {copied ? "Copied" : "Copy"}</Button><a href={`https://wa.me/?text=${encodeURIComponent(done.summary)}`} target="_blank" rel="noreferrer" className="btn btn-outline flex-1 justify-center"><MessageCircle size={16} /> WhatsApp</a><Button variant="gray" onClick={() => setOpen(false)}>Done</Button></div>
           </div>
         ) : (
           <form className="space-y-5" onSubmit={(ev) => { ev.preventDefault(); start(async () => { const r = await shiftClose(Number(counted), Number(float || 0), note, today); if ("error" in r) toast(r.error ?? "Could not close", "err"); else setDone({ summary: r.summary, variance: r.variance }); }); }}>

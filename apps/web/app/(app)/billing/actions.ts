@@ -6,11 +6,31 @@ import { z } from "zod";
 
 const bump = () => ["/billing", "/orders", "/reports", "/dashboard"].forEach((p) => revalidatePath(p));
 
-/** promiseKept is the cashier's word on an on-time promise. Left undefined the bill decides for itself. */
-export async function generateBill(orderId: string, discountPct: number, discountAmount: number, promiseKept?: boolean | null) {
+/** promiseKept is the cashier's word on an on-time promise. Left undefined the bill decides for itself.
+ *  `guest` is who the bill is for and what they bring to it: a phone (which makes them a customer),
+ *  points to redeem, a coupon code. All optional; the server checks every one of them. */
+export async function generateBill(orderId: string, discountPct: number, discountAmount: number, promiseKept?: boolean | null,
+  guest?: { phone?: string; name?: string; redeem?: number; coupon?: string }) {
   const s = await createClient();
-  const { data, error } = await s.rpc("generate_bill", { p_order_id: orderId, p_discount_pct: discountPct, p_discount_amount: discountAmount, p_promise_kept: promiseKept ?? null });
-  if (error) return { error: error.message }; bump(); return { ok: true, billId: data as string };
+  const { data, error } = await s.rpc("generate_bill", {
+    p_order_id: orderId, p_discount_pct: discountPct, p_discount_amount: discountAmount, p_promise_kept: promiseKept ?? null,
+    p_customer_phone: guest?.phone?.trim() || null, p_customer_name: guest?.name?.trim() || null,
+    p_redeem_points: Math.max(0, Number(guest?.redeem ?? 0)), p_coupon: guest?.coupon?.trim() || null,
+  });
+  if (error) return { error: error.message }; bump(); revalidatePath("/customers"); return { ok: true, billId: data as string };
+}
+export type Customer = { id: string; name: string | null; phone: string; visits: number; total_spend: number; points: number; last_visit_at: string | null; tags: string[]; notes: string | null; point_value: number; min_redeem: number; loyalty: boolean };
+/** Who a phone number is, if we know them. Null when we do not — never an error. */
+export async function lookupCustomer(phone: string) {
+  if (phone.replace(/\D/g, "").length < 10) return { ok: true as const, customer: null };
+  const s = await createClient(); const { data, error } = await s.rpc("customer_lookup", { p_phone: phone });
+  if (error) return { error: error.message }; return { ok: true as const, customer: (data ?? null) as Customer | null };
+}
+export type Coupon = { id: string; title: string; code: string; kind: string; value: number; pct: number; amount: number };
+/** Does this code apply to this bill, today, at this hour? The server says, in words the cashier can repeat. */
+export async function checkCoupon(code: string, subtotal: number) {
+  const s = await createClient(); const { data, error } = await s.rpc("coupon_check", { p_code: code.trim(), p_subtotal: subtotal });
+  if (error) return { error: error.message }; return { ok: true as const, coupon: data as Coupon };
 }
 export async function voidBill(billId: string) {
   const s = await createClient(); const { error } = await s.from("bills").update({ status: "void" }).eq("id", billId).eq("status", "unpaid");

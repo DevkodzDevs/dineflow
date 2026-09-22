@@ -42,14 +42,16 @@ export type RoomStatus = (typeof ROOM_STATUS)[number];
 export const BOOKING_STATUS = ["reserved", "checked_in", "checked_out", "cancelled", "no_show"] as const;
 export const UNITS = ["kg", "g", "l", "ml", "pcs"] as const;
 export const LEDGER_REASONS = ["opening", "purchase", "sale", "wastage", "adjustment"] as const;
+/** Why something was thrown away. The Pantry sums wastage by these, at cost. */
+export const WASTE_REASONS = ["spoilage", "expiry", "prep waste", "spillage", "breakage", "returned by guest", "theft", "other"] as const;
 export const PAYMENT_METHODS = ["cash", "upi", "card", "other"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 /** Modules each property type gets. Restaurant modules are always present (hotels have dining). */
 export const MODULES_BY_TYPE: Record<PropertyType, string[]> = {
-  restaurant: ["dashboard", "tomorrow", "scan", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
-  hotel: ["dashboard", "tomorrow", "scan", "frontdesk", "rooms", "housekeeping", "guests", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
-  resort: ["dashboard", "tomorrow", "scan", "frontdesk", "rooms", "housekeeping", "guests", "facilities", "reservations", "pulse", "orders", "online-orders", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
+  restaurant: ["dashboard", "tomorrow", "scan", "reservations", "pulse", "orders", "online-orders", "customers", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
+  hotel: ["dashboard", "tomorrow", "scan", "frontdesk", "rooms", "housekeeping", "guests", "reservations", "pulse", "orders", "online-orders", "customers", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
+  resort: ["dashboard", "tomorrow", "scan", "frontdesk", "rooms", "housekeeping", "guests", "facilities", "reservations", "pulse", "orders", "online-orders", "customers", "kitchen", "billing", "invoices", "menu", "inventory", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"],
 };
 
 /**
@@ -67,11 +69,11 @@ export const ROLE_ACCESS: Record<Role, string[]> = {
   // you off a section you cannot open, so a role without it has nowhere to land. This list and
   // role_modules.ceiling in migration 0058 must agree — they drifted once and a housekeeper signing
   // in was redirected to a dashboard they did not have, then redirected again, forever.
-  cashier: ["dashboard", "scan", "reservations", "pulse", "orders", "online-orders", "billing", "invoices", "reports", "frontdesk"],
-  waiter: ["dashboard", "scan", "orders", "reservations", "pulse"],
+  cashier: ["dashboard", "scan", "reservations", "pulse", "orders", "online-orders", "customers", "billing", "invoices", "reports", "frontdesk"],
+  waiter: ["dashboard", "scan", "orders", "reservations", "pulse", "customers"],
   chef: ["dashboard", "scan", "kitchen", "menu", "online-orders", "tomorrow"],
   store: ["dashboard", "scan", "inventory", "labour", "tomorrow", "neighbours"],
-  frontdesk: ["dashboard", "scan", "frontdesk", "rooms", "guests", "facilities", "housekeeping", "reservations", "invoices", "labour", "channels"],
+  frontdesk: ["dashboard", "scan", "frontdesk", "rooms", "guests", "facilities", "housekeeping", "reservations", "invoices", "labour", "channels", "customers"],
   housekeeping: ["dashboard", "scan", "housekeeping", "rooms"],
 };
 
@@ -120,7 +122,7 @@ export const PLAN_PRESETS: { key: PlanPreset; label: string; hint: string; modul
     modules: ["orders", "billing", "menu", "kitchen", "reports", "scan", "inventory"] },
   { key: "premium", label: "Premium", hint: "Basic + reservations, online orders, invoices, tax, staff",
     modules: ["orders", "billing", "menu", "kitchen", "reports", "scan", "inventory",
-              "reservations", "pulse", "online-orders", "channels", "invoices", "tax", "staff", "labour", "tomorrow"] },
+              "reservations", "pulse", "online-orders", "customers", "channels", "invoices", "tax", "staff", "labour", "tomorrow"] },
   { key: "advanced", label: "Advanced", hint: "Everything the property type supports",
     modules: [] }, // empty means all — resolved at runtime from MODULES_BY_TYPE
   { key: "all", label: "All", hint: "Every module, no restrictions",
@@ -135,7 +137,7 @@ export const PROPERTY_FILTERS = [
   { key: "resort", label: "Resort" },
 ] as const;
 export const MODULE_GROUPS: { title: string; keys: { key: string; label: string; hint: string }[] }[] = [
-  { title: "Front of house", keys: [{ key: "orders", label: "Orders & tables", hint: "Take orders, the floor" }, { key: "reservations", label: "Reservations", hint: "Bookings from the storefront" }, { key: "pulse", label: "Pulse", hint: "Wait times and the walk-in queue" }, { key: "online-orders", label: "Online orders", hint: "Delivery and takeaway" }, { key: "channels", label: "Channels", hint: "Swiggy, Zomato, OTAs" }] },
+  { title: "Front of house", keys: [{ key: "orders", label: "Orders & tables", hint: "Take orders, the floor" }, { key: "reservations", label: "Reservations", hint: "Bookings from the storefront" }, { key: "pulse", label: "Pulse", hint: "Wait times and the walk-in queue" }, { key: "online-orders", label: "Online orders", hint: "Delivery and takeaway" }, { key: "customers", label: "Customers", hint: "Regulars, loyalty, birthdays" }, { key: "channels", label: "Channels", hint: "Swiggy, Zomato, OTAs" }] },
   { title: "Hotel", keys: [{ key: "frontdesk", label: "Front desk", hint: "Check-in, folios" }, { key: "rooms", label: "Rooms", hint: "The board and keys" }, { key: "housekeeping", label: "Housekeeping", hint: "Turnaround" }, { key: "guests", label: "Guests", hint: "Guest records" }, { key: "facilities", label: "Facilities", hint: "Spa, pool, hall" }] },
   { title: "Kitchen & stock", keys: [{ key: "kitchen", label: "Kitchen", hint: "Tickets" }, { key: "menu", label: "Menu", hint: "Dishes and recipes" }, { key: "inventory", label: "Pantry", hint: "Stock, counts, leaks" }, { key: "scan", label: "Scan", hint: "Barcodes and photos" }, { key: "tomorrow", label: "Tomorrow", hint: "The brief" }] },
   { title: "Money", keys: [{ key: "billing", label: "Billing", hint: "Bills, payments, shift close" }, { key: "invoices", label: "Invoices", hint: "GST invoices" }, { key: "reports", label: "Reports", hint: "Sales and costs" }, { key: "tax", label: "Tax & GST", hint: "Returns, audit, documents" }, { key: "proof", label: "Proof of business", hint: "Sealed months, share links" }] },

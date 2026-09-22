@@ -1,14 +1,14 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone } from "lucide-react";
+import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake } from "lucide-react";
 import { Button, Card, Field, cn } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
 import { InstallApp } from "@/components/InstallApp";
-import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments } from "./actions";
+import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments, saveLoyalty } from "./actions";
 
-type Rest = { id: string; name: string; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
+type Rest = { id: string; name: string; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number };
 type Tab = "general" | "payments" | "tables" | "advanced";
 
@@ -275,6 +275,20 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               </div>
 
               <Button className="w-full sm:w-auto" disabled={pending}>Save payment settings</Button>
+            </form>
+          </Section>
+          <Section icon={<HeartHandshake size={16} />} title="Loyalty points"
+            description="A share of what a guest spends comes back as points, earned when the bill is paid and taken off a later one. Guests are known by their phone number.">
+            <form className="space-y-4" action={(fd) => start(async () => { const r = await saveLoyalty(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
+              <input type="hidden" name="id" value={restaurant.id} />
+              <label className="flex items-center gap-2 text-sm normal-case tracking-normal"><input type="checkbox" name="loyalty_enabled" className="w-4 h-4 accent-saffron" defaultChecked={!!restaurant.loyalty_enabled} /> Give points on paid bills</label>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <Field label="Earn" hint="% of the food value, after discounts"><input name="loyalty_earn_pct" type="number" step="0.5" min={0} max={50} className="num" defaultValue={Number(restaurant.loyalty_earn_pct ?? 5)} /></Field>
+                <Field label="A point is worth (₹)"><input name="loyalty_point_value" type="number" step="0.1" min={0.1} className="num" defaultValue={Number(restaurant.loyalty_point_value ?? 1)} /></Field>
+                <Field label="Redeem from" hint="points a guest must hold"><input name="loyalty_min_redeem" type="number" min={0} className="num" defaultValue={Number(restaurant.loyalty_min_redeem ?? 50)} /></Field>
+              </div>
+              <p className="text-xs text-steel">At 5% and ₹1 a point, a ₹1,000 meal earns 50 points — ₹50 off the next visit. Points are taken off the food before tax, so the GST follows what was actually charged.</p>
+              <Button className="w-full sm:w-auto" disabled={pending}>Save loyalty</Button>
             </form>
           </Section>
         </Card>

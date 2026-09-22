@@ -36,7 +36,7 @@ export class Escpos {
 }
 
 const money = (n: number) => Number(n).toFixed(2);
-export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null; extras?: string[] }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string };   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
+export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null; extras?: string[] }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string; loyalty?: string };   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
 
 export function buildBill(d: BillData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
@@ -63,6 +63,7 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   if (comp) p.bold(true).wrap(COMPOSITION_NOTE).bold(false);
   p.rule();
   if (d.upiQr) p.align("c").line("Scan to pay (UPI / card)").qr(d.upiQr).feed(1);
+  if (d.loyalty) p.align("c").bold(true).line(d.loyalty).bold(false);
   p.align("c").line(d.footer ?? "Thank you, visit again").line("").cut();
   return p.bytes();
 }

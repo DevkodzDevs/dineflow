@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronDown, CreditCard, ShieldCheck, Smartphone, Store } from "lucide-react";
+import { Check, ChevronDown, CreditCard, ShieldCheck, Smartphone, Store, Star } from "lucide-react";
 import { Button, cn } from "@/components/ui";
 import { QR } from "@/components/QR";
 import { formatINR } from "@/lib/format";
-import { payInfo, claimPaid } from "./actions";
+import { payInfo, claimPaid, sendReview } from "./actions";
 
 import type { PayInfo } from "./types";
 export type { PayInfo };
@@ -102,6 +102,7 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
         )}
         <p className="footnote mt-4">Keep this page as your receipt, or ask the counter for a printed tax invoice.</p>
       </motion.div>
+      <ReviewBox token={token} />
     </Shell>
   );
 
@@ -184,6 +185,34 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
       </>)}
       {err && <p className="text-sm text-[var(--color-red)] mt-3">{err}</p>}
     </Shell>
+  );
+}
+
+/** Five stars and a line, sent once. The property reads it under Reservations → reviews. */
+function ReviewBox({ token }: { token: string }) {
+  const [rating, setRating] = useState(0); const [body, setBody] = useState(""); const [name, setName] = useState("");
+  const [sent, setSent] = useState(false); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
+  if (sent) return <div className="card p-5 mt-4 text-center"><b>Thank you.</b><p className="text-sm text-[var(--color-label-2)] mt-1">Your word reaches the owner directly.</p></div>;
+  return (
+    <section className="card p-5 mt-4">
+      <h2 className="text-xl">How was it?</h2>
+      <div className="flex gap-1 mt-3" role="radiogroup" aria-label="Rating">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} onClick={() => setRating(n)}
+            className={cn("h-11 w-11 rounded-xl grid place-items-center transition", n <= rating ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill)] text-[var(--color-label-3)]")}><Star size={20} fill={n <= rating ? "currentColor" : "none"} /></button>
+        ))}
+      </div>
+      {rating > 0 && (
+        <div className="mt-3 space-y-2">
+          <textarea rows={2} value={body} onChange={(e) => setBody(e.target.value)} placeholder={rating >= 4 ? "What did you like?" : "What should we fix?"} maxLength={500} />
+          <div className="flex gap-2">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (optional)" className="flex-1" maxLength={60} />
+            <Button loading={pending} onClick={() => start(async () => { const r = await sendReview(token, rating, body, name); if ("error" in r) setErr(r.error!); else setSent(true); })}>Send</Button>
+          </div>
+          {err && <p className="text-sm text-[var(--color-red)]">{err}</p>}
+        </div>
+      )}
+    </section>
   );
 }
 

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity } from "lucide-react";
+import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
@@ -21,6 +21,7 @@ const ITEMS = [
   { key: "pulse", href: "/pulse", label: "Pulse", Icon: Activity },
   { key: "orders", href: "/orders", label: "Orders", Icon: ClipboardList },
   { key: "online-orders", href: "/online-orders", label: "Online orders", Icon: Bike },
+  { key: "customers", href: "/customers", label: "Customers", Icon: HeartHandshake },
   { key: "kitchen", href: "/kitchen", label: "Kitchen", Icon: Flame },
   { key: "billing", href: "/billing", label: "Billing", Icon: Receipt },
   { key: "invoices", href: "/invoices", label: "Invoices", Icon: FileText },

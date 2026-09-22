@@ -1,11 +1,12 @@
 "use client";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered } from "lucide-react";
 import { Button, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { placeOrder, parseOrder } from "../actions";
+import { lookupCustomer } from "../../billing/actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 import { usePrinters } from "@/lib/print/usePrinter";
@@ -37,6 +38,14 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
      for — a voice-added dish that still owes a choice — and goes away when the answer lands. */
   const [chooser, setChooser] = useState<{ item: Item; replace?: string; qty?: number; note?: string } | null>(null);
   const [customer, setCustomer] = useState({ name: "", phone: "" });
+  /* A phone makes the guest a customer: the name fills itself in, and the ticket says who is back. */
+  const [known, setKnown] = useState<{ name: string | null; visits: number; points: number; notes: string | null } | null>(null);
+  useEffect(() => {
+    if (customer.phone.replace(/\D/g, "").length < 10) { setKnown(null); return; }
+    let on = true;
+    lookupCustomer(customer.phone).then((r) => { if (!on || "error" in r) return; setKnown(r.customer); if (r.customer?.name) setCustomer((c) => (c.name ? c : { ...c, name: r.customer!.name! })); });
+    return () => { on = false; };
+  }, [customer.phone]);
   const [err, setErr] = useState<string | null>(null);
   const { online } = useOffline();
   const { printKot } = usePrinters();
@@ -198,12 +207,14 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
             </div>
           </div>
         )}
+        <div className="mt-2 grid grid-cols-2 gap-2"><input placeholder="Guest phone (optional)" inputMode="tel" className="num !py-1.5 !text-xs" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /><input placeholder="Name" className="!py-1.5 !text-xs" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /></div>
         </>
       ) : type === "room_service" ? (
         <select className="mt-3" value={room} onChange={(e) => { setRoom(e.target.value); const g = inHouse.find((x) => x.id === e.target.value); setCustomer({ name: g ? `Room ${g.rooms?.number} · ${g.guests?.full_name}` : "", phone: "" }); }}><option value="">Choose in-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
       ) : (
         <div className="mt-3 grid grid-cols-2 gap-2"><input placeholder="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /><input placeholder="Phone" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /></div>
       )}
+      {known && type !== "room_service" && <div className="mt-1.5 text-[11px] text-steel">Welcome back{known.name ? `, ${known.name.split(" ")[0]}` : ""} · {known.visits} visit{known.visits === 1 ? "" : "s"}{known.notes ? ` · ${known.notes}` : ""}</div>}
       <div className="mt-3 flex items-center justify-between">
         <span className="text-[10.5px] uppercase tracking-[0.14em] text-steel">Ticket</span>
         <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} title="Starters now, mains when the table is ready: every course after the first is held until the kitchen fires it"

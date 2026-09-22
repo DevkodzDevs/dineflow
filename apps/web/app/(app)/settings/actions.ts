@@ -40,6 +40,16 @@ export async function savePayments(fd: FormData) {
     { onConflict: "restaurant_id" });
   if (e2) return { error: e2.message }; bump(); return { ok: true };
 }
+/** Loyalty: what comes back as points and what a point is worth. Bounded so a typo cannot give the food away. */
+export async function saveLoyalty(fd: FormData) {
+  const s = await createClient(); const rid = String(fd.get("id"));
+  const num = (k: string, lo: number, hi: number, dflt: number) => Math.min(hi, Math.max(lo, Number(fd.get(k) || dflt)));
+  const { error } = await s.from("restaurants").update({
+    loyalty_enabled: fd.get("loyalty_enabled") === "on",
+    loyalty_earn_pct: num("loyalty_earn_pct", 0, 50, 5), loyalty_point_value: num("loyalty_point_value", 0.1, 100, 1), loyalty_min_redeem: num("loyalty_min_redeem", 0, 100000, 50),
+  }).eq("id", rid);
+  if (error) return { error: error.message }; bump(); return { ok: true };
+}
 export async function saveTable(fd: FormData) {
   const s = await createClient(); const id = fd.get("id") as string | null;
   const row = { name: String(fd.get("name")), capacity: Number(fd.get("capacity") || 4), zone: String(fd.get("zone") || "Main"), sort_order: Number(fd.get("sort_order") || 0) };
