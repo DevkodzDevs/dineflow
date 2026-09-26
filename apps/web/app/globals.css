@@ -241,7 +241,15 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 @media (prefers-reduced-motion: reduce) { .am * { animation: none !important; } }
 
 /* Assist: the composer is one field with the ring on its container, not the textarea */
-.assist-input, .assist-input:hover, .assist-input:focus { background: transparent !important; border: 0 !important; box-shadow: none !important; outline: none !important; padding: 8px 0 !important; min-height: 0 !important; border-radius: 0 !important; }
+.assist-input, .assist-input:hover, .assist-input:focus { background: transparent !important; border: 0 !important; box-shadow: none !important; outline: none !important; padding: 8px 0 !important; min-height: 0 !important; border-radius: 0 !important; display: block; width: 100%; line-height: 24px; overflow-y: auto; }
+/* The page's scrollbar draws its thumb with a 3px border in the page background, which is what
+   makes it read as a gap rather than a bar. Inside the composer the background is a different
+   colour, so the same thumb floated in a stark outline; this one is cut from its own surface. */
+.assist-input { scrollbar-width: thin; scrollbar-color: var(--color-fill-2) transparent; }
+.assist-input::-webkit-scrollbar { width: 8px; }
+.assist-input::-webkit-scrollbar-track { background: transparent; }
+.assist-input::-webkit-scrollbar-thumb { background: var(--color-fill-2); border-radius: 8px; border: 2px solid var(--color-bg-3); }
+.assist-input::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 
 /* ── materials ─────────────────────────────────────────────────────────── */
 .material, .glass { background: color-mix(in srgb, var(--color-bg-2) 93%, transparent); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); border: .5px solid var(--color-separator); box-shadow: var(--shadow-inset-top), var(--shadow-card); border-radius: var(--radius-lg); }

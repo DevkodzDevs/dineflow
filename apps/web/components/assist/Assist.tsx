@@ -46,6 +46,14 @@ export function Assist() {
   useEffect(() => { setMsgs([]); notice(); const i = setInterval(notice, 90000); return () => clearInterval(i); }, [section, notice]);
   useEffect(() => { const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") { e.preventDefault(); setOpen((o) => !o); } if (e.key === "Escape") setOpen(false); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, []);
   useEffect(() => { if (open) { setSeenKey(ins.map((i) => i.text).join("|")); setTimeout(() => input.current?.focus(), 80); } }, [open, ins]);
+  /* A one-row box that never grows hides everything above the last line behind a scrollbar. This
+     lets the field take the height of what is in it — an empty one is exactly the height of the
+     buttons beside it — and only starts scrolling once it reaches the cap. */
+  useEffect(() => {
+    const el = input.current; if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+  }, [q, open]);
   useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, busy]);
 
   const urgent = ins.filter((i) => i.tone === "alert" || i.tone === "warn"); const unseen = ins.length > 0 && ins.map((i) => i.text).join("|") !== seenKey;
@@ -129,8 +137,11 @@ export function Assist() {
                 <div ref={end} />
               </div>
               <div className="p-3 pt-0">
-                <div className={cn("flex items-end gap-2 rounded-2xl bg-[var(--color-bg-3)] p-2 pl-4 focus-within:ring-2 focus-within:ring-[rgb(76_217_100/.5)]", listening && "ring-2 ring-[rgb(255_69_58/.6)]")}>
-                  <textarea ref={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(q); } }} rows={1} placeholder={listening ? "Listening…" : `Ask about ${screen.toLowerCase()}, or anything in the house…`} className="assist-input resize-none text-[15px] max-h-32" />
+                <div className={cn("flex items-end gap-2 rounded-2xl bg-[var(--color-bg-3)] p-2 pl-4 min-h-[56px] focus-within:ring-2 focus-within:ring-[rgb(76_217_100/.5)]", listening && "ring-2 ring-[rgb(255_69_58/.6)]")}>
+                  {/* flex-1 min-w-0: without it a textarea takes its width from `cols`, which is 20
+                      characters — the field ended up narrower than the row, and the placeholder
+                      wrapped onto a second line that a one-row box then cut in half. */}
+                  <textarea ref={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(q); } }} rows={1} placeholder={listening ? "Listening…" : `Ask about ${screen.toLowerCase()}…`} className="assist-input resize-none text-[15px] leading-6 flex-1 min-w-0 max-h-32" />
                   {canListen && <button onClick={listen} aria-label={listening ? "Stop listening" : "Speak"} className={cn("h-10 w-10 shrink-0 rounded-full grid place-items-center transition", listening ? "bg-[#ff453a] text-white" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}>{listening ? <MicOff size={17} /> : <Mic size={17} />}</button>}
                   <button onClick={() => ask(q)} disabled={!q.trim() || busy} aria-label="Send" className="h-10 w-10 shrink-0 rounded-full grid place-items-center bg-[#4cd964] text-[#06120a] disabled:opacity-30 transition"><ArrowUp size={18} strokeWidth={2.5} /></button>
                 </div>
