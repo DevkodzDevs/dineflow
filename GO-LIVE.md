@@ -27,8 +27,20 @@ which means nobody can install it either.
 - Vercel → **Settings → Domains** → add the address you want, e.g. `app.dineflow.in`, and point the
   DNS record it shows you at Vercel.
 
-Check it worked by opening the address on a phone that is **not** signed in to your Vercel account.
-If it asks you to log in to Vercel, protection is still on.
+Check it worked without borrowing a phone:
+
+```bash
+node scripts/check-live.mjs https://app.dineflow.in
+```
+
+It asks the questions from outside — no cookies, no account, the same request a waiter's phone
+makes — and tells you whether they can install it and land on *your* sign-in screen. Opening the
+address yourself proves nothing: your browser is signed in to Vercel, so a deployment nobody else
+can reach looks perfectly healthy to you.
+
+The install page knows this too. While protection is on, `/get` shows a warning where the install
+button would be, because an app installed from a protected address opens on Vercel's sign-in
+screen every time — it remembers the address it was installed from.
 
 ## 2. Tell the apps where "live" is  — *one command*
 

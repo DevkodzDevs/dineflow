@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Apple, BookOpen, Check, Copy, Download, ExternalLink, Monitor, Share, Smartphone, SquarePlus } from "lucide-react";
+import { Apple, BookOpen, Check, Copy, Download, ExternalLink, Lock, Monitor, Share, Smartphone, SquarePlus } from "lucide-react";
 import { QR } from "@/components/QR";
 
 /**
@@ -50,11 +50,28 @@ function where(kind: Kind): Where {
 
 type PromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 
+/**
+ * Whether anybody *other than the person reading this* can open the address.
+ *
+ * A deployment sitting behind Vercel's Deployment Protection looks perfectly normal to the account
+ * that owns it — the browser carries a Vercel cookie, every page loads, the install button works.
+ * It is the waiter's phone that discovers the truth: a Vercel sign-in screen, for an account they
+ * will never have. And because the installed app remembers the address it was installed from, that
+ * screen is now what the app opens to, every time.
+ *
+ * So the page asks the only question that matters, and asks it honestly: fetch something public
+ * with the cookies deliberately left off, which is exactly the request a stranger's phone makes. A
+ * wall answers that with a refusal; the real app answers "ok". A request that never arrives at all
+ * proves nothing either way, so it is not held against the address.
+ */
+type Reach = "checking" | "open" | "gated";
+
 export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string }) {
   const [kind, setKind] = useState<Kind | null>(null);
   const [spot, setSpot] = useState<Where>("normal");
   const [canPrompt, setCanPrompt] = useState(false);
   const [installed, setInstalled] = useState(false);
+  const [reach, setReach] = useState<Reach>("checking");
 
   useEffect(() => {
     const k = detect();
@@ -68,6 +85,19 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
     addEventListener("df-installable", on);
     addEventListener("df-installed", off);
     return () => { removeEventListener("df-installable", on); removeEventListener("df-installed", off); };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/health", { credentials: "omit", cache: "no-store" });
+        if (alive) setReach(r.ok ? "open" : "gated");
+      } catch {
+        if (alive) setReach("open");   // no answer is a flaky line, not a locked door
+      }
+    })();
+    return () => { alive = false; };
   }, []);
 
   const installPwa = async () => {
@@ -93,8 +123,10 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
           </p>
         </div>
 
+        {reach === "gated" && <Gated url={pageUrl} />}
+
         {!installed && (
-          <div className="mt-8">
+          <div className={reach === "gated" ? "mt-5 opacity-60" : "mt-8"}>
             {spot === "normal"
               ? <Primary kind={kind} links={links} canPrompt={canPrompt} onPwa={installPwa} />
               : <WrongWindow spot={spot} url={pageUrl} />}
@@ -127,6 +159,34 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
         </div>
       </div>
     </main>
+  );
+}
+
+/**
+ * The address is behind a wall that only this account can pass. Installing from here would produce
+ * an app that opens on a Vercel sign-in screen on every phone but this one — so this says so before
+ * anybody does it, and says exactly which switch turns it off.
+ */
+function Gated({ url }: { url: string }) {
+  const host = (() => { try { return new URL(url).host; } catch { return url; } })();
+  return (
+    <div className="mt-8 rounded-2xl border border-[#e0a33a]/40 bg-[#e0a33a]/[.08] p-4">
+      <div className="flex items-start gap-3">
+        <span className="h-9 w-9 rounded-xl bg-[#e0a33a]/15 grid place-items-center shrink-0 text-[#e0a33a]"><Lock size={16} /></span>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-[#f4f4f1]">Only you can open this address</div>
+          <p className="text-[13px] leading-relaxed text-[#9a9aa6] mt-1">
+            <span className="text-[#c9c9d2]">{host}</span> is behind Vercel&apos;s Deployment Protection. It works for you because your
+            browser is signed in to Vercel — but a waiter&apos;s phone gets a <b className="text-[#c9c9d2]">Vercel sign-in screen</b>,
+            not DineFlow. Install it now and that screen is what the app opens to, every time.
+          </p>
+          <p className="text-[13px] leading-relaxed text-[#9a9aa6] mt-2.5">
+            Turn it off first: <b className="text-[#c9c9d2]">Vercel → your project → Settings → Deployment Protection → Vercel
+            Authentication → Disabled</b>, then reload this page. The banner goes away when a stranger&apos;s phone could get in.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
