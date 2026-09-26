@@ -10,8 +10,10 @@ export const dynamic = "force-dynamic";
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const s = await createClient(); const session = await requireSession();
-  const [{ data: order }, { data: tables }, { data: open }] = await Promise.all([
+  const s = await createClient();
+  // the session travels with the page's own rows, not in front of them: one trip, not two
+  const [session, { data: order }, { data: tables }, { data: open }] = await Promise.all([
+    requireSession(),
     s.from("orders").select("*, dining_tables(name), kots(id, kot_no, status, held, created_at), order_items(*)").eq("id", id).maybeSingle(),
     // where this order could move to, and what it could join
     s.from("dining_tables").select("id, name, status").order("sort_order"),

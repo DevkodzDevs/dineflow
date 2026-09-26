@@ -9,20 +9,26 @@ export const metadata = { title: "Control room" };
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ locked?: string }> }) {
-  const s = await createClient(); const session = await requireSession();
-  const today = todayIST(); const hotel = session.restaurant.property_type !== "restaurant";
-  const [{ data: bills }, { data: open }, { data: kots }, { data: low }, { data: tables }, { data: top }, { data: rooms }, { data: bookings }, { data: hk }, { data: online }] = await Promise.all([
+  const s = await createClient();
+  const today = todayIST();
+  // The session travels with the page's own rows rather than in front of them: one round trip
+  // to Mumbai, not two. The rooms queries are asked unconditionally — a restaurant has none, so
+  // they come back empty, and waiting to learn which kind of property this is cost more than
+  // the empty answers do.
+  const [session, { data: bills }, { data: open }, { data: kots }, { data: low }, { data: tables }, { data: top }, { data: rooms }, { data: bookings }, { data: hk }, { data: online }] = await Promise.all([
+    requireSession(),
     s.from("bills").select("total, payments(method, amount)").eq("status", "paid").gte("paid_at", `${today}T00:00:00+05:30`),
     s.from("orders").select("id, order_no, created_at, type, customer_name, dining_tables(name), order_items(qty, price_snapshot, status)").eq("status", "open"),
     s.from("kots").select("id, status, created_at").in("status", ["pending", "preparing", "ready"]),
     s.from("v_low_stock").select("id, name, unit, current_stock, reorder_level").limit(8),
     s.from("dining_tables").select("status"),
     s.from("order_items").select("name_snapshot, qty").gte("created_at", `${today}T00:00:00+05:30`).neq("status", "cancelled"),
-    hotel ? s.from("rooms").select("status") : Promise.resolve({ data: [] as { status: string }[] }),
-    hotel ? s.from("bookings").select("id, status, check_in, check_out, rate, rooms(number), guests(full_name)").in("status", ["reserved", "checked_in"]) : Promise.resolve({ data: [] as never[] }),
-    hotel ? s.from("housekeeping_tasks").select("id", { count: "exact", head: true }).neq("status", "done") : Promise.resolve({ data: null, count: 0 }),
+    s.from("rooms").select("status"),
+    s.from("bookings").select("id, status, check_in, check_out, rate, rooms(number), guests(full_name)").in("status", ["reserved", "checked_in"]),
+    s.from("housekeeping_tasks").select("id", { count: "exact", head: true }).neq("status", "done"),
     s.from("online_orders").select("id, status, gross").gte("placed_at", `${today}T00:00:00+05:30`),
   ]);
+  const hotel = session.restaurant.property_type !== "restaurant";   // decides what is drawn, not what is asked
   const sales = (bills ?? []).reduce((t, b) => t + Number(b.total), 0);
   const inHouse = (bookings ?? []).filter((b: { status: string }) => b.status === "checked_in");
   const roomRevenue = inHouse.reduce((t: number, b: { rate: number }) => t + Number(b.rate), 0);

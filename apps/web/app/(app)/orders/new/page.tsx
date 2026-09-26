@@ -9,8 +9,9 @@ export const metadata = { title: "New order" };
 export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ table?: string }> }) {
   const { table } = await searchParams;
   const s = await createClient();
-  const session = await requireSession();
-  const [{ data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, { data: variants }, { data: groups }, { data: links }, { data: combos }] = await Promise.all([
+  // the session travels with the page's own rows, not in front of them: one trip, not two
+  const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, { data: variants }, { data: groups }, { data: links }, { data: combos }] = await Promise.all([
+    requireSession(),
     s.from("categories").select("id, name").order("sort_order"),
     s.from("menu_items").select("id, name, price, is_veg, category_id, is_available, is_combo").order("name"),
     s.from("dining_tables").select("id, name, status").order("sort_order"),

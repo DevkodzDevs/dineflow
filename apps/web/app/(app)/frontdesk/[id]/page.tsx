@@ -4,10 +4,12 @@ import { requireSession } from "@/lib/auth";
 import { FolioClient } from "./FolioClient";
 export const dynamic = "force-dynamic";
 export default async function FolioPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const s = await createClient(); const session = await requireSession();
+  const { id } = await params; const s = await createClient();
   const { data: b } = await s.from("bookings").select("*, guests(*), rooms(number, floor, room_types(name))").eq("id", id).maybeSingle();
   if (!b) notFound();
-  const [{ data: charges }, { data: totals }, { data: orders }] = await Promise.all([
+  // the session travels with the page's own rows, not in front of them: one trip, not two
+  const [session, { data: charges }, { data: totals }, { data: orders }] = await Promise.all([
+    requireSession(),
     s.from("booking_charges").select("*").eq("booking_id", id).order("created_at"),
     s.rpc("folio_totals", { p_booking_id: id }),
     s.from("orders").select("id, order_no, order_items(qty, price_snapshot, status)").eq("status", "open"),

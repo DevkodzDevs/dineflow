@@ -9,10 +9,12 @@ export const dynamic = "force-dynamic";
 
 export default async function Tomorrow({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const { date } = await searchParams;
-  const s = await createClient(); const session = await requireSession();
+  const s = await createClient();
   const target = date ?? new Date(Date.now() + 86400000 + 5.5 * 3600e3).toISOString().slice(0, 10);
   await s.rpc("grade_forecasts");
-  const [{ data: forecast, error: failed }, { data: score }, { data: saved }] = await Promise.all([
+  // the session travels with the page's own rows, not in front of them: one trip, not two
+  const [session, { data: forecast, error: failed }, { data: score }, { data: saved }] = await Promise.all([
+    requireSession(),
     s.rpc("forecast_day", { p_date: target }),
     s.rpc("forecast_scorecard", { p_days: 30 }),
     s.from("forecast_runs").select("*").eq("for_date", target).maybeSingle(),

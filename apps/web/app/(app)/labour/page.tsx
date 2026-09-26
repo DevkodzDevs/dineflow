@@ -6,9 +6,11 @@ import { LabourClient } from "./LabourClient";
 export const metadata = { title: "Labour" };
 export const dynamic = "force-dynamic";
 export default async function LabourPage({ searchParams }: { searchParams: Promise<{ tab?: string; open?: string }> }) {
-  const { tab, open } = await searchParams; const s = await createClient(); const session = await requireSession(); const today = todayIST();
+  const { tab, open } = await searchParams; const s = await createClient(); const today = todayIST();
   const monthStart = today.slice(0, 8) + "01";
-  const [{ data: labourers }, { data: att }, { data: pays }, { data: rooms }, { data: ingredients }] = await Promise.all([
+  // the session travels with the page's own rows, not in front of them: one trip, not two
+  const [session, { data: labourers }, { data: att }, { data: pays }, { data: rooms }, { data: ingredients }] = await Promise.all([
+    requireSession(),
     s.from("labourers").select("*").order("status").order("full_name"),
     s.from("labour_attendance").select("id, labourer_id, work_date, in_at, out_at, hours, wage").gte("work_date", monthStart).order("work_date"),
     s.from("labour_payments").select("id, labourer_id, amount, method, period_from, period_to, created_at").gte("created_at", `${monthStart}T00:00:00+05:30`),

@@ -4,7 +4,9 @@ import { LeaksClient } from "./LeaksClient";
 export const metadata = { title: "Leak finder" };
 export const dynamic = "force-dynamic";
 export default async function Leaks() {
-  const s = await createClient(); await requireSession();
-  const [{ data: report }, { data: ingredients }] = await Promise.all([s.rpc("leak_report", { p_days: 30 }), s.from("ingredients").select("id, name, unit, current_stock").eq("is_active", true).order("name")]);
+  const s = await createClient();
+  // the session travels with the page's own rows, not in front of them: one trip, not two
+  const [, { data: report }, { data: ingredients }] = await Promise.all([
+    requireSession(),s.rpc("leak_report", { p_days: 30 }), s.from("ingredients").select("id, name, unit, current_stock").eq("is_active", true).order("name")]);
   return <LeaksClient report={(report ?? { items: [] }) as never} ingredients={ingredients ?? []} />;
 }

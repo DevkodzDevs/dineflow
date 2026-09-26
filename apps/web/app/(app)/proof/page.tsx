@@ -6,10 +6,12 @@ export const metadata = { title: "Proof of business" };
 export const dynamic = "force-dynamic";
 
 export default async function Proof() {
-  const s = await createClient(); const session = await requireSession();
+  const s = await createClient();
   const h = await headers();
   const base = process.env.NEXT_PUBLIC_CLOUD_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
-  const [{ data: record }, { data: links }] = await Promise.all([
+  // the session travels with the page's own rows, not in front of them: one trip, not two
+  const [session, { data: record }, { data: links }] = await Promise.all([
+    requireSession(),
     s.rpc("business_record"),
     s.rpc("proof_links_list"),
   ]);

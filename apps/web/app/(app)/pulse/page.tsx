@@ -5,8 +5,10 @@ export const metadata = { title: "Pulse" };
 export const dynamic = "force-dynamic";
 
 export default async function Pulse() {
-  const s = await createClient(); const session = await requireSession();
-  const [{ data: pulse }, { data: queue }] = await Promise.all([
+  const s = await createClient();
+  // the session travels with the page's own rows, not in front of them: one trip, not two
+  const [session, { data: pulse }, { data: queue }] = await Promise.all([
+    requireSession(),
     s.rpc("table_pulse"),
     s.from("walkins").select("id, token, name, phone, party, quoted_min, status, joined_at, called_at, table_id").in("status", ["waiting", "called"]).order("joined_at"),
   ]);
