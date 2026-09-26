@@ -59,14 +59,19 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
       </div>
       <Sheet open={counting} onClose={() => setCounting(false)} title="Count stock" wide>
         <p className="text-sm text-steel mb-4">Type what is actually on the shelf. Leave blank to skip an item.</p>
-        <div className="group max-h-[50dvh] overflow-y-auto">
+        <div className="group">
           {ingredients.map((g) => <div key={g.id} className="row"><span className="flex-1">{g.name}<span className="block text-xs text-steel">system says {Number(g.current_stock).toFixed(2)} {g.unit}</span></span><input type="number" inputMode="decimal" step="any" placeholder={g.unit} className="num !w-32 !text-right" value={vals[g.id] ?? ""} onChange={(e) => setVals({ ...vals, [g.id]: e.target.value })} /></div>)}
         </div>
-        <Button className="w-full mt-4 !h-[52px] !text-base" disabled={pending || Object.values(vals).every((v) => v === "")} onClick={() => start(async () => {
+        {/* A pantry can run to a couple of hundred lines. The list is no longer a scroll box of its
+            own — that put a second scrollbar inside the sheet — so the button rides the bottom of
+            the sheet's own scroll instead of sitting below everything. */}
+        <div className="sticky bottom-0 -mx-5 mt-4 px-5 pt-3 pb-1 bg-[var(--color-bg-2)] border-t border-[var(--color-separator)]">
+        <Button className="w-full !h-[52px] !text-base" disabled={pending || Object.values(vals).every((v) => v === "")} onClick={() => start(async () => {
           const counts = Object.entries(vals).filter(([, v]) => v !== "").map(([ingredient_id, v]) => ({ ingredient_id, counted: Number(v) }));
           if (!online) { await enqueue("stock_count", { counts }, `Stock count · ${counts.length} items`); toast(`${counts.length} counted — will send when the line is back`); setCounting(false); setVals({}); return; }
           const r = await stockCount(counts); if ("error" in r) toast(r.error ?? "Could not save the count", "err"); else { toast(`${r.counted} items counted · ${formatINR(r.gap_value)} moved`); setCounting(false); setVals({}); }
         })}><ClipboardCheck size={16} /> Save count</Button>
+        </div>
       </Sheet>
     </div>
   );

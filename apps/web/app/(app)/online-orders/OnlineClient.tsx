@@ -70,7 +70,7 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
             {hint.menu_item_id && <Button size="sm" disabled={pending} onClick={() => start(async () => { await mapDish(hint.menu_item_id!, fix!.order.order_channels?.kind ?? "other", fix!.line); setHint(null); setFix(null); })}>Map it</Button>}
           </div>
         )}
-        <div className="space-y-2 max-h-96 overflow-y-auto">{menu.map((m) => <button key={m.id} className="feather feather-lift w-full text-left p-3 flex justify-between" disabled={pending} onClick={() => start(async () => { await mapDish(m.id, fix!.order.order_channels?.kind ?? "other", fix!.line); setFix(null); })}><span>{m.name}</span><span className="num text-steel">{formatINR(Number(m.price))}</span></button>)}</div>
+        <div className="space-y-2">{menu.map((m) => <button key={m.id} className="feather feather-lift w-full text-left p-3 flex justify-between" disabled={pending} onClick={() => start(async () => { await mapDish(m.id, fix!.order.order_channels?.kind ?? "other", fix!.line); setFix(null); })}><span>{m.name}</span><span className="num text-steel">{formatINR(Number(m.price))}</span></button>)}</div>
       </Sheet>
     </div>
   );
