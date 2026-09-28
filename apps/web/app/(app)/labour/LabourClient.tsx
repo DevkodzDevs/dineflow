@@ -50,6 +50,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
                   <button onClick={() => setEdit(l)} className="text-steel hover:text-ink"><Pencil size={14} /></button></div>
                 <div className="mt-3 flex items-center gap-2 text-xs">{a ? <><Pill tone="ready">present</Pill><span className="num text-steel">{a.in_at ? new Date(a.in_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}{a.out_at ? ` → ${new Date(a.out_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} · ${a.hours} h` : ""}</span></> : <Pill tone="pending">absent</Pill>}
                   <span className="ml-auto num text-steel">{byL(l.id).length} days this month</span></div>
+                <MonthDots days={byL(l.id).map((x) => x.work_date)} today={today} />
                 <div className="mt-3 flex gap-2">{a ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => start(() => { markAttendance(l.id, today, false, 0); })}>Mark absent</Button> : <Button size="sm" className="flex-1" disabled={pending} onClick={() => start(() => { markAttendance(l.id, today, true, Number(l.daily_wage)); })}><Check size={14} /> Mark present</Button>}<Button size="sm" variant="ghost" onClick={() => setPay(l)}><Banknote size={14} /></Button></div>
               </Card></motion.div>); })}
         </div>
@@ -98,3 +99,23 @@ function Labels({ property, labourers, rooms, ingredients }: { property: string;
   );
 }
 
+
+/**
+ * One mark per day of the month, filled on the days somebody turned up. "11 days this month" is a
+ * number; this says whether those eleven were a run or were scattered — which is the thing a
+ * supervisor is actually looking for when they scan the wall of cards.
+ */
+function MonthDots({ days, today }: { days: string[]; today: string }) {
+  const worked = new Set(days);
+  const y = Number(today.slice(0, 4)), m = Number(today.slice(5, 7)), dayNow = Number(today.slice(8, 10));
+  const inMonth = new Date(y, m, 0).getDate();   // day 0 of next month is the last of this one
+  return (
+    <div className="mt-2.5 flex gap-[3px]" role="img" aria-label={`${worked.size} of the first ${dayNow} days this month worked`}>
+      {Array.from({ length: inMonth }, (_, i) => {
+        const date = `${today.slice(0, 8)}${String(i + 1).padStart(2, "0")}`;
+        const on = worked.has(date), ahead = i + 1 > dayNow;
+        return <span key={date} title={date} className={cn("h-3 flex-1 rounded-[2px]", on ? "bg-mint" : ahead ? "bg-[var(--color-fill)]" : "bg-line-2")} />;
+      })}
+    </div>
+  );
+}

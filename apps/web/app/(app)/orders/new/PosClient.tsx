@@ -85,6 +85,20 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   const courses = [...new Set(lines.map((l) => (coursing ? l.course : 1)))].sort();
   /** Tapping a tile: a dish that asks a question opens it; the rest go straight on the ticket. */
   const tap = (it: Item) => (hasOptions(it) ? setChooser({ item: it }) : putLine(it, null, [], 1));
+  /** The minus under a tile takes one off the most recent line of that dish. With sizes on the
+   *  ticket the tile cannot know which one is meant, and the one just added is the one in hand. */
+  const takeOne = (it: Item) => {
+    setWarned(false);
+    setLines((ls) => {
+      for (let i = ls.length - 1; i >= 0; i--) {
+        if (ls[i].item.id !== it.id) continue;
+        const next = [...ls];
+        if (next[i].qty <= 1) next.splice(i, 1); else next[i] = { ...next[i], qty: next[i].qty - 1 };
+        return next;
+      }
+      return ls;
+    });
+  };
   /** The minus on a cart line for a dish that was tapped by voice takes one off its last line, whichever size. */
   const askFor = (l: Line) => setChooser({ item: l.item, replace: l.key, qty: l.qty, note: l.note });
 
@@ -304,20 +318,36 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           {visible.map((it) => {
             const qty = qtyOf(it.id); const tp = tilePrice(it); const asks = hasOptions(it);
             return (
-              <motion.button key={it.id} whileTap={{ scale: 0.97 }} onClick={() => tap(it)} className={cn("feather text-left p-3.5 relative transition-colors", qty > 0 && "border-saffron bg-saffron/5")}>
-                <div className="flex items-center gap-1.5 text-[11px]">{it.is_veg ? <Leaf size={12} className="text-mint" /> : <Drumstick size={12} className="text-chili" />}<span className="num text-steel">{tp.from ? "from " : ""}{formatINR(tp.price)}</span>
-                  {/* a dish that asks a question, or is a meal of other dishes, says so on the tile */}
-                  <span className="ml-auto flex items-center gap-1 text-steel">{it.is_combo && <Layers size={11} aria-label="Combo" />}{asks && <SlidersHorizontal size={11} aria-label="Has options" />}</span></div>
-                <div className="font-semibold text-sm mt-1 leading-snug">{it.name}</div>
-                {(() => {
-                  const c = coverOf(it.id);
-                  if (!c) return null;                                    // no recipe: nothing to claim
-                  if (c.portions === 0) return <div className="mt-1.5 text-[11px] font-semibold text-[var(--color-orange)]">Pantry short{c.short[0] ? ` · ${c.short[0].name}` : ""}</div>;
-                  if (c.portions <= 5) return <div className="mt-1.5 text-[11px] text-steel num">{c.portions} left in the pantry</div>;
-                  return null;
-                })()}
-                <AnimatePresence>{qty > 0 && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute top-2 right-2 num h-6 min-w-6 px-1.5 rounded-full bg-saffron text-on-tint text-xs font-bold grid place-items-center">{qty}</motion.span>}</AnimatePresence>
-              </motion.button>
+              /* The stepper is a sibling of the tap target, not a child of it: a button inside a
+                 button is not valid markup, and the tile has to stay a real button for the keyboard. */
+              <motion.div key={it.id} layout className={cn("feather relative flex flex-col transition-colors", qty > 0 && "border-saffron bg-saffron/5")}>
+                <motion.button whileTap={{ scale: 0.97 }} onClick={() => tap(it)} className="text-left p-3.5 flex-1">
+                  <div className="flex items-center gap-1.5 text-[11px]">{it.is_veg ? <Leaf size={12} className="text-mint" /> : <Drumstick size={12} className="text-chili" />}<span className="num text-steel">{tp.from ? "from " : ""}{formatINR(tp.price)}</span>
+                    {/* a dish that asks a question, or is a meal of other dishes, says so on the tile */}
+                    <span className="ml-auto flex items-center gap-1 text-steel">{it.is_combo && <Layers size={11} aria-label="Combo" />}{asks && <SlidersHorizontal size={11} aria-label="Has options" />}</span></div>
+                  <div className="font-semibold text-sm mt-1 leading-snug">{it.name}</div>
+                  {(() => {
+                    const c = coverOf(it.id);
+                    if (!c) return null;                                    // no recipe: nothing to claim
+                    if (c.portions === 0) return <div className="mt-1.5 text-[11px] font-semibold text-[var(--color-orange)]">Pantry short{c.short[0] ? ` · ${c.short[0].name}` : ""}</div>;
+                    if (c.portions <= 5) return <div className="mt-1.5 text-[11px] text-steel num">{c.portions} left in the pantry</div>;
+                    return null;
+                  })()}
+                </motion.button>
+                {/* once it is on the ticket the tile says how many and lets you take one back,
+                    so a miscount never means opening the ticket to fix it */}
+                <AnimatePresence>{qty > 0 && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <div className="flex items-center justify-between gap-1 px-3 pb-3">
+                      <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`}
+                        className="h-8 w-8 rounded-lg border border-line grid place-items-center hover:bg-[var(--color-fill)]"><Minus size={14} /></button>
+                      <span className="num font-semibold text-sm tabular-nums">{qty}</span>
+                      <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`}
+                        className="h-8 w-8 rounded-lg bg-ink text-on-label grid place-items-center"><Plus size={14} /></button>
+                    </div>
+                  </motion.div>
+                )}</AnimatePresence>
+              </motion.div>
             );
           })}
           {visible.length === 0 && <p className="col-span-full text-sm text-steel py-8">No dishes match. Check Menu → availability.</p>}

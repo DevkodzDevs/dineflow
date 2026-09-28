@@ -1,6 +1,7 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ChevronLeft, Printer, Share2, Pencil } from "lucide-react";
 import { Button, Field, Pill, Sheet, useToast } from "@/components/ui";
@@ -14,6 +15,9 @@ type Rest = { name: string; address: string | null; phone: string | null; gstin:
 
 export function InvoiceView({ inv, restaurant, cashier }: { inv: Inv; restaurant: Rest; cashier: string }) {
   const [edit, setEdit] = useState(false); const [pending, start] = useTransition();
+  /* the Print button on the invoices list links straight here with ?print=1 */
+  const sp = useSearchParams();
+  useEffect(() => { if (sp.get("print") !== "1") return; const t = setTimeout(() => window.print(), 500); return () => clearTimeout(t); }, [sp]);
   const no = `INV-${String(inv.invoice_no).padStart(5, "0")}`;
   const lab = taxLabels(restaurant.gst_state_code), comp = restaurant.gst_scheme === "composition";
   const title = billTitle(restaurant.gst_scheme, restaurant.gstin, true);

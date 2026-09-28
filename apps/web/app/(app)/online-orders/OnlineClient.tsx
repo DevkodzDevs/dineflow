@@ -48,7 +48,13 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
                 {o.address && <div className="text-xs text-steel truncate">{o.address}</div>}
                 <ul className="mt-2 text-sm space-y-0.5">{o.items.map((i, n) => <li key={n} className={cn("flex gap-2", !i.menu_item_id && "text-chili")}><span className="num w-6">{i.qty}×</span><span className="flex-1">{i.name}{i.note ? <span className="text-xs text-steel"> · {i.note}</span> : null}</span><span className="num">{formatINR(i.qty * Number(i.price))}</span></li>)}</ul>
                 {o.unmatched.length > 0 && <div className="mt-2 text-xs text-chili flex items-start gap-1"><AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{o.unmatched.length} item(s) not on your menu. <button onClick={() => setFix({ order: o, line: o.unmatched[0] })} className="underline font-semibold">Map now</button> so stock deducts correctly.</span></div>}
-                <div className="mt-2 flex justify-between text-sm border-t border-line pt-2"><span className="text-steel">Payout</span><span className="num font-semibold">{formatINR(Number(o.payout))}</span></div>
+                {/* what the guest paid, what the aggregator kept, what actually arrives — the payout
+                    on its own never said which of the three it was */}
+                <div className="mt-2 border-t border-line pt-2 text-sm space-y-0.5">
+                  <div className="flex justify-between text-steel"><span>Guest paid</span><span className="num">{formatINR(Number(o.gross))}</span></div>
+                  {Number(o.commission) > 0 && <div className="flex justify-between text-steel"><span>{o.order_channels?.label ?? "Channel"} commission</span><span className="num">−{formatINR(Number(o.commission))}</span></div>}
+                  <div className="flex justify-between font-semibold"><span>Payout</span><span className="num">{formatINR(Number(o.payout))}</span></div>
+                </div>
                 <div className="mt-3 flex gap-2">
                   {o.status === "new" ? <><Button size="sm" className="flex-1" disabled={pending} onClick={() => accept(o)}><Check size={14} /> Accept & print</Button><Button size="sm" variant="danger" disabled={pending} onClick={() => { const r = prompt("Reason for rejecting?") ?? ""; start(() => { rejectOnline(o.id, r); }); }}><X size={14} /></Button></>
                     : o.status === "accepted" ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => start(() => { setOnlineStatus(o.id, "ready"); })}>Mark ready for pickup</Button>

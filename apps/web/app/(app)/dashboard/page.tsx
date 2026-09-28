@@ -91,7 +91,17 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </div>
         <div className="feather p-5">
           <h3 className="text-xl mb-3">Selling today</h3>
-          {topList.length === 0 ? <p className="text-sm text-steel">Nothing sold yet.</p> : <ol className="space-y-2">{topList.map(([name, q], i) => <li key={name} className="flex items-center gap-3 text-sm"><span className="num text-steel w-4">{i + 1}</span><span className="flex-1 truncate">{name}</span><span className="num font-semibold">{q}</span></li>)}</ol>}
+          {topList.length === 0 ? <p className="text-sm text-steel">Nothing sold yet — the first order of the day lands here.</p> : (() => {
+            /* the bar turns a ranked list into the shape of the day: whether one dish is carrying
+               the service or the whole menu is moving evenly */
+            const peak = Math.max(1, ...topList.map(([, q]) => Number(q)));
+            return <ol className="space-y-2.5">{topList.map(([name, q], i) => (
+              <li key={name} className="text-sm">
+                <div className="flex items-center gap-3"><span className="num text-steel w-4">{i + 1}</span><span className="flex-1 truncate">{name}</span><span className="num font-semibold">{q}</span></div>
+                <div className="mt-1 ml-7 h-1.5 rounded-full bg-[var(--color-fill)] overflow-hidden"><div className="h-full rounded-full bg-[var(--color-tint)]" style={{ width: `${(Number(q) / peak) * 100}%` }} /></div>
+              </li>
+            ))}</ol>;
+          })()}
           {!!low?.length && <div className="mt-5 pt-4 border-t border-line"><div className="text-xs font-semibold uppercase tracking-wide text-chili mb-2">Reorder now</div><ul className="space-y-1 text-sm">{low.map((l) => <li key={l.id} className="flex justify-between"><span>{l.name}</span><span className="num text-steel">{Number(l.current_stock).toFixed(1)} {l.unit}</span></li>)}</ul></div>}
         </div>
       </div>
