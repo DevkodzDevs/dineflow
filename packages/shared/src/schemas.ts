@@ -64,6 +64,7 @@ export const newOrderSchema = z.object({
   table_id: z.string().uuid().nullable().optional(),
   customer_name: z.string().max(80).optional().nullable(),
   customer_phone: z.string().max(20).optional().nullable(),
+  note: z.string().max(200).optional().nullable(),   // one request for the whole ticket, e.g. "all mild"
   items: z.array(z.object({
     menu_item_id: z.string().uuid(), qty: z.number().int().positive(), notes: z.string().max(120).optional(),
     variant_id: z.string().uuid().nullable().optional(),          // the size or style it is sold in

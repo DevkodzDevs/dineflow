@@ -16,7 +16,7 @@ export async function placeOrder(input: unknown) {
   const { data, error } = await s.rpc("place_order", {
     p_type: d.type, p_table_id: d.table_id ?? null, p_items: d.items,
     p_customer: { name: d.customer_name ?? null, phone: d.customer_phone ?? null },
-    p_note: null, p_client_id: raw.client_id ?? null, p_placed_at: raw.placed_at ?? null,
+    p_note: d.note || null, p_client_id: raw.client_id ?? null, p_placed_at: raw.placed_at ?? null,
     p_promise: d.promise ?? false,
   });
   if (error) return { error: error.message };

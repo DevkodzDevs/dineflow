@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Empty, StatTile } from "@/components/ui";
 import { formatINR } from "@/lib/format";
@@ -28,7 +29,7 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
   const history = s.from("invoices").select("issued_at, total").gte("issued_at", new Date(from.getTime() - IST).toISOString());
 
   // both queries leave together; the page waits once rather than twice
-  const [{ data: inv }, { data: hist }] = await Promise.all([q, history]);
+  const [session, { data: inv }, { data: hist }] = await Promise.all([requireSession(), q, history]);
 
   const months: Month[] = [];
   for (let i = 5; i >= 0; i--) {
@@ -62,7 +63,7 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
       </div>
       {!rows.length
         ? <Empty title="No invoices yet" hint="Check a guest out, or open a paid bill and press Tax invoice." />
-        : <InvoicesClient invoices={rows} months={months} />}
+        : <InvoicesClient invoices={rows} months={months} property={session.restaurant.name} />}
     </>
   );
 }

@@ -13,14 +13,14 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, { data: variants }, { data: groups }, { data: links }, { data: combos }] = await Promise.all([
     requireSession(),
     s.from("categories").select("id, name").order("sort_order"),
-    s.from("menu_items").select("id, name, price, is_veg, category_id, is_available, is_combo").order("name"),
+    s.from("menu_items").select("id, name, price, is_veg, category_id, is_available, is_combo, image_url").order("name"),
     s.from("dining_tables").select("id, name, status").order("sort_order"),
     s.from("bookings").select("id, booking_no, rooms(number), guests(full_name)").eq("status", "checked_in"),
     // how many portions of each dish the pantry can still cover, so the till can say so before a
     // waiter promises it to a table rather than after the kitchen has picked the ticket up
     s.rpc("menu_stock"),
     // the orders already running on a table, so tapping an occupied one can offer the open ticket
-    s.from("orders").select("id, order_no, table_id").eq("status", "open").not("table_id", "is", null),
+    s.from("orders").select("id, order_no, table_id, created_at, order_items(qty), dining_tables(name)").eq("status", "open").not("table_id", "is", null).order("created_at", { ascending: false }),
     // sizes, add-on groups and combo parts: what a dish asks before it goes on a ticket
     s.from("menu_variants").select(OPTION_SELECTS.variants).eq("is_active", true),
     s.from("addon_groups").select(OPTION_SELECTS.groups).eq("is_active", true),

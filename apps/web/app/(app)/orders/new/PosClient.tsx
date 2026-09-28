@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered } from "lucide-react";
-import { Button, cn, useToast } from "@/components/ui";
-import { formatINR } from "@/lib/format";
+import { Button, Pill, cn, useToast } from "@/components/ui";
+import { formatINR, fmtSince } from "@/lib/format";
 import { placeOrder, parseOrder } from "../actions";
 import { lookupCustomer } from "../../billing/actions";
 import { enqueue } from "@/lib/offline/sync";
@@ -15,13 +15,13 @@ import { hasOptions, defaultVariant, linePrice, lineKey, lineName, lineExtras, o
 import Link from "next/link";
 
 type Cat = { id: string; name: string };
-type Item = Optioned & { is_veg: boolean; category_id: string | null; is_available: boolean };
+type Item = Optioned & { is_veg: boolean; category_id: string | null; is_available: boolean; image_url: string | null };
 type Table = { id: string; name: string; status: string };
 type Guest = { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null };
 /** What the pantry can still cover, keyed by dish. A dish that is absent has no recipe: it moves no
  *  stock, so there is nothing true to say about it, and it is always sellable. */
 type Cover = { portions: number; short: { name: string; unit: string; per: number; stock: number }[] };
-type Running = { id: string; order_no: number; table_id: string };
+type Running = { id: string; order_no: number; table_id: string; created_at: string; order_items: { qty: number }[]; dining_tables: { name: string } | null };
 /** One line of the ticket: a dish with the size and extras it was chosen with. The same dish as
  *  Half and as Full is two lines. `ask` marks a line that still owes a required choice — a voice
  *  order can put a dish on the ticket before anyone has said which bread. */
@@ -64,6 +64,11 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   /* Courses. Off, every line is course 1 and the ticket goes as one. On, each line carries a
      course; the first goes to the kitchen now and the rest are held until somebody fires them. */
   const [coursing, setCoursing] = useState(false);
+  /* One request for the whole ticket — "all mild", "serve together". Per-line notes still exist
+     for the dish that needs its own. */
+  const [ticketNote, setTicketNote] = useState(""); const [askNote, setAskNote] = useState(false);
+  /* Which lines have their note field showing. A line that already carries a note always shows it. */
+  const [noteOpen, setNoteOpen] = useState<Set<string>>(new Set());
 
   /* ── the ticket ── */
   const qtyOf = (id: string) => lines.filter((l) => l.item.id === id).reduce((s, l) => s + l.qty, 0);
@@ -99,6 +104,8 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       return ls;
     });
   };
+  /** The cross clears the dish outright — every size and every extra of it. */
+  const clearItem = (it: Item) => { setWarned(false); setLines((ls) => ls.filter((l) => l.item.id !== it.id)); };
   /** The minus on a cart line for a dish that was tapped by voice takes one off its last line, whichever size. */
   const askFor = (l: Line) => setChooser({ item: l.item, replace: l.key, qty: l.qty, note: l.note });
 
@@ -149,6 +156,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   };
 
   const visible = useMemo(() => items.filter((i) => i.is_available && (cat === "all" || i.category_id === cat) && i.name.toLowerCase().includes(q.toLowerCase())), [items, cat, q]);
+  const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "";
   const unit = (l: Line) => linePrice(l.item, l.variant, l.addons);
   const total = lines.reduce((s, l) => s + unit(l) * l.qty, 0);
   const count = lines.reduce((s, l) => s + l.qty, 0);
@@ -176,7 +184,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
     if (shortfalls.length > 0 && !warned) return setWarned(true);
     if (type === "room_service" && !room) return setErr("Pick the guest room");
     const label = type === "dine_in" ? (tables.find((t) => t.id === tableId)?.name ?? "Table") : type === "room_service" ? customer.name : type.replace("_", " ");
-    const payload = { type, promise: promised, table_id: type === "dine_in" ? tableId : null, customer_name: customer.name || null, customer_phone: customer.phone || null,
+    const payload = { type, promise: promised, table_id: type === "dine_in" ? tableId : null, customer_name: customer.name || null, customer_phone: customer.phone || null, note: ticketNote.trim() || null,
       items: lines.map((l) => ({ menu_item_id: l.item.id, qty: l.qty, notes: l.note || undefined, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id), course: coursing ? l.course : 1 })) };
 
     // The kitchen ticket prints from this device, so it works with or without internet — one per
@@ -185,7 +193,10 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       const when = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
       for (const c of courses) {
         const on = lines.filter((l) => (coursing ? l.course : 1) === c);
-        await printKot({ kotNo: "KOT", when, tableOrType: label, heading: courses.length > 1 ? (c > 1 ? `COURSE ${c} · HELD — fire from the kitchen screen` : "COURSE 1") : undefined,
+        // the ticket-wide request rides on the printed docket too, or the kitchen never sees it
+        const course = courses.length > 1 ? (c > 1 ? `COURSE ${c} · HELD — fire from the kitchen screen` : "COURSE 1") : null;
+        const heading = [course, ticketNote.trim() ? `** ${ticketNote.trim().toUpperCase()} **` : null].filter(Boolean).join(" · ") || undefined;
+        await printKot({ kotNo: "KOT", when, tableOrType: label, heading,
           items: on.map((l) => ({ name: lineName(l.item, l.variant), qty: l.qty, note: l.note || null, extras: lineExtras({ addons: l.addons, components: l.item.components }) })) });
       }
     } catch { /* never block an order because a printer is off */ }
@@ -238,19 +249,31 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         <AnimatePresence initial={false}>
           {lines.length === 0 && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-steel">Tap dishes to add them to this ticket.</motion.p>}
           {lines.map((l) => (
-            <motion.div key={l.key} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}>
-              <div className="flex items-center gap-2">
+            /* every line is its own card: what it is and a cross on top, how many and what it
+               comes to underneath — the shape a guest reads back to you */
+            <motion.div key={l.key} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
+              className="rounded-2xl border border-line bg-[var(--color-bg-3)] p-2.5">
+              <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{lineName(l.item, l.variant)}</div>
+                  <div className="font-semibold text-sm leading-snug">{lineName(l.item, l.variant)}</div>
                   {lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <div key={j} className="text-[11px] text-steel truncate">{x}</div>)}
-                  <div className="num text-xs text-steel">{formatINR(unit(l))} × {l.qty}</div>
                   {coverOf(l.item.id) && qtyOf(l.item.id) > coverOf(l.item.id)!.portions && <div className="text-[11px] font-semibold text-[var(--color-orange)]">pantry covers {coverOf(l.item.id)!.portions}</div>}
                   {l.ask && <button type="button" onClick={() => askFor(l)} className="mt-0.5 text-[11px] font-semibold text-[var(--color-orange)] underline">Choose options</button>}
                 </div>
-                {coursing && <button type="button" onClick={() => cycleCourse(l.key)} title="Course — tap to change" className={cn("h-8 min-w-8 px-1.5 rounded-lg text-[11px] font-bold border", l.course > 1 ? "border-saffron text-saffron" : "border-line text-steel")}>C{l.course}</button>}
-                <div className="flex items-center gap-1"><button onClick={() => bump(l.key, -1)} className="h-8 w-8 rounded-lg border border-line grid place-items-center"><Minus size={14} /></button><span className="num w-6 text-center font-semibold">{l.qty}</span><button onClick={() => bump(l.key, 1)} className="h-8 w-8 rounded-lg bg-ink text-on-label grid place-items-center"><Plus size={14} /></button></div>
+                {coursing && <button type="button" onClick={() => cycleCourse(l.key)} title="Course — tap to change" className={cn("h-7 min-w-7 px-1.5 rounded-full text-[11px] font-bold border shrink-0", l.course > 1 ? "border-tint text-[var(--color-tint)]" : "border-line text-steel")}>C{l.course}</button>}
+                <button type="button" onClick={() => bump(l.key, -l.qty)} aria-label={`Remove ${lineName(l.item, l.variant)}`}
+                  className="h-7 w-7 rounded-full bg-[var(--color-fill)] grid place-items-center text-steel hover:text-[var(--color-red)] shrink-0"><X size={13} /></button>
               </div>
-              <input className="mt-1.5 !py-1.5 !text-xs" placeholder="Note for kitchen (less spicy…)" value={l.note} onChange={(e) => setNote(l.key, e.target.value)} />
+              <div className="mt-2 flex items-center gap-2">
+                <button onClick={() => bump(l.key, -1)} aria-label="One less" className="h-8 w-8 rounded-full border border-line grid place-items-center text-steel hover:bg-[var(--color-fill)]"><Minus size={14} /></button>
+                <span className="num w-5 text-center font-bold text-sm tabular-nums">{l.qty}</span>
+                <button onClick={() => bump(l.key, 1)} aria-label="One more" className="h-8 w-8 rounded-full bg-ink text-on-label grid place-items-center"><Plus size={14} /></button>
+                <span className="ml-auto num font-semibold text-sm h-8 px-3 rounded-full bg-[var(--color-bg-2)] border border-line flex items-center">{formatINR(unit(l) * l.qty)}</span>
+              </div>
+              {l.note || noteOpen.has(l.key)
+                ? <input autoFocus={!l.note} className="mt-2 !py-1.5 !text-xs" placeholder="Less spicy, no onion…" value={l.note} onChange={(e) => setNote(l.key, e.target.value)} />
+                : <button type="button" onClick={() => setNoteOpen((n) => new Set(n).add(l.key))}
+                    className="mt-1.5 text-[11px] font-semibold text-steel hover:text-[var(--color-label)] flex items-center gap-1"><Plus size={11} /> Note for kitchen</button>}
             </motion.div>
           ))}
         </AnimatePresence>
@@ -266,8 +289,20 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           <span className={cn("num text-xs font-semibold shrink-0", promised ? "text-[var(--color-tint)]" : "text-steel")}>{promised ? `+${formatINR(total * promise.pct / 100)}` : "off"}</span>
         </button>
       )}
-      <div className="pt-4 mt-2 border-t border-dashed border-line">
-        <div className="flex justify-between items-baseline"><span className="text-sm text-steel">{count} items</span><span className="num text-2xl font-semibold">{formatINR(total + (promised && promise ? total * promise.pct / 100 : 0))}</span></div>
+      <div className="pt-3 mt-2 border-t border-dashed border-line">
+        {/* one request for the whole ticket, the way a guest actually asks it — place_order has
+            carried a slot for this all along and the till never offered anywhere to type it */}
+        <button type="button" onClick={() => setAskNote((v) => !v)} aria-pressed={askNote || !!ticketNote}
+          className={cn("h-8 rounded-full px-3 text-[11px] font-semibold inline-flex items-center gap-1 border transition",
+            ticketNote ? "border-tint text-[var(--color-tint)]" : "border-line text-steel hover:text-[var(--color-label)]")}>
+          <Plus size={12} /> Cooking request{ticketNote ? ` · ${ticketNote.slice(0, 18)}${ticketNote.length > 18 ? "…" : ""}` : ""}
+        </button>
+        {askNote && <input autoFocus className="mt-2 !py-1.5 !text-xs" maxLength={200} placeholder="All mild · no onion · serve everything together"
+          value={ticketNote} onChange={(e) => setTicketNote(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") setAskNote(false); }} />}
+        <div className="mt-3 flex justify-between items-baseline">
+          <span className="text-sm text-steel">Total payment <span className="text-[11px]">· {count} item{count === 1 ? "" : "s"}</span></span>
+          <span className="num text-2xl font-bold">{formatINR(total + (promised && promise ? total * promise.pct / 100 : 0))}</span>
+        </div>
         {err && <p className="text-sm text-chili mt-2">{err}</p>}
         {warned && shortfalls.length > 0 && (
           <div className="mt-2 rounded-xl border border-[var(--color-orange)]/40 bg-[rgb(255_179_64/.08)] p-2.5 text-xs">
@@ -285,13 +320,43 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   );
 
   return (
-    <div className="grid lg:grid-cols-[1fr_360px] gap-6 -mx-4 md:mx-0 px-4 md:px-0">
-      <section>
+    <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 -mx-4 md:mx-0 px-4 md:px-0">
+      {/* minmax(0,1fr), not 1fr: a 1fr track refuses to go below its content's own minimum, and the
+          wider dish cards were pushing the ticket off the right of the screen. */}
+      <section className="min-w-0">
         <div className="flex items-center gap-3 mb-4">
           <Link href="/orders" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
           <h1 className="text-2xl md:text-3xl">New order</h1>
           <div className="relative ml-auto w-full max-w-xs"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel" /><input className="!pl-9" placeholder="Search dishes" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         </div>
+
+        {/* What is already running, at the top of the screen the waiter is standing in front of.
+            The data was here to warn about a busy table; showing it costs nothing and saves the
+            trip to the Orders screen to answer "is table six done yet?". */}
+        {running.length > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="eyebrow">Order line</span>
+              <span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{running.length}</span>
+              <Link href="/orders" className="ml-auto text-xs font-semibold text-steel hover:text-[var(--color-label)]">All orders →</Link>
+            </div>
+            <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
+              {running.slice(0, 12).map((o) => {
+                const n = (o.order_items ?? []).reduce((t, i) => t + Number(i.qty), 0);
+                return (
+                  <Link key={o.id} href={`/orders/${o.id}`} className="feather feather-lift shrink-0 w-52 p-3">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-semibold text-sm truncate flex-1">{o.dining_tables?.name ?? "Table"}</span>
+                      <span className="num text-[11px] text-steel">#{o.order_no}</span>
+                    </div>
+                    <div className="text-[11px] text-steel mt-0.5 num">{n} item{n === 1 ? "" : "s"} · {fmtSince(o.created_at)}</div>
+                    <div className="mt-2"><Pill tone="preparing">in progress</Pill></div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {ai && (
           <div className="mb-3">
             <form className={cn("feather flex items-center gap-2 p-2 pl-3.5", !online && "opacity-60")} onSubmit={(e) => { e.preventDefault(); void takeOrder(said); }}>
@@ -314,39 +379,42 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
           {[{ id: "all", name: "All" }, ...categories].map((c) => <button key={c.id} onClick={() => setCat(c.id)} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line")}>{c.name}</button>)}
         </div>
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5">
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
           {visible.map((it) => {
             const qty = qtyOf(it.id); const tp = tilePrice(it); const asks = hasOptions(it);
+            const c = coverOf(it.id);
             return (
               /* The stepper is a sibling of the tap target, not a child of it: a button inside a
-                 button is not valid markup, and the tile has to stay a real button for the keyboard. */
-              <motion.div key={it.id} layout className={cn("feather relative flex flex-col transition-colors", qty > 0 && "border-saffron bg-saffron/5")}>
-                <motion.button whileTap={{ scale: 0.97 }} onClick={() => tap(it)} className="text-left p-3.5 flex-1">
-                  <div className="flex items-center gap-1.5 text-[11px]">{it.is_veg ? <Leaf size={12} className="text-mint" /> : <Drumstick size={12} className="text-chili" />}<span className="num text-steel">{tp.from ? "from " : ""}{formatINR(tp.price)}</span>
-                    {/* a dish that asks a question, or is a meal of other dishes, says so on the tile */}
-                    <span className="ml-auto flex items-center gap-1 text-steel">{it.is_combo && <Layers size={11} aria-label="Combo" />}{asks && <SlidersHorizontal size={11} aria-label="Has options" />}</span></div>
-                  <div className="font-semibold text-sm mt-1 leading-snug">{it.name}</div>
-                  {(() => {
-                    const c = coverOf(it.id);
-                    if (!c) return null;                                    // no recipe: nothing to claim
-                    if (c.portions === 0) return <div className="mt-1.5 text-[11px] font-semibold text-[var(--color-orange)]">Pantry short{c.short[0] ? ` · ${c.short[0].name}` : ""}</div>;
-                    if (c.portions <= 5) return <div className="mt-1.5 text-[11px] text-steel num">{c.portions} left in the pantry</div>;
-                    return null;
-                  })()}
+                 button is not valid markup, and the dish has to stay a real button for the keyboard. */
+              <motion.div key={it.id} layout className={cn("feather relative flex flex-col transition-colors", qty > 0 && "bg-[var(--color-green-2)] ring-1 ring-[var(--color-tint)]")}>
+                <motion.button whileTap={{ scale: 0.985 }} onClick={() => tap(it)} className="text-left p-2.5 flex items-start gap-3 flex-1">
+                  <Thumb item={it} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline gap-2">
+                      <span className="text-[11px] text-steel truncate flex-1">{catName(it.category_id)}</span>
+                      {/* a dish that asks a question, or is a meal of other dishes, says so here */}
+                      {it.is_combo && <Layers size={11} className="text-steel shrink-0" aria-label="Combo" />}
+                      {asks && <SlidersHorizontal size={11} className="text-steel shrink-0" aria-label="Has options" />}
+                      <span className="num text-sm font-semibold shrink-0">{tp.from ? <span className="text-[11px] font-normal text-steel">from </span> : null}{formatINR(tp.price)}</span>
+                    </span>
+                    <span className="block font-semibold text-sm mt-0.5 leading-snug line-clamp-2">{it.name}</span>
+                    {c?.portions === 0 && <span className="block mt-1 text-[11px] font-semibold text-[var(--color-orange)]">Pantry short{c.short[0] ? ` · ${c.short[0].name}` : ""}</span>}
+                    {!!c?.portions && c.portions <= 5 && <span className="block mt-1 text-[11px] text-steel num">{c.portions} left in the pantry</span>}
+                  </span>
                 </motion.button>
-                {/* once it is on the ticket the tile says how many and lets you take one back,
-                    so a miscount never means opening the ticket to fix it */}
-                <AnimatePresence>{qty > 0 && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                    <div className="flex items-center justify-between gap-1 px-3 pb-3">
-                      <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`}
-                        className="h-8 w-8 rounded-lg border border-line grid place-items-center hover:bg-[var(--color-fill)]"><Minus size={14} /></button>
-                      <span className="num font-semibold text-sm tabular-nums">{qty}</span>
-                      <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`}
-                        className="h-8 w-8 rounded-lg bg-ink text-on-label grid place-items-center"><Plus size={14} /></button>
-                    </div>
-                  </motion.div>
-                )}</AnimatePresence>
+                {/* the count lives on the dish, so a miscount is fixed where it happened */}
+                <div className="flex items-center gap-2 pl-[68px] pr-2.5 pb-2.5">
+                  <button type="button" onClick={() => takeOne(it)} disabled={qty === 0} aria-label={`One less ${it.name}`}
+                    className="h-8 w-8 rounded-full border border-line grid place-items-center text-steel enabled:hover:bg-[var(--color-fill)] disabled:opacity-30"><Minus size={14} /></button>
+                  <span className={cn("num text-sm tabular-nums w-5 text-center", qty ? "font-bold" : "text-steel")}>{qty}</span>
+                  <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`}
+                    className="h-8 w-8 rounded-full bg-ink text-on-label grid place-items-center"><Plus size={14} /></button>
+                  <AnimatePresence>{qty > 0 && (
+                    <motion.button type="button" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.6 }}
+                      onClick={() => clearItem(it)} aria-label={`Take ${it.name} off the ticket`}
+                      className="ml-auto h-8 w-8 rounded-full bg-[var(--color-fill)] grid place-items-center text-steel hover:text-[var(--color-red)]"><X size={14} /></motion.button>
+                  )}</AnimatePresence>
+                </div>
               </motion.div>
             );
           })}
@@ -370,5 +438,25 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       <OptionChooser item={chooser?.item ?? null} initialQty={chooser?.qty ?? 1} initialNote={chooser?.note ?? ""} onClose={() => setChooser(null)}
         onAdd={(v, a, n, note) => { if (chooser) putLine(chooser.item, v, a, n, note, chooser.replace); }} />
     </div>
+  );
+}
+
+/**
+ * The dish's own picture where there is one, and a legible stand-in where there is not: the same
+ * card either way, rather than a hole the day the owner has not uploaded sixty photographs.
+ * The veg / non-veg mark sits on the corner of it, which is where Indian menus put it.
+ */
+function Thumb({ item }: { item: Item }) {
+  return (
+    <span className="relative h-14 w-14 rounded-2xl overflow-hidden shrink-0 grid place-items-center bg-[var(--color-fill)]">
+      {item.image_url
+        // eslint-disable-next-line @next/next/no-img-element -- owner-supplied URLs from any host; next/image would need every one allow-listed
+        ? <img src={item.image_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        : <span className="font-display text-xl text-steel select-none">{item.name.slice(0, 1).toUpperCase()}</span>}
+      <span className={cn("absolute bottom-0.5 right-0.5 h-4 w-4 rounded-[5px] grid place-items-center", item.is_veg ? "bg-[var(--color-mint-2)]" : "bg-[var(--color-chili-2)]")}
+        title={item.is_veg ? "Vegetarian" : "Non-vegetarian"}>
+        {item.is_veg ? <Leaf size={9} className="text-mint" /> : <Drumstick size={9} className="text-chili" />}
+      </span>
+    </span>
   );
 }
