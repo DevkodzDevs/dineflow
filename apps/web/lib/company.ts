@@ -30,11 +30,11 @@ export const COMPANY = {
   phone: null as string | null,
 
   /** ── Already true ─────────────────────────────────────────────────── */
-  site: "dineflow.in",
-  supportEmail: "support@dineflow.in",
+  site: "dineflow.cloud",
+  supportEmail: "support@dineflow.cloud",
   /** Reaches a person, not a queue: required by the IT Rules 2021 and the DPDP Act 2023. */
-  grievanceEmail: "grievance@dineflow.in",
-  privacyEmail: "privacy@dineflow.in",
+  grievanceEmail: "grievance@dineflow.cloud",
+  privacyEmail: "privacy@dineflow.cloud",
   /** The named Grievance Officer. A role title alone does not satisfy the rules — a name is required. */
   grievanceOfficer: null as string | null,
 

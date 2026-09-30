@@ -6,6 +6,11 @@ import { useAuth } from "@/lib/auth";
 import { Button, H1, Body } from "@/components/ui";
 import { C } from "@/lib/theme";
 
+/* The address this screen sends people to is the one scripts/set-app-url.mjs writes into the build
+   profile. It used to be typed in here, so changing the live address left the phone app quoting the
+   old one with nothing to catch it. Shown without the scheme — it is for reading, not tapping. */
+const WEB = (process.env.EXPO_PUBLIC_WEB_URL ?? "https://dineflow.cloud").replace(/\/+$/, "").replace(/^https?:\/\//, "");
+
 export default function Locked() {
   const { restaurant, membership, refresh } = useAuth();
   return (
@@ -13,7 +18,7 @@ export default function Locked() {
       <View style={{ height: 52, width: 52, borderRadius: 16, backgroundColor: C.ink, alignItems: "center", justifyContent: "center", marginBottom: 16 }}><Crown color="#cdb07a" size={24} /></View>
       <H1>{membership === "suspended" ? "Account suspended" : "Trial ended"}</H1>
       <Body muted style={{ marginTop: 8, lineHeight: 20 }}>{membership === "suspended" ? "Contact DineFlow support to restore access." : `The 7-day trial for ${restaurant?.name} is over. The owner can activate membership from the web app (Settings → Membership) with the key issued by DineFlow. Your data is safe.`}</Body>
-      <Text style={{ marginTop: 20, fontFamily: "JetBrainsMono_500Medium", color: C.steel, fontSize: 12 }}>app.dineflow.in/membership</Text>
+      <Text style={{ marginTop: 20, fontFamily: "JetBrainsMono_500Medium", color: C.steel, fontSize: 12 }}>{WEB}/membership</Text>
       <Button title="I've activated — refresh" style={{ marginTop: 20 }} onPress={refresh} />
       <Button title="Sign out" variant="outline" style={{ marginTop: 10 }} onPress={() => supabase.auth.signOut()} />
     </SafeAreaView>

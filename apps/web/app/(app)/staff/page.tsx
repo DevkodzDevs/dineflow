@@ -17,5 +17,5 @@ export default async function StaffPage() {
   ]);
   // what the person doing the managing holds themselves — they can only pass on what is in here
   const myModules = modulesFor(session.restaurant.property_type, session.profile.role, session.restaurant.enabled_modules ?? null, session.profile.allowed_modules ?? null);
-  return (<><PageHeader eyebrow="Who's on shift" title="Staff" /><StaffClient me={session.userId} myRole={session.profile.role} myModules={myModules} type={session.restaurant.property_type} enabled={session.restaurant.enabled_modules ?? null} staff={(staff ?? []) as never} invites={invites ?? []} loginDomain={(dom as string) ?? "dineflow.in"} /></>);
+  return (<><PageHeader eyebrow="Who's on shift" title="Staff" /><StaffClient me={session.userId} myRole={session.profile.role} myModules={myModules} type={session.restaurant.property_type} enabled={session.restaurant.enabled_modules ?? null} staff={(staff ?? []) as never} invites={invites ?? []} loginDomain={(dom as string) ?? "dineflow.cloud"} /></>);
 }
