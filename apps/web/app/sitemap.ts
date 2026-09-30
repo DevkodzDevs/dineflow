@@ -8,7 +8,7 @@ import { COMPANY } from "@/lib/company";
 export const dynamic = "force-static";
 
 const base = () => {
-  const url = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  const url = process.env.NEXT_PUBLIC_CLOUD_URL?.replace(/\/$/, "");
   return url || `https://${COMPANY.site}`;
 };
 

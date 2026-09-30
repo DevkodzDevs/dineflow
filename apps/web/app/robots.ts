@@ -9,7 +9,7 @@ import { COMPANY } from "@/lib/company";
 export const dynamic = "force-static";
 
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || `https://${COMPANY.site}`;
+  const base = process.env.NEXT_PUBLIC_CLOUD_URL?.replace(/\/$/, "") || `https://${COMPANY.site}`;
   return {
     rules: [{
       userAgent: "*",

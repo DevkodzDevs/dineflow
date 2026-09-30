@@ -18,7 +18,7 @@ const fs = require("node:fs");
 // built with no address set still opens something real — but it is a Vercel *deployment* URL, pinned
 // to one release, so set DINEFLOW_APP_URL to the production alias or your own domain before you hand
 // this installer to anyone.
-const BUILT_URL = process.env.DINEFLOW_APP_URL || "https://dineflow-4vwrb28u3-devkodz01-6921.vercel.app";
+const BUILT_URL = process.env.DINEFLOW_APP_URL || "https://dineflow.cloud";
 
 /**
  * Where a property points this copy. Checked in order:
