@@ -2,7 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC = ["/", "/login", "/signup", "/join", "/forgot", "/membership", "/offline", "/get"];
-const PUBLIC_PREFIX = ["/queue/", "/dine", "/book/", "/record/", "/pay/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/"];
+/* The legal pages must answer a stranger. A payment gateway's reviewer, a regulator and someone
+   deciding whether to sign up all read them before there is any session to check. */
+const PUBLIC_PREFIX = ["/legal", "/queue/", "/dine", "/book/", "/record/", "/pay/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/"];
 /** Pages a signed-in user must always be able to reach, even with must_change_password set. Without
  *  this the password-change screen has no way out: the middleware bounces /login to /dashboard, and
  *  the app layout bounces /dashboard back to /account/password. */
@@ -20,6 +22,11 @@ const ALIASES: Record<string, string> = {
   "/signin": "/login", "/sign-in": "/login", "/log-in": "/login", "/signon": "/login",
   "/sign-up": "/signup", "/register": "/signup", "/create-account": "/signup",
   "/forgot-password": "/forgot", "/reset-password": "/forgot", "/password-reset": "/forgot",
+  "/terms": "/legal/terms", "/terms-and-conditions": "/legal/terms", "/tos": "/legal/terms",
+  "/privacy": "/legal/privacy", "/privacy-policy": "/legal/privacy",
+  "/refund": "/legal/refunds", "/refunds": "/legal/refunds", "/refund-policy": "/legal/refunds",
+  "/cancellation": "/legal/refunds", "/cancellation-policy": "/legal/refunds",
+  "/contact": "/legal/contact", "/contact-us": "/legal/contact", "/support": "/legal/contact",
   // No /signout alias: /logout only answers POST, by design. Signing someone out on a GET means a
   // prefetch or a stray link can end their session, so a redirect there would be a 405 at best.
 };

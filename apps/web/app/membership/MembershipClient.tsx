@@ -1,6 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { COMPANY } from "@/lib/company";
+import { LegalFooter } from "@/components/LegalFooter";
 import { motion } from "framer-motion";
 import { Crown, KeyRound, Check, LogOut } from "lucide-react";
 import { Button, Field, cn } from "@/components/ui";
@@ -30,11 +32,18 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
             <div className="feather p-4"><div className="font-semibold">Monthly</div><div className="num text-2xl mt-1">₹2,499</div><div className="text-xs text-steel">per property</div></div>
             <div className="feather p-4 border-champagne"><div className="font-semibold flex items-center gap-1">Yearly <span className="pill pill-gold">2 months free</span></div><div className="num text-2xl mt-1">₹24,999</div><div className="text-xs text-steel">per property</div></div>
           </div>
-          <p className="text-xs text-steel mt-4">Get a key: WhatsApp +91 98XXX XXXXX · support@dineflow.in — online payment (Razorpay) arrives in the next version.</p>
+          {/* the number came from a placeholder and was shown to people trying to pay us;
+              it now comes from lib/company.ts, and is simply absent until it is real */}
+          <p className="text-xs text-steel mt-4">
+            Get a key: {COMPANY.phone ? <>WhatsApp <span className="num">{COMPANY.phone}</span> · </> : null}
+            <a href={`mailto:${COMPANY.supportEmail}`} className="underline">{COMPANY.supportEmail}</a>
+            {" "}— online payment (Razorpay) arrives in the next version.
+          </p>
           <div className="mt-6 flex justify-between items-center">
             {!locked ? <Link href="/dashboard" className="text-sm font-semibold underline">Back to control room</Link> : <span />}
             <form action="/logout" method="post"><button className="flex items-center gap-1.5 text-xs text-steel hover:text-ink"><LogOut size={13} /> Sign out</button></form>
           </div>
+          <LegalFooter className="!pt-5 mt-5 border-t border-line" />
         </div>
       </motion.div>
     </div>

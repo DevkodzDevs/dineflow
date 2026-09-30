@@ -1,5 +1,6 @@
 import { FlipClock } from "@/components/ui/flip";
 import { SignedOutCleanup } from "@/components/SignedOutCleanup";
+import { LegalFooter } from "@/components/LegalFooter";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh grid lg:grid-cols-[1.1fr_1fr] deck">
@@ -17,7 +18,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
         <div className="flip-label !text-left !mt-0">Restaurant · Hotel · Resort · GST ready · Any device</div>
       </section>
-      <section className="deck-card flex items-center justify-center p-6 lg:my-3 lg:mr-3">{children}</section>
+      <section className="deck-card flex flex-col items-center justify-center p-6 lg:my-3 lg:mr-3">
+        <div className="flex-1 flex items-center w-full justify-center">{children}</div>
+        {/* Reachable without signing in, on purpose: a gateway reviewer and anyone deciding
+            whether to sign up both start here. */}
+        <LegalFooter />
+      </section>
     </div>
   );
 }
