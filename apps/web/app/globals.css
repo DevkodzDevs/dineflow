@@ -500,6 +500,11 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .icon-btn-danger:hover { color: var(--color-red); background: var(--color-red-2); }
 @media (pointer: coarse) { .icon-btn { height: 44px; width: 44px; } }
 
+/* A small text link — "All →", "Billing →" — is as tall as its type. On a finger it needs a
+   target, and padding would push it off its own baseline, so it grows downward from the middle. */
+@media (pointer: coarse) { .tap { min-height: 44px; display: inline-flex; align-items: center; } }
+@media (pointer: coarse) { .tap-square { min-height: 44px; min-width: 44px; } }
+
 /* On a finger, nothing you can press is allowed below 44px — the figure both Apple's guidance and
    WCAG 2.5.5 settle on. These are min-heights, so a mouse keeps the compact sizes above and only a
    touch screen pays the extra pixels. A small button is still visually small; it just has room

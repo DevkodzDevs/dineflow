@@ -22,8 +22,8 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
       <Link href="/kitchen" className="relative h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)]" aria-label="Alerts"><Bell size={17} />{alerts > 0 && <span className="absolute -top-0.5 -right-0.5 num h-4 min-w-4 px-1 rounded-full bg-chili text-white text-[10px] grid place-items-center">{alerts}</span>}</Link>
       {/* same rule as the sidebar: a button only when there is somewhere to go */}
       {accountHref
-        ? <Link href={accountHref} title={`${name} · your settings`} aria-label={`${name} · your settings`} className="h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</Link>
-        : <span title={name} className="h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base">{name.slice(0, 1)}</span>}
+        ? <Link href={accountHref} title={`${name} · your settings`} aria-label={`${name} · your settings`} className="tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</Link>
+        : <span title={name} className="tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base">{name.slice(0, 1)}</span>}
     </motion.header>
   );
 }
