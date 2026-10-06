@@ -17,10 +17,20 @@ const DOCS = [
 
 const production = process.env.NODE_ENV === "production";
 
+/* One line per process, not one per page. This was written as a build-time note and said so in its
+   own comment, but it sat in a layout that four pages share — so it printed four times every build
+   and again on every render in development, which is how a reminder turns into noise people learn
+   to scroll past. The facts cannot change while the process is alive, so neither can the answer. */
+let warned = false;
+function warnOnce(missing: { label: string }[]) {
+  if (warned || missing.length === 0) return;
+  warned = true;
+  console.warn(`[legal] ${missing.length} company fact(s) still unset in lib/company.ts: ${missing.map((f) => f.label).join(", ")}`);
+}
+
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   const missing = missingFacts();
-  // one line in the build output, so a deploy with blanks in it is not a silent one
-  if (missing.length > 0) console.warn(`[legal] ${missing.length} company fact(s) still unset in lib/company.ts: ${missing.map((f) => f.label).join(", ")}`);
+  warnOnce(missing);
   return (
     <div className="min-h-dvh deck">
       <div className="mx-auto max-w-3xl px-5 py-8 md:py-12">

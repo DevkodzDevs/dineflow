@@ -35,6 +35,25 @@ export async function middleware(req: NextRequest) {
   req.headers.set("x-pathname", req.nextUrl.pathname);
   const alias = ALIASES[req.nextUrl.pathname.replace(/\/+$/, "").toLowerCase()];
   if (alias) return NextResponse.redirect(new URL(alias, req.url));
+  const path = req.nextUrl.pathname;
+
+  /**
+   * Routes where nobody's session is consulted, so nobody's session is fetched.
+   *
+   * getClaims() can cost a round trip to the auth server, and on a cookie whose refresh token has
+   * died it costs a doomed refresh and a stack trace in the log. Both were being paid on pages that
+   * never look at a user: the storefront a guest opens at the table, a pay link sent over WhatsApp,
+   * the booking page, the install page, the legal documents. Those are precisely the pages loaded
+   * by someone with no account, on a phone, on a restaurant's wifi.
+   *
+   * This is an allowlist rather than the inverse on purpose. Being wrong in this direction means a
+   * page loads a little slower; being wrong in the other means a signed-in person is not recognised.
+   * /login, /signup, / and /membership stay out of it — each one does read the session, to send a
+   * signed-in person where they belong.
+   */
+  const SESSION_FREE = ["/legal", "/dine", "/book/", "/queue/", "/record/", "/pay/", "/get", "/offline"];
+  if (SESSION_FREE.some((x) => path === x || path.startsWith(x))) return NextResponse.next({ request: req });
+
   let res = NextResponse.next({ request: req });
   /**
    * What the auth client asks us to write back: a freshly rotated token, or the cleared cookie of a
@@ -111,7 +130,6 @@ export async function middleware(req: NextRequest) {
     }
     return r;
   };
-  const path = req.nextUrl.pathname;
   const isPublic = PUBLIC.includes(path) || PUBLIC_PREFIX.some((x) => path.startsWith(x));
   if (!user && !isPublic) return finish(NextResponse.redirect(new URL("/login", req.url)));
   if (user) {
