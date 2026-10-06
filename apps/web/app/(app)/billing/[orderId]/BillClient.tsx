@@ -143,12 +143,14 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
                 </div>
               )}
               {redeem > 0 && redeem < minRedeem && <p className="text-xs text-chili">At least {minRedeem} points at a time.</p>}
-              <div className="flex items-center gap-2">
-                <TicketIcon size={14} className="text-steel shrink-0" />
+              {/* stretch, not centre: the button then matches the box beside it instead of
+                  sitting a few pixels short of it */}
+              <div className="flex items-stretch gap-2">
+                <TicketIcon size={14} className="text-steel shrink-0 self-center" />
                 {coupon ? (
                   <><span className="text-xs flex-1 min-w-0 truncate"><b>{coupon.code}</b> · {coupon.title} · {Number(coupon.pct) > 0 ? `${coupon.pct}% off` : `${formatINR(Number(coupon.amount))} off`}</span><button type="button" className="text-xs underline text-steel" onClick={() => { setCoupon(null); setCode(""); }}>remove</button></>
                 ) : (
-                  <><input placeholder="Coupon code" className="num uppercase !w-36" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }} /><Button size="sm" variant="outline" type="button" disabled={!code.trim() || pending} onClick={applyCoupon}>Apply</Button></>
+                  <><input placeholder="Coupon code" className="num uppercase flex-1 min-w-[8rem]" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }} /><Button size="sm" variant="outline" type="button" className="!h-auto self-stretch" disabled={!code.trim() || pending} onClick={applyCoupon}>Apply</Button></>
                 )}
               </div>
               {couponErr && <p className="text-xs text-chili">{couponErr}</p>}

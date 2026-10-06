@@ -34,11 +34,11 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
         <div className="keycard h-12 w-14 grid place-items-center font-display text-lg shrink-0 relative">{b.rooms?.number}{cond && <span title={`Housekeeping: ${cond}`} className={cn("absolute top-1 right-1 h-2 w-2 rounded-full", CONDITION_DOT[cond] ?? "bg-steel")} />}</div>
         <div className="flex-1 min-w-0">
           <div className="font-semibold truncate flex items-center gap-1.5">{b.guests?.vip && <Star size={13} className="text-champagne fill-current shrink-0" aria-label="VIP" />}{b.guests?.full_name}</div>
-          <div className="text-xs text-steel num">#{b.booking_no} · {b.check_in.slice(5)} → {b.check_out.slice(5)} · {b.rooms?.room_types?.name} · <Users size={10} className="inline" /> {b.adults + b.children}</div>
+          <div className="text-xs text-steel num truncate">#{b.booking_no} · {b.check_in.slice(5)} → {b.check_out.slice(5)} · {b.rooms?.room_types?.name} · <Users size={10} className="inline" /> {b.adults + b.children}</div>
           {b.guests?.preferences && <div className="text-xs text-champagne truncate mt-0.5">{b.guests.preferences}</div>}
           {cond && cond !== "inspected" && <div className={cn("text-[11px] mt-0.5", cond === "dirty" ? "text-chili" : "text-[var(--color-orange)]")}>{cond === "dirty" ? "Room not cleaned yet" : cond === "clean" ? (inspectRule ? "Room awaits inspection" : "Room cleaned") : "Room needs a touch-up"}</div>}
         </div>
-        <div className="num text-sm font-semibold hidden sm:block">{formatINR(Number(b.rate))}/n</div>
+        <div className="num text-sm font-semibold hidden sm:block shrink-0">{formatINR(Number(b.rate))}/n</div>
         {action}
       </Link>
     );

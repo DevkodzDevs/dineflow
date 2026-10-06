@@ -446,9 +446,12 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
    replace the feed entirely, leaving the paper motionless. */
 .feeding-reveal { animation: feedReveal 1.9s steps(26, end) both; }
 .feeding-shake { animation: jitter .09s steps(2) 26 both; }
-.keycard { position: relative; overflow: hidden; border-radius: 16px; border: .5px solid var(--color-separator); background: var(--color-bg-2); box-shadow: var(--shadow-inset-top), var(--shadow-card); transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur); }
+/* The occupied card flips to a paper background, so anything inside it written in the dark
+   theme's muted grey — or worse, in white — went invisible. The card publishes its own muted
+   colour and its contents read that, so both skins stay legible. */
+.keycard { --card-muted: var(--color-label-2); position: relative; overflow: hidden; border-radius: 16px; border: .5px solid var(--color-separator); background: var(--color-bg-2); box-shadow: var(--shadow-inset-top), var(--shadow-card); transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur); }
 .keycard::after { content: none; }
-.keycard.occupied { background: var(--color-label); color: var(--color-on-label); border-color: var(--color-label); }
+.keycard.occupied { background: var(--color-label); color: var(--color-on-label); border-color: var(--color-label); --card-muted: rgb(10 10 13 / .62); }
 .keycard.cleaning { background: var(--color-blue-2); } .keycard.maintenance { background: var(--color-red-2); } .keycard.reserved { border-style: dashed; border-color: var(--color-champagne); }
 .ticket-rail { border-left: 2px dashed var(--color-line-2); }
 ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: var(--color-fill-2); border-radius: 10px; border: 3px solid var(--color-bg); }
@@ -469,6 +472,11 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .toolbar-group { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto;
   overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
 .toolbar-group::-webkit-scrollbar { display: none; }
+/* The same single-row scrolling track, for chip groups that are not in a toolbar. */
+.chip-rail { display: flex; align-items: center; gap: 8px; min-width: 0;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding-bottom: 2px; }
+.chip-rail::-webkit-scrollbar { display: none; }
+.chip-rail > * { flex: 0 0 auto; }
 .toolbar-group > * { flex: 0 0 auto; }
 /* the actions keep their own width and never scroll away */
 .toolbar-end { margin-left: auto; justify-content: flex-end; flex: 0 0 auto; overflow: visible; }

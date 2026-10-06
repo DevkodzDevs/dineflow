@@ -33,9 +33,9 @@ export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Orde
                 const total = o?.order_items.filter((x) => x.status !== "cancelled").reduce((s, x) => s + Number(x.price_snapshot) * x.qty, 0) ?? 0;
                 const anyReady = o?.order_items.some((x) => x.status === "ready");
                 return (
-                  <motion.div key={t.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
+                  <motion.div key={t.id} className="flex flex-col h-full" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
                     <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`}
-                      className={cn("feather feather-lift block aspect-[5/4] p-3 flex flex-col relative overflow-hidden",
+                      className={cn("feather feather-lift flex-1 min-h-[7rem] p-3 flex flex-col relative overflow-hidden",
                         t.status === "occupied" && "bg-ink text-on-label border-ink", t.status === "reserved" && "border-saffron border-dashed")}>
                       <div className="flex justify-between items-start"><span className="font-display text-2xl">{t.name}</span><span className={cn("text-[11px] flex items-center gap-1", t.status === "occupied" ? "text-white/60" : "text-steel")}><Users size={11} />{t.capacity}</span></div>
                       <div className="mt-auto">
@@ -44,7 +44,8 @@ export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Orde
                       </div>
                       {anyReady && <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-mint pulse-dot text-mint" />}
                     </Link>
-                    {!o && <button onClick={() => start(() => { setTableStatus(t.id, t.status === "reserved" ? "free" : "reserved"); })} disabled={pending} className="mt-1 text-[11px] text-steel hover:text-ink w-full text-center">{t.status === "reserved" ? "Unreserve" : "Reserve"}</button>}
+                    {!o ? <button onClick={() => start(() => { setTableStatus(t.id, t.status === "reserved" ? "free" : "reserved"); })} disabled={pending} className="mt-1 text-[11px] text-steel hover:text-ink w-full text-center">{t.status === "reserved" ? "Unreserve" : "Reserve"}</button>
+                      : <div className="mt-1 text-[11px] invisible select-none" aria-hidden>Reserve</div>}
                   </motion.div>
                 );
               })}

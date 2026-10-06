@@ -63,7 +63,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2"><Hint k="auto" label="Auto" Icon={Zap} /><Hint k="ingredient" label="Vegetable / product" Icon={Boxes} /><Hint k="dish" label="Dish" Icon={UtensilsCrossed} />{propertyType !== "restaurant" && <Hint k="room" label="Room" Icon={BedDouble} />}<Hint k="labour" label="Labour / ID" Icon={HardHat} /></div>
+        <div className="chip-rail"><Hint k="auto" label="Auto" Icon={Zap} /><Hint k="ingredient" label="Vegetable / product" Icon={Boxes} /><Hint k="dish" label="Dish" Icon={UtensilsCrossed} />{propertyType !== "restaurant" && <Hint k="room" label="Room" Icon={BedDouble} />}<Hint k="labour" label="Labour / ID" Icon={HardHat} /></div>
 
         <div className="glass overflow-hidden">
           <div className="relative aspect-[4/3] md:aspect-video bg-ink">

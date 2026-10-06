@@ -31,11 +31,11 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
         <section key={f}><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel mb-3">Floor {f}</div>
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3">
             {rooms.filter((r) => r.floor === f).map((r, i) => { const b = byRoom[r.id]; return (
-              <motion.div key={r.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}>
-                <Link href={b ? `/frontdesk/${b.id}` : "/frontdesk"} className={cn("keycard feather-lift block aspect-[5/4] p-3 flex flex-col", r.status)}>
-                  <div className="flex justify-between items-start"><span className="font-display text-2xl">{r.number}{r.condition && r.status !== "maintenance" && <span title={`Housekeeping: ${r.condition}`} className={cn("inline-block h-2 w-2 rounded-full ml-1.5 align-middle", CONDITION_DOT[r.condition] ?? "bg-steel")} />}</span><span className={cn("text-[10px] font-semibold", r.status === "occupied" ? "text-white/60" : "text-steel")}>{r.room_types?.name}</span></div>
+              <motion.div key={r.id} className="flex flex-col h-full" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}>
+                <Link href={b ? `/frontdesk/${b.id}` : "/frontdesk"} className={cn("keycard feather-lift flex-1 min-h-[7rem] p-3 flex flex-col", r.status)}>
+                  <div className="flex justify-between items-start"><span className="font-display text-2xl">{r.number}{r.condition && r.status !== "maintenance" && <span title={`Housekeeping: ${r.condition}`} className={cn("inline-block h-2 w-2 rounded-full ml-1.5 align-middle", CONDITION_DOT[r.condition] ?? "bg-steel")} />}</span><span className="text-[10px] font-semibold text-[var(--card-muted)] shrink-0 ml-2">{r.room_types?.name}</span></div>
                   <div className="mt-auto text-xs">
-                    {r.status === "occupied" && b ? <><div className="font-semibold truncate">{b.guests?.full_name}</div><div className="num text-white/60">out {b.check_out.slice(5)}</div></>
+                    {r.status === "occupied" && b ? <><div className="font-semibold truncate">{b.guests?.full_name}</div><div className="num text-[var(--card-muted)]">out {b.check_out.slice(5)}</div></>
                       : r.status === "cleaning" ? <span className="flex items-center gap-1 text-ink"><Sparkles size={12} /> cleaning</span>
                       : r.status === "maintenance" ? <span className="flex items-center gap-1 text-chili"><Wrench size={12} /> maintenance</span>
                       : r.status === "reserved" ? <span className="text-champagne font-semibold">arriving</span>
