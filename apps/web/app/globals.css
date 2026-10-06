@@ -384,6 +384,8 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .segmented > button { position: relative; z-index: 1; height: 36px; padding: 0 16px; border-radius: 11px; font-size: 14px; font-weight: 600; color: var(--color-label-2); transition: color var(--dur-fast); }
 .segmented > button[data-on="true"] { color: var(--color-on-label); }
 .segmented .thumb { position: absolute; top: 3px; bottom: 3px; border-radius: 11px; background: var(--color-label); box-shadow: 0 2px 6px rgb(0 0 0 / .4); }
+/* 36px is comfortable with a mouse and small for a thumb; the tabs grow only on a touch screen. */
+@media (pointer: coarse) { .segmented > button { height: 44px; } }
 
 .switch { width: 51px; height: 31px; border-radius: 999px; background: var(--color-fill-2); position: relative; transition: background var(--dur) var(--ease-ios); flex: none; cursor: pointer; }
 .switch[data-on="true"] { background: var(--color-green); }

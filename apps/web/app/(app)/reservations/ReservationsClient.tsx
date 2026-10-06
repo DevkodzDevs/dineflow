@@ -8,12 +8,14 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { useLive } from "@/lib/useLive";
 import { setReservation, addWalkIn, replyReview, draftReviewReply } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
+import { Calendar, type Day } from "./Calendar";
+import { todayIST } from "@/lib/format";
 
 type R = { id: string; reservation_no: number; guest_name: string; guest_phone: string; on_date: string; at_time: string; party_size: number; occasion: string | null; note: string | null; status: string; table_id: string | null; offer_label: string | null; discount_pct: number; source: string; created_at: string };
 type T = { id: string; name: string; capacity: number; status: string };
 type V = { id: string; guest_name: string | null; rating: number; body: string | null; reply: string | null; created_at: string };
 
-export function ReservationsClient({ day, list, tables, reviews, ai = false }: { day: string; list: R[]; tables: T[]; reviews: V[]; ai?: boolean }) {
+export function ReservationsClient({ day, list, tables, reviews, month, ai = false }: { day: string; list: R[]; tables: T[]; reviews: V[]; month: Day[]; ai?: boolean }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [tab, setTab] = useState<"today" | "reviews">("today");
   const [walkIn, setWalkIn] = useState(false); const [seating, setSeating] = useState<R | null>(null);
@@ -39,7 +41,7 @@ export function ReservationsClient({ day, list, tables, reviews, ai = false }: {
           <div className="text-xs text-[var(--color-label-2)] num flex items-center gap-2">#{r.reservation_no} · {r.guest_phone} · {r.source}</div>
           {r.note && <p className="text-xs text-[var(--color-label-2)] mt-1">“{r.note}”</p>}
         </div>
-        <a href={`tel:${r.guest_phone}`} className="h-9 w-9 rounded-full bg-[var(--color-fill)] grid place-items-center shrink-0"><Phone size={15} /></a>
+        <a href={`tel:${r.guest_phone}`} aria-label={`Ring ${r.guest_name}`} className="icon-btn !rounded-full bg-[var(--color-fill)]"><Phone size={15} /></a>
       </div>
       <div className="mt-3 flex gap-2">
         {r.status === "seated" ? <>
@@ -74,12 +76,23 @@ export function ReservationsClient({ day, list, tables, reviews, ai = false }: {
       <Segmented value={tab} onChange={setTab} className="mb-5" options={[{ value: "today", label: "Bookings" }, { value: "reviews", label: `Reviews${reviews.length ? ` · ${reviews.length}` : ""}` }]} />
 
       {tab === "today" ? (
-        list.length === 0 ? <Empty title="No bookings for this day" hint="Guests book from your public page. Switch the storefront on in Settings → Storefront, then share the link." action={<Link href="/settings/storefront"><Button>Set up the storefront</Button></Link>} /> : (
-          <div className="grid gap-4 lg:grid-cols-2">
+        /* The month on the left, the day it opened on the right — the shape the owner asked for,
+           and the one the work follows: pick a day, then deal with the bookings on it. */
+        <div className="grid gap-4 xl:grid-cols-[1.6fr_minmax(0,1fr)] items-start">
+          <Calendar day={day} month={month} today={todayIST()} />
+          <div className="feather p-5 min-w-0">
+            <div className="flex items-baseline justify-between gap-3 mb-4">
+              <h3 className="text-lg">{new Date(day).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</h3>
+              <span className="num text-[11px] text-steel shrink-0">{covers} cover{covers === 1 ? "" : "s"}</span>
+            </div>
+            {list.length === 0 ? <Empty title="No bookings for this day" hint="Guests book from your public page. Switch the storefront on in Settings → Storefront, then share the link." action={<Link href="/settings/storefront"><Button>Set up the storefront</Button></Link>} /> : (
+              <div className="space-y-5">
             <div><div className="eyebrow mb-3">Arriving</div><div className="space-y-3"><AnimatePresence>{upcoming.map((r) => <Row key={r.id} r={r} />)}</AnimatePresence>{upcoming.length === 0 && <p className="text-sm text-[var(--color-label-2)]">Nobody left to arrive.</p>}</div></div>
             <div><div className="eyebrow mb-3">At the table</div><div className="space-y-3"><AnimatePresence>{seated.map((r) => <Row key={r.id} r={r} />)}</AnimatePresence>{seated.length === 0 && <p className="text-sm text-[var(--color-label-2)]">Nobody seated yet.</p>}</div></div>
+              </div>
+            )}
           </div>
-        )
+        </div>
       ) : (
         reviews.length === 0 ? <Empty title="No reviews yet" hint="Guests can leave one after they visit. A reply from you shows publicly under it." /> : (
           <div className="space-y-3">{reviews.map((v) => (
