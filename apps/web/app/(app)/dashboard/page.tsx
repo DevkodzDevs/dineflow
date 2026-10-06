@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { formatINR, todayIST } from "@/lib/format";
 import { Live } from "./Live";
 import { Sun } from "lucide-react";
-import { Overview, type LiveRow, type Money, type Rank, type Tile, type Tx, type Who } from "./Overview";
+import { Overview, type Flap, type LiveRow, type Money, type Rank, type Tile, type Tx, type Who } from "./Overview";
 
 export const metadata = { title: "Control room" };
 export const dynamic = "force-dynamic";
@@ -75,6 +75,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     ? [{ label: "Dining", value: sales, tone: "mint" }, { label: "Rooms tonight", value: roomRevenue, tone: "amber" }, { label: "Online", value: onlineGross, tone: "sky" }]
     : [{ label: "Dining", value: sales - onlineGross > 0 ? sales - onlineGross : sales, tone: "mint" }, { label: "Online", value: onlineGross, tone: "amber" }, { label: "On the floor", value: onFloor, tone: "sky" }];
 
+  /* The three the split-flap tiles carry — the same three the old board showed, because they are
+     the ones worth reading from the pass rather than from a chair. */
+  const flaps: Flap[] = hotel
+    ? [{ value: occ, label: "% full", href: "/rooms", tone: occ >= 80 ? "live" : undefined },
+       { value: open?.length ?? 0, label: "orders", href: "/orders" },
+       { value: kots?.length ?? 0, label: "in kitchen", href: "/kitchen", tone: late ? "alert" : undefined }]
+    : [{ value: `${occupied}/${tables?.length ?? 0}`, label: "tables", href: "/orders" },
+       { value: open?.length ?? 0, label: "orders", href: "/orders" },
+       { value: kots?.length ?? 0, label: "in kitchen", href: "/kitchen", tone: late ? "alert" : undefined }];
+
   /* A helper only so each branch of the ternaries below is typed as it is written: without a
      contextual type the string literals widen and "mint" stops being a Tone. */
   const tile = (t: Tile): Tile => t;
@@ -122,6 +132,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         money={sales + roomRevenue}
         parts={parts}
         tiles={tiles}
+        flaps={flaps}
         dishes={dishes}
         tx={tx}
         staff={rota}

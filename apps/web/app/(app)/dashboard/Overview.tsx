@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Wallet, Users, Timer, BedDouble, Bike, Boxes, ConciergeBell, Sparkles, Flame, ReceiptText } from "lucide-react";
-import { cn } from "@/components/ui";
+import { Flip, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 
 /**
@@ -22,6 +22,9 @@ export type Tile = { icon: IconName; label: string; value: React.ReactNode; sub?
 export type Rank = { name: string; value: number };
 export type Tx = { id: string; no: number; total: number; at: string; method: string | null };
 export type Who = { id: string; name: string; role: string };
+/* The split-flap tiles: the three numbers you can read from across a kitchen. They were the
+   old board's headline and the app is named for them — the new board keeps them. */
+export type Flap = { value: number | string; label: string; href: string; tone?: "live" | "alert" };
 /** A row on the live panel: where it is, how many items, and what it comes to. */
 export type LiveRow = { id: string; where: string; items: number; total: number; href: string };
 export type Tone = "mint" | "amber" | "chili" | "sky" | "plain";
@@ -170,10 +173,10 @@ function Week({ days }: { days: { day: string; value: number }[] }) {
 }
 
 export function Overview({
-  greet, property, owner, money, parts, tiles, dishes, tx, staff, days, floor, rooms, web, onFloor, kitchen,
+  greet, property, owner, money, parts, tiles, flaps, dishes, tx, staff, days, floor, rooms, web, onFloor, kitchen,
 }: {
   greet: string; property: string; owner: string;
-  money: number; parts: Money[]; tiles: Tile[];
+  money: number; parts: Money[]; tiles: Tile[]; flaps: Flap[];
   dishes: Rank[]; tx: Tx[]; staff: Who[]; days: { day: string; value: number }[];
   floor: LiveRow[]; rooms: LiveRow[]; web: LiveRow[]; onFloor: number; kitchen: number;
 }) {
@@ -204,6 +207,16 @@ export function Overview({
       {/* Three columns need about 1280px to breathe; an iPad in landscape is 1194 and was
          dropping all the way to one, which turned the densest screen in the app into a very
          long scroll. Two columns from 1024 keeps the board a board on a tablet. */}
+      {/* The split-flap row, back where it belongs. It reads from the pass, which no stat card
+          does, and it is the one piece of this app that is unmistakably this app. */}
+      <div className="flip-row">
+        {flaps.map((f) => (
+          <Link key={f.label} href={f.href} className="rounded-2xl focus-visible:outline-none">
+            <Flip value={f.value} label={f.label} tone={f.tone} />
+          </Link>
+        ))}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,0.95fr)]">
         {/* ── what needs a person, then where the money came from, then what is selling ── */}
         <div className="space-y-4 min-w-0">
