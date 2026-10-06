@@ -72,38 +72,29 @@ export function Calendar({ day, month, today }: { day: string; month: Day[]; tod
       {/* The grid scrolls sideways rather than squeezing seven columns into a phone: a day cell
           below about 44px wide is unreadable and untappable at once. */}
       <div className="overflow-x-auto [scrollbar-width:none] -mx-1 px-1">
-        <div className="min-w-[620px]">
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2">
+        <div className="min-w-[460px]">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-1.5">
             {WEEK.map((w) => <div key={w} className="text-[11px] font-semibold text-steel text-center">{w}</div>)}
           </div>
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
             {cells.map((c, i) => {
               const isToday = c.date === today, isOpen = c.date === day;
               const covers = c.rows.reduce((t, r) => t + r.party_size, 0);
-              const first = c.rows[0];
               return (
                 <motion.div key={c.date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i, 24) * 0.008 }}>
                   <Link href={`/reservations?date=${c.date}`} aria-current={isOpen ? "date" : undefined}
                     aria-label={`${c.n} — ${c.rows.length} booking${c.rows.length === 1 ? "" : "s"}`}
-                    className={cn("rounded-xl border p-2 min-h-[84px] sm:min-h-[96px] flex flex-col transition-colors",
-                      isOpen ? "bg-[var(--color-label)] text-[var(--color-on-label)] border-[var(--color-label)]"
-                        : isToday ? "bg-[var(--color-green-2)] border-[var(--color-tint)]"
-                        : c.thisMonth ? "bg-[var(--color-bg-3)] border-line hover:border-line-2"
-                        : "bg-transparent border-transparent text-steel hover:bg-[var(--color-fill)]")}>
-                    <div className="flex items-start justify-between gap-1">
-                      <span className={cn("num text-sm font-semibold leading-none", !c.thisMonth && !isOpen && "opacity-45")}>{c.n}</span>
-                      {covers > 0 && <span className={cn("num text-[10px] leading-none mt-0.5", isOpen ? "opacity-70" : "text-steel")}>{covers}p</span>}
-                    </div>
+                    className={cn("relative rounded-xl p-2 min-h-[56px] sm:min-h-[64px] flex flex-col transition-colors",
+                      isOpen ? "bg-[var(--color-label)] text-[var(--color-on-label)] shadow-[0_6px_18px_-8px_rgb(0_0_0/.8)]"
+                        : isToday ? "bg-[var(--color-green-2)] ring-1 ring-inset ring-[var(--color-tint)]/60"
+                        : c.thisMonth ? "bg-[var(--color-bg-3)] hover:bg-[var(--color-fill-2)]"
+                        : "hover:bg-[var(--color-fill)]")}>
+                    <span className={cn("num text-[13px] font-semibold leading-none", !c.thisMonth && !isOpen && "opacity-35")}>{c.n}</span>
                     {c.rows.length > 0 && (
-                      <div className="mt-1.5 flex gap-1">
-                        {c.rows.slice(0, 4).map((r) => <span key={r.id} className={cn("h-1.5 w-1.5 rounded-full", DOT[r.status] ?? "bg-[var(--color-label-3)]")} />)}
-                        {c.rows.length > 4 && <span className={cn("text-[9px] leading-none num", isOpen ? "opacity-70" : "text-steel")}>+{c.rows.length - 4}</span>}
-                      </div>
-                    )}
-                    {first && (
-                      <div className={cn("mt-auto pl-1.5 border-l-2 min-w-0", isOpen ? "border-[var(--color-on-label)]/40" : "border-[var(--color-tint)]")}>
-                        <div className="text-[10px] font-semibold truncate leading-tight">{first.guest_name}</div>
-                        <div className={cn("text-[9px] num leading-tight", isOpen ? "opacity-70" : "text-steel")}>{first.at_time.slice(0, 5)} · {first.party_size}p</div>
+                      <div className="mt-auto flex items-center gap-1">
+                        {c.rows.slice(0, 3).map((r) => <span key={r.id} className={cn("h-1.5 w-1.5 rounded-full shrink-0", DOT[r.status] ?? "bg-[var(--color-label-3)]")} />)}
+                        {c.rows.length > 3 && <span className={cn("text-[9px] leading-none num", isOpen ? "opacity-70" : "text-steel")}>+{c.rows.length - 3}</span>}
+                        <span className={cn("num text-[10px] leading-none ml-auto", isOpen ? "opacity-70" : "text-steel")}>{covers}p</span>
                       </div>
                     )}
                   </Link>

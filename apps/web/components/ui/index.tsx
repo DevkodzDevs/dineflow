@@ -10,7 +10,7 @@ export { snap, glide, settle, flipT, fast, listV, itemV, pageV, sheetV, flipV, p
 import { snap, glide, sheetV } from "@/lib/motion";
 export { Flip, FlipClock, Loader, PageLoader, Countdown, Waiting, reducedMotion } from "./flip";
 export { PasswordInput } from "./PasswordInput";
-import { Loader } from "./flip";
+import { Flip, Loader } from "./flip";
 /** A hairline at the very top that fills while the next page is on its way, then vanishes. */
 export function NavProgress() {
   const path = usePathname(); const [on, setOn] = useState(false);
@@ -107,13 +107,23 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
   );
 }
 
+/** Four characters is two flaps plus a sign — beyond that a flip row stops fitting in a card. */
+const flappable = (v: string) => v.length <= 4 && /^[0-9]+([%/][0-9]*)?$/.test(v);
+
 export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string; value: string; sub?: string; tone?: "alert" | "good"; delay?: number }) {
   return (
     <Reveal delay={delay}>
       <div onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`); e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`); }}
         className={cn("card spotlight feather-lift p-5 h-full relative", tone === "alert" && "!border-[var(--color-red)]/40", tone === "good" && "!border-[var(--color-green)]/50")}>
         <div className="flex items-center gap-1.5"><span className={cn("h-1.5 w-1.5 rounded-full", tone === "alert" ? "bg-[var(--color-red)] pulse-dot text-[var(--color-red)]" : tone === "good" ? "bg-[var(--color-green)]" : "bg-[var(--color-fill-2)]")} /><div className="eyebrow">{label}</div></div>
-        <div className="mt-2.5 text-[34px] leading-none font-display num count-up" style={{ fontVariationSettings: '"opsz" 72' }}>{value}</div>
+        {/* A short count gets the split-flap treatment this whole design is named for — it is the
+            same tile the control room and the kitchen use, so a number means the same thing on
+            every screen. Money does not: "₹8,85,154.72" is twelve flaps and no card is that wide,
+            so a figure stays a figure. The rule is the length, and it is deliberate rather than
+            accidental — flaps count things, the display numeral states amounts. */}
+        {flappable(value)
+          ? <div className="mt-2"><Flip value={value} size="sm" /></div>
+          : <div className="mt-2.5 text-[34px] leading-none font-display num count-up" style={{ fontVariationSettings: '"opsz" 72' }}>{value}</div>}
         {sub && <div className={cn("mt-1.5 text-xs", tone === "alert" ? "text-[var(--color-red)]" : "text-[var(--color-label-2)]")}>{sub}</div>}
       </div>
     </Reveal>
