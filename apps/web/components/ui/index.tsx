@@ -97,7 +97,7 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
             <div className="sm:hidden grabber" />
             <div className="flex items-center justify-between px-5 pt-3 pb-3 sm:pt-5">
               <h2 className="text-[22px] font-display">{title}</h2>
-              <button onClick={onClose} aria-label="Close" className="h-8 w-8 rounded-full bg-[var(--color-fill)] grid place-items-center text-[var(--color-label-2)] hover:bg-[var(--color-fill-2)] active:scale-95 transition"><X size={16} strokeWidth={2.5} /></button>
+              <button onClick={onClose} aria-label="Close" className="sheet-close h-8 w-8 rounded-full bg-[var(--color-fill)] grid place-items-center text-[var(--color-label-2)] hover:bg-[var(--color-fill-2)] active:scale-95 transition"><X size={16} strokeWidth={2.5} /></button>
             </div>
             <div className="px-5 pb-[max(20px,env(safe-area-inset-bottom))] overflow-y-auto">{children}</div>
           </motion.div>

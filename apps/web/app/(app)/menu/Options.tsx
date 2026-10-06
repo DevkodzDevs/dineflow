@@ -23,12 +23,12 @@ export function OptionsEditor({ itemId, itemName, variants, groups, linked, onDo
         {rows.length === 0 && <p className="text-sm text-steel mb-2">Sold in one size, at the dish&apos;s price.</p>}
         <div className="space-y-2">
           {rows.map((r, i) => (
-            <div key={i} className="grid grid-cols-[1fr_100px_36px_36px] gap-2 items-center">
-              <input value={r.name} onChange={(e) => set(i, { name: e.target.value })} placeholder="Half" />
-              <input type="number" min={0} step="0.01" className="num" value={r.price || ""} onChange={(e) => set(i, { price: Number(e.target.value) })} placeholder="₹" />
+            <div key={i} className="flex flex-wrap items-center gap-2">
+              <input className="flex-1 min-w-[9rem]" value={r.name} onChange={(e) => set(i, { name: e.target.value })} placeholder="Half" />
+              <input type="number" min={0} step="0.01" className="num !w-[6.5rem]" value={r.price || ""} onChange={(e) => set(i, { price: Number(e.target.value) })} placeholder="₹" />
               <button type="button" title="The size taken when nobody chooses" aria-pressed={r.is_default} onClick={() => setRows(rows.map((x, j) => ({ ...x, is_default: j === i })))}
-                className={cn("h-9 w-9 rounded-lg border grid place-items-center", r.is_default ? "bg-ink text-on-label border-ink" : "border-line text-steel")}><Check size={14} /></button>
-              <button type="button" onClick={() => setRows(rows.filter((_, j) => j !== i))} className="text-steel hover:text-chili" aria-label="Remove"><Trash2 size={15} /></button>
+                className={cn("icon-btn border", r.is_default ? "bg-ink text-on-label border-ink" : "border-line")}><Check size={14} /></button>
+              <button type="button" onClick={() => setRows(rows.filter((_, j) => j !== i))} className="icon-btn icon-btn-danger" aria-label="Remove"><Trash2 size={15} /></button>
             </div>
           ))}
         </div>
@@ -73,13 +73,18 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
           </button>
           {open === g.id && (
             <div className="px-4 pb-4 space-y-3">
-              <form className="grid grid-cols-[1fr_72px_72px_auto_auto] gap-2 items-end" action={(fd) => start(async () => { const r = await saveAddonGroup(fd); if (r && "error" in r) toast(r.error!, "err"); })}>
+              {/* Wrapping flex, not fixed pixel columns: on a tablet the 72px boxes stayed 72px and
+                  squeezed the name instead. The "0 = any" note moved to its own line below — as the
+                  only field with a hint it was taller than its neighbours, and `items-end` aligned
+                  the bottoms, which lifted the Max label clear of the Min label beside it. */}
+              <form className="flex flex-wrap items-end gap-2" action={(fd) => start(async () => { const r = await saveAddonGroup(fd); if (r && "error" in r) toast(r.error!, "err"); })}>
                 <input type="hidden" name="id" value={g.id} />
-                <Field label="Name"><input name="name" defaultValue={g.name} /></Field>
-                <Field label="Min"><input name="min_select" type="number" min={0} className="num" defaultValue={g.min_select} /></Field>
-                <Field label="Max" hint="0 = any"><input name="max_select" type="number" min={0} className="num" defaultValue={g.max_select} /></Field>
+                <div className="flex-1 min-w-[10rem]"><Field label="Name"><input name="name" defaultValue={g.name} /></Field></div>
+                <div className="w-[5.5rem]"><Field label="Min"><input name="min_select" type="number" min={0} className="num" defaultValue={g.min_select} /></Field></div>
+                <div className="w-[5.5rem]"><Field label="Max"><input name="max_select" type="number" min={0} className="num" defaultValue={g.max_select} /></Field></div>
                 <Button size="sm" disabled={pending}>Save</Button>
                 <Button type="button" size="sm" variant="danger" disabled={pending} aria-label="Delete group" onClick={() => { if (confirm(`Delete "${g.name}" and its add-ons?`)) start(async () => { await deleteAddonGroup(g.id); }); }}><Trash2 size={14} /></Button>
+                <p className="w-full text-[11px] text-steel">Max 0 means any number.</p>
               </form>
               <div className="divide-y divide-line rounded-xl border border-line">
                 {g.addons.map((a) => (
@@ -87,28 +92,28 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
                     <span className={cn("flex-1 min-w-0 truncate", !a.is_available && "line-through text-steel")}>{a.name}{a.ingredient_id && ingOf(a.ingredient_id) && <span className="text-[11px] text-steel"> · draws {a.ingredient_qty} {ingOf(a.ingredient_id)!.unit} {ingOf(a.ingredient_id)!.name}</span>}</span>
                     <span className="num text-steel shrink-0">{Number(a.price) > 0 ? `+${formatINR(Number(a.price))}` : "free"}</span>
                     <label className="flex items-center gap-1 text-[11px] text-steel shrink-0" title="Untick when it has run out for the day"><input type="checkbox" className="accent-saffron" checked={a.is_available} onChange={(e) => start(() => { toggleAddon(a.id, e.target.checked); })} /> today</label>
-                    <button type="button" className="text-steel hover:text-chili shrink-0" onClick={() => start(async () => { await deleteAddon(a.id); })} aria-label="Remove"><Trash2 size={14} /></button>
+                    <button type="button" className="icon-btn icon-btn-danger" onClick={() => start(async () => { await deleteAddon(a.id); })} aria-label="Remove"><Trash2 size={14} /></button>
                   </div>
                 ))}
                 {g.addons.length === 0 && <p className="px-3 py-2 text-xs text-steel">No add-ons in this group yet.</p>}
               </div>
               <form className="rounded-xl bg-[var(--color-fill)] p-3 space-y-2" action={(fd) => start(async () => { const r = await saveAddon(fd); if (r && "error" in r) toast(r.error!, "err"); })}>
                 <input type="hidden" name="group_id" value={g.id} />
-                <div className="grid grid-cols-[1fr_90px_auto] gap-2 items-end">
-                  <Field label="New add-on"><input name="name" placeholder="Extra cheese" required /></Field>
-                  <Field label="Price"><input name="price" type="number" min={0} step="0.01" className="num" placeholder="0" /></Field>
-                  <label className="flex items-center gap-1.5 h-10 text-xs normal-case tracking-normal"><input type="checkbox" name="is_veg" defaultChecked className="accent-saffron" /> veg</label>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="flex-1 min-w-[11rem]"><Field label="New add-on"><input name="name" placeholder="Extra cheese" required /></Field></div>
+                  <div className="w-[6.5rem]"><Field label="Price"><input name="price" type="number" min={0} step="0.01" className="num" placeholder="0" /></Field></div>
+                  <label className="flex items-center gap-1.5 h-10 px-1 text-xs normal-case tracking-normal shrink-0"><input type="checkbox" name="is_veg" defaultChecked className="accent-saffron" /> veg</label>
                 </div>
-                <div className="grid grid-cols-[1fr_90px_auto] gap-2 items-end">
-                  <Field label="Draws from the pantry" hint="optional"><select name="ingredient_id" defaultValue=""><option value="">— nothing —</option>{ingredients.map((i) => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></Field>
-                  <Field label="Qty"><input name="ingredient_qty" type="number" min={0} step="0.001" className="num" placeholder="0.03" /></Field>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="flex-1 min-w-[12rem]"><Field label="Draws from the pantry"><select name="ingredient_id" defaultValue=""><option value="">— nothing —</option>{ingredients.map((i) => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></Field></div>
+                  <div className="w-[6.5rem]"><Field label="Qty"><input name="ingredient_qty" type="number" min={0} step="0.001" className="num" placeholder="0.03" /></Field></div>
                   <Button size="sm" disabled={pending}><Plus size={14} /> Add</Button>
                 </div>
               </form>
               {categories.length > 0 && (
-                <div className="flex items-center gap-2 text-xs text-steel">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-steel">
                   <span>Offer this on every dish in</span>
-                  <select className="!h-8 !py-0 !w-44 text-xs" defaultValue="" onChange={(e) => { const cid = e.target.value; if (!cid) return; e.target.value = ""; start(async () => { const r = await addGroupToCategory(cid, g.id); if ("error" in r) toast(r.error!, "err"); else toast(`Added to ${r.dishes} dish${r.dishes === 1 ? "" : "es"}`); }); }}>
+                  <select className="!h-9 !py-0 min-w-[12rem] text-xs" defaultValue="" onChange={(e) => { const cid = e.target.value; if (!cid) return; e.target.value = ""; start(async () => { const r = await addGroupToCategory(cid, g.id); if ("error" in r) toast(r.error!, "err"); else toast(`Added to ${r.dishes} dish${r.dishes === 1 ? "" : "es"}`); }); }}>
                     <option value="">choose a category</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
@@ -120,10 +125,10 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
       <form className="rounded-xl bg-[var(--color-fill)] p-4" action={(fd) => start(async () => { const r = await saveAddonGroup(fd); if (r && "error" in r) toast(r.error!, "err"); })}>
         <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">New group</div>
         <input type="hidden" name="sort_order" value={groups.length + 1} />
-        <div className="grid grid-cols-[1fr_72px_72px_auto] gap-2 items-end">
-          <Field label="Name"><input name="name" placeholder="Choose your bread" required /></Field>
-          <Field label="Min"><input name="min_select" type="number" min={0} className="num" defaultValue={0} /></Field>
-          <Field label="Max" hint="1 = pick one"><input name="max_select" type="number" min={0} className="num" defaultValue={0} /></Field>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-[11rem]"><Field label="Name"><input name="name" placeholder="Choose your bread" required /></Field></div>
+          <div className="w-[5.5rem]"><Field label="Min"><input name="min_select" type="number" min={0} className="num" defaultValue={0} /></Field></div>
+          <div className="w-[5.5rem]"><Field label="Max"><input name="max_select" type="number" min={0} className="num" defaultValue={0} /></Field></div>
           <Button disabled={pending} aria-label="Add group"><Plus size={16} /></Button>
         </div>
         <p className="text-[11px] text-steel mt-2">Min 1 · Max 1 is a required pick-one (&ldquo;Choose your bread&rdquo;). Min 0 · Max 0 is any number of optional extras.</p>
@@ -138,10 +143,10 @@ export function ComboParts({ items, rows, onChange }: { items: { id: string; nam
     <div className="rounded-xl bg-[var(--color-fill)] p-3 space-y-2">
       <div className="text-[11px] text-steel">The kitchen ticket lists these, and the pantry draws each part&apos;s recipe. The combo is sold at the price above.</div>
       {rows.map((r, i) => (
-        <div key={i} className="grid grid-cols-[1fr_72px_32px] gap-2 items-center">
+        <div key={i} className="flex flex-wrap items-center gap-2">
           <select value={r.menu_item_id} onChange={(e) => onChange(rows.map((x, j) => (j === i ? { ...x, menu_item_id: e.target.value } : x)))}><option value="">Choose a dish</option>{items.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
           <input type="number" min={1} className="num" value={r.qty || ""} onChange={(e) => onChange(rows.map((x, j) => (j === i ? { ...x, qty: Number(e.target.value) } : x)))} />
-          <button type="button" className="text-steel hover:text-chili" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label="Remove"><Trash2 size={14} /></button>
+          <button type="button" className="icon-btn icon-btn-danger" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label="Remove"><Trash2 size={14} /></button>
         </div>
       ))}
       <Button type="button" variant="outline" size="sm" onClick={() => onChange([...rows, { menu_item_id: "", qty: 1 }])}><Plus size={14} /> Part</Button>
