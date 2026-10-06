@@ -173,6 +173,12 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .flip-pin { position: absolute; top: 50%; width: 6px; height: calc(var(--tile) * .24); margin-top: calc(var(--tile) * -.12); border-radius: 3px; background: linear-gradient(180deg, #3a3b45, #1a1b22); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), 0 0 0 2px #0a0a0d; z-index: 2; }
 .flip-pin.left { left: -2px; } .flip-pin.right { right: -2px; }
 .flip.sm { --tile: 56px; --fw: .72em; border-width: 2px; } .flip.xs { --tile: 40px; --fw: .70em; border-width: 2px; font-weight: 500; }
+/* A stat card's tile. The inline .sm is sized to sit beside a line of text; on a card the number
+   is the whole point of it, so it gets a bigger plate — still short of the .md board tile, which
+   is sized to be read from across a room. The card has the height to spare: at .sm the tile used
+   about a third of a 164px card and the rest was air. */
+.flip-stat .flip { --tile: 72px; }
+@media (max-width: 520px) { .flip-stat .flip { --tile: 62px; } }
 .flip.live { color: #4cd964; } .flip.alert { color: #ff453a; }
 .flip-label { font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-label-2); text-align: center; margin-top: 12px; font-weight: 500; }
 .flip-row { display: flex; gap: clamp(10px, 2.4vw, 24px); align-items: flex-start; justify-content: flex-start; flex-wrap: wrap; }
@@ -455,6 +461,39 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .keycard::after { content: none; }
 .keycard.occupied { background: var(--color-label); color: var(--color-on-label); border-color: var(--color-label); --card-muted: rgb(10 10 13 / .62); }
 .keycard.cleaning { background: var(--color-blue-2); } .keycard.maintenance { background: var(--color-red-2); } .keycard.reserved { border-style: dashed; border-color: var(--color-champagne); }
+
+/* ═══ THE MONTH GRID ════════════════════════════════════════════════════
+   One ruled block, not forty-two floating pills. The cells are separated by a hairline the grid
+   gap draws for them — a 1px gap over a separator-coloured ground — so a filled day is a crisp
+   rectangle instead of the rounded blob a 28px radius made of it, and the month reads as a month.
+   ═══════════════════════════════════════════════════════════════════════ */
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px;
+  background: var(--color-separator); border: 1px solid var(--color-separator);
+  border-radius: var(--radius-md); overflow: hidden; }
+.cal-cell { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 6px 7px;
+  min-height: 58px; background: var(--color-bg-2); color: inherit;
+  transition: background var(--dur-fast) var(--ease-out); }
+@media (min-width: 640px) { .cal-cell { min-height: 74px; padding: 8px 9px; } }
+.cal-cell:hover { background: var(--color-fill); }
+/* the weekend reads as the weekend without a word for it — the shape of a hotel's week */
+.cal-cell.wknd { background: color-mix(in srgb, var(--color-bg-3) 85%, var(--color-bg-2)); }
+.cal-cell.wknd:hover { background: var(--color-bg-3); }
+.cal-cell.off { background: color-mix(in srgb, var(--color-bg) 55%, var(--color-bg-2)); }
+.cal-cell.on { background: var(--color-label); color: var(--color-on-label); }
+.cal-cell.on:hover { background: var(--color-label); }
+/* today's numeral wears the ring every calendar gives it, selected or not */
+.cal-num { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px;
+  border-radius: 999px; font-size: 13px; font-weight: 600; line-height: 1; }
+@media (min-width: 640px) { .cal-num { min-width: 24px; height: 24px; font-size: 14px; } }
+.cal-num.today { background: var(--color-tint); color: var(--color-on-tint); }
+/* the nav cluster: one pill, three cells, a finger's worth of height on a touch screen */
+.cal-nav { display: flex; align-items: center; flex-shrink: 0; border-radius: 999px; overflow: hidden;
+  border: .5px solid var(--color-separator); background: var(--color-bg-2); }
+.cal-nav > * { display: grid; place-items: center; height: 38px; min-width: 42px; color: var(--color-label-2);
+  transition: background var(--dur-fast), color var(--dur-fast); }
+.cal-nav > * + * { border-left: .5px solid var(--color-separator); }
+.cal-nav > *:hover { background: var(--color-fill); color: var(--color-label); }
+@media (pointer: coarse) { .cal-nav > * { height: 44px; min-width: 46px; } }
 .ticket-rail { border-left: 2px dashed var(--color-line-2); }
 ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: var(--color-fill-2); border-radius: 10px; border: 3px solid var(--color-bg); }
 
@@ -474,6 +513,12 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .toolbar-group { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto;
   overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
 .toolbar-group::-webkit-scrollbar { display: none; }
+/* A chip sheared off mid-word at the clip edge looks like a bug; faded out it looks like a track
+   with more on it. Only the filter rail, never the actions — and never a group holding a field,
+   where the right end of an input would fade instead of a chip. */
+.toolbar-group:not(.toolbar-end):not(:has(input)):not(:has(select)), .chip-rail {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); }
 /* The same single-row scrolling track, for chip groups that are not in a toolbar. */
 .chip-rail { display: flex; align-items: center; gap: 8px; min-width: 0;
   overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding-bottom: 2px; }
@@ -487,6 +532,9 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
   /* the chips still scroll; it is the actions that get a line each, so no label is ever clipped */
   .toolbar-end { margin-left: 0; justify-content: flex-start; flex-wrap: wrap; }
   .toolbar-end > .btn { flex: 1 1 100%; }
+  /* …except the quiet ones, which pair up. Three stacked full-width buttons put 150px of chrome
+     above the content on a phone; the one that does the thing keeps its own line. */
+  .toolbar-end:has(> .btn-gray + .btn-gray) > .btn-gray { flex: 1 1 calc(50% - 4px); }
   .toolbar-group > .relative, .toolbar-group input, .toolbar-group > select { width: 100%; flex: 1 1 100%; }
 }
 /* every control in a toolbar shares one height, so nothing sits a few pixels proud of its neighbour */

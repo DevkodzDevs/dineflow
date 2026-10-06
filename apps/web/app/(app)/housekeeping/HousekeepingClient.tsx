@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star } from "lucide-react";
 import { useLive } from "@/lib/useLive";
@@ -14,11 +14,11 @@ type Stay = { room_id: string; check_out: string; guests: { full_name: string; v
 type Done = { id: string; kind: string; done_at: string; rooms: { number: string } | null };
 
 /** The colours housekeeping boards have used for decades: red dirty, amber cleaned-not-yet-inspected, green inspected, blue pickup. */
-const COND: Record<Condition, { label: string; chip: string; card: string }> = {
-  dirty:     { label: "Dirty",     chip: "bg-chili-2 text-chili",                                card: "!border-chili/50" },
-  clean:     { label: "Clean",     chip: "bg-[rgb(255_179_64/.18)] text-[var(--color-orange)]",  card: "!border-saffron/60" },
-  inspected: { label: "Inspected", chip: "bg-[var(--color-green-2)] text-[var(--color-tint)]",   card: "!border-mint/60" },
-  pickup:    { label: "Pickup",    chip: "bg-sky-2 text-ink",                                     card: "!border-sky/60" },
+const COND: Record<Condition, { label: string; chip: string; rail: string }> = {
+  dirty:     { label: "Dirty",     chip: "bg-chili-2 text-chili",                                rail: "bg-[var(--color-red)]" },
+  clean:     { label: "Clean",     chip: "bg-[rgb(255_179_64/.18)] text-[var(--color-orange)]",  rail: "bg-[var(--color-orange)]" },
+  inspected: { label: "Inspected", chip: "bg-[var(--color-green-2)] text-[var(--color-tint)]",   rail: "bg-[var(--color-tint)]" },
+  pickup:    { label: "Pickup",    chip: "bg-sky-2 text-[var(--color-blue)]",                    rail: "bg-[var(--color-blue)]" },
 };
 const KIND: Record<string, string> = { clean: "Clean", stayover: "Stayover service", turndown: "Turndown", pickup: "Pickup / touch-up", maintenance: "Maintenance" };
 
@@ -83,26 +83,58 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             {rooms.filter((r) => r.floor === fl).map((r) => {
               const s = byRoom[r.id]; const out = r.status === "maintenance"; const c = COND[r.condition] ?? COND.clean;
               const sellable = r.condition === "inspected" || (r.condition === "clean" && !inspectRule);
+              const waiting = !out && r.condition === "clean" && !canInspect && inspectRule;
+              /* Every state puts its buttons through the same grid, so a board of thirty rooms is
+                 one shape repeated rather than four. One action fills the row; three put the one
+                 you will press on top. They were a wrapping flex row of four different variants —
+                 a near-white "Pass" shouting from every card and a ghost "Dirty" that looked like
+                 a stray caption, often on a second line of its own. */
+              const acts: { key: string; label: string; icon?: ReactNode; variant: "tinted" | "outline"; muted?: boolean; red?: boolean; run: () => void }[] = [];
+              if (!out) {
+                if (r.condition === "dirty") acts.push({ key: "clean", label: "Cleaned", icon: <Sparkles size={13} />, variant: "tinted", run: () => act(() => setCondition(r.id, "clean")) });
+                if (r.condition === "pickup") acts.push({ key: "touch", label: "Touched up", icon: <Sparkles size={13} />, variant: "tinted", run: () => act(() => setCondition(r.id, "clean")) });
+                if (r.condition === "clean" && canInspect) {
+                  acts.push({ key: "pass", label: "Pass", icon: <ShieldCheck size={13} />, variant: "tinted", run: () => act(() => inspectRoom(r.id, true)) });
+                  /* outline, not the red fill: a failed inspection is rare, and a board of thirty
+                     rooms offering it in filled red reads as thirty problems */
+                  acts.push({ key: "fail", label: "Fail", icon: <ShieldX size={13} />, variant: "outline", red: true, run: () => fail(r) });
+                }
+                if (sellable && s) acts.push({ key: "pickup", label: "Pickup", variant: "outline", run: () => act(() => setCondition(r.id, "pickup")) });
+                /* not the tint: a green "Dirty" reads as approval, which is the opposite of what it does */
+                if (r.condition !== "dirty") acts.push({ key: "dirty", label: "Dirty", variant: "outline", muted: true, run: () => act(() => setCondition(r.id, "dirty")) });
+              }
+              const lead = acts.length > 1 && acts.length % 2 === 1;
               return (
-                <div key={r.id} className={cn("feather p-3 flex flex-col gap-2 border", out ? "!border-chili/40 opacity-70" : c.card)}>
+                <div key={r.id} className={cn("feather relative overflow-hidden p-3 pl-4 flex flex-col gap-1.5", out && "opacity-75")}>
+                  {/* the condition as a rail down the edge. A .5px tinted border at 60% was all but
+                      invisible on graphite, and "clean" borrowed --color-saffron, which this theme
+                      aliases to the tint — so a whole board of amber "Clean" pills sat in green
+                      frames, indistinguishable from the inspected rooms beside them. */}
+                  <span className={cn("absolute inset-y-0 left-0 w-[3px]", out ? "bg-[var(--color-red)]" : c.rail)} aria-hidden />
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-display text-2xl leading-none">{r.number}</span>
-                    <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-semibold", out ? "bg-chili-2 text-chili" : c.chip)}>{out ? "Out of order" : c.label}</span>
+                    <span className="font-display text-[26px] leading-none">{r.number}</span>
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-semibold shrink-0", out ? "bg-chili-2 text-chili" : c.chip)}>{out ? "Out of order" : c.label}</span>
                   </div>
-                  <div className="text-xs text-steel min-h-[2.6em]">
-                    {s ? <><span className="font-semibold text-[var(--color-label)] flex items-center gap-1">{s.guests?.vip && <Star size={11} className="text-champagne fill-current" />}{s.guests?.full_name}</span><span className="num">out {s.check_out.slice(5)}{s.check_out <= today ? " · due out" : ""}</span></>
-                      : <span className="capitalize">{r.status === "available" ? "Vacant" : r.status}</span>}
-                    <div className="num opacity-70">{c.label.toLowerCase()} {fmtSince(r.condition_at)} ago</div>
+                  <div className="text-xs min-h-[2.4em]">
+                    {s ? <>
+                      <div className="font-semibold flex items-center gap-1"><span className="truncate">{s.guests?.full_name}</span>{s.guests?.vip && <Star size={11} className="text-champagne fill-current shrink-0" />}</div>
+                      <div className="num text-steel">out {s.check_out.slice(5)}{s.check_out <= today ? " · due out" : ""}</div>
+                    </> : <div className="text-steel capitalize">{r.status === "available" ? "Vacant" : r.status}</div>}
                   </div>
-                  {!out && (
-                    <div className="flex flex-wrap gap-1.5 mt-auto">
-                      {r.condition === "dirty" && <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => act(() => setCondition(r.id, "clean"))}><Sparkles size={13} /> Cleaned</Button>}
-                      {r.condition === "pickup" && <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => act(() => setCondition(r.id, "clean"))}><Sparkles size={13} /> Touched up</Button>}
-                      {r.condition === "clean" && canInspect && <><Button size="sm" variant="ink" className="flex-1" disabled={pending} onClick={() => act(() => inspectRoom(r.id, true))}><ShieldCheck size={13} /> Pass</Button><Button size="sm" variant="outline" disabled={pending} onClick={() => fail(r)}><ShieldX size={13} /> Fail</Button></>}
-                      {r.condition === "clean" && !canInspect && inspectRule && <span className="text-[11px] text-steel self-center">awaiting inspection</span>}
-                      {sellable && s && <Button size="sm" variant="ghost" disabled={pending} onClick={() => act(() => setCondition(r.id, "pickup"))}>Pickup</Button>}
-                      {/* not the tint: a green "Dirty" reads as approval, which is the opposite of what it does */}
-                      {r.condition !== "dirty" && <Button size="sm" variant="ghost" className="!text-steel" disabled={pending} onClick={() => act(() => setCondition(r.id, "dirty"))}>Dirty</Button>}
+                  {/* the since-line belongs to the room's state, so it stays with it; the slack a
+                      stretched grid row leaves falls below, where the rule explains it */}
+                  <div className="num text-[11px] text-[var(--color-label-3)]">{c.label.toLowerCase()} {fmtSince(r.condition_at)} ago</div>
+                  {(waiting || acts.length > 0) && (
+                    <div className="mt-auto pt-2.5 border-t border-line space-y-1.5">
+                      {waiting && <div className="text-[11px] text-steel">Awaiting a supervisor's sign-off</div>}
+                      {acts.length > 0 && (
+                        <div className={cn("grid gap-1.5", acts.length > 1 && "grid-cols-2")}>
+                          {acts.map((a, i) => (
+                            <Button key={a.key} size="sm" variant={a.variant} disabled={pending} onClick={a.run}
+                              className={cn("w-full !px-2", lead && i === 0 && "col-span-2", a.muted && "!text-steel", a.red && "!text-[var(--color-red)]")}>{a.icon}{a.label}</Button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

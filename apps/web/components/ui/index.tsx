@@ -122,8 +122,11 @@ export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string
             so a figure stays a figure. The rule is the length, and it is deliberate rather than
             accidental — flaps count things, the display numeral states amounts. */}
         {flappable(value)
-          ? <div className="mt-2"><Flip value={value} size="sm" /></div>
-          : <div className="mt-2.5 text-[34px] leading-none font-display num count-up" style={{ fontVariationSettings: '"opsz" 72' }}>{value}</div>}
+          ? <div className="mt-2.5 flip-stat"><Flip value={value} size="sm" /></div>
+          /* the same band a tile occupies, so a row of cards lines up whether its numbers are
+             counted or priced — the figure stays smaller than the flaps on purpose, but it should
+             not also sit at a different height */
+          : <div className="mt-2.5 flex items-center min-h-[62px] sm:min-h-[72px] text-[34px] leading-none font-display num count-up" style={{ fontVariationSettings: '"opsz" 72' }}>{value}</div>}
         {sub && <div className={cn("mt-1.5 text-xs", tone === "alert" ? "text-[var(--color-red)]" : "text-[var(--color-label-2)]")}>{sub}</div>}
       </div>
     </Reveal>
