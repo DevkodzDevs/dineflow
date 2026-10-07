@@ -74,6 +74,32 @@ environment (`/tmp/node_modules/...`, `/home/claude/dineflow/supabase/migrations
 migration into an in-memory PGlite instance, which is a genuinely useful check — but it needs its
 paths fixed first. Do not cite it as a passing gate until it does.
 
+## Two sessions on one machine — measured 2026-10-07/08
+
+Two Claude sessions worked the same request at once without knowing it, and four kinds of shared
+state turned good code into failing numbers. Run `ListAgents` before you measure or build; if a
+peer is busy, message it and agree who owns which files and who runs the build.
+
+- **`apps/web/.next` has one owner.** A `next build` and a `next dev` writing it at once gave
+  `ENOENT …_buildManifest.js.tmp.*` in the dev log, `PageNotFoundError: Cannot find module for
+  page` during *Collecting page data*, and a 15-minute build with no `BUILD_ID`. The same tree,
+  same command, alone: green in 1m04s. Take the dev server down before anyone builds — and
+  remember `Start-DineFlow.bat → launcher.mjs local` builds too, so the owner can be the third
+  writer.
+- **The master account's acting-as state is shared.** `admin_act_as` / `admin_stop_acting` from
+  either session stomps the other, and a suite then measures `/admin` and reports nonsense —
+  "gauge false", "no toolbar", `0 passed · 0 failed`. Re-assert `admin_act_as` immediately
+  before every `Page.navigate`.
+- **Port 3141 is shared.** Five Chrome suites against one dev server produced
+  `8 passed · 2 failed`; the same suite alone passed 21/21. Run suites one at a time when a
+  number looks wrong.
+- **A build is verified by its artefacts, not a piped exit code.** `tail` reports its own
+  status, not turbo's. Read `apps/web/.next/BUILD_ID` plus `prerender-manifest.json` and
+  `routes-manifest.json`, and only trust them if nothing has started a dev server since — a
+  dev start rewrites `.next` and removes `BUILD_ID`.
+- **Commit by explicit path**, never `git add -A`, while a peer has uncommitted work in the
+  tree; check `git diff --stat HEAD` for files you did not touch first.
+
 ## Devices and properties
 
 Test data lives in five properties: `Mass` (hotel), `Tan Resort` (resort), `manoooo` (hotel),
