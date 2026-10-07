@@ -88,6 +88,20 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 - **`.flip`'s `--tile` is a height.** The width follows from the character count, so a three-card
   tile (`6/12`) is half again as wide as a two-card one. That overran a 412px phone by 9px until the
   `@media (max-width: 480px)` rules started sizing the row for its widest tile.
+- **The housing hugs its cards; it does not host them.** Letting a captionless tile stretch to the
+  card put 86px of flaps in a 226px plate — 38% covered — and looked like an empty tray. That is
+  exactly the "bare face" the `.6` min-width floor on `.flip` exists to prevent; the comment there
+  says so. Do not try it again.
+- **A board tile is not a card tile.** `.flip`'s housing starts at `#1c1d24`, which *is*
+  `--color-bg-2`, so on a card its top edge is invisible and the 3px near-black border reads as a
+  hole punched in the card. `.flip-stat` overrides the housing, the flap halves and the pins for
+  card use. On the graphite wall the original is right — leave it alone there.
+- **Container queries: write the at-rule, not the variant.** Tailwind v4 did not generate
+  `@[15rem]:` (that is the v3 plugin syntax) and did not generate `@min-[15rem]:` either. The plain
+  `@container (min-width: …)` block in this file works. The `@container` *utility* does apply
+  `container-type: inline-size` correctly.
+- **A container query measures the content box.** A 268px card with `p-5` is a 228px container, so
+  a `15rem` (240px) threshold never fires on it. Subtract the padding when you pick the number.
 
 ## Verify
 

@@ -123,32 +123,40 @@ export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string
   return (
     <Reveal delay={delay}>
       <div onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`); e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`); }}
-        className={cn("card spotlight feather-lift p-5 h-full relative flex flex-col", tone === "alert" && "!border-[var(--color-red)]/40", tone === "good" && "!border-[var(--color-green)]/50")}>
-        <div className="flex items-center gap-1.5">
-          {/* only when it is saying something. A plain tile carried a dot at 12% white — a grey
-              mark beside every label on fourteen screens, signalling nothing. */}
-          {tone && <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", tone === "alert" ? "bg-[var(--color-red)] pulse-dot text-[var(--color-red)]" : "bg-[var(--color-green)]")} />}
-          <div className="eyebrow">{label}</div>
-        </div>
-        {/* A short count gets the split-flap treatment this whole design is named for — it is the
-            same tile the control room and the kitchen use, so a number means the same thing on
-            every screen. Money does not: "₹8,85,154.72" is twelve flaps and no card is that wide,
-            so a figure stays a figure. The rule is the length, and it is deliberate rather than
-            accidental — flaps count things, the display numeral states amounts.
+        className={cn("card spotlight feather-lift p-5 h-full relative @container", tone === "alert" && "!border-[var(--color-red)]/40", tone === "good" && "!border-[var(--color-green)]/50")}>
+        {/* The number takes the left of the card and its words take the right. Stacked — the label
+            on its own line above a number with 148px of bare card beside it — three quarters of
+            every captionless card was empty, and most stat rows in this app carry no caption at
+            all. Side by side, a card is full whether it has a caption or not, and a flap tile and
+            a figure come out the same shape.
 
-            The caption is the number's unit, so it stands beside it rather than under it: a flap
-            tile used 30% of a 268px card and left 148px of it dead, while the figure beside it
-            used 84%. One flex-wrap rule serves both without branching on the kind of value — the
-            caption keeps a 7rem basis, so it sits alongside a narrow number and drops underneath a
-            wide one, and underneath on a phone where no number leaves room for it. */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {flappable(value)
-            ? <div className="flip-stat shrink-0"><Flip value={value} size="sm" /></div>
-            /* the same band a tile occupies, so a row of cards lines up whether its numbers are
-               counted or priced — the figure stays smaller than the flaps on purpose, but it
-               should not also sit at a different height */
-            : <div className={cn("shrink-0 flex items-center min-h-[62px] sm:min-h-[72px] leading-none font-display num count-up tabular-nums", figureSize(value))} style={{ fontVariationSettings: '"opsz" 72' }}>{value}</div>}
-          {sub && <div className={cn("min-w-0 flex-1 basis-28 text-xs leading-snug", tone === "alert" ? "text-[var(--color-red)]" : "text-[var(--color-label-2)]")}>{sub}</div>}
+            The switch is a container query, not a breakpoint: a card is 268px in a four-across row
+            at 1440 and 207px in a five-across row at 1194, so the viewport does not tell you how
+            much room this card has. Below 15rem it stacks, and `order` keeps the label first when
+            it does — you should read what the number is before you read it. */}
+        <div className="stat-body">
+          {/* A short count gets the split-flap treatment this whole design is named for — it is the
+              same tile the control room and the kitchen use, so a number means the same thing on
+              every screen. Money does not: "₹8,85,154.72" is twelve flaps and no card is that
+              wide, so a figure stays a figure. The rule is the length, and it is deliberate rather
+              than accidental — flaps count things, the display numeral states amounts. */}
+          <div className="stat-num order-2">
+            {flappable(value)
+              ? <div className="flip-stat"><Flip value={value} size="sm" /></div>
+              /* the same band a tile occupies, so a row of cards lines up whether its numbers are
+                 counted or priced — the figure stays smaller than the flaps on purpose, but it
+                 should not also sit at a different height */
+              : <div className={cn("flex items-center min-h-[68px] sm:min-h-[80px] leading-none font-display num count-up tabular-nums", figureSize(value))} style={{ fontVariationSettings: '"opsz" 72' }}>{value}</div>}
+          </div>
+          <div className="stat-txt order-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              {/* only when it is saying something. A plain tile carried a dot at 12% white — a grey
+                  mark beside every label on fourteen screens, signalling nothing. */}
+              {tone && <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", tone === "alert" ? "bg-[var(--color-red)] pulse-dot text-[var(--color-red)]" : "bg-[var(--color-green)]")} />}
+              <div className="eyebrow min-w-0">{label}</div>
+            </div>
+            {sub && <div className={cn("mt-1 text-xs leading-snug", tone === "alert" ? "text-[var(--color-red)]" : "text-[var(--color-label-2)]")}>{sub}</div>}
+          </div>
         </div>
       </div>
     </Reveal>

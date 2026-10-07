@@ -175,10 +175,48 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .flip.sm { --tile: 56px; --fw: .72em; border-width: 2px; } .flip.xs { --tile: 40px; --fw: .70em; border-width: 2px; font-weight: 500; }
 /* A stat card's tile. The inline .sm is sized to sit beside a line of text; on a card the number
    is the whole point of it, so it gets a bigger plate — still short of the .md board tile, which
-   is sized to be read from across a room. The card has the height to spare: at .sm the tile used
-   about a third of a 164px card and the rest was air. */
-.flip-stat .flip { --tile: 72px; }
-@media (max-width: 520px) { .flip-stat .flip { --tile: 62px; } }
+   is sized to be read from across a room.
+   It also sits on a card rather than on the graphite wall, and the board housing did not survive
+   the move: its gradient starts at #1c1d24, which is exactly --color-bg-2, so the top of the plate
+   was the card, and all that separated them was a 3px band of near-black. The tile read as a hole
+   punched in the card rather than a key resting on it.
+   Here the plate is a step lighter than the card it sits on, the rim is a hairline of black with a
+   line of light over it, and the two halves of a flap sit closer together — at 47px the old delta
+   put a visible seam through the middle of every digit. The pins stay; they are the tile. */
+.flip-stat .flip { --tile: 80px;
+  border-radius: calc(var(--tile) * .22);
+  background: linear-gradient(180deg, #32333d 0%, #23242c 48%, #1a1b21 100%);
+  border: 1px solid rgb(0 0 0 / .5);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .11), 0 0 0 1px rgb(255 255 255 / .05), 0 10px 26px -16px rgb(0 0 0 / .9); }
+.flip-stat .flap-top { background: linear-gradient(180deg, #3f404b 0%, #35363f 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .10), inset 0 -1px 0 rgb(0 0 0 / .42); }
+.flip-stat .flap-bottom { background: linear-gradient(180deg, #2b2c35 0%, #24252e 100%);
+  box-shadow: inset 0 1px 0 rgb(0 0 0 / .45), inset 0 -1px 0 rgb(255 255 255 / .04); }
+.flip-stat .flip-pin { width: 4px; height: calc(var(--tile) * .2); margin-top: calc(var(--tile) * -.1);
+  background: linear-gradient(180deg, #4a4b57, #22232b); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), 0 0 0 1px rgb(0 0 0 / .55); }
+.flip-stat .flip-pin.left { left: -1px; } .flip-stat .flip-pin.right { right: -1px; }
+@media (max-width: 520px) { .flip-stat .flip { --tile: 68px; } }
+/* Tried and rejected: letting a captionless tile stretch to the card as a readout strip. It put
+   86px of cards in a 226px plate — 38% covered — which is the "bare face" this file already warns
+   about where .flip sets its .6 min-width floor. The housing hugs its cards; it does not host
+   them. Leave the width to the flaps. */
+
+/* ── a stat card's body ───────────────────────────────────────────────
+   The number takes the left of the card and its words take the right. Stacked — a label on its
+   own line above a number with 142px of bare card beside it — about three quarters of a
+   captionless card was empty, and most stat rows in this app carry no caption at all.
+   The switch is the card's own width, not the viewport's: a card is 268px in a four-across row at
+   1440 and 207px in a five-across row at 1194, so no breakpoint can tell you how much room this
+   particular card has. Written here rather than as Tailwind variants because `@[15rem]:` is the
+   v3 plugin syntax and `@min-[15rem]:` did not generate either — the plain at-rule does work.
+   Below 14rem of content width it stacks, and the label still comes first: you should read what a number is
+   before you read the number. */
+.stat-body { display: grid; gap: 10px; }
+@container (min-width: 14rem) {
+  .stat-body { grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; row-gap: 0; align-items: center; }
+  .stat-body > .stat-num { order: 1; }
+  .stat-body > .stat-txt { order: 2; }
+}
 .flip.live { color: #4cd964; } .flip.alert { color: #ff453a; }
 .flip-label { font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-label-2); text-align: center; margin-top: 12px; font-weight: 500; }
 .flip-row { display: flex; gap: clamp(10px, 2.4vw, 24px); align-items: flex-start; justify-content: flex-start; flex-wrap: wrap; }
