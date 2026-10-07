@@ -334,7 +334,15 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 }
 
 /* ── surfaces ─────────────────────────────────────────────────────────── */
-.feather, .card { background: var(--color-bg-2); border-radius: var(--radius-lg); border: .5px solid var(--color-separator); box-shadow: var(--shadow-inset-top), var(--shadow-card); }
+.feather, .card { --card-muted: var(--color-label-2); background: var(--color-bg-2); border-radius: var(--radius-lg); border: .5px solid var(--color-separator); box-shadow: var(--shadow-inset-top), var(--shadow-card); }
+/* A filled feather — a table with an open order on the floor plan, and anything else that wants to
+   read as "this one is live". It has to be written here rather than as `bg-ink text-on-label` on
+   the element, because the rule above sets `background` unlayered and an unlayered declaration
+   beats a Tailwind utility. Only the foreground half of that pair was ever landing, which put
+   #0a0a0d text on the #1c1d24 card: a contrast ratio of 1.22 where WCAG asks 4.5, measured on the
+   floor plan at /orders. The pair has to travel together. */
+.feather.filled { background: var(--color-label); color: var(--color-on-label); border-color: var(--color-label);
+  --card-muted: color-mix(in srgb, var(--color-on-label) 64%, transparent); }
 .card-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .card-title h3 { font-size: 20px; }
 .card-title a, .card-title .more { font-size: 13px; color: var(--color-label-2); }
@@ -537,7 +545,11 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
    colour and its contents read that, so both skins stay legible. */
 .keycard { --card-muted: var(--color-label-2); position: relative; overflow: hidden; border-radius: 16px; border: .5px solid var(--color-separator); background: var(--color-bg-2); box-shadow: var(--shadow-inset-top), var(--shadow-card); transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur); }
 .keycard::after { content: none; }
-.keycard.occupied { background: var(--color-label); color: var(--color-on-label); border-color: var(--color-label); --card-muted: rgb(10 10 13 / .62); }
+/* --card-muted follows --color-on-label rather than being a fixed near-black: this card inverts in
+   both themes, so on paper it is a dark card with white text and a hard-coded rgb(10 10 13 / .62)
+   secondary line was invisible on it — the same half-a-pair mistake as .feather.filled above. */
+.keycard.occupied { background: var(--color-label); color: var(--color-on-label); border-color: var(--color-label);
+  --card-muted: color-mix(in srgb, var(--color-on-label) 64%, transparent); }
 .keycard.cleaning { background: var(--color-blue-2); } .keycard.maintenance { background: var(--color-red-2); } .keycard.reserved { border-style: dashed; border-color: var(--color-champagne); }
 
 /* ═══ THE MONTH GRID ════════════════════════════════════════════════════

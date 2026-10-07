@@ -103,6 +103,51 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 - **A container query measures the content box.** A 268px card with `p-5` is a 228px container, so
   a `15rem` (240px) threshold never fires on it. Subtract the padding when you pick the number —
   and check the widest row too: a four-across card at 1920 is 271px, one pixel under 17rem.
+- **A background and its foreground must travel together.** `.feather` sets `background` in an
+  unlayered rule, so a Tailwind `bg-*` utility on the element loses to it — but the matching
+  `text-*` wins, because `.feather` does not set `color`. Writing `bg-ink text-on-label` on a card
+  therefore applied *only the text half*: `#0a0a0d` on the `#1c1d24` card, **contrast 1.22** where
+  WCAG wants 4.5, on every occupied table on the floor plan. Use `.feather.filled` (or
+  `.keycard.occupied`), which declare the pair together in this file.
+- **A muted colour on an inverting card must derive from `--color-on-label`,** not be a fixed
+  value. Both of those classes flip surface *and* text between themes, so a hard-coded
+  `rgb(10 10 13 / .62)` secondary line is right in one theme and invisible in the other. Use
+  `color-mix(in srgb, var(--color-on-label) 64%, transparent)` and read it as `--card-muted`.
+
+### Measuring colour — two ways a probe will lie to you
+
+Both of these invented failures that did not exist, and cost real time chasing them:
+
+- **`getComputedStyle().color` is not always `rgb()`.** Tailwind's `/alpha` utilities compute to
+  `oklab(…)`, and `color-mix()` computes to `color(srgb r g b / a)` — whose components are **0–1,
+  not 0–255**. Parsing those as channels turns white-at-64% into near-black. Convert through a
+  throwaway element, and scale by 255 when the string starts with `color(`.
+- **Start the surface walk at the element, not its parent.** A leaf that paints its own background
+  (the nav avatar, a pill) *is* the surface under its own text. Walking up first reports the dark
+  gutter behind it and fails a perfectly legible chip.
+
+`audit-contrast.mjs` in the scratchpad does both correctly: it walks every text node in `main`,
+composites translucent colours onto the real surface, and applies WCAG's 3.0/4.5 split by size and
+weight. Worth rebuilding when you touch colour.
+
+### Known contrast failures, measured 2026-10-08 — not yet fixed
+
+Audited `/orders`, `/rooms`, `/housekeeping` (247 text nodes). None of these are in the card
+surfaces; they are the status colours, and they want a decision about the palette rather than a
+patch.
+
+| Where | Theme | Measured | Needs |
+| --- | --- | --- | --- |
+| **The master-mode banner** — "Master mode", the property name, the note | paper | **1.11 – 1.50** | 4.5 |
+| Status pills: "Clean" amber on cream, "ready" green on green-tint | paper | 2.74 – 2.97 | 4.5 |
+| Count chips (`num opacity-70`) — amber, green, blue, red on their tints | paper | 2.34 – 3.64 | 4.5 |
+| The red notification badge — white on `--color-red` at 10px | both | 3.41 | 4.5 |
+| "Out of order" pill, red on red-tint | dark | 3.98 | 4.5 |
+
+The banner is the serious one: in the paper theme its text is **effectively invisible** (1.11), and
+it sits on every page while a master is acting as a property. The pills and chips are a systematic
+issue — a tinted-background pill using its own hue as the text colour is about 3:1 in the paper
+theme across the board, so fixing one means fixing the recipe.
 - **The stat card is stacked: label, number, caption.** It was laid sideways for one commit —
   number left, words right — which suited an 86px flap tile and punished a figure:
   `₹8,85,154.72` came out at 23px beside a three-line caption. A figure is the headline and takes

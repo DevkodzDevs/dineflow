@@ -123,7 +123,10 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                   </div>
                   {/* the since-line belongs to the room's state, so it stays with it; the slack a
                       stretched grid row leaves falls below, where the rule explains it */}
-                  <div className="num text-[11px] text-[var(--color-label-3)]">{c.label.toLowerCase()} {fmtSince(r.condition_at)} ago</div>
+                  {/* label-2, not label-3: at 11px on the card ground, --color-label-3 measures 2.70
+                      against WCAG's 4.5. It is the quietest line on the card but it still has to be
+                      readable by someone holding a phone in a corridor. */}
+                  <div className="num text-[11px] text-[var(--color-label-2)]">{c.label.toLowerCase()} {fmtSince(r.condition_at)} ago</div>
                   {(waiting || acts.length > 0) && (
                     <div className="mt-auto pt-2.5 border-t border-line space-y-1.5">
                       {waiting && <div className="text-[11px] text-steel">Awaiting a supervisor's sign-off</div>}

@@ -36,10 +36,10 @@ export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Orde
                   <motion.div key={t.id} className="flex flex-col h-full" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
                     <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`}
                       className={cn("feather feather-lift flex-1 min-h-[7rem] p-3 flex flex-col relative overflow-hidden",
-                        t.status === "occupied" && "bg-ink text-on-label border-ink", t.status === "reserved" && "border-saffron border-dashed")}>
-                      <div className="flex justify-between items-start"><span className="font-display text-2xl">{t.name}</span><span className={cn("text-[11px] flex items-center gap-1", t.status === "occupied" ? "text-white/60" : "text-steel")}><Users size={11} />{t.capacity}</span></div>
+                        t.status === "occupied" && "filled", t.status === "reserved" && "border-saffron border-dashed")}>
+                      <div className="flex justify-between items-start"><span className="font-display text-2xl">{t.name}</span><span className="text-[11px] flex items-center gap-1 text-[var(--card-muted)]"><Users size={11} />{t.capacity}</span></div>
                       <div className="mt-auto">
-                        {o ? (<><div className="num text-xs text-white/60">#{o.order_no} · {fmtSince(o.created_at)}</div><div className="num font-semibold">{formatINR(total)}</div></>)
+                        {o ? (<><div className="num text-xs text-[var(--card-muted)]">#{o.order_no} · {fmtSince(o.created_at)}</div><div className="num font-semibold">{formatINR(total)}</div></>)
                           : <div className={cn("text-xs font-semibold", t.status === "reserved" ? "text-saffron" : "text-steel")}>{t.status === "reserved" ? "Reserved" : "Free"}</div>}
                       </div>
                       {anyReady && <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-mint pulse-dot text-mint" />}
