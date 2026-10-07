@@ -101,7 +101,22 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   `@container (min-width: …)` block in this file works. The `@container` *utility* does apply
   `container-type: inline-size` correctly.
 - **A container query measures the content box.** A 268px card with `p-5` is a 228px container, so
-  a `15rem` (240px) threshold never fires on it. Subtract the padding when you pick the number.
+  a `15rem` (240px) threshold never fires on it. Subtract the padding when you pick the number —
+  and check the widest row too: a four-across card at 1920 is 271px, one pixel under 17rem.
+- **The stat card is stacked: label, number, caption.** It was laid sideways for one commit —
+  number left, words right — which suited an 86px flap tile and punished a figure:
+  `₹8,85,154.72` came out at 23px beside a three-line caption. A figure is the headline and takes
+  the full line (`.stat-fig`: 34px from 14rem of content, 38px from 16rem, else `--fig-narrow`
+  from its own length so nothing overflows a 144px phone card). The caption stands beside the
+  number when it fits and drops under it when it does not. The tone dot is a corner pip
+  (`.stat-pip`), and only when there is a tone.
+- **One band for flaps and figures.** `.stat-body { --stat-band }` is the flap tile's height *and*
+  the figure's `min-height`, so a counted number and a priced one share a baseline on one row. It
+  is the same `cqw` clamp as `.flip-stat .flip { --tile }` — keep the two identical, or point the
+  tile at the variable. A container query cannot match the container itself, which is why the
+  variable sits on the body inside the card.
+- **Stat rows go four-across from `min-[900px]`, not `lg`.** At `md` (768) a 12-character figure
+  overflowed a 105px content box by 14px; 900 is the first width where four-up genuinely fits.
 
 ## Verify
 
