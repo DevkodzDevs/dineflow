@@ -187,6 +187,11 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
   /* a row of four tiles sizes itself for four, not three, so nothing spills off the edge */
   .flip-row:has(> :nth-child(4)) .flip { --tile: clamp(56px, calc((100vw - 64px - 30px) / 4), 128px); }
   .flip-row:has(> :nth-child(4)) .flip-label { font-size: 9px; letter-spacing: .06em; }
+  /* --tile is a height, and the width that follows from it assumes a tile of two cards. A
+     restaurant's tables tile reads "6/12", which is four, and three tiles that wide overran a
+     412px phone by 9px. Size the row for the widest tile in it, not for the common one. */
+  .flip-row:has(.flip-stage > :nth-child(3)) .flip { --tile: clamp(48px, calc((100vw - 76px) / 4), 128px); }
+  .flip-row:has(.flip-stage > :nth-child(5)) .flip { --tile: clamp(42px, calc((100vw - 76px) / 5), 128px); }
 }
 .flip-row > div { text-align: center; }
 .flip-colon { font-family: var(--font-display); font-size: clamp(40px, 8vw, 72px); color: var(--color-label-3); align-self: center; padding-bottom: 28px; }
@@ -306,6 +311,22 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
    column count leaves a hole at every count but one. Tiles grow to share the width and
    wrap at 158px; the 400px ceiling is what stops a lone tile spanning the whole screen. */
 .stat-row { display: flex; flex-wrap: wrap; gap: 12px; }
+/* The same row as a grid, for the boards that know their own tile count and can therefore pick
+   tracks that divide it. Wrapping flex is hole-free only until the last line holds one tile, and
+   then it either strands a 400px orphan in a 1100px row or lets one tile span the screen. */
+.stat-grid { display: grid; gap: 12px; }
+.stat-grid > .stat { max-width: none; }
+/* The same idea one size up: a band of full panels that share a top and a bottom. A grid would
+   need a fixed column count, and the board draws two panels or three depending on whether anyone
+   else is on the rota — which leaves a hole at one of those counts. Flex items stretch, so the
+   panels in a band end on the same line without being told their height. */
+.board-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; }
+.board-row > * { flex: 1 1 300px; min-width: 0; }
+/* A row sheared in half by a scroll edge looks like a row that broke; faded out it looks like a
+   list that carries on. Safe on a short list: the container is sized by its band, so there is
+   empty space under the last row for the fade to land on. */
+.list-fade { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
 .stat { flex: 1 1 158px; min-width: 0; max-width: 400px; --stat: var(--color-label-3); position: relative; display: flex; flex-direction: column; padding: 16px; overflow: hidden; }
 /* a tile that needs a person takes the colour on its own edge — a top bar cannot follow
    a 22px corner without growing ears at both ends, and this reads from further away anyway */
@@ -314,7 +335,10 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .stat-chip { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0; background: var(--color-fill); color: var(--color-label-2); }
 .stat:is(.stat-good, .stat-warn, .stat-alert) .stat-chip { background: color-mix(in srgb, var(--stat) 16%, transparent); color: var(--stat); }
 .stat-label { flex: 1; min-width: 0; font-size: 13px; color: var(--color-label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.stat-go { flex-shrink: 0; color: var(--color-label-3); opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
+/* out of the flow: in the head it reserved 22px of a 105px label line whether it was showing or
+   not, which is what truncated "Housekeeping" on a six-across row */
+.stat-go { position: absolute; top: 16px; right: 14px; color: var(--color-label-3); opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
+.stat:hover .stat-label { padding-right: 18px; }
 .stat:hover .stat-go, .stat:focus-visible .stat-go { opacity: 1; transform: none; }
 .stat-value { display: flex; align-items: baseline; gap: 5px; margin-top: 14px; font-size: 34px; line-height: 1; }
 .stat-alert .stat-value { color: var(--color-red); }

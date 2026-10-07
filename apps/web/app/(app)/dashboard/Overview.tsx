@@ -9,8 +9,14 @@ import { formatINR } from "@/lib/format";
 /**
  * The control room as one board: what came in, where it came from, what is moving, and who is on.
  *
- * Three columns on a wide screen, two on a laptop, one on a phone — and every panel is the same
- * card, so the eye only has to learn the shape once. Nothing here polls on its own; <Live> above
+ * It is built in bands, not in columns. Three independent `space-y` columns each stacked cards of
+ * whatever height their content happened to be, so no two panels on the screen started or ended on
+ * the same line — six panels at six different tops on a 1440 laptop. A band is a row of panels that
+ * share a top and a bottom, which is the only way a dense screen reads as designed rather than as
+ * whatever fell out of the markup.
+ *
+ * Band 1 is every number, in one self-sizing row. Band 2 is what is happening now, beside where the
+ * money came from. Band 3 is the three ledgers. Nothing here polls on its own; <Live> above
  * re-renders the whole board when orders, bills, rooms or stock change.
  */
 
@@ -18,7 +24,7 @@ export type Money = { label: string; value: number; tone: Tone };
 /* The icon travels as a name, not as a component. A server component cannot hand a function
    across the boundary — React has to serialise what it sends, and a Lucide icon is a function. */
 export type IconName = keyof typeof ICON;
-export type Tile = { icon: IconName; label: string; value: React.ReactNode; sub?: string; tone?: Tone; href: string };
+export type Tile = { icon: IconName; label: string; value: string | number; sub?: string; tone?: Tone; href: string };
 export type Rank = { name: string; value: number };
 export type Tx = { id: string; no: number; total: number; at: string; method: string | null };
 export type Who = { id: string; name: string; role: string };
@@ -31,33 +37,61 @@ export type Tone = "mint" | "amber" | "chili" | "sky" | "plain";
 
 const ICON = { Wallet, Users, Timer, BedDouble, Bike, Boxes, ConciergeBell, Sparkles, Flame, ReceiptText } as const;
 
-const TONE: Record<Tone, { card: string; chip: string; text: string }> = {
-  mint: { card: "bg-[var(--color-green-2)] border-[var(--color-tint)]/30", chip: "bg-[var(--color-tint)] text-[var(--color-on-tint)]", text: "text-[var(--color-tint)]" },
-  amber: { card: "bg-[rgb(255_179_64/.12)] border-[var(--color-orange)]/30", chip: "bg-[var(--color-orange)] text-[var(--color-bezel)]", text: "text-[var(--color-orange)]" },
-  chili: { card: "bg-[var(--color-red-2)] border-[var(--color-red)]/30", chip: "bg-[var(--color-red)] text-white", text: "text-[var(--color-red)]" },
-  sky: { card: "bg-[var(--color-blue-2)] border-[var(--color-blue)]/30", chip: "bg-[var(--color-blue)] text-white", text: "text-[var(--color-blue)]" },
-  plain: { card: "bg-[var(--color-bg-2)] border-[var(--color-separator)]", chip: "bg-[var(--color-fill)] text-[var(--color-label-2)]", text: "text-[var(--color-label)]" },
+/** A tile only takes colour when it is saying something, and the word is always beside the colour. */
+const TONE: Record<Tone, string> = { mint: "stat-good", amber: "stat-warn", chili: "stat-alert", sky: "", plain: "" };
+
+/**
+ * One hole in a row of tiles is the most visible thing on a board, and this row is five tiles for
+ * a restaurant and six for a resort — any one column count leaves a hole at all but one of them.
+ * The tracks are chosen per count, and where a count will not divide them the last tile takes the
+ * slack instead of leaving a gap beside it.
+ */
+const TRACKS: Record<number, string> = {
+  4: "grid-cols-2 xl:grid-cols-4",
+  5: "grid-cols-2 md:grid-cols-3 xl:grid-cols-5 [&>:last-child]:col-span-2 xl:[&>:last-child]:col-span-1",
+  6: "grid-cols-2 md:grid-cols-3 xl:grid-cols-6",
+  7: "grid-cols-2 md:grid-cols-4 [&>:last-child]:col-span-2",
 };
 
 /** One colour per source, shared by the arc and the dot in its key so they can never disagree. */
 const ARC: Record<Tone, string> = { mint: "var(--color-tint)", amber: "var(--color-orange)", sky: "var(--color-blue)",
   chili: "var(--color-red)", plain: "var(--color-label-3)" };
 
-/** A headline figure in its own tinted card, with a way through to the screen behind it. */
-function Stat({ icon, label, value, sub, tone = "plain", href, big }: {
-  icon: IconName; label: string; value: React.ReactNode; sub?: string; tone?: Tone; href: string; big?: boolean;
-}) {
-  const t = TONE[tone], Icon = ICON[icon];
+/**
+ * A headline figure in its own tile, with a way through to the screen behind it.
+ *
+ * The type sizes itself to the figure. These are not all counts: "₹2,550.00" and "2 in · 1 out"
+ * are as much a headline as "6%", and one size for all of them either shrinks the counts to
+ * nothing or runs the money off the edge of a 190px tile.
+ */
+function Stat({ icon, label, value, sub, tone = "plain", href }: Tile) {
+  const Icon = ICON[icon], n = String(value).length;
+  const size = n > 9 ? "!text-[20px]" : n > 6 ? "!text-[24px]" : n > 4 ? "!text-[28px]" : "";
   return (
-    <Link href={href} className={cn("group rounded-2xl border p-3.5 flex flex-col min-w-0 transition-colors", t.card)}>
-      <div className="flex items-start gap-2">
-        <span className={cn("h-8 w-8 rounded-xl grid place-items-center shrink-0", t.chip)}><Icon size={15} /></span>
-        <span className="text-[11px] leading-tight text-steel flex-1 min-w-0 pt-1.5 truncate">{label}</span>
-        <ArrowUpRight size={14} className="text-steel shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
-      <div className={cn("num font-semibold mt-2 leading-none truncate", big ? "text-[26px]" : "text-[21px]")}>{value}</div>
-      {sub && <div className="text-[11px] text-steel mt-1 truncate">{sub}</div>}
+    <Link href={href} className={cn("feather feather-lift stat", TONE[tone])}>
+      <span className="stat-head">
+        <span className="stat-chip"><Icon size={15} /></span>
+        <span className="stat-label">{label}</span>
+        <ArrowUpRight size={14} className="stat-go" />
+      </span>
+      <span className={cn("stat-value num font-semibold", size)}><span className="min-w-0 truncate">{value}</span></span>
+      {sub && (
+        <span className="stat-base">
+          <span className="stat-foot">{tone !== "plain" && <span className="stat-dot" />}<span className="stat-sub">{sub}</span></span>
+        </span>
+      )}
     </Link>
+  );
+}
+
+/** Every panel on the board wears the same head, so the eye only learns one shape. */
+function Head({ title, note, href, label }: { title: string; note?: string; href?: string; label?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 mb-3">
+      <h3 className="text-lg truncate">{title}</h3>
+      {note && <span className="num text-sm font-semibold shrink-0">{note}</span>}
+      {href && <Link href={href} className="tap text-[11px] font-semibold text-steel hover:text-[var(--color-label)] shrink-0">{label ?? "All"} →</Link>}
+    </div>
   );
 }
 
@@ -71,34 +105,36 @@ function Gauge({ parts, total }: { parts: Money[]; total: number }) {
   const sum = parts.reduce((t, p) => t + p.value, 0);
   let run = 0;
   return (
-    <div className="feather p-5">
-      <div className="flex items-baseline justify-between mb-1"><h3 className="text-lg">Where it came from</h3><span className="text-[11px] text-steel">today</span></div>
-      <div className="relative mx-auto" style={{ width: 210, height: 118 }}>
+    <div className="feather p-5 flex flex-col">
+      <Head title="Where it came from" href="/reports" label="Reports" />
+      {/* my-auto: in a band the panel is as tall as its neighbour, and the slack belongs around
+          the dial rather than under it */}
+      <div className="relative mx-auto my-auto w-full max-w-[230px]" style={{ aspectRatio: "210 / 118" }}>
         <svg viewBox="0 0 210 118" className="w-full h-full" role="img" aria-label="Today's takings by source">
-          <path d="M 23 105 A 82 82 0 0 1 187 105" fill="none" stroke="var(--color-fill)" strokeWidth="18" strokeLinecap="round" />
+          <path d="M 23 105 A 82 82 0 0 1 187 105" fill="none" stroke="var(--color-fill)" strokeWidth="15" strokeLinecap="round" />
           {sum > 0 && parts.filter((p) => p.value > 0).map((p) => {
             const len = (p.value / sum) * C, off = run; run += len;
             return (
-              <motion.path key={p.label} d="M 23 105 A 82 82 0 0 1 187 105" fill="none" strokeWidth="18" strokeLinecap="round"
+              <motion.path key={p.label} d="M 23 105 A 82 82 0 0 1 187 105" fill="none" strokeWidth="15" strokeLinecap="round"
                 stroke={ARC[p.tone]}
                 strokeDasharray={`${len} ${C}`} initial={{ strokeDashoffset: -off, opacity: 0 }} animate={{ strokeDashoffset: -off, opacity: 1 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
             );
           })}
         </svg>
-        <div className="absolute inset-x-0 bottom-1 text-center">
-          <div className="num text-[26px] font-semibold leading-none">{formatINR(total)}</div>
+        <div className="absolute inset-x-0 bottom-0 text-center">
+          <div className="num text-[25px] font-semibold leading-none truncate">{formatINR(total)}</div>
           <div className="text-[11px] text-steel mt-1">taken today</div>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      {/* a line per source rather than three columns: this panel is a third of the board, and
+          "Rooms tonight" over "₹7,800.00" does not fit in 82px of it */}
+      <div className="mt-4 pt-4 border-t border-line space-y-2">
         {parts.map((p) => (
-          <div key={p.label} className="min-w-0">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="h-2 w-2 rounded-full shrink-0" style={{ background: ARC[p.tone] }} />
-              <span className="text-[11px] text-steel truncate">{p.label}</span>
-            </div>
-            <div className="num text-sm font-semibold mt-0.5 truncate">{formatINR(p.value)}</div>
+          <div key={p.label} className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full shrink-0" style={{ background: ARC[p.tone] }} />
+            <span className="text-[13px] text-steel flex-1 min-w-0 truncate">{p.label}</span>
+            <span className="num text-sm font-semibold shrink-0">{formatINR(p.value)}</span>
           </div>
         ))}
       </div>
@@ -110,12 +146,9 @@ function Gauge({ parts, total }: { parts: Money[]; total: number }) {
 function Ranked({ title, rows, href, unit, empty }: { title: string; rows: Rank[]; href?: string; unit?: string; empty: string }) {
   const peak = Math.max(1, ...rows.map((r) => r.value));
   return (
-    <div className="feather p-5">
-      <div className="flex items-baseline justify-between mb-3">
-        <h3 className="text-lg">{title}</h3>
-        {href && <Link href={href} className="tap text-[11px] font-semibold text-steel hover:text-[var(--color-label)]">All →</Link>}
-      </div>
-      {rows.length === 0 ? <p className="text-sm text-steel">{empty}</p> : (
+    <div className="feather p-5 flex flex-col">
+      <Head title={title} href={href} />
+      {rows.length === 0 ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">{empty}</p> : (
         <ol className="space-y-3">
           {rows.map((r, i) => (
             <li key={r.name}>
@@ -155,10 +188,11 @@ function Week({ days }: { days: { day: string; value: number }[] }) {
   const total = days.reduce((t, d) => t + d.value, 0);
   const traded = days.some((d) => d.value > 0);
   return (
-    <div className="feather p-5">
-      <div className="flex items-baseline justify-between mb-1"><h3 className="text-lg">This week</h3><span className="num text-sm font-semibold">{formatINR(total)}</span></div>
-      {!traded ? <p className="text-sm text-steel mt-2 mb-6">No bills settled in the last seven days.</p> : (<>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full mt-2" style={{ height: 92 }} preserveAspectRatio="none" role="img" aria-label="Takings over the last seven days">
+    <div className="feather p-5 flex flex-col">
+      <Head title="This week" note={formatINR(total)} />
+      {!traded ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">No bills settled in the last seven days.</p> : (<>
+      {/* the curve takes whatever height the band leaves it, so a short panel is never half air */}
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full flex-1 min-h-[88px] mt-1" preserveAspectRatio="none" role="img" aria-label="Takings over the last seven days">
         <defs><linearGradient id="wk" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="var(--color-tint)" stopOpacity="0.32" /><stop offset="100%" stopColor="var(--color-tint)" stopOpacity="0" />
         </linearGradient></defs>
@@ -173,8 +207,11 @@ function Week({ days }: { days: { day: string; value: number }[] }) {
 }
 
 export function Overview({
-  greet, property, owner, money, parts, tiles, flaps, dishes, tx, staff, days, floor, rooms, web, onFloor, kitchen,
+  greet, property, money, parts, tiles, flaps, dishes, tx, staff, days, floor, rooms, web, onFloor,
 }: {
+  /* `owner` and `kitchen` are still taken — the page passes them and both are one line from being
+     wanted again — but nothing on the board reads them now: the owner card said only what the
+     sidebar already says, and the kitchen count is the flap next to it. */
   greet: string; property: string; owner: string;
   money: number; parts: Money[]; tiles: Tile[]; flaps: Flap[];
   dishes: Rank[]; tx: Tx[]; staff: Who[]; days: { day: string; value: number }[];
@@ -194,6 +231,18 @@ export function Overview({
   const clock = now ? now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }) : "";
   const date = now ? now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", weekday: "short", timeZone: "Asia/Kolkata" }) : "";
 
+  /* Every number on the board in one row. They were two grids in two columns — five tiles in a
+     two-column grid leaves a hole at the end of it, and the other two sat in a grid of their own
+     a column over, at a different width, so seven tiles of one kind read as two unrelated groups.
+     "In the kitchen" is not among them any more: the flap beside it already carries that exact
+     count, in bigger type, and the tile added nothing to it but the word "cooking". */
+  const all: Tile[] = [
+    ...tiles.slice(0, 2),
+    { icon: "Wallet", label: "On the floor", value: formatINR(onFloor), sub: onFloor ? "not yet billed" : "everything is billed", tone: onFloor ? "amber" : "plain", href: "/orders" },
+    ...tiles.slice(2),
+  ];
+  const tracks = TRACKS[all.length] ?? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4";
+
   return (
     <div className="space-y-4">
       <header className="flex items-end justify-between gap-4 flex-wrap">
@@ -204,9 +253,6 @@ export function Overview({
         <div className="text-right shrink-0"><div className="text-[11px] text-steel uppercase tracking-wide">{date}</div><div className="num text-xl">{clock}</div></div>
       </header>
 
-      {/* Three columns need about 1280px to breathe; an iPad in landscape is 1194 and was
-         dropping all the way to one, which turned the densest screen in the app into a very
-         long scroll. Two columns from 1024 keeps the board a board on a tablet. */}
       {/* The split-flap row, back where it belongs. It reads from the pass, which no stat card
           does, and it is the one piece of this app that is unmistakably this app. */}
       <div className="flip-row">
@@ -217,88 +263,86 @@ export function Overview({
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,0.95fr)]">
-        {/* ── what needs a person, then where the money came from, then what is selling ── */}
-        <div className="space-y-4 min-w-0">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3">
-            {tiles.map((t) => <Stat key={t.label} {...t} />)}
-          </div>
-          <Gauge parts={parts} total={money} />
-          <Ranked title="Selling today" rows={dishes} href="/reports" empty="Nothing sold yet — the first order of the day lands here." />
-        </div>
+      <div className={cn("stat-grid", tracks)}>{all.map((t) => <Stat key={t.label} {...t} />)}</div>
 
-        {/* ── the floor itself ── */}
-        <div className="space-y-4 min-w-0">
-          <div className="grid grid-cols-2 gap-3">
-            <Stat icon="Wallet" label="Still on the floor" value={formatINR(onFloor)} sub="not yet billed" tone="amber" href="/orders" big />
-            <Stat icon="Flame" label="In the kitchen" value={kitchen} sub="tickets cooking" tone={kitchen ? "mint" : "plain"} href="/kitchen" big />
+      {/* ── band: what is happening now, beside where today's money came from ──
+         Three columns needed about 1280px to breathe and an iPad in landscape is 1194, which used
+         to drop the densest screen in the app to one very long column. Two thirds and one third
+         from 1024 keeps the board a board on a tablet. */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="feather p-5 flex flex-col lg:col-span-2 min-w-0">
+          <Head title="On now" href={shown.href} />
+          <div className="chip-rail mb-3">
+            {panels.map((p) => (
+              <button key={p.key} type="button" onClick={() => setTab(p.key)}
+                className={cn("tap h-8 rounded-full px-3.5 text-[13px] font-semibold transition-colors justify-center",
+                  tab === p.key ? "bg-ink text-on-label" : "text-steel hover:text-[var(--color-label)]")}>{p.label}</button>
+            ))}
           </div>
-          <div className="feather p-5">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="chip-rail">
-                {panels.map((p) => (
-                  <button key={p.key} type="button" onClick={() => setTab(p.key)}
-                    className={cn("tap h-8 rounded-full px-3 text-[13px] font-semibold transition-colors justify-center",
-                      tab === p.key ? "bg-ink text-on-label" : "text-steel hover:text-[var(--color-label)]")}>{p.label}</button>
-                ))}
-              </div>
-              <Link href={shown.href} className="tap text-[11px] font-semibold text-steel hover:text-[var(--color-label)] shrink-0">All →</Link>
-            </div>
-            {shown.rows.length === 0 ? <p className="text-sm text-steel">{shown.empty}</p> : (
-              <div className="space-y-2 max-h-[22rem] overflow-y-auto pr-0.5">
-                {shown.rows.map((o) => (
-                  <Link key={o.id} href={o.href} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 hover:bg-porcelain/60">
-                    <span className="h-9 min-w-10 px-1.5 rounded-lg bg-[var(--color-fill)] grid place-items-center font-display text-sm shrink-0">{o.where}</span>
-                    <span className="flex-1 min-w-0 text-sm truncate">{o.items} item{o.items === 1 ? "" : "s"}</span>
-                    <span className="num font-semibold shrink-0">{formatINR(o.total)}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-          {staff.length > 0 && (
-            <div className="feather p-5">
-              <div className="flex items-center justify-between mb-3"><h3 className="text-lg">On the rota</h3><Link href="/staff" className="tap text-[11px] font-semibold text-steel hover:text-[var(--color-label)]">Staff →</Link></div>
-              <div className="flex items-center">
-                {staff.slice(0, 6).map((p, i) => (
-                  <span key={p.id} title={`${p.name} · ${p.role}`} style={{ marginLeft: i ? -10 : 0, zIndex: 10 - i }}
-                    className="h-10 w-10 rounded-full bg-ink text-on-label grid place-items-center font-display ring-2 ring-[var(--color-bg-2)] shrink-0">{p.name.slice(0, 1)}</span>
-                ))}
-                {staff.length > 6 && <span className="ml-2 text-xs text-steel num">+{staff.length - 6}</span>}
-              </div>
+          {shown.rows.length === 0 ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">{shown.empty}</p> : (
+            /* flex-1 so the list takes the height the band gives it, min-h-0 so it may shrink
+               below its content, and the fade so a row cut by the scroll edge reads as a list
+               that continues rather than as a row that broke */
+            <div className="list-fade flex-1 min-h-0 max-h-[26rem] overflow-y-auto space-y-2 pr-0.5">
+              {shown.rows.map((o) => (
+                <Link key={o.id} href={o.href} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 hover:bg-porcelain/60">
+                  <span className="h-9 min-w-10 px-1.5 rounded-lg bg-[var(--color-fill)] grid place-items-center font-display text-sm shrink-0">{o.where}</span>
+                  <span className="flex-1 min-w-0 text-sm truncate">{o.items} item{o.items === 1 ? "" : "s"}</span>
+                  <span className="num font-semibold shrink-0">{formatINR(o.total)}</span>
+                </Link>
+              ))}
             </div>
           )}
         </div>
-
-        {/* ── the owner's own column: the week, and the money that landed ── */}
-        <div className="space-y-4 min-w-0">
-          <div className="feather p-5">
-            <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-2xl bg-ink text-on-label grid place-items-center font-display text-xl shrink-0">{owner.slice(0, 1)}</span>
-              <div className="min-w-0 flex-1"><div className="font-semibold truncate">{owner}</div><div className="text-[11px] text-steel">signed in · {clock}</div></div>
-            </div>
-          </div>
-          <Week days={days} />
-          <div className="feather p-5">
-            <div className="flex items-baseline justify-between mb-3"><h3 className="text-lg">Settled</h3><Link href="/billing" className="tap text-[11px] font-semibold text-steel hover:text-[var(--color-label)]">Billing →</Link></div>
-            {tx.length === 0 ? <p className="text-sm text-steel">No bills settled yet today.</p> : (
-              <div className="space-y-2.5">
-                {tx.map((t) => (
-                  <div key={t.id} className="flex items-center gap-3">
-                    <span className="h-9 w-9 rounded-full bg-[var(--color-green-2)] text-[var(--color-tint)] grid place-items-center shrink-0"><ReceiptText size={15} /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold num">Bill #{t.no}</span>
-                      <span className="block text-[11px] text-steel truncate">{when(t.at)}{t.method ? ` · ${t.method}` : ""}</span>
-                    </span>
-                    <span className="num font-semibold text-[var(--color-tint)] shrink-0">+{formatINR(t.total)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="flex flex-col gap-4 min-w-0">
+          <Gauge parts={parts} total={money} />
+          {/* the week absorbs whatever height the taller panel beside it sets, so the band's two
+              sides end on the same line */}
+          <div className="flex-1 flex flex-col [&>*]:flex-1"><Week days={days} /></div>
         </div>
+      </div>
+
+      {/* ── band: the three ledgers. A flex row rather than a grid: the rota is only drawn when
+         somebody else is on the books, and a three-column grid holding two cards leaves a hole. ── */}
+      <div className="board-row">
+        <Ranked title="Selling today" rows={dishes} href="/reports" empty="Nothing sold yet — the first order of the day lands here." />
+        <div className="feather p-5 flex flex-col min-w-0">
+          <Head title="Settled" href="/billing" label="Billing" />
+          {tx.length === 0 ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">No bills settled yet today.</p> : (
+            <div className="space-y-2.5">
+              {tx.map((t) => (
+                <div key={t.id} className="flex items-center gap-3">
+                  <span className="h-9 w-9 rounded-full bg-[var(--color-green-2)] text-[var(--color-tint)] grid place-items-center shrink-0"><ReceiptText size={15} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold num">Bill #{t.no}</span>
+                    <span className="block text-[11px] text-steel truncate">{when(t.at)}{t.method ? ` · ${t.method}` : ""}</span>
+                  </span>
+                  <span className="num font-semibold text-[var(--color-tint)] shrink-0">+{formatINR(t.total)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {staff.length > 0 && (
+          <div className="feather p-5 flex flex-col min-w-0">
+            <Head title="On the rota" href="/staff" label="Staff" />
+            {/* names, not a huddle of overlapping initials: the name used to live in a title
+                attribute, which a finger cannot open */}
+            <ul className="space-y-2.5">
+              {staff.slice(0, 6).map((p) => (
+                <li key={p.id} className="flex items-center gap-3">
+                  <span className="h-9 w-9 rounded-full bg-ink text-on-label grid place-items-center font-display text-sm shrink-0">{p.name.slice(0, 1)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold truncate">{p.name}</span>
+                    <span className="block text-[11px] text-steel capitalize truncate">{p.role}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {staff.length > 6 && <div className="mt-auto pt-3 text-[11px] text-steel num">+{staff.length - 6} more on the books</div>}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
