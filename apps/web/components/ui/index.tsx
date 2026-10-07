@@ -110,24 +110,46 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
 /** Four characters is two flaps plus a sign — beyond that a flip row stops fitting in a card. */
 const flappable = (v: string) => v.length <= 4 && /^[0-9]+([%/][0-9]*)?$/.test(v);
 
+/**
+ * A figure sizes itself to its own length. "₹1,09,917.00" at 34px is 174px of text with no space in
+ * it to break at, and a stat card is 144px of content on a phone and 167px in a five-across row —
+ * so it simply ran off the edge. Nothing in the demo data was long enough to show it. Measured, the
+ * longest figure this app can produce ("₹1,23,45,678.90") now lands at 128px, inside both.
+ */
+const figureSize = (v: string) =>
+  v.length > 13 ? "text-[20px]" : v.length > 10 ? "text-[23px]" : v.length > 7 ? "text-[27px]" : v.length > 5 ? "text-[30px]" : "text-[34px]";
+
 export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string; value: string; sub?: string; tone?: "alert" | "good"; delay?: number }) {
   return (
     <Reveal delay={delay}>
       <div onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`); e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`); }}
-        className={cn("card spotlight feather-lift p-5 h-full relative", tone === "alert" && "!border-[var(--color-red)]/40", tone === "good" && "!border-[var(--color-green)]/50")}>
-        <div className="flex items-center gap-1.5"><span className={cn("h-1.5 w-1.5 rounded-full", tone === "alert" ? "bg-[var(--color-red)] pulse-dot text-[var(--color-red)]" : tone === "good" ? "bg-[var(--color-green)]" : "bg-[var(--color-fill-2)]")} /><div className="eyebrow">{label}</div></div>
+        className={cn("card spotlight feather-lift p-5 h-full relative flex flex-col", tone === "alert" && "!border-[var(--color-red)]/40", tone === "good" && "!border-[var(--color-green)]/50")}>
+        <div className="flex items-center gap-1.5">
+          {/* only when it is saying something. A plain tile carried a dot at 12% white — a grey
+              mark beside every label on fourteen screens, signalling nothing. */}
+          {tone && <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", tone === "alert" ? "bg-[var(--color-red)] pulse-dot text-[var(--color-red)]" : "bg-[var(--color-green)]")} />}
+          <div className="eyebrow">{label}</div>
+        </div>
         {/* A short count gets the split-flap treatment this whole design is named for — it is the
             same tile the control room and the kitchen use, so a number means the same thing on
             every screen. Money does not: "₹8,85,154.72" is twelve flaps and no card is that wide,
             so a figure stays a figure. The rule is the length, and it is deliberate rather than
-            accidental — flaps count things, the display numeral states amounts. */}
-        {flappable(value)
-          ? <div className="mt-2.5 flip-stat"><Flip value={value} size="sm" /></div>
-          /* the same band a tile occupies, so a row of cards lines up whether its numbers are
-             counted or priced — the figure stays smaller than the flaps on purpose, but it should
-             not also sit at a different height */
-          : <div className="mt-2.5 flex items-center min-h-[62px] sm:min-h-[72px] text-[34px] leading-none font-display num count-up" style={{ fontVariationSettings: '"opsz" 72' }}>{value}</div>}
-        {sub && <div className={cn("mt-1.5 text-xs", tone === "alert" ? "text-[var(--color-red)]" : "text-[var(--color-label-2)]")}>{sub}</div>}
+            accidental — flaps count things, the display numeral states amounts.
+
+            The caption is the number's unit, so it stands beside it rather than under it: a flap
+            tile used 30% of a 268px card and left 148px of it dead, while the figure beside it
+            used 84%. One flex-wrap rule serves both without branching on the kind of value — the
+            caption keeps a 7rem basis, so it sits alongside a narrow number and drops underneath a
+            wide one, and underneath on a phone where no number leaves room for it. */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {flappable(value)
+            ? <div className="flip-stat shrink-0"><Flip value={value} size="sm" /></div>
+            /* the same band a tile occupies, so a row of cards lines up whether its numbers are
+               counted or priced — the figure stays smaller than the flaps on purpose, but it
+               should not also sit at a different height */
+            : <div className={cn("shrink-0 flex items-center min-h-[62px] sm:min-h-[72px] leading-none font-display num count-up tabular-nums", figureSize(value))} style={{ fontVariationSettings: '"opsz" 72' }}>{value}</div>}
+          {sub && <div className={cn("min-w-0 flex-1 basis-28 text-xs leading-snug", tone === "alert" ? "text-[var(--color-red)]" : "text-[var(--color-label-2)]")}>{sub}</div>}
+        </div>
       </div>
     </Reveal>
   );

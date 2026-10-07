@@ -113,7 +113,14 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
         </Card>
 
         <div className="grid grid-cols-2 gap-3 content-start">
-          {forecast.drivers.map((d, i) => <StatTile key={d.label} label={d.label} value={String(d.detail).split(" ")[0]} sub={String(d.detail).split(" ").slice(1).join(" ")} delay={i * 0.05} tone={d.label === "Confidence" ? (conf >= 60 ? "good" : undefined) : undefined} />)}
+          {forecast.drivers.map((d, i) => {
+            /* a driver arrives as one sentence — "54% · 5 comparable days" — and the first word is
+               the figure. Splitting it left the caption starting with the separator, which rendered
+               as "· 5 comparable days" on the card. */
+            const [head, ...rest] = String(d.detail).split(" ");
+            const tail = rest.join(" ").replace(/^[·•\-–—]\s*/, "");
+            return <StatTile key={d.label} label={d.label} value={head} sub={tail} delay={i * 0.05} tone={d.label === "Confidence" ? (conf >= 60 ? "good" : undefined) : undefined} />;
+          })}
         </div>
       </div>
 

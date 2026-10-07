@@ -43,6 +43,31 @@ see at a glance which free room is actually sellable.
 - **The call link is an `.icon-btn`**, so it is 44px on a touch screen.
 - **Dates are IST.** `todayIST()` in `lib/format.ts`. Never `new Date().toISOString().slice(0,10)`.
 
+## Open bug: this route ignores the theme cookie
+
+With `df-theme=paper`, `/frontdesk` renders `data-theme="dark"` on every load, while `/tomorrow`,
+`/menu`, `/housekeeping` and `/billing` all render `paper`. Someone who chose the light theme gets a
+dark Front desk.
+
+Measured 2026-10-07, three consecutive loads, no service worker involved:
+
+```
+/frontdesk   at 600ms: dark   at 4.6s: dark
+             cookie says paper · attr was dark · re-running boot gives paper
+/tomorrow    at 600ms: paper  at 4.6s: paper
+             cookie says paper · attr was paper · re-running boot gives paper
+```
+
+The served HTML is identical on both routes — `<html data-theme="dark">` plus one `THEME_BOOT`
+script — so the difference is client-side and specific to this route. The cookie is readable and
+correct throughout, and running the boot logic by hand on the page fixes it, so the boot script's
+result is being thrown away after it runs. Likely a hydration mismatch on this page forcing React to
+re-render from the server JSX, which carries `data-theme="dark"`; `suppressHydrationWarning` on
+`<html>` hides the warning that would have said so. **Not yet fixed.** Start by looking for a
+hydration mismatch in `FrontDeskClient.tsx`.
+
+See [shell-and-nav.md](shell-and-nav.md) for how the theme is meant to boot.
+
 ## Verify
 
 ```
