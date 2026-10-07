@@ -1,0 +1,70 @@
+# Rooms, reservations and facilities
+
+**Routes** `/rooms` · `/reservations` · `/facilities`
+**Files** `app/(app)/rooms/RoomsClient.tsx` · `app/(app)/reservations/ReservationsClient.tsx` ·
+`Calendar.tsx` · `app/(app)/facilities/FacilitiesClient.tsx` · each `actions.ts`
+**Reads** `rooms`, `room_types`, `bookings`, `housekeeping_tasks`, `reservations`, `dining_tables`,
+`offers`, `reviews`, `profiles`, `facilities`, `facility_bookings`
+**Writes** `reservation_set`, facility actions
+
+## What it is
+
+`/rooms` is the room inventory and the live room rack. `/reservations` is **table** bookings for the
+dining room — a different thing from a room booking. `/facilities` is the banquet hall, the pool,
+the conference room: bookable things that are not rooms.
+
+## How it works
+
+### The month grid (`Calendar.tsx`)
+
+One ruled block, not forty-two cards:
+
+```
+.cal-grid   display:grid; gap:1px; background: separator; border-radius; overflow:hidden
+.cal-cell   a flush cell on its own background — the 1px gap draws the hairline between them
+```
+
+- **Monday first.** A restaurant's week bends around the weekend; splitting Sat from Sun across two
+  rows is the wrong cut.
+- **Always 42 cells / six rows**, so the grid does not change height as you page and drag the panel
+  beside it with it.
+- **Today** gets the tint ring on its numeral (`.cal-num.today`). **The open day** inverts the whole
+  cell (`.cal-cell.on`). Both can be true at once.
+- **Weekend columns** carry their own ground (`.cal-cell.wknd`), so the shape of the week is visible
+  before you read a number.
+- Each day with bookings gets a **density bar** measured against the busiest day of that month, plus
+  up to three status dots and the head count.
+- **No guest names in the cells** — the panel beside the grid already lists every booking on the open
+  day, in full, with the phone number and the buttons that act on it. The grid's job is showing
+  which days are busy.
+
+Cells are 58px (74 from `sm`), and at 412px the grid **fits without scrolling sideways** — seven
+columns of ~50px, still above the 44px tap floor.
+
+## Before you edit
+
+- **`min-w-0` on the calendar card root is load-bearing.** As a grid item it defaults to
+  `min-width:auto` and pushed the whole page sideways on a phone.
+- **The weekday header must use the same track as the grid** — `gap-px border border-transparent` —
+  or the headings drift a pixel further off across the week.
+- **Do not stagger the cells.** One fade for the block; 42 animated nodes on a month change is the
+  slowest thing on a tablet. `display: contents` on a motion wrapper does not animate anyway.
+- **`cal.mjs` counts weekday headings as childless `<div>`s.** If you put spans inside them the
+  suite fails without the screen being wrong — and a two-span header reads as "MMon" to a screen
+  reader, which is why the short-name variant was dropped.
+- **Cancelled and no-show bookings must not colour the calendar** (`LIVE` in `Calendar.tsx`).
+- **Room cards**: the wrapper is the flex column and the card is `flex-1 min-h-[7rem]`. An
+  `aspect-[5/4]` card clipped its own content.
+
+## Verify
+
+```
+node cal.mjs             # 6 checks — 42 cells, 7 weekday heads, dots, the open day,
+                         # 0 touch targets under 44px, 0 spill, at 1440/1194/834/412,
+                         # plus an empty month and a clean console
+```
+
+## See also
+
+[front-desk.md](front-desk.md) · [housekeeping.md](housekeeping.md) ·
+[guest-facing.md](guest-facing.md) · [design-system.md](design-system.md)
