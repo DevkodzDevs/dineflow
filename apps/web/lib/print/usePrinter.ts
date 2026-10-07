@@ -25,7 +25,17 @@ export function usePrinters() {
   }, [pick]);
 
   const printKot = useCallback(async (d: KotData) => {
-    const targets = pick("kot").filter((t) => !(t as PrinterCfg & { station?: string | null }).station || (t as PrinterCfg & { station?: string | null }).station === d.station);
+    const targets = pick("kot")
+      .filter((t) => !(t as PrinterCfg & { station?: string | null }).station || (t as PrinterCfg & { station?: string | null }).station === d.station)
+      /* A kitchen docket prints by itself the instant an order is sent, so a printer that can only
+         print by opening the browser's print dialog has no place in that path: it stops the till
+         dead with a modal between "Send to kitchen" and the order screen, and someone has to
+         dismiss it before they can take the next table. Bluetooth, USB and the network bridge all
+         print silently and still do.
+         A reprint is the exception: somebody pressed the printer button on the kitchen screen
+         asking for paper, so the dialog is the answer rather than the interruption. Same reasoning
+         as printBill, which keeps its browser fallback for exactly that reason. */
+      .filter((t) => t.transport !== "browser" || d.reprint === true);
     if (!targets.length) return null;
     for (const t of targets) await sendToPrinter(t, buildKot(d, t.width === 58 ? 58 : 80), kotHtml(d));
     return targets.map((t) => t.name).join(", ");
