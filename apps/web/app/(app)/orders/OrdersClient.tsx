@@ -37,12 +37,11 @@ export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Orde
                     <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`}
                       className={cn("feather feather-lift flex-1 min-h-[7rem] p-3 flex flex-col relative overflow-hidden",
                         t.status === "occupied" && "filled", t.status === "reserved" && "border-saffron border-dashed")}>
-                      <div className="flex justify-between items-start"><span className="font-display text-2xl">{t.name}</span><span className="text-[11px] flex items-center gap-1 text-[var(--card-muted)]"><Users size={11} />{t.capacity}</span></div>
+                      <div className="flex justify-between items-start gap-1.5"><span className="font-display text-2xl leading-none">{t.name}</span><span className="flex items-center gap-1.5 shrink-0">{anyReady && <span className="ready-flag">Ready</span>}<span className="text-[11px] flex items-center gap-1 text-[var(--card-muted)]"><Users size={11} />{t.capacity}</span></span></div>
                       <div className="mt-auto">
-                        {o ? (<><div className="num text-xs text-[var(--card-muted)]">#{o.order_no} · {fmtSince(o.created_at)}</div><div className="num font-semibold">{formatINR(total)}</div></>)
+                        {o ? (<><div className="num text-xs text-[var(--card-muted)] truncate">#{o.order_no} · {fmtSince(o.created_at)}</div><div className="num font-semibold">{formatINR(total)}</div></>)
                           : <div className={cn("text-xs font-semibold", t.status === "reserved" ? "text-saffron" : "text-steel")}>{t.status === "reserved" ? "Reserved" : "Free"}</div>}
                       </div>
-                      {anyReady && <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-mint pulse-dot text-mint" />}
                     </Link>
                     {!o ? <button onClick={() => start(() => { setTableStatus(t.id, t.status === "reserved" ? "free" : "reserved"); })} disabled={pending} className="mt-1 text-[11px] text-steel hover:text-ink w-full text-center">{t.status === "reserved" ? "Unreserve" : "Reserve"}</button>
                       : <div className="mt-1 text-[11px] invisible select-none" aria-hidden>Reserve</div>}
