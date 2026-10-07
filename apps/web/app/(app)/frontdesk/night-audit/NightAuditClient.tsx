@@ -52,7 +52,7 @@ export function NightAuditClient({ today, date, audit, history, canClose }: { to
         {a.closed && <Pill tone="ready">closed {new Date(a.closed.closed_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</Pill>}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
         <StatTile label="Occupancy" value={`${Math.round(Number(a.occupancy_pct))}%`} sub={`${a.occupied} of ${a.rooms_sellable} sellable · ${a.ooo_rooms} out of order`} tone={Number(a.occupancy_pct) >= 80 ? "good" : undefined} />
         <StatTile label="ADR" value={formatINR(Number(a.adr))} sub="average rate per night sold" delay={0.05} />
         <StatTile label="RevPAR" value={formatINR(Number(a.revpar))} sub="revenue per sellable room" delay={0.1} />

@@ -47,7 +47,7 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
   return (
     <>
       <PageHeader eyebrow="Numbered GST tax invoices" title="Invoices" accent="& tax" sub="Stay invoices combine room, food, spa and extras. Dining invoices come from paid bills." />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 mb-4">
         <StatTile label={`Invoiced · ${n} days`} value={formatINR(total)} sub={`${rows.length} invoices`} />
         <StatTile label="GST collected" value={formatINR(gst)} sub="CGST + SGST" delay={0.05} />
         <StatTile label="Stay invoices" value={String(rows.filter((i) => i.kind === "stay").length)} delay={0.1} />

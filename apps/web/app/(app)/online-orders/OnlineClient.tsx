@@ -31,7 +31,7 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
   return (
     <div className="space-y-5">
       {channels.length === 0 && <Card className="!bg-champagne-2 flex items-start gap-3"><Link2 size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>No channels connected yet.</b> Add one on the <Link href="/channels" className="underline font-semibold">Channels</Link> page and give the aggregator your webhook URL. Until Swiggy/Zomato approve your integration you can point your own website or an UrbanPiper-style middleware at the same URL.</div></Card>}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
         <StatTile label="Waiting to accept" value={String(news.length)} tone={news.length ? "alert" : "good"} />
         <StatTile label="In the kitchen" value={String(live.length - news.length)} delay={0.05} />
         <StatTile label="Today's online sales" value={formatINR(today.reduce((t, o) => t + Number(o.gross), 0))} delay={0.1} />

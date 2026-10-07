@@ -39,7 +39,7 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant }
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
         <StatTile label="Customers" value={String(ov.total ?? customers.length)} sub={`${ov.new_30d ?? 0} new in 30 days`} />
         <StatTile label="Came back" value={String(ov.returning ?? 0)} sub={`${ov.lapsed_60d ?? 0} not seen in 60 days`} tone={(ov.lapsed_60d ?? 0) > 0 ? "alert" : "good"} delay={0.05} />
         <StatTile label="Spent · 30 days" value={formatINR(Number(ov.spend_30d ?? 0))} sub="by known guests" delay={0.1} />

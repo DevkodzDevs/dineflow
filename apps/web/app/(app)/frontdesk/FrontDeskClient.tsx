@@ -46,7 +46,7 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
         <StatTile label="Arrivals today" value={String(arrivals.length)} sub={arrivals.length ? "waiting to check in" : "all arrived"} />
         <StatTile label="Departures today" value={String(departures.length)} delay={0.05} />
         <StatTile label="In house" value={String(inHouse.length)} sub={`${occ}% occupancy`} tone={occ >= 80 ? "good" : undefined} delay={0.1} />

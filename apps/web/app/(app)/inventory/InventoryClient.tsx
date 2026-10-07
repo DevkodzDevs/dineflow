@@ -32,7 +32,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
         <StatTile label="Items tracked" value={String(ingredients.length)} />
         <StatTile label="Below reorder level" value={String(low.length)} tone={low.length ? "alert" : "good"} sub={low.length ? (onOrder ? `${onOrder} order${onOrder === 1 ? "" : "s"} on the way` : "Order soon") : "All stocked"} delay={0.05} />
         <StatTile label="Stock value" value={formatINR(value)} sub="at last purchase cost" delay={0.1} />

@@ -64,7 +64,7 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
       {/* ── 1. price index ── */}
       {t === "prices" && (
         <Stream on={!!s.share_prices} label="Price pooling" peers={status.peers_prices}>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 mb-5">
             <StatTile label="Paying over the odds" value={String(overpaying.length)} sub={`of ${prices.length} items compared`} tone={overpaying.length ? "alert" : "good"} />
             <StatTile label="Extra per week" value={formatINR(excess)} sub="if you matched the median" tone={excess > 0 ? "alert" : "good"} delay={0.05} />
             <StatTile label="Contributing nearby" value={String(status.peers_prices)} sub={`within ${s.radius_km ?? 40} km`} delay={0.1} />

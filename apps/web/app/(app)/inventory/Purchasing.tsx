@@ -192,7 +192,7 @@ export function WastageView({ w }: { w: Wastage }) {
   const max = Math.max(...w.by_reason.map((r) => Number(r.cost)), 1);
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
         <StatTile label={`Wasted · ${w.days} days`} value={formatINR(Number(w.total_cost))} sub={`${w.lines} line${w.lines === 1 ? "" : "s"} logged`} tone="alert" />
         <StatTile label="Biggest reason" value={w.by_reason[0]?.reason ?? "—"} sub={w.by_reason[0] ? formatINR(Number(w.by_reason[0].cost)) : ""} delay={0.05} />
         <StatTile label="Most wasted" value={w.by_ingredient[0]?.name ?? "—"} sub={w.by_ingredient[0] ? `${Number(w.by_ingredient[0].qty)} ${w.by_ingredient[0].unit} · ${formatINR(Number(w.by_ingredient[0].cost))}` : ""} delay={0.1} />

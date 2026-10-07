@@ -66,7 +66,7 @@ export function ReservationsClient({ day, list, tables, reviews, month, ai = fal
           <Button onClick={() => setWalkIn(true)}><Plus size={16} /> Phone booking</Button>
         </div>} />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 mb-5">
         <StatTile label="Bookings" value={String(list.filter((r) => r.status !== "cancelled").length)} sub={new Date(day).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })} />
         <StatTile label="Covers expected" value={String(covers)} delay={.05} />
         <StatTile label="Waiting to arrive" value={String(upcoming.length)} tone={upcoming.length ? "alert" : "good"} delay={.1} />

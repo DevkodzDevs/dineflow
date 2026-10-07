@@ -22,7 +22,7 @@ export default async function BillingPage() {
   return (
     <>
       <PageHeader eyebrow="Cash & counter" title="Billing" actions={<DayClose today={today} lastClosed={closes?.[0]?.business_date ?? null} />} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 mb-6">
         <StatTile label="Today's sales" value={formatINR(sales)} sub={`${paid.length} bills`} />
         <StatTile label="Cash" value={formatINR(by("cash"))} delay={0.05} />
         <StatTile label="UPI" value={formatINR(by("upi"))} delay={0.1} />

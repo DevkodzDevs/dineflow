@@ -26,7 +26,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
         <StatTile label="Present today" value={`${todayAtt.length} / ${active.length}`} tone={todayAtt.length === active.length && active.length ? "good" : undefined} />
         <StatTile label="Today's wages" value={formatINR(todayAtt.reduce((t, a) => t + Number(a.wage), 0))} delay={0.05} />
         <StatTile label="This month" value={formatINR(monthWages)} sub={`${attendance.length} man-days`} delay={0.1} />

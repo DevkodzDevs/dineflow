@@ -56,7 +56,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
           <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(r.sealed ? `${r.sealed} new month(s) sealed.` : "Already up to date."); })}>Seal new months</Button>
         </Card>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 mb-5">
           <StatTile label="Verified turnover" value={formatINR(record.total_revenue)} sub={`${record.months} months to ${mon(record.to)}`} />
           <StatTile label="Average month" value={formatINR(record.avg_monthly)} delay={0.05} />
           <StatTile label="GST collected" value={formatINR(record.gst_collected)} sub="paid to government" delay={0.1} />
