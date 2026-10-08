@@ -39,12 +39,23 @@ drawn at all — sixty grey squares with letters in them are not thumbnails.
 
 **The ticket rail** (`CartPanel`, used in the desktop `<aside>` and the phone sheet alike) reads top
 to bottom: "Order details" + Clear · `Segmented` type (Dine in / Takeaway / Delivery / Room when
-guests are in) · a **Table row that opens** into a 5-across grid of table buttons and closes on pick
-(occupied tables dimmed, the "already has order #n running" notice under it) · Name + Phone (phone
-drives `lookupCustomer`) · "Ticket · n items" + Courses toggle · the line cards (`.stepper`, price
-with `whole`) · then a fixed summary block: "+ Cooking request", the on-time promise, errors and
-pantry warnings, Total payment, and a full-width `Button variant="ink"` Send to kitchen. The rail is
-`flex-col h-full min-h-0`; only the line list scrolls.
+guests are in) · for dine-in, **Table and Guest side by side**, each a button that opens below it —
+Table into a 5-across grid that closes on pick (occupied dimmed, the "already has order #n running"
+notice under it), Guest into Name + Phone (phone drives `lookupCustomer`); takeaway and delivery
+show Name + Phone directly · "Ticket · n items" + Courses toggle · the line cards (name and ×, then
+`.stepper`, a note icon and the price; the note field appears below only when opened) · then a fixed
+summary block: the cooking-request chip and the total on one row, the on-time promise, errors and
+pantry warnings, and a full-width `Button variant="ink"` Send to kitchen.
+
+**The rail always fits the screen; only the ticket lines scroll.** Every child of the panel is
+`shrink-0` except the line list (`flex-1 min-h-0 overflow-y-auto`). The desktop `<aside>`'s height
+is **measured** (`railRef` effect, on scroll and resize): viewport bottom less 16px, from the rail's
+top or the 24px sticky line, whichever is lower — and capped at the dish column's bottom. The dish
+`<section>` is `lg:min-h-[calc(100dvh-2.5rem)]` so it is always long enough for the rail to stick.
+A fixed `calc(100dvh - 3rem)` put Send to kitchen ~180px below the fold, because the rail starts
+under the master banner and search bar, not at the top of the viewport. Measured list space with
+nine dishes: 1920×1080 465px · 1440×900 283 · 1366×768 151 · 1194×834 217 · 1024×768 130 ·
+834 sheet 609 · 412 sheet 372.
 
 A dish with sizes or add-ons opens `OptionChooser` instead of incrementing. Combos expand to their
 parts. "+ Cooking request" writes `p_note`.
@@ -80,6 +91,10 @@ node design-test.mjs     # the till checks: one plus at zero, two taps put 2 on 
                          # minus beside the plus, the plus has not moved, the ticket agrees, the
                          # minus takes one back and retires at zero, 0 nested buttons
 node responsive.mjs      # the till and the option dialog at 5 widths
+node fit.mjs             # nine dishes on the ticket at 7 real screen sizes (not full-page shots,
+                         # which hide this): panel ends on screen, Send visible, the line list
+                         # scrolls, nothing else overflows, still fits after scrolling the dishes
+                         # and with one short category at 1920
 ```
 
 ## See also

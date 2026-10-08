@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed } from "lucide-react";
+import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus } from "lucide-react";
 import { Button, Pill, Segmented, cn, useToast } from "@/components/ui";
 import { formatINR, fmtSince } from "@/lib/format";
 import { placeOrder, parseOrder } from "../actions";
@@ -227,7 +227,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   /* ── the ticket rail ── */
   /* The table picker is a row that opens, not fourteen loose chips: a rail that is a third of the
      screen cannot afford a keypad above an empty ticket. Picking closes it again. */
-  const [pickOpen, setPickOpen] = useState(false);
+  const [pickOpen, setPickOpen] = useState(false); const [guestOpen, setGuestOpen] = useState(false);
   const tableName = tables.find((t) => t.id === tableId)?.name ?? null;
   /* The grid goes photo-first the day most of the menu has a picture. Until then it does not show
      sixty grey squares with a letter in each and call them thumbnails. */
@@ -239,8 +239,37 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
     ...(inHouse.length ? [{ value: "room_service" as const, label: "Room" }] : []),
   ];
 
+  /* The rail is exactly as tall as the screen it is on, measured, not guessed. A fixed
+     calc(100dvh - 3rem) was the viewport's height starting ~200px down the page, under the master
+     banner and the search bar, so Total and Send to kitchen sat below the fold until you scrolled.
+     Measured from the rail's own top on every scroll and resize; once it is stuck (top 24px) it is
+     the viewport less a margin. Only the ticket lines scroll inside it. */
+  const railRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = railRef.current; if (!el) return;
+    let raf = 0;
+    const fit = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (!el.offsetParent) return; // below lg the rail is hidden and the sheet is used instead
+        // capped at the dish column's own bottom: a rail taller than the column lengthens the page,
+        // and the page then scrolls it up off its sticky line. Measured from the sticky line (24px,
+        // top-6) at the least — a rail already pushed above it would otherwise measure from its
+        // pushed-up top, keep its full height, and stay pushed.
+        const top = Math.max(el.getBoundingClientRect().top, 24);
+        const floor = (el.previousElementSibling as HTMLElement | null)?.getBoundingClientRect().bottom ?? Infinity;
+        el.style.height = `${Math.max(360, Math.min(window.innerHeight - top - 16, floor - top))}px`;
+      });
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    window.addEventListener("scroll", fit, true); // capture: the shell may scroll an inner element, not the window
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", fit); window.removeEventListener("scroll", fit, true); };
+  }, []);
+
   const CartPanel = (
-    <div className="flex flex-col h-full min-h-0">
+    /* every block keeps its height; the ticket lines (flex-1 min-h-0) are the only thing that gives */
+    <div className="flex flex-col h-full min-h-0 [&>*]:shrink-0">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold leading-none">Order details</h2>
         {lines.length > 0 && <button type="button" onClick={clearTicket} className="h-9 px-2 -mr-2 text-[13px] font-semibold text-steel hover:text-[var(--color-red)]">Clear</button>}
@@ -250,16 +279,25 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
 
       {type === "dine_in" ? (
         <>
-          <button type="button" onClick={() => setPickOpen((v) => !v)} aria-expanded={pickOpen}
-            className={cn("mt-3 w-full h-12 rounded-xl border px-3 flex items-center gap-3 text-left transition-colors",
-              tableId ? "border-line bg-[var(--color-bg-3)]" : "border-dashed border-[var(--color-line-2)] hover:bg-[var(--color-fill)]")}>
-            <span className={cn("h-8 w-8 rounded-lg grid place-items-center shrink-0", tableId ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel")}><Armchair size={15} /></span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-[10.5px] uppercase tracking-[0.12em] text-steel leading-none">Table</span>
-              <span className={cn("block text-sm truncate mt-1 leading-none", tableId ? "font-semibold" : "text-steel")}>{tableName ?? "Select a table"}</span>
-            </span>
-            <ChevronDown size={16} className={cn("text-steel shrink-0 transition-transform", pickOpen && "rotate-180")} />
-          </button>
+          {/* Table and guest share one row, each a button that opens below it. As two stacked
+              rows they cost the rail 52px, which on a 768px laptop was most of the ticket. */}
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {[
+              { key: "table", label: "Table", value: tableName, empty: "Select", icon: <Armchair size={15} />, on: pickOpen, set: () => { setPickOpen((v) => !v); setGuestOpen(false); } },
+              { key: "guest", label: "Guest", value: customer.name || customer.phone || null, empty: "Add", icon: <UserRound size={15} />, on: guestOpen, set: () => { setGuestOpen((v) => !v); setPickOpen(false); } },
+            ].map((f) => (
+              <button key={f.key} type="button" onClick={f.set} aria-expanded={f.on}
+                className={cn("min-w-0 h-12 rounded-xl border px-2.5 flex items-center gap-2 text-left transition-colors",
+                  f.value ? "border-line bg-[var(--color-bg-3)]" : "border-dashed border-[var(--color-line-2)] hover:bg-[var(--color-fill)]")}>
+                <span className={cn("h-8 w-8 rounded-lg grid place-items-center shrink-0", f.value ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel")}>{f.icon}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[10px] uppercase tracking-[0.12em] text-steel leading-none">{f.label}</span>
+                  <span className={cn("block text-sm truncate mt-1 leading-tight", f.value ? "font-semibold" : "text-steel")}>{f.value ?? f.empty}</span>
+                </span>
+                <ChevronDown size={14} className={cn("text-steel shrink-0 transition-transform", f.on && "rotate-180")} />
+              </button>
+            ))}
+          </div>
           {pickOpen && (
             <div className="mt-2 grid grid-cols-5 gap-1.5">
               {tables.map((t) => <button key={t.id} type="button" onClick={() => { pickTable(t); setPickOpen(false); }} aria-pressed={tableId === t.id}
@@ -275,10 +313,12 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
               </div>
             </div>
           )}
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <input placeholder="Name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
-            <input placeholder="Phone" inputMode="tel" className="num" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
-          </div>
+          {guestOpen && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <input autoFocus placeholder="Name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
+              <input placeholder="Phone" inputMode="tel" className="num" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") setGuestOpen(false); }} />
+            </div>
+          )}
         </>
       ) : type === "room_service" ? (
         <select className="mt-3" value={room} onChange={(e) => { setRoom(e.target.value); const g = inHouse.find((x) => x.id === e.target.value); setCustomer({ name: g ? `Room ${g.rooms?.number} · ${g.guests?.full_name}` : "", phone: "" }); }}><option value="">Choose in-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
@@ -295,7 +335,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} title="Starters now, mains when the table is ready: every course after the first is held until the kitchen fires it"
           className={cn("h-9 rounded-full px-2.5 text-[11px] font-semibold flex items-center gap-1 transition", coursing ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)]")}><ListOrdered size={12} /> Courses {coursing ? "on" : "off"}</button>
       </div>
-      <div className="mt-2 flex-1 min-h-0 overflow-y-auto space-y-2 [scrollbar-width:thin]">
+      <div className="mt-2 !shrink flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 -mr-2 pr-2 [scrollbar-width:thin]">
         <AnimatePresence initial={false}>
           {lines.length === 0 && (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -331,26 +371,22 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
                   <span className="n num">{l.qty}</span>
                   <button type="button" onClick={() => bump(l.key, 1)} aria-label="One more" className="more"><Plus size={15} /></button>
                 </div>
+                {!(l.note || noteOpen.has(l.key)) && (
+                  <button type="button" onClick={() => setNoteOpen((n) => new Set(n).add(l.key))} aria-label={`Note for the kitchen on ${lineName(l.item, l.variant)}`} title="Note for kitchen"
+                    className="h-10 w-10 rounded-full grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><MessageSquarePlus size={16} /></button>
+                )}
                 <span className="ml-auto num font-semibold text-[15px]">{formatINR(unit(l) * l.qty, { whole: true })}</span>
               </div>
-              {l.note || noteOpen.has(l.key)
-                ? <input autoFocus={!l.note} className="mt-2 !py-1.5 !text-xs" placeholder="Less spicy, no onion…" value={l.note} onChange={(e) => setNote(l.key, e.target.value)} />
-                : <button type="button" onClick={() => setNoteOpen((n) => new Set(n).add(l.key))}
-                    className="mt-1 h-8 text-[11px] font-semibold text-steel hover:text-[var(--color-label)] flex items-center gap-1"><Plus size={11} /> Note for kitchen</button>}
+              {(l.note || noteOpen.has(l.key)) && <input autoFocus={!l.note} className="mt-2 !py-1.5 !text-xs" placeholder="Less spicy, no onion…" value={l.note} onChange={(e) => setNote(l.key, e.target.value)} />}
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
 
-      <div className="shrink-0 pt-3 mt-2 border-t border-line">
+      <div className="shrink-0 pt-2.5 mt-2 border-t border-line">
         {/* one request for the whole ticket, the way a guest actually asks it — place_order has
             carried a slot for this all along and the till never offered anywhere to type it */}
-        <button type="button" onClick={() => setAskNote((v) => !v)} aria-pressed={askNote || !!ticketNote}
-          className={cn("h-9 rounded-full px-3 text-[12px] font-semibold inline-flex items-center gap-1 border transition",
-            ticketNote ? "border-tint text-[var(--color-tint)]" : "border-line text-steel hover:text-[var(--color-label)]")}>
-          <Plus size={12} /> Cooking request{ticketNote ? ` · ${ticketNote.slice(0, 18)}${ticketNote.length > 18 ? "…" : ""}` : ""}
-        </button>
-        {askNote && <input autoFocus className="mt-2 !py-1.5 !text-xs" maxLength={200} placeholder="All mild · no onion · serve everything together"
+        {askNote && <input autoFocus className="mb-2 !py-1.5 !text-xs" maxLength={200} placeholder="All mild · no onion · serve everything together"
           value={ticketNote} onChange={(e) => setTicketNote(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") setAskNote(false); }} />}
         {promise && (
           <button type="button" onClick={() => setPromised((v) => !v)} aria-pressed={promised}
@@ -374,12 +410,18 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           </div>
         )}
         {coursing && courses.length > 1 && <p className="text-[11px] text-steel mt-2">Course 1 goes now. {courses.filter((c) => c > 1).map((c) => `Course ${c}`).join(" and ")} will wait on the kitchen screen until fired.</p>}
-        <div className="mt-3 flex items-end justify-between gap-3">
-          <span className="min-w-0">
-            <span className="block text-[10.5px] uppercase tracking-[0.14em] text-steel">Total payment</span>
-            <span className="block text-xs text-steel num mt-1">{count} item{count === 1 ? "" : "s"}</span>
+        {/* the request chip and the total share a row: the chip is a ticket-wide extra, the total
+            what it all comes to — each had a row of its own and the ticket paid for both */}
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <button type="button" onClick={() => setAskNote((v) => !v)} aria-pressed={askNote || !!ticketNote} title={ticketNote || "One request for the whole ticket"}
+            className={cn("min-w-0 h-9 rounded-full px-3 text-[12px] font-semibold inline-flex items-center gap-1 border transition",
+              ticketNote ? "border-tint text-[var(--color-tint)]" : "border-line text-steel hover:text-[var(--color-label)]")}>
+            <Plus size={12} className="shrink-0" /> <span className="truncate">{ticketNote ? ticketNote : "Cooking request"}</span>
+          </button>
+          <span className="text-right shrink-0">
+            <span className="block text-[10px] uppercase tracking-[0.14em] text-steel num">Total · {count} item{count === 1 ? "" : "s"}</span>
+            <span className="block num text-[26px] font-bold leading-none tabular-nums mt-1">{formatINR(grand)}</span>
           </span>
-          <span className="num text-[26px] font-bold leading-none tabular-nums">{formatINR(grand)}</span>
         </div>
         <Button variant="ink" size="lg" className="w-full mt-3" disabled={pending || lines.length === 0} onClick={submit}><Send size={16} /> {pending ? "Sending…" : warned && shortfalls.length > 0 ? "Send anyway" : "Send to kitchen"}</Button>
       </div>
@@ -396,7 +438,10 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           work in. The clamp gives the rail about a third, never under 280 (its content floor) and
           never over 380 (past which it is just a wide empty column). Measured, the dish column goes
           364 -> 444 at 1080 and 478 -> 558 at an iPad in landscape. */}
-      <section className="min-w-0">
+      {/* At least a stuck rail's height (viewport less top-6 and the 16px foot), so the dish column
+          is always long enough for the rail to stick in: with a short menu or one category, the
+          rail was the tallest thing in the row, lengthened the page as it grew, and got pushed up. */}
+      <section className="min-w-0 lg:min-h-[calc(100dvh-2.5rem)]">
         <div className="flex items-center gap-3 mb-4">
           <Link href="/orders" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
           {/* the search is what yields, not the title: `w-full max-w-xs` on the field squeezed the
@@ -502,7 +547,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           {visible.length === 0 && <p className="col-span-full text-sm text-steel py-8">No dishes match. Check Menu → availability.</p>}
         </div>
       </section>
-      <aside className="hidden lg:block feather p-4 sticky top-6 h-[calc(100dvh-3rem)]">{CartPanel}</aside>
+      <aside ref={railRef} className="hidden lg:block self-start feather p-4 sticky top-6 h-[calc(100dvh-3rem)]">{CartPanel}</aside>
       {/* mobile cart bar */}
       <div className="lg:hidden fixed bottom-[72px] inset-x-4 z-30">
         <motion.button animate={{ y: count ? 0 : 80 }} onClick={() => setCartOpen(true)} className="w-full h-13 rounded-2xl bg-ink text-on-label flex items-center justify-between px-5 shadow-lift">
@@ -512,7 +557,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       <AnimatePresence>
         {cartOpen && (<>
           <motion.div className="lg:hidden cursor-pointer fixed inset-0 z-40 bg-ink/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCartOpen(false)} />
-          <motion.div className="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-[24px] p-5 h-[85dvh]" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}>{CartPanel}</motion.div>
+          <motion.div className="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-[24px] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] h-[85dvh]" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}>{CartPanel}</motion.div>
         </>)}
       </AnimatePresence>
       {/* the question a dish asks: size, extras, how many */}
