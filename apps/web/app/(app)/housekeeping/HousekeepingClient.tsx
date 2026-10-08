@@ -3,7 +3,7 @@ import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { Button, Card, Field, Pill, cn, Empty, useToast } from "@/components/ui";
+import { Button, Card, Field, Pill, Segmented, cn, Empty, useToast } from "@/components/ui";
 import { fmtSince } from "@/lib/format";
 import { setTask, addTask, setCondition, inspectRoom, buildSheet } from "./actions";
 import { setRoomStatus } from "../rooms/actions";
@@ -32,6 +32,9 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
   { today: string; tasks: Task[]; rooms: Room[]; stays: Stay[]; done: Done[]; canInspect: boolean; inspectRule: boolean }) {
   const [pending, start] = useTransition(); const toast = useToast();
   const [f, setF] = useState({ room: "", kind: "clean", notes: "" });
+  /* On a phone the board and the task sheet are two tabs, not one page five screens long: a
+     housekeeper is either walking the rooms or working the list. From sm both show, as before. */
+  const [view, setView] = useState<"rooms" | "tasks">("rooms");
   useLive(["housekeeping_tasks", "rooms", "bookings"]);
   const byRoom = useMemo(() => Object.fromEntries(stays.map((s) => [s.room_id, s])) as Record<string, Stay>, [stays]);
   const floors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b);
@@ -71,6 +74,13 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
       </div>
       {inspectRule && !canInspect && <p className="text-xs text-steel -mt-3">Rooms are inspected before they are sold. An owner, manager or supervisor signs them off from this page.</p>}
 
+      <div className="sm:hidden">
+        <Segmented value={view} onChange={setView} className="w-full [&>button]:flex-1 [&>button]:!h-11"
+          options={[{ value: "rooms", label: <span className="inline-flex items-center gap-1.5">Rooms <span className="num opacity-60">{rooms.length}</span></span> },
+                    { value: "tasks", label: <span className="inline-flex items-center gap-1.5">Tasks <span className="num opacity-60">{tasks.length}</span></span> }]} />
+      </div>
+
+      <div className={cn("space-y-6", view !== "rooms" && "max-sm:hidden")}>
       {discrepancies.length > 0 && (
         <Card className="!border-[var(--color-orange)]/50">
           <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-orange)] mb-2 flex items-center gap-1.5"><AlertTriangle size={13} /> Discrepancies · {discrepancies.length}</div>
@@ -168,12 +178,13 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
           </div></section>
       ))}
       {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet — add them on the Rooms page.</p>}
+      </div>
 
       {/* the task sheet */}
       {/* The board gets two real columns before the form takes a side of its own: at lg the form's
           320px left each column ~290px and "Done · room ready" ran out of its button. Below xl the
           form and "Recently done" sit under the board, side by side. */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] items-start">
+      <div className={cn("grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] items-start", view !== "tasks" && "max-sm:hidden")}>
         <div className="grid md:grid-cols-2 gap-4 min-w-0">
           {cols.map((c) => { const list = tasks.filter((t) => t.status === c.key); return (
             <section key={c.key} className={cn("rounded-[20px] p-3", c.key === "pending" ? "bg-sky-2" : "bg-champagne-2")}><div className="text-sm font-semibold px-1 pb-3">{c.title} <span className="num text-steel">{list.length}</span></div>

@@ -40,6 +40,12 @@ dirty room without a ticket.
 
 ## Before you edit
 
+- **On a phone the page is two tabs** — `Segmented` Rooms n | Tasks n (`view` state, `sm:hidden`).
+  Rooms holds the discrepancies and the board; Tasks the To do / In progress columns, New task and
+  Recently done. Each side is hidden with `max-sm:hidden`, so from `sm` both show and there is no
+  switch. The switch is not sticky: the TopBar already sticks at top-4 and they would collide.
+  Probe: `hktabs.mjs` (390 both themes, 834).
+
 - **An out-of-order room card says why and how it comes back**: the open maintenance task for that
   room number (Waiting for repair / Being fixed, its note and age, or "No repair task open"), and
   Back in service → `setRoomStatus(id, "available")` from `../rooms/actions`, which marks it clean
