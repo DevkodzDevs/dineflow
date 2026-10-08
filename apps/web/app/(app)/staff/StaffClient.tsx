@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { Copy, UserPlus, KeyRound, Check } from "lucide-react";
 import { SlidersHorizontal as AccessIcon } from "lucide-react";
-import { Button, Card, Field, Sheet, Pill, cn, useToast } from "@/components/ui";
+import { Button, Field, Sheet, Pill, cn, useToast } from "@/components/ui";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, rolesIMayAssign, canManage, type Role, type PropertyType } from "@dineflow/shared";
 import { createInvite, setAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact } from "./actions";
 
@@ -70,41 +70,73 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
     if ("error" in r) { setAddErr(r.error!); return; }
     setMade({ title: `${p.full_name} · new password`, staff_code: p.staff_code, login_id: r.login_id, temp_password: r.temp_password }); setAdd(true);
   });
-  /* minmax(0,1fr), not 1fr. A 1fr track will not go below its content's own minimum, and a staff
-     row's minimum is large: the pills and the buttons all refuse to wrap, so the row's intrinsic
-     width held the column open and pushed the whole page 514px wider than the screen at 1024 —
-     the Access button sat off the right edge where nobody could reach it. The row wraps now, so
-     the pills drop to a second line instead of forcing the page wide. */
+  const waiting = staff.filter((p) => p.must_change_password).length;
+  const unconfirmed = staff.filter((p) => p.contact_email && !p.contact_verified_at).length;
+  /* The page as a list, not a list squeezed beside a form. The two ways to add someone were a 340px
+     column on the right; on an iPad or a laptop that column and a row of pills could not both fit,
+     the column slid off the screen, and the pills printed over one another ("Not signed in" over
+     "Owner"). Now: the actions in a bar on top, each person one row — who they are on the left, what
+     state they are in on a line under their name, the two buttons on the right — and the invites and
+     the how-to beside the list only where there is room for them (xl), under it everywhere else. */
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="feather divide-y divide-line">
-        {staff.map((p) => (
-          <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-            <span className="h-10 w-10 rounded-full bg-ink text-on-label grid place-items-center font-display shrink-0">{p.full_name.slice(0, 1)}</span>
-            <div className="flex-1 min-w-[11rem]">
-              <div className={cn("font-semibold truncate", !p.is_active && "text-steel line-through")}>{p.full_name}{p.id === me && <span className="text-xs text-steel font-normal"> (you)</span>}</div>
-              <div className="text-xs text-steel truncate">{p.staff_code && <span className="num font-semibold text-[var(--color-label-2)]">{p.staff_code}</span>}{p.staff_code && " · "}{p.email}{p.phone && <> · {p.phone}</>}</div>
-            </div>
-            {/* still on the slip they were handed — they have not chosen their own password yet */}
-            {p.must_change_password && <span className="pill" title="Has not signed in and set their own password yet">Not signed in</span>}
-            {p.contact_email && !p.contact_verified_at && <span className="pill" title="Their email is unconfirmed, so they cannot reset their own password yet">Email unconfirmed</span>}
-            <span className="pill pill-gold">{ROLE_LABEL[p.role]}</span>
-            {p.role !== "owner" && <span className="text-xs text-steel hidden sm:inline">{p.allowed_modules ? `${p.allowed_modules.length} sections` : "role default"}</span>}
-            {p.id !== me && canManage(myRole, p.role) && <>
-              <Button size="sm" variant="ghost" disabled={pending} onClick={() => showLogin(p)} title="Sign-in details"><KeyRound size={14} /></Button>
-              <Button size="sm" variant="outline" onClick={() => openAccess(p)}><AccessIcon size={14} /> Access</Button>
-            </>}
-          </div>
-        ))}
+    <div>
+      <div className="toolbar">
+        <div className="toolbar-group min-w-0">
+          <span className="text-sm font-semibold num">{staff.length} {staff.length === 1 ? "person" : "people"}</span>
+          {waiting > 0 && <Pill tone="pending">{waiting} not signed in</Pill>}
+          {unconfirmed > 0 && <Pill tone="alert">{unconfirmed} email unconfirmed</Pill>}
+        </div>
+        <div className="toolbar-group toolbar-end">
+          <Button variant="outline" onClick={() => { setCode(null); setOpen(true); }}>Invite with a code</Button>
+          <Button onClick={openAdd}><UserPlus size={16} /> Add staff</Button>
+        </div>
       </div>
-      <div className="space-y-4">
-        <Button className="w-full" onClick={openAdd}><UserPlus size={16} /> Add staff</Button>
-        <Button className="w-full" variant="outline" onClick={() => { setCode(null); setOpen(true); }}>Invite with a code</Button>
-        <p className="text-xs text-steel">Add staff when you want to hand someone their sign-in yourself. Invite with a code when they have their own email and can sign themselves up.</p>
-        <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Open invites</div>
-          {invites.length === 0 && <p className="text-sm text-steel">None. Invite codes last 7 days.</p>}
-          <ul className="space-y-2">{invites.map((i) => <li key={i.code} className="flex items-center justify-between text-sm"><span className="num font-semibold tracking-wider">{i.code}</span><Pill tone="pending">{ROLE_LABEL[i.role]}</Pill></li>)}</ul></Card>
-        <p className="text-xs text-steel">Staff open <b>/join</b> in the web app or the mobile app, enter the code and their details, and land straight in their screens.</p>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px] items-start">
+        <div className="feather divide-y divide-line overflow-hidden min-w-0">
+          {staff.map((p) => {
+            const mine = p.id !== me && canManage(myRole, p.role);
+            return (
+              <div key={p.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 px-4 py-3.5 sm:px-5">
+                <span className={cn("h-11 w-11 rounded-full grid place-items-center font-display text-lg shrink-0", p.is_active ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel")}>{p.full_name.slice(0, 1).toUpperCase()}</span>
+                <div className="min-w-0">
+                  <div className={cn("font-semibold truncate", !p.is_active && "text-steel line-through")}>{p.full_name}{p.id === me && <span className="text-xs text-steel font-normal"> (you)</span>}</div>
+                  <div className="text-xs text-steel truncate mt-0.5">{p.staff_code && <span className="num font-semibold text-[var(--color-label-2)]">{p.staff_code}</span>}{p.staff_code && " · "}{p.email}{p.phone && <> · {p.phone}</>}</div>
+                  {/* their state, on its own line: it wraps here rather than printing over the buttons */}
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <Pill tone="gold">{ROLE_LABEL[p.role]}</Pill>
+                    {p.role !== "owner" && <span className="text-[11px] text-steel">{p.allowed_modules ? `${p.allowed_modules.length} sections` : "role default"}</span>}
+                    {/* still on the slip they were handed — they have not chosen their own password yet */}
+                    {p.must_change_password && <span title="Has not signed in and set their own password yet"><Pill tone="pending">Not signed in</Pill></span>}
+                    {p.contact_email && !p.contact_verified_at && <span title="Their email is unconfirmed, so they cannot reset their own password yet"><Pill tone="alert">Email unconfirmed</Pill></span>}
+                    {!p.is_active && <Pill tone="alert">Off</Pill>}
+                  </div>
+                </div>
+                {mine ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button type="button" disabled={pending} onClick={() => showLogin(p)} title="Sign-in details" aria-label={`Sign-in details for ${p.full_name}`}
+                      className="h-10 w-10 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] disabled:opacity-40"><KeyRound size={16} /></button>
+                    <Button size="sm" variant="outline" onClick={() => openAccess(p)}><AccessIcon size={14} /> <span className="hidden sm:inline">Access</span></Button>
+                  </div>
+                ) : <span />}
+              </div>
+            );
+          })}
+          {staff.length === 0 && <p className="p-6 text-sm text-steel">Nobody yet. Add staff, or send someone an invite code.</p>}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 min-w-0">
+          <div className="feather p-4">
+            <div className="flex items-center justify-between mb-2"><span className="text-xs font-semibold uppercase tracking-wide text-steel">Open invites</span>{invites.length > 0 && <span className="num text-xs text-steel">{invites.length}</span>}</div>
+            {invites.length === 0 && <p className="text-sm text-steel">None. Invite codes last 7 days.</p>}
+            <ul className="space-y-2">{invites.map((i) => <li key={i.code} className="flex items-center justify-between gap-2 text-sm"><span className="num font-semibold tracking-wider">{i.code}</span><Pill tone="pending">{ROLE_LABEL[i.role]}</Pill></li>)}</ul>
+          </div>
+          <div className="feather p-4 text-xs text-steel space-y-2 leading-relaxed">
+            <div className="text-xs font-semibold uppercase tracking-wide">Two ways in</div>
+            <p><b className="text-[var(--color-label)]">Add staff</b> when you hand someone their sign-in yourself.</p>
+            <p><b className="text-[var(--color-label)]">Invite with a code</b> when they have their own email: they open <b>/join</b> in the web or mobile app, enter the code and their details, and land straight in their screens.</p>
+          </div>
+        </div>
       </div>
       <Sheet open={!!acc} onClose={() => setAcc(null)} title={acc ? `Access · ${acc.full_name}` : ""} wide>
         {acc && (
