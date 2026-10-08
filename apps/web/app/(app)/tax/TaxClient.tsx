@@ -49,7 +49,7 @@ export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings,
 
   return (
     <div>
-      <div className="flex gap-1 p-1 bg-[var(--color-fill)] rounded-2xl w-fit max-w-full overflow-x-auto mb-6">
+      <div className="rail-fade sm:![-webkit-mask-image:none] sm:![mask-image:none] flex gap-1 p-1 bg-[var(--color-fill)] rounded-2xl w-fit max-w-full overflow-x-auto [scrollbar-width:none] mb-6">
         {TABS.map((t) => <Link key={t.key} href={`/tax?tab=${t.key}&month=${month}&fy=${fy}`} className={cn("shrink-0 h-9 px-4 rounded-xl text-sm font-semibold grid place-items-center transition-colors", tab === t.key ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>{t.label}</Link>)}
       </div>
       {msg && <p className={cn("text-sm mb-4", /error|not|fail|cannot/i.test(msg) ? "text-[var(--color-red)]" : "text-[var(--color-green)]")}>{msg}</p>}
@@ -75,14 +75,22 @@ function Overview({ r, scheme, lab, summary, month, overdue, upcoming, expiring,
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
         <div className="card-title"><h3>Registration</h3><Pill tone={scheme === "unregistered" ? "pending" : "ready"}>{scheme === "regular" ? "Regular · " + (r.gst_monthly === false ? "quarterly" : "monthly") : scheme}</Pill></div>
-        <dl className="text-sm grid grid-cols-[130px_minmax(0,1fr)] gap-y-1.5">
-          <dt className="text-[var(--color-label-2)]">Legal name</dt><dd>{r.legal_name || r.name}</dd>
-          <dt className="text-[var(--color-label-2)]">GSTIN</dt><dd className="num">{r.gstin || <span className="text-[var(--color-red)]">not set</span>}</dd>
-          <dt className="text-[var(--color-label-2)]">PAN</dt><dd className="num">{r.pan || <span className="text-[var(--color-label-3)]">—</span>}</dd>
-          <dt className="text-[var(--color-label-2)]">State</dt><dd>{lab.stateName ? `${lab.stateName} (${r.gst_state_code}) · ${lab.central} + ${lab.state}` : <span className="text-[var(--color-label-3)]">—</span>}</dd>
-          <dt className="text-[var(--color-label-2)]">FSSAI</dt><dd className="num">{r.fssai_no || <span className="text-[var(--color-label-3)]">—</span>}</dd>
-          <dt className="text-[var(--color-label-2)]">Rates in use</dt><dd className="num">Dining {r.gst_rate}%{r.property_type !== "restaurant" && ` · Rooms ${r.room_gst_rate ?? 5}% up to ₹${Number(r.room_gst_threshold ?? 7500).toLocaleString("en-IN")}, ${r.room_gst_rate_high ?? 18}% above · Extras ${r.facility_gst_rate ?? 18}%`}</dd>
-          <dt className="text-[var(--color-label-2)]">Chartered Accountant</dt><dd>{r.ca_name ? <>{r.ca_name}{r.ca_firm && `, ${r.ca_firm}`}{r.ca_phone && <span className="num text-[var(--color-label-2)]"> · {r.ca_phone}</span>}</> : <span className="text-[var(--color-label-3)]">—</span>}</dd>
+        {/* Short labels in a column sized to them, values that wrap. "Rates in use" was one
+            unbreakable line in the display face and ran out of the card at every width; it is a
+            row of chips now, one per rate, and they wrap like words. */}
+        <dl className="text-sm grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-2.5 items-baseline">
+          <dt className="text-[var(--color-label-2)]">Legal name</dt><dd className="min-w-0 break-words">{r.legal_name || r.name}</dd>
+          <dt className="text-[var(--color-label-2)]">GSTIN</dt><dd className="num break-all">{r.gstin || <span className="text-[var(--color-red)]">not set</span>}</dd>
+          <dt className="text-[var(--color-label-2)]">PAN</dt><dd className="num break-all">{r.pan || <span className="text-[var(--color-label-3)]">—</span>}</dd>
+          <dt className="text-[var(--color-label-2)]">State</dt><dd className="min-w-0">{lab.stateName ? <>{lab.stateName} ({r.gst_state_code}) <span className="text-[var(--color-label-2)]">· {lab.central} + {lab.state}</span></> : <span className="text-[var(--color-label-3)]">—</span>}</dd>
+          <dt className="text-[var(--color-label-2)]">FSSAI</dt><dd className="num break-all">{r.fssai_no || <span className="text-[var(--color-label-3)]">—</span>}</dd>
+          <dt className="text-[var(--color-label-2)] self-start pt-1">GST rates</dt>
+          <dd className="flex flex-wrap gap-1.5">
+            {[`Dining ${r.gst_rate}%`, ...(r.property_type !== "restaurant" ? [`Rooms ${r.room_gst_rate ?? 5}% to ₹${Number(r.room_gst_threshold ?? 7500).toLocaleString("en-IN")}`, `${r.room_gst_rate_high ?? 18}% above`, `Extras ${r.facility_gst_rate ?? 18}%`] : [])]
+              .map((t) => <span key={t} className="num inline-flex items-center h-7 px-2.5 rounded-lg bg-[var(--color-fill)] text-[12.5px] whitespace-nowrap">{t}</span>)}
+          </dd>
+          <dt className="text-[var(--color-label-2)]">CA</dt>
+          <dd className="min-w-0">{r.ca_name ? <><span className="block">{r.ca_name}{r.ca_firm && <span className="text-[var(--color-label-2)]">, {r.ca_firm}</span>}</span>{r.ca_phone && <a href={`tel:${r.ca_phone.replace(/\s/g, "")}`} className="num text-[var(--color-label-2)] hover:text-[var(--color-label)]">{r.ca_phone}</a>}</> : <span className="text-[var(--color-label-3)]">—</span>}</dd>
         </dl>
         {missing.length > 0 && <p className="text-sm mt-4 text-[var(--color-orange)]">Still to fill in: {missing.join(", ")}. <Link href="/tax?tab=profile" className="underline">Open the profile</Link>.</p>}
         {!r.gstin?.trim() && <p className="text-xs mt-3 text-[var(--color-orange)]">No GSTIN is saved, so no CGST or SGST is added to any bill or invoice — collecting tax without a registration is not allowed. Add the GSTIN in the profile if this property is registered.</p>}
@@ -93,7 +101,7 @@ function Overview({ r, scheme, lab, summary, month, overdue, upcoming, expiring,
       <Card>
         <div className="card-title"><h3>{monthLabel(month)}</h3><Link href={`/tax?tab=returns&month=${month}`} className="more">Returns →</Link></div>
         {summary ? (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2.5">
             <Stat label="Taxable sales" value={formatINR(Number(dt?.taxable ?? 0) + Number(st?.taxable ?? 0))} />
             <Stat label={`${lab.central} + ${lab.state}`} value={formatINR(tax)} />
             <Stat label="Bills · stays" value={`${dt?.count ?? 0} · ${st?.count ?? 0}`} />
@@ -119,7 +127,7 @@ function Overview({ r, scheme, lab, summary, month, overdue, upcoming, expiring,
     </div>
   );
 }
-const Stat = ({ label, value }: { label: string; value: string }) => <div><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)]">{label}</div><div className="num text-xl font-semibold mt-0.5">{value}</div></div>;
+const Stat = ({ label, value }: { label: string; value: string }) => <div className="min-w-0 rounded-xl bg-[var(--color-fill)] px-3.5 py-3"><div className="text-[10.5px] uppercase tracking-wide text-[var(--color-label-2)] truncate">{label}</div><div className="num text-xl font-semibold mt-1 truncate">{value}</div></div>;
 
 /* ── Returns: the month's figures in GSTR shape ────────────────────────────── */
 function Returns({ r, lab, month, today, summary, error, go, monthly, status, onFile, pending }: { r: Rest; lab: ReturnType<typeof taxLabels>; month: string; today: string; summary: Summary; error: string | null; go: (q: Record<string, string>) => void; monthly: CalendarItem[]; status: (c: CalendarItem) => { kind: string; f?: Filing; days?: number }; onFile: (c: CalendarItem, filedOn: string, ack: string) => void; pending: boolean }) {
@@ -146,10 +154,10 @@ function Returns({ r, lab, month, today, summary, error, go, monthly, status, on
         <div className="card-title"><h3>Outward supplies</h3><span className="footnote">All sales · GSTR-3B table 3.1(a). In GSTR-1 the B2B invoices below go in table 4, the rest in table 7.</span></div>
         <div className="table-wrap"><table className="w-full text-sm"><thead className="text-xs uppercase tracking-wide text-[var(--color-label-2)] border-b border-[var(--color-separator)]"><tr><th className="text-left py-2">SAC</th><th className="text-left py-2">Supply</th><th className="text-right py-2">Rate</th><th className="text-right py-2">Nos.</th><th className="text-right py-2">Taxable</th><th className="text-right py-2">{lab.central}</th><th className="text-right py-2">{lab.state}</th><th className="text-right py-2">Value</th></tr></thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={8} className="py-6 text-center text-[var(--color-label-2)]">No paid bills or stay invoices in this month.</td></tr>}
             {rows.map((x, i) => <tr key={i} className="border-b border-[var(--color-separator)]/60"><td className="py-2 num">{x.sac}</td><td className="py-2">{x.kind === "dining" ? "Restaurant service" : "Accommodation"}</td><td className="py-2 text-right num">{x.rate}%</td><td className="py-2 text-right num">{x.count}</td><td className="py-2 text-right num">{n2(x.taxable)}</td><td className="py-2 text-right num">{n2(x.cgst)}</td><td className="py-2 text-right num">{n2(x.sgst)}</td><td className="py-2 text-right num">{n2(x.total)}</td></tr>)}
             {rows.length > 0 && <tr className="font-semibold"><td className="py-2" colSpan={3}>Total</td><td className="py-2 text-right num">{t("count")}</td><td className="py-2 text-right num">{n2(t("taxable"))}</td><td className="py-2 text-right num">{n2(t("cgst"))}</td><td className="py-2 text-right num">{n2(t("sgst"))}</td><td className="py-2 text-right num">{n2(t("total"))}</td></tr>}
           </tbody></table></div>
+        {rows.length === 0 && <p className="py-5 text-sm text-[var(--color-label-2)]">No paid bills or stay invoices in this month.</p>}
         <p className="footnote mt-3">Rate is derived from the tax actually charged on each bill, so a bill raised under an earlier rate lands in its own row. Alcohol, if sold, is outside GST and is not here. {lab.state === "UTGST" && "Your state half is UTGST because the property is in a Union Territory."}</p>
       </Card>
       <Card>
@@ -237,8 +245,9 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
             <div className="flex items-start gap-3">
               <span className="h-10 w-10 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0"><FileText size={17} /></span>
               <div className="min-w-0 flex-1">
-                <div className="font-semibold truncate">{d.title}</div>
-                <div className="text-xs text-[var(--color-label-2)] truncate">{k?.label ?? d.kind}{d.number && <> · <span className="num">{d.number}</span></>}{d.period && ` · ${d.period}`}</div>
+                <div className="font-semibold leading-snug line-clamp-2">{d.title}</div>
+                {/* the number is what an officer asks for at the counter: it wraps, it is never "124…" */}
+                <div className="text-xs text-[var(--color-label-2)] mt-0.5 break-words">{k?.label ?? d.kind}{d.number && <> · <span className="num text-[var(--color-label)] break-all">{d.number}</span></>}{d.period && ` · ${d.period}`}</div>
                 <div className="text-xs text-[var(--color-label-2)] mt-1">{d.issuer && `${d.issuer} · `}{d.issued_on && `issued ${day(d.issued_on)}`}{d.expires_on && ` · expires ${day(d.expires_on)}`}</div>
                 {d.notes && <div className="text-xs mt-1">{d.notes}</div>}
                 <div className="flex items-center gap-3 mt-2 text-xs">{d.url && <a href={d.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[var(--color-tint)] hover:underline">Open copy <ExternalLink size={11} /></a>}<button className="underline text-[var(--color-label-2)]" onClick={() => setEdit(d)}>Edit</button><button className="underline text-[var(--color-label-2)] hover:text-[var(--color-red)]" disabled={pending} onClick={() => { if (confirm(`Remove "${d.title}" from the register?`)) onDelete(d.id); }}>Remove</button></div>
