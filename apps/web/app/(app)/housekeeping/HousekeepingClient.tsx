@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star, ChevronDown, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Button, Card, Field, Pill, Segmented, cn, Empty, useToast } from "@/components/ui";
 import { fmtSince } from "@/lib/format";
@@ -93,25 +93,51 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
       {/* Floors fold. The first is open; opening another closes it; Open all shows the lot. A board of
           three floors was three screens of cards before the task list on a phone. */}
       {floors.length > 1 && (
-        <div className="flex items-center justify-between -mb-2">
-          <span className="text-[11px] text-steel">{openFloor === "all" ? "All floors open" : openFloor === null ? "All floors closed" : `Floor ${openFloor} open`}</span>
-          <button type="button" onClick={() => setOpenFloor(openFloor === "all" ? (floors[0] ?? null) : "all")} aria-pressed={openFloor === "all"}
-            className="h-10 px-3.5 rounded-full text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] inline-flex items-center gap-1.5 transition-colors">
-            <ChevronsUpDown size={14} /> {openFloor === "all" ? "Close all" : "Open all"}
-          </button>
+        /* the board's own head: what it is, how many floors, and how they fold — one at a time, or
+           all open — as the app's segmented switch rather than a loose pill beside a caption */
+        <div className="flex items-center justify-between gap-3 -mb-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel">Floors</span>
+            <span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{floors.length}</span>
+          </div>
+          <div role="radiogroup" aria-label="How floors open" className="inline-flex p-1 rounded-xl bg-[var(--color-fill)] shrink-0">
+            {([["one", "One at a time", <ChevronsDownUp key="i" size={14} />], ["all", "All open", <ChevronsUpDown key="i" size={14} />]] as const).map(([k, label, icon]) => {
+              const on = k === "all" ? openFloor === "all" : openFloor !== "all";
+              return (
+                <button key={k} type="button" role="radio" aria-checked={on}
+                  onClick={() => setOpenFloor(k === "all" ? "all" : openFloor === "all" ? (floors[0] ?? null) : openFloor)}
+                  className={cn("h-9 px-3 rounded-[10px] inline-flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors",
+                    on ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_3px_rgb(0_0_0/.25)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>
+                  {icon}<span className="max-[360px]:hidden">{label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
       {floors.map((fl) => { const on = openFloor === "all" || openFloor === fl; const here = rooms.filter((r) => r.floor === fl);
         const dirty = here.filter((r) => r.status !== "maintenance" && r.condition === "dirty").length; const outN = here.filter((r) => r.status === "maintenance").length;
         return (
-        <section key={fl} className="feather overflow-hidden">
-          <button type="button" onClick={() => setOpenFloor(on && openFloor !== "all" ? null : fl)} aria-expanded={on}
-            className="w-full min-h-14 px-4 flex items-center gap-3 text-left hover:bg-[var(--color-fill)] transition-colors">
-            <span className="font-display text-lg">Floor {fl}</span>
-            <span className="text-xs text-steel num">{here.length} room{here.length === 1 ? "" : "s"}{dirty ? ` · ${dirty} dirty` : ""}{outN ? ` · ${outN} out of order` : ""}</span>
-            <ChevronDown size={18} className={cn("ml-auto text-steel shrink-0 transition-transform duration-200", on && "rotate-180")} />
+        <section key={fl} className={cn("feather overflow-hidden transition-shadow", on && "shadow-[var(--shadow-pop)]")}>
+          {/* a floor's head reads as the control it is: its number in a tile, its name, its state as
+              tags, and the chevron in a round button that turns when the floor opens */}
+          <button type="button" onClick={() => setOpenFloor(openFloor === "all" ? fl : on ? null : fl)} aria-expanded={on}
+            className={cn("w-full min-h-[64px] px-3.5 sm:px-4 py-2.5 flex items-center gap-3 text-left transition-colors hover:bg-[var(--color-fill)]", on && "border-b border-[var(--color-separator)]")}>
+            <span className={cn("h-10 w-10 rounded-xl grid place-items-center font-display text-lg shrink-0 transition-colors", on ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] text-[var(--color-label)]")}>{fl}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold leading-tight">Floor {fl}</span>
+              <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="num h-5 px-2 rounded-full bg-[var(--color-fill)] text-[11px] font-semibold text-[var(--color-label-2)] inline-flex items-center">{here.length} room{here.length === 1 ? "" : "s"}</span>
+                {dirty > 0 && <span className="num h-5 px-2 rounded-full bg-[var(--color-red-2)] text-[11px] font-semibold text-[var(--color-red)] inline-flex items-center">{dirty} dirty</span>}
+                {outN > 0 && <span className="num h-5 px-2 rounded-full bg-[var(--color-red-2)] text-[11px] font-semibold text-[var(--color-red)] inline-flex items-center">{outN} out of order</span>}
+                {!dirty && !outN && <span className="h-5 px-2 rounded-full bg-[var(--color-green-2)] text-[11px] font-semibold text-[var(--color-green)] inline-flex items-center">all clear</span>}
+              </span>
+            </span>
+            <span className={cn("h-9 w-9 rounded-full grid place-items-center shrink-0 transition-colors", on ? "bg-[var(--color-fill-2)]" : "bg-[var(--color-fill)]")}>
+              <ChevronDown size={17} className={cn("text-[var(--color-label-2)] transition-transform duration-200", on && "rotate-180")} />
+            </span>
           </button>
-          {on && <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+          {on && <div className="p-3 sm:p-4">
           {/* One room to a row on a phone, its actions in a single row of equal buttons. Two
               across, a 170px card stacked four 44px pills two by two, and a card with one action
               sat beside one with four as a tall empty hole. From 520px the board goes back to

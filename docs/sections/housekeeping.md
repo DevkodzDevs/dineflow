@@ -41,12 +41,16 @@ dirty room without a ticket.
 ## Before you edit
 
 - **Floors are an accordion** (`openFloor`: a floor number, `"all"` or null). The first floor is
-  open; opening another closes it; Open all / Close all at the top. Each floor head shows its room
-  count, dirty and out-of-order counts. Probe: `four.mjs` (1440 dark, 390 paper).
+  open; opening another closes it; tapping the open one closes it. The board head is "FLOORS n" and a
+  segmented switch, One at a time | All open; tapping a floor while all are open shows just that one.
+  Each floor head: its number in a tile (filled when open), bold name, tags for rooms / dirty /
+  out of order (or "all clear"), and the chevron in a round button. Probe: `acc.mjs` (1440 dark, 390 paper).
 
 - **Floors are an accordion** (`openFloor`: a floor number, `"all"` or null). The first floor is
-  open; opening another closes it; Open all / Close all at the top. Each floor head shows its room
-  count, dirty and out-of-order counts. Probe: `four.mjs` (1440 dark, 390 paper).
+  open; opening another closes it; tapping the open one closes it. The board head is "FLOORS n" and a
+  segmented switch, One at a time | All open; tapping a floor while all are open shows just that one.
+  Each floor head: its number in a tile (filled when open), bold name, tags for rooms / dirty /
+  out of order (or "all clear"), and the chevron in a round button. Probe: `acc.mjs` (1440 dark, 390 paper).
 
 - **On a phone the page is two tabs** — `Segmented` Rooms n | Tasks n (`view` state, `sm:hidden`).
   Rooms holds the discrepancies and the board; Tasks the To do / In progress columns, New task and
