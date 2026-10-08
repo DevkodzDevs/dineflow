@@ -74,6 +74,18 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
 
+- **Every `<select>` (58) is styled in the DROPDOWNS block of globals.css, nowhere else.** Closed:
+  the field surface with a chevron in a 26px round chip (a background SVG, a darker one in paper).
+  Open: under `@supports (appearance: base-select)` (Chrome/Edge 135+) the list is a styled
+  `::picker(select)` card — 16px radius, shadow, 40/44px option rows, hover wash, `::checkmark` tick —
+  springing open via `@starting-style`. Safari, Firefox and phones keep the native picker.
+  Probe: `dropdown.mjs` (open, read, pick, both themes) and `dropdown-dialog.mjs` (inside a Sheet).
+- **Never use the `background:` shorthand on an input/select/textarea rule.** It resets
+  `background-image` and `background-repeat`: the hover and focus rules erased the chevron in dark
+  and, re-applied by the paper rule, tiled it across the whole box in paper. `background-color` only.
+- **The custom `Select` component** matches: 48px, 14px radius, the green focus ring (it was amber),
+  the chevron in the same round chip.
+
 - **`.switch` sets its own `min-height: 31px; min-width: 51px`.** It is a `<button>`, so the control
   floor (40px, 44 on touch) stretched it to 51×44 with the 27px knob riding the top edge. The
   finger-sized target is an invisible `::before` (inset -7px -4px → 59×45). Probe: `swprobe.mjs`.

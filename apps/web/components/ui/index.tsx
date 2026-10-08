@@ -223,14 +223,14 @@ export function Select({ value, onChange, options, placeholder = "Choose", searc
   return (
     <div ref={ref} className={cn("relative", className)} onKeyDown={key}>
       <button type="button" disabled={disabled} onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}
-        className="w-full flex items-center gap-2 text-left rounded-xl bg-[var(--color-bg-3)] hover:bg-[var(--color-fill-2)] px-3.5 py-[11px] text-[15px] transition disabled:opacity-40 data-[open=true]:bg-[var(--color-bg-2)] data-[open=true]:ring-4 data-[open=true]:ring-[rgb(227_154_46/.18)]" data-open={open}>
+        className="w-full min-h-12 flex items-center gap-2 text-left rounded-[14px] bg-[var(--color-bg-3)] hover:bg-[var(--color-fill-2)] border-[.5px] border-transparent px-4 py-[11px] text-[16px] transition disabled:opacity-40 data-[open=true]:bg-[var(--color-bg-2)] data-[open=true]:border-[rgb(76_217_100/.6)] data-[open=true]:ring-4 data-[open=true]:ring-[rgb(76_217_100/.18)]" data-open={open}>
         {cur?.icon}<span className={cn("flex-1 truncate", !cur && "text-[var(--color-label-3)]")}>{cur?.label ?? placeholder}</span>
-        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring} className="text-[var(--color-label-3)]"><ChevronDown size={16} strokeWidth={2.5} /></motion.span>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring} className="h-[26px] w-[26px] rounded-full grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)] shrink-0"><ChevronDown size={15} strokeWidth={2.5} /></motion.span>
       </button>
       <AnimatePresence>
         {open && (
           <motion.div initial={{ opacity: 0, y: -6, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: .98 }} transition={spring}
-            className="absolute z-40 mt-1.5 w-full min-w-[220px] popover !animate-none max-h-72 overflow-y-auto" role="listbox">
+            className="absolute z-40 mt-1.5 w-full min-w-[220px] popover !animate-none max-h-[min(340px,55dvh)] overflow-y-auto overscroll-contain" role="listbox">
             {searchable && <div className="flex items-center gap-2 px-2 pb-1.5 mb-1 border-b border-[var(--color-separator)]"><Search size={14} className="text-[var(--color-label-3)]" /><input autoFocus value={q} onChange={(e) => { setQ(e.target.value); setActive(0); }} placeholder="Search" className="!bg-transparent !p-1.5 !border-0 !shadow-none !rounded-none text-sm" /></div>}
             {shown.length === 0 && <div className="menu-item text-[var(--color-label-3)]">No matches</div>}
             {shown.map((o, i) => (
