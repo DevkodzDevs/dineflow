@@ -8,6 +8,7 @@ import { TopBar } from "@/components/shell/TopBar";
 import { OfflineProvider } from "@/lib/offline/OfflineProvider";
 import { MasterBanner } from "@/components/shell/MasterBanner";
 import { ToastProvider } from "@/components/ui";
+import { ThemeSync } from "@/components/ui/Theme";
 import { AssistLazy as Assist } from "@/components/assist/AssistLazy";
 
 /**
@@ -73,6 +74,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
    <OfflineProvider modules={mods}>
    <ToastProvider>
+    {/* the theme saved on this person's login wins over whatever this device last used */}
+    <ThemeSync pref={s.theme} />
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
       <Sidebar name={s.profile.full_name} role={s.profile.role} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} />
       <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-28 md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">

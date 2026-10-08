@@ -59,6 +59,9 @@ code and `join_restaurant`; a staff member uses a login the owner created and is
 
 ## Before you edit
 
+- **`session_bundle` also carries `theme`** (0078) — the caller's saved light/dark choice from
+  `user_prefs`, or null. It is per login, so it works for masters, who have no profiles row.
+
 - **`AuthApiError: Invalid Refresh Token` in the server log is not a bug.** A browser presenting a
   dead refresh token already gets redirected to `/login` with the stale cookie cleared — the trace
   is `@supabase/auth-js` logging a condition we handle.

@@ -96,8 +96,13 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
 - **`MasterBanner`** — the amber "viewing X as its owner" strip when a master is acting as a
   property. Everything done under it is real and logged.
 - **`PageHeader`** — the title block each screen passes its own copy into.
-- **`Theme`** — writes `data-theme` on `<html>`; `THEME_BOOT` runs inside `<head>` from the
-  `df-theme` cookie so there is no flash. Values: `dark` | `paper` | `system`.
+- **`Theme`** — `dark` | `paper` | `system`. Until a person chooses, the app follows the device
+  (`system` is the default when there is no cookie). A choice (top-bar switch or Settings) is applied
+  at once, written to the `df-theme` cookie, and saved to their login through `set_my_theme`
+  (`user_prefs`, migration 0078). `session_bundle` returns it as `theme`; `ThemeSync` in the app
+  layout adopts it, so a device that has never seen the person opens in their theme. `THEME_BOOT` in
+  `<head>` sets it before paint; `ThemeKeeper` in the root layout restores it whenever React re-applies
+  the server's `data-theme="dark"` (the old "one page dark, the rest light" bug). Probe: `theme.mjs`.
 - **`Assist`** — the AI panel, lazy-loaded (`AssistLazy`). Talks to `api/assist`.
 - **`FlipRow`** — a shared three-tile split-flap row. **Currently imported by nothing**; the
   `StatTile` change covered the screens that needed it. Use it or delete it, do not leave it as a

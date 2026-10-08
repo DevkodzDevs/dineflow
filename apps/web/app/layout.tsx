@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { THEME_BOOT } from "@/components/ui/Theme";
+import { THEME_BOOT, ThemeKeeper } from "@/components/ui/Theme";
 import { INSTALL_CAPTURE } from "@/components/InstallApp";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { NavProgress } from "@/components/ui";
@@ -67,7 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning className={`${oswald.variable} ${manrope.variable} ${jet.variable} deck`}>
       <head>{process.env.NEXT_PUBLIC_SUPABASE_URL && <><link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" /><link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} /></>}<script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /><script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} /></head>
-      <body><NavProgress />{children}<ServiceWorker /></body>
+      <body><NavProgress /><ThemeKeeper />{children}<ServiceWorker /></body>
     </html>
   );
 }

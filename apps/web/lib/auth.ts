@@ -10,6 +10,8 @@ export type Session = {
   /** tickets over 15 minutes old, for the bell badge — carried here so the shell needs no second query */
   lateKots: number;
   membership: Membership | "none";
+  /** the person's saved light/dark choice (user_prefs, 0078), or null if they have not chosen */
+  theme?: "dark" | "paper" | "system" | null;
   profile: { id: string; full_name: string; role: Role; restaurant_id: string; allowed_modules?: string[] | null; must_change_password?: boolean; is_active?: boolean };
   restaurant: { id: string; name: string; slug: string; property_type: PropertyType; gst_rate: number; room_gst_rate: number; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; service_charge_pct: number; gstin: string | null; address: string | null; phone: string | null; plan: string; trial_ends_at: string; membership: Membership; membership_plan: string | null; membership_ends_at: string | null; check_in_time: string; check_out_time: string; booking_slug?: string | null; tagline?: string | null; policies?: string | null; advance_pct?: number; booking_engine?: boolean; prep_buffer_pct?: number; brief_whatsapp?: string | null; district?: string | null; pincode?: string | null; network_alias?: string | null; runs_on_box?: boolean; box_last_seen?: string | null; enabled_modules?: string[] | null; legal_name?: string | null; pan?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; gst_monthly?: boolean | null; fssai_no?: string | null; ca_name?: string | null; ca_firm?: string | null; ca_membership_no?: string | null; ca_email?: string | null; ca_phone?: string | null; [k: string]: unknown; logo_url?: string | null; brand_colour?: string | null; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean };
 };
@@ -19,7 +21,7 @@ export type Session = {
 type Bundle = {
   user_id: string | null; user_name: string | null; is_admin: boolean; acting_as: string | null;
   profile: Session["profile"] | null; restaurant: Session["restaurant"] | null;
-  membership: Membership | "none"; late_kots: number;
+  membership: Membership | "none"; late_kots: number; theme?: "dark" | "paper" | "system" | null;
 };
 
 /**
@@ -72,7 +74,7 @@ export const requireSession = cache(async function requireSession(opts: { allowL
   const membership = b.membership === "none" ? "expired" : b.membership;
   // the master is never locked out of a property it is inspecting
   if (!opts.allowLocked && !b.acting_as && (membership === "expired" || membership === "suspended")) redirect("/membership");
-  return { userId: b.user_id, isAdmin: b.is_admin, membership, profile: prof, restaurant: b.restaurant, actingAs: b.acting_as, lateKots: b.late_kots ?? 0 };
+  return { userId: b.user_id, isAdmin: b.is_admin, membership, profile: prof, restaurant: b.restaurant, actingAs: b.acting_as, lateKots: b.late_kots ?? 0, theme: b.theme ?? null };
 });
 
 export async function requireAdmin() {
