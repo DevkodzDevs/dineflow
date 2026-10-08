@@ -41,10 +41,11 @@ export default async function CompliancePage() {
       <div className="eyebrow">Platform</div>
       <h1 className="text-[34px] md:text-[48px] mt-1">Compliance <em>across {rows.length} propert{rows.length === 1 ? "y" : "ies"}</em></h1>
       <p className="text-sm text-[var(--color-label-2)] mt-2 max-w-2xl">FY {fy}. Overdue counts the returns that fell due and were not marked filed by the property; the master cannot file for them, but can see who needs a call.</p>
-      <div className="grid sm:grid-cols-3 gap-4 mt-6">
-        <div className="card p-5"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)]">Returns overdue</div><div className={`num text-3xl mt-1 ${totals.overdue ? "text-[var(--color-red)]" : ""}`}>{totals.overdue}</div></div>
-        <div className="card p-5"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)]">Profiles incomplete</div><div className={`num text-3xl mt-1 ${totals.missing ? "text-[var(--color-orange)]" : ""}`}>{totals.missing}</div></div>
-        <div className="card p-5"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)]">Documents expiring in 60 days</div><div className={`num text-3xl mt-1 ${totals.expiring ? "text-[var(--color-orange)]" : ""}`}>{totals.expiring}</div></div>
+      {/* on a phone each total is a compact row, label left and figure right, not a tall card of air */}
+      <div className="grid sm:grid-cols-3 gap-3 sm:gap-4 mt-6">
+        <div className="card p-4 sm:p-5 flex items-center justify-between gap-3 sm:block"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)] min-w-0">Returns overdue</div><div className={`num text-3xl sm:mt-1 shrink-0 ${totals.overdue ? "text-[var(--color-red)]" : ""}`}>{totals.overdue}</div></div>
+        <div className="card p-4 sm:p-5 flex items-center justify-between gap-3 sm:block"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)] min-w-0">Profiles incomplete</div><div className={`num text-3xl sm:mt-1 shrink-0 ${totals.missing ? "text-[var(--color-orange)]" : ""}`}>{totals.missing}</div></div>
+        <div className="card p-4 sm:p-5 flex items-center justify-between gap-3 sm:block"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)] min-w-0">Documents expiring in 60 days</div><div className={`num text-3xl sm:mt-1 shrink-0 ${totals.expiring ? "text-[var(--color-orange)]" : ""}`}>{totals.expiring}</div></div>
       </div>
       <div className="card mt-6 overflow-hidden">
         <div className="table-wrap"><table className="w-full text-sm">

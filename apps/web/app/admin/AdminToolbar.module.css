@@ -152,3 +152,16 @@
   .tab, .search, .clear, .chip, .reset, .more, .panel .action { transition: none; }
   .menu { animation: none; }
 }
+
+/* Under a finger the console's controls reach the app's 44px floor. The desktop density (30-36px)
+   stays where there is a mouse; on a phone or an iPad the tabs, chips, search and actions were
+   30-36px targets. */
+@media (pointer: coarse) {
+  .tab, .chip { height: 44px; }
+  .search { height: 44px; }
+  .panel .search input { height: 42px !important; }
+  .panel .action { height: 44px; min-height: 44px; }
+  .more { width: 44px; height: 44px; }
+  .menu button { min-height: 44px; }
+  .reset { height: 36px; }
+}

@@ -37,6 +37,15 @@ and only then `admin_delete_property`.
 
 ## Before you edit
 
+- **The Master control header is two rows on a phone**: shield, brand + email (truncating) and a
+  40px sign-out on the first; `AdminNav` (client, `usePathname` + `useSearchParams` in a `Suspense`)
+  as a 3-up tab bar on the second, the current section filled. One row from `md`. As a single line
+  it ran 13px off a 390px phone and pushed sign-out out of reach. Tab icons drop below 420px so
+  "Compliance" is not truncated.
+- **The console is dense on purpose with a mouse (30–36px); under `pointer: coarse` its tabs, chips,
+  search, actions and row Open/menu reach 44px** (`AdminToolbar.module.css`, `RowActions.module.css`).
+- **Compliance totals are compact rows on a phone** (label left, figure right), cards from `sm`.
+
 - **The membership status line is prose, not a flex row.** As `flex items-center` every text run
   became its own column ("Active / . / Yearly / plan · renews by"). The "2 months free" pill wraps
   under "Yearly" rather than leaving its card.

@@ -1,18 +1,27 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { ShieldCheck, LogOut } from "lucide-react";
+import { Suspense } from "react";
+import { AdminNav } from "./AdminNav";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const a = await requireAdmin();
   return (
     <div className="min-h-dvh">
+      {/* Brand and sign-out on one line, the sections on the next on a phone; one line from md.
+          As a single row it ran 13px off a 390px phone and took the sign-out button with it. */}
       <header className="ink-panel">
-        <div className="max-w-7xl mx-auto px-5 md:px-8 py-4 flex items-center gap-3">
-          <span className="h-9 w-9 rounded-xl bg-champagne grid place-items-center text-on-label"><ShieldCheck size={18} /></span>
-          <div><div className="font-display text-lg leading-none">DineFlow <em className="text-champagne">Master control</em></div><div className="text-[11px] text-white/45 mt-0.5">All properties · {a.email}</div></div>
-          <nav className="ml-auto flex items-center gap-4 text-sm"><Link href="/admin" className="text-white/80 hover:text-white">Properties</Link><Link href="/admin?tab=keys" className="text-white/80 hover:text-white">Keys</Link><Link href="/admin/compliance" className="text-white/80 hover:text-white">Compliance</Link>            <form action="/logout" method="post"><button className="flex items-center gap-1.5 text-white/60 hover:text-white"><LogOut size={14} /></button></form></nav>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4 flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-3">
+          <span className="h-10 w-10 rounded-xl bg-champagne grid place-items-center text-on-label shrink-0"><ShieldCheck size={18} /></span>
+          <div className="min-w-0 flex-1 md:flex-none">
+            <div className="font-display text-lg leading-tight truncate">DineFlow <em className="text-champagne">Master control</em></div>
+            <div className="text-[11px] text-white/45 mt-0.5 truncate">All properties · {a.email}</div>
+          </div>
+          <div className="order-last basis-full md:order-none md:basis-auto md:ml-auto"><Suspense fallback={null}><AdminNav /></Suspense></div>
+          <form action="/logout" method="post" className="shrink-0 md:ml-1">
+            <button title="Sign out" aria-label="Sign out" className="h-10 w-10 rounded-xl grid place-items-center text-white/60 hover:text-white hover:bg-white/[.08] transition"><LogOut size={16} /></button>
+          </form>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-5 md:px-8 py-6">{children}</main>
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 min-w-0">{children}</main>
     </div>
   );
 }
