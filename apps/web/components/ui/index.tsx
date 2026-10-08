@@ -85,21 +85,42 @@ export function Reveal({ children, className, delay = 0 }: { children: ReactNode
 }
 
 /* ── Sheet: bottom sheet with grabber on phones, centred card on desktop ─────────────── */
+/**
+ * Every dialog in the app. It lives inside the *visible* part of the screen, not the layout
+ * viewport: on an iPad the keyboard takes half the screen and Safari shifts the page to show the
+ * field, and a dialog sized to 100dvh then had its title cut off above and its Save button below,
+ * with the page showing undimmed under the scrim. Now the frame follows `visualViewport` (top and
+ * height, on resize and scroll), the dialog's max height is that frame, and only its body scrolls —
+ * the title and close stay put. The scrim reaches half a screen past each edge so a shifted page
+ * never shows through, and the page behind is locked (html and body) while it is open.
+ */
 export function Sheet({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
-  useEffect(() => { if (!open) return; const k = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", k); document.body.style.overflow = "hidden"; return () => { window.removeEventListener("keydown", k); document.body.style.overflow = ""; }; }, [open, onClose]);
+  const frame = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (!open) return; const k = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [open, onClose]);
+  useEffect(() => {
+    if (!open) return;
+    const html = document.documentElement, body = document.body;
+    const before = [html.style.overflow, body.style.overflow];
+    html.style.overflow = "hidden"; body.style.overflow = "hidden";
+    const vv = window.visualViewport;
+    const fit = () => { const el = frame.current; if (!el || !vv) return; el.style.top = `${vv.offsetTop}px`; el.style.height = `${vv.height}px`; };
+    fit();
+    vv?.addEventListener("resize", fit); vv?.addEventListener("scroll", fit);
+    return () => { html.style.overflow = before[0]; body.style.overflow = before[1]; vv?.removeEventListener("resize", fit); vv?.removeEventListener("scroll", fit); };
+  }, [open]);
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 scrim" onClick={onClose} />
-          <motion.div role="dialog" aria-modal variants={sheetV} initial="hidden" animate="show" exit="exit" drag="y" dragDirectionLock dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: .55 }} onDragEnd={(_, i) => { if (i.offset.y > 110 || i.velocity.y > 700) onClose(); }}
-            className={cn("relative material-thick w-full max-h-[92dvh] flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-[var(--shadow-pop)]", wide ? "sm:max-w-3xl" : "sm:max-w-lg")}>
-            <div className="sm:hidden grabber" />
-            <div className="flex items-center justify-between px-5 pt-3 pb-3 sm:pt-5">
-              <h2 className="text-[22px] font-display">{title}</h2>
-              <button onClick={onClose} aria-label="Close" className="sheet-close h-8 w-8 rounded-full bg-[var(--color-fill)] grid place-items-center text-[var(--color-label-2)] hover:bg-[var(--color-fill-2)] active:scale-95 transition"><X size={16} strokeWidth={2.5} /></button>
+        <motion.div ref={frame} className="fixed inset-x-0 top-0 h-dvh z-50 flex items-end sm:items-center justify-center p-0 sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <div className="fixed inset-x-0 -top-[50vh] -bottom-[50vh] scrim" onClick={onClose} />
+          <motion.div role="dialog" aria-modal aria-label={title} variants={sheetV} initial="hidden" animate="show" exit="exit" drag="y" dragDirectionLock dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: .55 }} onDragEnd={(_, i) => { if (i.offset.y > 110 || i.velocity.y > 700) onClose(); }}
+            className={cn("relative material-thick w-full max-h-[calc(100%-12px)] sm:max-h-full flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-[var(--shadow-pop)] overflow-hidden", wide ? "sm:max-w-3xl" : "sm:max-w-lg")}>
+            <div className="sm:hidden grabber shrink-0" />
+            <div className="shrink-0 flex items-center justify-between gap-3 px-5 sm:px-6 pt-3 pb-3 sm:pt-5 border-b border-[var(--color-separator)]">
+              <h2 className="text-[22px] font-display leading-tight min-w-0 truncate">{title}</h2>
+              <button onClick={onClose} aria-label="Close" className="sheet-close shrink-0 h-10 w-10 rounded-full bg-[var(--color-fill)] grid place-items-center text-[var(--color-label-2)] hover:bg-[var(--color-fill-2)] active:scale-95 transition"><X size={17} strokeWidth={2.5} /></button>
             </div>
-            <div className="px-5 pb-[max(20px,env(safe-area-inset-bottom))] overflow-y-auto">{children}</div>
+            <div className="sheet-body flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 pt-4 pb-[max(20px,env(safe-area-inset-bottom))]">{children}</div>
           </motion.div>
         </motion.div>
       )}

@@ -74,6 +74,15 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
 
+- **`Sheet` (every dialog) lives in the *visible* viewport, not the layout viewport.** Its frame
+  takes `top`/`height` from `window.visualViewport` on resize and scroll, so with an iPad keyboard
+  up the dialog shrinks to the space above it instead of losing its title off the top and Save off
+  the bottom. The dialog is `max-h-full` of that frame, the header is `shrink-0`, and only
+  `.sheet-body` scrolls. The scrim is `fixed` and reaches half a screen past each edge, so a page
+  Safari has shifted never shows through undimmed. While open, `html` and `body` are both
+  `overflow: hidden`, and both are put back on close. Probe: `dlg.mjs` (8 sizes, including
+  1194×420 and 834×560 for the keyboard) and `dialog-audit.mjs` (35 dialogs, 0 with two scrollbars).
+
 - **A utility cannot recolour a kit card.** `.feather`/`.card` set `background` and `box-shadow`
   unlayered, so `bg-[…]` and `ring-…` on the same element silently lose — the till's "selected"
   green ring never rendered for that reason. Add a state class next to the kit rule instead
