@@ -251,6 +251,12 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
   .flip-row:has(.flip-stage > :nth-child(3)) .flip { --tile: clamp(48px, calc((100vw - 76px) / 4), 128px); }
   .flip-row:has(.flip-stage > :nth-child(5)) .flip { --tile: clamp(42px, calc((100vw - 76px) / 5), 128px); }
 }
+/* A grid's children may shrink below their content. Left at min-width:auto, a single-column grid
+   on a phone (a bare `grid`, or `lg:grid-cols-…` below lg) sized its one implicit track to the
+   widest child's content — a scrolling chip rail, a row of buttons — and the whole page column
+   came out 434px on a 390px phone and was cut off on the right (Scan, Storefront, Orders,
+   Tomorrow, Dashboard at 375). In the base layer, so any min-w-* utility on a child still wins. */
+@layer base { :where(.grid) > * { min-width: 0; } }
 .flip-row > div { text-align: center; }
 /* a flip row inside a card measures the card, not the screen: --tile is sized from 100vw for a row
    that sits on the page, and a card's 40px of padding then pushed the third tile out of its side on
@@ -366,6 +372,12 @@ body:has(.deck-card) { background: #0a0a0d; }
 .card-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .card-title h3 { font-size: 20px; }
 .card-title a, .card-title .more { font-size: 13px; color: var(--color-label-2); }
+/* "All →", "Reports →" and the legal links are text, but a finger still has to land on them: 40px
+   of height, given back with a negative margin so the line they sit on does not move */
+.card-title a, .card-title .more, .legal-links a { display: inline-flex; align-items: center; min-height: 40px; margin-block: -10px; }
+/* two sections in one card: a rule and room between them, not a Save button jammed against the
+   next heading (Settings → Payments, "Save payment settings" / "Loyalty points") */
+.settings-section + .settings-section { margin-top: 28px; padding-top: 24px; border-top: .5px solid var(--color-separator); }
 .section { margin-top: var(--space-8); }
 .section > h2 { font-size: 24px; margin-bottom: var(--space-4); }
 .stack > * + * { margin-top: var(--space-3); }

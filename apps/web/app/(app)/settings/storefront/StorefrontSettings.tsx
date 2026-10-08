@@ -34,7 +34,7 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
                   <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0"><I size={17} /></span>
                   <span className="flex-1"><span className="block font-semibold text-[15px]">{title}</span><span className="block text-xs text-[var(--color-label-2)]">{hint}</span></span>
                   <Switch on={on[k]} onChange={(v) => setOn({ ...on, [k]: v })} />
-                  <input type="checkbox" name={name} checked={on[k]} readOnly className="hidden" />
+                  <input type="checkbox" name={name} checked={on[k]} readOnly hidden style={{ display: "none" }} />
                 </label>
               ))}
             </div>

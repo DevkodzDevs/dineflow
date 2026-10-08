@@ -20,7 +20,7 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
           {state === "trial" && <p className="text-sm text-steel">Your <b className="text-ink">7-day trial</b> has {trialDays} day{trialDays === 1 ? "" : "s"} left. Activate now and nothing changes for your team — same logins, same data.</p>}
           {state === "expired" && <p className="text-sm text-steel">The temporary trial login for <b className="text-ink">{name}</b> has ended. Enter the membership key from DineFlow to continue — all your menus, rooms, stock and history are safe.</p>}
           {state === "suspended" && <p className="text-sm text-chili">This account is suspended. Contact DineFlow support.</p>}
-          {state === "active" && <p className="text-sm text-steel flex items-center gap-2"><Check size={16} className="text-mint" /> Active · <b className="text-ink capitalize">{plan}</b> plan{endsAt && <> · renews by <span className="num">{endsAt.slice(0, 10)}</span></>}</p>}
+          {state === "active" && <p className="text-sm text-steel leading-relaxed"><Check size={16} className="text-mint inline -mt-0.5 mr-1.5" />Active · <b className="text-ink capitalize">{plan}</b> plan{endsAt && <> · renews by <span className="num whitespace-nowrap">{endsAt.slice(0, 10)}</span></>}</p>}
           {state !== "suspended" && (isOwner ? (
             <form className="mt-6 space-y-4" action={(fd) => start(async () => { const r = await redeemKey(fd); setMsg("error" in r ? { text: r.error! } : { ok: true, text: `Activated the ${r.plan} plan. Welcome aboard.` }); })}>
               <Field label="Membership key" hint="Format XXXX-XXXX-XXXX, issued by DineFlow master control."><input name="code" required placeholder="A1B2-C3D4-E5F6" className="num uppercase tracking-[0.2em] text-lg" /></Field>
@@ -30,7 +30,7 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
           ) : <p className="mt-6 text-sm text-steel">Ask the owner to enter the membership key.</p>)}
           <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
             <div className="feather p-4"><div className="font-semibold">Monthly</div><div className="num text-2xl mt-1">₹2,499</div><div className="text-xs text-steel">per property</div></div>
-            <div className="feather p-4 border-champagne"><div className="font-semibold flex items-center gap-1">Yearly <span className="pill pill-gold">2 months free</span></div><div className="num text-2xl mt-1">₹24,999</div><div className="text-xs text-steel">per property</div></div>
+            <div className="feather p-4 border-champagne"><div className="font-semibold flex flex-wrap items-center gap-x-2 gap-y-1">Yearly <span className="pill pill-gold">2 months free</span></div><div className="num text-2xl mt-1">₹24,999</div><div className="text-xs text-steel">per property</div></div>
           </div>
           {/* the number came from a placeholder and was shown to people trying to pay us;
               it now comes from lib/company.ts, and is simply absent until it is real */}
@@ -40,7 +40,7 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
             {" "}— online payment (Razorpay) arrives in the next version.
           </p>
           <div className="mt-6 flex justify-between items-center">
-            {!locked ? <Link href="/dashboard" className="text-sm font-semibold underline">Back to control room</Link> : <span />}
+            {!locked ? <Link href="/dashboard" className="text-sm font-semibold underline inline-flex items-center min-h-10">Back to control room</Link> : <span />}
             <form action="/logout" method="post"><button className="flex items-center gap-1.5 text-xs text-steel hover:text-ink"><LogOut size={13} /> Sign out</button></form>
           </div>
           <LegalFooter className="!pt-5 mt-5 border-t border-line" />

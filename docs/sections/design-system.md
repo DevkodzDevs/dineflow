@@ -74,6 +74,19 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
 
+- **Grid children may shrink: `@layer base { :where(.grid) > * { min-width: 0 } }`.** Without it a
+  single-column grid on a phone (a bare `grid`, or `lg:grid-cols-…` below lg) sized its one
+  implicit track to the widest child's *content* — a scrolling chip rail, a row of buttons — and
+  the page column came out 434px on a 390px phone, cut off on the right (Scan, Storefront, Orders,
+  Dashboard at 375). It is in the base layer so a `min-w-*` utility on a child still wins.
+- **`hidden` loses to unlayered element styling.** The app styles `input[type=checkbox]` unlayered,
+  so `className="hidden"` on a checkbox showed it anyway (Storefront had a second tick beside every
+  switch). Use the `hidden` attribute plus `style={{ display: "none" }}`.
+- **There is no `.btn-primary`.** The kit has `.btn-filled`; a `Link` given `btn btn-primary`
+  renders as plain text.
+- **Text links get height, not width**: `.card-title a`, `.legal-links a` and `.tap` are 40/44px
+  tall with a negative margin so the line does not move. A text link is exempt from the width rule.
+
 - **`Sheet` (every dialog) lives in the *visible* viewport, not the layout viewport.** Its frame
   takes `top`/`height` from `window.visualViewport` on resize and scroll, so with an iPad keyboard
   up the dialog shrinks to the space above it instead of losing its title off the top and Save off

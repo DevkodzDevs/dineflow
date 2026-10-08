@@ -73,7 +73,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
     <>
       <PageHeader eyebrow="Before you lock up tonight" title="Tomorrow" accent={forecast.weekday}
         sub={nice}
-        actions={<div className="flex gap-2 no-print">
+        actions={<div className="flex flex-wrap gap-2 no-print w-full sm:w-auto [&>*:last-child]:basis-full sm:[&>*:last-child]:basis-auto">
           <Link href={move(-1)}><Button variant="outline" size="md" aria-label="Previous day"><ChevronLeft size={16} /></Button></Link>
           <Link href={move(1)}><Button variant="outline" size="md" aria-label="Next day"><ChevronRight size={16} /></Button></Link>
           <Button variant="outline" onClick={printSheet}><Printer size={16} /> Prep sheet</Button>

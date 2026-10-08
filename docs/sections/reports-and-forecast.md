@@ -41,6 +41,9 @@ dead immediately. The reader's view is `/record/[token]` — see [guest-facing.m
 
 ## Before you edit
 
+- **Tomorrow's header actions wrap on a phone**: the day arrows and Prep sheet on one line, Send to
+  the team on the next. As one row they were 398px in a 358px column.
+
 - **Pulse's top is two cards that line up** (`xl:grid-cols-[auto_minmax(0,1fr)]`, stretched): the
   flip tiles in "Right now", and Quote a wait with party size as an even grid (4 across on a phone,
   8 above). The tiles sit in `.flip-fit`, which sizes them from the card (cqw) on a phone — sized

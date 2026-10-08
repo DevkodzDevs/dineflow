@@ -27,6 +27,10 @@ Barcode reading uses `@zxing/browser`.
 
 ## Before you edit
 
+- **The viewfinder is `--color-bezel`, dark in both themes.** It was `bg-ink`, which is near-white
+  in the dark theme, so "Ready to scan" printed white on white.
+- **On a phone the type-a-code field takes its own full-width line** under Open camera / Upload.
+
 - **The camera is a permission and it can be refused.** Every path must have a typed fallback.
 - **A scan must never write without a confirmation step.** The recogniser is a suggestion; the
   person presses the button.

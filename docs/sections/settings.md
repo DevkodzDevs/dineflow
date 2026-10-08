@@ -38,6 +38,14 @@ never be reachable on a real one.
 
 ## Before you edit
 
+- **Sections share one frame** (`Section` → `.settings-section`). Two in the same card get a rule
+  and 28px between them — "Save payment settings" used to sit flush on the "Loyalty points"
+  heading. The icon is top-aligned with the title, not centred on a five-line description.
+- **Add a table on a phone** is two rows (Name + Seats, then Zone) and a full-width Add; at four
+  columns it showed "T9" and "Mai". The per-table QR link is 40×40.
+- **Storefront switches** carry a hidden checkbox for the form: `hidden` attribute + inline
+  `display:none`, never the `hidden` class (see design-system.md).
+
 - **A new `restaurants` column needs a default that is safe for every existing property**, because
   every property gets it the moment the migration lands.
 - **Keys are secrets.** A gateway key must never be rendered into a client component or a public

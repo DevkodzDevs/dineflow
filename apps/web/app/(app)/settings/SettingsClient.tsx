@@ -21,10 +21,10 @@ const TABS: { key: Tab; label: string; icon: typeof Building2 }[] = [
 
 function Section({ icon, title, children, description }: { icon: React.ReactNode; title: string; children: React.ReactNode; description?: string }) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2.5">
-        <span className="h-8 w-8 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel">{icon}</span>
-        <div>
+    <div className="settings-section space-y-4">
+      <div className="flex items-start gap-3">
+        <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel">{icon}</span>
+        <div className="min-w-0 pt-1">
           <h3 className="text-base font-semibold">{title}</h3>
           {description && <p className="text-xs text-steel mt-0.5">{description}</p>}
         </div>
@@ -299,8 +299,8 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
         <Card>
           <Section icon={<QrCode size={16} />} title="Order from the table"
             description="Every table has its own QR code. A guest scans it, sees the menu on their phone, and the order lands on that table — in Online orders, or straight in the kitchen when the website channel accepts on its own.">
-            <div className="flex flex-wrap items-center gap-2">
-              <Link href="/settings/table-qr" className="btn btn-primary"><QrCode size={16} /> Print table codes</Link>
+            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
+              <Link href="/settings/table-qr" className="btn btn-filled"><QrCode size={16} /> Print table codes</Link>
               <Link href="/channels" className="btn btn-gray">Accept on their own · Channels</Link>
               {!restaurant.booking_slug && <span className="text-xs text-steel">Set the property&apos;s web name under Storefront first.</span>}
             </div>
@@ -317,7 +317,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                       <span className="text-sm">{t.zone}</span>
                       <span className="text-xs text-steel ml-2">seats {t.capacity}</span>
                     </div>
-                    {t.qr_token && restaurant.booking_slug && <a href={`/dine/${restaurant.booking_slug}?t=${t.qr_token}`} target="_blank" rel="noreferrer" className="h-8 px-2 grid place-items-center rounded-lg text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] transition-colors text-[11px] font-semibold" title="Open what a guest sees when they scan this table's code"><QrCode size={14} /></a>}
+                    {t.qr_token && restaurant.booking_slug && <a href={`/dine/${restaurant.booking_slug}?t=${t.qr_token}`} target="_blank" rel="noreferrer" className="h-10 w-10 grid place-items-center rounded-lg text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] transition-colors text-[11px] font-semibold" title="Open what a guest sees when they scan this table's code"><QrCode size={14} /></a>}
                     <button className="h-8 w-8 grid place-items-center rounded-lg text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors"
                       disabled={pending} onClick={() => start(() => { deleteTable(t.id); })} aria-label={`Delete ${t.name}`}>
                       <Trash2 size={14} />
@@ -331,11 +331,11 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               action={(fd) => start(async () => { await saveTable(fd); })}>
               <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Add a table</div>
               <input type="hidden" name="sort_order" value={tables.length + 1} />
-              <div className="grid grid-cols-[minmax(0,1fr)_80px_minmax(0,1fr)_auto] gap-2 items-end">
+              <div className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_80px_minmax(0,1fr)_auto] gap-2 items-end">
                 <Field label="Name"><input name="name" placeholder="T9" required /></Field>
                 <Field label="Seats"><input name="capacity" type="number" defaultValue={4} className="num" /></Field>
-                <Field label="Zone"><input name="zone" placeholder="AC hall" defaultValue="Main" /></Field>
-                <Button disabled={pending} aria-label="Add table"><Plus size={16} /></Button>
+                <div className="col-span-2 sm:col-span-1"><Field label="Zone"><input name="zone" placeholder="AC hall" defaultValue="Main" /></Field></div>
+                <Button className="col-span-2 sm:col-span-1" disabled={pending} aria-label="Add table"><Plus size={16} /><span className="sm:hidden">Add table</span></Button>
               </div>
             </form>
           </Section>

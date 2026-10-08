@@ -37,6 +37,10 @@ and only then `admin_delete_property`.
 
 ## Before you edit
 
+- **The membership status line is prose, not a flex row.** As `flex items-center` every text run
+  became its own column ("Active / . / Yearly / plan · renews by"). The "2 months free" pill wraps
+  under "Yearly" rather than leaving its card.
+
 - **Every admin RPC must check `is_master` inside the function.** The route being under `/admin` is
   not a permission.
 - **Acting-as must stay visible.** Never suppress `MasterBanner`, and never let a test leave a

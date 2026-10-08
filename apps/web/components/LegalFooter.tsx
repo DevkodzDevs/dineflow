@@ -9,7 +9,7 @@ import { COMPANY } from "@/lib/company";
 export function LegalFooter({ className = "" }: { className?: string }) {
   return (
     <footer className={`w-full pt-6 text-[11px] text-steel ${className}`}>
-      <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5" aria-label="Legal">
+      <nav className="legal-links flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5" aria-label="Legal">
         <Link href="/legal/terms" className="hover:text-[var(--color-label)]">Terms</Link>
         <Link href="/legal/privacy" className="hover:text-[var(--color-label)]">Privacy</Link>
         <Link href="/legal/refunds" className="hover:text-[var(--color-label)]">Refunds</Link>

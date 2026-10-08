@@ -68,6 +68,10 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **The floor is two tables across on a phone** (`grid-cols-2 min-[520px]:grid-cols-3`). At three, a
+  108px card could not hold "T3 · READY · 4 seats". In the open-orders list the dish names truncate
+  and the total is `shrink-0`, so they never run together.
+
 - **The control floor is unlayered CSS** (`:where(button) { min-height: 40px }`, 44 under a coarse
   pointer). A plain `h-8` utility loses to it; only an `!important` utility wins. Size tile and rail
   controls at 40 (`h-10`) and let the floor lift them on touch — do not fight it with `!h-8`.

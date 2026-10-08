@@ -66,7 +66,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
         <div className="chip-rail"><Hint k="auto" label="Auto" Icon={Zap} /><Hint k="ingredient" label="Vegetable / product" Icon={Boxes} /><Hint k="dish" label="Dish" Icon={UtensilsCrossed} />{propertyType !== "restaurant" && <Hint k="room" label="Room" Icon={BedDouble} />}<Hint k="labour" label="Labour / ID" Icon={HardHat} /></div>
 
         <div className="glass overflow-hidden">
-          <div className="relative aspect-[4/3] md:aspect-video bg-ink">
+          <div className="relative aspect-[4/3] md:aspect-video bg-[var(--color-bezel)]">
             <video ref={videoRef} className={cn("absolute inset-0 h-full w-full object-cover", mode !== "camera" && "hidden")} muted playsInline autoPlay />
             {photo && mode === "result" && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-contain" />}
             {mode === "camera" && <><div className="absolute inset-x-[12%] inset-y-[18%] border-2 border-saffron/80 rounded-2xl [box-shadow:0_0_0_9999px_rgb(16_32_26/.35)]" /><motion.div className="absolute left-[12%] right-[12%] h-0.5 bg-saffron/90 shadow-[0_0_16px_rgb(232_163_61)]" animate={{ top: ["20%", "80%", "20%"] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} /><div className="absolute bottom-3 inset-x-0 text-center text-xs text-white/80">Barcodes & QR read automatically · tap <b>Capture</b> for photos</div></>}
@@ -76,7 +76,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
           <div className="p-3 flex flex-wrap gap-2 items-center">
             {mode !== "camera" ? <Button onClick={startCamera}><Camera size={16} /> Open camera</Button> : <><Button onClick={snap}><Camera size={16} /> Capture photo</Button><Button variant="outline" onClick={reset}>Close</Button></>}
             <label className="btn-like inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-line bg-card text-sm font-semibold cursor-pointer hover:bg-porcelain"><Upload size={16} /> Upload photo<input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} /></label>
-            <form className="ml-auto flex gap-1" onSubmit={(e) => { e.preventDefault(); if (manual) handleCode(manual, "manual"); }}><input placeholder="Type code / room no." value={manual} onChange={(e) => setManual(e.target.value)} className="!w-40 !py-2 num" /><Button variant="outline" size="md" aria-label="Look up"><Keyboard size={16} /></Button></form>
+            <form className="basis-full sm:basis-auto sm:ml-auto flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (manual) handleCode(manual, "manual"); }}><input placeholder="Type code / room no." value={manual} onChange={(e) => setManual(e.target.value)} className="flex-1 min-w-0 sm:!w-44 sm:flex-none !py-2 num" /><Button variant="outline" size="md" aria-label="Look up"><Keyboard size={16} /></Button></form>
           </div>
           {!aiEnabled && <p className="px-4 pb-3 text-xs text-steel">Running in <b>sample mode</b>: photos return an example result so you can try the whole flow. Add <span className="num">ANTHROPIC_API_KEY</span> to <span className="num">apps/web/.env.local</span> for real recognition. Barcode and QR scanning are real either way.</p>}
           {err && <p className="px-4 pb-3 text-sm text-chili">{err}</p>}
@@ -97,7 +97,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
             {propertyType !== "restaurant" && <li className="flex gap-2"><BedDouble size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Room door / key tag</b> → opens the room: who's in it, mark cleaning or ready.</span></li>}
             <li className="flex gap-2"><HardHat size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Worker / ID card</b> → new labourer with name, ID type, last 4 digits, wage. Their badge QR then punches attendance.</span></li>
           </ul>
-          <Link href="/labour?tab=labels" className="mt-3 inline-block text-xs font-semibold underline">Print QR labels for rooms, products, workers →</Link></Card>
+          <Link href="/labour?tab=labels" className="mt-2 inline-flex items-center min-h-10 text-xs font-semibold underline">Print QR labels for rooms, products, workers →</Link></Card>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Recent scans</div>
           <ul className="space-y-1.5 text-sm">{recent.map((r) => <li key={r.id} className="flex items-center gap-2"><Pill tone={r.kind === "labour" ? "gold" : r.kind === "room" ? "sky" : r.kind === "dish" ? "preparing" : "ready"}>{r.kind ?? "?"}</Pill><span className="flex-1 truncate">{r.result?.name ?? r.action ?? r.source}</span><span className="num text-xs text-steel">{new Date(r.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span></li>)}{recent.length === 0 && <li className="text-steel">Nothing scanned yet.</li>}</ul></Card>
       </aside>

@@ -27,7 +27,7 @@ export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Orde
         {zones.map((z) => (
           <div key={z} className="mb-6">
             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel mb-3">{z}</div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 min-[520px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3">
               {tables.filter((t) => t.zone === z).map((t, i) => {
                 const o = byTable[t.id];
                 const total = o?.order_items.filter((x) => x.status !== "cancelled").reduce((s, x) => s + Number(x.price_snapshot) * x.qty, 0) ?? 0;
@@ -70,7 +70,7 @@ export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Orde
                   <Pill tone={tone(worst)}>{worst}</Pill>
                 </div>
                 <div className="num text-xs text-steel mt-0.5">#{o.order_no} · {live.reduce((s, x) => s + x.qty, 0)} items · {fmtSince(o.created_at)}</div>
-                <div className="mt-2 flex justify-between text-sm"><span className="text-steel truncate">{live.slice(0, 3).map((x) => x.name_snapshot).join(", ")}{live.length > 3 ? "…" : ""}</span><span className="num font-semibold">{formatINR(total)}</span></div>
+                <div className="mt-2 flex justify-between gap-3 text-sm"><span className="text-steel truncate min-w-0">{live.slice(0, 3).map((x) => x.name_snapshot).join(", ")}{live.length > 3 ? "…" : ""}</span><span className="num font-semibold shrink-0">{formatINR(total)}</span></div>
               </Link>
             );
           })}
