@@ -6,6 +6,7 @@ import { useLive } from "@/lib/useLive";
 import { Button, Card, Field, Pill, cn, Empty, useToast } from "@/components/ui";
 import { fmtSince } from "@/lib/format";
 import { setTask, addTask, setCondition, inspectRoom, buildSheet } from "./actions";
+import { setRoomStatus } from "../rooms/actions";
 
 type Task = { id: string; kind: string; status: string; notes: string | null; created_at: string; rooms: { number: string; floor: number } | null };
 type Condition = "dirty" | "clean" | "inspected" | "pickup";
@@ -131,6 +132,23 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                       against WCAG's 4.5. It is the quietest line on the card but it still has to be
                       readable by someone holding a phone in a corridor. */}
                   <div className="num text-[11px] text-[var(--color-label-2)]">{c.label.toLowerCase()} {fmtSince(r.condition_at)} ago</div>
+                  {/* An out-of-order room says why, and how it comes back: the open maintenance
+                      task on it (or that there is none), and Back in service, which returns it to
+                      the board as clean — a supervisor still inspects it before it is sold. The
+                      card was an empty dark block beside cards full of buttons. */}
+                  {out && (() => {
+                    const fix = tasks.find((t) => t.kind === "maintenance" && t.status !== "done" && t.rooms?.number === r.number);
+                    return (
+                      <div className="mt-auto pt-2.5 border-t border-line space-y-2">
+                        <div className="flex items-start gap-2 rounded-xl bg-[var(--color-red-2)] px-2.5 py-2 text-[11.5px]">
+                          <Wrench size={13} className="text-[var(--color-red)] shrink-0 mt-0.5" />
+                          <span className="min-w-0"><span className="block font-semibold text-[var(--color-red)]">{fix ? (fix.status === "in_progress" ? "Being fixed" : "Waiting for repair") : "No repair task open"}</span>
+                            <span className="block text-[var(--color-label-2)] line-clamp-2">{fix ? `${fix.notes || "Maintenance"} · ${fmtSince(fix.created_at)} ago` : "Add one below so someone picks it up"}</span></span>
+                        </div>
+                        <Button size="sm" variant="outline" className="w-full !px-2" disabled={pending} onClick={() => act(() => setRoomStatus(r.id, "available"))}><Check size={14} /> Back in service</Button>
+                      </div>
+                    );
+                  })()}
                   {(waiting || acts.length > 0) && (
                     <div className="mt-auto pt-2.5 border-t border-line space-y-1.5">
                       {waiting && <div className="text-[11px] text-steel">Awaiting a supervisor's sign-off</div>}

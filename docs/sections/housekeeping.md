@@ -40,6 +40,11 @@ dirty room without a ticket.
 
 ## Before you edit
 
+- **An out-of-order room card says why and how it comes back**: the open maintenance task for that
+  room number (Waiting for repair / Being fixed, its note and age, or "No repair task open"), and
+  Back in service → `setRoomStatus(id, "available")` from `../rooms/actions`, which marks it clean
+  so a supervisor still inspects it before it sells. It was an empty dark block on the board.
+
 - **On a phone the room board is one room per row** (`grid-cols-1 min-[520px]:grid-cols-2 …`) and
   a card's actions are one row of equal buttons (`grid-flow-col auto-cols-fr`); from 520px it goes
   back to the two-column action grid with the lead action spanning. Two across on a phone, a 170px
