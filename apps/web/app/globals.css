@@ -516,6 +516,11 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, te
 input:hover, select:hover, textarea:hover { background-color: var(--color-fill-2); }
 input:focus, select:focus, textarea:focus { background-color: var(--color-bg-2); border-color: rgb(76 217 100 / .6); box-shadow: 0 0 0 4px rgb(76 217 100 / .18); }
 input::placeholder, textarea::placeholder { color: var(--color-label-3); }
+/* A field inside a grey panel (Settings → Razorpay, Add a table, …) was the panel's own grey and
+   vanished into it, in both themes. Inside any element filled with --color-fill, fields take the
+   card colour and a hairline, so the box you type into is always a box. */
+:where([class~="bg-[var(--color-fill)]"]) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) { background-color: var(--color-bg-2); border-color: var(--color-separator); }
+[data-theme="paper"] :where([class~="bg-[var(--color-fill)]"]) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) { background-color: #ffffff; border-color: rgb(23 23 28 / .12); }
 /* ═══ DROPDOWNS ════════════════════════════════════════════════════════
    Every <select> in the app (58 of them) is styled here, nowhere else.
    Closed: the field's own surface, the text truncating, and a chevron in a small round chip at the

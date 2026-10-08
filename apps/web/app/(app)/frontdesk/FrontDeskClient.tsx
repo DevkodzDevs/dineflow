@@ -1,8 +1,8 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, LogIn, CalendarDays, Moon, Users, Star, ClipboardCheck } from "lucide-react";
+import { Plus, LogIn, CalendarDays, Moon, Users, Star, ClipboardCheck, List } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Button, Sheet, Field, StatTile, Pill, cn, Empty, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
@@ -58,11 +58,11 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
           <Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>
         </div></div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="min-w-0"><div className="text-sm font-semibold mb-3 flex items-center gap-2"><LogIn size={15} /> Arrivals <span className="num text-steel">{arrivals.length}</span></div>
+        <section className="min-w-0"><Head icon={<LogIn size={16} />} tone="green" label="Arrivals" n={arrivals.length} />
           <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} action={<Button size="sm" variant="ink" disabled={pending} onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}>Check in</Button>} />)}{arrivals.length === 0 && <p className="text-sm text-steel">No pending arrivals.</p>}</div>
-          <div className="text-sm font-semibold mt-6 mb-3 flex items-center gap-2"><CalendarDays size={15} /> Upcoming <span className="num text-steel">{upcoming.length}</span></div>
+          <div className="mt-7"><Head icon={<CalendarDays size={16} />} tone="blue" label="Upcoming" n={upcoming.length} /></div>
           <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} action={<button className="text-xs text-steel hover:text-chili" onClick={(e) => { e.preventDefault(); if (confirm("Cancel this booking?")) start(() => { cancelBooking(b.id); }); }}>cancel</button>} />)}{upcoming.length === 0 && <p className="text-sm text-steel">Nothing upcoming.</p>}</div></section>
-        <section className="min-w-0"><div className="text-sm font-semibold mb-3 flex items-center gap-2"><Moon size={15} /> In house <span className="num text-steel">{inHouse.length}</span></div>
+        <section className="min-w-0"><Head icon={<Moon size={16} />} tone="orange" label="In house" n={inHouse.length} />
           <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} action={b.check_out <= today ? <Pill tone="alert">due out</Pill> : <Pill tone="gold">night {Math.max(1, Math.round((Date.now() - new Date(b.check_in).getTime()) / 86400000))}</Pill>} />)}{inHouse.length === 0 && <Empty title="No guests in house" hint="Check in an arrival or create a walk-in booking." />}</div></section>
       </div>
 
@@ -81,12 +81,31 @@ function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: R
   const nights = Math.max(1, Math.round((new Date(f.check_out).getTime() - new Date(f.check_in).getTime()) / 86400000));
   const free = rooms.filter((r) => r.status !== "maintenance");
   const pickRoom = (r: Room) => setF({ ...f, room_id: r.id, rate: Number(r.room_types?.base_rate ?? 0) });
+  /* read once when the form opens (it only ever renders in the browser, inside the sheet) and saved
+     only when someone picks — an effect that saved on mount wrote "4" over the saved choice */
+  const [view, setViewState] = useState<"2" | "3" | "4" | "list">(() => {
+    try { const v = localStorage.getItem("df-room-picker"); if (v === "2" || v === "3" || v === "4" || v === "list") return v; } catch { /* storage blocked */ }
+    return "4";
+  });
+  const setView = (v: "2" | "3" | "4" | "list") => { setViewState(v); try { localStorage.setItem("df-room-picker", v); } catch { /* fine */ } };
   const pickGuest = (id: string) => { const x = guests.find((y) => y.id === id); setG(x ? { ...g, id, full_name: x.full_name, phone: x.phone ?? "" } : { ...g, id: "" }); };
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3"><Field label="Check-in"><input type="date" value={f.check_in} min={today} onChange={(e) => setF({ ...f, check_in: e.target.value })} className="num" /></Field><Field label="Check-out"><input type="date" value={f.check_out} min={f.check_in} onChange={(e) => setF({ ...f, check_out: e.target.value })} className="num" /></Field></div>
       <Field label={`Room · ${nights} night${nights > 1 ? "s" : ""}`}>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">{free.map((r) => <button key={r.id} type="button" onClick={() => pickRoom(r)} title={r.condition ? `Housekeeping: ${r.condition}` : undefined} className={cn("keycard h-12 text-sm font-semibold relative", r.status, f.room_id === r.id && "!border-saffron shadow-glow")}>{r.condition && <span className={cn("absolute top-1 right-1 h-1.5 w-1.5 rounded-full", CONDITION_DOT[r.condition] ?? "bg-steel")} />}<div className="font-display">{r.number}</div><div className="text-[9px] opacity-70 -mt-0.5">{r.room_types?.name?.slice(0, 8)}</div></button>)}</div>
+        {/* On a phone the picker can be 2, 3 or 4 across, or a list with the room type in full; the
+            choice is remembered on this device. From sm it is the six-across grid it always was. */}
+        <div className="sm:hidden flex justify-end -mt-1 mb-2">
+          <div role="radiogroup" aria-label="Room picker layout" className="inline-flex p-0.5 rounded-xl bg-[var(--color-fill)]">
+            {(["2", "3", "4", "list"] as const).map((v) => (
+              <button key={v} type="button" role="radio" aria-checked={view === v} aria-label={v === "list" ? "List" : `${v} across`} onClick={() => setView(v)}
+                className={cn("h-9 min-w-10 px-2.5 rounded-[10px] text-[13px] font-semibold grid place-items-center transition-colors", view === v ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-[var(--color-label-2)]")}>
+                {v === "list" ? <List size={15} /> : v}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={cn("grid gap-1.5 sm:grid-cols-6", view === "2" ? "grid-cols-2" : view === "3" ? "grid-cols-3" : view === "list" ? "grid-cols-1" : "grid-cols-4")}>{free.map((r) => <button key={r.id} type="button" onClick={() => pickRoom(r)} title={r.condition ? `Housekeeping: ${r.condition}` : undefined} className={cn("keycard text-sm font-semibold relative", view === "list" ? "h-12 max-sm:flex max-sm:items-center max-sm:gap-3 max-sm:px-3.5 max-sm:text-left" : view === "2" ? "h-14 sm:h-12" : "h-12", r.status, f.room_id === r.id && "!border-saffron shadow-glow")}>{r.condition && <span className={cn("absolute top-1 right-1 h-1.5 w-1.5 rounded-full", CONDITION_DOT[r.condition] ?? "bg-steel")} />}<div className={cn("font-display", view === "list" && "max-sm:text-lg max-sm:w-12")}>{r.number}</div><div className={cn("text-[9px] opacity-70 -mt-0.5", view === "list" ? "max-sm:mt-0 max-sm:text-[13px] max-sm:flex-1 max-sm:opacity-80" : view === "2" && "max-sm:text-[11px]")}><span className={view === "list" || view === "2" ? "max-sm:hidden" : undefined}>{r.room_types?.name?.slice(0, 8)}</span>{(view === "list" || view === "2") && <span className="sm:hidden">{r.room_types?.name}</span>}</div></button>)}</div>
       </Field>
       <div className="grid grid-cols-3 gap-3"><Field label="Rate / night"><input type="number" className="num" value={f.rate || ""} onChange={(e) => setF({ ...f, rate: Number(e.target.value) })} /></Field><Field label="Adults"><input type="number" min={1} className="num" value={f.adults} onChange={(e) => setF({ ...f, adults: Number(e.target.value) })} /></Field><Field label="Children"><input type="number" min={0} className="num" value={f.children} onChange={(e) => setF({ ...f, children: Number(e.target.value) })} /></Field></div>
       <div className="hairline-gold" />
@@ -97,6 +116,18 @@ function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: R
       <div className="flex justify-between items-baseline border-t border-dashed border-line pt-3"><span className="text-sm text-steel">{nights} × {formatINR(f.rate)} + room GST</span><span className="num text-2xl font-semibold">{formatINR(nights * f.rate)}</span></div>
       {err && <p className="text-sm text-chili">{err}</p>}
       <Button size="lg" className="w-full" disabled={pending || !f.room_id || !g.full_name} onClick={() => start(async () => { const r = await createBooking({ ...f, guest: g }); if ("error" in r) setErr(r.error!); else onDone(r.id!); })}>{pending ? "Saving…" : "Confirm booking"}</Button>
+    </div>
+  );
+}
+
+/** A section head that reads as one: its icon in a tinted tile, the name in bold, the count as a badge. */
+function Head({ icon, label, n, tone }: { icon: ReactNode; label: string; n: number; tone: "green" | "blue" | "orange" }) {
+  const c = tone === "green" ? "var(--color-green)" : tone === "blue" ? "var(--color-blue)" : "var(--color-orange)";
+  return (
+    <div className="mb-3 flex items-center gap-2.5">
+      <span className="h-8 w-8 rounded-[10px] grid place-items-center shrink-0" style={{ color: c, background: `color-mix(in srgb, ${c} 15%, transparent)` }}>{icon}</span>
+      <h2 className="text-[17px] !font-bold tracking-[-0.01em] text-[var(--color-label)]">{label}</h2>
+      <span className="num h-6 min-w-6 px-2 rounded-full grid place-items-center text-[12px] font-bold" style={{ color: n ? c : "var(--color-label-2)", background: n ? `color-mix(in srgb, ${c} 15%, transparent)` : "var(--color-fill)" }}>{n}</span>
     </div>
   );
 }

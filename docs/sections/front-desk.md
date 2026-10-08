@@ -32,6 +32,20 @@ see at a glance which free room is actually sellable.
 
 ## Before you edit
 
+- **Arrivals / Upcoming / In house use `Head`** — a tinted icon tile, a bold 17px `h2`
+  (`!font-bold`: the global heading weight beats a plain utility), and a count badge in the
+  section's colour (green / blue / orange).
+- **The booking dialog's room picker has a phone-only layout switch** — 2, 3, 4 across or a list
+  (full room type) — saved per device in `localStorage` (`df-room-picker`), read when the form opens
+  and written only when someone picks. From `sm` it is always six across.
+
+- **Arrivals / Upcoming / In house use `Head`** — a tinted icon tile, a bold 17px `h2`
+  (`!font-bold`: the global heading weight beats a plain utility), and a count badge in the
+  section's colour (green / blue / orange).
+- **The booking dialog's room picker has a phone-only layout switch** — 2, 3, 4 across or a list
+  (full room type) — saved per device in `localStorage` (`df-room-picker`), read when the form opens
+  and written only when someone picks. From `sm` it is always six across.
+
 - **A room's `status` and its `condition` are different things.** `status` is
   available/occupied/maintenance/reserved — front-office truth. `condition` is
   dirty/clean/inspected/pickup — housekeeping truth. The discrepancy report exists because they can

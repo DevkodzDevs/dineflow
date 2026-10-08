@@ -74,6 +74,14 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
 
+- **A field inside a grey panel takes the card colour.** Any element with `bg-[var(--color-fill)]`
+  gives its inputs/selects/textareas `--color-bg-2` (white in paper) and a hairline — they used to be
+  the panel's own grey and disappeared (Settings → Razorpay, Add a table).
+
+- **A field inside a grey panel takes the card colour.** Any element with `bg-[var(--color-fill)]`
+  gives its inputs/selects/textareas `--color-bg-2` (white in paper) and a hairline — they used to be
+  the panel's own grey and disappeared (Settings → Razorpay, Add a table).
+
 - **Every `<select>` (58) is styled in the DROPDOWNS block of globals.css, nowhere else.** Closed:
   the field surface with a chevron in a 26px round chip (a background SVG, a darker one in paper).
   Open: under `@supports (appearance: base-select)` (Chrome/Edge 135+) the list is a styled

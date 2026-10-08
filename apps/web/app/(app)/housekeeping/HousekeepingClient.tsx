@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star } from "lucide-react";
+import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Button, Card, Field, Pill, Segmented, cn, Empty, useToast } from "@/components/ui";
 import { fmtSince } from "@/lib/format";
@@ -35,6 +35,8 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
   /* On a phone the board and the task sheet are two tabs, not one page five screens long: a
      housekeeper is either walking the rooms or working the list. From sm both show, as before. */
   const [view, setView] = useState<"rooms" | "tasks">("rooms");
+  /* Floors fold: the first is open, opening another closes it, and "all" opens every one. */
+  const [openFloor, setOpenFloor] = useState<number | "all" | null>(() => [...new Set(rooms.map((r) => r.floor))].sort((x, y) => x - y)[0] ?? null);
   useLive(["housekeeping_tasks", "rooms", "bookings"]);
   const byRoom = useMemo(() => Object.fromEntries(stays.map((s) => [s.room_id, s])) as Record<string, Stay>, [stays]);
   const floors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b);
@@ -88,8 +90,28 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
         </Card>
       )}
 
-      {floors.map((fl) => (
-        <section key={fl}><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel mb-3">Floor {fl}</div>
+      {/* Floors fold. The first is open; opening another closes it; Open all shows the lot. A board of
+          three floors was three screens of cards before the task list on a phone. */}
+      {floors.length > 1 && (
+        <div className="flex items-center justify-between -mb-2">
+          <span className="text-[11px] text-steel">{openFloor === "all" ? "All floors open" : openFloor === null ? "All floors closed" : `Floor ${openFloor} open`}</span>
+          <button type="button" onClick={() => setOpenFloor(openFloor === "all" ? (floors[0] ?? null) : "all")} aria-pressed={openFloor === "all"}
+            className="h-10 px-3.5 rounded-full text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] inline-flex items-center gap-1.5 transition-colors">
+            <ChevronsUpDown size={14} /> {openFloor === "all" ? "Close all" : "Open all"}
+          </button>
+        </div>
+      )}
+      {floors.map((fl) => { const on = openFloor === "all" || openFloor === fl; const here = rooms.filter((r) => r.floor === fl);
+        const dirty = here.filter((r) => r.status !== "maintenance" && r.condition === "dirty").length; const outN = here.filter((r) => r.status === "maintenance").length;
+        return (
+        <section key={fl} className="feather overflow-hidden">
+          <button type="button" onClick={() => setOpenFloor(on && openFloor !== "all" ? null : fl)} aria-expanded={on}
+            className="w-full min-h-14 px-4 flex items-center gap-3 text-left hover:bg-[var(--color-fill)] transition-colors">
+            <span className="font-display text-lg">Floor {fl}</span>
+            <span className="text-xs text-steel num">{here.length} room{here.length === 1 ? "" : "s"}{dirty ? ` · ${dirty} dirty` : ""}{outN ? ` · ${outN} out of order` : ""}</span>
+            <ChevronDown size={18} className={cn("ml-auto text-steel shrink-0 transition-transform duration-200", on && "rotate-180")} />
+          </button>
+          {on && <div className="px-3 pb-3 sm:px-4 sm:pb-4">
           {/* One room to a row on a phone, its actions in a single row of equal buttons. Two
               across, a 170px card stacked four 44px pills two by two, and a card with one action
               sat beside one with four as a tall empty hole. From 520px the board goes back to
@@ -175,8 +197,8 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                 </div>
               );
             })}
-          </div></section>
-      ))}
+          </div></div>}</section>
+      ); })}
       {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet — add them on the Rooms page.</p>}
       </div>
 

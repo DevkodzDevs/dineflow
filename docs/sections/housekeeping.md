@@ -40,6 +40,14 @@ dirty room without a ticket.
 
 ## Before you edit
 
+- **Floors are an accordion** (`openFloor`: a floor number, `"all"` or null). The first floor is
+  open; opening another closes it; Open all / Close all at the top. Each floor head shows its room
+  count, dirty and out-of-order counts. Probe: `four.mjs` (1440 dark, 390 paper).
+
+- **Floors are an accordion** (`openFloor`: a floor number, `"all"` or null). The first floor is
+  open; opening another closes it; Open all / Close all at the top. Each floor head shows its room
+  count, dirty and out-of-order counts. Probe: `four.mjs` (1440 dark, 390 paper).
+
 - **On a phone the page is two tabs** — `Segmented` Rooms n | Tasks n (`view` state, `sm:hidden`).
   Rooms holds the discrepancies and the board; Tasks the To do / In progress columns, New task and
   Recently done. Each side is hidden with `max-sm:hidden`, so from `sm` both show and there is no
