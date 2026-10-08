@@ -20,7 +20,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
     // waiter promises it to a table rather than after the kitchen has picked the ticket up
     s.rpc("menu_stock"),
     // the orders already running on a table, so tapping an occupied one can offer the open ticket
-    s.from("orders").select("id, order_no, table_id, created_at, order_items(qty), dining_tables(name)").eq("status", "open").not("table_id", "is", null).order("created_at", { ascending: false }),
+    s.from("orders").select("id, order_no, table_id, created_at, order_items(qty, status), dining_tables(name)").eq("status", "open").not("table_id", "is", null).order("created_at", { ascending: false }),
     // sizes, add-on groups and combo parts: what a dish asks before it goes on a ticket
     s.from("menu_variants").select(OPTION_SELECTS.variants).eq("is_active", true),
     s.from("addon_groups").select(OPTION_SELECTS.groups).eq("is_active", true),

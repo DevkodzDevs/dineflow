@@ -21,7 +21,20 @@ type Guest = { id: string; booking_no: number; rooms: { number: string } | null;
 /** What the pantry can still cover, keyed by dish. A dish that is absent has no recipe: it moves no
  *  stock, so there is nothing true to say about it, and it is always sellable. */
 type Cover = { portions: number; short: { name: string; unit: string; per: number; stock: number }[] };
-type Running = { id: string; order_no: number; table_id: string; created_at: string; order_items: { qty: number }[]; dining_tables: { name: string } | null };
+type Running = { id: string; order_no: number; table_id: string; created_at: string; order_items: { qty: number; status: string }[]; dining_tables: { name: string } | null };
+
+/**
+ * What a running ticket is actually doing, in the order a waiter cares about it: food waiting to be
+ * carried out beats food still cooking, which beats food not started. Anything cancelled is ignored
+ * — a cancelled line is not work.
+ */
+function lineState(o: Running): { label: string; tone: "ready" | "preparing" | "pending" | "served" } {
+  const live = (o.order_items ?? []).filter((i) => i.status !== "cancelled");
+  if (live.some((i) => i.status === "ready")) return { label: "ready to serve", tone: "ready" };
+  if (live.some((i) => i.status === "preparing")) return { label: "in the kitchen", tone: "preparing" };
+  if (live.length && live.every((i) => i.status === "served")) return { label: "served", tone: "served" };
+  return { label: "waiting", tone: "pending" };
+}
 /** One line of the ticket: a dish with the size and extras it was chosen with. The same dish as
  *  Half and as Full is two lines. `ask` marks a line that still owes a required choice — a voice
  *  order can put a dish on the ticket before anyone has said which bread. */
@@ -358,7 +371,10 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
                       <span className="num text-[11px] text-steel">#{o.order_no}</span>
                     </div>
                     <div className="text-[11px] text-steel mt-0.5 num">{n} item{n === 1 ? "" : "s"} · {fmtSince(o.created_at)}</div>
-                    <div className="mt-2"><Pill tone="preparing">in progress</Pill></div>
+                    {/* the real state of the ticket, not a label. Every card used to read "in progress"
+                        in the same amber whatever the kitchen was doing, which told a waiter nothing —
+                        the one thing this strip exists to say is which table's food is up. */}
+                    <div className="mt-2">{(() => { const s = lineState(o); return <Pill tone={s.tone}>{s.label}</Pill>; })()}</div>
                   </Link>
                 );
               })}
@@ -405,13 +421,13 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
                       {asks && <SlidersHorizontal size={11} className="text-steel shrink-0" aria-label="Has options" />}
                       <span className="num text-sm font-semibold shrink-0">{tp.from ? <span className="text-[11px] font-normal text-steel">from </span> : null}{formatINR(tp.price)}</span>
                     </span>
-                    <span className="block font-semibold text-sm mt-0.5 leading-snug line-clamp-2">{it.name}</span>
+                    <span className="block font-semibold text-[15px] mt-0.5 leading-snug line-clamp-2 min-h-[2lh]">{it.name}</span>
                     {c?.portions === 0 && <span className="block mt-1 text-[11px] font-semibold text-[var(--color-orange)]">Pantry short{c.short[0] ? ` · ${c.short[0].name}` : ""}</span>}
                     {!!c?.portions && c.portions <= 5 && <span className="block mt-1 text-[11px] text-steel num">{c.portions} left in the pantry</span>}
                   </span>
                 </motion.button>
                 {/* the count lives on the dish, so a miscount is fixed where it happened */}
-                <div className="flex items-center gap-2 pl-[68px] pr-2.5 pb-2.5">
+                <div className="flex items-center gap-2 pl-[76px] pr-2.5 pb-2.5">
                   <button type="button" onClick={() => takeOne(it)} disabled={qty === 0} aria-label={`One less ${it.name}`}
                     className="h-8 w-8 rounded-full border border-line grid place-items-center text-steel enabled:hover:bg-[var(--color-fill)] disabled:opacity-30"><Minus size={14} /></button>
                   <span className={cn("num text-sm tabular-nums w-5 text-center", qty ? "font-bold" : "text-steel")}>{qty}</span>
@@ -456,7 +472,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
  */
 function Thumb({ item }: { item: Item }) {
   return (
-    <span className="relative h-14 w-14 rounded-2xl overflow-hidden shrink-0 grid place-items-center bg-[var(--color-fill)]">
+    <span className="relative h-16 w-16 rounded-2xl overflow-hidden shrink-0 grid place-items-center bg-[var(--color-fill)]">
       {item.image_url
         // eslint-disable-next-line @next/next/no-img-element -- owner-supplied URLs from any host; next/image would need every one allow-listed
         ? <img src={item.image_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
