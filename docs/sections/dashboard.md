@@ -39,6 +39,12 @@ component on the client.
 
 ## Before you edit
 
+- **On a phone the flip tiles size from the row, not the screen height rule.** `.flip-row .flip`
+  takes `--tile: clamp(64px, (100vw - 56px) / 3.6, 112px)` under 480px, with a fixed 12px gap. A
+  two-card tile is ~1.14× as wide as tall; at a third of the screen as the height the three tiles
+  were 372px on a 358px row and overlapped, pins touching. Measured after: 17–20px between tiles
+  at 430/390/375/360; the restaurant's wider "0/14" tile still fits (26px gaps).
+
 - **Icons travel as names.** `Tile.icon` is a key of `ICON`, resolved in the client component. Pass
   a Lucide component from `page.tsx` and the dashboard renders its error card while typecheck stays
   green. This has happened.

@@ -242,6 +242,12 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .flip-row { display: flex; gap: clamp(10px, 2.4vw, 24px); align-items: flex-start; justify-content: flex-start; flex-wrap: wrap; }
 @media (max-width: 480px) {
   .flip-row { justify-content: space-between; flex-wrap: nowrap; } .flip-row > * { min-width: 0; } .flip-label { font-size: 10px; letter-spacing: .1em; }
+  /* three two-card tiles with room between them. --tile is a height and a two-card tile is ~1.14x
+     as wide as it is tall, so a third of the screen as the height (108px at 390) made three tiles
+     372px wide on a 358px row and they overlapped, pins touching. Height now comes from the width
+     each tile gets — a third of the row less two 12px gaps — over 1.2: ~93px at 390, 12px apart. */
+  .flip-row { gap: 12px; }
+  .flip-row .flip { --tile: clamp(64px, calc((100vw - 56px) / 3.6), 112px); }
   /* a row of four tiles sizes itself for four, not three, so nothing spills off the edge */
   .flip-row:has(> :nth-child(4)) .flip { --tile: clamp(56px, calc((100vw - 64px - 30px) / 4), 128px); }
   .flip-row:has(> :nth-child(4)) .flip-label { font-size: 9px; letter-spacing: .06em; }
