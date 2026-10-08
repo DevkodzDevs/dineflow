@@ -43,6 +43,12 @@ columns of ~50px, still above the 44px tap floor.
 
 ## Before you edit
 
+- **Room cards carry their own action bar** (`.room-act`, 40px, 44 on touch, sharing the card's
+  width). The card is the `keycard` wrapper; the top is the `Link`, the bar is its sibling, so no
+  button sits inside a link. The grid is `repeat(auto-fill, minmax(9.5rem, 1fr))` — never so narrow
+  that three finger-sized buttons cannot fit. The old row of 13px icons under the card was a 21px
+  target. Probe: `diag.mjs` reports 0 small targets at 1366/1280/1194/1024/834/412.
+
 - **`min-w-0` on the calendar card root is load-bearing.** As a grid item it defaults to
   `min-width:auto` and pushed the whole page sideways on a phone.
 - **The weekday header must use the same track as the grid** — `gap-px border border-transparent` —

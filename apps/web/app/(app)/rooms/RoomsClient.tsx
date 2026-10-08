@@ -29,26 +29,34 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
       </div>
       {floors.map((f) => (
         <section key={f}><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel mb-3">Floor {f}</div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3">
-            {rooms.filter((r) => r.floor === f).map((r, i) => { const b = byRoom[r.id]; return (
-              <motion.div key={r.id} className="flex flex-col h-full" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}>
-                <Link href={b ? `/frontdesk/${b.id}` : "/frontdesk"} className={cn("keycard feather-lift flex-1 min-h-[7rem] p-3 flex flex-col", r.status)}>
+          {/* As many cards as fit at 9.5rem or more — never so narrow that the action bar's three
+              buttons cannot be finger-sized. Two across on a phone, six on an iPad or laptop. */}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
+            {rooms.filter((r) => r.floor === f).map((r, i) => { const b = byRoom[r.id];
+              /* The room's actions live in the card, as a bar of real buttons. They were 13px icons
+                 with p-1 under the card — 21px targets that read as a caption and that nobody could
+                 hit on a tablet. Each one now shares the card's width at 40px tall (44 on touch). */
+              const acts = [
+                ...(r.status !== "occupied" && r.status !== "available" ? [{ k: "ready", label: "Mark ready", icon: <Check size={16} />, run: () => setRoomStatus(r.id, "available") }] : []),
+                ...(r.status === "available" ? [{ k: "clean", label: "Send to cleaning", icon: <Sparkles size={16} />, run: () => setRoomStatus(r.id, "cleaning") }] : []),
+                ...(r.status !== "occupied" && r.status !== "maintenance" ? [{ k: "fix", label: "Maintenance", icon: <Wrench size={16} />, run: () => setRoomStatus(r.id, "maintenance") }] : []),
+              ];
+              return (
+              <motion.div key={r.id} className={cn("keycard feather-lift flex flex-col", r.status)} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}>
+                <Link href={b ? `/frontdesk/${b.id}` : "/frontdesk"} className="flex-1 min-h-[6.5rem] p-3 flex flex-col">
                   <div className="flex justify-between items-start"><span className="font-display text-2xl">{r.number}{r.condition && r.status !== "maintenance" && <span title={`Housekeeping: ${r.condition}`} className={cn("inline-block h-2 w-2 rounded-full ml-1.5 align-middle", CONDITION_DOT[r.condition] ?? "bg-steel")} />}</span><span className="text-[10px] font-semibold text-[var(--card-muted)] shrink-0 ml-2">{r.room_types?.name}</span></div>
                   <div className="mt-auto text-xs">
                     {r.status === "occupied" && b ? <><div className="font-semibold truncate">{b.guests?.full_name}</div><div className="num text-[var(--card-muted)]">out {b.check_out.slice(5)}</div></>
                       : r.status === "cleaning" ? <span className="flex items-center gap-1 text-ink"><Sparkles size={12} /> cleaning</span>
                       : r.status === "maintenance" ? <span className="flex items-center gap-1 text-chili"><Wrench size={12} /> maintenance</span>
                       : r.status === "reserved" ? <span className="text-champagne font-semibold">arriving</span>
-                      : <span className="num text-steel">{formatINR(Number(r.room_types?.base_rate ?? 0))}/n</span>}
+                      : <span className="num text-[var(--card-muted)]">{formatINR(Number(r.room_types?.base_rate ?? 0), { whole: true })}<span className="text-[10px]"> / night</span></span>}
                   </div>
                 </Link>
-                <div className="flex justify-center gap-1 mt-1 text-steel">
-                  {r.status !== "occupied" && <>
-                    {r.status !== "available" && <button title="Mark ready" disabled={pending} onClick={() => start(() => { setRoomStatus(r.id, "available"); })} className="p-1 hover:text-ink"><Check size={13} /></button>}
-                    {r.status === "available" && <button title="Send to cleaning" disabled={pending} onClick={() => start(() => { setRoomStatus(r.id, "cleaning"); })} className="p-1 hover:text-ink"><Sparkles size={13} /></button>}
-                    {r.status !== "maintenance" && <button title="Maintenance" disabled={pending} onClick={() => start(() => { setRoomStatus(r.id, "maintenance"); })} className="p-1 hover:text-chili"><Wrench size={13} /></button>}
-                  </>}
-                  <button title="Edit" onClick={() => setEdit(r)} className="p-1 hover:text-ink"><Pencil size={13} /></button>
+                <div className="grid gap-1 px-1.5 pb-1.5" style={{ gridTemplateColumns: `repeat(${acts.length + 1}, minmax(0, 1fr))` }}>
+                  {acts.map((a) => <button key={a.k} type="button" title={a.label} aria-label={`${a.label} · room ${r.number}`} disabled={pending} onClick={() => start(() => { a.run(); })}
+                    className={cn("room-act", a.k === "fix" && "hover:!text-[var(--color-red)]")}>{a.icon}</button>)}
+                  <button type="button" title="Edit room" aria-label={`Edit room ${r.number}`} onClick={() => setEdit(r)} className="room-act"><Pencil size={15} /></button>
                 </div>
               </motion.div>); })}
           </div></section>

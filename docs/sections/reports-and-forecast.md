@@ -41,6 +41,11 @@ dead immediately. The reader's view is `/record/[token]` — see [guest-facing.m
 
 ## Before you edit
 
+- **Pulse's top is two cards that line up** (`xl:grid-cols-[auto_minmax(0,1fr)]`, stretched): the
+  flip tiles in "Right now", and Quote a wait with party size as an even grid (4 across on a phone,
+  8 above). The tiles sit in `.flip-fit`, which sizes them from the card (cqw) on a phone — sized
+  from 100vw they ran the third tile out of the card at 412.
+
 - **A sealed period must not move.** If a report lets a closed day change, the proof record is a
   lie. `close_day` and `run_night_audit` are the seals.
 - **Do not recompute a figure client-side "just for this screen".** Add it to the RPC.

@@ -148,18 +148,23 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
       {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet — add them on the Rooms page.</p>}
 
       {/* the task sheet */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid sm:grid-cols-2 gap-4">
+      {/* The board gets two real columns before the form takes a side of its own: at lg the form's
+          320px left each column ~290px and "Done · room ready" ran out of its button. Below xl the
+          form and "Recently done" sit under the board, side by side. */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] items-start">
+        <div className="grid md:grid-cols-2 gap-4 min-w-0">
           {cols.map((c) => { const list = tasks.filter((t) => t.status === c.key); return (
             <section key={c.key} className={cn("rounded-[20px] p-3", c.key === "pending" ? "bg-sky-2" : "bg-champagne-2")}><div className="text-sm font-semibold px-1 pb-3">{c.title} <span className="num text-steel">{list.length}</span></div>
               <div className="space-y-3"><AnimatePresence>{list.map((t) => (
                 <motion.div key={t.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-4">
-                  <div className="flex items-center gap-3"><span className="keycard h-11 w-12 grid place-items-center font-display text-lg">{t.rooms?.number ?? "—"}</span><div className="flex-1"><div className="font-semibold flex items-center gap-1.5">{t.kind === "maintenance" ? <Wrench size={14} className="text-chili" /> : <Sparkles size={14} />}{KIND[t.kind] ?? t.kind}</div><div className="text-xs text-steel">{t.notes || "—"} · {fmtSince(t.created_at)}</div></div></div>
-                  <div className="mt-3 flex gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => start(() => { setTask(t.id, "in_progress"); })}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className="flex-1" disabled={pending} onClick={() => start(() => { setTask(t.id, "done"); })}><Check size={14} /> {t.kind === "maintenance" || (inspectRule && t.kind !== "maintenance") ? "Done" : "Done · room ready"}</Button></div>
-                </motion.div>))}</AnimatePresence>{list.length === 0 && <p className="text-sm text-steel px-1">—</p>}</div></section>); })}
+                  <div className="flex items-start gap-3"><span className="keycard h-11 w-12 shrink-0 grid place-items-center font-display text-lg">{t.rooms?.number ?? "—"}</span><div className="flex-1 min-w-0"><div className="font-semibold flex items-center gap-1.5">{t.kind === "maintenance" ? <Wrench size={14} className="text-chili shrink-0" /> : <Sparkles size={14} className="shrink-0" />}<span className="truncate">{KIND[t.kind] ?? t.kind}</span></div><div className="text-xs text-steel line-clamp-2 mt-0.5">{t.notes || "No notes"}</div><div className="num text-[11px] text-[var(--color-label-2)] mt-0.5">{fmtSince(t.created_at)} ago</div></div></div>
+                  {/* "Done", never "Done · room ready": the long label ran out of its half of a narrow
+                      card. What Done does to the room is in its title instead. */}
+                  <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={pending} onClick={() => start(() => { setTask(t.id, "in_progress"); })}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={pending} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Mark the task done — the room becomes ready to sell"} onClick={() => start(() => { setTask(t.id, "done"); })}><Check size={14} /> Done</Button></div>
+                </motion.div>))}</AnimatePresence>{list.length === 0 && <p className="text-sm text-steel px-1 py-3">{c.key === "pending" ? "Nothing to do." : "Nothing in progress."}</p>}</div></section>); })}
           {tasks.length === 0 && <div className="sm:col-span-2"><Empty title="Nothing on the sheet" hint="Check-outs create cleaning tasks automatically. Build today's sheet for the stayovers." /></div>}
         </div>
-        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 items-start min-w-0">
           <Card><h3 className="text-lg mb-3">New task</h3><div className="space-y-3">
             <Field label="Room"><select value={f.room} onChange={(e) => setF({ ...f, room: e.target.value })}><option value="">Choose</option>{rooms.map((r) => <option key={r.id} value={r.id}>{r.number} · {r.status === "maintenance" ? "out of order" : r.condition}</option>)}</select></Field>
             <Field label="Type"><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{Object.entries(KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>

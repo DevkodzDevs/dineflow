@@ -29,18 +29,31 @@ export function PulseClient({ pulse, queue, slug, base, listed }: { pulse: Pulse
   return (
     <div>
       <PageHeader eyebrow="Honest wait times" title="Pulse" sub={pulse.history_days >= 7 ? `Learned from ${pulse.history_days} days of your own service. Numbers move as tickets move.` : "Using a 45-minute sitting until a week of history builds up."} />
-      <div className="grid lg:grid-cols-[auto_minmax(0,1fr)] gap-8 mb-8 items-start">
-        <div className="flip-row"><Flip value={queue.length} label="waiting" tone={queue.length ? "alert" : undefined} /><Flip value={pulse.next_free_min ?? 0} label="next free · min" tone={pulse.free_now ? "live" : undefined} /><Flip value={pulse.free_now} label="tables free" /></div>
-        <Card>
-          <div className="card-title"><h3>Quote a wait</h3><span className="more">avg sitting {pulse.avg_dwell} min</span></div>
-          <div className="flex flex-wrap items-center gap-2">
-            {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => <button key={n} onClick={() => setParty(n)} className={`chip ${party === n ? "on" : ""}`}>{n}</button>)}
-            <div className="ml-auto num text-[40px] leading-none">{q === undefined ? "…" : q === null ? "—" : q === 0 ? "now" : `~${q} min`}</div>
+      {/* Two cards that line up, not three tiles floating over an empty corner beside a form. The
+          tiles sit in a "Right now" card centred in its height; the quote card reads top to bottom:
+          party size (an even grid, not a wrapping row), the wait it gets, who, add. */}
+      <div className="grid xl:grid-cols-[auto_minmax(0,1fr)] gap-5 mb-8 items-stretch">
+        <Card className="flex flex-col">
+          <div className="card-title"><h3>Right now</h3><span className="more num">{pulse.free_now} of {pulse.tables.length} tables free</span></div>
+          <div className="flip-fit flex-1 grid place-items-center py-2"><div className="flip-row"><Flip value={queue.length} label="waiting" tone={queue.length ? "alert" : undefined} /><Flip value={pulse.next_free_min ?? 0} label="next free · min" tone={pulse.free_now ? "live" : undefined} /><Flip value={pulse.free_now} label="tables free" /></div></div>
+        </Card>
+        <Card className="min-w-0">
+          <div className="card-title"><h3>Quote a wait</h3><span className="more num">avg sitting {pulse.avg_dwell} min</span></div>
+          <div className="text-[11px] uppercase tracking-wide text-steel mb-2">Party size</div>
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+            {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => <button key={n} onClick={() => setParty(n)} aria-pressed={party === n}
+              className={`h-11 rounded-xl num text-[15px] font-semibold transition-colors ${party === n ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"}`}>{n}</button>)}
           </div>
-          <div className="mt-4 flex flex-wrap gap-2 items-end">
-            <input placeholder="Guest name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="!w-48" />
-            <input placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="!w-44" />
-            <Button disabled={!form.name || pending} onClick={() => { if (!online) { void enqueue("walkin_add", { name: form.name, phone: form.phone, party }, `Queue · ${form.name}`); toast(`${form.name} added — will send when the line is back`); setForm({ name: "", phone: "" }); return; } start(async () => { const r = await addWalkin(form.name, form.phone, party); if ("error" in r) toast(r.error ?? "Could not add", "err"); else { toast(`${form.name} added · ~${r.quoted_min ?? "?"} min`); setForm({ name: "", phone: "" }); } }); }}><UserPlus size={16} /> Add to queue</Button>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[var(--color-fill)] px-4 py-3">
+            <span className="text-sm text-steel">Wait for a party of <b className="num text-[var(--color-label)]">{party}</b></span>
+            <span className="num text-[34px] leading-none">{q === undefined ? "…" : q === null ? "—" : q === 0 ? "now" : `~${q} min`}</span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <input placeholder="Guest name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input placeholder="Phone (optional)" inputMode="tel" className="num" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </div>
+          <div className="mt-2">
+            <Button className="w-full" disabled={!form.name || pending} onClick={() => { if (!online) { void enqueue("walkin_add", { name: form.name, phone: form.phone, party }, `Queue · ${form.name}`); toast(`${form.name} added — will send when the line is back`); setForm({ name: "", phone: "" }); return; } start(async () => { const r = await addWalkin(form.name, form.phone, party); if ("error" in r) toast(r.error ?? "Could not add", "err"); else { toast(`${form.name} added · ~${r.quoted_min ?? "?"} min`); setForm({ name: "", phone: "" }); } }); }}><UserPlus size={16} /> Add to queue</Button>
           </div>
         </Card>
       </div>

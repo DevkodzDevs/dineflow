@@ -252,6 +252,11 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
   .flip-row:has(.flip-stage > :nth-child(5)) .flip { --tile: clamp(42px, calc((100vw - 76px) / 5), 128px); }
 }
 .flip-row > div { text-align: center; }
+/* a flip row inside a card measures the card, not the screen: --tile is sized from 100vw for a row
+   that sits on the page, and a card's 40px of padding then pushed the third tile out of its side on
+   a phone (Pulse's "Right now"). */
+.flip-fit { container-type: inline-size; }
+@media (max-width: 640px) { .flip-fit .flip { --tile: clamp(52px, calc((100cqw - 40px) / 3), 128px); } }
 .flip-colon { font-family: var(--font-display); font-size: clamp(40px, 8vw, 72px); color: var(--color-label-3); align-self: center; padding-bottom: 28px; }
 @keyframes flipTop { from { transform: rotateX(0) } to { transform: rotateX(-90deg) } }
 @keyframes flipBottom { from { transform: rotateX(90deg) } to { transform: rotateX(0) } }
@@ -607,6 +612,13 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .keycard.occupied { background: var(--color-label); color: var(--color-on-label); border-color: var(--color-label);
   --card-muted: color-mix(in srgb, var(--color-on-label) 64%, transparent); }
 .keycard.cleaning { background: var(--color-blue-2); } .keycard.maintenance { background: var(--color-red-2); } .keycard.reserved { border-style: dashed; border-color: var(--color-champagne); }
+/* a room card's own action bar: a quiet tile in whatever colour the card's state gives it, so it
+   reads on white, on blue (cleaning), on red (maintenance) and on the ink of an occupied room */
+.room-act { height: 40px; min-width: 0; border-radius: 11px; display: grid; place-items: center; color: var(--card-muted);
+  background: color-mix(in srgb, currentColor 9%, transparent); transition: background var(--dur-fast), color var(--dur-fast); }
+.room-act:hover { color: inherit; background: color-mix(in srgb, currentColor 16%, transparent); }
+.room-act:disabled { opacity: .45; }
+@media (pointer: coarse) { .room-act { height: 44px; } }
 
 /* ═══ THE MONTH GRID ════════════════════════════════════════════════════
    One ruled block, not forty-two floating pills. The cells are separated by a hairline the grid

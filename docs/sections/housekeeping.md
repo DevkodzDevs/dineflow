@@ -40,6 +40,10 @@ dirty room without a ticket.
 
 ## Before you edit
 
+- **The task board is two columns from `md`, with the form beside it only from `xl`.** At `lg` the
+  form's column left ~290px per board column and "Done · room ready" ran out of its button. The
+  button says "Done"; what it does to the room is in its title.
+
 - **Do not use `--color-saffron` or `--color-mint` for the clean/inspected distinction.** Both alias
   to the tint (green) in the dark theme. That is exactly how the board ended up showing amber
   *Clean* pills inside green frames, indistinguishable from the inspected rooms beside them. Use
