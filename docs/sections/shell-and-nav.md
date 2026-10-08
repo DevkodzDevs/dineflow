@@ -46,6 +46,21 @@ click itself, and the previous screen stays up rather than being replaced by a g
 next one. **If one route is ever slow enough to need more, give that route its own `loading.tsx`.
 Never give one to all of them.**
 
+### The sidebar at each width
+
+| Width | Menu |
+| --- | --- |
+| < 768 | no sidebar; `BottomNav`, a scrolling bar of icons and labels |
+| 768–1279 (every iPad, both orientations, and tablets) | a 76px **icon rail** with a **hamburger** on top |
+| ≥ 1280 | the full 256px menu, always out; no hamburger |
+
+The hamburger opens the whole menu as a **drawer over the page**: `Sidebar` holds `open`, the aside
+gets `data-open`, and CSS (globals.css, "the sidebar" block) makes it `position: fixed` at its own
+spot and 272px wide. `.nav-spacer` — the element right after the aside — keeps the rail's 76px in
+the row so the page underneath does not move; `.nav-scrim` takes the click that closes it. It also
+closes on Escape, on picking a screen (the `path` effect), and if the window grows past 1279.
+Every link carries `title={label}`, so the rail's icons name themselves on hover.
+
 ### The rest of the shell
 
 - **`TopBar`** — search, theme switch, the bell (count comes from `session.lateKots`, already in
@@ -69,6 +84,10 @@ Never give one to all of them.**
 - **`ALWAYS_ON` bypasses the master's enabled set.** Adding to it is a product decision.
 - **`.ink-panel` deliberately sets no `position`** — an unlayered rule here would beat Tailwind's
   `.sticky` and unstick the sidebar.
+- **The rail range lives in one media query** (`768px`–`1279.98px`) and the hamburger is drawn by
+  CSS (`.rail-only`), not by JavaScript — move the breakpoint there, and only there.
+- **The spacer must stay the aside's next sibling** (`aside[data-open] + .nav-spacer`). Put anything
+  between them and opening the drawer slides the page 76px left.
 - **The theme cookie is read in `<head>`.** Anything that decides layout from the theme must be CSS,
   not JavaScript, or it flashes.
 
@@ -77,6 +96,9 @@ Never give one to all of them.**
 ```
 node dashcheck.mjs       # the shell is on every page it measures
 node toolbars.mjs        # 24 checks across six screens
+node nav.mjs             # 834/1024/1194/1279: icon rail, 44px hamburger, opens over the page
+                         # without moving it, Esc / scrim / picking a screen close it;
+                         # 1280/1440: full menu, no hamburger; 412: bottom bar
 pnpm lint && pnpm typecheck && pnpm build
 ```
 

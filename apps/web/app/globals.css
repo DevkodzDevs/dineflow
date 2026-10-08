@@ -736,13 +736,27 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 
 /* the sidebar's menu scrolls on its own when it is taller than the screen; a soft fade says "there is more" */
 .sidebar-scroll { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 28px), transparent); padding-bottom: 20px; }
-/* the sidebar: an icon rail on tablets (768–1023), full width from 1024 up */
-@media (min-width: 768px) and (max-width: 1023.98px) {
-  aside.ink-panel { width: 76px !important; padding-left: 12px !important; padding-right: 12px !important; }
-  aside.ink-panel .rail-hide { display: none !important; }
-  aside.ink-panel nav a { justify-content: center; padding-left: 0 !important; padding-right: 0 !important; }
-  aside.ink-panel nav a > svg { width: 22px; height: 22px; }
+/* the sidebar: an icon rail on iPads and tablets (768–1279) — every iPad in either orientation,
+   1024 / 1180 / 1194 landscape included — and the full menu from 1280 up. On the rail a hamburger
+   (.rail-only) opens the whole menu as a drawer: the aside goes fixed at its own spot and widens to
+   256 over the page, the spacer keeps the rail's 76px in the row so nothing underneath moves, and
+   a scrim takes the click that closes it. */
+.rail-only, .nav-spacer, .nav-scrim { display: none; }
+@media (min-width: 768px) and (max-width: 1279.98px) {
+  aside.ink-panel { width: 76px !important; padding-left: 12px !important; padding-right: 12px !important;
+    transition: width var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+  aside.ink-panel .rail-only { display: grid; margin-left: auto; margin-right: auto; }
+  aside.ink-panel:not([data-open]) .rail-hide { display: none !important; }
+  aside.ink-panel:not([data-open]) nav a { justify-content: center; padding-left: 0 !important; padding-right: 0 !important; }
+  aside.ink-panel:not([data-open]) nav a > svg { width: 22px; height: 22px; }
+  aside.ink-panel[data-open] { position: fixed !important; left: 0; top: 0; z-index: 60; width: 272px !important;
+    padding-left: 16px !important; padding-right: 16px !important; box-shadow: 24px 0 60px -12px rgb(0 0 0 / .6); }
+  aside.ink-panel[data-open] .rail-only { margin-left: 0; }
+  aside.ink-panel[data-open] + .nav-spacer { display: block; width: 76px; flex-shrink: 0; }
+  .nav-scrim { display: block; position: fixed; inset: 0; z-index: 55; background: rgb(0 0 0 / .45);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); cursor: pointer; animation: fade-in var(--dur) var(--ease-out); }
 }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 /* ═══ TABLES ════════════════════════════════════════════════════════════
    One look for every table: a quiet header that sticks, hairline rows, numbers right and tabular,
    a hover that says "this row", actions that appear on hover on a desktop and always on touch.

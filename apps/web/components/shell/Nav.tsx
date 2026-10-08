@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, Menu, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
@@ -47,7 +47,7 @@ function Group({ title, items, path }: { title?: string; items: typeof ITEMS; pa
       {items.map(({ key, href, label, Icon }) => {
         const active = path.startsWith(href);
         return (
-          <Link key={key} href={href} data-active={active ? "true" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
+          <Link key={key} href={href} title={label} data-active={active ? "true" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
             {active && <span className="absolute inset-0 rounded-[10px] bg-white/[.12] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/.12)]" />}
             {active && <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-[var(--color-tint)] shadow-[0_0_14px_rgb(76_217_100/.8)]" />}
             <Icon size={17} className="relative shrink-0" strokeWidth={active ? 2.2 : 1.8} /><span className="relative rail-hide">{label}</span>
@@ -93,6 +93,19 @@ type Props = { name: string; role: Role; restaurant: string; type: PropertyType;
 export function Sidebar({ name, role, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref }: Props) {
   const path = usePathname();
   const navRef = useKeepMenuInPlace(path);
+  /* The drawer. On an iPad or a tablet (768–1279) the menu is an icon rail; the hamburger at its
+     top opens the whole menu over the page, labels and all, without moving the page underneath.
+     Picking a screen, the scrim, or Escape closes it. Above 1279 the full menu is always out and
+     the hamburger is not drawn. */
+  const [open, setOpen] = useState(false);
+  useEffect(() => { setOpen(false); }, [path]);
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const wide = () => { if (window.innerWidth >= 1280) setOpen(false); };
+    window.addEventListener("keydown", esc); window.addEventListener("resize", wide);
+    return () => { window.removeEventListener("keydown", esc); window.removeEventListener("resize", wide); };
+  }, [open]);
   const mods = modulesFor(type, role, enabled, personal);
   const allowed = ITEMS.filter((i) => mods.includes(i.key));
   const hospitality = allowed.filter((i) => ["frontdesk", "rooms", "housekeeping", "guests", "facilities"].includes(i.key));
@@ -108,7 +121,12 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
     </>
   );
   return (
-    <aside className="hidden md:flex md:flex-col w-[256px] shrink-0 ink-panel sticky top-0 self-start h-dvh px-4 py-6 overflow-hidden">
+    <>
+    <aside data-open={open ? "true" : undefined} className="hidden md:flex md:flex-col w-[256px] shrink-0 ink-panel sticky top-0 self-start h-dvh px-4 py-6 overflow-hidden">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? "Close menu" : "Open menu"} title={open ? "Close menu" : "Menu"}
+        className="rail-only mb-4 h-11 w-11 shrink-0 rounded-xl grid place-items-center text-white/75 bg-white/[.06] hover:bg-white/10 hover:text-white transition">
+        {open ? <X size={20} /> : <Menu size={20} />}
+      </button>
       <Link href="/dashboard" className="px-2 flex items-center gap-2.5 min-w-0">
         {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 object-contain" /> : <span className="flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px] shrink-0"><span className="flip-face">{restaurant.slice(0, 1)}</span></span>}
         <div className="min-w-0"><div className="font-display text-[17px] leading-tight text-white tracking-wide rail-hide truncate">{restaurant}</div><div className="rail-hide text-[11px] text-white/45 mt-0.5 truncate">{PROPERTY_LABEL[type]}</div></div>
@@ -135,6 +153,10 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
         </div>
       </div>
     </aside>
+    {/* holds the rail's 76px in the row while the open drawer floats over the page */}
+    <div aria-hidden className="nav-spacer" />
+    {open && <div className="nav-scrim" onClick={() => setOpen(false)} aria-hidden />}
+    </>
   );
 }
 
