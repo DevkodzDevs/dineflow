@@ -73,13 +73,17 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
       {discrepancies.length > 0 && (
         <Card className="!border-[var(--color-orange)]/50">
           <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-orange)] mb-2 flex items-center gap-1.5"><AlertTriangle size={13} /> Discrepancies · {discrepancies.length}</div>
-          <ul className="text-sm space-y-1">{discrepancies.map((d, i) => <li key={i} className="flex gap-3"><span className="num font-semibold w-12 shrink-0">{d.room}</span><span>{d.what}</span></li>)}</ul>
+          <ul className="text-sm space-y-1">{discrepancies.map((d, i) => <li key={i} className="flex items-center gap-3"><span className="num font-semibold shrink-0 h-7 min-w-11 px-2 rounded-lg bg-[var(--color-fill)] grid place-items-center">{d.room}</span><span className="min-w-0">{d.what}</span></li>)}</ul>
         </Card>
       )}
 
       {floors.map((fl) => (
         <section key={fl}><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel mb-3">Floor {fl}</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6 gap-3">
+          {/* One room to a row on a phone, its actions in a single row of equal buttons. Two
+              across, a 170px card stacked four 44px pills two by two, and a card with one action
+              sat beside one with four as a tall empty hole. From 520px the board goes back to
+              cards with the two-column action grid. */}
+          <div className="grid grid-cols-1 min-[520px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6 gap-3">
             {rooms.filter((r) => r.floor === fl).map((r) => {
               const s = byRoom[r.id]; const out = r.status === "maintenance"; const c = COND[r.condition] ?? COND.clean;
               const sellable = r.condition === "inspected" || (r.condition === "clean" && !inspectRule);
@@ -115,7 +119,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     <span className="font-display text-[26px] leading-none">{r.number}</span>
                     <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-semibold shrink-0", out ? "bg-chili-2 text-chili" : c.chip)}>{out ? "Out of order" : c.label}</span>
                   </div>
-                  <div className="text-xs min-h-[2.4em]">
+                  <div className="text-xs min-[520px]:min-h-[2.4em]">
                     {s ? <>
                       <div className="font-semibold flex items-center gap-1"><span className="truncate">{s.guests?.full_name}</span>{s.guests?.vip && <Star size={11} className="text-champagne fill-current shrink-0" />}</div>
                       <div className="num text-steel">out {s.check_out.slice(5)}{s.check_out <= today ? " · due out" : ""}</div>
@@ -131,10 +135,10 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     <div className="mt-auto pt-2.5 border-t border-line space-y-1.5">
                       {waiting && <div className="text-[11px] text-steel">Awaiting a supervisor's sign-off</div>}
                       {acts.length > 0 && (
-                        <div className={cn("grid gap-1.5", acts.length > 1 && "grid-cols-2")}>
+                        <div className={cn("grid gap-1.5 grid-flow-col auto-cols-fr min-[520px]:grid-flow-row min-[520px]:auto-cols-auto", acts.length > 1 && "min-[520px]:grid-cols-2")}>
                           {acts.map((a, i) => (
                             <Button key={a.key} size="sm" variant={a.variant} disabled={pending} onClick={a.run}
-                              className={cn("w-full !px-2", lead && i === 0 && "col-span-2", a.muted && "!text-steel", a.red && "!text-[var(--color-red)]")}>{a.icon}{a.label}</Button>
+                              className={cn("w-full min-w-0 !px-2", lead && i === 0 && "min-[520px]:col-span-2", a.muted && "!text-steel", a.red && "!text-[var(--color-red)]")}>{a.icon}{a.label}</Button>
                           ))}
                         </div>
                       )}

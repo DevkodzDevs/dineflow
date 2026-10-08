@@ -40,6 +40,11 @@ dirty room without a ticket.
 
 ## Before you edit
 
+- **On a phone the room board is one room per row** (`grid-cols-1 min-[520px]:grid-cols-2 …`) and
+  a card's actions are one row of equal buttons (`grid-flow-col auto-cols-fr`); from 520px it goes
+  back to the two-column action grid with the lead action spanning. Two across on a phone, a 170px
+  card stacked four 44px pills two by two beside cards with one — tall empty holes.
+
 - **The task board is two columns from `md`, with the form beside it only from `xl`.** At `lg` the
   form's column left ~290px per board column and "Done · room ready" ran out of its button. The
   button says "Done"; what it does to the room is in its title.
