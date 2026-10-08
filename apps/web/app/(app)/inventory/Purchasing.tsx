@@ -93,11 +93,11 @@ function PoForm({ po, suppliers, ingredients, onDone }: { po: Po | null; supplie
         <Field label="Note to the supplier"><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Morning delivery, back gate" /></Field>
       </div>
       <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_80px_90px_60px_28px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Qty</span><span>Cost/unit</span><span>Packs</span><span /></div>
+        <div className="grid grid-cols-[minmax(0,1fr)_80px_90px_60px_28px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Qty</span><span>Cost/unit</span><span>Packs</span><span /></div>
         {rows.map((r, i) => {
           const ing = byId[r.ingredient_id]; const pack = Number(ing?.pack_qty ?? 0);
           return (
-            <div key={i} className="grid grid-cols-[1fr_80px_90px_60px_28px] gap-2 items-center">
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_80px_90px_60px_28px] gap-2 items-center">
               <select value={r.ingredient_id} onChange={(e) => { const g = byId[e.target.value]; set(i, { ingredient_id: e.target.value, unit_cost: r.unit_cost || Number(g?.cost_per_unit ?? 0), packs: false }); }}><option value="">Choose</option>{ingredients.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.unit}){Number(g.current_stock) <= Number(g.reorder_level) ? " · low" : ""}</option>)}</select>
               <input type="number" step="0.001" min="0" className="num" value={r.qty || ""} onChange={(e) => set(i, { qty: Number(e.target.value) })} placeholder={r.packs ? "packs" : ing?.unit} />
               <input type="number" step="0.01" min="0" className="num" value={r.unit_cost || ""} onChange={(e) => set(i, { unit_cost: Number(e.target.value) })} placeholder={r.packs ? "per pack" : "per unit"} />
@@ -134,9 +134,9 @@ function ReceiveForm({ po, ingredients, onDone }: { po: Po; ingredients: Ing[]; 
       <p className="text-sm text-steel">Tick off what came in the van, at the price on the invoice. Stock lands the moment you save; anything short stays on record against the order.</p>
       <div className="grid grid-cols-2 gap-3"><Field label="Supplier invoice no."><input value={inv} onChange={(e) => setInv(e.target.value)} /></Field><Field label="Received on"><input type="date" className="num" value={on} onChange={(e) => setOn(e.target.value)} /></Field></div>
       <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_70px_90px_90px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Asked</span><span>Received</span><span>Cost/unit</span></div>
+        <div className="grid grid-cols-[minmax(0,1fr)_70px_90px_90px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Asked</span><span>Received</span><span>Cost/unit</span></div>
         {po.purchase_order_items.map((l) => (
-          <div key={l.id} className="grid grid-cols-[1fr_70px_90px_90px] gap-2 items-center">
+          <div key={l.id} className="grid grid-cols-[minmax(0,1fr)_70px_90px_90px] gap-2 items-center">
             <span className="text-sm truncate">{byId[l.ingredient_id]?.name ?? "—"} <span className="text-xs text-steel">{byId[l.ingredient_id]?.unit}</span></span>
             <span className="num text-sm text-steel">{Number(l.qty)}</span>
             <input type="number" step="0.001" min="0" className={cn("num", (got[l.id]?.received_qty ?? 0) < Number(l.qty) && "!border-[var(--color-orange)]")} value={got[l.id]?.received_qty ?? ""} onChange={(e) => setGot({ ...got, [l.id]: { ...got[l.id], received_qty: Number(e.target.value) } })} />

@@ -99,7 +99,7 @@ const Card = ({ icon, title, lines, action, note }: { icon: React.ReactNode; tit
 );
 
 const Row = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) => (
-  <div className="grid sm:grid-cols-[minmax(0,10rem)_1fr] gap-x-4 gap-y-1 px-4 py-3">
+  <div className="grid sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-x-4 gap-y-1 px-4 py-3">
     <div className="flex items-center gap-2 font-semibold text-ink"><span className="text-steel shrink-0">{icon}</span> {label}</div>
     <div className="text-steel">{value}</div>
   </div>

@@ -65,7 +65,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="grid gap-4 sm:grid-cols-2">
         {[...order.kots].sort((a, b) => a.kot_no - b.kot_no).map((k) => {
           const course = Math.max(1, ...order.order_items.filter((i) => i.kot_id === k.id).map((i) => i.course ?? 1));

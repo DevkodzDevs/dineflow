@@ -84,7 +84,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
       {err && <p className="text-sm text-chili mb-4">{err}</p>}
 
       {/* ── the number, and why ── */}
-      <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr] mb-5">
+      <div className="grid gap-4 lg:grid-cols-[1.15fr_minmax(0,1fr)] mb-5">
         <Card glow className="relative overflow-hidden">
           <div className="flex items-start gap-4">
             <span className="h-12 w-12 rounded-2xl bg-gradient-to-b from-saffron-2 to-saffron text-ink grid place-items-center shrink-0 shadow-[inset_0_1px_0_rgb(255_255_255/.5)]"><Sun size={22} /></span>

@@ -148,7 +148,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
       {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet — add them on the Rooms page.</p>}
 
       {/* the task sheet */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid sm:grid-cols-2 gap-4">
           {cols.map((c) => { const list = tasks.filter((t) => t.status === c.key); return (
             <section key={c.key} className={cn("rounded-[20px] p-3", c.key === "pending" ? "bg-sky-2" : "bg-champagne-2")}><div className="text-sm font-semibold px-1 pb-3">{c.title} <span className="num text-steel">{list.length}</span></div>

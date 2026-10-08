@@ -32,7 +32,7 @@ export function BreakdownView({ d }: { d: Breakdown | null }) {
   const day = hours.slice(from, to + 1);
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_minmax(0,1fr)]">
         <Card>
           <div className="flex items-baseline justify-between gap-3 mb-3"><h3 className="text-xl">Sales by hour</h3><span className="text-xs text-steel">when the money comes in · {d.days} day{d.days === 1 ? "" : "s"}</span></div>
           {lit.length === 0 ? <p className="text-sm text-steel">No paid bills in this window.</p> : (

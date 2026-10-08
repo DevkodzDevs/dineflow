@@ -36,7 +36,7 @@ export function Button({ variant = "primary", size = "md", className, loading, c
   const v = variant === "primary" ? "filled" : variant === "ghost" ? "plain" : variant === "outline" ? "gray" : variant;
   return (
     <motion.button whileTap={{ scale: .96 }} transition={spring}
-      className={cn("btn", `btn-${v}`, size === "sm" && "!h-9 !px-3.5 !text-[13px] !rounded-[11px]", size === "lg" && "!h-[52px] !px-7 !text-[16px] !rounded-[16px]", className)}
+      className={cn("btn", `btn-${v}`, size === "sm" && "!h-10 !px-4 !text-[13px] !rounded-xl", size === "lg" && "!h-[52px] !px-7 !text-[16px] !rounded-[16px]", className)}
       onClick={(e) => { tap(); onClick?.(e); }} disabled={loading || p.disabled} {...(p as Record<string, unknown>)}>
       {loading ? <><Loader size="xs" tone="plain" className="!-my-1" /><span className="opacity-70">{children}</span></> : children}
     </motion.button>

@@ -37,7 +37,7 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
         <StatTile label="Ingredient cost (est.)" value={formatINR(cogs)} sub={sales ? `${((cogs / sales) * 100).toFixed(0)}% of sales` : undefined} delay={0.1} />
         <StatTile label="Wastage cost" value={formatINR(wasteCost)} tone={wasteCost > 0 ? "alert" : "good"} delay={0.15} />
       </div>
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_minmax(0,1fr)]">
         <Card><h3 className="text-xl mb-3">Sales by day</h3>
           <SalesChart data={byDay} /></Card>
         <Card><h3 className="text-xl mb-3">Top dishes</h3>
@@ -53,8 +53,8 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
           <Card>
             <div className="flex items-baseline justify-between gap-3 mb-3"><h3 className="text-xl">Speed of service</h3><span className="text-xs text-steel num">target {kitchen.target ?? 15} min · {kitchen.tickets} tickets · {kitchen.recalls} recall{Number(kitchen.recalls) === 1 ? "" : "s"}</span></div>
             {Number(kitchen.tickets) === 0 ? <p className="text-sm text-steel">No tickets marked ready in this window yet.{Number(kitchen.ignored ?? 0) > 0 && <> {kitchen.ignored} ticket{Number(kitchen.ignored) === 1 ? " was" : "s were"} left open for hours and closed later, so {Number(kitchen.ignored) === 1 ? "it is" : "they are"} not counted as cooking time.</>}</p> : (
-              <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-                <div>
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+                <div className="min-w-0">
                   <div className="grid grid-cols-3 gap-3">
                     <Mini label="Avg ticket" value={`${Number(kitchen.avg_min).toFixed(1)} min`} />
                     <Mini label="Slowest 10%" value={`${Number(kitchen.p90_min).toFixed(1)} min`} />

@@ -61,7 +61,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
   const Hint = ({ k, label, Icon }: { k: typeof hint; label: string; Icon: typeof Leaf }) => <button onClick={() => setHint(k)} className={cn("chip gap-1.5", hint === k && "on")}><Icon size={14} /> {label}</button>;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-4">
         <div className="chip-rail"><Hint k="auto" label="Auto" Icon={Zap} /><Hint k="ingredient" label="Vegetable / product" Icon={Boxes} /><Hint k="dish" label="Dish" Icon={UtensilsCrossed} />{propertyType !== "restaurant" && <Hint k="room" label="Room" Icon={BedDouble} />}<Hint k="labour" label="Labour / ID" Icon={HardHat} /></div>
 

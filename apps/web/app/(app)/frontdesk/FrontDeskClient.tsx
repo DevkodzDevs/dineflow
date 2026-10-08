@@ -58,11 +58,11 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
           <Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>
         </div></div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <section><div className="text-sm font-semibold mb-3 flex items-center gap-2"><LogIn size={15} /> Arrivals <span className="num text-steel">{arrivals.length}</span></div>
+        <section className="min-w-0"><div className="text-sm font-semibold mb-3 flex items-center gap-2"><LogIn size={15} /> Arrivals <span className="num text-steel">{arrivals.length}</span></div>
           <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} action={<Button size="sm" variant="ink" disabled={pending} onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}>Check in</Button>} />)}{arrivals.length === 0 && <p className="text-sm text-steel">No pending arrivals.</p>}</div>
           <div className="text-sm font-semibold mt-6 mb-3 flex items-center gap-2"><CalendarDays size={15} /> Upcoming <span className="num text-steel">{upcoming.length}</span></div>
           <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} action={<button className="text-xs text-steel hover:text-chili" onClick={(e) => { e.preventDefault(); if (confirm("Cancel this booking?")) start(() => { cancelBooking(b.id); }); }}>cancel</button>} />)}{upcoming.length === 0 && <p className="text-sm text-steel">Nothing upcoming.</p>}</div></section>
-        <section><div className="text-sm font-semibold mb-3 flex items-center gap-2"><Moon size={15} /> In house <span className="num text-steel">{inHouse.length}</span></div>
+        <section className="min-w-0"><div className="text-sm font-semibold mb-3 flex items-center gap-2"><Moon size={15} /> In house <span className="num text-steel">{inHouse.length}</span></div>
           <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} action={b.check_out <= today ? <Pill tone="alert">due out</Pill> : <Pill tone="gold">night {Math.max(1, Math.round((Date.now() - new Date(b.check_in).getTime()) / 86400000))}</Pill>} />)}{inHouse.length === 0 && <Empty title="No guests in house" hint="Check in an arrival or create a walk-in booking." />}</div></section>
       </div>
 

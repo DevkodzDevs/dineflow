@@ -169,7 +169,7 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
           {!loyalty.enabled && <p className="text-xs text-steel rounded-xl bg-[var(--color-fill)] p-3">Loyalty is switched off for this property, so nothing is earned on bills. Points given here still count once it is on — Settings → Payments.</p>}
           <div className="rounded-xl bg-[var(--color-fill)] p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1.5"><Gift size={13} /> Give or take points</div>
-            <div className="grid grid-cols-[110px_1fr_auto] gap-2 items-end">
+            <div className="grid grid-cols-[110px_minmax(0,1fr)_auto] gap-2 items-end">
               <Field label="Points" hint="− to take back"><input type="number" className="num" value={pts} onChange={(e) => setPts(e.target.value)} placeholder="100" /></Field>
               <Field label="Why"><input value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Birthday gift · complaint · correction" /></Field>
               <Button disabled={pending || !Number(pts)} onClick={() => start(async () => { const r = await adjustPoints(c.id, Number(pts), why); if ("error" in r) toast(r.error!, "err"); else { setBal(r.balance); setPts(""); setWhy(""); setHist(null); load(); toast(`Balance ${Math.round(r.balance)} points`); } })}><Coins size={14} /> Apply</Button>

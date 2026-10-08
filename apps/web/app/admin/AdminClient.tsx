@@ -166,7 +166,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
               onDelete={() => { setSel(t); setErr(null); setDelText(""); setDel(null); setSheet("delete"); start(async () => { const p = await deletePreview(t.id); if ("error" in p) setErr(p.error!); else setDel({ ...(p as DeletePreview), id: t.id }); }); }}
             />); }} />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_minmax(0,1fr)]">
           <div className="feather divide-y divide-line">
             {keys.length === 0 && <p className="p-6 text-sm text-steel">No keys issued yet.</p>}
             {keys.map((k) => (

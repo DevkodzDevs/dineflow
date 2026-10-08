@@ -114,7 +114,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
   const where = order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery");
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
+    <div className="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
       <div className="no-print">
         <div className="flex items-center gap-3 mb-6">
           <Link href="/billing" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
@@ -201,7 +201,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
             )}
             <div className="mt-4 space-y-2">
               {pays.map((p, i) => (
-                <div key={i} className="grid grid-cols-[110px_1fr_1fr_32px] gap-2 items-center">
+                <div key={i} className="grid grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)_32px] gap-2 items-center">
                   <select value={p.method} onChange={(e) => setPays(pays.map((x, j) => (j === i ? { ...x, method: e.target.value as PaymentMethod } : x)))}>{PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m.toUpperCase()}</option>)}</select>
                   <input type="number" step="0.01" className="num" value={p.amount || ""} onChange={(e) => setPays(pays.map((x, j) => (j === i ? { ...x, amount: Number(e.target.value) } : x)))} placeholder="Amount" />
                   <input value={p.ref} onChange={(e) => setPays(pays.map((x, j) => (j === i ? { ...x, ref: e.target.value } : x)))} placeholder="UPI ref / last 4" />

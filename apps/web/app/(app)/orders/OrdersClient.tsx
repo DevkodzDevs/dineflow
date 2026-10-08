@@ -22,8 +22,8 @@ export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Orde
   const tone = (s: string) => (s === "ready" ? "ready" : s === "preparing" ? "preparing" : s === "served" ? "served" : "pending");
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-      <section>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <section className="min-w-0">
         {zones.map((z) => (
           <div key={z} className="mb-6">
             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel mb-3">{z}</div>

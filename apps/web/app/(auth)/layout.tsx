@@ -3,7 +3,7 @@ import { SignedOutCleanup } from "@/components/SignedOutCleanup";
 import { LegalFooter } from "@/components/LegalFooter";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh grid lg:grid-cols-[1.1fr_1fr] deck">
+    <div className="min-h-dvh grid lg:grid-cols-[1.1fr_minmax(0,1fr)] deck">
       <SignedOutCleanup />
       <section className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden wall">
         <div className="flex items-center gap-3">

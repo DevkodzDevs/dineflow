@@ -29,7 +29,7 @@ export default async function BillingPage() {
         <StatTile label="Card" value={formatINR(by("card"))} delay={0.15} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <section>
+        <section className="min-w-0">
           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel mb-3">Ready to bill · {open?.length ?? 0}</div>
           {!open?.length ? <Empty title="No open orders" hint="Bills appear here as soon as an order is placed." /> : (
             <div className="space-y-3">{open.map((o) => {

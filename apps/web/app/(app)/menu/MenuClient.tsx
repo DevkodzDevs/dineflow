@@ -223,7 +223,7 @@ function RecipeEditor({ item, ingredients, initial, onDone, ai = false }: { item
         {ai && <AiButton label="Propose" busy={proposing} onClick={() => { void propose(); }} />}
       </div>
       {rows.map((r, i) => (
-        <div key={i} className="grid grid-cols-[1fr_96px_36px] gap-2 items-center">
+        <div key={i} className="grid grid-cols-[minmax(0,1fr)_96px_36px] gap-2 items-center">
           <select value={r.ingredient_id} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, ingredient_id: e.target.value } : x)))}>
             <option value="">Choose ingredient</option>{ingredients.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>

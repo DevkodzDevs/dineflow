@@ -334,7 +334,12 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 }
 
 /* ── surfaces ─────────────────────────────────────────────────────────── */
-.feather, .card { --card-muted: var(--color-label-2); background: var(--color-bg-2); border-radius: var(--radius-lg); border: .5px solid var(--color-separator); box-shadow: var(--shadow-inset-top), var(--shadow-card); }
+/* min-width: 0 — a card is a container and must never refuse to shrink. As a grid or flex item it
+   otherwise takes min-width:auto, which resolves to its content's min-content width, and a card
+   holding a table is as wide as that table wants to be. Measured on /reports at 412: the grid
+   container was a correct 380px while its single track computed to 682px, because the card inside
+   it would not go below the 640px its table asked for. The page then scrolled sideways by 286px. */
+.feather, .card { --card-muted: var(--color-label-2); min-width: 0; background: var(--color-bg-2); border-radius: var(--radius-lg); border: .5px solid var(--color-separator); box-shadow: var(--shadow-inset-top), var(--shadow-card); }
 /* A filled feather — a table with an open order on the floor plan, and anything else that wants to
    read as "this one is live". It has to be written here rather than as `bg-ink text-on-label` on
    the element, because the rule above sets `background` unlayered and an unlayered declaration
@@ -442,6 +447,17 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .chevron { color: var(--color-label-3); }
 
 /* ── controls ─────────────────────────────────────────────────────────── */
+/* Everything you can press answers the press, on the same frame.
+   .btn and .chip already did this, but most of the app's controls are neither: the icon buttons,
+   the category and table chips, the segmented tabs, the card links, the sidebar. Pressing one of
+   those moved nothing, so until the next screen arrived there was no evidence the tap had landed —
+   which is what "I can't feel the click" is. Deliberately no transition: a transition on press-in
+   is a delay before the only feedback you get. The release snaps back, which is correct.
+   :where() keeps this at zero specificity so .btn (.96) and .feather-lift (.985) still win their
+   own elements, and anything that wants to opt out only needs one class of its own. */
+@media (prefers-reduced-motion: no-preference) {
+  :where(button:not(:disabled), [role="button"], summary, a[href], label:has(> input[type="checkbox"])):active { transform: scale(.97); }
+}
 .btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 16px; font-weight: 700; font-size: 15px; letter-spacing: -0.01em; user-select: none; white-space: nowrap;
   transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast), box-shadow var(--dur-fast), filter var(--dur-fast); }
 .btn:active { transform: scale(.96); }
@@ -660,7 +676,27 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 
 /* An icon-only button is as small as its icon unless something says otherwise. On a mouse 36px is
    comfortable; a finger needs 44, which is what both the Apple and WCAG guidance ask for. */
-.icon-btn { display: inline-grid; place-items: center; height: 36px; width: 36px; border-radius: 10px;
+/* ── the control baseline ──────────────────────────────────────────────
+   Audited across sixteen screens at six widths: 2198 controls measured under 44px. The causes were
+   a handful of components, not a hundred separate mistakes — the kit's own small button at 36px
+   (660 of them) and the hand-written icon button, a 13px glyph in a p-1 box, at 21px (408 of them).
+   A 21px target is not a target.
+   The @media (pointer: coarse) floors further down have been right for a while, but they never
+   applied to the machines this app is actually used on: a laptop reports `pointer: fine`, and so
+   does an iPad the moment a keyboard is attached. So the floors are stated twice — 40px wherever a
+   mouse might be, 44px wherever a finger might land.
+   :where() keeps them at zero specificity, so anything that sizes itself explicitly still wins; and
+   min-height beats height, so an h-8 (32px) button is lifted without its class being touched. */
+:where(button, [role="button"], select, summary) { min-height: 40px; }
+:where(button, [role="button"]):has(> svg:only-child) { min-width: 40px; }
+:where(label):has(> input[type="checkbox"]) { min-height: 40px; }
+@media (pointer: coarse) {
+  :where(button, [role="button"], select, summary) { min-height: 44px; }
+  :where(button, [role="button"]):has(> svg:only-child) { min-width: 44px; }
+  .chip { height: 44px; }
+}
+
+.icon-btn { display: inline-grid; place-items: center; height: 40px; width: 40px; border-radius: 10px;
   color: var(--color-label-2); flex: 0 0 auto; transition: color var(--dur-fast), background var(--dur-fast); }
 .icon-btn:hover { color: var(--color-label); background: var(--color-fill); }
 .icon-btn-danger:hover { color: var(--color-red); background: var(--color-red-2); }
@@ -669,6 +705,7 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 /* A small text link — "All →", "Billing →" — is as tall as its type. On a finger it needs a
    target, and padding would push it off its own baseline, so it grows downward from the middle. */
 @media (pointer: coarse) { .tap { min-height: 44px; display: inline-flex; align-items: center; } }
+.tap-square { min-height: 40px; min-width: 40px; }
 @media (pointer: coarse) { .tap-square { min-height: 44px; min-width: 44px; } }
 
 /* On a finger, nothing you can press is allowed below 44px — the figure both Apple's guidance and
@@ -739,7 +776,12 @@ td.dt-actions > * { vertical-align: middle; }
   .dt-empty td { display: block; }
 }
 /* tables scroll inside their card on narrow screens instead of forcing the whole page wider */
-.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-md); }
+/* min-width: 0 is the load-bearing part. overflow-x:auto lets the table scroll, but it does not
+   stop the wrapper CONTRIBUTING its table's min-content width to the layout — and the rule below
+   gives every table a 640px minimum. In a flex or grid parent that minimum became the parent's
+   minimum, so on /reports at 412 a card came out 682px wide and took the whole page with it.
+   This class is on ten screens; they all had it. */
+.table-wrap { overflow-x: auto; min-width: 0; -webkit-overflow-scrolling: touch; border-radius: var(--radius-md); }
 .table-wrap table:not(.dt) { min-width: 640px; }
 .table-wrap td, .table-wrap th, .num, .pill, .btn { white-space: nowrap; }   /* a number or a label never breaks in the middle */
 img, svg, video { max-width: 100%; }

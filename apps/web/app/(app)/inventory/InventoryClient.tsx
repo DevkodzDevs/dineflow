@@ -182,11 +182,11 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
         <Field label="Invoice no."><input value={inv} onChange={(e) => setInv(e.target.value)} /></Field>
       </div>
       <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_80px_90px_56px_28px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Qty</span><span>Cost/unit</span><span>Packs</span><span /></div>
+        <div className="grid grid-cols-[minmax(0,1fr)_80px_90px_56px_28px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Qty</span><span>Cost/unit</span><span>Packs</span><span /></div>
         {lines.map((l, i) => {
           const pack = Number(byId[l.ingredient_id]?.pack_qty ?? 0);
           return (
-            <div key={i} className="grid grid-cols-[1fr_80px_90px_56px_28px] gap-2 items-center">
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_80px_90px_56px_28px] gap-2 items-center">
               <select value={l.ingredient_id} onChange={(e) => set(i, "ingredient_id", e.target.value)}><option value="">Choose</option>{ingredients.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.unit})</option>)}</select>
               <input type="number" step="0.001" min="0" className="num" value={l.qty || ""} onChange={(e) => set(i, "qty", e.target.value)} placeholder={l.packs ? "packs" : ""} />
               <input type="number" step="0.01" min="0" className="num" value={l.unit_cost || ""} onChange={(e) => set(i, "unit_cost", e.target.value)} placeholder={l.packs ? "per pack" : ""} />

@@ -9,7 +9,7 @@ export function BookingPageClient({ base, r }: { base: string; r: { booking_slug
   const [slug, setSlug] = useState(r.booking_slug ?? ""); const [msg, setMsg] = useState<string | null>(null); const [pending, start] = useTransition();
   const url = `${base}/book/${slug}`;
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
       <Card><form className="space-y-4" action={(fd) => start(async () => { const x = await saveBookingPage(fd); setMsg("error" in x ? x.error! : "Saved"); })}>
         <Field label="Page address" hint="Letters, numbers and dashes"><div className="flex items-center gap-1"><span className="text-sm text-steel num">{base}/book/</span><input name="booking_slug" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} required /></div></Field>
         <Field label="Tagline"><input name="tagline" defaultValue={r.tagline ?? ""} placeholder="Sea-facing rooms, five minutes from the sunrise point" /></Field>

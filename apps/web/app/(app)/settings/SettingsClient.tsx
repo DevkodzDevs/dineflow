@@ -331,7 +331,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               action={(fd) => start(async () => { await saveTable(fd); })}>
               <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Add a table</div>
               <input type="hidden" name="sort_order" value={tables.length + 1} />
-              <div className="grid grid-cols-[1fr_80px_1fr_auto] gap-2 items-end">
+              <div className="grid grid-cols-[minmax(0,1fr)_80px_minmax(0,1fr)_auto] gap-2 items-end">
                 <Field label="Name"><input name="name" placeholder="T9" required /></Field>
                 <Field label="Seats"><input name="capacity" type="number" defaultValue={4} className="num" /></Field>
                 <Field label="Zone"><input name="zone" placeholder="AC hall" defaultValue="Main" /></Field>

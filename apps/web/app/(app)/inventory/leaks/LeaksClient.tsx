@@ -31,8 +31,8 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
         <Flip value={Math.round(report.logged_wastage_value / 100) / 10} label="k ₹ logged waste" />
       </div>
       {report.uncounted === report.items.length && <Card className="mb-6"><p className="text-[15px]">Nothing has been counted yet, so there is nothing to compare. <b>Count stock now</b> takes about two minutes for a small pantry, and from then on this page tells you exactly where the money goes.</p></Card>}
-      <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
-        <div>
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+        <div className="min-w-0">
           <div className="card-title"><h3>Where it's going</h3><span className="more">last {report.since_days} days or since last count</span></div>
           <div className="group">
             {leaks.length === 0 && <div className="row text-sm text-steel">No unexplained losses since the last count.</div>}

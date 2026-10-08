@@ -70,13 +70,18 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
     if ("error" in r) { setAddErr(r.error!); return; }
     setMade({ title: `${p.full_name} · new password`, staff_code: p.staff_code, login_id: r.login_id, temp_password: r.temp_password }); setAdd(true);
   });
+  /* minmax(0,1fr), not 1fr. A 1fr track will not go below its content's own minimum, and a staff
+     row's minimum is large: the pills and the buttons all refuse to wrap, so the row's intrinsic
+     width held the column open and pushed the whole page 514px wider than the screen at 1024 —
+     the Access button sat off the right edge where nobody could reach it. The row wraps now, so
+     the pills drop to a second line instead of forcing the page wide. */
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="feather divide-y divide-line">
         {staff.map((p) => (
-          <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-            <span className="h-10 w-10 rounded-full bg-ink text-on-label grid place-items-center font-display">{p.full_name.slice(0, 1)}</span>
-            <div className="flex-1 min-w-0">
+          <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+            <span className="h-10 w-10 rounded-full bg-ink text-on-label grid place-items-center font-display shrink-0">{p.full_name.slice(0, 1)}</span>
+            <div className="flex-1 min-w-[11rem]">
               <div className={cn("font-semibold truncate", !p.is_active && "text-steel line-through")}>{p.full_name}{p.id === me && <span className="text-xs text-steel font-normal"> (you)</span>}</div>
               <div className="text-xs text-steel truncate">{p.staff_code && <span className="num font-semibold text-[var(--color-label-2)]">{p.staff_code}</span>}{p.staff_code && " · "}{p.email}{p.phone && <> · {p.phone}</>}</div>
             </div>

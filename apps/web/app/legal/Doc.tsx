@@ -46,7 +46,7 @@ export const Bullets = ({ items }: { items: ReactNode[] }) => (
 export const Defs = ({ rows }: { rows: [ReactNode, ReactNode][] }) => (
   <div className="rounded-2xl border border-line divide-y divide-line">
     {rows.map(([k, v], i) => (
-      <div key={i} className="grid sm:grid-cols-[minmax(0,11rem)_1fr] gap-x-4 gap-y-1 px-4 py-3">
+      <div key={i} className="grid sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] gap-x-4 gap-y-1 px-4 py-3">
         <div className="font-semibold text-ink">{k}</div>
         <div className="text-steel">{v}</div>
       </div>

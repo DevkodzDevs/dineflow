@@ -75,7 +75,7 @@ function Overview({ r, scheme, lab, summary, month, overdue, upcoming, expiring,
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
         <div className="card-title"><h3>Registration</h3><Pill tone={scheme === "unregistered" ? "pending" : "ready"}>{scheme === "regular" ? "Regular · " + (r.gst_monthly === false ? "quarterly" : "monthly") : scheme}</Pill></div>
-        <dl className="text-sm grid grid-cols-[130px_1fr] gap-y-1.5">
+        <dl className="text-sm grid grid-cols-[130px_minmax(0,1fr)] gap-y-1.5">
           <dt className="text-[var(--color-label-2)]">Legal name</dt><dd>{r.legal_name || r.name}</dd>
           <dt className="text-[var(--color-label-2)]">GSTIN</dt><dd className="num">{r.gstin || <span className="text-[var(--color-red)]">not set</span>}</dd>
           <dt className="text-[var(--color-label-2)]">PAN</dt><dd className="num">{r.pan || <span className="text-[var(--color-label-3)]">—</span>}</dd>
@@ -185,7 +185,7 @@ function FileRow({ c, st, onFile, onUndo, pending, today }: { c: CalendarItem; s
       {st.kind === "filed" ? (
         <div className="flex items-center gap-3 mt-2 text-xs text-[var(--color-label-2)]">{st.f?.ack_no && <span className="num">ARN {st.f.ack_no}</span>}{onUndo && <button className="inline-flex items-center gap-1 underline" onClick={() => onUndo(c)} disabled={pending}><Undo2 size={12} /> not filed after all</button>}</div>
       ) : open ? (
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 mt-3 items-end">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 mt-3 items-end">
           <Field label="Filed on"><input type="date" className="num" value={filedOn} onChange={(e) => setFiledOn(e.target.value)} /></Field>
           <Field label="ARN / acknowledgement"><input className="num" value={ack} onChange={(e) => setAck(e.target.value)} placeholder="optional" /></Field>
           <Button size="sm" disabled={pending} onClick={() => { onFile(c, filedOn, ack); setOpen(false); }}><Check size={14} /> Save</Button>

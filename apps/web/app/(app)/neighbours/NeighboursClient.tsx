@@ -174,7 +174,7 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
           {!demand?.available ? (
             <Card className="!bg-champagne-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>Signal not available yet.</b> {demand?.reason === "too few neighbours" ? `${demand.peers} of ${demand.need} properties nearby are sharing. ` : ""}It needs enough neighbours and a few weeks of area history before it can tell a festival from a quiet Tuesday.</div></Card>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
               <Card glow>
                 <div className="eyebrow">Last comparable day</div>
                 <div className="flex items-baseline gap-3 mt-2">

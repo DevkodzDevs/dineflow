@@ -19,7 +19,7 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
   const url = `${base}/dine/${r.booking_slug ?? ""}`;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-5">
         <form action={(fd) => start(async () => { const x = await saveStorefront(fd); toast("error" in x ? x.error! : "Storefront saved", "error" in x ? "err" : "ok"); })} className="space-y-5">
           <Card>

@@ -29,7 +29,7 @@ export function PulseClient({ pulse, queue, slug, base, listed }: { pulse: Pulse
   return (
     <div>
       <PageHeader eyebrow="Honest wait times" title="Pulse" sub={pulse.history_days >= 7 ? `Learned from ${pulse.history_days} days of your own service. Numbers move as tickets move.` : "Using a 45-minute sitting until a week of history builds up."} />
-      <div className="grid lg:grid-cols-[auto_1fr] gap-8 mb-8 items-start">
+      <div className="grid lg:grid-cols-[auto_minmax(0,1fr)] gap-8 mb-8 items-start">
         <div className="flip-row"><Flip value={queue.length} label="waiting" tone={queue.length ? "alert" : undefined} /><Flip value={pulse.next_free_min ?? 0} label="next free · min" tone={pulse.free_now ? "live" : undefined} /><Flip value={pulse.free_now} label="tables free" /></div>
         <Card>
           <div className="card-title"><h3>Quote a wait</h3><span className="more">avg sitting {pulse.avg_dwell} min</span></div>
@@ -45,8 +45,8 @@ export function PulseClient({ pulse, queue, slug, base, listed }: { pulse: Pulse
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_380px] gap-6">
-        <div>
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
+        <div className="min-w-0">
           <div className="card-title"><h3>Tables · when they free up</h3><span className="more">{busy.length} in use · {pulse.seats_free_now} seats free</span></div>
           <motion.div className="group" variants={listV} initial="hidden" animate="show">
             {pulse.tables.map((t) => <motion.div key={t.id} variants={itemV} className="row">
