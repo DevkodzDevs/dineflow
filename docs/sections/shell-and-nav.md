@@ -88,6 +88,11 @@ Every link carries `title={label}`, so the rail's icons name themselves on hover
   CSS (`.rail-only`), not by JavaScript — move the breakpoint there, and only there.
 - **The spacer must stay the aside's next sibling** (`aside[data-open] + .nav-spacer`). Put anything
   between them and opening the drawer slides the page 76px left.
+- **Inside the app the body is the frame's dark (`body:has(.deck-card)`), in both themes.** Left at
+  the theme's page colour (#ecece7 in paper), iPad Safari showed it as a light band under the card
+  whenever its toolbar collapsed and the screen grew past the frame's `min-h-dvh`. Headless Chrome
+  never reproduces this — its viewport does not change mid-scroll — so test it by forcing the body
+  taller than the frame (`below.mjs`) rather than by looking for a gap.
 - **The theme cookie is read in `<head>`.** Anything that decides layout from the theme must be CSS,
   not JavaScript, or it flashes.
 
