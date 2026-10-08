@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star, ChevronDown, ChevronsUpDown, ChevronsDownUp, Clock, MoreHorizontal } from "lucide-react";
+import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star, ChevronDown, ChevronsUpDown, ChevronsDownUp, Clock, Brush, RotateCcw } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Button, Card, Field, Pill, Segmented, cn, Empty, useToast } from "@/components/ui";
 import { fmtSince } from "@/lib/format";
@@ -35,15 +35,6 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
   /* On a phone the board and the task sheet are two tabs, not one page five screens long: a
      housekeeper is either walking the rooms or working the list. From sm both show, as before. */
   const [view, setView] = useState<"rooms" | "tasks">("rooms");
-  /* the one room whose ⋯ menu is open; a tap anywhere else, or Escape, closes it */
-  const [menuFor, setMenuFor] = useState<string | null>(null);
-  useEffect(() => {
-    if (!menuFor) return;
-    const off = (e: Event) => { if (!(e.target as HTMLElement).closest("[data-room-menu]")) setMenuFor(null); };
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuFor(null); };
-    document.addEventListener("pointerdown", off); document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("pointerdown", off); document.removeEventListener("keydown", esc); };
-  }, [menuFor]);
   /* Floors fold: the first is open, opening another closes it, and "all" opens every one. */
   const [openFloor, setOpenFloor] = useState<number | "all" | null>(() => [...new Set(rooms.map((r) => r.floor))].sort((x, y) => x - y)[0] ?? null);
   useLive(["housekeeping_tasks", "rooms", "bookings"]);
@@ -151,29 +142,32 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
               across, a 170px card stacked four 44px pills two by two, and a card with one action
               sat beside one with four as a tall empty hole. From 520px the board goes back to
               cards with the two-column action grid. */}
-          <div className="grid grid-cols-1 min-[520px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-3.5">
+          <div className="grid grid-cols-1 min-[520px]:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-3 sm:gap-3.5">
             {rooms.filter((r) => r.floor === fl).map((r) => {
               const s = byRoom[r.id]; const out = r.status === "maintenance"; const c = COND[r.condition] ?? COND.clean;
               const sellable = r.condition === "inspected" || (r.condition === "clean" && !inspectRule);
               const waiting = !out && r.condition === "clean" && !canInspect && inspectRule;
               const dueOut = !!s && s.check_out <= today;
-              /* One shape for every room: the action you will press as a full-width button, Fail
-                 beside it when an inspection is due, and the rare moves — Pickup, Dirty — behind ⋯.
-                 Cards used to carry anything from one to four pills in a 2x2 block, so a board of
-                 thirty rooms was thirty different shapes. A room with nothing to press says so. */
-              const main: { label: string; icon: ReactNode; run: () => void } | null = out ? null
-                : r.condition === "dirty" ? { label: "Cleaned", icon: <Sparkles size={15} />, run: () => act(() => setCondition(r.id, "clean")) }
-                : r.condition === "pickup" ? { label: "Touched up", icon: <Sparkles size={15} />, run: () => act(() => setCondition(r.id, "clean")) }
-                : r.condition === "clean" && canInspect ? { label: "Pass", icon: <ShieldCheck size={15} />, run: () => act(() => inspectRoom(r.id, true)) }
-                : null;
-              const canFail = !out && r.condition === "clean" && canInspect;
-              const more: { label: string; hint: string; run: () => void }[] = out ? [] : [
-                ...(sellable && s ? [{ label: "Needs a pickup", hint: "A quick touch-up while the guest is out", run: () => act(() => setCondition(r.id, "pickup")) }] : []),
-                ...(r.condition !== "dirty" ? [{ label: "Mark dirty", hint: "Send it back for a full clean", run: () => act(() => setCondition(r.id, "dirty")) }] : []),
+              /* Every move the room allows, all on show, as one dock of equal tiles — icon over label —
+                 along the foot of the card. The move you will make most is green; Fail is red,
+                 Pickup blue, Dirty grey. A room with nothing pending shows its good news as the
+                 first tile. Same shape on every card, a laptop or a phone. */
+              type Tile = { key: string; label: string; icon: ReactNode; tone: "go" | "red" | "blue" | "quiet"; run: () => void };
+              const tiles: Tile[] = out ? [] : [
+                ...(r.condition === "dirty" ? [{ key: "clean", label: "Cleaned", icon: <Sparkles size={17} />, tone: "go" as const, run: () => act(() => setCondition(r.id, "clean")) }] : []),
+                ...(r.condition === "pickup" ? [{ key: "touch", label: "Touched up", icon: <Sparkles size={17} />, tone: "go" as const, run: () => act(() => setCondition(r.id, "clean")) }] : []),
+                ...(r.condition === "clean" && canInspect ? [
+                  { key: "pass", label: "Pass", icon: <ShieldCheck size={17} />, tone: "go" as const, run: () => act(() => inspectRoom(r.id, true)) },
+                  { key: "fail", label: "Fail", icon: <ShieldX size={17} />, tone: "red" as const, run: () => fail(r) },
+                ] : []),
+                ...(sellable && s ? [{ key: "pickup", label: "Pickup", icon: <Brush size={17} />, tone: "blue" as const, run: () => act(() => setCondition(r.id, "pickup")) }] : []),
+                ...(r.condition !== "dirty" ? [{ key: "dirty", label: "Dirty", icon: <RotateCcw size={17} />, tone: "quiet" as const, run: () => act(() => setCondition(r.id, "dirty")) }] : []),
               ];
+              const hasMain = tiles.some((t) => t.tone === "go");
+              const status = out || hasMain ? null : sellable ? (s ? "Occupied" : "Ready") : waiting ? "Sign-off" : null;
               const tone = out ? "var(--color-red)" : r.condition === "dirty" ? "var(--color-red)" : r.condition === "clean" ? "var(--color-orange)" : r.condition === "inspected" ? "var(--color-tint)" : "var(--color-blue)";
               return (
-                <div key={r.id} className={cn("feather relative p-4 pl-5 flex flex-col gap-3 min-w-0", menuFor === r.id && "z-20")}>
+                <div key={r.id} className={cn("feather relative p-4 pl-5 flex flex-col gap-3 min-w-0")}>
                   {/* the state as a slim pill down the inside edge, clear of the rounded corners */}
                   <span aria-hidden className="absolute left-1.5 top-4 bottom-4 w-[3px] rounded-full" style={{ background: tone }} />
 
@@ -190,54 +184,43 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] min-h-5">
                     <span className="num inline-flex items-center gap-1 text-[var(--color-label-2)]"><Clock size={11} />{c.label.toLowerCase()} {fmtSince(r.condition_at)} ago</span>
                     {s && <span className="num h-5 px-2 rounded-full bg-[var(--color-fill)] text-[var(--color-label-2)] inline-flex items-center">out {s.check_out.slice(5)}</span>}
                     {dueOut && <span className="h-5 px-2 rounded-full bg-[var(--color-red-2)] text-[var(--color-red)] font-semibold inline-flex items-center">Due out</span>}
+                    {out && (() => { const fix = tasks.find((t) => t.kind === "maintenance" && t.status !== "done" && t.rooms?.number === r.number); return fix?.notes ? <span className="min-w-0 max-w-full truncate text-[var(--color-red)]">{fix.notes}</span> : null; })()}
                   </div>
 
+                  {/* out of order: the repair's state and the way back, in the same dock as every other
+                      room, so the row it sits in keeps one height */}
                   {out && (() => {
                     const fix = tasks.find((t) => t.kind === "maintenance" && t.status !== "done" && t.rooms?.number === r.number);
+                    const what = fix ? (fix.status === "in_progress" ? "Being fixed" : "In repair") : "No task";
                     return (
-                      <div className="mt-auto space-y-2">
-                        <div className="flex items-start gap-2 rounded-xl bg-[var(--color-red-2)] px-3 py-2.5 text-[12px]">
-                          <Wrench size={13} className="text-[var(--color-red)] shrink-0 mt-0.5" />
-                          <span className="min-w-0"><span className="block font-semibold text-[var(--color-red)]">{fix ? (fix.status === "in_progress" ? "Being fixed" : "Waiting for repair") : "No repair task open"}</span>
-                            <span className="block text-[var(--color-label-2)] line-clamp-2">{fix ? `${fix.notes || "Maintenance"} · ${fmtSince(fix.created_at)} ago` : "Add one in Tasks so someone picks it up"}</span></span>
+                      <div className="mt-auto flex gap-1 p-1 rounded-2xl bg-[var(--color-fill)]">
+                        <div className="dock-tile flex-1 bg-[var(--color-red-2)] text-[var(--color-red)]" title={fix ? `${fix.notes || "Maintenance"} · ${fmtSince(fix.created_at)} ago` : "No repair task open — add one in Tasks"}>
+                          <Wrench size={17} /><span>{what}</span>
                         </div>
-                        <Button size="sm" variant="outline" className="w-full" disabled={pending} onClick={() => act(() => setRoomStatus(r.id, "available"))}><Check size={14} /> Back in service</Button>
+                        <button type="button" disabled={pending} onClick={() => act(() => setRoomStatus(r.id, "available"))} aria-label={`Back in service · room ${r.number}`} className="dock-tile dock-btn flex-1 dock-quiet">
+                          <Check size={17} /><span>In service</span>
+                        </button>
                       </div>
                     );
                   })()}
 
-                  {!out && (
-                    <div className="mt-auto flex items-center gap-2">
-                      {main ? (
-                        <Button size="sm" variant="tinted" disabled={pending} onClick={main.run} className="flex-1 min-w-0">{main.icon}{main.label}</Button>
-                      ) : (
-                        <div className={cn("flex-1 min-w-0 h-10 rounded-xl px-3 inline-flex items-center gap-2 text-[12.5px] font-semibold",
-                          sellable ? "bg-[var(--color-green-2)] text-[var(--color-tint)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}>
-                          {sellable ? <><Check size={15} className="shrink-0" /><span className="truncate">{s ? "Guest in room" : "Ready to sell"}</span></>
-                            : waiting ? <><ShieldCheck size={15} className="shrink-0" /><span className="truncate">Awaiting sign-off</span></>
-                            : <span className="truncate">Nothing to do</span>}
+                  {!out && (tiles.length > 0 || status) && (
+                    <div className="mt-auto flex gap-1 p-1 rounded-2xl bg-[var(--color-fill)]">
+                      {status && (
+                        <div className={cn("dock-tile flex-1", status === "Sign-off" ? "text-[var(--color-label-2)]" : "dock-go")} title={status === "Sign-off" ? "Awaiting a supervisor's sign-off" : status === "Ready" ? "Inspected and ready to sell" : "Guest in the room"}>
+                          {status === "Sign-off" ? <ShieldCheck size={17} /> : <Check size={17} />}<span>{status}</span>
                         </div>
                       )}
-                      {canFail && <Button size="sm" variant="outline" disabled={pending} onClick={() => fail(r)} className="!px-3 !text-[var(--color-red)] shrink-0"><ShieldX size={15} />Fail</Button>}
-                      {more.length > 0 && (
-                        <div className="relative shrink-0" data-room-menu>
-                          <button type="button" onClick={() => setMenuFor(menuFor === r.id ? null : r.id)} aria-haspopup="menu" aria-expanded={menuFor === r.id} aria-label={`More for room ${r.number}`}
-                            className={cn("h-10 w-10 rounded-xl grid place-items-center transition-colors", menuFor === r.id ? "bg-[var(--color-fill-2)] text-[var(--color-label)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)]")}><MoreHorizontal size={17} /></button>
-                          {menuFor === r.id && (
-                            <div role="menu" className="popover !animate-none absolute right-0 bottom-12 w-60 z-30">
-                              {more.map((m) => (
-                                <button key={m.label} role="menuitem" type="button" disabled={pending} onClick={() => { setMenuFor(null); m.run(); }} className="menu-item flex-col !items-start !gap-0.5 min-h-11">
-                                  <span className="text-[14px] font-semibold">{m.label}</span><span className="text-[11.5px] text-[var(--color-label-2)]">{m.hint}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {tiles.map((t) => (
+                        <button key={t.key} type="button" disabled={pending} onClick={t.run} aria-label={`${t.label} · room ${r.number}`}
+                          className={cn("dock-tile dock-btn flex-1", t.tone === "go" && "dock-go", t.tone === "red" && "dock-red", t.tone === "blue" && "dock-blue", t.tone === "quiet" && "dock-quiet")}>
+                          {t.icon}<span>{t.label}</span>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>

@@ -41,12 +41,14 @@ dirty room without a ticket.
 ## Before you edit
 
 - **A room card is one shape everywhere**: the number (30px) with the guest or "Vacant" under it and
-  the state chip (dot + label) at the right; a line with the since-time and "out MM-DD" / "Due out"
-  tags; then one row of controls — the main action full-width (Cleaned / Touched up / Pass), Fail
-  beside it when an inspection is due, and Pickup / Mark dirty behind a ⋯ menu (`menuFor`, closes on
-  outside tap or Escape). A room with nothing to press shows "Ready to sell" / "Guest in room" /
-  "Awaiting sign-off" in that place. The state is a slim pill inside the left edge. Floor sections
-  are not `overflow-hidden`, so the ⋯ menu is never clipped. Probe: `card.mjs`.
+  the state chip (dot + label); a `min-h-5` line with the since-time and "out MM-DD" / "Due out"
+  tags; then the **action dock** — every move the room allows, all visible (the owner asked for no
+  hidden menu), as equal tiles, icon over label (`.dock-tile`, 52px, 56 on touch): Cleaned / Touched
+  up / Pass in green, Fail red, Pickup blue, Dirty grey. A room with nothing pending shows Ready /
+  Occupied / Sign-off as its first tile; out of order shows In repair (note in its title and on the
+  meta line) and In service. One dock shape keeps every row of cards one height. Probe: `dock.mjs`.
+  The board grid is `repeat(auto-fill, minmax(15rem, 1fr))` from 520px (one per row below): fixed
+  column counts squeezed a four-tile dock to 37px tiles at 834.
 
 - **Floors are an accordion** (`openFloor`: a floor number, `"all"` or null). The first floor is
   open; opening another closes it; tapping the open one closes it. The board head is "FLOORS n" and a
@@ -71,10 +73,6 @@ dirty room without a ticket.
   Back in service → `setRoomStatus(id, "available")` from `../rooms/actions`, which marks it clean
   so a supervisor still inspects it before it sells. It was an empty dark block on the board.
 
-- **On a phone the room board is one room per row** (`grid-cols-1 min-[520px]:grid-cols-2 …`) and
-  a card's actions are one row of equal buttons (`grid-flow-col auto-cols-fr`); from 520px it goes
-  back to the two-column action grid with the lead action spanning. Two across on a phone, a 170px
-  card stacked four 44px pills two by two beside cards with one — tall empty holes.
 
 - **The task board is two columns from `md`, with the form beside it only from `xl`.** At `lg` the
   form's column left ~290px per board column and "Done · room ready" ran out of its button. The

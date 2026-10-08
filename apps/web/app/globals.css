@@ -675,6 +675,15 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .keycard.cleaning { background: var(--color-blue-2); } .keycard.maintenance { background: var(--color-red-2); } .keycard.reserved { border-style: dashed; border-color: var(--color-champagne); }
 /* a room card's own action bar: a quiet tile in whatever colour the card's state gives it, so it
    reads on white, on blue (cleaning), on red (maintenance) and on the ink of an occupied room */
+/* a housekeeping card's action dock: equal tiles, icon over label, in one tray */
+.dock-tile { min-width: 0; min-height: 52px; padding: 6px 4px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font-size: 11.5px; font-weight: 650; line-height: 1.1; color: var(--color-label); }
+.dock-tile > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock-btn { background: var(--color-bg-2); box-shadow: 0 1px 2px rgb(0 0 0 / .18); transition: background var(--dur-fast), transform var(--dur-fast), filter var(--dur-fast); }
+.dock-btn:hover { filter: brightness(1.08); } .dock-btn:active { transform: scale(.96); } .dock-btn:disabled { opacity: .5; }
+.dock-go { background: var(--color-green-2); color: var(--color-tint); }
+.dock-red { color: var(--color-red); } .dock-blue { color: var(--color-blue); } .dock-quiet { color: var(--color-label-2); }
+@media (pointer: coarse) { .dock-tile { min-height: 56px; } }
 .room-act { height: 40px; min-width: 0; border-radius: 11px; display: grid; place-items: center; color: var(--card-muted);
   background: color-mix(in srgb, currentColor 9%, transparent); transition: background var(--dur-fast), color var(--dur-fast); }
 .room-act:hover { color: inherit; background: color-mix(in srgb, currentColor 16%, transparent); }
