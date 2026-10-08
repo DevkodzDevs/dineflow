@@ -74,6 +74,10 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
 
+- **`.switch` sets its own `min-height: 31px; min-width: 51px`.** It is a `<button>`, so the control
+  floor (40px, 44 on touch) stretched it to 51×44 with the 27px knob riding the top edge. The
+  finger-sized target is an invisible `::before` (inset -7px -4px → 59×45). Probe: `swprobe.mjs`.
+
 - **Grid children may shrink: `@layer base { :where(.grid) > * { min-width: 0 } }`.** Without it a
   single-column grid on a phone (a bare `grid`, or `lg:grid-cols-…` below lg) sized its one
   implicit track to the widest child's *content* — a scrolling chip rail, a row of buttons — and

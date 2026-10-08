@@ -30,9 +30,9 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
                  ["dining", "dining_enabled", "Table booking", "Guests pick a time slot; it lands on your Reservations screen", UtensilsCrossed],
                  ["delivery", "delivery_enabled", "Delivery", "Orders arrive on your Online orders screen", Bike],
                  ["takeaway", "takeaway_enabled", "Takeaway", "Same, but the guest collects", ShoppingBag]] as const).map(([k, name, title, hint, I]) => (
-                <label key={k} className={cn("card p-4 flex items-center gap-3 cursor-pointer", on[k] && "!border-[var(--color-green)]")}>
+                <label key={k} className={cn("card p-4 flex items-center gap-3 cursor-pointer transition-colors", on[k] && "!border-[color-mix(in_srgb,var(--color-green)_45%,transparent)]")}>
                   <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0"><I size={17} /></span>
-                  <span className="flex-1"><span className="block font-semibold text-[15px]">{title}</span><span className="block text-xs text-[var(--color-label-2)]">{hint}</span></span>
+                  <span className="flex-1 min-w-0"><span className="block font-semibold text-[15px]">{title}</span><span className="block text-xs text-[var(--color-label-2)]">{hint}</span></span>
                   <Switch on={on[k]} onChange={(v) => setOn({ ...on, [k]: v })} />
                   <input type="checkbox" name={name} checked={on[k]} readOnly hidden style={{ display: "none" }} />
                 </label>

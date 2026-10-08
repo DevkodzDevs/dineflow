@@ -536,6 +536,11 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .switch[data-on="true"] { background: var(--color-green); }
 .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgb(0 0 0 / .4); transition: transform var(--dur) var(--ease-spring); }
 .switch[data-on="true"]::after { transform: translateX(20px); }
+/* The switch is a <button>, so the app's control floor (40px, 44 under a finger) stretched it to
+   51x44 and left its 27px knob riding the top edge — a lopsided pill on every phone. It keeps its
+   own 51x31 shape, and the finger-sized target comes from an invisible ::before around it. */
+.switch { min-height: 31px; min-width: 51px; }
+.switch::before { content: ""; position: absolute; inset: -7px -4px; }
 
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 600; background: var(--color-fill); color: var(--color-label); transition: all var(--dur-fast) var(--ease-out); }
 .chip:hover { background: var(--color-fill-2); } .chip:active { transform: scale(.96); }
