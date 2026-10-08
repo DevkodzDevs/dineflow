@@ -2,7 +2,7 @@
 import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode } from "lucide-react";
-import { Button, Card, Field, cn } from "@/components/ui";
+import { Button, Card, Field, Switch, cn } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
 import { InstallApp } from "@/components/InstallApp";
@@ -57,6 +57,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
   const [pending, start] = useTransition();
   const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
   const [tab, setTab] = useState<Tab>("general");
+  const [loyaltyOn, setLoyaltyOn] = useState(!!restaurant.loyalty_enabled);
   const isHotel = restaurant.property_type !== "restaurant";
 
   return (
@@ -281,7 +282,13 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             description="A share of what a guest spends comes back as points, earned when the bill is paid and taken off a later one. Guests are known by their phone number.">
             <form className="space-y-4" action={(fd) => start(async () => { const r = await saveLoyalty(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
               <input type="hidden" name="id" value={restaurant.id} />
-              <label className="flex items-center gap-2 text-sm normal-case tracking-normal"><input type="checkbox" name="loyalty_enabled" className="w-4 h-4 accent-saffron" defaultChecked={!!restaurant.loyalty_enabled} /> Give points on paid bills</label>
+              {/* a switch row like Storefront's, not a bare checkbox floating under the description;
+                  the form still posts loyalty_enabled from a checkbox kept in step and out of sight */}
+              <label className="card p-3.5 flex items-center gap-3 cursor-pointer">
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-semibold">Give points on paid bills</span><span className="block text-xs text-[var(--color-label-2)] mt-0.5">{loyaltyOn ? "On — every paid bill earns points" : "Off — nobody earns or spends points"}</span></span>
+                <Switch on={loyaltyOn} onChange={setLoyaltyOn} />
+                <input type="checkbox" name="loyalty_enabled" checked={loyaltyOn} readOnly hidden style={{ display: "none" }} />
+              </label>
               <div className="grid sm:grid-cols-3 gap-3">
                 <Field label="Earn" hint="% of the food value, after discounts"><input name="loyalty_earn_pct" type="number" step="0.5" min={0} max={50} className="num" defaultValue={Number(restaurant.loyalty_earn_pct ?? 5)} /></Field>
                 <Field label="A point is worth (₹)"><input name="loyalty_point_value" type="number" step="0.1" min={0.1} className="num" defaultValue={Number(restaurant.loyalty_point_value ?? 1)} /></Field>

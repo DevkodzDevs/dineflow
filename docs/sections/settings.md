@@ -43,6 +43,9 @@ never be reachable on a real one.
   heading. The icon is top-aligned with the title, not centred on a five-line description.
 - **Add a table on a phone** is two rows (Name + Seats, then Zone) and a full-width Add; at four
   columns it showed "T9" and "Mai". The per-table QR link is 40×40.
+- **Loyalty's on/off is a switch row** (`card` + `Switch`, `loyaltyOn` state) with a hidden
+  `loyalty_enabled` checkbox kept in step — `saveLoyalty` reads `=== "on"`, and a hidden checked
+  box still posts. Round trip tested through the UI and restored (`loyalprobe.mjs`).
 - **Storefront switches** carry a hidden checkbox for the form: `hidden` attribute + inline
   `display:none`, never the `hidden` class (see design-system.md).
 
