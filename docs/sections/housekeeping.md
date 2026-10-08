@@ -40,6 +40,14 @@ dirty room without a ticket.
 
 ## Before you edit
 
+- **A room card is one shape everywhere**: the number (30px) with the guest or "Vacant" under it and
+  the state chip (dot + label) at the right; a line with the since-time and "out MM-DD" / "Due out"
+  tags; then one row of controls — the main action full-width (Cleaned / Touched up / Pass), Fail
+  beside it when an inspection is due, and Pickup / Mark dirty behind a ⋯ menu (`menuFor`, closes on
+  outside tap or Escape). A room with nothing to press shows "Ready to sell" / "Guest in room" /
+  "Awaiting sign-off" in that place. The state is a slim pill inside the left edge. Floor sections
+  are not `overflow-hidden`, so the ⋯ menu is never clipped. Probe: `card.mjs`.
+
 - **Floors are an accordion** (`openFloor`: a floor number, `"all"` or null). The first floor is
   open; opening another closes it; tapping the open one closes it. The board head is "FLOORS n" and a
   segmented switch, One at a time | All open; tapping a floor while all are open shows just that one.
