@@ -75,7 +75,8 @@ different tile counts and different flip tiles. Dark and paper are both real the
 - Colours are tokens (`var(--color-tint)`), never hex. Note that `--color-saffron` and
   `--color-mint` both alias to the green tint in the dark theme — if you want amber, say
   `var(--color-orange)`.
-- Money through `formatINR`. Dates through `todayIST` — the business day is `Asia/Kolkata`.
+- Money through `formatINR` — `{ whole: true }` for a menu price (₹280, not ₹280.00); a bill total
+  keeps its paise. Dates through `todayIST` — the business day is `Asia/Kolkata`.
 - Grid tracks are `minmax(0,1fr)`, with `min-w-0` on the item. Plain `1fr` will not shrink below
   its content and pushes things off a phone.
 - Scratch files, scripts and screenshots go in the session scratchpad, never in the repo.

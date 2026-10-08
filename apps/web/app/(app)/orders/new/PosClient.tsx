@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered } from "lucide-react";
-import { Button, Pill, cn, useToast } from "@/components/ui";
+import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed } from "lucide-react";
+import { Button, Pill, Segmented, cn, useToast } from "@/components/ui";
 import { formatINR, fmtSince } from "@/lib/format";
 import { placeOrder, parseOrder } from "../actions";
 import { lookupCustomer } from "../../billing/actions";
@@ -117,8 +117,6 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       return ls;
     });
   };
-  /** The cross clears the dish outright — every size and every extra of it. */
-  const clearItem = (it: Item) => { setWarned(false); setLines((ls) => ls.filter((l) => l.item.id !== it.id)); };
   /** The minus on a cart line for a dish that was tapped by voice takes one off its last line, whichever size. */
   const askFor = (l: Line) => setChooser({ item: l.item, replace: l.key, qty: l.qty, note: l.note });
 
@@ -226,96 +224,145 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
     router.push(`/orders/${r.orderId}`);
   });
 
+  /* ── the ticket rail ── */
+  /* The table picker is a row that opens, not fourteen loose chips: a rail that is a third of the
+     screen cannot afford a keypad above an empty ticket. Picking closes it again. */
+  const [pickOpen, setPickOpen] = useState(false);
+  const tableName = tables.find((t) => t.id === tableId)?.name ?? null;
+  /* The grid goes photo-first the day most of the menu has a picture. Until then it does not show
+     sixty grey squares with a letter in each and call them thumbnails. */
+  const photoFirst = useMemo(() => items.length > 0 && items.filter((i) => i.image_url).length * 2 >= items.length, [items]);
+  const clearTicket = () => { setLines([]); setTicketNote(""); setAskNote(false); setWarned(false); setErr(null); };
+  const grand = total + (promised && promise ? total * promise.pct / 100 : 0);
+  const typeOptions = [
+    { value: "dine_in" as const, label: "Dine in" }, { value: "takeaway" as const, label: "Takeaway" }, { value: "delivery" as const, label: "Delivery" },
+    ...(inHouse.length ? [{ value: "room_service" as const, label: "Room" }] : []),
+  ];
+
   const CartPanel = (
-    <div className="flex flex-col h-full">
-      <div className="flex gap-1 p-1 bg-porcelain rounded-xl">
-        {(["dine_in", "takeaway", "delivery", ...(inHouse.length ? ["room_service" as const] : [])] as const).map((t) => <button key={t} onClick={() => setType(t)} className={cn("flex-1 h-9 rounded-lg text-xs font-semibold capitalize", type === t ? "bg-card shadow-feather" : "text-steel")}>{t === "room_service" ? "Room" : t.replace("_", " ")}</button>)}
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold leading-none">Order details</h2>
+        {lines.length > 0 && <button type="button" onClick={clearTicket} className="h-9 px-2 -mr-2 text-[13px] font-semibold text-steel hover:text-[var(--color-red)]">Clear</button>}
       </div>
+      <Segmented value={type} onChange={setType} options={typeOptions}
+        className={cn("mt-3 w-full [&>button]:flex-1 [&>button]:!px-1 [&>button]:!text-[13px]", typeOptions.length > 3 && "[&>button]:!text-[12.5px]")} />
+
       {type === "dine_in" ? (
         <>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {tables.map((t) => <button key={t.id} onClick={() => pickTable(t)} className={cn("h-9 min-w-11 px-2 rounded-lg text-sm font-semibold border", tableId === t.id ? "bg-ink text-on-label border-ink" : t.status === "occupied" ? "bg-line/60 border-line text-steel" : "border-line hover:bg-porcelain")}>{t.name}</button>)}
-        </div>
-        {busy && (
-          <div className="mt-2 rounded-xl border border-line bg-[var(--color-fill)] p-2.5 text-xs">
-            <div className="font-semibold">{tables.find((t) => t.id === busy.table_id)?.name ?? "That table"} already has order #{busy.order_no} running.</div>
-            <div className="mt-2 flex gap-2">
-              <Link href={`/orders/${busy.id}`} className="btn btn-gray !h-8 !text-xs flex-1 justify-center">Open #{busy.order_no}</Link>
-              <button onClick={() => setBusy(null)} className="btn btn-outline !h-8 !text-xs flex-1">Start a separate one</button>
+          <button type="button" onClick={() => setPickOpen((v) => !v)} aria-expanded={pickOpen}
+            className={cn("mt-3 w-full h-12 rounded-xl border px-3 flex items-center gap-3 text-left transition-colors",
+              tableId ? "border-line bg-[var(--color-bg-3)]" : "border-dashed border-[var(--color-line-2)] hover:bg-[var(--color-fill)]")}>
+            <span className={cn("h-8 w-8 rounded-lg grid place-items-center shrink-0", tableId ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel")}><Armchair size={15} /></span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[10.5px] uppercase tracking-[0.12em] text-steel leading-none">Table</span>
+              <span className={cn("block text-sm truncate mt-1 leading-none", tableId ? "font-semibold" : "text-steel")}>{tableName ?? "Select a table"}</span>
+            </span>
+            <ChevronDown size={16} className={cn("text-steel shrink-0 transition-transform", pickOpen && "rotate-180")} />
+          </button>
+          {pickOpen && (
+            <div className="mt-2 grid grid-cols-5 gap-1.5">
+              {tables.map((t) => <button key={t.id} type="button" onClick={() => { pickTable(t); setPickOpen(false); }} aria-pressed={tableId === t.id}
+                className={cn("h-10 px-1 rounded-lg text-[13px] font-semibold border truncate", tableId === t.id ? "bg-ink text-on-label border-ink" : t.status === "occupied" ? "bg-[var(--color-fill)] border-transparent text-steel" : "border-line hover:bg-[var(--color-fill)]")}>{t.name}</button>)}
             </div>
+          )}
+          {busy && (
+            <div className="mt-2 rounded-xl border border-line bg-[var(--color-fill)] p-2.5 text-xs">
+              <div className="font-semibold">{tables.find((t) => t.id === busy.table_id)?.name ?? "That table"} already has order #{busy.order_no} running.</div>
+              <div className="mt-2 flex gap-2">
+                <Link href={`/orders/${busy.id}`} className="btn btn-gray !h-9 !text-xs flex-1 justify-center">Open #{busy.order_no}</Link>
+                <button onClick={() => setBusy(null)} className="btn btn-outline !h-9 !text-xs flex-1">Start a separate one</button>
+              </div>
+            </div>
+          )}
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <input placeholder="Name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
+            <input placeholder="Phone" inputMode="tel" className="num" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
           </div>
-        )}
-        <div className="mt-2 grid grid-cols-2 gap-2"><input placeholder="Phone (optional)" inputMode="tel" className="num !py-1.5 !text-xs" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /><input placeholder="Name" className="!py-1.5 !text-xs" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /></div>
         </>
       ) : type === "room_service" ? (
         <select className="mt-3" value={room} onChange={(e) => { setRoom(e.target.value); const g = inHouse.find((x) => x.id === e.target.value); setCustomer({ name: g ? `Room ${g.rooms?.number} · ${g.guests?.full_name}` : "", phone: "" }); }}><option value="">Choose in-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
       ) : (
-        <div className="mt-3 grid grid-cols-2 gap-2"><input placeholder="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /><input placeholder="Phone" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /></div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <input placeholder="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
+          <input placeholder="Phone" inputMode="tel" className="num" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
+        </div>
       )}
       {known && type !== "room_service" && <div className="mt-1.5 text-[11px] text-steel">Welcome back{known.name ? `, ${known.name.split(" ")[0]}` : ""} · {known.visits} visit{known.visits === 1 ? "" : "s"}{known.notes ? ` · ${known.notes}` : ""}</div>}
-      <div className="mt-3 flex items-center justify-between">
-        <span className="text-[10.5px] uppercase tracking-[0.14em] text-steel">Ticket</span>
+
+      <div className="mt-4 flex items-center justify-between">
+        <span className="text-[10.5px] uppercase tracking-[0.14em] text-steel">Ticket{count ? ` · ${count} item${count === 1 ? "" : "s"}` : ""}</span>
         <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} title="Starters now, mains when the table is ready: every course after the first is held until the kitchen fires it"
-          className={cn("h-7 rounded-full px-2.5 text-[11px] font-semibold flex items-center gap-1 transition", coursing ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)]")}><ListOrdered size={12} /> Courses {coursing ? "on" : "off"}</button>
+          className={cn("h-9 rounded-full px-2.5 text-[11px] font-semibold flex items-center gap-1 transition", coursing ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)]")}><ListOrdered size={12} /> Courses {coursing ? "on" : "off"}</button>
       </div>
-      <div className="mt-2 flex-1 overflow-y-auto ticket-rail pl-4 space-y-3">
+      <div className="mt-2 flex-1 min-h-0 overflow-y-auto space-y-2 [scrollbar-width:thin]">
         <AnimatePresence initial={false}>
-          {lines.length === 0 && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-steel">Tap dishes to add them to this ticket.</motion.p>}
+          {lines.length === 0 && (
+            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="rounded-2xl border border-dashed border-[var(--color-line-2)] grid place-items-center text-center px-6 py-8">
+              <div>
+                <span className="mx-auto h-11 w-11 rounded-2xl bg-[var(--color-fill)] grid place-items-center text-steel"><UtensilsCrossed size={18} /></span>
+                <p className="mt-3 text-sm font-semibold">Nothing on the ticket yet</p>
+                <p className="mt-1 text-xs text-steel">Tap a dish to add it.</p>
+              </div>
+            </motion.div>
+          )}
           {lines.map((l) => (
             /* every line is its own card: what it is and a cross on top, how many and what it
                comes to underneath — the shape a guest reads back to you */
-            <motion.div key={l.key} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
+            <motion.div key={l.key} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
               className="rounded-2xl border border-line bg-[var(--color-bg-3)] p-2.5">
-              <div className="flex items-start gap-2">
-                <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-2.5">
+                {photoFirst && <Thumb item={l.item} size="sm" />}
+                <div className="flex-1 min-w-0 pt-0.5">
                   <div className="font-semibold text-sm leading-snug">{lineName(l.item, l.variant)}</div>
                   {lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <div key={j} className="text-[11px] text-steel truncate">{x}</div>)}
+                  {l.qty > 1 && <div className="text-[11px] text-steel num mt-0.5">{formatINR(unit(l), { whole: true })} each</div>}
                   {coverOf(l.item.id) && qtyOf(l.item.id) > coverOf(l.item.id)!.portions && <div className="text-[11px] font-semibold text-[var(--color-orange)]">pantry covers {coverOf(l.item.id)!.portions}</div>}
                   {l.ask && <button type="button" onClick={() => askFor(l)} className="mt-0.5 text-[11px] font-semibold text-[var(--color-orange)] underline">Choose options</button>}
                 </div>
-                {coursing && <button type="button" onClick={() => cycleCourse(l.key)} title="Course — tap to change" className={cn("h-7 min-w-7 px-1.5 rounded-full text-[11px] font-bold border shrink-0", l.course > 1 ? "border-tint text-[var(--color-tint)]" : "border-line text-steel")}>C{l.course}</button>}
+                {coursing && <button type="button" onClick={() => cycleCourse(l.key)} title="Course — tap to change" className={cn("h-9 min-w-9 px-1.5 rounded-full text-[11px] font-bold border shrink-0", l.course > 1 ? "border-tint text-[var(--color-tint)]" : "border-line text-steel")}>C{l.course}</button>}
                 <button type="button" onClick={() => bump(l.key, -l.qty)} aria-label={`Remove ${lineName(l.item, l.variant)}`}
-                  className="h-7 w-7 rounded-full bg-[var(--color-fill)] grid place-items-center text-steel hover:text-[var(--color-red)] shrink-0"><X size={13} /></button>
+                  className="h-10 w-10 -mr-1.5 -mt-1.5 rounded-full grid place-items-center text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-fill)] shrink-0"><X size={15} /></button>
               </div>
-              <div className="mt-2 flex items-center gap-2">
-                <button onClick={() => bump(l.key, -1)} aria-label="One less" className="h-8 w-8 rounded-full border border-line grid place-items-center text-steel hover:bg-[var(--color-fill)]"><Minus size={14} /></button>
-                <span className="num w-5 text-center font-bold text-sm tabular-nums">{l.qty}</span>
-                <button onClick={() => bump(l.key, 1)} aria-label="One more" className="h-8 w-8 rounded-full bg-ink text-on-label grid place-items-center"><Plus size={14} /></button>
-                <span className="ml-auto num font-semibold text-sm h-8 px-3 rounded-full bg-[var(--color-bg-2)] border border-line flex items-center">{formatINR(unit(l) * l.qty)}</span>
+              <div className="mt-1.5 flex items-center gap-2">
+                <div className="stepper">
+                  <button type="button" onClick={() => bump(l.key, -1)} aria-label="One less" className="less"><Minus size={15} /></button>
+                  <span className="n num">{l.qty}</span>
+                  <button type="button" onClick={() => bump(l.key, 1)} aria-label="One more" className="more"><Plus size={15} /></button>
+                </div>
+                <span className="ml-auto num font-semibold text-[15px]">{formatINR(unit(l) * l.qty, { whole: true })}</span>
               </div>
               {l.note || noteOpen.has(l.key)
                 ? <input autoFocus={!l.note} className="mt-2 !py-1.5 !text-xs" placeholder="Less spicy, no onion…" value={l.note} onChange={(e) => setNote(l.key, e.target.value)} />
                 : <button type="button" onClick={() => setNoteOpen((n) => new Set(n).add(l.key))}
-                    className="mt-1.5 text-[11px] font-semibold text-steel hover:text-[var(--color-label)] flex items-center gap-1"><Plus size={11} /> Note for kitchen</button>}
+                    className="mt-1 h-8 text-[11px] font-semibold text-steel hover:text-[var(--color-label)] flex items-center gap-1"><Plus size={11} /> Note for kitchen</button>}
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
-      {promise && (
-        <button type="button" onClick={() => setPromised((v) => !v)} aria-pressed={promised}
-          className={cn("mt-3 w-full flex items-center gap-3 rounded-2xl border p-3 text-left transition", promised ? "border-[var(--color-tint)] bg-[var(--color-green-2)]" : "border-line hover:bg-[var(--color-fill)]")}>
-          <span className={cn("h-9 w-9 rounded-xl grid place-items-center shrink-0", promised ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill)] text-steel")}><Timer size={16} /></span>
-          <span className="flex-1 min-w-0">
-            <span className="block text-sm font-semibold">On-time promise · {promise.minutes} min</span>
-            <span className="block text-xs text-steel mt-0.5">{promised ? `+${promise.pct}% on the food. Late and the whole bill is free.` : `Guest pays ${promise.pct}% more. If it is late, the food is free.`}</span>
-          </span>
-          <span className={cn("num text-xs font-semibold shrink-0", promised ? "text-[var(--color-tint)]" : "text-steel")}>{promised ? `+${formatINR(total * promise.pct / 100)}` : "off"}</span>
-        </button>
-      )}
-      <div className="pt-3 mt-2 border-t border-dashed border-line">
+
+      <div className="shrink-0 pt-3 mt-2 border-t border-line">
         {/* one request for the whole ticket, the way a guest actually asks it — place_order has
             carried a slot for this all along and the till never offered anywhere to type it */}
         <button type="button" onClick={() => setAskNote((v) => !v)} aria-pressed={askNote || !!ticketNote}
-          className={cn("h-8 rounded-full px-3 text-[11px] font-semibold inline-flex items-center gap-1 border transition",
+          className={cn("h-9 rounded-full px-3 text-[12px] font-semibold inline-flex items-center gap-1 border transition",
             ticketNote ? "border-tint text-[var(--color-tint)]" : "border-line text-steel hover:text-[var(--color-label)]")}>
           <Plus size={12} /> Cooking request{ticketNote ? ` · ${ticketNote.slice(0, 18)}${ticketNote.length > 18 ? "…" : ""}` : ""}
         </button>
         {askNote && <input autoFocus className="mt-2 !py-1.5 !text-xs" maxLength={200} placeholder="All mild · no onion · serve everything together"
           value={ticketNote} onChange={(e) => setTicketNote(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") setAskNote(false); }} />}
-        <div className="mt-3 flex justify-between items-baseline">
-          <span className="text-sm text-steel">Total payment <span className="text-[11px]">· {count} item{count === 1 ? "" : "s"}</span></span>
-          <span className="num text-2xl font-bold">{formatINR(total + (promised && promise ? total * promise.pct / 100 : 0))}</span>
-        </div>
+        {promise && (
+          <button type="button" onClick={() => setPromised((v) => !v)} aria-pressed={promised}
+            className={cn("mt-2 w-full flex items-center gap-3 rounded-2xl border p-2.5 text-left transition", promised ? "border-[var(--color-tint)] bg-[var(--color-green-2)]" : "border-line hover:bg-[var(--color-fill)]")}>
+            <span className={cn("h-9 w-9 rounded-xl grid place-items-center shrink-0", promised ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill)] text-steel")}><Timer size={16} /></span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold">On-time promise · {promise.minutes} min</span>
+              <span className="block text-[11px] text-steel mt-0.5">{promised ? `+${promise.pct}% on the food. Late and the whole bill is free.` : `Guest pays ${promise.pct}% more. If it is late, the food is free.`}</span>
+            </span>
+            <span className={cn("num text-xs font-semibold shrink-0", promised ? "text-[var(--color-tint)]" : "text-steel")}>{promised ? `+${formatINR(total * promise.pct / 100)}` : "off"}</span>
+          </button>
+        )}
         {err && <p className="text-sm text-chili mt-2">{err}</p>}
         {warned && shortfalls.length > 0 && (
           <div className="mt-2 rounded-xl border border-[var(--color-orange)]/40 bg-[rgb(255_179_64/.08)] p-2.5 text-xs">
@@ -327,7 +374,14 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           </div>
         )}
         {coursing && courses.length > 1 && <p className="text-[11px] text-steel mt-2">Course 1 goes now. {courses.filter((c) => c > 1).map((c) => `Course ${c}`).join(" and ")} will wait on the kitchen screen until fired.</p>}
-        <Button size="lg" className="w-full mt-3" disabled={pending || lines.length === 0} onClick={submit}><Send size={16} /> {pending ? "Sending…" : warned && shortfalls.length > 0 ? "Send anyway" : "Send to kitchen"}</Button>
+        <div className="mt-3 flex items-end justify-between gap-3">
+          <span className="min-w-0">
+            <span className="block text-[10.5px] uppercase tracking-[0.14em] text-steel">Total payment</span>
+            <span className="block text-xs text-steel num mt-1">{count} item{count === 1 ? "" : "s"}</span>
+          </span>
+          <span className="num text-[26px] font-bold leading-none tabular-nums">{formatINR(grand)}</span>
+        </div>
+        <Button variant="ink" size="lg" className="w-full mt-3" disabled={pending || lines.length === 0} onClick={submit}><Send size={16} /> {pending ? "Sending…" : warned && shortfalls.length > 0 ? "Send anyway" : "Send to kitchen"}</Button>
       </div>
     </div>
   );
@@ -365,7 +419,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
               {running.slice(0, 12).map((o) => {
                 const n = (o.order_items ?? []).reduce((t, i) => t + Number(i.qty), 0);
                 return (
-                  <Link key={o.id} href={`/orders/${o.id}`} className="feather feather-lift shrink-0 w-52 p-3">
+                  <Link key={o.id} href={`/orders/${o.id}`} className="feather feather-lift shrink-0 w-48 p-3">
                     <div className="flex items-baseline gap-2">
                       <span className="font-semibold text-sm truncate flex-1">{o.dining_tables?.name ?? "Table"}</span>
                       <span className="num text-[11px] text-steel">#{o.order_no}</span>
@@ -403,41 +457,44 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         <div className="rail-fade flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
           {[{ id: "all", name: "All" }, ...categories].map((c) => <button key={c.id} onClick={() => setCat(c.id)} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line")}>{c.name}</button>)}
         </div>
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+        {/* As many tiles as fit, never narrower than a dish name and a stepper need: 176 is three
+            across in the 557px an iPad in landscape leaves beside the rail, with room for a 44px
+            minus, count and plus on a tapped tile. Two across on a phone by decree: auto-fill would
+            give one, and a waiter scrolls a phone menu twice as far. */}
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(176px,1fr))] gap-2.5">
           {visible.map((it) => {
             const qty = qtyOf(it.id); const tp = tilePrice(it); const asks = hasOptions(it);
             const c = coverOf(it.id);
             return (
               /* The stepper is a sibling of the tap target, not a child of it: a button inside a
-                 button is not valid markup, and the dish has to stay a real button for the keyboard. */
-              <motion.div key={it.id} layout className={cn("feather relative flex flex-col transition-colors", qty > 0 && "bg-[var(--color-green-2)] ring-1 ring-[var(--color-tint)]")}>
-                <motion.button whileTap={{ scale: 0.985 }} onClick={() => tap(it)} className="text-left p-2.5 flex items-start gap-3 flex-1">
-                  <Thumb item={it} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline gap-2">
-                      <span className="text-[11px] text-steel truncate flex-1">{catName(it.category_id)}</span>
-                      {/* a dish that asks a question, or is a meal of other dishes, says so here */}
-                      {it.is_combo && <Layers size={11} className="text-steel shrink-0" aria-label="Combo" />}
-                      {asks && <SlidersHorizontal size={11} className="text-steel shrink-0" aria-label="Has options" />}
-                      <span className="num text-sm font-semibold shrink-0">{tp.from ? <span className="text-[11px] font-normal text-steel">from </span> : null}{formatINR(tp.price)}</span>
-                    </span>
-                    <span className="block font-semibold text-[15px] mt-0.5 leading-snug line-clamp-2 min-h-[2lh]">{it.name}</span>
-                    {c?.portions === 0 && <span className="block mt-1 text-[11px] font-semibold text-[var(--color-orange)]">Pantry short{c.short[0] ? ` · ${c.short[0].name}` : ""}</span>}
-                    {!!c?.portions && c.portions <= 5 && <span className="block mt-1 text-[11px] text-steel num">{c.portions} left in the pantry</span>}
+                 button is not valid markup, and the dish has to stay a real button for the keyboard.
+                 At zero the tile shows one plus and nothing else. Once the dish is on the ticket the
+                 minus and the count slide in on the left of it — the plus itself never moves, so a
+                 thumb that found it once finds it again. */
+              <motion.div key={it.id} layout className={cn("feather relative flex flex-col transition-colors", qty > 0 && "picked")}>
+                <motion.button whileTap={{ scale: 0.985 }} onClick={() => tap(it)} className="text-left p-3 pb-0 flex-1 min-w-0">
+                  {photoFirst && <Thumb item={it} size="lg" />}
+                  <span className="flex items-center gap-1.5">
+                    {!photoFirst && <VegMark veg={it.is_veg} />}
+                    <span className="text-[11px] text-steel truncate flex-1">{catName(it.category_id)}</span>
+                    {/* a dish that asks a question, or is a meal of other dishes, says so here */}
+                    {it.is_combo && <Layers size={11} className="text-steel shrink-0" aria-label="Combo" />}
+                    {asks && <SlidersHorizontal size={11} className="text-steel shrink-0" aria-label="Has options" />}
+                    <span className="num text-[13px] font-semibold shrink-0">{tp.from ? <span className="text-[11px] font-normal text-steel">from </span> : null}{formatINR(tp.price, { whole: true })}</span>
                   </span>
+                  <span className="block font-semibold text-[15px] mt-1 leading-snug line-clamp-2">{it.name}</span>
+                  {c?.portions === 0 && <span className="block mt-1 text-[11px] font-semibold text-[var(--color-orange)]">Pantry short{c.short[0] ? ` · ${c.short[0].name}` : ""}</span>}
+                  {!!c?.portions && c.portions <= 5 && <span className="block mt-1 text-[11px] text-steel num">{c.portions} left in the pantry</span>}
                 </motion.button>
                 {/* the count lives on the dish, so a miscount is fixed where it happened */}
-                <div className="flex items-center gap-2 pl-[76px] pr-2.5 pb-2.5">
-                  <button type="button" onClick={() => takeOne(it)} disabled={qty === 0} aria-label={`One less ${it.name}`}
-                    className="h-8 w-8 rounded-full border border-line grid place-items-center text-steel enabled:hover:bg-[var(--color-fill)] disabled:opacity-30"><Minus size={14} /></button>
-                  <span className={cn("num text-sm tabular-nums w-5 text-center", qty ? "font-bold" : "text-steel")}>{qty}</span>
-                  <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`}
-                    className="h-8 w-8 rounded-full bg-ink text-on-label grid place-items-center"><Plus size={14} /></button>
-                  <AnimatePresence>{qty > 0 && (
-                    <motion.button type="button" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.6 }}
-                      onClick={() => clearItem(it)} aria-label={`Take ${it.name} off the ticket`}
-                      className="ml-auto h-8 w-8 rounded-full bg-[var(--color-fill)] grid place-items-center text-steel hover:text-[var(--color-red)]"><X size={14} /></motion.button>
-                  )}</AnimatePresence>
+                <div className="flex items-center justify-end px-3 pb-3 pt-2">
+                  <div className="stepper">
+                    {qty > 0 && (<>
+                      <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`} className="less"><Minus size={15} /></button>
+                      <span className="n num">{qty}</span>
+                    </>)}
+                    <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="more"><Plus size={16} /></button>
+                  </div>
                 </div>
               </motion.div>
             );
@@ -445,7 +502,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           {visible.length === 0 && <p className="col-span-full text-sm text-steel py-8">No dishes match. Check Menu → availability.</p>}
         </div>
       </section>
-      <aside className="hidden lg:block feather p-5 sticky top-6 h-[calc(100dvh-3rem)]">{CartPanel}</aside>
+      <aside className="hidden lg:block feather p-4 sticky top-6 h-[calc(100dvh-3rem)]">{CartPanel}</aside>
       {/* mobile cart bar */}
       <div className="lg:hidden fixed bottom-[72px] inset-x-4 z-30">
         <motion.button animate={{ y: count ? 0 : 80 }} onClick={() => setCartOpen(true)} className="w-full h-13 rounded-2xl bg-ink text-on-label flex items-center justify-between px-5 shadow-lift">
@@ -465,19 +522,29 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   );
 }
 
+/** The veg / non-veg mark the way Indian menus print it: a square with a dot in it. */
+function VegMark({ veg }: { veg: boolean }) {
+  return (
+    <span className={cn("h-3 w-3 rounded-[3px] border grid place-items-center shrink-0", veg ? "border-[var(--color-mint)]" : "border-[var(--color-chili)]")} title={veg ? "Vegetarian" : "Non-vegetarian"}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", veg ? "bg-[var(--color-mint)]" : "bg-[var(--color-chili)]")} />
+    </span>
+  );
+}
+
 /**
  * The dish's own picture where there is one, and a legible stand-in where there is not: the same
- * card either way, rather than a hole the day the owner has not uploaded sixty photographs.
+ * block either way, rather than a hole the day one dish of sixty is still waiting for its photo.
+ * `lg` is the tile's picture, the full width of the tile; `sm` is the ticket line's.
  * The veg / non-veg mark sits on the corner of it, which is where Indian menus put it.
  */
-function Thumb({ item }: { item: Item }) {
+function Thumb({ item, size }: { item: Item; size: "lg" | "sm" }) {
   return (
-    <span className="relative h-16 w-16 rounded-2xl overflow-hidden shrink-0 grid place-items-center bg-[var(--color-fill)]">
+    <span className={cn("relative overflow-hidden shrink-0 grid place-items-center bg-[var(--color-fill)]", size === "lg" ? "block w-full aspect-[4/3] rounded-xl mb-2.5" : "h-10 w-10 rounded-lg")}>
       {item.image_url
         // eslint-disable-next-line @next/next/no-img-element -- owner-supplied URLs from any host; next/image would need every one allow-listed
         ? <img src={item.image_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
-        : <span className="font-display text-xl text-steel select-none">{item.name.slice(0, 1).toUpperCase()}</span>}
-      <span className={cn("absolute bottom-0.5 right-0.5 h-4 w-4 rounded-[5px] grid place-items-center", item.is_veg ? "bg-[var(--color-mint-2)]" : "bg-[var(--color-chili-2)]")}
+        : <span className={cn("font-display text-steel select-none", size === "lg" ? "text-3xl" : "text-base")}>{item.name.slice(0, 1).toUpperCase()}</span>}
+      <span className={cn("absolute h-4 w-4 rounded-[5px] grid place-items-center", size === "lg" ? "top-1.5 left-1.5" : "bottom-0.5 right-0.5", item.is_veg ? "bg-[var(--color-mint-2)]" : "bg-[var(--color-chili-2)]")}
         title={item.is_veg ? "Vegetarian" : "Non-vegetarian"}>
         {item.is_veg ? <Leaf size={9} className="text-mint" /> : <Drumstick size={9} className="text-chili" />}
       </span>

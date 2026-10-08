@@ -20,11 +20,12 @@ be checked** — a colour that reads on graphite can vanish on paper.
 | ~45 | tokens | `--color-*`, `--radius-*`, `--shadow-*`, `--dur-*`, easings |
 | 127 | THE FLIP TILE | `.flip`, `.flap`, `.flip-row`, `.flip-label`, `.flip-stat` |
 | 204 | THE DECK | `.deck`, `.wall`, the brand mark, the Assist panel |
-| ~272 | cards | `.feather`, `.card`, `.feather-lift`, `.spotlight` |
+| ~272 | cards | `.feather`, `.card`, `.feather.picked`, `.feather-lift`, `.spotlight` |
 | ~300 | the glance row | `.stat-row`, `.stat-grid`, `.stat`, `.stat-head/-value/-foot` |
 | ~353 | buttons & fields | `.btn-*`, `.chip`, inputs, `.segmented`, `.switch` |
 | 454 | the receipt | printed-bill materials — warm paper, always light |
 | 489 | THE MONTH GRID | `.cal-grid`, `.cal-cell`, `.cal-num`, `.cal-nav` |
+| ~630 | STEPPER | `.stepper` > `.less` / `.n` / `.more` — the till's count control, on tiles and ticket lines |
 | 527 | TOOLBARS | `.toolbar`, `.toolbar-group`, `.toolbar-end`, `.chip-rail`, `.icon-btn`, `.tap` |
 | 602 | TABLES | `.dt-*` for `DataTable` |
 | 662 | LOADERS | `.flip.loader`, `.nav-progress` |
@@ -67,10 +68,16 @@ accident. Both sit in the same vertical band so a mixed row lines up.
 - `.board-row` — flex, `flex: 1 1 300px`, for full panels that must share a top and a bottom.
 
 **Touch.** Under `@media (pointer: coarse)` the kit grows: `.icon-btn` 36→44, `.btn` gets
-`min-height: 44px`, `.tap`/`.tap-square` exist for anything the kit does not cover. An inline text
+`min-height: 44px`, `.stepper` buttons 40→44, `.tap`/`.tap-square` exist for anything the kit does
+not cover. An inline text
 link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
+
+- **A utility cannot recolour a kit card.** `.feather`/`.card` set `background` and `box-shadow`
+  unlayered, so `bg-[…]` and `ring-…` on the same element silently lose — the till's "selected"
+  green ring never rendered for that reason. Add a state class next to the kit rule instead
+  (`.feather.picked`, `.feather.filled`) or use an `!important` utility, which does win.
 
 - **Check both themes.** Set the `df-theme` cookie to `paper` and look. Half the colour bugs in this
   app's history only existed in one theme.

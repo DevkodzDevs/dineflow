@@ -43,5 +43,7 @@ export function computeBill(i: BillInput): BillResult {
   return { subtotal, discount, taxable, serviceCharge, cgst, sgst, roundOff, total, promiseFee, promiseWaived };
 }
 
-export const formatINR = (n: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(n);
+/** `whole` drops the paise from a price that has none — a menu says ₹280, not ₹280.00. A price
+ *  that does carry paise keeps them whatever the flag says; a bill total always keeps them. */
+export const formatINR = (n: number, opts?: { whole?: boolean }) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2, ...(opts?.whole && Number.isInteger(n) ? { minimumFractionDigits: 0 } : {}) }).format(n);

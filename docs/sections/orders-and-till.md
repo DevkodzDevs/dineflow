@@ -19,15 +19,32 @@ and their totals. `/orders/new` is the till: pick dishes, build a ticket, send i
 right.
 
 ```
-<div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
+<div className="grid lg:grid-cols-[minmax(0,1fr)_clamp(280px,32%,380px)] gap-6">
   <section className="min-w-0"> … dishes … </section>
-  <aside> … the ticket … </aside>
+  <aside className="feather p-4 sticky …"> … the ticket (CartPanel) … </aside>
 ```
 
-Each dish tile carries a `Thumb` (image, or the initial plus a veg mark), a price pill and an
-**always-visible stepper** — a dish not on the ticket still shows `− 0 +` with the minus disabled,
-so the control never appears and disappears under a thumb. `takeOne` removes one, the cross clears
-the dish outright and only exists while the count is above zero.
+**Dish tiles** are `grid-cols-2` on a phone and `repeat(auto-fill, minmax(176px, 1fr))` above it —
+3 across at 1194 and 1440 beside the rail, 6 at 1920, 4 on a tablet without the rail. A tile is: veg mark · category · price
+(`formatINR(…, { whole: true })`, so ₹280 not ₹280.00) on one line, the name on two (`min-h-[2lh]`
+keeps rows level), and a `.stepper` right-anchored at the bottom. **At zero the tile shows one plus
+and nothing else.** Once the dish is on the ticket, the minus and the count appear to the left of
+the plus — the plus itself never moves, which is the whole contract (design-test measures it).
+`takeOne` removes one; clearing a dish outright is the cross on its ticket line.
+
+The grid is **photo-first only when at least half the menu has `image_url`** (`photoFirst`):
+`Thumb size="lg"` becomes a full-width 4:3 picture on every tile (initial stand-in for the few
+without one) and `size="sm"` a 40px thumb on each ticket line. Under that threshold no thumbs are
+drawn at all — sixty grey squares with letters in them are not thumbnails.
+
+**The ticket rail** (`CartPanel`, used in the desktop `<aside>` and the phone sheet alike) reads top
+to bottom: "Order details" + Clear · `Segmented` type (Dine in / Takeaway / Delivery / Room when
+guests are in) · a **Table row that opens** into a 5-across grid of table buttons and closes on pick
+(occupied tables dimmed, the "already has order #n running" notice under it) · Name + Phone (phone
+drives `lookupCustomer`) · "Ticket · n items" + Courses toggle · the line cards (`.stepper`, price
+with `whole`) · then a fixed summary block: "+ Cooking request", the on-time promise, errors and
+pantry warnings, Total payment, and a full-width `Button variant="ink"` Send to kitchen. The rail is
+`flex-col h-full min-h-0`; only the line list scrolls.
 
 A dish with sizes or add-ons opens `OptionChooser` instead of incrementing. Combos expand to their
 parts. "+ Cooking request" writes `p_note`.
@@ -40,6 +57,11 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **The control floor is unlayered CSS** (`:where(button) { min-height: 40px }`, 44 under a coarse
+  pointer). A plain `h-8` utility loses to it; only an `!important` utility wins. Size tile and rail
+  controls at 40 (`h-10`) and let the floor lift them on touch — do not fight it with `!h-8`.
+- **Narrow tiles cannot hold price + × + stepper on one row** (176px tile, 44px touch targets).
+  That is why the price lives in the top meta row and the tile has no cross.
 - **`minmax(0,1fr)`, never `1fr`, for the dish track.** A `1fr` grid item will not shrink below its
   content and pushes the ticket rail off the screen. Pair with `min-w-0` on the section.
 - **A card in a grid cell needs the wrapper to be the flex column**, with the card `flex-1`. Putting
@@ -54,8 +76,9 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 ## Verify
 
 ```
-node design-test.mjs     # 27 of its checks are the till: the stepper at zero, two taps,
-                         # the cross appearing and retiring, the ticket agreeing, 0 nested buttons
+node design-test.mjs     # the till checks: one plus at zero, two taps put 2 on the tile and a
+                         # minus beside the plus, the plus has not moved, the ticket agrees, the
+                         # minus takes one back and retires at zero, 0 nested buttons
 node responsive.mjs      # the till and the option dialog at 5 widths
 ```
 

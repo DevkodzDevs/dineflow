@@ -355,6 +355,10 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .section > h2 { font-size: 24px; margin-bottom: var(--space-4); }
 .stack > * + * { margin-top: var(--space-3); }
 .edge-lit { position: relative; }
+/* a tile with something on the ticket. A utility cannot do this: .feather's own background and
+   shadow are unlayered and beat `bg-…` and `ring-…` every time, which is why the green ring the
+   till asked for never showed. */
+.feather.picked { background: var(--color-green-2); border-color: var(--color-tint); box-shadow: var(--shadow-inset-top), var(--shadow-card), 0 0 0 1px var(--color-tint); }
 .feather-lift { transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur) var(--ease-out); will-change: transform; }
 .feather-lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-inset-top), var(--shadow-pop); }
 .feather-lift:active { transform: scale(.985); transition-duration: var(--dur-fast); }
@@ -626,7 +630,18 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .cal-nav > * + * { border-left: .5px solid var(--color-separator); }
 .cal-nav > *:hover { background: var(--color-fill); color: var(--color-label); }
 @media (pointer: coarse) { .cal-nav > * { height: 44px; min-width: 46px; } }
-.ticket-rail { border-left: 2px dashed var(--color-line-2); }
+/* ═══ STEPPER ═══ fewer, the count, more — one group, used on a dish tile and on a ticket line
+   alike. The plus is always the right-hand cell, and the group is right-anchored where it sits, so
+   when the minus and the count appear beside it the plus itself has not moved: a thumb that found
+   it once finds it again. Heights follow the control floor above (40, or 44 under a finger).
+   ═══════════════════════════════════════════════════════════════════════ */
+.stepper { display: inline-flex; align-items: center; gap: 6px; }
+.stepper > button { height: 40px; width: 40px; border-radius: 999px; display: grid; place-items: center; flex-shrink: 0; transition: background var(--dur-fast), color var(--dur-fast); }
+.stepper > .less { border: .5px solid var(--color-separator); background: var(--color-bg-2); color: var(--color-label-2); }
+.stepper > .less:hover { background: var(--color-fill); color: var(--color-label); }
+.stepper > .more { background: var(--color-label); color: var(--color-on-label); }
+.stepper > .n { min-width: 22px; text-align: center; font-size: 14px; font-weight: 700; }
+@media (pointer: coarse) { .stepper > button { height: 44px; width: 44px; } }
 ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: var(--color-fill-2); border-radius: 10px; border: 3px solid var(--color-bg); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; } ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
