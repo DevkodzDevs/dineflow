@@ -79,10 +79,14 @@ one), `split_order` (one into two) — all RPCs, all atomic.
   That is why the price lives in the top meta row and the tile has no cross.
 - **`minmax(0,1fr)`, never `1fr`, for the dish track.** A `1fr` grid item will not shrink below its
   content and pushes the ticket rail off the screen. Pair with `min-w-0` on the section.
-- **A card in a grid cell needs the wrapper to be the flex column**, with the card `flex-1`. Putting
-  `h-full` on the card hid the "Reserve" label behind the tile above it on `/orders`.
-- **The "Reserve" slot is always rendered**, invisible when absent, so cards in a row stay the same
-  height.
+- **A floor table is one card** (`feather`, `filled` when occupied): the `Link` on top, and for a
+  table with no ticket a Reserve button inside the card (`.room-act`, 40/44px). Grid rows stretch,
+  so every card in a row is the same height without a placeholder. Reserve was 11px text floating
+  under the card — a 16px target that made free cards look shorter than occupied ones.
+- **Reserved is `--color-orange` with a dashed border**, never `--color-saffron`, which is green in
+  the dark theme. Free carries a green dot.
+- **Open orders carry a 3px state strip** (ready green, preparing orange, served blue, pending
+  grey); the dish line sits under a hairline with the total `shrink-0`.
 - **Stock is not `is_available`.** `is_available` is the dish-level sold-out switch the menu owns;
   `menu_stock` is the live count derived from recipes and the pantry. Both can hide a dish.
 - **Never write `order_items` directly.** `place_order` recomputes the ticket, applies variants and
