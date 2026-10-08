@@ -81,7 +81,11 @@
 /* overscroll-behavior-y: none does two jobs on a touch screen. It stops iOS rubber-banding past
    the end of a page, which drags the near-black bezel up as a dead band under the app and reads
    as a broken layout. And it disables pull-to-refresh — on a till, a thumb dragged down over a
-   half-typed ticket should never reload the page out from under it. */
+   half-typed ticket should never reload the page out from under it.
+   It is set on body as well, and on both axes: iPad Safari kept bouncing with it on html alone —
+   pull past the end of a short screen and a light band of empty page opened under the app. The
+   page now stops where its content stops. */
+html, body { overscroll-behavior: none; }
 html { color-scheme: dark; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; background: var(--color-bezel); overscroll-behavior-y: none; }
 body { background: var(--color-bg); color: var(--color-label); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01", "calt"; letter-spacing: -0.006em; font-size: 15px; }
 h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing: .005em; text-wrap: balance; line-height: 1.05; }
