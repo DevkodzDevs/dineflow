@@ -526,6 +526,15 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
   font-family: var(--font-sans); font-size: 9.5px; font-weight: 700; letter-spacing: .03em;
   text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
 
+/* A horizontal rail that lives inside a column: faded at its clip edge, so a card sheared by the
+   column boundary reads as a track that carries on rather than a card that broke. The till's
+   order-line strip and its category chips both overrun their column on a tablet — measured 384px
+   and 380px over at an iPad in landscape — and a half-drawn card at the edge was the first thing
+   the eye landed on. Same reasoning as the mask on .toolbar-group; this one is for rails that
+   bleed to the card edge with -mx-4 px-4, which that selector does not cover. */
+.rail-fade { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+
 .pulse-dot { position: relative; }
 .pulse-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 999px; border: 2px solid currentColor; opacity: .5; animation: pulse 1.8s var(--ease-out) infinite; }
 @keyframes pulse { 0% { transform: scale(.6); opacity: .6 } 100% { transform: scale(1.6); opacity: 0 } }

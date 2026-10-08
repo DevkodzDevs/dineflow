@@ -232,7 +232,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
             </div>
           </div>
         )}
-        <div className="mt-2 grid grid-cols-2 gap-2"><input placeholder="Guest phone (optional)" inputMode="tel" className="num !py-1.5 !text-xs" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /><input placeholder="Name" className="!py-1.5 !text-xs" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /></div>
+        <div className="mt-2 grid grid-cols-2 gap-2"><input placeholder="Phone (optional)" inputMode="tel" className="num !py-1.5 !text-xs" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /><input placeholder="Name" className="!py-1.5 !text-xs" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /></div>
         </>
       ) : type === "room_service" ? (
         <select className="mt-3" value={room} onChange={(e) => { setRoom(e.target.value); const g = inHouse.find((x) => x.id === e.target.value); setCustomer({ name: g ? `Room ${g.rooms?.number} · ${g.guests?.full_name}` : "", phone: "" }); }}><option value="">Choose in-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
@@ -320,14 +320,22 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   );
 
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 -mx-4 md:mx-0 px-4 md:px-0">
+    <div className="grid lg:grid-cols-[minmax(0,1fr)_clamp(280px,32%,380px)] gap-6 -mx-4 md:mx-0 px-4 md:px-0">
       {/* minmax(0,1fr), not 1fr: a 1fr track refuses to go below its content's own minimum, and the
-          wider dish cards were pushing the ticket off the right of the screen. */}
+          wider dish cards were pushing the ticket off the right of the screen.
+          The ticket rail is a clamp, not a fixed 360px. Fixed, it ate the tablet: at 1080 the dish
+          side was handed 364px against the rail's 360 — half the screen for a ticket that is empty
+          until you tap something, and dish names wrapping to three lines in the half you actually
+          work in. The clamp gives the rail about a third, never under 280 (its content floor) and
+          never over 380 (past which it is just a wide empty column). Measured, the dish column goes
+          364 -> 444 at 1080 and 478 -> 558 at an iPad in landscape. */}
       <section className="min-w-0">
         <div className="flex items-center gap-3 mb-4">
           <Link href="/orders" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
-          <h1 className="text-2xl md:text-3xl">New order</h1>
-          <div className="relative ml-auto w-full max-w-xs"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel" /><input className="!pl-9" placeholder="Search dishes" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          {/* the search is what yields, not the title: `w-full max-w-xs` on the field squeezed the
+              heading until "New order" broke across two lines on a tablet */}
+          <h1 className="text-2xl md:text-3xl shrink-0 whitespace-nowrap">New order</h1>
+          <div className="relative ml-auto min-w-0 flex-1 max-w-xs"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel" /><input className="!pl-9" placeholder="Search dishes" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         </div>
 
         {/* What is already running, at the top of the screen the waiter is standing in front of.
@@ -340,7 +348,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
               <span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{running.length}</span>
               <Link href="/orders" className="ml-auto text-xs font-semibold text-steel hover:text-[var(--color-label)]">All orders →</Link>
             </div>
-            <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
+            <div className="rail-fade flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
               {running.slice(0, 12).map((o) => {
                 const n = (o.order_items ?? []).reduce((t, i) => t + Number(i.qty), 0);
                 return (
@@ -376,7 +384,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
             )}
           </div>
         )}
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
+        <div className="rail-fade flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
           {[{ id: "all", name: "All" }, ...categories].map((c) => <button key={c.id} onClick={() => setCat(c.id)} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line")}>{c.name}</button>)}
         </div>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
