@@ -2,9 +2,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, Menu, X } from "lucide-react";
+import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, Menu, X, LayoutGrid } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn } from "../ui";
+import { cn, Sheet } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
 
@@ -160,22 +160,103 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
   );
 }
 
-export function BottomNav({ role, type, enabled, allowed: personal }: { role: Role; type: PropertyType; enabled?: string[] | null; allowed?: string[] | null }) {
+/** The four a phone keeps in reach, by kind of property; the rest live under More. Only modules
+ *  this person may open are used, and the gaps fill from the menu's own order. */
+const PRIMARY: Record<string, string[]> = {
+  restaurant: ["dashboard", "orders", "kitchen", "billing"],
+  hotel: ["dashboard", "frontdesk", "rooms", "orders"],
+  resort: ["dashboard", "frontdesk", "rooms", "orders"],
+};
+const HOSPITALITY = ["frontdesk", "rooms", "housekeeping", "guests", "facilities"];
+const MANAGE = ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"];
+const TOP = ["dashboard", "tomorrow", "scan"];
+
+type MoreProps = { role: Role; type: PropertyType; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null };
+
+/**
+ * The phone's navigation: four sections and More. It used to be one sideways-scrolling strip of
+ * every section — five fitted, nothing said it scrolled, so most of the app looked missing — and a
+ * phone had no way to sign out at all. More opens every section this person can use, grouped the
+ * way the sidebar groups them, with the account, Master control and Sign out at the foot.
+ */
+export function BottomNav({ role, type, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref }: MoreProps) {
   const path = usePathname();
+  const [open, setOpen] = useState(false);
+  useEffect(() => { setOpen(false); }, [path]);
   const mods = modulesFor(type, role, enabled, personal);
   const allowed = ITEMS.filter((i) => mods.includes(i.key));
+  const want = PRIMARY[type] ?? PRIMARY.restaurant;
+  const primary = [...allowed.filter((i) => want.includes(i.key)).sort((a, b) => want.indexOf(a.key) - want.indexOf(b.key)), ...allowed.filter((i) => !want.includes(i.key))].slice(0, 4);
+  const rest = allowed.filter((i) => !primary.includes(i));
+  const onMore = rest.some((i) => path.startsWith(i.href));
+  const groups = [
+    { title: null as string | null, items: allowed.filter((i) => TOP.includes(i.key)) },
+    { title: type === "resort" ? "Resort" : "Hotel", items: allowed.filter((i) => HOSPITALITY.includes(i.key)) },
+    { title: "Dining", items: allowed.filter((i) => !HOSPITALITY.includes(i.key) && !MANAGE.includes(i.key) && !TOP.includes(i.key)) },
+    { title: "Manage", items: allowed.filter((i) => MANAGE.includes(i.key)) },
+  ].filter((g) => g.items.length);
+  const tab = (active: boolean) => cn("flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 text-[11px] font-display tracking-wide transition-colors", active ? "text-[var(--color-tint)]" : "text-[var(--color-label-2)]");
+  const pip = (active: boolean) => cn("h-8 w-12 grid place-items-center rounded-full transition", active && "bg-[rgb(76_217_100/.16)]");
   return (
-    <nav className="md:hidden fixed bottom-[max(10px,env(safe-area-inset-bottom))] inset-x-3 z-30 material-thick rounded-[26px] shadow-[var(--shadow-pop)]">
-      <div className="flex overflow-x-auto [scrollbar-width:none] snap-x px-1">
-        {allowed.map(({ key, href, label, Icon }) => {
-          const active = path.startsWith(href);
-          return (
-            <Link key={key} href={href} className={cn("shrink-0 snap-start flex flex-col items-center gap-0.5 py-2 text-[11px] font-display tracking-wide transition-colors", allowed.length <= 5 ? "flex-1" : "w-[20%] min-w-[76px]", active ? "text-[var(--color-tint)]" : "text-[var(--color-label-2)]")}>
-              <motion.span whileTap={{ scale: .85 }} className={cn("h-8 w-12 grid place-items-center rounded-full transition", active && "bg-[rgb(76_217_100/.16)]")}><Icon size={20} strokeWidth={active ? 2.4 : 1.9} /></motion.span>{label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+    <>
+      <nav aria-label="Sections" className="md:hidden fixed bottom-[max(10px,env(safe-area-inset-bottom))] inset-x-3 z-30 material-thick rounded-[26px] shadow-[var(--shadow-pop)]">
+        <div className="flex px-1">
+          {primary.map(({ key, href, label, Icon }) => {
+            const active = path.startsWith(href);
+            return (
+              <Link key={key} href={href} aria-current={active ? "page" : undefined} className={tab(active)}>
+                <motion.span whileTap={{ scale: .85 }} className={pip(active)}><Icon size={20} strokeWidth={active ? 2.4 : 1.9} /></motion.span><span className="truncate max-w-full px-0.5">{label}</span>
+              </Link>
+            );
+          })}
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} className={tab(open || onMore)}>
+            <motion.span whileTap={{ scale: .85 }} className={pip(open || onMore)}><LayoutGrid size={20} strokeWidth={open || onMore ? 2.4 : 1.9} /></motion.span>More
+          </button>
+        </div>
+      </nav>
+
+      <Sheet open={open} onClose={() => setOpen(false)} title="Menu">
+        <div className="space-y-5">
+          {groups.map((g) => (
+            <section key={g.title ?? "top"}>
+              {g.title && <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-[var(--color-label-3)] mb-2">{g.title}</div>}
+              <div className="grid grid-cols-3 gap-2">
+                {g.items.map(({ key, href, label, Icon }) => {
+                  const active = path.startsWith(href);
+                  return (
+                    <Link key={key} href={href} aria-current={active ? "page" : undefined}
+                      className={cn("min-w-0 min-h-[76px] rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center text-[12px] font-semibold leading-tight transition-colors",
+                        active ? "bg-[rgb(76_217_100/.14)] text-[var(--color-tint)] ring-1 ring-[rgb(76_217_100/.4)]" : "bg-[var(--color-fill)] text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}>
+                      <Icon size={20} strokeWidth={active ? 2.3 : 1.9} /><span className="line-clamp-2">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+
+          <div className="pt-4 border-t border-[var(--color-separator)] space-y-2">
+            {(() => {
+              const who = (
+                <>
+                  <span className="h-10 w-10 shrink-0 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] grid place-items-center font-display text-[17px]">{name.slice(0, 1)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold truncate">{name}</span>
+                    <span className="block text-xs text-[var(--color-label-2)] truncate">{ROLE_LABEL[role]}{membership !== "none" && <> · <span className={cn(membership === "trial" ? "text-[var(--color-orange)]" : membership === "expired" ? "text-[var(--color-red)]" : "text-[var(--color-tint)]")}>{membership === "trial" ? `trial · ${daysLeft}d` : membership === "expired" ? "expired" : `${daysLeft}d left`}</span></>}</span>
+                  </span>
+                </>
+              );
+              return accountHref
+                ? <Link href={accountHref} className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors">{who}<span className="text-xs text-[var(--color-label-2)] shrink-0">Settings</span></Link>
+                : <div className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)]">{who}</div>;
+            })()}
+            {isAdmin && <Link href="/admin" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><ShieldCheck size={17} /> Master control</Link>}
+            <form action="/logout" method="post">
+              <button className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] text-[15px] font-semibold hover:brightness-110 transition"><LogOut size={17} /> Sign out</button>
+            </form>
+          </div>
+        </div>
+      </Sheet>
+    </>
   );
 }

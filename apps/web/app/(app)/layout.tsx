@@ -82,7 +82,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <TopBar membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} />
         {children}
       </div></main>
-      <BottomNav role={s.profile.role} type={s.restaurant.property_type} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} />
+      <BottomNav role={s.profile.role} type={s.restaurant.property_type} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
+        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} />
       <Assist />
     </div>
    </ToastProvider>

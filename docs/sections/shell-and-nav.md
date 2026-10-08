@@ -50,7 +50,7 @@ Never give one to all of them.**
 
 | Width | Menu |
 | --- | --- |
-| < 768 | no sidebar; `BottomNav`, a scrolling bar of icons and labels |
+| < 768 | no sidebar; `BottomNav`: four sections and **More** (a `Sheet` with every section, the account, Master control and Sign out) |
 | 768–1279 (every iPad, both orientations, and tablets) | a 76px **icon rail** with a **hamburger** on top |
 | ≥ 1280 | the full 256px menu, always out; no hamburger |
 
@@ -77,6 +77,17 @@ a quarter of a second each: the 1–2 s "click and wait" people felt.
   change, which evicts those at once; live screens re-read through `useLive`.
 - Measured on a production build served from India (a stand-in for `bom1`), tapping sidebar links:
   first visit median **134 ms** (103–222), revisit median **21 ms** (11–37). Probe: `navperf.mjs`.
+
+### The phone's navigation
+
+`BottomNav` shows four sections and **More**. The four are by property kind — restaurant:
+dashboard, orders, kitchen, billing; hotel/resort: dashboard, frontdesk, rooms, orders — filtered
+to what this person may open and filled from the menu order. More opens a `Sheet` titled Menu
+with *every* allowed section as 3-up tiles grouped like the sidebar, then the account card (to
+`/settings` when allowed), Master control for admins, and **Sign out** (POST `/logout`). More is
+lit while the current page lives under it; the sheet closes on navigation. The old bar was one
+sideways-scrolling strip of every section — five fitted, nothing said it scrolled — and a phone
+had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375 paper).
 
 ### The rest of the shell
 
