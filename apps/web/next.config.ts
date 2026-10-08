@@ -17,6 +17,13 @@ const config: NextConfig = {
     serverActions: { bodySizeLimit: "2mb" },
     // tree-shake the big icon and animation libraries so each screen only ships what it uses
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts", "@supabase/supabase-js"],
+    /**
+     * Keep a screen the browser has already rendered for 30 seconds, so going back to it is
+     * instant instead of another round trip to the server. Every server action revalidates the
+     * paths it changed, which drops those from this cache at once, and the live screens re-read
+     * through useLive — so this saves the wait, not the freshness.
+     */
+    staleTimes: { dynamic: 30, static: 180 },
   },
   // The name aliases (/signin → /login and friends) are handled in middleware.ts, not here. The auth
   // gate in that middleware answers first for a signed-out visitor, so a redirect declared at this

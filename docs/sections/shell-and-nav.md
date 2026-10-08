@@ -61,6 +61,23 @@ the row so the page underneath does not move; `.nav-scrim` takes the click that 
 closes on Escape, on picking a screen (the `path` effect), and if the window grows past 1279.
 Every link carries `title={label}`, so the rail's icons name themselves on hover.
 
+### Speed: where a screen change spends its time
+
+Measured 2026-10-08. The live site's response headers read `X-Vercel-Id: bom1::iad1::…` — the edge
+in Mumbai, **the server functions in Washington DC** (Vercel's default; nothing set a region). The
+Supabase project answers this machine in India in ~60 ms (connect 14 ms), so it is in Mumbai. Every
+screen therefore crossed the world once to reach the function and then 2–3 more times for its
+queries (middleware `getClaims`, the `session_bundle` RPC, the page's own `Promise.all`), at roughly
+a quarter of a second each: the 1–2 s "click and wait" people felt.
+
+- **`apps/web/vercel.json` pins functions to `bom1`** — next to the database and the users. Do not
+  remove it; if the database ever moves, move this with it.
+- **`experimental.staleTimes: { dynamic: 30, static: 180 }`** in `next.config.ts` keeps a screen the
+  browser rendered for 30 s, so going back to it is instant. Server actions revalidate the paths they
+  change, which evicts those at once; live screens re-read through `useLive`.
+- Measured on a production build served from India (a stand-in for `bom1`), tapping sidebar links:
+  first visit median **134 ms** (103–222), revisit median **21 ms** (11–37). Probe: `navperf.mjs`.
+
 ### The rest of the shell
 
 - **`TopBar`** — search, theme switch, the bell (count comes from `session.lateKots`, already in
