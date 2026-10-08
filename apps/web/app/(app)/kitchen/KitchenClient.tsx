@@ -149,11 +149,14 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+      {/* On a phone the title takes its own line and the clock, the stale warning and the board
+          link share the next, clock left and link right — they were a ragged pair hanging off the
+          right edge under the title. */}
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-3 mb-4">
         <div><div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel">Kitchen display{view !== "all" && <> · {view}</>}</div><h1 className="text-3xl md:text-4xl">{board.length ? `${board.length} ticket${board.length > 1 ? "s" : ""} live` : "All clear"}</h1></div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <Link href="/kitchen/board" title="The customer-facing board: what is being prepared and what is ready to collect" className="h-10 px-3.5 rounded-full grid place-items-center text-sm font-semibold bg-card border border-line hover:bg-[var(--color-fill)] transition-colors"><span className="flex items-center gap-1.5"><Tv size={15} /> Order board</span></Link>
-          <div className="text-right"><div className="num text-sm text-steel">{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>{stale > 0 && <div className="text-[11px] text-chili mt-0.5" title="Older than a day and never marked ready — they are not on the board">{stale} older ticket{stale > 1 ? "s" : ""} still open</div>}</div>
+          <div className="order-first sm:order-none sm:text-right"><div className="num text-sm text-steel">{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>{stale > 0 && <div className="text-[11px] text-chili mt-0.5" title="Older than a day and never marked ready — they are not on the board">{stale} older ticket{stale > 1 ? "s" : ""} still open</div>}</div>
         </div>
       </div>
 
@@ -183,10 +186,24 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
       )}
 
       {allDay.length > 0 && (
-        <div className="mb-4 -mx-1 px-1 overflow-x-auto"><div className="flex items-center gap-2 min-w-max">
-          <span className="text-[10.5px] uppercase tracking-[0.14em] text-steel mr-1" title="Every portion still to cook, summed by dish — what the grill batches by">All day</span>
-          {allDay.map(([name, qty]) => <span key={name} className="rounded-xl bg-card border border-line px-3 py-1.5 text-sm whitespace-nowrap"><span className="num font-bold">{qty}</span> × {name}</span>)}
-        </div></div>
+        /* Every portion still to cook, summed by dish. A label of its own and a rail of compact
+           chips — count badge, then the dish — that scrolls with a fade at the edge, no scrollbar.
+           It was a row of tall pills with the browser's scrollbar under it and the last dish cut
+           off mid-word. A long name ends in an ellipsis on the chip and is whole in its title. */
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10.5px] uppercase tracking-[0.14em] text-steel" title="Every portion still to cook, summed by dish — what the grill batches by">All day · to cook</span>
+            <span className="num text-[11px] text-steel">{allDay.reduce((t, [, q]) => t + Number(q), 0)} portions</span>
+          </div>
+          <div className="rail-fade -mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-0.5">
+            {allDay.map(([name, qty]) => (
+              <span key={name} title={`${qty} × ${name}`} className="shrink-0 h-10 max-w-[15rem] inline-flex items-center gap-2 rounded-full bg-card border border-line pl-1.5 pr-3.5 text-[13px] font-medium">
+                <span className="num h-7 min-w-7 px-1.5 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center text-[13px] font-bold">{qty}</span>
+                <span className="truncate">{name}</span>
+              </span>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-3">

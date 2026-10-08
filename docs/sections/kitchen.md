@@ -26,6 +26,12 @@ category with no station stays on the expo view only. The warn and target minute
 
 ## Before you edit
 
+- **"All day" is a labelled rail of compact chips** (count badge + dish, `max-w-[15rem]` truncating,
+  whole name in the title), with `rail-fade` and no scrollbar, and a "n portions" total beside the
+  label. It was tall pills with the browser scrollbar under them, the last dish cut mid-word.
+- **On a phone the header's second line is clock + stale warning left, Order board right**
+  (`order-first` on the clock block); from `sm` they sit right of the title as before.
+
 - **The board is read at distance.** Type on `/kitchen/board` is sized for a wall, not a desk. Do
   not shrink it to fit more tickets; fewer, legible tickets is the design.
 - **`useLive(["kots"])`** keeps both views current. Do not add a polling interval.
