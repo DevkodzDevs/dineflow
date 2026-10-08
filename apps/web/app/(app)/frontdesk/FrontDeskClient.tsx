@@ -2,7 +2,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, LogIn, CalendarDays, Moon, Users, Star, ClipboardCheck, List } from "lucide-react";
+import { Plus, LogIn, CalendarDays, Moon, Users, Star, ClipboardCheck, List, Check } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Button, Sheet, Field, StatTile, Pill, cn, Empty, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
@@ -105,7 +105,7 @@ function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: R
             ))}
           </div>
         </div>
-        <div className={cn("grid gap-1.5 sm:grid-cols-6", view === "2" ? "grid-cols-2" : view === "3" ? "grid-cols-3" : view === "list" ? "grid-cols-1" : "grid-cols-4")}>{free.map((r) => <button key={r.id} type="button" onClick={() => pickRoom(r)} title={r.condition ? `Housekeeping: ${r.condition}` : undefined} className={cn("keycard text-sm font-semibold relative", view === "list" ? "h-12 max-sm:flex max-sm:items-center max-sm:gap-3 max-sm:px-3.5 max-sm:text-left" : view === "2" ? "h-14 sm:h-12" : "h-12", r.status, f.room_id === r.id && "!border-saffron shadow-glow")}>{r.condition && <span className={cn("absolute top-1 right-1 h-1.5 w-1.5 rounded-full", CONDITION_DOT[r.condition] ?? "bg-steel")} />}<div className={cn("font-display", view === "list" && "max-sm:text-lg max-sm:w-12")}>{r.number}</div><div className={cn("text-[9px] opacity-70 -mt-0.5", view === "list" ? "max-sm:mt-0 max-sm:text-[13px] max-sm:flex-1 max-sm:opacity-80" : view === "2" && "max-sm:text-[11px]")}><span className={view === "list" || view === "2" ? "max-sm:hidden" : undefined}>{r.room_types?.name?.slice(0, 8)}</span>{(view === "list" || view === "2") && <span className="sm:hidden">{r.room_types?.name}</span>}</div></button>)}</div>
+        <div className={cn("grid gap-2 sm:grid-cols-6", view === "2" ? "grid-cols-2" : view === "3" ? "grid-cols-3" : view === "list" ? "grid-cols-1" : "grid-cols-4")}>{free.map((r) => <RoomPick key={r.id} r={r} on={f.room_id === r.id} view={view} onPick={() => pickRoom(r)} />)}</div>
       </Field>
       <div className="grid grid-cols-3 gap-3"><Field label="Rate / night"><input type="number" className="num" value={f.rate || ""} onChange={(e) => setF({ ...f, rate: Number(e.target.value) })} /></Field><Field label="Adults"><input type="number" min={1} className="num" value={f.adults} onChange={(e) => setF({ ...f, adults: Number(e.target.value) })} /></Field><Field label="Children"><input type="number" min={0} className="num" value={f.children} onChange={(e) => setF({ ...f, children: Number(e.target.value) })} /></Field></div>
       <div className="hairline-gold" />
@@ -129,5 +129,48 @@ function Head({ icon, label, n, tone }: { icon: ReactNode; label: string; n: num
       <h2 className="text-[17px] !font-bold tracking-[-0.01em] text-[var(--color-label)]">{label}</h2>
       <span className="num h-6 min-w-6 px-2 rounded-full grid place-items-center text-[12px] font-bold" style={{ color: n ? c : "var(--color-label-2)", background: n ? `color-mix(in srgb, ${c} 15%, transparent)` : "var(--color-fill)" }}>{n}</span>
     </div>
+  );
+}
+
+/** Housekeeping's word on a room, in words and colour. Explicit tokens: --color-saffron is the green
+ *  tint in the dark theme, which made "clean" and "inspected" the same green dot. */
+const COND_TONE: Record<string, { label: string; c: string }> = {
+  inspected: { label: "Inspected", c: "var(--color-green)" }, clean: { label: "Clean", c: "var(--color-orange)" },
+  dirty: { label: "Dirty", c: "var(--color-red)" }, pickup: { label: "Pickup", c: "var(--color-blue)" },
+};
+
+/**
+ * One room in the booking picker. The number and its housekeeping dot sit together on one line
+ * (the dot used to float in the corner, jammed against the edge), the type underneath, and where the
+ * tile is wide enough the state in words. Picked is a green ring with a tick, not a black slab.
+ */
+function RoomPick({ r, on, view, onPick }: { r: Room; on: boolean; view: "2" | "3" | "4" | "list"; onPick: () => void }) {
+  const t = r.condition ? COND_TONE[r.condition] : null;
+  const note = r.status === "cleaning" ? { label: "Cleaning", c: "var(--color-blue)" } : r.status === "reserved" ? { label: "Reserved", c: "var(--color-orange)" } : null;
+  const wide = view === "2" || view === "list";
+  const dot = t && <span aria-hidden className="h-2 w-2 rounded-full shrink-0" style={{ background: t.c, boxShadow: `0 0 0 3px color-mix(in srgb, ${t.c} 22%, transparent)` }} />;
+  return (
+    <button type="button" onClick={onPick} aria-pressed={on} title={[t?.label, note?.label].filter(Boolean).join(" · ") || undefined}
+      className={cn("room-pick relative min-w-0 rounded-2xl border text-left transition-all",
+        on ? "border-[var(--color-tint)] bg-[var(--color-green-2)] shadow-[0_0_0_3px_rgb(76_217_100/.18)]" : "border-[var(--color-separator)] bg-[var(--color-bg-2)] hover:border-[var(--color-label-3)]",
+        view === "list" ? "max-sm:flex max-sm:items-center max-sm:gap-3 max-sm:h-14 max-sm:px-4" : "", wide ? "max-sm:px-3.5 max-sm:py-3" : "", "px-2 py-2.5 sm:px-2 sm:py-2.5")}>
+      {view === "list" ? (<>
+        <span className="sm:hidden font-display text-xl w-12 shrink-0">{r.number}</span>
+        <span className="sm:hidden flex-1 min-w-0 text-[13px] truncate">{r.room_types?.name ?? "—"}</span>
+        <span className="sm:hidden flex items-center gap-2 shrink-0">
+          {note && <span className="text-[11px] font-semibold" style={{ color: note.c }}>{note.label}</span>}
+          {t && <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: t.c }}>{dot}{t.label}</span>}
+        </span>
+      </>) : null}
+      <span className={cn("flex flex-col", view === "list" && "max-sm:hidden", !wide && "items-center text-center", wide && "max-sm:items-start sm:items-center sm:text-center")}>
+        <span className="flex items-center gap-1.5"><span className="font-display text-[19px] leading-none">{r.number}</span>{view === "2" ? <span className="max-sm:hidden contents">{dot}</span> : dot}</span>
+        <span className={cn("mt-1 text-[11px] text-[var(--color-label-2)] truncate max-w-full", !wide && "sm:max-w-full")}>{wide ? r.room_types?.name : r.room_types?.name?.split(" ")[0]}</span>
+        {wide && (t || note) && <span className="sm:hidden mt-1.5 flex flex-wrap gap-1">
+          {t && <span className="h-5 px-2 rounded-full text-[10.5px] font-semibold inline-flex items-center" style={{ color: t.c, background: `color-mix(in srgb, ${t.c} 14%, transparent)` }}>{t.label}</span>}
+          {note && <span className="h-5 px-2 rounded-full text-[10.5px] font-semibold inline-flex items-center" style={{ color: note.c, background: `color-mix(in srgb, ${note.c} 14%, transparent)` }}>{note.label}</span>}
+        </span>}
+      </span>
+      {on && <span className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] grid place-items-center shadow"><Check size={12} strokeWidth={3} /></span>}
+    </button>
   );
 }

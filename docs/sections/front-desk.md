@@ -38,6 +38,11 @@ see at a glance which free room is actually sellable.
 - **The booking dialog's room picker has a phone-only layout switch** — 2, 3, 4 across or a list
   (full room type) — saved per device in `localStorage` (`df-room-picker`), read when the form opens
   and written only when someone picks. From `sm` it is always six across.
+- **Each room in the picker is a `RoomPick`**: number with its housekeeping dot beside it (level,
+  never in the corner), the type under it, and on the wide phone layouts the state in words as tags
+  (Inspected / Clean / Dirty / Pickup, plus Cleaning / Reserved). Colours come from `COND_TONE`
+  with explicit tokens — `CONDITION_DOT`'s `bg-saffron` is green in the dark theme. Picked is a green
+  ring with a tick badge. Probe: `pick.mjs` (every layout at 390, both themes, and 1440).
 
 - **Arrivals / Upcoming / In house use `Head`** — a tinted icon tile, a bold 17px `h2`
   (`!font-bold`: the global heading weight beats a plain utility), and a count badge in the
@@ -45,6 +50,11 @@ see at a glance which free room is actually sellable.
 - **The booking dialog's room picker has a phone-only layout switch** — 2, 3, 4 across or a list
   (full room type) — saved per device in `localStorage` (`df-room-picker`), read when the form opens
   and written only when someone picks. From `sm` it is always six across.
+- **Each room in the picker is a `RoomPick`**: number with its housekeeping dot beside it (level,
+  never in the corner), the type under it, and on the wide phone layouts the state in words as tags
+  (Inspected / Clean / Dirty / Pickup, plus Cleaning / Reserved). Colours come from `COND_TONE`
+  with explicit tokens — `CONDITION_DOT`'s `bg-saffron` is green in the dark theme. Picked is a green
+  ring with a tick badge. Probe: `pick.mjs` (every layout at 390, both themes, and 1440).
 
 - **A room's `status` and its `condition` are different things.** `status` is
   available/occupied/maintenance/reserved — front-office truth. `condition` is
