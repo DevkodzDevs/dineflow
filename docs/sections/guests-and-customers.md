@@ -41,6 +41,9 @@ people, each with a WhatsApp link carrying the message and their first name. **N
 nothing is written** — the owner presses send in WhatsApp, one at a time. `lib/marketing.ts`, 4
 tests.
 
+An idea's offer and timing are wrapping tags, not `Pill`s — a pill is one line, and "A free dessert
+with any Meen kuzhambu on Tuesdays" ran out of its card at 834.
+
 Coupons are checked at the till by `coupon_check` (see
 [billing-and-invoices.md](billing-and-invoices.md)).
 

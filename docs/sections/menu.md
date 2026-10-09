@@ -47,6 +47,9 @@ Jigarthanda) — on manoooo, Mutton chukka already exists and shows as *already 
 
 ## Before you edit
 
+- **The photo import's name and price boxes are `!min-h-10`, 44 on touch** — they were `!min-h-0`,
+  35px, under the touch floor at 412, 834 and 1194.
+
 - **A price comes from the cheapest variant when variants exist** — the card shows `from ₹X`. Do not
   read `menu_items.price` as the sell price without checking `menu_variants`.
 - **`is_available` is the sold-out switch, not stock.** See [orders-and-till.md](orders-and-till.md).

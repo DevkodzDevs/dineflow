@@ -65,8 +65,11 @@ never be reachable on a real one.
   [billing-and-invoices.md](billing-and-invoices.md).
 - **`NEXT_PUBLIC_CLOUD_URL`** is what QR codes and share links are built from. Wrong in production
   and every printed QR points at the wrong host.
-- **`diag.mjs` reports four unlabelled 51×31 targets on `/settings/storefront`** — the switches in
-  *What guests can do*. They predate the Google card; do not count them against it.
+- **Membership "Manage" is a 44px target** (`min-h-11 -my-3`), the row height unchanged. It was 45×16.
+- **A switch in a row is named after the row** (`<Switch name={title} />`) and brings no `<label>` of
+  its own — the row is the label, and the whole row (70–90px) is the tap target. It used to nest a
+  label inside the row's label (invalid HTML) and had no accessible name; `diag.mjs` reported it as
+  four unlabelled 51×31 targets. `sw2.mjs`: tap the knob, tap the row text — each toggles once.
 - **Four controls in the add-ons dialog are under 44px** — a known, pre-existing gap flagged by
   `responsive.mjs`. Do not treat a new one as "the same known issue" without checking.
 

@@ -454,7 +454,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           rail was the tallest thing in the row, lengthened the page as it grew, and got pushed up. */}
       <section className="min-w-0 lg:min-h-[calc(100dvh-2.5rem)]">
         <div className="flex items-center gap-3 mb-4">
-          <Link href="/orders" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
+          <Link href="/orders" className="h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 shrink-0 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
           {/* the search is what yields, not the title: `w-full max-w-xs` on the field squeezed the
               heading until "New order" broke across two lines on a tablet */}
           <h1 className="text-2xl md:text-3xl shrink-0 whitespace-nowrap">New order</h1>
@@ -469,7 +469,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
             <div className="flex items-center gap-2 mb-2">
               <span className="eyebrow">Order line</span>
               <span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{running.length}</span>
-              <Link href="/orders" className="ml-auto text-xs font-semibold text-steel hover:text-[var(--color-label)]">All orders →</Link>
+              <Link href="/orders" className="ml-auto inline-flex items-center min-h-11 pl-2 -my-3 text-xs font-semibold text-steel hover:text-[var(--color-label)]">All orders →</Link>
             </div>
             <div className="rail-fade flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
               {running.slice(0, 12).map((o) => {

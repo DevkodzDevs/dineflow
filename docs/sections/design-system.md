@@ -74,6 +74,10 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
 
+- **`Switch` without `label` returns the bare `button role="switch"`** and takes `name` for its
+  `aria-label`. Use it inside a row that is a `<label>` (Storefront, Loyalty): the row does the
+  tapping. With `label`, it still wraps itself in a label as before.
+
 - **A field inside a grey panel takes the card colour.** Any element with `bg-[var(--color-fill)]`
   gives its inputs/selects/textareas `--color-bg-2` (white in paper) and a hairline — they used to be
   the panel's own grey and disappeared (Settings → Razorpay, Add a table).

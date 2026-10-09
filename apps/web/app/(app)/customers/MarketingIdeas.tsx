@@ -46,7 +46,7 @@ export function MarketingIdeas({ customers, minRedeem }: { customers: Person[]; 
               <div key={k} className="min-w-0 rounded-2xl border border-[var(--color-separator)] p-4 flex flex-col gap-2">
                 <div className="font-semibold text-[15px] leading-snug">{i.title}</div>
                 <p className="text-xs text-[var(--color-label-2)]">{i.why}</p>
-                <div className="flex flex-wrap gap-1.5"><Pill tone="ready">{i.offer}</Pill><Pill tone="served">{i.when}</Pill></div>
+                <div className="flex flex-wrap gap-1.5 min-w-0">{[[i.offer, "bg-[var(--color-green-2)] text-[var(--color-green)]"], [i.when, "bg-[var(--color-fill)] text-[var(--color-label-2)]"]].map(([t, c]) => <span key={t} className={`max-w-full rounded-xl px-2.5 py-1 text-[11px] font-semibold leading-snug ${c}`}>{t}</span>)}</div>
                 <p className="text-[13px] rounded-xl bg-[var(--color-fill)] p-3 leading-relaxed">{i.message.replace(/\{name\}/g, eg)}</p>
                 <div className="mt-auto flex gap-2 pt-1">
                   <button type="button" onClick={() => setOpen(i)} disabled={n === 0}

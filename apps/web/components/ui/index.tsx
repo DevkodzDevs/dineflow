@@ -195,10 +195,15 @@ export function Segmented<T extends string>({ value, onChange, options, classNam
 }
 
 /* ── Switch (iOS toggle) ──────────────────────────────────────────────────────────────── */
-export function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
+export function Switch({ on, onChange, label, name }: { on: boolean; onChange: (v: boolean) => void; label?: string; name?: string }) {
+  const knob = <button type="button" role="switch" aria-checked={on} aria-label={label ? undefined : name} data-on={on} className="switch" onClick={() => { tap(12); onChange(!on); }} />;
+  /* Without text of its own the switch is usually inside a row that is already a <label> — a label
+     inside a label is invalid, and the outer one (the whole row, the real tap target) stops working
+     as one. So it brings no label of its own then. */
+  if (!label) return knob;
   return (
     <label className="inline-flex items-center gap-3 cursor-pointer select-none">
-      <button type="button" role="switch" aria-checked={on} data-on={on} className="switch" onClick={() => { tap(12); onChange(!on); }} />
+      {knob}
       {label && <span className="text-[15px]">{label}</span>}
     </label>
   );

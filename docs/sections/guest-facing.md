@@ -72,6 +72,9 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
 
 ## Before you edit
 
+- **Party-size chips are at least 44px wide** (`min-w-11`) — "1" was 34px. **The phone number under
+  the address is a 44px target** (`py-3 -my-3`), the row's height unchanged; it was 20px tall.
+
 - **Adding a route here means adding it to both `SESSION_FREE` and `PUBLIC_PREFIX`.** Miss the first
   and it works but is slow for the guest; miss the second and it redirects to `/login`.
 - **Nothing on these pages may need JavaScript to read the essentials.** A guest on a bad connection

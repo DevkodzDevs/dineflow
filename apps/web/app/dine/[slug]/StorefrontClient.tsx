@@ -98,7 +98,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
       </div>
 
       <main className="max-w-4xl mx-auto px-5 py-5">
-        {d.address && <div className="flex items-center gap-4 text-sm text-[var(--color-label-2)] mb-4"><span className="flex items-center gap-1.5"><MapPin size={14} /> {d.address}</span>{d.phone && <a href={`tel:${d.phone}`} className="flex items-center gap-1.5 hover:text-[var(--color-label)]"><Phone size={14} /> {d.phone}</a>}</div>}
+        {d.address && <div className="flex items-center gap-4 text-sm text-[var(--color-label-2)] mb-4"><span className="flex items-center gap-1.5"><MapPin size={14} /> {d.address}</span>{d.phone && <a href={`tel:${d.phone}`} className="flex items-center gap-1.5 py-3 -my-3 hover:text-[var(--color-label)]"><Phone size={14} /> {d.phone}</a>}</div>}
 
         {d.offers.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4 [scrollbar-width:none]">
@@ -126,7 +126,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
             <div className="card p-5">
               <div className="grid sm:grid-cols-2 gap-3">
                 <Field label="Date"><input type="date" min={today()} value={date} onChange={(e) => setDate(e.target.value)} className="num" /></Field>
-                <Field label="How many"><div className="flex gap-1.5 flex-wrap">{[1, 2, 3, 4, 5, 6, 8, 10].map((n) => <button key={n} onClick={() => setParty(n)} className={cn("chip !h-9 !px-3.5", party === n && "on")}>{n}</button>)}</div></Field>
+                <Field label="How many"><div className="flex gap-1.5 flex-wrap">{[1, 2, 3, 4, 5, 6, 8, 10].map((n) => <button key={n} onClick={() => setParty(n)} className={cn("chip !h-9 !px-3.5 min-w-11 justify-center", party === n && "on")}>{n}</button>)}</div></Field>
               </div>
               <div className="mt-5">
                 <div className="eyebrow mb-2">Pick a time</div>

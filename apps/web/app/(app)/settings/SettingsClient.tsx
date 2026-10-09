@@ -228,7 +228,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               </div>
               <div className="text-xs text-steel flex items-center justify-between px-1">
                 <span>Membership: <b className="uppercase">{restaurant.membership}</b>{restaurant.membership_plan ? ` · ${restaurant.membership_plan}` : ""}{restaurant.membership === "trial" ? ` · ends ${restaurant.trial_ends_at.slice(0, 10)}` : restaurant.membership_ends_at ? ` · until ${restaurant.membership_ends_at.slice(0, 10)}` : ""}</span>
-                <Link href="/membership" className="font-semibold underline text-[var(--color-label)]">Manage</Link>
+                <Link href="/membership" className="inline-flex items-center min-h-11 -my-3 pl-3 font-semibold underline text-[var(--color-label)]">Manage</Link>
               </div>
             </Section>
           </Card>
@@ -286,7 +286,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   the form still posts loyalty_enabled from a checkbox kept in step and out of sight */}
               <label className="card p-3.5 flex items-center gap-3 cursor-pointer">
                 <span className="flex-1 min-w-0"><span className="block text-[15px] font-semibold">Give points on paid bills</span><span className="block text-xs text-[var(--color-label-2)] mt-0.5">{loyaltyOn ? "On — every paid bill earns points" : "Off — nobody earns or spends points"}</span></span>
-                <Switch on={loyaltyOn} onChange={setLoyaltyOn} />
+                <Switch on={loyaltyOn} onChange={setLoyaltyOn} name="Give points on paid bills" />
                 <input type="checkbox" name="loyalty_enabled" checked={loyaltyOn} readOnly hidden style={{ display: "none" }} />
               </label>
               <div className="grid sm:grid-cols-3 gap-3">

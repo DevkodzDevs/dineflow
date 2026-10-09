@@ -76,6 +76,12 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **"All orders →" over the Order line is a 44px target** (`min-h-11 pl-2 -my-3`): the height is
+  taken back by negative margin, so the row does not grow. It was 67×16. Do not add `-mr-*` — it
+  pushed the link 8px past the section on the right.
+- **The till's Back link is 44 on touch** (`[@media(pointer:coarse)]:h-11 w-11`). The control floor
+  only lifts buttons; a `Link` stays at its 40px unless it says otherwise.
+
 - **The floor is two tables across on a phone** (`grid-cols-2 min-[520px]:grid-cols-3`). At three, a
   108px card could not hold "T3 · READY · 4 seats". In the open-orders list the dish names truncate
   and the total is `shrink-0`, so they never run together.

@@ -62,10 +62,10 @@ export function MenuImport({ existing, onDone }: { existing: string[]; onDone: (
                 <button type="button" onClick={() => set(i, { is_veg: !r.is_veg })} title={r.is_veg ? "Veg — tap to change" : "Non-veg — tap to change"}
                   className={cn("h-9 w-9 rounded-lg grid place-items-center shrink-0", r.is_veg ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-red-2)] text-[var(--color-red)]")}>{r.is_veg ? <Leaf size={14} /> : <Drumstick size={14} />}</button>
                 <span className="flex-1 min-w-0">
-                  <input value={r.name} onChange={(e) => set(i, { name: e.target.value })} className="!min-h-0 !py-1.5 !px-2 !text-[14px] font-semibold" />
+                  <input value={r.name} onChange={(e) => set(i, { name: e.target.value })} className="!min-h-10 [@media(pointer:coarse)]:!min-h-11 !py-1.5 !px-2 !text-[14px] font-semibold" />
                   <span className="block text-[11px] text-[var(--color-label-2)] px-2 mt-0.5 truncate">{r.category || "No section"}{dup ? " · already on your menu" : ""}</span>
                 </span>
-                <input type="number" min={0} value={r.price || ""} onChange={(e) => set(i, { price: Number(e.target.value) })} className="num !w-20 !min-h-0 !py-1.5 !px-2 !text-[14px] text-right" aria-label={`Price of ${r.name}`} />
+                <input type="number" min={0} value={r.price || ""} onChange={(e) => set(i, { price: Number(e.target.value) })} className="num !w-20 !min-h-10 [@media(pointer:coarse)]:!min-h-11 !py-1.5 !px-2 !text-[14px] text-right" aria-label={`Price of ${r.name}`} />
               </div>
             );
           })}
