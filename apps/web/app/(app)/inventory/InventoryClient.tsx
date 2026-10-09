@@ -217,11 +217,11 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
         <Field label="Invoice no."><input value={inv} onChange={(e) => setInv(e.target.value)} /></Field>
       </div>
       <div className="space-y-2">
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_56px_28px] sm:grid-cols-[minmax(0,1fr)_80px_90px_56px_28px] gap-2 text-[11px] uppercase text-steel font-semibold"><span className="hidden sm:block">Ingredient</span><span>Qty</span><span>Cost/unit</span><span>Packs</span><span /></div>
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_56px_28px] sm:grid-cols-[minmax(0,1fr)_80px_112px_56px_28px] gap-2 text-[11px] uppercase text-steel font-semibold"><span className="hidden sm:block">Ingredient</span><span>Qty</span><span>Cost/unit</span><span>Packs</span><span /></div>
         {lines.map((l, i) => {
           const pack = Number(byId[l.ingredient_id]?.pack_qty ?? 0);
           return (
-            <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_56px_28px] sm:grid-cols-[minmax(0,1fr)_80px_90px_56px_28px] gap-2 items-center max-sm:pb-2.5 max-sm:border-b max-sm:border-[var(--color-separator)]">
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_56px_28px] sm:grid-cols-[minmax(0,1fr)_80px_112px_56px_28px] gap-2 items-center max-sm:pb-2.5 max-sm:border-b max-sm:border-[var(--color-separator)]">
               {/* On a phone the ingredient gets its own line — five columns left it ~100px and the name hid under the arrow. */}
               <select className="col-span-4 sm:col-span-1 min-w-0" value={l.ingredient_id} onChange={(e) => set(i, "ingredient_id", e.target.value)}><option value="">Choose</option>{ingredients.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.unit})</option>)}</select>
               <input type="number" step="0.001" min="0" className="num" value={l.qty || ""} onChange={(e) => set(i, "qty", e.target.value)} placeholder={l.packs ? "packs" : ""} />
