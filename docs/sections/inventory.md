@@ -46,12 +46,14 @@ it is cooked, and the leak report cannot see it. See [menu.md](menu.md).
   write silently breaks the leak report, which compares expected against actual movement.
 - **Units are per-ingredient and do not convert automatically.** `applyStandardRecipe` skips an
   ingredient the pantry keeps in another unit rather than guessing, and says so.
-- **On a phone the purchase row stacks**: the ingredient takes its own full line, qty / cost / packs
-  sit under it. Five columns at 412px left the name ~100px and it hid under the select's arrow.
-  `sm:` and up keep the single row.
-- **The cost column is 112px, not 90.** With 16px padding a 90px box showed 56px of text, and a
-  scanned bill's "972.02" was cut to "972.0" at 1440 and 1920. `cost.mjs` measures `scrollWidth`
-  against `clientWidth` for every cost box at four widths.
+- **Record purchase is one card per item**, not a five-column row: the ingredient picker across the top
+  (`aria-label="Ingredient"`) with a 44px delete, then labelled Qty (with the unit) and Cost per unit,
+  an "In packs of N" toggle only when the ingredient has a pack size, and the line's own total. From
+  `sm` the bottom row is `1fr 1fr 14.5rem`, a fixed last column so every item's fields line up whether
+  or not it has the packs toggle. Above the items: a solid scan card with a Take photo button, a result
+  panel ("3 items read · Supplier", sample pill, unmatched items as amber chips), and Supplier/Invoice
+  auto-fit at 11rem. `cost.mjs` measures every cost box: 219/219 at 834–1920, 166/166 at 412. The old
+  rows cut "972.02" to "972.0" and hid ingredient names under the select arrow on a phone.
 - **A received PO is a financial record.** Correct it with a new adjustment, not an edit.
 - **`/inventory/leaks` is read-only** and is meant to be. It is evidence for a conversation, not a
   place to change numbers.
