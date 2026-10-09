@@ -50,14 +50,13 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
 
 ## Before you edit
 
-- **Facilities is one panel per kind with a full-width row per facility** (`/facilities`). A toolbar
-  of kind chips with counts (All · Spa & wellness · Activities · Venues) filters, and holds the one
-  "+ Facility" action. Each panel header has the kind-coloured icon (`KIND_TONE`: spa green, activity
-  blue, venue amber), its count and "from ₹…". A row is `.fac-row` in `globals.css`: on a phone it
-  stacks (icon · name on two lines · edit, then the chips, then price and Book); from 768px it reads
-  across (icon · name over chips · price per person · Book · edit). Chips show duration, capacity and,
-  when there are any, "N booked · next Sat 4:30 pm" from the schedule already loaded. Cards in a grid
-  were tried first and rejected: narrow cards wrapped names and left half-empty rows.
+- **Facility cards** (`/facilities`) are one compact card: a kind-coloured icon tile (spa green,
+  activity blue, venue amber via `KIND_TONE`), the name with duration and capacity as chips, a 44px
+  edit button, then a divider, the price in whole rupees with "per person · N booked · next Sat 4:30
+  pm" (from the schedule rows already loaded) and a full-size Book. The grid is
+  `repeat(auto-fill, minmax(20rem, 1fr))` beside the schedule; one column on a phone. A row-list
+  layout (one panel per kind) was tried after this and the owner preferred these cards, so it was
+  taken out again.
 
 - **Room cards carry their own action bar** (`.room-act`, 40px, 44 on touch, sharing the card's
   width). The card is the `keycard` wrapper; the top is the `Link`, the bar is its sibling, so no

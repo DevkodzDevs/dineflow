@@ -15,66 +15,50 @@ const KIND_TONE: Record<string, string> = {
   activity: "bg-[var(--color-blue-2)] text-[var(--color-blue)]",
   venue: "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]",
 };
-const KINDS = [{ key: "spa", label: "Spa & wellness" }, { key: "activity", label: "Activities" }, { key: "venue", label: "Venues" }];
 const at = (iso: string) => new Date(iso).toLocaleString("en-IN", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const KIcon = ({ k, size = 16 }: { k: string; size?: number }) => (k === "spa" ? <Flower2 size={size} /> : k === "venue" ? <Tent size={size} /> : <Waves size={size} />);
 
 export function FacilitiesClient({ facilities, slots, inHouse }: { facilities: F[]; slots: S[]; inHouse: IH[] }) {
   const [edit, setEdit] = useState<Partial<F> | null>(null); const [book, setBook] = useState<F | null>(null); const [err, setErr] = useState<string | null>(null); const [pending, start] = useTransition();
   const [bf, setBf] = useState({ when: new Date(Date.now() + 5.5 * 3600e3 + 3600e3).toISOString().slice(0, 16), people: 1, booking: "", guest: "" });
-  const [show, setShow] = useState("all");
   const grouped = ["spa", "activity", "venue"].map((k) => ({ k, items: facilities.filter((f) => f.kind === k) })).filter((g) => g.items.length);
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="space-y-5 min-w-0">
-        {/* Filter by kind, with counts, and the one action, in the shared toolbar. */}
-        <div className="toolbar !mb-5"><div className="toolbar-group">
-          {[["all", "All", facilities.length], ...KINDS.map((k) => [k.key, k.label, facilities.filter((f) => f.kind === k.key).length] as const)].map(([key, label, n]) => (
-            <button key={key} type="button" onClick={() => setShow(key as string)} className={`chip ${show === key ? "on" : ""}`}>{label}<span className="num text-[11px] opacity-70">{n}</span></button>
-          ))}
-        </div><div className="toolbar-group toolbar-end">
-          <Button onClick={() => setEdit({ kind: show === "all" ? "activity" : show, duration_minutes: 60, capacity: 1 })}><Plus size={16} /> Facility</Button>
-        </div></div>
-
-        {/* One panel per kind, a full-width row per facility: nothing narrow, no half-empty rows.
-            On a phone a row stacks (name and edit, then the chips, then price and Book); from md it
-            reads straight across (.fac-row in globals.css). */}
-        {grouped.filter((g) => show === "all" || g.k === show).map((g) => {
-          const kind = KINDS.find((k) => k.key === g.k)!;
-          const from = Math.min(...g.items.map((f) => Number(f.rate)));
-          return (
-            <motion.section key={g.k} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="feather overflow-hidden">
-              <header className="flex items-center gap-3 px-4 md:px-5 py-3.5 border-b border-[var(--color-separator)]">
-                <span className={`h-9 w-9 rounded-xl grid place-items-center shrink-0 ${KIND_TONE[g.k]}`}><KIcon k={g.k} size={17} /></span>
-                <h2 className="font-display text-[19px] leading-none">{kind.label}</h2>
-                <span className="num h-6 min-w-6 px-2 rounded-full bg-[var(--color-fill)] text-[12px] font-bold grid place-items-center">{g.items.length}</span>
-                <span className="ml-auto text-xs text-[var(--color-label-2)] whitespace-nowrap">from <b className="num text-[var(--color-label)]">{formatINR(from, { whole: true })}</b></span>
-              </header>
-              <ul className="divide-y divide-[var(--color-separator)]">
-                {g.items.map((f) => {
+      <div className="space-y-6">
+        <div className="flex justify-end"><Button onClick={() => setEdit({ kind: "activity", duration_minutes: 60, capacity: 1 })}><Plus size={16} /> Facility</Button></div>
+        {grouped.map((g) => (
+          <section key={g.k}><div className="flex items-center gap-2 mb-3"><span className={`h-7 w-7 rounded-lg grid place-items-center ${KIND_TONE[g.k]}`}><KIcon k={g.k} size={14} /></span><span className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{g.k === "venue" ? "Venues" : g.k === "spa" ? "Spa & wellness" : "Activities"}</span><span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{g.items.length}</span></div>
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))]">{g.items.map((f, i) => (
+              <motion.div key={f.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                {/* One compact card: what it is on top, what it costs and the Book button below. The
+                    old card was a big icon, a gap, then name and price far apart — mostly air on a phone. */}
+                {(() => {
                   const upcoming = slots.filter((x) => x.facility_id === f.id && new Date(x.starts_at).getTime() > Date.now());
                   return (
-                    <li key={f.id} className="fac-row hover:bg-[var(--color-fill)] transition-colors">
-                      <span className={`fa-icon h-12 w-12 rounded-2xl grid place-items-center ${KIND_TONE[f.kind] ?? KIND_TONE.activity}`}><KIcon k={f.kind} size={22} /></span>
-                      <div className="fa-name min-w-0 font-semibold text-[16px] leading-snug line-clamp-2 md:line-clamp-1">{f.name}</div>
-                      <div className="fa-meta flex flex-wrap gap-1.5">
-                        <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold text-[var(--color-label-2)]"><Clock size={11} /> {f.duration_minutes} min</span>
-                        <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold text-[var(--color-label-2)]"><Users size={11} /> up to {f.capacity}</span>
-                        {upcoming.length > 0 && <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-green-2)] text-[11.5px] font-semibold text-[var(--color-green)]">{upcoming.length} booked · next {at(upcoming[0].starts_at)}</span>}
+                    <div className="feather feather-lift h-full flex flex-col p-4 gap-3.5">
+                      <div className="flex items-start gap-3.5">
+                        <span className={`h-12 w-12 rounded-2xl grid place-items-center shrink-0 ${KIND_TONE[f.kind] ?? KIND_TONE.activity}`}><KIcon k={f.kind} size={22} /></span>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-sans font-semibold text-[16px] leading-snug line-clamp-2">{f.name}</h3>
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold text-[var(--color-label-2)]"><Clock size={11} /> {f.duration_minutes} min</span>
+                            <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold text-[var(--color-label-2)]"><Users size={11} /> up to {f.capacity}</span>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setEdit(f)} aria-label={`Edit ${f.name}`} className="icon-btn !rounded-full shrink-0 -mt-1 -mr-1 text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><Pencil size={15} /></button>
                       </div>
-                      <div className="fa-price min-w-0">
-                        <div className="num font-display text-[22px] leading-none whitespace-nowrap">{formatINR(Number(f.rate), { whole: true })}</div>
-                        <div className="text-[11.5px] text-[var(--color-label-2)] mt-1">per person</div>
+                      <div className="mt-auto flex items-end gap-3 pt-3.5 border-t border-[var(--color-separator)]">
+                        <div className="flex-1 min-w-0">
+                          <div className="num font-display text-[22px] leading-none whitespace-nowrap">{formatINR(Number(f.rate), { whole: true })}</div>
+                          <div className="text-[11.5px] mt-1.5 truncate"><span className="text-[var(--color-label-2)]">per person · </span>{upcoming.length ? <span className="text-[var(--color-green)] font-semibold">{upcoming.length} booked · next {at(upcoming[0].starts_at)}</span> : <span className="text-[var(--color-label-2)]">free to book</span>}</div>
+                        </div>
+                        <Button className="shrink-0" onClick={() => { setBook(f); setErr(null); }}><CalendarPlus size={16} /> Book</Button>
                       </div>
-                      <Button className="fa-book" onClick={() => { setBook(f); setErr(null); }}><CalendarPlus size={16} /> Book</Button>
-                      <button type="button" onClick={() => setEdit(f)} aria-label={`Edit ${f.name}`} className="fa-edit icon-btn !rounded-full text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]"><Pencil size={15} /></button>
-                    </li>
+                    </div>
                   );
-                })}
-              </ul>
-            </motion.section>
-          );
-        })}
+                })()}
+              </motion.div>))}</div></section>
+        ))}
         {facilities.length === 0 && <p className="text-sm text-steel">Add spa treatments, activities and venues. Bookings post straight to the guest's room folio.</p>}
       </div>
       <Card className="h-fit lg:sticky lg:top-24"><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Schedule</div>

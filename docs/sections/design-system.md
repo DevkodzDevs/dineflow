@@ -74,7 +74,6 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
 
-- **`.fac-row`** (Facilities) is a grid-areas row that stacks on a phone and reads across from 768px. See rooms-and-reservations.md.
 - **`Switch` without `label` returns the bare `button role="switch"`** and takes `name` for its
   `aria-label`. Use it inside a row that is a `<label>` (Storefront, Loyalty): the row does the
   tapping. With `label`, it still wraps itself in a label as before.
