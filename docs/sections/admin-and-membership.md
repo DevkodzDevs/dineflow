@@ -45,6 +45,12 @@ and only then `admin_delete_property`.
 - **The console is dense on purpose with a mouse (30–36px); under `pointer: coarse` its tabs, chips,
   search, actions and row Open/menu reach 44px** (`AdminToolbar.module.css`, `RowActions.module.css`).
 - **Compliance totals are compact rows on a phone** (label left, figure right), cards from `sm`.
+- **The status filter is five tiles on a phone** (`@container (max-width: 560px)` at the end of
+  `AdminToolbar.module.css`): one row, `repeat(5, minmax(0,1fr))`, count large over a short name (All
+  · Active · Trial · Expired · Box), the colour as a corner dot and a 3px bottom bar on the one that is
+  on; the "N properties / N of M shown · Clear" line sits above them. They were wrapping pills, two
+  rows over one. Each button carries `aria-label="<full label>, <count>"` because on a phone its full
+  label is hidden and the short one is `aria-hidden`. iPad and desktop keep the chips.
 
 - **The membership status line is prose, not a flex row.** As `flex items-center` every text run
   became its own column ("Active / . / Yearly / plan · renews by"). The "2 months free" pill wraps

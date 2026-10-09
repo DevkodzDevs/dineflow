@@ -165,3 +165,30 @@
   .menu button { min-height: 44px; }
   .reset { height: 36px; }
 }
+
+/* ── a phone: the five status chips become one row of five tiles — the count large, a short name
+   under it, the colour as a dot in the corner and a bar along the bottom of the one that is on.
+   Wrapped pills went two rows over one and read as a loose pile. Only below 560px of panel (a
+   phone); an iPad and a desktop keep the chips. Declared last, so it beats the 44px coarse rule. */
+.short { display: none; }
+@container (max-width: 560px) {
+  .filters { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 12px 12px; }
+  .meta { order: -1; width: 100%; justify-content: space-between; padding: 0 2px; }
+  .chips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; overflow: visible; width: 100%; }
+  .chip {
+    position: relative; flex-direction: column; justify-content: center; align-items: center; gap: 3px;
+    height: auto; min-height: 66px; padding: 10px 2px 9px; border-radius: 16px; min-width: 0;
+    background: var(--color-fill); border: .5px solid var(--color-separator); overflow: hidden;
+  }
+  .chip .long { display: none; }
+  .chip .short { display: block; font-size: 11px; font-weight: 600; letter-spacing: .01em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .chipCount { order: -1; font-size: 21px; line-height: 1; font-weight: 700; color: var(--color-label); font-variant-numeric: tabular-nums; }
+  .dot { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--chip) 20%, transparent); }
+  .chip.on {
+    background: color-mix(in srgb, var(--chip) 16%, var(--color-fill));
+    border-color: color-mix(in srgb, var(--chip) 55%, transparent);
+    box-shadow: inset 0 -3px 0 var(--chip);
+  }
+  .chip.on .chipCount { color: color-mix(in srgb, var(--chip) 70%, var(--color-label)); }
+  .chip.on .short { color: var(--color-label); }
+}

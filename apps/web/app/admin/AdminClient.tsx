@@ -24,11 +24,11 @@ type T = { id: string; name: string; property_type: PropertyType; membership: st
 type K = { code: string; plan: string; days: number; restaurant_id: string | null; redeemed_by: string | null; redeemed_at: string | null; created_at: string };
 type L = { id: string; action: string; target: string | null; meta: Record<string, unknown>; created_at: string };
 const STATUSES = [
-  { v: "all", label: "All statuses", dot: "var(--color-label-3)" },
-  { v: "active", label: "Active", dot: "var(--color-tint)" },
-  { v: "trial", label: "Trial", dot: "var(--color-orange)" },
-  { v: "expired", label: "Expired", dot: "var(--color-red)" },
-  { v: "box", label: "On a Box", dot: "var(--color-blue)" },
+  { v: "all", label: "All statuses", short: "All", dot: "var(--color-label-3)" },
+  { v: "active", label: "Active", short: "Active", dot: "var(--color-tint)" },
+  { v: "trial", label: "Trial", short: "Trial", dot: "var(--color-orange)" },
+  { v: "expired", label: "Expired", short: "Expired", dot: "var(--color-red)" },
+  { v: "box", label: "On a Box", short: "Box", dot: "var(--color-blue)" },
 ] as const;
 /* both dropdowns close the same two ways: Escape back to the trigger, or focus leaving the popover */
 const popover = {
@@ -131,9 +131,9 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
         {tab === "properties" && <div className={styles.filters}>
           <div className={styles.chips} role="group" aria-label="Filter properties by status">
             {STATUSES.map((s) => (
-              <button key={s.v} type="button" aria-pressed={filter === s.v} style={{ "--chip": s.dot } as CSSProperties}
+              <button key={s.v} type="button" aria-pressed={filter === s.v} aria-label={`${s.label}, ${counts[s.v]}`} style={{ "--chip": s.dot } as CSSProperties}
                 className={cn(styles.chip, filter === s.v && styles.on)} onClick={() => setFilter(s.v)}>
-                <span className={styles.dot} aria-hidden="true" />{s.label}<span className={styles.chipCount}>{counts[s.v]}</span>
+                <span className={styles.dot} aria-hidden="true" /><span className={styles.long}>{s.label}</span><span className={styles.short} aria-hidden="true">{s.short}</span><span className={styles.chipCount}>{counts[s.v]}</span>
               </button>
             ))}
           </div>
