@@ -1,7 +1,6 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Plus, Copy, RefreshCw, Globe, Bike, Calendar, Check, AlertTriangle, ExternalLink, Trash2, Info } from "lucide-react";
 import { Button, Sheet, Field, Card, Pill, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
@@ -119,6 +118,12 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
   const hints = useMemo(() => { const today = todayIST(); return Object.fromEntries(days.map((d) => [d.stay_date, suggestRate({ ...d, rate: Number(d.rate) }, base, today)])); }, [days, base]);
   const moves = days.filter((d) => hints[d.stay_date]);
   const ups = moves.filter((d) => hints[d.stay_date]!.rate > Number(d.rate)).length;
+  /* The day grid: 14 nights unless asked for all; tap one night, then another, to set the bulk dates. */
+  const [all, setAll] = useState(false);
+  const today = todayIST();
+  const shown = all ? days : days.slice(0, 14);
+  const ist = (d: string) => new Date(`${d}T12:00:00+05:30`);
+  const pick = (d: string) => setBulk((b) => (b.from === b.to && d > b.from ? { ...b, to: d } : { ...b, from: d, to: d }));
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">{types.map((t) => <button key={t.id} onClick={() => setSel(t.id)} className={cn("chip", sel === t.id && "on")}>{t.name}</button>)}</div>
@@ -132,20 +137,50 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
           {moves.length > 0 && <Button disabled={pending} onClick={() => onApply(sel, moves.map((d) => ({ date: d.stay_date, rate: hints[d.stay_date]!.rate })))}>Use suggested rates</Button>}
         </div>
       )}
-      <div className="feather p-4 overflow-x-auto"><div className="flex gap-2 min-w-max">{days.map((d) => (
-        <motion.div key={d.stay_date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={cn("w-24 rounded-xl border p-2 text-center", d.stop_sell ? "bg-chili-2 border-chili/40" : d.free === 0 ? "bg-porcelain-2 border-line" : "bg-card border-line")}>
-          <div className="text-[10px] uppercase tracking-wide text-steel">{new Date(d.stay_date).toLocaleDateString("en-IN", { weekday: "short" })}</div>
-          <div className="num font-semibold">{new Date(d.stay_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</div>
-          <div className={cn("num text-lg mt-1", d.free === 0 && "text-chili")}>{d.free}<span className="text-xs text-steel">/{d.total}</span></div>
-          <div className="num text-xs text-steel">{formatINR(Number(d.rate))}</div>
-          {hints[d.stay_date] && (() => { const h = hints[d.stay_date]!; const up = h.rate > Number(d.rate); return (
-            <div title={`Suggested: ${h.why}`} className={cn("num text-[11px] font-semibold mt-0.5 flex items-center justify-center gap-0.5", up ? "text-[var(--color-green)]" : "text-[var(--color-orange)]")}>
-              {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}{formatINR(h.rate, { whole: true })}</div>); })()}
-          {d.stop_sell && <div className="text-[10px] font-bold text-chili mt-0.5">STOP SELL</div>}
-        </motion.div>))}
-        {days.length === 0 && <p className="text-sm text-steel">Add room types and rooms first.</p>}</div></div>
+      {/* A grid of night cards that wraps to the screen: no sideways scrolling, numbers big enough to read. */}
+      <div className="feather p-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
+          <div className="min-w-0"><div className="text-[15px] font-semibold">Next {shown.length} nights</div><div className="text-xs text-steel">Tap a night, then another, to pick the dates for a bulk update.</div></div>
+          <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] text-steel">
+            <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-5 rounded-full bg-[var(--color-tint)]" /> booked</span>
+            <span className="inline-flex items-center gap-1 text-[var(--color-green)] font-semibold"><TrendingUp size={12} /> raise</span>
+            <span className="inline-flex items-center gap-1 text-[var(--color-orange)] font-semibold"><TrendingDown size={12} /> lower</span>
+          </div>
+        </div>
+        {days.length === 0 ? <p className="text-sm text-steel">Add room types and rooms first.</p> : (
+          <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(7.25rem,1fr))]">
+            {shown.map((d) => {
+              const dt = ist(d.stay_date); const wd = dt.toLocaleDateString("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" });
+              const wknd = wd === "Fri" || wd === "Sat"; const booked = Math.max(0, d.total - d.free); const full = d.free === 0;
+              const inRange = d.stay_date >= bulk.from && d.stay_date <= bulk.to; const h = hints[d.stay_date];
+              return (
+                <button key={d.stay_date} type="button" onClick={() => pick(d.stay_date)} aria-pressed={inRange}
+                  className={cn("min-w-0 text-left rounded-2xl border p-3 transition-colors flex flex-col gap-2",
+                    d.stop_sell ? "border-[color-mix(in_srgb,var(--color-red)_45%,transparent)] bg-[var(--color-red-2)]" : wknd ? "border-[var(--color-separator)] bg-[var(--color-fill)]" : "border-[var(--color-separator)]",
+                    inRange && "!border-[var(--color-tint)] ring-2 ring-[color-mix(in_srgb,var(--color-tint)_35%,transparent)]")}>
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn("text-[10.5px] font-bold uppercase tracking-[0.12em]", wknd ? "text-[var(--color-label)]" : "text-steel")}>{wd}</span>
+                    {d.stay_date === today && <span className="ml-auto text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)]">Today</span>}
+                  </div>
+                  <div className="flex items-baseline gap-1 -mt-1"><span className="num font-display text-[26px] leading-none">{dt.toLocaleDateString("en-IN", { day: "2-digit", timeZone: "Asia/Kolkata" })}</span><span className="text-xs text-steel">{dt.toLocaleDateString("en-IN", { month: "short", timeZone: "Asia/Kolkata" })}</span></div>
+                  <div>
+                    <div className="h-1.5 rounded-full bg-[var(--color-fill-2)] overflow-hidden"><div className={cn("h-full rounded-full", full ? "bg-[var(--color-red)]" : "bg-[var(--color-tint)]")} style={{ width: `${d.total ? (booked / d.total) * 100 : 0}%` }} /></div>
+                    <div className={cn("text-[11px] mt-1 num", full ? "text-[var(--color-red)] font-semibold" : "text-steel")}>{full ? "Full" : `${booked} of ${d.total} booked`}</div>
+                  </div>
+                  <div className="num text-[15px] font-semibold leading-none">{formatINR(Number(d.rate), { whole: true })}</div>
+                  {d.stop_sell ? <span className="self-start text-[10.5px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-[var(--color-red)] text-white">Stop sell</span>
+                    : h ? <span title={`Suggested: ${h.why}`} className={cn("self-start inline-flex items-center gap-1 num text-[11.5px] font-semibold px-2 py-1 rounded-full", h.rate > Number(d.rate) ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[color-mix(in_srgb,var(--color-orange)_15%,transparent)] text-[var(--color-orange)]")}>
+                        {h.rate > Number(d.rate) ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{formatINR(h.rate, { whole: true })}</span>
+                    : <span className="text-[11px] text-steel">rate looks right</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {days.length > 14 && <div className="mt-3 flex justify-center"><Button variant="outline" size="sm" onClick={() => setAll(!all)}>{all ? "Show the next 14 nights" : `Show all ${days.length} nights`}</Button></div>}
+      </div>
       <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Bulk update — these rates go out to every connected channel</div>
-        <div className="grid sm:grid-cols-6 gap-3 items-end">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
           <Field label="From"><input type="date" className="num" value={bulk.from} onChange={(e) => setBulk({ ...bulk, from: e.target.value })} /></Field>
           <Field label="To"><input type="date" className="num" value={bulk.to} onChange={(e) => setBulk({ ...bulk, to: e.target.value })} /></Field>
           <Field label="Rate ₹"><input type="number" className="num" value={bulk.rate} onChange={(e) => setBulk({ ...bulk, rate: e.target.value })} placeholder="keep" /></Field>

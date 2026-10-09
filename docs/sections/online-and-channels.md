@@ -44,6 +44,14 @@ shows the suggestion under its rate (green up, orange down); *Use suggested rate
 `set_rates_only` (0082), which changes the rate and nothing else — `set_rate_inventory` overwrites
 stop-sell and resets minimum stay, so it must not be used for this. Push rates still sends them out.
 
+**The night grid** (`RateCalendar`). Nights are cards in a wrapping grid
+(`repeat(auto-fill,minmax(7.25rem,1fr))`) — 2 a row on a phone, 5 at 834, 8 at 1194–1440, 12 at
+1920; no sideways scrolling. Each card: weekday (Fri/Sat shaded), Today pill, date, a booked bar
+(red and "Full" when sold out), the rate in whole rupees, then Stop sell, the suggestion chip
+(`title="Suggested: …"`, which the b3 suite reads) or "rate looks right". The first 14 show, with
+*Show all N nights* for the rest. Tapping a night sets From/To of the bulk update; tapping a later
+night extends it; the picked range is ringed (`aria-pressed`). The bulk fields are 2 / 3 / 6 a row.
+
 Each channel carries its own token. A token is a credential: it is never rendered into a page a
 guest can see.
 
