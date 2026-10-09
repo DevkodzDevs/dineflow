@@ -49,12 +49,13 @@ guest can see.
 
 ## Before you edit
 
-- **Kitchen pace has its own phone layout** (below `sm`): a status tile coloured by state (green
-  normal, amber busy, red paused) beside the title with the state on its own line, the four options as
-  a 2×2 grid of 60px tiles (icon, name, extra time), and the note with an info icon. Every phone class
-  has an `sm:` partner that restores the one-row segmented control, so tablets and desktops are
-  unchanged. The tile height is `max-sm:!min-h-[60px]`: the unlayered button floor beats a plain
-  `min-h-*`, which is also why the old `min-h-[52px]` never showed on desktop (it measures 40/44).
+- **Kitchen pace has its own phone markup** (`sm:hidden`); tablets and desktops render the original
+  one-row control (`hidden sm:block`), unchanged. The phone card is tinted by the state (green normal,
+  amber busy, red paused) with a live dot, "Back to normal" when not normal, the state in 34px display
+  type, "N min left" (capped at the hour or the half hour) over a progress bar, and one segmented
+  control of big figures, 0 · +15 · +30 · pause, 64px tall (`!min-h-[64px]`: the unlayered button
+  floor beats a plain `min-h-*`). Phone segments carry `aria-label`; both versions are in the DOM, so a
+  probe must click the visible one (`offsetParent`).
 
 - **A webhook endpoint is public and unauthenticated by design** — it is listed in
   `PUBLIC_PREFIX` in `middleware.ts`. Its only protection is the token in the path, so treat every

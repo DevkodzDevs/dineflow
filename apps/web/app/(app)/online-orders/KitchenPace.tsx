@@ -33,35 +33,76 @@ export function KitchenPace({ initial }: { initial: Pace }) {
     { k: "30", label: "Very busy", hint: "+30 min", Icon: Timer, run: () => go(30) },
     { k: "pause", label: "Pause", hint: "30 min", Icon: Pause, run: () => go(0, true) },
   ];
-  /* Phone: a status tile and the state on its own line, a 2×2 grid of big option tiles, a readable
-     note. From sm up the classes put back the original one-row segmented control unchanged. */
-  const ToneIcon = paused ? Pause : extra ? Timer : Gauge;
-  const tone = paused ? "bg-[var(--color-red-2)] text-[var(--color-red)]" : extra ? "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]" : "bg-[var(--color-green-2)] text-[var(--color-green)]";
+  /* Phone only (below sm): a status panel tinted by the state, with time left on a bar, over one
+     segmented control of big figures (0 · +15 · +30 · pause). Tablets and desktops keep the
+     original one-row control below, untouched. */
+  const until = paused ?? (extra ? pace.rush_until : null);
+  const span = paused ? 30 : 60;
+  const left = until ? Math.min(span, Math.max(0, Math.ceil((new Date(until).getTime() - now) / 60000))) : 0;
+  const pct = until ? Math.min(100, (left / span) * 100) : 100;
+  const pc = paused ? "var(--color-red)" : extra ? "var(--color-orange)" : "var(--color-green)";
+  const stateName = paused ? "Paused" : extra >= 30 ? "Very busy" : extra ? "Busy" : "Normal";
+  const stateLine = paused ? `Online orders stopped · back at ${time(paused)}` : extra ? `Online quotes +${extra} min · until ${time(pace.rush_until!)}` : "Online orders are quoted the usual time";
+  const segs = [
+    { k: "normal", big: "0", label: "Normal", run: () => go(0), on: { background: "var(--color-tint)", color: "var(--color-on-tint)" } },
+    { k: "15", big: "+15", label: "Busy", run: () => go(15), on: { background: "var(--color-orange)", color: "#1a1206" } },
+    { k: "30", big: "+30", label: "Very busy", run: () => go(30), on: { background: "var(--color-orange)", color: "#1a1206" } },
+    { k: "pause", big: <Pause size={20} strokeWidth={2.6} />, label: "Pause", run: () => go(0, true), on: { background: "var(--color-red)", color: "#fff" } },
+  ];
   return (
-    <div className="feather p-4 mb-5">
-      <div className="flex items-start sm:items-center gap-3 sm:gap-2 mb-3.5 sm:mb-3">
-        <span className={cn("sm:hidden h-11 w-11 rounded-2xl grid place-items-center shrink-0", tone)}><ToneIcon size={20} /></span>
-        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-          <span className="text-[16px] sm:text-[15px] font-semibold">Kitchen pace</span>
-          <span className={cn("text-[12.5px] sm:text-xs leading-snug", paused ? "text-[var(--color-red)] font-semibold" : extra ? "text-[var(--color-orange)] font-semibold" : "text-[var(--color-label-2)]")}>
+    <>
+      <div className="sm:hidden mb-5 rounded-[22px] border overflow-hidden transition-colors"
+        style={{ background: `color-mix(in srgb, ${pc} 9%, var(--color-card))`, borderColor: `color-mix(in srgb, ${pc} 32%, transparent)` }}>
+        <div className="px-4 pt-4 pb-3">
+          <div className="flex items-center gap-2 min-h-8">
+            <span className="relative flex h-2.5 w-2.5 shrink-0"><span className="absolute inline-flex h-full w-full rounded-full opacity-60 motion-safe:animate-ping" style={{ background: pc }} /><span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ background: pc }} /></span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-label-2)]">Kitchen pace</span>
+            {mode !== "normal" && <button type="button" disabled={pending} onClick={() => go(0)} className="ml-auto -my-2 -mr-2 px-2 text-[13px] font-semibold" style={{ color: pc }}>Back to normal</button>}
+          </div>
+          <div className="mt-2 flex items-end gap-3">
+            <div className="font-display text-[34px] leading-none" style={{ color: pc }}>{stateName}</div>
+            {until && <div className="ml-auto num font-display text-[24px] leading-none whitespace-nowrap">{left}<span className="font-sans text-[12.5px] text-[var(--color-label-2)]"> min left</span></div>}
+          </div>
+          <div className="text-[13px] text-[var(--color-label-2)] mt-1.5">{stateLine}</div>
+          {until && <div className="mt-3 h-1.5 rounded-full bg-[var(--color-fill)] overflow-hidden" aria-hidden><div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: pc }} /></div>}
+        </div>
+        <div className="px-2">
+          <div className="grid grid-cols-4 gap-1 p-1 rounded-[18px] bg-[var(--color-fill)]">
+            {segs.map((g) => {
+              const on = mode === g.k;
+              return (
+                <button key={g.k} type="button" disabled={pending} onClick={g.run} aria-pressed={on} aria-label={g.label}
+                  className={cn("!min-h-[64px] rounded-[14px] flex flex-col items-center justify-center gap-1 transition-all", on ? "shadow-[0_6px_16px_rgb(0_0_0/.22)]" : "text-[var(--color-label-2)] active:bg-[var(--color-fill-2)]")}
+                  style={on ? g.on : undefined}>
+                  <span className="font-display text-[22px] leading-none h-[22px] grid place-items-center">{g.big}</span>
+                  <span className="text-[11px] font-semibold leading-none">{g.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <p className="px-4 pt-2.5 pb-3.5 text-[11.5px] text-[var(--color-label-2)] flex items-center gap-1.5"><Info size={13} className="shrink-0" /> Busy lasts an hour · a pause 30 min · table QR orders never stop</p>
+      </div>
+
+      <div className="hidden sm:block feather p-4 mb-5">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[15px] font-semibold">Kitchen pace</span>
+          <span className={cn("text-xs", paused ? "text-[var(--color-red)] font-semibold" : extra ? "text-[var(--color-orange)] font-semibold" : "text-[var(--color-label-2)]")}>
             {paused ? `Online orders paused until ${time(paused)}` : extra ? `+${extra} min on every quote until ${time(pace.rush_until!)}` : "Online orders are quoted the usual time"}
           </span>
         </div>
+        <div className="grid grid-cols-4 gap-1.5 p-1 rounded-2xl bg-[var(--color-fill)]">
+          {opts.map(({ k, label, hint, Icon, run }) => (
+            <button key={k} type="button" disabled={pending} onClick={run} aria-pressed={mode === k}
+              className={cn("min-w-0 min-h-[52px] rounded-xl px-1.5 flex flex-col items-center justify-center gap-0.5 text-center transition-colors",
+                mode === k ? (k === "pause" ? "bg-[var(--color-red)] text-white" : k === "normal" ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_3px_rgb(0_0_0/.2)]" : "bg-[var(--color-orange)] text-[#1a1206]") : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>
+              <span className="flex items-center gap-1 text-[13px] font-semibold"><Icon size={14} className="shrink-0" /><span className="truncate">{label}</span></span>
+              <span className="text-[10.5px] opacity-80 truncate max-w-full">{hint}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-[var(--color-label-2)] mt-2">Busy lasts an hour, a pause half an hour, then the kitchen is back to normal on its own. Table QR orders are never paused.</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-1.5 sm:p-1 sm:rounded-2xl sm:bg-[var(--color-fill)]">
-        {opts.map(({ k, label, hint, Icon, run }) => (
-          <button key={k} type="button" disabled={pending} onClick={run} aria-pressed={mode === k}
-            className={cn("min-w-0 max-sm:!min-h-[60px] rounded-2xl px-3.5 flex items-center gap-3 text-left transition-colors sm:min-h-[52px] sm:rounded-xl sm:px-1.5 sm:flex-col sm:justify-center sm:gap-0.5 sm:text-center",
-              mode === k ? (k === "pause" ? "bg-[var(--color-red)] text-white" : k === "normal" ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_3px_rgb(0_0_0/.2)] max-sm:ring-1 max-sm:ring-[var(--color-separator)]" : "bg-[var(--color-orange)] text-[#1a1206]") : "bg-[var(--color-fill)] sm:bg-transparent text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>
-            <Icon size={20} className="sm:hidden shrink-0" />
-            <span className="min-w-0 flex flex-col sm:items-center">
-              <span className="flex items-center gap-1 text-[15px] sm:text-[13px] font-semibold"><Icon size={14} className="hidden sm:block shrink-0" /><span className="truncate">{label}</span></span>
-              <span className="text-[12px] sm:text-[10.5px] opacity-80 truncate max-w-full">{hint}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-      <p className="flex items-start gap-2 sm:block text-[12px] sm:text-[11px] leading-relaxed sm:leading-normal text-[var(--color-label-2)] mt-3 sm:mt-2"><Info size={14} className="sm:hidden shrink-0 mt-0.5" /><span>Busy lasts an hour, a pause half an hour, then the kitchen is back to normal on its own. Table QR orders are never paused.</span></p>
-    </div>
+    </>
   );
 }
