@@ -57,6 +57,13 @@ justify-start`. The first 14 nights show, with *Show all N nights* for the rest.
 sets From/To of the bulk update; tapping a later night extends it; the picked range takes a tint
 wash and border (`aria-pressed`). The bulk fields are 2 / 3 / 6 a row.
 
+**Tabs and room types on a phone.** For a hotel or resort the three tab chips become one segmented
+card (`role="tablist"`): equal thirds, icon over a short label — Delivery · OTAs · Rates — 58px tall,
+the active third filled with `--color-label`. A restaurant has only Food delivery and keeps its
+chip. The room-type chips sit on one `.chip-rail` under a small "Room type" label and swipe instead
+of wrapping. From `sm` up both are the original chips. Probes that click "Rates & availability" by
+text must click the *visible* button: on a phone it reads "Rates".
+
 **On a phone** (`sm:hidden`) the calendar is replaced by an inset list, one 64px row per night: a
 44px date tile (weekday over day; today filled with the tint), the rate over a thin booked bar and
 "0/8 booked", and on the right the suggestion chip, *Stop sell*, or "on target". A new month gets a

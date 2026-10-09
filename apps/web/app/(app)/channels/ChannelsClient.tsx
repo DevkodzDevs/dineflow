@@ -25,7 +25,23 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">
+      {/* Phone, hotel or resort: the three views as one segmented card, icon over a short label,
+          equal thirds — not chips that wrap two over one. A restaurant has one view and keeps the chip. */}
+      {restaurant.property_type !== "restaurant" && (
+        <div className="sm:hidden">
+          <div role="tablist" aria-label="Channels" className="grid grid-cols-3 gap-1 p-1 rounded-[18px] bg-[var(--color-fill)]">
+            {([["food", Bike, "Delivery"], ["rooms", Globe, "OTAs"], ["calendar", Calendar, "Rates"]] as const).map(([k, Icon, label]) => (
+              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+                className={cn("!min-h-[58px] rounded-[14px] flex flex-col items-center justify-center gap-1 text-[12.5px] font-semibold transition-colors",
+                  tab === k ? "bg-[var(--color-label)] text-[var(--color-on-label)] shadow-sm" : "text-[var(--color-label-2)]")}>
+                <Icon size={18} />{label}
+              </button>
+            ))}
+          </div>
+          {msg && <div className="mt-2 text-sm text-mint text-center">{msg}</div>}
+        </div>
+      )}
+      <div className={cn("flex flex-wrap gap-2", restaurant.property_type !== "restaurant" && "hidden sm:flex")}>
         <button onClick={() => setTab("food")} className={cn("chip gap-1.5", tab === "food" && "on")}><Bike size={14} /> Food delivery</button>
         {restaurant.property_type !== "restaurant" && <><button onClick={() => setTab("rooms")} className={cn("chip gap-1.5", tab === "rooms" && "on")}><Globe size={14} /> OTA channels</button>
         <button onClick={() => setTab("calendar")} className={cn("chip gap-1.5", tab === "calendar" && "on")}><Calendar size={14} /> Rates & availability</button></>}
@@ -131,7 +147,14 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
   const span = shown.length ? `${md(shown[0].stay_date, { day: "numeric", month: "short" })} – ${md(shown[shown.length - 1].stay_date, { day: "numeric", month: "short" })}` : "";
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">{types.map((t) => <button key={t.id} onClick={() => setSel(t.id)} className={cn("chip", sel === t.id && "on")}>{t.name}</button>)}</div>
+      <div className="hidden sm:flex flex-wrap gap-2">{types.map((t) => <button key={t.id} onClick={() => setSel(t.id)} className={cn("chip", sel === t.id && "on")}>{t.name}</button>)}</div>
+      {/* Phone: the room types on one swipeable rail under a small label, never wrapping to a second row. */}
+      {types.length > 0 && (
+        <div className="sm:hidden">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-steel mb-2">Room type</div>
+          <div className="chip-rail -mr-4 pr-4">{types.map((t) => <button key={t.id} type="button" onClick={() => setSel(t.id)} aria-pressed={sel === t.id} className={cn("chip", sel === t.id && "on")}>{t.name}</button>)}</div>
+        </div>
+      )}
       {days.length > 0 && (
         <div className="feather p-4 flex flex-wrap items-center gap-3">
           <span className="h-10 w-10 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-[var(--color-tint)]"><Wand2 size={18} /></span>
