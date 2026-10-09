@@ -40,6 +40,7 @@ a property.
 | `audit-isolation.mjs` | — | tenant isolation |
 | `stale.mjs` | — | what a dead refresh token actually gets |
 | `spill.mjs` | — | names the element hanging off the right edge |
+| `gest.mjs` | 10 | pull-to-refresh and edge swipes at 412 with real `Input.dispatchTouchEvent` drags: a full pull fetches RSC once and keeps a typed field; a 50px pull, a pull while scrolled, and a browser-tab edge swipe do nothing; in the installed app a left-edge swipe goes back, a right-edge one forward, a 54px or mid-screen swipe stays put. **Chrome cannot emulate `display-mode: standalone`** (`setEmulatedMedia` ignores it) — shim `matchMedia` with `Page.addScriptToEvaluateOnNewDocument`, using `q.includes('standalone')` (a `\s` inside the template string is lost), and print `matchMedia(...).matches` so a false pass is visible |
 
 Every suite is checked at **1920, 1440, 1194 (iPad landscape), 834 (iPad portrait) and 412 (phone)**,
 and asserts **0 touch targets under 44px** on the touch widths — WCAG 2.5.5 and Apple HIG. An inline

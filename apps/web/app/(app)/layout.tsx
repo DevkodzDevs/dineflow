@@ -5,6 +5,7 @@ import { modulesFor } from "@dineflow/shared";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar, BottomNav } from "@/components/shell/Nav";
 import { TopBar } from "@/components/shell/TopBar";
+import { Gestures } from "@/components/shell/Gestures";
 import { OfflineProvider } from "@/lib/offline/OfflineProvider";
 import { MasterBanner } from "@/components/shell/MasterBanner";
 import { ToastProvider } from "@/components/ui";
@@ -88,6 +89,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <BottomNav role={s.profile.role} type={s.restaurant.property_type} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
         name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} />
       <Assist />
+      {/* pull to refresh everywhere on touch; edge swipe back/forward in the installed app */}
+      <Gestures />
     </div>
    </ToastProvider>
    </OfflineProvider>

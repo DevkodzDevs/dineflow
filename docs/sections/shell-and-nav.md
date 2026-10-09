@@ -139,7 +139,20 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
   between them and opening the drawer slides the page 76px left.
 - **The page does not bounce: `html, body { overscroll-behavior: none }`.** On `html` alone iPad
   Safari still rubber-banded past the end of a short screen and showed empty page under the app.
-  Keep it on both. It also stops pull-to-refresh, which on a till would reload a half-typed ticket.
+  Keep it on both. It also stops the browser's own pull-to-refresh, which on a till would reload a
+  half-typed ticket — the app's pull-to-refresh below re-fetches data instead.
+- **Gestures (`components/shell/Gestures.tsx`, mounted once in the `(app)` layout, coarse pointer
+  only).** *Pull to refresh:* at `scrollY 0`, a downward drag (damped ×0.5) past 72px shows a ring
+  that fills with the tint; letting go runs `router.refresh()` in a transition and the ring spins
+  until it lands — server data again, client state (typed fields, a ticket) kept. *Edge swipe:* from
+  within 28px of the left edge, 84px of travel goes `router.back()`; from the right edge,
+  `router.forward()`; an arrow slides out of that edge and fills when letting go will navigate.
+  **Edge swipe is on only in the installed app** (`display-mode: standalone` or iOS
+  `navigator.standalone`): Safari's edge swipe and Android's system back already do it in a browser,
+  and both firing would skip a screen. Neither starts in a field, a `[role=dialog]` (sheets have
+  their own drag-down), `[data-no-gesture]`, while the body is scroll-locked, or — for the pull —
+  inside an inner scroller that is not at its top. Listeners are passive; nothing calls
+  `preventDefault`.
 - **Inside the app the body is the frame's dark (`body:has(.deck-card)`), in both themes.** Left at
   the theme's page colour (#ecece7 in paper), iPad Safari showed it as a light band under the card
   whenever its toolbar collapsed and the screen grew past the frame's `min-h-dvh`. Headless Chrome
