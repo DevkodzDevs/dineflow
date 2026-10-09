@@ -50,6 +50,13 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
 
 ## Before you edit
 
+- **Facility cards** (`/facilities`) are one compact card: a kind-coloured icon tile (spa green,
+  activity blue, venue amber via `KIND_TONE`), the name with duration and capacity as chips, a 44px
+  edit button, then a divider, the price in whole rupees with "per person · N booked · next Sat 4:30
+  pm" (from the schedule rows already loaded) and a full-size Book. The grid is
+  `repeat(auto-fill, minmax(20rem, 1fr))` beside the schedule; one column on a phone. The old card was
+  a big icon, a gap, then the name and price far apart, mostly air on a phone.
+
 - **Room cards carry their own action bar** (`.room-act`, 40px, 44 on touch, sharing the card's
   width). The card is the `keycard` wrapper; the top is the `Link`, the bar is its sibling, so no
   button sits inside a link. The grid is `repeat(auto-fill, minmax(9.5rem, 1fr))` — never so narrow

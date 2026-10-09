@@ -1,14 +1,21 @@
 "use client";
 import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Plus, Waves, Flower2, Tent, Pencil, Clock } from "lucide-react";
+import { Plus, Waves, Flower2, Tent, Pencil, Clock, Users, CalendarPlus } from "lucide-react";
 import { Button, Sheet, Field, Card, Pill } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveFacility, bookFacility, cancelFacilityBooking } from "./actions";
 
 type F = { id: string; name: string; kind: string; rate: number; duration_minutes: number; capacity: number };
-type S = { id: string; starts_at: string; people: number; amount: number; guest_name: string | null; facilities: { name: string; kind: string } | null; bookings: { booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null } | null };
+type S = { id: string; facility_id?: string; starts_at: string; people: number; amount: number; guest_name: string | null; facilities: { name: string; kind: string } | null; bookings: { booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null } | null };
 type IH = { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null };
+/* Each kind keeps one colour everywhere: spa green, activities blue, venues amber. */
+const KIND_TONE: Record<string, string> = {
+  spa: "bg-[var(--color-green-2)] text-[var(--color-green)]",
+  activity: "bg-[var(--color-blue-2)] text-[var(--color-blue)]",
+  venue: "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]",
+};
+const at = (iso: string) => new Date(iso).toLocaleString("en-IN", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const KIcon = ({ k, size = 16 }: { k: string; size?: number }) => (k === "spa" ? <Flower2 size={size} /> : k === "venue" ? <Tent size={size} /> : <Waves size={size} />);
 
 export function FacilitiesClient({ facilities, slots, inHouse }: { facilities: F[]; slots: S[]; inHouse: IH[] }) {
@@ -20,12 +27,36 @@ export function FacilitiesClient({ facilities, slots, inHouse }: { facilities: F
       <div className="space-y-6">
         <div className="flex justify-end"><Button onClick={() => setEdit({ kind: "activity", duration_minutes: 60, capacity: 1 })}><Plus size={16} /> Facility</Button></div>
         {grouped.map((g) => (
-          <section key={g.k}><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel mb-3 capitalize">{g.k === "venue" ? "Venues" : g.k === "spa" ? "Spa & wellness" : "Activities"}</div>
-            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">{g.items.map((f, i) => (
+          <section key={g.k}><div className="flex items-center gap-2 mb-3"><span className={`h-7 w-7 rounded-lg grid place-items-center ${KIND_TONE[g.k]}`}><KIcon k={g.k} size={14} /></span><span className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{g.k === "venue" ? "Venues" : g.k === "spa" ? "Spa & wellness" : "Activities"}</span><span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{g.items.length}</span></div>
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))]">{g.items.map((f, i) => (
               <motion.div key={f.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <Card lift className="h-full flex flex-col"><div className="flex items-start justify-between"><span className="h-10 w-10 rounded-2xl bg-champagne-2 text-ink grid place-items-center"><KIcon k={f.kind} size={18} /></span><button onClick={() => setEdit(f)} className="text-steel hover:text-ink"><Pencil size={14} /></button></div>
-                  <h3 className="text-lg mt-3 font-sans font-semibold">{f.name}</h3><div className="text-xs text-steel flex items-center gap-1 mt-0.5"><Clock size={11} /> {f.duration_minutes} min · up to {f.capacity}</div>
-                  <div className="mt-auto pt-4 flex items-center justify-between"><span className="num font-semibold">{formatINR(Number(f.rate))}</span><Button size="sm" variant="ink" onClick={() => { setBook(f); setErr(null); }}>Book</Button></div></Card>
+                {/* One compact card: what it is on top, what it costs and the Book button below. The
+                    old card was a big icon, a gap, then name and price far apart — mostly air on a phone. */}
+                {(() => {
+                  const upcoming = slots.filter((x) => x.facility_id === f.id && new Date(x.starts_at).getTime() > Date.now());
+                  return (
+                    <div className="feather feather-lift h-full flex flex-col p-4 gap-3.5">
+                      <div className="flex items-start gap-3.5">
+                        <span className={`h-12 w-12 rounded-2xl grid place-items-center shrink-0 ${KIND_TONE[f.kind] ?? KIND_TONE.activity}`}><KIcon k={f.kind} size={22} /></span>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-sans font-semibold text-[16px] leading-snug line-clamp-2">{f.name}</h3>
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold text-[var(--color-label-2)]"><Clock size={11} /> {f.duration_minutes} min</span>
+                            <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold text-[var(--color-label-2)]"><Users size={11} /> up to {f.capacity}</span>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setEdit(f)} aria-label={`Edit ${f.name}`} className="icon-btn !rounded-full shrink-0 -mt-1 -mr-1 text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><Pencil size={15} /></button>
+                      </div>
+                      <div className="mt-auto flex items-end gap-3 pt-3.5 border-t border-[var(--color-separator)]">
+                        <div className="flex-1 min-w-0">
+                          <div className="num font-display text-[22px] leading-none whitespace-nowrap">{formatINR(Number(f.rate), { whole: true })}</div>
+                          <div className="text-[11.5px] mt-1.5 truncate"><span className="text-[var(--color-label-2)]">per person · </span>{upcoming.length ? <span className="text-[var(--color-green)] font-semibold">{upcoming.length} booked · next {at(upcoming[0].starts_at)}</span> : <span className="text-[var(--color-label-2)]">free to book</span>}</div>
+                        </div>
+                        <Button className="shrink-0" onClick={() => { setBook(f); setErr(null); }}><CalendarPlus size={16} /> Book</Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </motion.div>))}</div></section>
         ))}
         {facilities.length === 0 && <p className="text-sm text-steel">Add spa treatments, activities and venues. Bookings post straight to the guest's room folio.</p>}
