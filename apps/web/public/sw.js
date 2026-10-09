@@ -49,3 +49,5 @@ self.addEventListener("fetch", (e) => {
 
 // the app asks for a flush when the browser wakes the worker with a connection
 self.addEventListener("sync", (e) => { if (e.tag === "dineflow-outbox") e.waitUntil(self.clients.matchAll().then((cs) => cs.forEach((c) => c.postMessage({ type: "flush" })))); });
+// a tap on a DineFlow notification brings the app forward on the screen it is about
+self.addEventListener("notificationclick", (e) => { e.notification.close(); const url = (e.notification.data && e.notification.data.url) || "/dashboard"; e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((cs) => { const c = cs.find((x) => "focus" in x); if (c) { c.focus(); return c.navigate ? c.navigate(url) : undefined; } return self.clients.openWindow(url); })); });

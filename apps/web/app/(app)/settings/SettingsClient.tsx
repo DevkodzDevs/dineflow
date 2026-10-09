@@ -1,7 +1,8 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode } from "lucide-react";
+import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing } from "lucide-react";
+import { NotificationSettings } from "@/components/shell/Notifier";
 import { Button, Card, Field, Switch, cn } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
@@ -89,6 +90,16 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             <Section icon={<Palette size={16} />} title="Appearance" description="Applies to this device. Guest pages are always bright.">
               <ThemePicker />
             </Section>
+          </Card>
+
+          {/* notifications — like Appearance, a choice for this device: the kitchen screen and the
+              front desk each pick their own tone and alerts */}
+          <Card>
+            <div id="notifications" className="scroll-mt-28">
+              <Section icon={<BellRing size={16} />} title="Notifications" description="Applies to this device. Pick what this machine is, its tone, and what it alerts about.">
+                <NotificationSettings />
+              </Section>
+            </div>
           </Card>
 
           {/* install — sits beside Appearance because it is the other thing that belongs to the

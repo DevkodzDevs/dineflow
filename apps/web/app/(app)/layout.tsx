@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Sidebar, BottomNav } from "@/components/shell/Nav";
 import { TopBar } from "@/components/shell/TopBar";
 import { Gestures } from "@/components/shell/Gestures";
+import { NotifierProvider } from "@/components/shell/Notifier";
 import { OfflineProvider } from "@/lib/offline/OfflineProvider";
 import { MasterBanner } from "@/components/shell/MasterBanner";
 import { ToastProvider } from "@/components/ui";
@@ -75,6 +76,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
    <OfflineProvider modules={mods}>
    <ToastProvider>
+   {/* new orders, bookings and tickets: a tone, a toast and the bell's list, on every screen */}
+   <NotifierProvider modules={mods} propertyType={s.restaurant.property_type}>
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
@@ -92,6 +95,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* pull to refresh everywhere on touch; edge swipe back/forward in the installed app */}
       <Gestures />
     </div>
+   </NotifierProvider>
    </ToastProvider>
    </OfflineProvider>
   );

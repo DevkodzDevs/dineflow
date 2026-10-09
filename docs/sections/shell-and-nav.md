@@ -178,3 +178,28 @@ Sign in as a non-owner on a demo property and confirm the sidebar matches the ti
 
 [design-system.md](design-system.md) · [auth-and-session.md](auth-and-session.md) ·
 [staff-and-labour.md](staff-and-labour.md)
+
+## Notifications (the bell)
+
+- **`NotifierProvider`** (`components/shell/Notifier.tsx`, inside `ToastProvider` in the `(app)`
+  layout, given `mods` and the property type) opens one realtime channel, `df-notify`, 1.5s after
+  paint, and listens only for the sections this person holds: `online_orders`, `reservations`,
+  `bookings` (not `is_block`), `kots` and `housekeeping_tasks` INSERTs, plus a `kots` UPDATE to
+  `ready` within the last minute ("Food ready"). These are the tables already in the
+  `supabase_realtime` publication; RLS decides which rows arrive. Each event the device has switched
+  on gets its tone, a toast, and a line in the bell's list (kept in `sessionStorage`, 40 at most);
+  with permission and while the tab is hidden, also a system notification through the service
+  worker (`sw.js` `notificationclick` focuses the app and opens that section).
+- **The bell** (`NotificationBell`) replaced the link to /kitchen. Its count is unread events + late
+  KOTs; the panel lists late tickets first, then events; closing it any way marks them read. Its
+  footer, *Sound & alerts*, opens the device settings as a sheet — so a waiter or cook without
+  Settings can still choose their tone.
+- **Settings are per machine** (`lib/notify.ts`, `localStorage["df-notify"]`): a station (Front desk ·
+  Kitchen screen · Till / waiters · Owner's phone) sets the tone and which alerts; changing either
+  makes it Custom. A device never set up guesses: phone → Owner's phone, otherwise a restaurant's
+  till or a hotel's front desk. Six tones are synthesised with WebAudio (no files); a browser makes
+  sound only after the first touch, so the provider unlocks audio on the first pointerdown/keydown.
+  On iPhone, system notifications need the Home Screen app. Nothing here is Web Push — a closed app
+  hears nothing.
+- **The phone wordmark** "DineFlow" in the top bar is a link to `/dashboard`, like the sidebar's
+  logo; the layout sends a role without the control room to its first section.

@@ -85,3 +85,10 @@ pnpm --filter @dineflow/web typecheck
 
 [guest-facing.md](guest-facing.md) · [legal.md](legal.md) ·
 [admin-and-membership.md](admin-and-membership.md) · [api-routes.md](api-routes.md)
+
+- **Sign out sits opposite the title** (`PageHeader actionsInline`): a `POST /logout` form, 44px, on
+  the title's row at every width — a phone included, where `.page-actions` would otherwise drop it
+  under the title.
+- **Notifications card** (General, after Appearance, `#notifications`) is `NotificationSettings`
+  from `components/shell/Notifier.tsx` — per device, like Appearance. The same panel opens from the
+  bell for people who cannot open Settings. See [shell-and-nav.md](shell-and-nav.md).

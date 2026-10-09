@@ -240,3 +240,7 @@ Then look at it, in both themes, at 1440 and 412.
 
 - **`.ci-form`** (end of `globals.css`) — the online check-in form's field border, 16% ink, tint on
   focus. Scoped to that page; see [guest-facing.md](guest-facing.md).
+
+- **`PageHeader actionsInline`** keeps one small action on the title's row on a phone too (Settings'
+  Sign out). Without it `.page-actions` is full width under the title below 640px, for rows of
+  buttons — leave the default for those.
