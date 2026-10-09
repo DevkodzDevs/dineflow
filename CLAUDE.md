@@ -43,7 +43,7 @@ applied migration.
 ```
 pnpm lint        # 0 errors (14 warnings are known)
 pnpm typecheck
-pnpm test        # 18 unit tests
+pnpm test        # 22 unit tests
 pnpm build       # note: this clobbers .next and kills a running `next dev`
 ```
 

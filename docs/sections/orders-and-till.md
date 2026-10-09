@@ -57,6 +57,14 @@ under the master banner and search bar, not at the top of the viewport. Measured
 nine dishes: 1920×1080 465px · 1440×900 283 · 1366×768 151 · 1194×834 217 · 1024×768 130 ·
 834 sheet 609 · 412 sheet 372.
 
+**Goes well with** is a one-line strip between the category chips and the dish grid, shown only
+once the ticket has a dish with known partners. `page.tsx` reads `menu_pairings()` (migration 0080:
+for each dish, the three most often on the same ticket in the last 90 days, seen together at least
+twice, still on sale) and passes `pairs`; `goesWith` scores them across everything on the ticket,
+drops what is already on it or the pantry cannot cover, and shows four. A chip calls the same `tap()`
+as a tile, so a dish with sizes still asks. **It lives in the dish column, not the rail** — the rail's
+height is measured to fit the screen and every row added there comes out of the ticket lines.
+
 A dish with sizes or add-ons opens `OptionChooser` instead of incrementing. Combos expand to their
 parts. "+ Cooking request" writes `p_note`.
 

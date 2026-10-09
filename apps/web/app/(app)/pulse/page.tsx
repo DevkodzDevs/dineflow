@@ -18,5 +18,5 @@ export default async function Pulse() {
      fallback as the storefront, booking-page and proof links. */
   const h = await headers();
   const base = process.env.NEXT_PUBLIC_CLOUD_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
-  return <PulseClient pulse={(pulse ?? { tables: [] }) as never} queue={(queue ?? []) as never} slug={session.restaurant.booking_slug ?? ""} base={base} listed={!!session.restaurant.is_listed} />;
+  return <PulseClient pulse={(pulse ?? { tables: [] }) as never} queue={(queue ?? []) as never} slug={session.restaurant.booking_slug ?? ""} base={base} listed={!!session.restaurant.is_listed} restaurant={session.restaurant.name} />;
 }

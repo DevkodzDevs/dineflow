@@ -46,6 +46,7 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0077_two_people_at_once
 0078_theme_follows_the_person
 0079_rush_hour                — set_rush, dine_busy; dine_order re-created from 0074 + pause/ETA
+0080_goes_well_with           — menu_pairings(): a security-invoker read; RLS does the fencing
 ```
 
 **Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`

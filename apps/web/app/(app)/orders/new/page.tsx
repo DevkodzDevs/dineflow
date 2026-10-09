@@ -10,7 +10,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const { table } = await searchParams;
   const s = await createClient();
   // the session travels with the page's own rows, not in front of them: one trip, not two
-  const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, { data: variants }, { data: groups }, { data: links }, { data: combos }] = await Promise.all([
+  const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, { data: variants }, { data: groups }, { data: links }, { data: combos }, { data: pairings }] = await Promise.all([
     requireSession(),
     s.from("categories").select("id, name").order("sort_order"),
     s.from("menu_items").select("id, name, price, is_veg, category_id, is_available, is_combo, image_url").order("name"),
@@ -26,9 +26,13 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
     s.from("addon_groups").select(OPTION_SELECTS.groups).eq("is_active", true),
     s.from("menu_item_addon_groups").select(OPTION_SELECTS.links),
     s.from("combo_items").select(OPTION_SELECTS.combos),
+    // what this property's guests order together, for "Goes well with" at the till (0080)
+    s.rpc("menu_pairings"),
   ]);
+  const pairs: Record<string, { id: string; n: number }[]> = {};
+  for (const p of (pairings ?? []) as { item: string; pair: string; together: number }[]) (pairs[p.item] ??= []).push({ id: p.pair, n: p.together });
   const menu = withOptions(items ?? [], (variants ?? []) as never, (groups ?? []) as never, links ?? [], combos ?? []);
   return <PosClient categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={table ?? null}
     inHouse={(inHouse ?? []) as never} stock={(stock ?? {}) as never} running={(running ?? []) as never} ai={aiEnabled()}
-    promise={session.restaurant.promise_enabled ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} />;
+    promise={session.restaurant.promise_enabled ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} pairs={pairs} />;
 }

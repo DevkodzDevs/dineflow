@@ -40,7 +40,7 @@ function lineState(o: Running): { label: string; tone: "ready" | "preparing" | "
  *  order can put a dish on the ticket before anyone has said which bread. */
 type Line = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number; note: string; ask?: boolean; course: number };
 
-export function PosClient({ categories, items, tables, initialTable, inHouse = [], stock = {}, running = [], ai = false, promise = null }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null }) {
+export function PosClient({ categories, items, tables, initialTable, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {} }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]> }) {
   const router = useRouter();
   const [type, setType] = useState<"dine_in" | "takeaway" | "delivery" | "room_service">("dine_in");
   const [room, setRoom] = useState("");
@@ -172,6 +172,17 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   const total = lines.reduce((s, l) => s + unit(l) * l.qty, 0);
   const count = lines.reduce((s, l) => s + l.qty, 0);
   const coverOf = (id: string) => stock[id];
+  /* Goes well with: what this property's own guests most often have on the same ticket as the
+     dishes already on this one (menu_pairings, last 90 days). Scored across the ticket, so a
+     biryani and a starter together pull up what goes with both. Never a dish already on it, never
+     one that is sold out or the pantry cannot cover. */
+  const goesWith = useMemo(() => {
+    const on = new Set(lines.map((l) => l.item.id)); const score = new Map<string, number>();
+    on.forEach((id) => (pairs[id] ?? []).forEach((p) => { if (!on.has(p.id)) score.set(p.id, (score.get(p.id) ?? 0) + p.n); }));
+    const byId = new Map(items.map((i) => [i.id, i]));
+    return [...score.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => byId.get(id))
+      .filter((it): it is Item => !!it && it.is_available && !(stock[it.id] && stock[it.id].portions <= 0)).slice(0, 4);
+  }, [lines, pairs, items, stock]);
   /** Dishes on this ticket the pantry cannot cover, with how far short it is — counted across sizes. */
   const shortfalls = (() => {
     const by = new Map<string, { item: Item; qty: number }>();
@@ -502,6 +513,17 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         <div className="rail-fade flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
           {[{ id: "all", name: "All" }, ...categories].map((c) => <button key={c.id} onClick={() => setCat(c.id)} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line")}>{c.name}</button>)}
         </div>
+        {goesWith.length > 0 && (
+          <div className="mt-2 flex items-center gap-2 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 pb-1 [scrollbar-width:none]" aria-label="Goes well with">
+            <span className="eyebrow shrink-0 flex items-center gap-1"><Sparkles size={12} className="text-[var(--color-tint)]" /> Goes well with</span>
+            {goesWith.map((it) => (
+              <button key={it.id} type="button" onClick={() => tap(it)}
+                className="shrink-0 h-10 rounded-full pl-2.5 pr-3.5 flex items-center gap-1.5 text-sm font-semibold border border-dashed border-[var(--color-tint)] bg-[var(--color-green-2)] text-[var(--color-label)] hover:brightness-110 transition">
+                <Plus size={14} className="text-[var(--color-tint)]" />{it.name}<span className="num text-xs font-medium text-steel">{(() => { const tp = tilePrice(it); return `${tp.from ? "from " : ""}${formatINR(tp.price, { whole: true })}`; })()}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {/* As many tiles as fit, never narrower than a dish name and a stepper need: 176 is three
             across in the 557px an iPad in landscape leaves beside the rail, with room for a 44px
             minus, count and plus on a tapped tile. Two across on a phone by decree: auto-fill would

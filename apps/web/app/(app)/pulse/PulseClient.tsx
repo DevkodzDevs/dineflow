@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
-import { Phone, Bell, Armchair, X, QrCode, UserPlus } from "lucide-react";
+import { Phone, Bell, Armchair, X, QrCode, UserPlus, MessageCircle } from "lucide-react";
+import { waHref, firstName } from "@/lib/wa";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button, Card, Flip, useToast } from "@/components/ui";
 import { motion } from "framer-motion";
@@ -17,7 +18,7 @@ type W = { id: string; token: string; name: string; phone: string | null; party:
 
 const STAGE = { free: ["free", "pill-ready"], ordered: ["ordered", "pill-pending"], eating: ["eating", "pill-preparing"], served: ["served", "pill-sky"], billed: ["bill out", "pill-gold"] } as const;
 
-export function PulseClient({ pulse, queue, slug, base, listed }: { pulse: Pulse; queue: W[]; slug: string; base: string; listed: boolean }) {
+export function PulseClient({ pulse, queue, slug, base, listed, restaurant = "" }: { pulse: Pulse; queue: W[]; slug: string; base: string; listed: boolean; restaurant?: string }) {
   useLive(["orders", "order_items", "bills", "dining_tables", "walkins"]);
   const toast = useToast(); const [pending, start] = useTransition(); const { online } = useOffline();
   const [party, setParty] = useState(2); const [q, setQ] = useState<number | null | undefined>(undefined);
@@ -79,7 +80,11 @@ export function PulseClient({ pulse, queue, slug, base, listed }: { pulse: Pulse
               <span className="flip xs !min-w-10 !h-10 !text-[18px] !rounded-[10px]"><span className="flip-face">{i + 1}</span></span>
               <div className="flex-1 min-w-0"><div className="font-semibold text-[15px] truncate">{w.name} <span className="text-steel font-normal">· {w.party}</span></div>
                 <div className="text-xs text-steel">{fmtSince(w.joined_at)} waiting{w.quoted_min != null && ` · quoted ${w.quoted_min}`}{w.status === "called" && " · called"}</div></div>
-              {w.phone && <a href={`tel:${w.phone}`} className="h-9 w-9 rounded-full bg-[var(--color-fill)] grid place-items-center"><Phone size={15} /></a>}
+              {w.phone && <a href={`tel:${w.phone}`} aria-label={`Ring ${w.name}`} className="h-9 w-9 rounded-full bg-[var(--color-fill)] grid place-items-center"><Phone size={15} /></a>}
+              {/* "Your table is ready" on WhatsApp, with their place-in-line link. Sending it is calling them. */}
+              {(() => { const href = waHref(w.phone, `Hi ${firstName(w.name)}, your table at ${restaurant} is ready. Please come to the host stand.${slug ? ` ${base}/queue/${slug}?t=${w.token}` : ""}`); return href && <a href={href} target="_blank" rel="noreferrer" aria-label={`Tell ${w.name} on WhatsApp their table is ready`} title="Table ready — WhatsApp"
+                onClick={() => { if (w.status === "waiting" && online) start(async () => { await setWalkin(w.id, "called"); }); }}
+                className="h-9 w-9 rounded-full bg-[var(--color-green-2)] text-[var(--color-green)] grid place-items-center"><MessageCircle size={15} /></a>; })()}
             </div>
             <div className="flex gap-2 mt-3">
               {w.status === "waiting" && <Button size="sm" variant="tinted" onClick={() => { if (!online) { void enqueue("walkin_set", { id: w.id, status: "called" }, `Queue · called ${w.name}`); return; } start(async () => { await setWalkin(w.id, "called"); }); }}><Bell size={14} /> Call</Button>}

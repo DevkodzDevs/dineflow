@@ -9,7 +9,8 @@ import { Receipt } from "@/components/receipt/Receipt";
 import { formatINR, PAYMENT_METHODS, type PaymentMethod } from "@dineflow/shared";
 import { checkIn, checkOut, addCharge, postOrderToRoom } from "../actions";
 import { stayInvoice } from "../../invoices/actions";
-import { FileText } from "lucide-react";
+import { FileText, MessageCircle } from "lucide-react";
+import { waHref, waDate, firstName } from "@/lib/wa";
 
 type B = { id: string; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; source: string; notes: string | null; checked_in_at: string | null; guests: { full_name: string; phone: string | null; email: string | null; id_type: string | null; id_last4: string | null; visits: number; vip?: boolean; preferences?: string | null } | null; rooms: { number: string; floor: number; room_types: { name: string } | null } | null };
 type C = { id: string; kind: string; description: string; amount: number; created_at: string };
@@ -31,7 +32,14 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
           <Pill tone={tone}>{b.status.replace("_", " ")}</Pill>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel flex items-center gap-2">Guest {b.guests?.vip && <Pill tone="gold">VIP</Pill>}</div><div className="mt-2 font-semibold text-lg">{b.guests?.full_name}</div><div className="text-sm text-steel">{b.guests?.phone}{b.guests?.email ? ` · ${b.guests.email}` : ""}</div><div className="text-xs text-steel mt-1">{b.guests?.id_type} ••••{b.guests?.id_last4} · {b.guests?.visits} visit{b.guests?.visits === 1 ? "" : "s"}</div>{b.guests?.preferences && <div className="text-xs mt-2 text-champagne">{b.guests.preferences}</div>}</Card>
+          <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel flex items-center gap-2">Guest {b.guests?.vip && <Pill tone="gold">VIP</Pill>}</div><div className="mt-2 font-semibold text-lg">{b.guests?.full_name}</div><div className="text-sm text-steel">{b.guests?.phone}{b.guests?.email ? ` · ${b.guests.email}` : ""}</div><div className="text-xs text-steel mt-1">{b.guests?.id_type} ••••{b.guests?.id_last4} · {b.guests?.visits} visit{b.guests?.visits === 1 ? "" : "s"}</div>{b.guests?.preferences && <div className="text-xs mt-2 text-champagne">{b.guests.preferences}</div>}
+            {(() => {
+              /* Before arrival the guest gets the confirmation; once in, a welcome they can reply to. */
+              const g = firstName(b.guests?.full_name ?? ""); const nights = Math.max(1, Math.round((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000));
+              const href = b.status === "reserved" ? waHref(b.guests?.phone, `Hi ${g}, your stay at ${restaurant.name} is confirmed: ${b.rooms?.room_types?.name ?? "room"} ${b.rooms?.number ?? ""}, ${waDate(b.check_in)} to ${waDate(b.check_out)} (${nights} night${nights === 1 ? "" : "s"}). Booking #${b.booking_no}. Reply here if you need anything before you arrive.`)
+                : b.status === "checked_in" ? waHref(b.guests?.phone, `Welcome to ${restaurant.name}, ${g}! You are in room ${b.rooms?.number ?? ""} until ${waDate(b.check_out)}. Message us here any time for food, towels or a late checkout.`) : null;
+              return href && <a href={href} target="_blank" rel="noreferrer" className="mt-3 w-full min-h-11 rounded-full px-4 flex items-center justify-center gap-2 text-sm font-semibold bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110 transition"><MessageCircle size={16} className="shrink-0" /> {b.status === "reserved" ? "Confirm on WhatsApp" : "Welcome on WhatsApp"}</a>;
+            })()}</Card>
           <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel">Stay</div><div className="mt-2 font-semibold text-lg num">{b.check_in} → {b.check_out}</div><div className="text-sm text-steel">{t?.nights} night{t?.nights === 1 ? "" : "s"} · {b.rooms?.room_types?.name} · {b.adults} adult{b.adults > 1 ? "s" : ""}{b.children ? `, ${b.children} child` : ""}</div>{b.notes && <div className="text-xs text-steel mt-1">{b.notes}</div>}</Card>
         </div>
         {b.status === "reserved" && <Button size="lg" className="mt-4 w-full sm:w-auto" disabled={pending} onClick={() => start(async () => { const r = await checkIn(b.id); if ("error" in r) setErr(r.error!); })}><LogIn size={16} /> Check in guest</Button>}

@@ -15,12 +15,12 @@ export default async function Reservations({ searchParams }: { searchParams: Pro
   const from = `${day.slice(0, 8)}01`;
   const to = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   // the session travels with the page's own rows, not in front of them: one trip, not two
-  const [, { data: list }, { data: tables }, { data: reviews }, { data: month }] = await Promise.all([
+  const [session, { data: list }, { data: tables }, { data: reviews }, { data: month }] = await Promise.all([
     requireSession(),
     s.from("reservations").select("*").eq("on_date", day).order("at_time"),
     s.from("dining_tables").select("id, name, capacity, status").order("sort_order"),
     s.from("reviews").select("*").order("created_at", { ascending: false }).limit(10),
     s.from("reservations").select("id, on_date, at_time, guest_name, party_size, status").gte("on_date", from).lte("on_date", to).order("at_time"),
   ]);
-  return <ReservationsClient day={day} list={(list ?? []) as never} tables={tables ?? []} reviews={(reviews ?? []) as never} month={(month ?? []) as never} ai={aiEnabled()} />;
+  return <ReservationsClient day={day} list={(list ?? []) as never} tables={tables ?? []} reviews={(reviews ?? []) as never} month={(month ?? []) as never} ai={aiEnabled()} restaurant={session.restaurant.name} />;
 }

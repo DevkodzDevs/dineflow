@@ -41,6 +41,13 @@ One ruled block, not forty-two cards:
 Cells are 58px (74 from `sm`), and at 412px the grid **fits without scrolling sideways** — seven
 columns of ~50px, still above the 44px tap floor.
 
+### Confirmation on WhatsApp
+A booking still to come (`requested` / `confirmed`) carries a green WhatsApp button before the ring
+button, with the confirmation typed: party, day, time and booking number. Nothing is sent by the
+app — it opens WhatsApp and the host presses send. `restaurant` (the name) comes from `page.tsx`.
+`waHref` in `lib/wa.ts` builds the link (ten digits get 91 in front; null without a usable number,
+so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "8:30 pm".
+
 ## Before you edit
 
 - **Room cards carry their own action bar** (`.room-act`, 40px, 44 on touch, sharing the card's

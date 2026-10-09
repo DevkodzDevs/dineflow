@@ -30,6 +30,13 @@ discrepancy list — rooms the front office and housekeeping disagree about.
 The room chooser uses `.keycard` tiles with a condition dot in the corner, so the person booking can
 see at a glance which free room is actually sellable.
 
+**WhatsApp from the folio** (`[id]/FolioClient.tsx`, in the Guest card). Reserved: *Confirm on
+WhatsApp* — room type and number, both dates, nights, booking number. Checked in: *Welcome on
+WhatsApp* — room, check-out day, "message us any time". Nothing is sent by the app. `waHref` in `lib/wa.ts` builds the link (ten digits get 91 in front; null without a usable number,
+so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "8:30 pm".
+The button is styled in full, not `btn btn-outline` — inside the folio card that drew no outline and
+squeezed the icon to a dot.
+
 ## Before you edit
 
 - **Arrivals / Upcoming / In house use `Head`** — a tinted icon tile, a bold 17px `h2`

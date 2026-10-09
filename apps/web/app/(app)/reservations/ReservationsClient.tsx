@@ -2,7 +2,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Phone, X, Armchair, Plus, Star, PartyPopper, Percent, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Phone, X, Armchair, Plus, Star, PartyPopper, Percent, ChevronLeft, ChevronRight, MessageCircle } from "lucide-react";
+import { waHref, waDate, waTime, firstName } from "@/lib/wa";
 import { Button, Card, Field, Pill, StatTile, Sheet, Segmented, cn, Empty, useToast } from "@/components/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { useLive } from "@/lib/useLive";
@@ -15,7 +16,7 @@ type R = { id: string; reservation_no: number; guest_name: string; guest_phone: 
 type T = { id: string; name: string; capacity: number; status: string };
 type V = { id: string; guest_name: string | null; rating: number; body: string | null; reply: string | null; created_at: string };
 
-export function ReservationsClient({ day, list, tables, reviews, month, ai = false }: { day: string; list: R[]; tables: T[]; reviews: V[]; month: Day[]; ai?: boolean }) {
+export function ReservationsClient({ day, list, tables, reviews, month, ai = false, restaurant = "" }: { day: string; list: R[]; tables: T[]; reviews: V[]; month: Day[]; ai?: boolean; restaurant?: string }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [tab, setTab] = useState<"today" | "reviews">("today");
   const [walkIn, setWalkIn] = useState(false); const [seating, setSeating] = useState<R | null>(null);
@@ -41,6 +42,8 @@ export function ReservationsClient({ day, list, tables, reviews, month, ai = fal
           <div className="text-xs text-[var(--color-label-2)] num flex items-center gap-2">#{r.reservation_no} · {r.guest_phone} · {r.source}</div>
           {r.note && <p className="text-xs text-[var(--color-label-2)] mt-1">“{r.note}”</p>}
         </div>
+        {/* The confirmation, typed out, for a booking still to come. */}
+        {["requested", "confirmed"].includes(r.status) && (() => { const href = waHref(r.guest_phone, `Hi ${firstName(r.guest_name)}, your table for ${r.party_size} at ${restaurant} is confirmed for ${waDate(r.on_date)} at ${waTime(r.at_time)}. Booking #${r.reservation_no}. See you soon!`); return href && <a href={href} target="_blank" rel="noreferrer" aria-label={`Send ${r.guest_name} the confirmation on WhatsApp`} title="Confirm on WhatsApp" className="icon-btn !rounded-full bg-[var(--color-green-2)] text-[var(--color-green)]"><MessageCircle size={15} /></a>; })()}
         <a href={`tel:${r.guest_phone}`} aria-label={`Ring ${r.guest_name}`} className="icon-btn !rounded-full bg-[var(--color-fill)]"><Phone size={15} /></a>
       </div>
       <div className="mt-3 flex gap-2">

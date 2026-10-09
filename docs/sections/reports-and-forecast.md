@@ -39,6 +39,12 @@ dead immediately. The reader's view is `/record/[token]` — see [guest-facing.m
 
 **Charts are hand-drawn SVG.** No plotting library anywhere in this app.
 
+**Table ready on WhatsApp.** A queued guest with a phone gets a green WhatsApp button beside the
+ring button: "Hi Ravi, your table at … is ready. Please come to the host stand." plus their own
+`/queue/<slug>?t=<token>` link. Pressing it also marks a waiting guest *called* — sending the
+message is calling them. `waHref` in `lib/wa.ts` builds the link (ten digits get 91 in front; null without a usable number,
+so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "8:30 pm".
+
 ## Before you edit
 
 - **Tomorrow's header actions wrap on a phone**: the day arrows and Prep sheet on one line, Send to
