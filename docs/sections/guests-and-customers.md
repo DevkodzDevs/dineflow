@@ -29,6 +29,18 @@ last seen — in one call rather than per row. `loyalty_ledger` is append-only: 
 spent, each with a reason. `loyalty_adjust` writes a manual correction with a note; it never
 overwrites a balance.
 
+**Ideas from your sales** (`customers/MarketingIdeas.tsx`, above the filter chips). *Get ideas*
+calls `marketingIdeas()`: the last 30 days of order lines (cancelled orders left out) become
+`salesFacts` — orders, average ticket, top and slow dishes, quietest and busiest day, a slow daypart
+in IST — plus how many customers are lapsed, new, regulars or can redeem points. With
+`ANTHROPIC_API_KEY` the model writes up to four campaigns from those facts in the house `VOICE`;
+without it (or if the call fails) `readyIdeas` writes them from the same facts and the card says
+*from your numbers*. Every idea names an audience that is one of this screen's filter chips
+(`inAudience` uses the same rules), so *Send to N · Not seen lately* opens a sheet listing those
+people, each with a WhatsApp link carrying the message and their first name. **Nothing is sent and
+nothing is written** — the owner presses send in WhatsApp, one at a time. `lib/marketing.ts`, 4
+tests.
+
 Coupons are checked at the till by `coupon_check` (see
 [billing-and-invoices.md](billing-and-invoices.md)).
 

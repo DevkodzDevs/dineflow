@@ -25,6 +25,14 @@ without a second query — and immediately part of the session payload's size.
 whether ordering is on. **Booking page** (`/settings/booking-page`) configures `/book/[slug]`:
 `advance_pct`, policies, `booking_engine`.
 
+**Bookings from Google** (`storefront/GoogleLinks.tsx`, end of the left column — the sticky QR
+card on the right is untouched). The links to paste into the property's Google Business Profile,
+each with where it goes (*Edit profile → Contact → …*) and a 44px copy button: Website, Menu link and
+Order ahead (when delivery or takeaway is on), Reservations (when table booking is on), Room
+booking (hotels and resorts). An orange note asks for *Listed publicly* first when it is off. It is
+honest that Google's own hotel price box needs a certified connectivity partner. The public page
+carries matching schema.org data — see [guest-facing.md](guest-facing.md).
+
 **Payment gateways** hold the **property's own** Razorpay keys. Guest payments run on those keys,
 not on DineFlow's — DineFlow is not the merchant of record for a guest's meal. This is a legal
 position, not an implementation detail; see [legal.md](legal.md).
@@ -57,6 +65,8 @@ never be reachable on a real one.
   [billing-and-invoices.md](billing-and-invoices.md).
 - **`NEXT_PUBLIC_CLOUD_URL`** is what QR codes and share links are built from. Wrong in production
   and every printed QR points at the wrong host.
+- **`diag.mjs` reports four unlabelled 51×31 targets on `/settings/storefront`** — the switches in
+  *What guests can do*. They predate the Google card; do not count them against it.
 - **Four controls in the add-ons dialog are under 44px** — a known, pre-existing gap flagged by
   `responsive.mjs`. Do not treat a new one as "the same known issue" without checking.
 

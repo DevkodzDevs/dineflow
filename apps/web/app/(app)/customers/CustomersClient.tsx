@@ -6,6 +6,7 @@ import { Plus, Search, MessageCircle, Download, Gift, Coins, Pencil, Cake, Heart
 import { Button, Card, Field, Sheet, Empty, Pill, StatTile, cn, useToast } from "@/components/ui";
 import { formatINR, fmtDate } from "@/lib/format";
 import { saveCustomer, adjustPoints, customerHistory, type HistoryRow } from "./actions";
+import { MarketingIdeas } from "./MarketingIdeas";
 
 export type Overview = { total?: number; new_30d?: number; returning?: number; lapsed_60d?: number; points_out?: number; spend_30d?: number; soon?: { id: string; name: string | null; phone: string; what: string; on: string }[] };
 type Customer = { id: string; phone: string; name: string | null; email: string | null; birthday: string | null; anniversary: string | null; tags: string[]; notes: string | null; visits: number; total_spend: number; points: number; first_visit_at: string; last_visit_at: string | null };
@@ -59,6 +60,8 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant }
           </div>
         </Card>
       )}
+
+      <MarketingIdeas customers={customers} minRedeem={loyalty.enabled ? loyalty.minRedeem : Infinity} />
 
       <div className="toolbar"><div className="toolbar-group">
         {([["all", "All"], ["regulars", "Regulars"], ["new", "New"], ["lapsed", "Not seen lately"], ["points", "Can redeem"]] as const).map(([k, label]) => (

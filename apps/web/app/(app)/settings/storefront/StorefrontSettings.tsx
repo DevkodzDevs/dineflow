@@ -6,9 +6,10 @@ import { QR } from "../../labour/LabourClient";
 import { formatINR } from "@/lib/format";
 import { saveStorefront, suggestTagline } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
+import { GoogleLinks } from "./GoogleLinks";
 import { saveOffer, deleteOffer } from "../../reservations/actions";
 
-type R = { booking_slug: string | null; name: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; photos: string[]; is_listed: boolean; dining_enabled: boolean; delivery_enabled: boolean; takeaway_enabled: boolean; opens_at: string; closes_at: string; slot_minutes: number; seats_per_slot: number | null; min_order: number; delivery_fee: number; packing_charge: number; delivery_radius_km: number; rating: number | null; rating_count: number };
+type R = { booking_slug: string | null; name: string; property_type?: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; photos: string[]; is_listed: boolean; dining_enabled: boolean; delivery_enabled: boolean; takeaway_enabled: boolean; opens_at: string; closes_at: string; slot_minutes: number; seats_per_slot: number | null; min_order: number; delivery_fee: number; packing_charge: number; delivery_radius_km: number; rating: number | null; rating_count: number };
 type O = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; from_time: string | null; to_time: string | null; code: string | null; is_active: boolean };
 
 export function StorefrontSettings({ base, r, offers, ai = false }: { base: string; r: R; offers: O[]; ai?: boolean }) {
@@ -89,6 +90,7 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
               </div>))}</div>
           )}
         </Card>
+        <GoogleLinks base={base} slug={r.booking_slug} listed={on.listed} dining={on.dining} ordering={on.delivery || on.takeaway} rooms={r.property_type !== "restaurant"} />
       </div>
 
       <Card className="h-fit lg:sticky lg:top-24 text-center">

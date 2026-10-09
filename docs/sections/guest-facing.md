@@ -58,6 +58,12 @@ whole number**, optional email and HH:MM arrival, a confirmation tick) and may b
 nationality other than Indian brings up the Form C note. `?kiosk=1` is the desk's tablet: the
 finish screen only asks for the tablet back. Paper theme (`app/checkin/layout.tsx`), like the queue.
 
+**What Google reads.** `/dine/[slug]` renders a `<script type="application/ld+json">` from
+`restaurantLd` (`lib/schemaorg.ts`, 3 tests): a schema.org `Restaurant` with only what the page
+already shows — cuisine, address, phone, photos, hours, price for two, rating — plus a
+`ReserveAction` (`?tab=book`) and an `OrderAction` (`?tab=order`) when those are switched on.
+`ldJson` escapes `<`, so a name cannot close the script tag. **Not on a table-QR visit** (`?t=`).
+
 **Kitchen pace on the storefront.** `dine/[slug]/page.tsx` fetches `dine_busy(slug)` and the
 Order tab shows a red *Not taking online orders right now. Back at …* or an orange *The kitchen is
 busy* banner. Neither shows on a table-QR visit (`tableToken`), because those orders are never

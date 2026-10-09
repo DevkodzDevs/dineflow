@@ -1,7 +1,9 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import { headers } from "next/headers";
 import { StorefrontClient } from "./StorefrontClient";
+import { restaurantLd, ldJson, type StoreFacts } from "@/lib/schemaorg";
 export const dynamic = "force-dynamic";
 const anon = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
 
@@ -23,5 +25,12 @@ export default async function Storefront({ params, searchParams }: { params: Pro
   /* the kitchen's pace right now (0079): a pause or extra minutes, said before anyone fills a basket */
   const { data: busy } = await anon().rpc("dine_busy", { p_slug: slug });
   if (!data) notFound();
-  return <StorefrontClient slug={slug} d={data as never} initialSlots={(slots ?? []) as never} tab={(tab as never) ?? "book"} tableToken={t ?? null} busy={(busy ?? null) as never} />;
+  /* what Google reads: the restaurant, and which links reserve and order (Settings → Storefront →
+     Bookings from Google). Not on a table-QR visit — that page is for the people at the table. */
+  const h = await headers();
+  const base = process.env.NEXT_PUBLIC_CLOUD_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
+  return (<>
+    {!t && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(restaurantLd(data as StoreFacts, `${base}/dine/${slug}`)) }} />}
+    <StorefrontClient slug={slug} d={data as never} initialSlots={(slots ?? []) as never} tab={(tab as never) ?? "book"} tableToken={t ?? null} busy={(busy ?? null) as never} />
+  </>);
 }
