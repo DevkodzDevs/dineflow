@@ -210,8 +210,10 @@ theme across the board, so fixing one means fixing the recipe.
   `₹8,85,154.72` came out at 23px beside a three-line caption. A figure is the headline and takes
   the full line (`.stat-fig`: 34px from 14rem of content, 38px from 16rem, else `--fig-narrow`
   from its own length so nothing overflows a 144px phone card). The caption stands beside the
-  number when it fits and drops under it when it does not. The tone dot is a corner pip
-  (`.stat-pip`), and only when there is a tone.
+  number when it fits and drops under it when it does not. The tone is a status light at the end
+  of the label row — a 20px tinted halo around an 8px dot, pulsing when it is an alert — and only
+  when there is a tone. (It was an absolute `.stat-pip`; `.pulse-dot`'s `position: relative`,
+  declared later, beat it and dropped the alert dot into the flow over the label.)
 - **One band for flaps and figures.** `.stat-body { --stat-band }` is the flap tile's height *and*
   the figure's `min-height`, so a counted number and a priced one share a baseline on one row. It
   is the same `cqw` clamp as `.flip-stat .flip { --tile }` — keep the two identical, or point the

@@ -146,11 +146,18 @@ export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string
     <Reveal delay={delay}>
       <div onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`); e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`); }}
         className={cn("card spotlight feather-lift p-5 h-full relative @container flex flex-col", tone === "alert" && "!border-[var(--color-red)]/40", tone === "good" && "!border-[var(--color-green)]/50")}>
-        {/* The state as a pip in the corner, where a status light goes, rather than crowding the
-            label. Only when it is saying something: a plain tile once carried a dot at 12% white
-            beside every label on fourteen screens, signalling nothing. */}
-        {tone && <span aria-hidden className={cn("stat-pip", tone === "alert" ? "bg-[var(--color-red)] pulse-dot text-[var(--color-red)]" : "bg-[var(--color-green)]")} />}
-        <div className="eyebrow pr-5">{label}</div>
+        {/* The state as a status light, only when it is saying something: a plain tile once carried
+            a dot at 12% white beside every label on fourteen screens, signalling nothing. */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="eyebrow min-w-0 flex-1 truncate">{label}</div>
+          {/* A status light at the end of the label row: a soft halo with a solid core, centred on
+              the label's line. It was an absolutely placed .stat-pip, but .pulse-dot (declared
+              later) set position: relative, which dropped the alert dot into the flow, half over
+              the label. */}
+          {tone && <span aria-hidden className={cn("relative h-5 w-5 shrink-0 rounded-full grid place-items-center", tone === "alert" ? "bg-[color-mix(in_srgb,var(--color-red)_16%,transparent)] text-[var(--color-red)]" : "bg-[color-mix(in_srgb,var(--color-green)_16%,transparent)] text-[var(--color-green)]")}>
+            <span className={cn("h-2 w-2 rounded-full bg-current", tone === "alert" && "pulse-dot")} />
+          </span>}
+        </div>
         {/* The number is the headline and gets the whole line. It was laid sideways for a while —
             number left, words right — which suited an 86px flap tile and punished a figure:
             "₹8,85,154.72" came out at 23px beside a three-line caption, a sum of money reading like

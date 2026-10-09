@@ -236,7 +236,6 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
    38px; 16rem is 256. */
 @container (min-width: 16rem) { .stat-fig { font-size: 38px; } }
 /* the state light, in the corner where one goes */
-.stat-pip { position: absolute; top: 18px; right: 18px; width: 8px; height: 8px; border-radius: 999px; }
 .flip.live { color: #4cd964; } .flip.alert { color: #ff453a; }
 .flip-label { font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-label-2); text-align: center; margin-top: 12px; font-weight: 500; }
 .flip-row { display: flex; gap: clamp(10px, 2.4vw, 24px); align-items: flex-start; justify-content: flex-start; flex-wrap: wrap; }
