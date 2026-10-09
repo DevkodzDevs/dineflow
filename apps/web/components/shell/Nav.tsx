@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { cn, Sheet } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
+import { barFor } from "@/lib/bar";
 
 const ITEMS = [
   { key: "dashboard", href: "/dashboard", label: "Control room", Icon: LayoutDashboard },
@@ -162,16 +163,12 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
 
 /** The four a phone keeps in reach, by kind of property; the rest live under More. Only modules
  *  this person may open are used, and the gaps fill from the menu's own order. */
-const PRIMARY: Record<string, string[]> = {
-  restaurant: ["dashboard", "orders", "kitchen", "billing"],
-  hotel: ["dashboard", "frontdesk", "rooms", "orders"],
-  resort: ["dashboard", "frontdesk", "rooms", "orders"],
-};
+const PIN_KEY = "df-bar-pins";
 const HOSPITALITY = ["frontdesk", "rooms", "housekeeping", "guests", "facilities"];
 const MANAGE = ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"];
 const TOP = ["dashboard", "tomorrow", "scan"];
 
-type MoreProps = { role: Role; type: PropertyType; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null };
+type MoreProps = { role: Role; type: PropertyType; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number };
 
 /**
  * The phone's navigation: four sections and More. It used to be one sideways-scrolling strip of
@@ -179,16 +176,34 @@ type MoreProps = { role: Role; type: PropertyType; enabled?: string[] | null; al
  * phone had no way to sign out at all. More opens every section this person can use, grouped the
  * way the sidebar groups them, with the account, Master control and Sign out at the foot.
  */
-export function BottomNav({ role, type, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref }: MoreProps) {
+export function BottomNav({ role, type, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0 }: MoreProps) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [path]);
   const mods = modulesFor(type, role, enabled, personal);
   const allowed = ITEMS.filter((i) => mods.includes(i.key));
-  const want = PRIMARY[type] ?? PRIMARY.restaurant;
-  const primary = [...allowed.filter((i) => want.includes(i.key)).sort((a, b) => want.indexOf(a.key) - want.indexOf(b.key)), ...allowed.filter((i) => !want.includes(i.key))].slice(0, 4);
+  /* The bar's four: the person's own pins if they set any on this device (Square lets staff pin the
+     applets they use most), else what their role does all day, else the property's default. */
+  const [pins, setPins] = useState<string[] | null>(null);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { try { const v = JSON.parse(localStorage.getItem(PIN_KEY) ?? "null"); if (Array.isArray(v)) setPins(v.filter((x) => typeof x === "string")); } catch { /* none saved */ } }, []);
+  useEffect(() => { if (!open) setEditing(false); }, [open]);
+  const savePins = (v: string[] | null) => { setPins(v); try { if (v) localStorage.setItem(PIN_KEY, JSON.stringify(v)); else localStorage.removeItem(PIN_KEY); } catch { /* fine */ } };
+  const primary = barFor(role, type, allowed.map((i) => i.key), pins).map((k) => allowed.find((i) => i.key === k)!);
+  /* What the person chose — not what the bar shows. When fewer than four are pinned the bar fills the
+     gaps from the menu; counting those fillers as pins made a newly pinned section push itself out. */
+  const pinned = pins ? pins.filter((k) => mods.includes(k)) : primary.map((i) => i.key);
+  const togglePin = (k: string) => {
+    const cur = pinned;
+    if (cur.includes(k)) { if (cur.length > 1) savePins(cur.filter((x) => x !== k)); }
+    else savePins(cur.length >= 4 ? [...cur.slice(0, 3), k] : [...cur, k]);
+  };
+  /* what needs attention, as a count on its section: tickets over 15 minutes in the kitchen */
+  const badge = (key: string) => (key === "kitchen" && lateKots > 0 ? lateKots : 0);
   const rest = allowed.filter((i) => !primary.includes(i));
   const onMore = rest.some((i) => path.startsWith(i.href));
+  const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0);
+  const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num">{n > 99 ? "99+" : n}</span>;
   const groups = [
     { title: null as string | null, items: allowed.filter((i) => TOP.includes(i.key)) },
     { title: type === "resort" ? "Resort" : "Hotel", items: allowed.filter((i) => HOSPITALITY.includes(i.key)) },
@@ -205,29 +220,46 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
             const active = path.startsWith(href);
             return (
               <Link key={key} href={href} aria-current={active ? "page" : undefined} className={tab(active)}>
-                <motion.span whileTap={{ scale: .85 }} className={pip(active)}><Icon size={20} strokeWidth={active ? 2.4 : 1.9} /></motion.span><span className="truncate max-w-full px-0.5">{label}</span>
+                <motion.span whileTap={{ scale: .85 }} className={cn(pip(active), "relative")}><Icon size={20} strokeWidth={active ? 2.4 : 1.9} />{count(badge(key))}</motion.span><span className="truncate max-w-full px-0.5">{label}</span>
               </Link>
             );
           })}
           <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} className={tab(open || onMore)}>
-            <motion.span whileTap={{ scale: .85 }} className={pip(open || onMore)}><LayoutGrid size={20} strokeWidth={open || onMore ? 2.4 : 1.9} /></motion.span>More
+            <motion.span whileTap={{ scale: .85 }} className={cn(pip(open || onMore), "relative")}><LayoutGrid size={20} strokeWidth={open || onMore ? 2.4 : 1.9} />{count(moreBadge)}</motion.span>More
           </button>
         </div>
       </nav>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Menu">
         <div className="space-y-5">
+          <div className={cn("flex items-center gap-2 rounded-2xl p-2.5 pl-3.5", editing ? "bg-[var(--color-green-2)]" : "bg-[var(--color-fill)]")}>
+            <span className="flex-1 min-w-0 text-[12.5px] leading-snug">{editing ? <><b>Tap to pin</b> up to 4 sections to your bar.</> : <>Your bar: <b>{primary.map((i) => i.label).join(" · ")}</b></>}</span>
+            {editing && pins && <button type="button" onClick={() => savePins(null)} className="h-10 px-3 rounded-xl text-[12.5px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)]">Reset</button>}
+            <button type="button" onClick={() => setEditing((v) => !v)} aria-pressed={editing}
+              className={cn("h-10 px-3.5 rounded-xl text-[13px] font-semibold shrink-0 transition-colors", editing ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_2px_rgb(0_0_0/.15)]")}>{editing ? "Done" : "Edit bar"}</button>
+          </div>
           {groups.map((g) => (
             <section key={g.title ?? "top"}>
               {g.title && <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-[var(--color-label-3)] mb-2">{g.title}</div>}
               <div className="grid grid-cols-3 gap-2">
                 {g.items.map(({ key, href, label, Icon }) => {
                   const active = path.startsWith(href);
+                  if (editing) {
+                    const on = pinned.includes(key);
+                    return (
+                      <button key={key} type="button" onClick={() => togglePin(key)} aria-pressed={on}
+                        className={cn("relative min-w-0 min-h-[76px] rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center text-[12px] font-semibold leading-tight transition-colors",
+                          on ? "bg-[rgb(76_217_100/.14)] text-[var(--color-tint)] ring-2 ring-[var(--color-tint)]" : "bg-[var(--color-fill)] text-[var(--color-label)] border border-dashed border-[var(--color-label-3)]")}>
+                        <span className={cn("absolute top-1.5 right-1.5 h-5 w-5 rounded-full grid place-items-center text-[10px] font-bold num", on ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-bg-2)] text-[var(--color-label-3)]")}>{on ? pinned.indexOf(key) + 1 : "+"}</span>
+                        <Icon size={20} /><span className="line-clamp-2">{label}</span>
+                      </button>
+                    );
+                  }
                   return (
                     <Link key={key} href={href} aria-current={active ? "page" : undefined}
                       className={cn("min-w-0 min-h-[76px] rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center text-[12px] font-semibold leading-tight transition-colors",
                         active ? "bg-[rgb(76_217_100/.14)] text-[var(--color-tint)] ring-1 ring-[rgb(76_217_100/.4)]" : "bg-[var(--color-fill)] text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}>
-                      <Icon size={20} strokeWidth={active ? 2.3 : 1.9} /><span className="line-clamp-2">{label}</span>
+                      <span className="relative"><Icon size={20} strokeWidth={active ? 2.3 : 1.9} />{count(badge(key))}</span><span className="line-clamp-2">{label}</span>
                     </Link>
                   );
                 })}

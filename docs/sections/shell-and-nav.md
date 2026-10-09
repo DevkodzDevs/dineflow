@@ -80,9 +80,18 @@ a quarter of a second each: the 1–2 s "click and wait" people felt.
 
 ### The phone's navigation
 
-`BottomNav` shows four sections and **More**. The four are by property kind — restaurant:
-dashboard, orders, kitchen, billing; hotel/resort: dashboard, frontdesk, rooms, orders — filtered
-to what this person may open and filled from the menu order. More opens a `Sheet` titled Menu
+`BottomNav` shows four sections and **More**, chosen by `barFor()` in `lib/bar.ts` (unit-tested in
+`lib/bar.test.ts`): the person's own pins if any are usable, else their role's day (`ROLE_PRIMARY` —
+waiter: orders, kitchen, pulse, reservations; chef: kitchen, menu, pantry; cashier: billing, orders,
+invoices; housekeeping: housekeeping, rooms, scan; front desk: front desk, rooms, guests,
+reservations; store: pantry, scan, labour), else the property default (restaurant: dashboard,
+orders, kitchen, billing; hotel/resort: dashboard, front desk, rooms, orders) — always filtered to
+what they may open and filled from the menu order. Pins are set in More → **Edit bar** (up to four,
+numbered; Reset clears them) and kept per device in `localStorage` (`df-bar-pins`), as Square POS
+does. **Late kitchen tickets** (`session.lateKots`) show as a red count on Kitchen, or on More when
+Kitchen lives there. Research behind this (Square, Toast Go, Petpooja Captain, Mews, Cloudbeds,
+OPERA Cloud; Material and Apple HIG): 3–5 destinations, no scrolling bar, no actions in the bar,
+badges only for what needs attention. Probe: `bar.mjs`. More opens a `Sheet` titled Menu
 with *every* allowed section as 3-up tiles grouped like the sidebar, then the account card (to
 `/settings` when allowed), Master control for admins, and **Sign out** (POST `/logout`). More is
 lit while the current page lives under it; the sheet closes on navigation. The old bar was one

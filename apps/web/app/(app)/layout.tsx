@@ -86,7 +86,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}
       </div></main>
       <BottomNav role={s.profile.role} type={s.restaurant.property_type} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
-        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} />
+        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} />
       <Assist />
     </div>
    </ToastProvider>
