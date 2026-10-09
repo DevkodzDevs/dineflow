@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing } from "lucide-react";
+import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing, Receipt, BedDouble, ChefHat, Timer, Sunrise } from "lucide-react";
 import { NotificationSettings } from "@/components/shell/Notifier";
 import { LogoUpload } from "./LogoUpload";
 import { Button, Card, Field, Switch, cn } from "@/components/ui";
@@ -117,11 +117,13 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             </Section>
           </Card>
 
-          {/* property info */}
-          <Card>
-            <Section icon={<Building2 size={16} />} title="Property details">
-              <form className="space-y-4" action={(fd) => start(async () => { const r = await saveRestaurant(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
-                <input type="hidden" name="id" value={restaurant.id} />
+          {/* The property's settings, one card per subject — they were all one long form under
+              "Property details". Still one <form> and one Save (saveRestaurant reads every field),
+              with the save bar pinned to the bottom so it is in reach from any card. */}
+          <form className="space-y-6" action={(fd) => start(async () => { const r = await saveRestaurant(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
+            <input type="hidden" name="id" value={restaurant.id} />
+            <Card>
+              <Section icon={<Building2 size={16} />} title="Property details" description="What the property is and how guests reach it.">
                 <Field label="Property type" hint="Hotel and resort unlock Front desk, Rooms, Housekeeping, Guests.">
                   <select name="property_type" defaultValue={restaurant.property_type}>
                     <option value="restaurant">Restaurant</option><option value="hotel">Hotel</option><option value="resort">Resort</option>
@@ -132,94 +134,112 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   <Field label="Phone"><input name="phone" defaultValue={restaurant.phone ?? ""} className="num" /></Field>
                 </div>
                 <Field label="Address"><input name="address" defaultValue={restaurant.address ?? ""} /></Field>
-                {/* the logo is uploaded (0083), saved the moment it is picked; brand colour stays a field */}
-                <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-start">
+              </Section>
+            </Card>
+
+            <Card>
+              <Section icon={<Palette size={16} />} title="Brand" description="Your logo and colour — on the sidebar, receipts, the storefront and booking page.">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-start">
                   <LogoUpload restaurantId={restaurant.id} initial={restaurant.logo_url ?? null} name={restaurant.name} />
                   <Field label="Brand colour" hint="Hex, e.g. #c9302c"><input name="brand_colour" defaultValue={restaurant.brand_colour ?? ""} placeholder="#c9302c" className="num" /></Field>
                 </div>
+              </Section>
+            </Card>
 
-                <div className="pt-3 border-t border-[var(--color-separator)]">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">On-time promise</div>
-                  <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
-                    <input type="checkbox" name="promise_enabled" className="w-4 h-4 accent-saffron mt-0.5" defaultChecked={restaurant.promise_enabled ?? false} onChange={(e) => setPromise(e.target.checked)} />
-                    <span>Offer guests a delivery deadline<span className="block text-xs text-steel mt-0.5">A guest can be offered “on your table in {restaurant.promise_minutes ?? 30} minutes, or the food is free”. They pay the percentage below for it. Miss the deadline and the whole bill comes to zero — the fee included.</span></span>
-                  </label>
-                  {promise && (
-                    <div className="grid sm:grid-cols-2 gap-3 mt-3">
-                      <Field label="Minutes promised" hint="From the moment the order is taken to the food reaching the guest">
-                        <input name="promise_minutes" type="number" min={5} max={240} step={1} defaultValue={restaurant.promise_minutes ?? 30} className="num" />
-                      </Field>
-                      <Field label="Charged for it %" hint="Added to the food after any discount, and taxed with it">
-                        <input name="promise_pct" type="number" min={0} max={50} step="0.5" defaultValue={restaurant.promise_pct ?? 5} className="num" />
-                      </Field>
-                    </div>
-                  )}
+            <Card>
+              <Section icon={<Receipt size={16} />} title="Tax & billing" description={`GST and service charge on every bill${isHotel ? ", and the room-night GST slabs" : ""}.`}>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="GSTIN" hint={gstinOn ? undefined : "Empty — no tax is added to any bill"}><input name="gstin" defaultValue={restaurant.gstin ?? ""} className="num uppercase" onChange={(e) => setGstinOn(e.target.value.trim() !== "")} /></Field>
+                  <Field label="GST rate %" hint="5% for most; split as CGST + SGST"><input name="gst_rate" type="number" step="0.01" defaultValue={restaurant.gst_rate} className="num" /></Field>
                 </div>
-
-                {/* what a chain's kitchen video system is configured with: the stations, and the clock */}
-                <div className="pt-3 border-t border-[var(--color-separator)]">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Kitchen control</div>
-                  <Field label="Stations" hint="Comma-separated. Each station gets its own view of the kitchen board — Grill, Tandoor, Fry, Bar, Dessert. Point categories at them on the Menu page.">
-                    <input name="kds_stations" defaultValue={(restaurant.kds_stations ?? []).join(", ")} placeholder="Grill, Tandoor, Bar" />
-                  </Field>
-                  <div className="grid sm:grid-cols-2 gap-3 mt-3">
-                    <Field label="Hurry after (minutes)" hint="The ticket turns amber"><input name="kds_warn_minutes" type="number" min={1} max={120} step={1} defaultValue={restaurant.kds_warn_minutes ?? 10} className="num" /></Field>
-                    <Field label="Late after (minutes)" hint="The ticket turns red and counts against speed of service"><input name="kds_target_minutes" type="number" min={1} max={240} step={1} defaultValue={restaurant.kds_target_minutes ?? 15} className="num" /></Field>
-                  </div>
+                {!gstinOn && (
+                  <p className="text-xs mt-2 text-[var(--color-orange)]">
+                    No GSTIN is saved, so bills carry no CGST or SGST. That is the law for a business that is not registered — collecting tax without a registration is not allowed. If you are registered, type the GSTIN above and tax starts appearing on the next bill.
+                  </p>
+                )}
+                <div className="grid gap-3 mt-3 sm:grid-cols-2">
+                  <Field label="Service charge %"><input name="service_charge_pct" type="number" step="0.01" defaultValue={restaurant.service_charge_pct} className="num" /></Field>
+                  {isHotel && <Field label="Room GST % (up to the slab)" hint="5% since 22 Sep 2025"><input name="room_gst_rate" type="number" step="0.01" defaultValue={restaurant.room_gst_rate} className="num" /></Field>}
                 </div>
-
                 {isHotel && (
-                  <div className="pt-3 border-t border-[var(--color-separator)]">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Rooms division</div>
-                    <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
-                      <input type="checkbox" name="hk_inspect_required" className="w-4 h-4 accent-saffron mt-0.5" defaultChecked={restaurant.hk_inspect_required ?? false} />
-                      <span>A supervisor inspects every room before it is sold<span className="block text-xs text-steel mt-0.5">The five-star rule. A cleaned room waits as “clean” until an owner, manager or supervisor signs it off on the Housekeeping page, and check-in is refused until then. Off, a finished clean puts the room back on sale at once.</span></span>
-                    </label>
+                  <div className="grid sm:grid-cols-3 gap-3 mt-3">
+                    <Field label="Slab at ₹ / night" hint="Above this, the higher rate applies">
+                      <input name="room_gst_threshold" type="number" step="1" defaultValue={restaurant.room_gst_threshold ?? 7500} className="num" />
+                    </Field>
+                    <Field label="Room GST % above the slab" hint="18% since 22 Sep 2025">
+                      <input name="room_gst_rate_high" type="number" step="0.01" defaultValue={restaurant.room_gst_rate_high ?? 18} className="num" />
+                    </Field>
+                    <Field label="Extras GST %" hint="Spa, laundry, transport on the folio">
+                      <input name="facility_gst_rate" type="number" step="0.01" defaultValue={restaurant.facility_gst_rate ?? 18} className="num" />
+                    </Field>
                   </div>
                 )}
+                {isHotel && <p className="text-xs text-steel mt-2">Each night is taxed on the rate that night was sold at, so a ₹4,000 room and a ₹9,000 suite carry different rates on the same invoice — which is what the law asks for.</p>}
+                {!isHotel && <><input type="hidden" name="room_gst_rate" value={restaurant.room_gst_rate} /><input type="hidden" name="room_gst_rate_high" value={restaurant.room_gst_rate_high ?? 18} /><input type="hidden" name="room_gst_threshold" value={restaurant.room_gst_threshold ?? 7500} /><input type="hidden" name="facility_gst_rate" value={restaurant.facility_gst_rate ?? 18} /><input type="hidden" name="check_in_time" value={restaurant.check_in_time} /><input type="hidden" name="check_out_time" value={restaurant.check_out_time} /></>}
+              </Section>
+            </Card>
 
-                <div className="pt-3 border-t border-[var(--color-separator)]">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Tax & billing</div>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <Field label="GSTIN" hint={gstinOn ? undefined : "Empty — no tax is added to any bill"}><input name="gstin" defaultValue={restaurant.gstin ?? ""} className="num uppercase" onChange={(e) => setGstinOn(e.target.value.trim() !== "")} /></Field>
-                    <Field label="GST rate %" hint="5% for most; split as CGST + SGST"><input name="gst_rate" type="number" step="0.01" defaultValue={restaurant.gst_rate} className="num" /></Field>
-                  </div>
-                  {!gstinOn && (
-                    <p className="text-xs mt-2 text-[var(--color-orange)]">
-                      No GSTIN is saved, so bills carry no CGST or SGST. That is the law for a business that is not registered — collecting tax without a registration is not allowed. If you are registered, type the GSTIN above and tax starts appearing on the next bill.
-                    </p>
-                  )}
-                  <div className={cn("grid gap-3 mt-3", isHotel ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
-                    <Field label="Service charge %"><input name="service_charge_pct" type="number" step="0.01" defaultValue={restaurant.service_charge_pct} className="num" /></Field>
-                    {isHotel && <Field label="Room GST % (up to the slab)" hint="5% since 22 Sep 2025"><input name="room_gst_rate" type="number" step="0.01" defaultValue={restaurant.room_gst_rate} className="num" /></Field>}
-                    {isHotel && <Field label="Check-in / out"><div className="grid grid-cols-2 gap-2"><input name="check_in_time" type="time" defaultValue={restaurant.check_in_time?.slice(0, 5)} className="num" /><input name="check_out_time" type="time" defaultValue={restaurant.check_out_time?.slice(0, 5)} className="num" /></div></Field>}
-                  </div>
-                  {isHotel && (
-                    <div className="grid sm:grid-cols-3 gap-3 mt-3">
-                      <Field label="Slab at ₹ / night" hint="Above this, the higher rate applies">
-                        <input name="room_gst_threshold" type="number" step="1" defaultValue={restaurant.room_gst_threshold ?? 7500} className="num" />
-                      </Field>
-                      <Field label="Room GST % above the slab" hint="18% since 22 Sep 2025">
-                        <input name="room_gst_rate_high" type="number" step="0.01" defaultValue={restaurant.room_gst_rate_high ?? 18} className="num" />
-                      </Field>
-                      <Field label="Extras GST %" hint="Spa, laundry, transport on the folio">
-                        <input name="facility_gst_rate" type="number" step="0.01" defaultValue={restaurant.facility_gst_rate ?? 18} className="num" />
-                      </Field>
-                    </div>
-                  )}
-                  {isHotel && <p className="text-xs text-steel mt-2">Each night is taxed on the rate that night was sold at, so a ₹4,000 room and a ₹9,000 suite carry different rates on the same invoice — which is what the law asks for.</p>}
-                  {!isHotel && <><input type="hidden" name="room_gst_rate" value={restaurant.room_gst_rate} /><input type="hidden" name="room_gst_rate_high" value={restaurant.room_gst_rate_high ?? 18} /><input type="hidden" name="room_gst_threshold" value={restaurant.room_gst_threshold ?? 7500} /><input type="hidden" name="facility_gst_rate" value={restaurant.facility_gst_rate ?? 18} /><input type="hidden" name="check_in_time" value={restaurant.check_in_time} /><input type="hidden" name="check_out_time" value={restaurant.check_out_time} /></>}
+            {isHotel && (
+              <Card>
+                <Section icon={<BedDouble size={16} />} title="Rooms & stays" description="Check-in times and the housekeeping rule.">
+                  <Field label="Check-in and check-out" hint="Shown on bookings and the guest's confirmation"><div className="grid grid-cols-2 gap-2"><input name="check_in_time" type="time" defaultValue={restaurant.check_in_time?.slice(0, 5)} className="num" /><input name="check_out_time" type="time" defaultValue={restaurant.check_out_time?.slice(0, 5)} className="num" /></div></Field>
+                  <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
+                    <input type="checkbox" name="hk_inspect_required" className="w-4 h-4 accent-saffron mt-0.5" defaultChecked={restaurant.hk_inspect_required ?? false} />
+                    <span>A supervisor inspects every room before it is sold<span className="block text-xs text-steel mt-0.5">The five-star rule. A cleaned room waits as “clean” until an owner, manager or supervisor signs it off on the Housekeeping page, and check-in is refused until then. Off, a finished clean puts the room back on sale at once.</span></span>
+                  </label>
+                </Section>
+              </Card>
+            )}
+
+            <Card>
+              <Section icon={<ChefHat size={16} />} title="Kitchen" description="Stations on the kitchen board, and when a ticket turns amber and red.">
+                <Field label="Stations" hint="Comma-separated. Each station gets its own view of the kitchen board — Grill, Tandoor, Fry, Bar, Dessert. Point categories at them on the Menu page.">
+                  <input name="kds_stations" defaultValue={(restaurant.kds_stations ?? []).join(", ")} placeholder="Grill, Tandoor, Bar" />
+                </Field>
+                <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                  <Field label="Hurry after (minutes)" hint="The ticket turns amber"><input name="kds_warn_minutes" type="number" min={1} max={120} step={1} defaultValue={restaurant.kds_warn_minutes ?? 10} className="num" /></Field>
+                  <Field label="Late after (minutes)" hint="The ticket turns red and counts against speed of service"><input name="kds_target_minutes" type="number" min={1} max={240} step={1} defaultValue={restaurant.kds_target_minutes ?? 15} className="num" /></Field>
                 </div>
+              </Section>
+            </Card>
 
+            <Card>
+              <Section icon={<Timer size={16} />} title="On-time promise" description="An optional delivery deadline you can sell with an order.">
+                <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
+                  <input type="checkbox" name="promise_enabled" className="w-4 h-4 accent-saffron mt-0.5" defaultChecked={restaurant.promise_enabled ?? false} onChange={(e) => setPromise(e.target.checked)} />
+                  <span>Offer guests a delivery deadline<span className="block text-xs text-steel mt-0.5">A guest can be offered “on your table in {restaurant.promise_minutes ?? 30} minutes, or the food is free”. They pay the percentage below for it. Miss the deadline and the whole bill comes to zero — the fee included.</span></span>
+                </label>
+                {/* switched off, the two fields are not on the page — carry the saved values, or every Save
+                    would reset the rate to 0 and the window to 30 minutes */}
+                {!promise && <><input type="hidden" name="promise_minutes" value={restaurant.promise_minutes ?? 30} /><input type="hidden" name="promise_pct" value={restaurant.promise_pct ?? 5} /></>}
+                {promise && (
+                  <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                    <Field label="Minutes promised" hint="From the moment the order is taken to the food reaching the guest">
+                      <input name="promise_minutes" type="number" min={5} max={240} step={1} defaultValue={restaurant.promise_minutes ?? 30} className="num" />
+                    </Field>
+                    <Field label="Charged for it %" hint="Added to the food after any discount, and taxed with it">
+                      <input name="promise_pct" type="number" min={0} max={50} step="0.5" defaultValue={restaurant.promise_pct ?? 5} className="num" />
+                    </Field>
+                  </div>
+                )}
+              </Section>
+            </Card>
+
+            <Card>
+              <Section icon={<Sunrise size={16} />} title="Tomorrow brief" description="How the next day's prep list is worked out and where it is sent.">
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Field label="Prep buffer %" hint="Extra the Tomorrow brief adds"><input name="prep_buffer_pct" type="number" className="num" defaultValue={restaurant.prep_buffer_pct ?? 10} /></Field>
                   <Field label="WhatsApp for the brief" hint="'Send to the team' opens this"><input name="brief_whatsapp" className="num" defaultValue={restaurant.brief_whatsapp ?? ""} placeholder="98400 11223" /></Field>
                 </div>
+              </Section>
+            </Card>
 
-                <Button className="w-full sm:w-auto" disabled={pending}>Save changes</Button>
-              </form>
-            </Section>
-          </Card>
+            {/* one save for all the cards above, pinned where a thumb reaches it */}
+            <div className="settings-savebar sticky bottom-[calc(env(safe-area-inset-bottom)+92px)] md:bottom-4 z-10 rounded-2xl material-thick border border-[var(--color-separator)] shadow-[var(--shadow-pop)] pl-4 pr-[84px] py-3 flex items-center gap-3">
+              <span role="status" className={cn("flex-1 min-w-0 text-[13px] leading-snug", msg && !pending ? (/error|fail|not/i.test(msg) ? "text-[var(--color-red)]" : "text-[var(--color-green)] font-semibold") : "text-[var(--color-label-2)]")}>{pending ? "Saving…" : msg ?? "Changes in these cards are saved together."}</span>
+              <Button disabled={pending}>Save changes</Button>
+            </div>
+          </form>
 
           {/* account & security */}
           <Card>

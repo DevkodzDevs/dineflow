@@ -101,3 +101,13 @@ pnpm --filter @dineflow/web typecheck
   hidden `logo_url` input keeps the details form in step so its Save does not write the old address
   back. The file input is `hidden`, not `sr-only`: the global `input { width: 100% }` beats
   `sr-only` and a 1440px-wide invisible input pushed the page 323px sideways.
+- **General → the property's own settings are separate cards, one form.** Property details (type,
+  name, phone, address) · Brand (logo, colour) · Tax & billing · Rooms & stays (hotel/resort only:
+  check-in/out, the inspection rule) · Kitchen · On-time promise · Tomorrow brief. They were all one
+  card titled "Property details". It is still **one `<form>` and one `saveRestaurant`**, which reads
+  every field — so a field moved between cards must stay inside that form, and a field that is
+  hidden must still post its saved value (a restaurant posts the room GST and check-in times as
+  hidden inputs; a switched-off promise posts `promise_minutes`/`promise_pct` — before this, every
+  Save with the promise off reset the rate to 0). The Save sits in `.settings-savebar`, sticky above
+  the bottom nav (`bottom: 92px` on a phone), padded 84px on the right to clear the Assist button,
+  and it shows "Saving…" / "Saved." itself.
