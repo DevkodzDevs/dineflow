@@ -92,3 +92,12 @@ pnpm --filter @dineflow/web typecheck
 - **Notifications card** (General, after Appearance, `#notifications`) is `NotificationSettings`
   from `components/shell/Notifier.tsx` — per device, like Appearance. The same panel opens from the
   bell for people who cannot open Settings. See [shell-and-nav.md](shell-and-nav.md).
+
+- **Logo is uploaded** (`LogoUpload.tsx`, actions `uploadLogo` / `removeLogo`, bucket `brand` from
+  0083). The browser refuses anything but PNG/JPG/WebP (SVG and GIF by name), over 5 MB, or under
+  128 px, then shrinks to 512 px on the long side (WebP, PNG where WebP cannot be written) — a phone
+  photo arrives at a few dozen KB. The server action checks ≤ 1 MB and the file's first bytes, uploads
+  to `<restaurant_id>/logo-<time>.<ext>`, saves `logo_url` at once, and deletes the older files. A
+  hidden `logo_url` input keeps the details form in step so its Save does not write the old address
+  back. The file input is `hidden`, not `sr-only`: the global `input { width: 100% }` beats
+  `sr-only` and a 1440px-wide invisible input pushed the page 323px sideways.

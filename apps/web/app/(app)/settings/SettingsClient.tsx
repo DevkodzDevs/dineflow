@@ -3,6 +3,7 @@ import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing } from "lucide-react";
 import { NotificationSettings } from "@/components/shell/Notifier";
+import { LogoUpload } from "./LogoUpload";
 import { Button, Card, Field, Switch, cn } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
@@ -131,8 +132,9 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   <Field label="Phone"><input name="phone" defaultValue={restaurant.phone ?? ""} className="num" /></Field>
                 </div>
                 <Field label="Address"><input name="address" defaultValue={restaurant.address ?? ""} /></Field>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <Field label="Logo URL" hint="Square PNG or SVG, at least 256 px"><input name="logo_url" defaultValue={restaurant.logo_url ?? ""} placeholder="https://…/logo.png" /></Field>
+                {/* the logo is uploaded (0083), saved the moment it is picked; brand colour stays a field */}
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-start">
+                  <LogoUpload restaurantId={restaurant.id} initial={restaurant.logo_url ?? null} name={restaurant.name} />
                   <Field label="Brand colour" hint="Hex, e.g. #c9302c"><input name="brand_colour" defaultValue={restaurant.brand_colour ?? ""} placeholder="#c9302c" className="num" /></Field>
                 </div>
 

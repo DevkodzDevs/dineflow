@@ -50,6 +50,7 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0081_online_checkin_and_room_move — bookings.checkin_token/precheckin; checkin_view/submit (anon,
                                 by token); booking_move_room
 0082_set_rates_only           — a rate per night, leaving stop-sell and minimum stay alone
+0083_brand_logo_storage       — the first Storage bucket: public `brand`, 1 MB, PNG/JPEG/WebP; owner/manager write own folder
 ```
 
 **Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`
@@ -94,3 +95,10 @@ does not run here. Fix its paths before relying on it.
 
 [auth-and-session.md](auth-and-session.md) · [neighbours.md](neighbours.md) (the one deliberate
 hole in the wall) · [testing-and-gates.md](testing-and-gates.md)
+
+- **Storage (0083).** `brand` is the only bucket. It is public (logos appear on signed-out pages) and
+  enforces its own limits — `file_size_limit` 1 MB, `allowed_mime_types` PNG/JPEG/WebP (no SVG: it can
+  carry script) — so a request that skips the app is refused too. Policies on `storage.objects`:
+  insert/update/delete only where `(storage.foldername(name))[1] = auth_restaurant_id()::text` and
+  `auth_role() in ('owner','manager')`; select on the same folder (to clear old logos). Remove files
+  through the Storage API, not `delete from storage.objects` — that leaves the blob behind.

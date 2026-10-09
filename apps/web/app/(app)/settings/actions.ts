@@ -75,3 +75,49 @@ export async function issueBoxToken() {
   const s = await createClient(); const { data, error } = await s.rpc("box_issue_token");
   if (error) return { error: error.message }; revalidatePath("/settings"); return { ok: true, token: data as string };
 }
+
+/* ── the logo (migration 0083) ────────────────────────────────────────────────────────────────
+   Uploaded to the public `brand` bucket under this property's folder, by the signed-in person:
+   Storage's own policies allow an owner or manager to write only their own folder, and the bucket
+   itself refuses anything over 1 MB or other than PNG, JPEG or WebP. These checks say so in words
+   before Storage has to. The browser shrinks the picture first (LogoUpload), so a real logo arrives
+   at a few dozen KB. */
+const LOGO_MAX = 1024 * 1024;
+const LOGO_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+/** What the first bytes say the file is — a renamed .exe is not a PNG because its name says so. */
+function sniff(b: Uint8Array): string | null {
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return "image/webp";
+  return null;
+}
+async function clearOldLogos(s: Awaited<ReturnType<typeof createClient>>, rid: string, keep?: string) {
+  const { data } = await s.storage.from("brand").list(rid, { limit: 100 });
+  const old = (data ?? []).map((f) => `${rid}/${f.name}`).filter((p) => p !== keep);
+  if (old.length) await s.storage.from("brand").remove(old);
+}
+export async function uploadLogo(fd: FormData): Promise<{ url?: string; error?: string }> {
+  const s = await createClient(); const rid = String(fd.get("id") ?? "");
+  const file = fd.get("file");
+  if (!rid || !(file instanceof File)) return { error: "Choose an image first." };
+  if (file.size === 0) return { error: "That file is empty." };
+  if (file.size > LOGO_MAX) return { error: `That image is ${(file.size / 1048576).toFixed(1)} MB after shrinking — the most a logo can be is 1 MB.` };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = sniff(bytes);
+  if (!type) return { error: "Use a PNG, JPG or WebP image." };
+  const path = `${rid}/logo-${Date.now()}.${LOGO_TYPES[type]}`;
+  const up = await s.storage.from("brand").upload(path, bytes, { contentType: type, cacheControl: "31536000", upsert: false });
+  if (up.error) return { error: /row-level security|unauthori[sz]ed|403/i.test(up.error.message) ? "Only an owner or a manager can change the logo." : up.error.message };
+  const url = s.storage.from("brand").getPublicUrl(path).data.publicUrl;
+  const { data: row, error } = await s.from("restaurants").update({ logo_url: url }).eq("id", rid).select("id").maybeSingle();
+  if (error || !row) { await s.storage.from("brand").remove([path]); return { error: error?.message ?? "Only an owner or a manager can change the logo." }; }
+  await clearOldLogos(s, rid, path);
+  bump(); return { url };
+}
+export async function removeLogo(rid: string): Promise<{ ok?: boolean; error?: string }> {
+  const s = await createClient();
+  const { data: row, error } = await s.from("restaurants").update({ logo_url: null }).eq("id", rid).select("id").maybeSingle();
+  if (error || !row) return { error: error?.message ?? "Only an owner or a manager can change the logo." };
+  await clearOldLogos(s, rid);
+  bump(); return { ok: true };
+}
