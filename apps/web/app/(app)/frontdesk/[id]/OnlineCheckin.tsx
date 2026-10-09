@@ -28,17 +28,17 @@ export function OnlineCheckin({ token, base, at, pre, guest, phone, property, ch
         {at && <span className="ml-auto text-xs text-steel">{new Date(at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}</span>}
       </div>
       {at && pre ? (
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <div className="mt-3 grid gap-3 text-sm grid-cols-[repeat(auto-fit,minmax(7rem,1fr))]">
           <div className="min-w-0"><div className="text-[11px] text-steel">Arriving</div><div className="font-semibold num">{pre.arrival_time || "—"}</div></div>
           <div className="min-w-0"><div className="text-[11px] text-steel">ID to check</div><div className="font-semibold truncate">{pre.id_type} ••{pre.id_last4}</div></div>
           <div className="min-w-0"><div className="text-[11px] text-steel">Nationality</div><div className="font-semibold truncate">{pre.nationality || "—"}</div></div>
-          <div className="min-w-0 col-span-2 sm:col-span-1"><div className="text-[11px] text-steel">Requests</div><div className="font-semibold text-[13px] leading-snug">{pre.requests || "—"}</div></div>
-          {pre.nationality && pre.nationality.trim().toLowerCase() !== "indian" && <p className="col-span-2 sm:col-span-4 text-xs text-[var(--color-orange)]">Foreign national — check the passport and visa and file Form C within 24 hours of arrival.</p>}
+          <div className="min-w-0"><div className="text-[11px] text-steel">Requests</div><div className="font-semibold text-[13px] leading-snug">{pre.requests || "—"}</div></div>
+          {pre.nationality && pre.nationality.trim().toLowerCase() !== "indian" && <p className="col-span-full text-xs text-[var(--color-orange)]">Foreign national — check the passport and visa and file Form C within 24 hours of arrival.</p>}
         </div>
       ) : (
         <p className="mt-2 text-sm text-steel">Send the guest a link to fill in their details before they arrive, or hand them this screen on a tablet.</p>
       )}
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="mt-3 grid gap-2 grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))]">
         {wa && <a href={wa} target="_blank" rel="noreferrer" className={`${btn} bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110`}><MessageCircle size={16} className="shrink-0" /> {at ? "Send again" : "Send on WhatsApp"}</a>}
         <button type="button" onClick={copy} className={`${btn} bg-[var(--color-fill)] text-[var(--color-label)] hover:brightness-110`}><Copy size={15} className="shrink-0" /> {copied ? "Copied" : "Copy link"}</button>
         <a href={`/checkin/${token}?kiosk=1`} className={`${btn} bg-[var(--color-fill)] text-[var(--color-label)] hover:brightness-110`}><Tablet size={15} className="shrink-0" /> Open on this tablet</a>

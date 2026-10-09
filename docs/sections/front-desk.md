@@ -84,6 +84,13 @@ squeezed the icon to a dot.
   inspected first.
 - **The details line truncates and the rate does not** — `truncate` on the line, `shrink-0` on the
   rate. A long guest name used to push the rate off the card.
+- **The folio page is two columns from 768px** (`md:grid-cols-[minmax(0,1fr)_344px]`, 400px from
+  xl): details on the left, the 328px receipt on the right, sticky. Below 768 the receipt follows the
+  details. The left column's card pairs (Guest/Stay, Add to folio/Charge an order) use
+  `repeat(auto-fit, minmax(15rem, 1fr))`, so they sit side by side when the column allows and stack
+  when it doesn't. At 834 the column is ~312px; a viewport `sm:grid-cols-2` there crushed both cards.
+  The Stay card shows Arrive / nights / Leave, room · guests · rate chips, and Total / To pay;
+  Check in guest is a full-width button under the cards. Online check-in's buttons auto-fit too.
 - **The folio's Back link is `shrink-0`.** A long room-and-guest title squeezed it to 34px wide on a
   phone.
 - **The call link is an `.icon-btn`**, so it is 44px on a touch screen.

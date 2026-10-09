@@ -25,28 +25,47 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
   const paid = pays.reduce((s, p) => s + Number(p.amount || 0), 0);
   const tone = b.status === "checked_in" ? "ready" : b.status === "reserved" ? "gold" : "served";
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
-      <div className="no-print">
-        <div className="flex items-center gap-3 mb-6">
+    <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_344px] xl:grid-cols-[minmax(0,1fr)_400px] items-start">
+      <div className="no-print min-w-0">
+        <div className="flex items-start gap-3 mb-5">
           <Link href="/frontdesk" className="h-10 w-10 shrink-0 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
-          <div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Booking #{b.booking_no} · {b.source?.replace("_", " ")}</div><h1 className="text-3xl">Room {b.rooms?.number} <em>{b.guests?.full_name}</em></h1></div>
-          <Pill tone={tone}>{b.status.replace("_", " ")}</Pill>
+          <div className="flex-1 min-w-0"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Booking #{b.booking_no} · {b.source?.replace("_", " ")}</div><h1 className="text-3xl leading-tight">Room {b.rooms?.number} <em>{b.guests?.full_name}</em></h1></div>
+          <span className="shrink-0 mt-1"><Pill tone={tone}>{b.status.replace("_", " ")}</Pill></span>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel flex items-center gap-2">Guest {b.guests?.vip && <Pill tone="gold">VIP</Pill>}</div><div className="mt-2 font-semibold text-lg">{b.guests?.full_name}</div><div className="text-sm text-steel">{b.guests?.phone}{b.guests?.email ? ` · ${b.guests.email}` : ""}</div><div className="text-xs text-steel mt-1">{b.guests?.id_type} ••••{b.guests?.id_last4} · {b.guests?.visits} visit{b.guests?.visits === 1 ? "" : "s"}</div>{b.guests?.preferences && <div className="text-xs mt-2 text-champagne">{b.guests.preferences}</div>}
+        <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
+          <Card className="flex flex-col"><div className="text-xs font-semibold uppercase tracking-wide text-steel flex items-center gap-2">Guest {b.guests?.vip && <Pill tone="gold">VIP</Pill>}</div><div className="mt-2 font-semibold text-lg">{b.guests?.full_name}</div><div className="text-sm text-steel">{b.guests?.phone}{b.guests?.email ? ` · ${b.guests.email}` : ""}</div><div className="text-xs text-steel mt-1">{b.guests?.id_type} ••••{b.guests?.id_last4} · {b.guests?.visits} visit{b.guests?.visits === 1 ? "" : "s"}</div>{b.guests?.preferences && <div className="text-xs mt-2 text-champagne">{b.guests.preferences}</div>}
+            <div className="h-4 shrink-0" aria-hidden />
             {(() => {
               /* Before arrival the guest gets the confirmation; once in, a welcome they can reply to. */
               const g = firstName(b.guests?.full_name ?? ""); const nights = Math.max(1, Math.round((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000));
               const href = b.status === "reserved" ? waHref(b.guests?.phone, `Hi ${g}, your stay at ${restaurant.name} is confirmed: ${b.rooms?.room_types?.name ?? "room"} ${b.rooms?.number ?? ""}, ${waDate(b.check_in)} to ${waDate(b.check_out)} (${nights} night${nights === 1 ? "" : "s"}). Booking #${b.booking_no}. Reply here if you need anything before you arrive.`)
                 : b.status === "checked_in" ? waHref(b.guests?.phone, `Welcome to ${restaurant.name}, ${g}! You are in room ${b.rooms?.number ?? ""} until ${waDate(b.check_out)}. Message us here any time for food, towels or a late checkout.`) : null;
-              return href && <a href={href} target="_blank" rel="noreferrer" className="mt-3 w-full min-h-11 rounded-full px-4 flex items-center justify-center gap-2 text-sm font-semibold bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110 transition"><MessageCircle size={16} className="shrink-0" /> {b.status === "reserved" ? "Confirm on WhatsApp" : "Welcome on WhatsApp"}</a>;
+              return href && <a href={href} target="_blank" rel="noreferrer" className="mt-auto pt-0 w-full min-h-11 rounded-full px-4 flex items-center justify-center gap-2 text-sm font-semibold bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110 transition"><MessageCircle size={16} className="shrink-0" /> {b.status === "reserved" ? "Confirm on WhatsApp" : "Welcome on WhatsApp"}</a>;
             })()}</Card>
-          <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel">Stay</div><div className="mt-2 font-semibold text-lg num">{b.check_in} → {b.check_out}</div><div className="text-sm text-steel">{t?.nights} night{t?.nights === 1 ? "" : "s"} · {b.rooms?.room_types?.name} · {b.adults} adult{b.adults > 1 ? "s" : ""}{b.children ? `, ${b.children} child` : ""}</div>{b.notes && <div className="text-xs text-steel mt-1">{b.notes}</div>}</Card>
+          {/* The stay, laid out the way a desk reads it: when, what, how much is left. */}
+          <Card className="flex flex-col">
+            <div className="text-xs font-semibold uppercase tracking-wide text-steel">Stay</div>
+            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+              <div className="min-w-0"><div className="text-[11px] text-steel">Arrive</div><div className="font-semibold text-[15px] truncate">{waDate(b.check_in)}</div></div>
+              <span className="num h-7 px-2.5 rounded-full bg-[var(--color-fill)] text-[12px] font-bold grid place-items-center whitespace-nowrap">{t?.nights ?? 1} night{(t?.nights ?? 1) === 1 ? "" : "s"}</span>
+              <div className="min-w-0 text-right"><div className="text-[11px] text-steel">Leave</div><div className="font-semibold text-[15px] truncate">{waDate(b.check_out)}</div></div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              <span className="inline-flex items-center h-7 px-2.5 rounded-full bg-[var(--color-fill)] text-[12px] font-semibold">{b.rooms?.room_types?.name ?? "Room"} · {b.rooms?.number}</span>
+              <span className="inline-flex items-center h-7 px-2.5 rounded-full bg-[var(--color-fill)] text-[12px] font-semibold">{b.adults} adult{b.adults > 1 ? "s" : ""}{b.children ? ` · ${b.children} child${b.children > 1 ? "ren" : ""}` : ""}</span>
+              <span className="inline-flex items-center h-7 px-2.5 rounded-full bg-[var(--color-fill)] text-[12px] font-semibold num">{formatINR(Number(b.rate))} / night</span>
+            </div>
+            <div className="h-4 shrink-0" aria-hidden />
+            <div className="mt-auto pt-4 grid grid-cols-2 gap-3 border-t border-[var(--color-separator)]">
+              <div><div className="text-[11px] text-steel">Total</div><div className="num font-display text-[20px] leading-tight">{formatINR(Number(t?.total ?? 0))}</div></div>
+              <div className="text-right"><div className="text-[11px] text-steel">To pay</div><div className={cn("num font-display text-[20px] leading-tight", Number(t?.balance ?? 0) > 0 ? "text-[var(--color-orange)]" : "text-[var(--color-green)]")}>{formatINR(Number(t?.balance ?? 0))}</div></div>
+            </div>
+          </Card>
         </div>
         {b.status === "reserved" && b.checkin_token && <OnlineCheckin token={b.checkin_token} base={base} at={b.precheckin_at ?? null} pre={b.precheckin ?? null} guest={b.guests?.full_name ?? ""} phone={b.guests?.phone ?? null} property={restaurant.name} checkIn={b.check_in} />}
-        {b.status === "reserved" && <Button size="lg" className="mt-4 w-full sm:w-auto" disabled={pending} onClick={() => start(async () => { const r = await checkIn(b.id); if ("error" in r) setErr(r.error!); })}><LogIn size={16} /> Check in guest</Button>}
+        {b.status === "reserved" && <Button size="lg" className="mt-4 w-full" disabled={pending} onClick={() => start(async () => { const r = await checkIn(b.id); if ("error" in r) setErr(r.error!); })}><LogIn size={16} /> Check in guest</Button>}
         {b.status === "checked_in" && (
-          <div className="mt-6 grid sm:grid-cols-2 gap-4">
+          <div className="mt-4 grid gap-4 grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
             <Card><h3 className="text-lg mb-3">Add to folio</h3>
               <div className="space-y-3"><div className="flex gap-1 p-1 bg-porcelain-2 rounded-xl">{(["extra", "discount"] as const).map((k) => <button key={k} onClick={() => setExtra({ ...extra, kind: k })} className={cn("flex-1 h-8 rounded-lg text-xs font-semibold capitalize", extra.kind === k ? "bg-card shadow-feather" : "text-steel")}>{k}</button>)}</div>
                 <input placeholder={extra.kind === "extra" ? "Laundry, minibar, airport drop…" : "Reason for discount"} value={extra.description} onChange={(e) => setExtra({ ...extra, description: e.target.value })} />
@@ -69,7 +88,7 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
       </div>
 
       {/* folio */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="w-full justify-self-center">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="w-full justify-self-center md:sticky md:top-24">
         <Receipt data={{ restaurant, title: "Guest folio", no: `FOLIO-${String(b.booking_no).padStart(4, "0")}`,
           when: `${b.check_in} → ${b.check_out}`, where: `Room ${b.rooms?.number ?? ""}`, cashier: b.guests?.full_name,
           lines: [{ name: `Room · ${t?.nights ?? 1} night${(t?.nights ?? 1) > 1 ? "s" : ""}`, qty: t?.nights ?? 1, price: Number(b.rate) },
