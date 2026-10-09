@@ -53,7 +53,7 @@
   --ease-ios: cubic-bezier(.32, .72, 0, 1);
   --dur-fast: 160ms; --dur: 280ms; --dur-slow: 420ms;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
-  --page-max: 1280px;
+  --page-max: 1760px; /* a 1920 screen fills the space beside the menu; wider monitors stop here */
 }
 
 /* paper: for anyone who wants the old light room, or a bright counter in daylight */

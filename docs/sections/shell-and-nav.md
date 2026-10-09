@@ -119,6 +119,13 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
 
 ## Before you edit
 
+- **The page is as wide as `--page-max` (1760px, `globals.css`)**, set on the inner `div` of `<main>`
+  in `app/(app)/layout.tsx`. It was 1280: on a 1920 screen that left ~190px of empty ground either
+  side of every page. At 1920 the content is now 1556px (main 1652 less the 48px `2xl:px-12`); at
+  1440 and below the main column is already under 1280, so nothing there changed; a 2560 monitor
+  stops at 1760 so lines and cards do not stretch. Grids are `auto-fill`, so wider means more
+  columns, not wider cards.
+
 - **The sidebar is not the permission system.** Hiding a link does not protect a route; the RPC
   behind it does its own check. Never rely on the nav for access control.
 - **Do not add a screen without adding it to `MODULES_BY_TYPE` and `ROLE_ACCESS`.** A route with no
