@@ -2,6 +2,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ingredientSchema, stockMoveSchema } from "@dineflow/shared";
+import { z } from "zod/v4";
+import { askJson, aiEnabled } from "@/lib/ai";
 
 const ok = () => { revalidatePath("/inventory"); revalidatePath("/dashboard"); return { ok: true }; };
 
@@ -99,4 +101,46 @@ export type PriceHistory = { history: { on: string; supplier: string | null; qty
 export async function ingredientPrices(ingredientId: string) {
   const s = await createClient(); const { data, error } = await s.rpc("ingredient_prices", { p_ingredient_id: ingredientId });
   if (error) return { error: error.message }; return { ok: true as const, prices: data as PriceHistory };
+}
+
+/* ── AI: read a supplier's bill into the purchase form ────────────────────────────────────── */
+const billSchema = z.object({
+  supplier: z.string().max(80).describe("The seller's name as printed at the top of the bill, or empty"),
+  invoice_no: z.string().max(40).describe("The bill / invoice number as printed, or empty"),
+  lines: z.array(z.object({
+    name: z.string().max(80).describe("The item as printed on the bill"),
+    match: z.string().max(80).describe("The pantry item this line is, copied exactly from the pantry list, or empty when nothing in the list is the same thing"),
+    qty: z.number().nonnegative().describe("Quantity bought, in the pantry item's own unit when matched (convert g to kg, ml to l), else as printed"),
+    unit_cost: z.number().nonnegative().describe("Price per one of that unit, before tax, in rupees"),
+  })).max(40),
+});
+export type BillLine = { name: string; ingredient_id: string | null; qty: number; unit_cost: number };
+
+/**
+ * Reads a photographed supplier bill and returns the lines matched to this property's own pantry —
+ * the same thing Petpooja calls invoice scanning. It writes nothing: the lines land in the purchase
+ * form, a person checks them, and "Add to pantry" is still the only thing that moves stock. A line
+ * the pantry does not stock comes back unmatched, to be added as an ingredient first.
+ * Without an AI key it returns a sample built from the pantry, so the flow can be tried end to end.
+ */
+export async function readSupplierBill(image: string): Promise<{ ok: true; supplier: string; invoice_no: string; lines: BillLine[]; sample?: boolean } | { error: string }> {
+  if (!/^data:image\//.test(image)) return { error: "That file is not a photo." };
+  const s = await createClient();
+  const { data: pantry } = await s.from("ingredients").select("id, name, unit, cost_per_unit").eq("is_active", true).order("name").limit(400);
+  const list = pantry ?? [];
+  if (!aiEnabled()) {
+    const pick = list.slice(0, 3);
+    return { ok: true, sample: true, supplier: "Sample Traders", invoice_no: "SAMPLE-104",
+      lines: [...pick.map((g, i) => ({ name: g.name, ingredient_id: g.id as string, qty: [5, 2, 10][i] ?? 1, unit_cost: Number(g.cost_per_unit) || 40 })),
+              { name: "Banana leaf (bundle)", ingredient_id: null, qty: 2, unit_cost: 60 }] };
+  }
+  const r = await askJson({
+    schema: billSchema, effort: "low", images: [image],
+    system: "You read a supplier's bill photographed at an Indian restaurant or hotel and list what was bought. Read only what is printed; never invent a line. Prices are per unit before GST. When a line is the same thing as an item in the pantry list, copy that pantry name exactly into match and give qty in that item's unit; otherwise leave match empty.",
+    user: `Pantry (name · unit): ${list.map((g) => `${g.name} · ${g.unit}`).join("; ") || "empty"}`,
+  });
+  if (!r.ok) return { error: r.error };
+  const byName = new Map(list.map((g) => [String(g.name).toLowerCase(), g.id as string]));
+  return { ok: true, supplier: r.data.supplier, invoice_no: r.data.invoice_no,
+    lines: r.data.lines.filter((l) => l.qty > 0).map((l) => ({ name: l.name, ingredient_id: byName.get(l.match.toLowerCase()) ?? null, qty: l.qty, unit_cost: l.unit_cost })) };
 }

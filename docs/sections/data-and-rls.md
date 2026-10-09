@@ -44,7 +44,13 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0075_index_every_foreign_key
 0076_storefront_sends_each_addon_once
 0077_two_people_at_once
+0078_theme_follows_the_person
+0079_rush_hour                — set_rush, dine_busy; dine_order re-created from 0074 + pause/ETA
 ```
+
+**Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`
+from its 0074 text plus two lines; check `pg_get_functiondef` before you re-create one, or a fix
+made in between is silently undone.
 
 **The procedure, every time:**
 

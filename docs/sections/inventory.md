@@ -25,6 +25,14 @@ writes an adjustment row with the difference, never an overwrite.
 (`draft` → `sent` → `received`), `po_receive` books the goods in and writes the ledger rows.
 `po_suggest` proposes a basket from reorder levels and the forecast.
 
+**Scan the supplier bill.** *Record purchase* opens with a photo card. `readSupplierBill` (in
+`actions.ts`) sends the photo to the model with the pantry list and gets back supplier, invoice
+number and lines, each matched to an ingredient by name. Matched lines land as ordinary form rows;
+lines for things the pantry does not stock are listed apart in orange (*Not in your pantry*), to add
+as ingredients first. **It writes nothing** — *Add to pantry* → `recordPurchase` is still the only
+write, exactly as when the form is typed. Without `ANTHROPIC_API_KEY` it returns a labelled sample
+(`Sample Traders`, `SAMPLE-104`, three pantry items plus one unmatched line).
+
 **Leaks** (`/inventory/leaks`) is the variance report: what the recipes say should have been used
 against what the ledger says actually went, per ingredient, with a money figure. `wastage_summary`
 feeds it.
@@ -38,6 +46,9 @@ it is cooked, and the leak report cannot see it. See [menu.md](menu.md).
   write silently breaks the leak report, which compares expected against actual movement.
 - **Units are per-ingredient and do not convert automatically.** `applyStandardRecipe` skips an
   ingredient the pantry keeps in another unit rather than guessing, and says so.
+- **On a phone the purchase row stacks**: the ingredient takes its own full line, qty / cost / packs
+  sit under it. Five columns at 412px left the name ~100px and it hid under the select's arrow.
+  `sm:` and up keep the single row.
 - **A received PO is a financial record.** Correct it with a new adjustment, not an edit.
 - **`/inventory/leaks` is read-only** and is meant to be. It is evidence for a conversation, not a
   place to change numbers.

@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Plus, Leaf, Drumstick, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers } from "lucide-react";
+import { Plus, Leaf, Drumstick, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Card, Field, Sheet, Empty, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
@@ -8,6 +8,7 @@ import { findStandardRecipe } from "@dineflow/shared";
 import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
 import { OptionsEditor, GroupsManager, ComboParts } from "./Options";
+import { MenuImport } from "./MenuImport";
 import type { VariantRow, GroupRow, LinkRow, ComboRow } from "@/lib/menuOptions";
 
 type Cat = { id: string; name: string; sort_order: number; station?: string | null };
@@ -18,6 +19,7 @@ type Rec = { menu_item_id: string; ingredient_id: string; qty: number };
 export function MenuClient({ categories, items, ingredients, recipes, ai = false, stations = [], variants = [], groups = [], links = [], combos = [] }:
   { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; ai?: boolean; stations?: string[]; variants?: VariantRow[]; groups?: GroupRow[]; links?: LinkRow[]; combos?: ComboRow[] }) {
   const [cat, setCat] = useState<string>("all");
+  const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<Partial<Item> | null>(null);
   const [recipeFor, setRecipeFor] = useState<Item | null>(null);
   /* The dish form is uncontrolled (defaultValue), which is right for a form a person types into. To
@@ -68,6 +70,7 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
         </div><div className="toolbar-group toolbar-end">
           <Button variant="outline" onClick={() => setCatSheet(true)} title="Add, rename or remove categories"><Plus size={16} /> Categories</Button>
           <Button variant="outline" onClick={() => setGroupsSheet(true)}><SlidersHorizontal size={16} /> Add-ons</Button>
+          <Button variant="outline" onClick={() => setImporting(true)} title="Photograph a printed menu and add its dishes"><Camera size={16} /> From photo</Button>
           <Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15, category_id: cat === "all" ? null : cat })}><Plus size={16} /> New dish</Button></div>
       </div>
 
@@ -114,6 +117,9 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
       )}
 
       {/* dish editor */}
+      <Sheet open={importing} onClose={() => setImporting(false)} title="Add dishes from a photo" wide>
+        {importing && <MenuImport existing={items.map((i) => i.name)} onDone={() => setImporting(false)} />}
+      </Sheet>
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? "Edit dish" : "New dish"}>
         <form ref={formRef} className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveMenuItem(fd); if (r && "error" in r) setErr(r.error!); else setEditing(null); })}>
           {editing?.id && <input type="hidden" name="id" value={editing.id} />}

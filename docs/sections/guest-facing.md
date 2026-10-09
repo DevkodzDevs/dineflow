@@ -48,6 +48,12 @@ anyway, which is the belt to the RPC's braces.
 **Payments run on the property's own gateway keys.** DineFlow is not the merchant of record for a
 guest's meal. See [legal.md](legal.md) and [settings.md](settings.md).
 
+**Kitchen pace on the storefront.** `dine/[slug]/page.tsx` fetches `dine_busy(slug)` and the
+Order tab shows a red *Not taking online orders right now. Back at …* or an orange *The kitchen is
+busy* banner. Neither shows on a table-QR visit (`tableToken`), because those orders are never
+paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
+[online-and-channels.md](online-and-channels.md).
+
 ## Before you edit
 
 - **Adding a route here means adding it to both `SESSION_FREE` and `PUBLIC_PREFIX`.** Miss the first

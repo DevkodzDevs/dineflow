@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { menuItemSchema, findStandardRecipe } from "@dineflow/shared";
 import { z } from "zod/v4";
-import { askJson, VOICE } from "@/lib/ai";
+import { askJson, aiEnabled, VOICE } from "@/lib/ai";
 import { requireSession } from "@/lib/auth";
 
 const ok = () => { revalidatePath("/menu"); revalidatePath("/orders"); return { ok: true }; };
@@ -197,4 +197,60 @@ export async function suggestRecipe(dishName: string) {
   const rows = r.data.rows.filter((x) => known.has(x.ingredient_id)).map((x) => ({ ingredient_id: x.ingredient_id, qty: Math.round(x.qty * 1000) / 1000 }));
   if (!rows.length) return { error: `Nothing in the pantry fits "${clean}"${r.data.missing.length ? ` — it would need ${r.data.missing.join(", ")}` : ""}.` };
   return { ok: true as const, rows, missing: r.data.missing };
+}
+
+/* ── AI: a printed menu, photographed, into dishes ────────────────────────────────────────── */
+const menuPhotoSchema = z.object({
+  dishes: z.array(z.object({
+    name: z.string().max(80),
+    category: z.string().max(40).describe("The section heading the dish sits under on the menu, or empty"),
+    price: z.number().nonnegative().describe("The printed price in rupees; 0 when none is printed"),
+    is_veg: z.boolean().describe("true when the dish has no meat, fish or egg"),
+    description: z.string().max(140).describe("What is printed under the dish, or empty"),
+  })).max(150),
+});
+export type ImportDish = { name: string; category: string; price: number; is_veg: boolean; description: string };
+
+/**
+ * Reads a photo of a printed or handwritten menu into a list of dishes to review — Lightspeed's
+ * "set up a menu from a photo". Nothing is written here; the owner ticks what to keep and
+ * importDishes() adds them. Without an AI key it returns a short sample.
+ */
+export async function readMenuPhoto(image: string): Promise<{ ok: true; dishes: ImportDish[]; sample?: boolean } | { error: string }> {
+  if (!/^data:image\//.test(image)) return { error: "That file is not a photo." };
+  if (!aiEnabled()) return { ok: true, sample: true, dishes: [
+    { name: "Ghee roast dosa", category: "Tiffin", price: 120, is_veg: true, description: "Crisp dosa roasted in ghee, with chutney and sambar" },
+    { name: "Mutton chukka", category: "Starters", price: 320, is_veg: false, description: "Dry-roasted mutton with pepper and curry leaves" },
+    { name: "Jigarthanda", category: "Drinks", price: 90, is_veg: true, description: "" },
+  ] };
+  const r = await askJson({ schema: menuPhotoSchema, effort: "low", images: [image], maxTokens: 12000,
+    system: "You read a photographed restaurant menu from India and list every dish exactly as printed. Never invent a dish or a price. Keep the menu's own section headings as categories. A dish sold in sizes is one dish at its lowest printed price.",
+    user: "List the dishes on this menu." });
+  return r.ok ? { ok: true, dishes: r.data.dishes } : { error: r.error };
+}
+
+/** Adds the dishes the owner kept from a menu photo. A category is matched by name, or created. */
+export async function importDishes(rows: ImportDish[]) {
+  const s = await createClient();
+  const clean = rows.filter((r) => r.name.trim()).slice(0, 150);
+  if (!clean.length) return { error: "Tick at least one dish." };
+  const { data: cats } = await s.from("categories").select("id, name");
+  const byName = new Map((cats ?? []).map((c) => [String(c.name).trim().toLowerCase(), c.id as string]));
+  for (const name of [...new Set(clean.map((r) => r.category.trim()).filter(Boolean))]) {
+    if (byName.has(name.toLowerCase())) continue;
+    const { data, error } = await s.from("categories").insert({ name, sort_order: 100 + byName.size }).select("id").single();
+    if (error) return { error: error.message };
+    byName.set(name.toLowerCase(), data.id as string);
+  }
+  const items = [];
+  for (const r of clean) {
+    const parsed = menuItemSchema.safeParse({ name: r.name.trim(), category_id: byName.get(r.category.trim().toLowerCase()) ?? null, price: r.price,
+      is_veg: r.is_veg, is_available: true, prep_minutes: 15, description: r.description || null, station: null, is_combo: false });
+    if (!parsed.success) return { error: `${r.name}: ${parsed.error.issues[0].message}` };
+    items.push(parsed.data);
+  }
+  const { error } = await s.from("menu_items").insert(items);
+  if (error) return { error: error.message };
+  ok();
+  return { ok: true as const, added: items.length };
 }

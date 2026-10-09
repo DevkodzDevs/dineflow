@@ -20,6 +20,8 @@ export default async function Storefront({ params, searchParams }: { params: Pro
     storefront(slug, t ?? null),
     anon().rpc("dine_slots", { p_slug: slug, p_date: new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10), p_party: 2 }),
   ]);
+  /* the kitchen's pace right now (0079): a pause or extra minutes, said before anyone fills a basket */
+  const { data: busy } = await anon().rpc("dine_busy", { p_slug: slug });
   if (!data) notFound();
-  return <StorefrontClient slug={slug} d={data as never} initialSlots={(slots ?? []) as never} tab={(tab as never) ?? "book"} tableToken={t ?? null} />;
+  return <StorefrontClient slug={slug} d={data as never} initialSlots={(slots ?? []) as never} tab={(tab as never) ?? "book"} tableToken={t ?? null} busy={(busy ?? null) as never} />;
 }

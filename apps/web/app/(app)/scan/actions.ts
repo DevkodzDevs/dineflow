@@ -6,6 +6,15 @@ import { createClient } from "@/lib/supabase/server";
 export async function lookupCode(code: string) {
   const s = await createClient();
   const c = code.trim();
+  /* The QR printed on every bill is the guest's pay link (…/pay/<token>). Scanned here by staff it
+     opens that bill instead — Toast's "scan the receipt to find the check". RLS keeps it to this
+     property's own bills. */
+  const pay = /\/pay\/([A-Za-z0-9_-]{6,})/.exec(c);
+  if (pay) {
+    const { data: bill } = await s.from("bills").select("id, bill_no, order_id, total, status, created_at").eq("pay_token", pay[1]).maybeSingle();
+    if (bill) return { kind: "bill" as const, bill };
+    return { kind: "unknown", code: c };
+  }
   const own = /^df:(room|ing|dish|lab|book):(.+)$/.exec(c);
   if (own) {
     const [, kind, id] = own;

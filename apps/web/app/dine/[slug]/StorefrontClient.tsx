@@ -22,7 +22,7 @@ type Slot = { time: string; left: number; full: boolean; offer_id: string | null
 
 const today = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
 
-export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order"; tableToken?: string | null }) {
+export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null, busy = null }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order"; tableToken?: string | null; busy?: { paused_until: string | null; extra_min: number } | null }) {
   /* Reached from the code on a table: the menu is for ordering at that table and nothing else — no booking tab, no delivery, no address. */
   const atTable = !!(tableToken && d.table);
   const toast = useToast();
@@ -171,6 +171,9 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
         {/* ── ORDER ONLINE ── */}
         {mode === "order" && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            {/* the kitchen's pace, said before a basket is filled — a guest at a table is never paused */}
+            {!tableToken && busy?.paused_until && <div className="mb-5 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 text-sm"><b>Not taking online orders right now.</b> Back at {new Date(busy.paused_until).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })} — the menu is here to look at.</div>}
+            {!tableToken && !busy?.paused_until && (busy?.extra_min ?? 0) > 0 && <div className="mb-5 rounded-2xl bg-[rgb(255_179_64/.14)] text-[var(--color-orange)] px-4 py-3 text-sm"><b>The kitchen is busy.</b> Orders are taking about {busy!.extra_min} minutes longer than usual.</div>}
             {menu.map((c) => c.items.length > 0 && (
               <section key={c.id} className="mb-6">
                 <h2 className="text-xl mb-3">{c.name}</h2>

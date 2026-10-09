@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Plus, ArrowDownToLine, Trash2, Pencil, PackagePlus, AlertTriangle, History } from "lucide-react";
+import { Plus, ArrowDownToLine, Trash2, Pencil, PackagePlus, AlertTriangle, History, ScanText, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button, Card, Field, Sheet, Empty, Pill, StatTile, cn } from "@/components/ui";
 import { formatINR, fmtTime, fmtDate } from "@/lib/format";
 import { UNITS, INGREDIENT_CATEGORIES, WASTE_REASONS } from "@dineflow/shared";
-import { saveIngredient, archiveIngredient, moveStock, recordPurchase, ingredientPrices, type PriceHistory } from "./actions";
+import { saveIngredient, archiveIngredient, moveStock, recordPurchase, ingredientPrices, readSupplierBill, type PriceHistory, type BillLine } from "./actions";
+import { photoToDataUrl } from "@/lib/photo";
 import { PurchaseOrders, Suppliers, WastageView, type Ing, type Supplier, type Po, type Wastage } from "./Purchasing";
 
 type Led = { id: string; ingredient_id: string; qty: number; reason: string; sub_reason?: string | null; note: string | null; created_at: string };
@@ -171,23 +172,58 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const byId = Object.fromEntries(ingredients.map((i) => [i.id, i]));
+  /* A photographed supplier bill fills the form. Lines it could match land as rows to check;
+     lines for things the pantry does not stock are listed apart, to add as ingredients first.
+     Nothing is saved until "Add to pantry", exactly as when the form is typed. */
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState<{ sample?: boolean; read: number; unmatched: BillLine[] } | null>(null);
+  const scanBill = async (file: File) => {
+    setErr(null); setReading(true);
+    try {
+      const r = await readSupplierBill(await photoToDataUrl(file));
+      if ("error" in r) { setErr(r.error); return; }
+      const known = r.lines.filter((l) => l.ingredient_id);
+      if (r.supplier) { const sup = suppliers.find((x) => x.name.trim().toLowerCase() === r.supplier.trim().toLowerCase()); setSupplierId(sup?.id ?? ""); setSupplier(sup?.name ?? r.supplier); }
+      if (r.invoice_no) setInv(r.invoice_no);
+      if (known.length) setLines(known.map((l) => ({ ingredient_id: l.ingredient_id!, qty: l.qty, unit_cost: l.unit_cost, packs: false })));
+      setReadNote({ sample: r.sample, read: known.length, unmatched: r.lines.filter((l) => !l.ingredient_id) });
+    } catch (e) { setErr(e instanceof Error ? e.message : "Could not read that photo."); }
+    finally { setReading(false); }
+  };
   /* A line bought in packs lands in the ingredient's own unit: 2 packs of a 5 kg bag is 10 kg, at a fifth of the pack price. */
   const toUnits = (l: typeof lines[number]) => { const p = Number(byId[l.ingredient_id]?.pack_qty ?? 0); return l.packs && p > 0 ? { ingredient_id: l.ingredient_id, qty: l.qty * p, unit_cost: l.unit_cost / p } : { ingredient_id: l.ingredient_id, qty: l.qty, unit_cost: l.unit_cost }; };
   const total = lines.map(toUnits).reduce((t, l) => t + l.qty * l.unit_cost, 0);
   const set = (i: number, k: string, v: string | boolean) => setLines(lines.map((l, j) => (j === i ? { ...l, [k]: k === "ingredient_id" || k === "packs" ? v : Number(v) } : l)));
   return (
     <div className="space-y-4">
+      <label className={cn("flex items-center gap-3 rounded-2xl border border-dashed p-3.5 cursor-pointer transition-colors", reading ? "border-[var(--color-tint)] bg-[var(--color-green-2)]" : "border-[var(--color-label-3)] hover:bg-[var(--color-fill)]")}>
+        <span className="h-11 w-11 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-[var(--color-tint)]">{reading ? <Loader2 size={18} className="animate-spin" /> : <ScanText size={18} />}</span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[15px] font-semibold">{reading ? "Reading the bill…" : "Scan the supplier bill"}</span>
+          <span className="block text-xs text-[var(--color-label-2)]">Take a photo — the supplier, invoice number and lines fill in below for you to check.</span>
+        </span>
+        <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={reading}
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void scanBill(f); }} />
+      </label>
+      {readNote && (
+        <div className="rounded-xl bg-[var(--color-fill)] p-3 text-xs space-y-1.5">
+          <div className="flex items-center gap-2"><b className="text-[13px]">{readNote.read} line{readNote.read === 1 ? "" : "s"} read from the bill</b>{readNote.sample && <Pill tone="gold">sample</Pill>}<span className="ml-auto text-[var(--color-label-2)]">Check each one before adding</span></div>
+          {readNote.sample && <p className="text-[var(--color-label-2)]">Sample mode: add ANTHROPIC_API_KEY on the server to read real bills.</p>}
+          {readNote.unmatched.length > 0 && <p className="text-[var(--color-orange)]"><b>Not in your pantry:</b> {readNote.unmatched.map((l) => `${l.name} (${l.qty} × ₹${l.unit_cost})`).join(", ")} — add them as ingredients first, then add those lines.</p>}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Supplier">{suppliers.length ? <select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setSupplier(suppliers.find((s) => s.id === e.target.value)?.name ?? ""); }}><option value="">— type a name —</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select> : null}{!supplierId && <input className={suppliers.length ? "mt-2" : ""} value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Murugan Traders" />}</Field>
         <Field label="Invoice no."><input value={inv} onChange={(e) => setInv(e.target.value)} /></Field>
       </div>
       <div className="space-y-2">
-        <div className="grid grid-cols-[minmax(0,1fr)_80px_90px_56px_28px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Qty</span><span>Cost/unit</span><span>Packs</span><span /></div>
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_56px_28px] sm:grid-cols-[minmax(0,1fr)_80px_90px_56px_28px] gap-2 text-[11px] uppercase text-steel font-semibold"><span className="hidden sm:block">Ingredient</span><span>Qty</span><span>Cost/unit</span><span>Packs</span><span /></div>
         {lines.map((l, i) => {
           const pack = Number(byId[l.ingredient_id]?.pack_qty ?? 0);
           return (
-            <div key={i} className="grid grid-cols-[minmax(0,1fr)_80px_90px_56px_28px] gap-2 items-center">
-              <select value={l.ingredient_id} onChange={(e) => set(i, "ingredient_id", e.target.value)}><option value="">Choose</option>{ingredients.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.unit})</option>)}</select>
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_56px_28px] sm:grid-cols-[minmax(0,1fr)_80px_90px_56px_28px] gap-2 items-center max-sm:pb-2.5 max-sm:border-b max-sm:border-[var(--color-separator)]">
+              {/* On a phone the ingredient gets its own line — five columns left it ~100px and the name hid under the arrow. */}
+              <select className="col-span-4 sm:col-span-1 min-w-0" value={l.ingredient_id} onChange={(e) => set(i, "ingredient_id", e.target.value)}><option value="">Choose</option>{ingredients.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.unit})</option>)}</select>
               <input type="number" step="0.001" min="0" className="num" value={l.qty || ""} onChange={(e) => set(i, "qty", e.target.value)} placeholder={l.packs ? "packs" : ""} />
               <input type="number" step="0.01" min="0" className="num" value={l.unit_cost || ""} onChange={(e) => set(i, "unit_cost", e.target.value)} placeholder={l.packs ? "per pack" : ""} />
               <label className={cn("flex items-center justify-center gap-1 text-[11px]", pack > 0 ? "text-steel" : "text-line")} title={pack > 0 ? `One pack is ${pack} ${byId[l.ingredient_id].unit}` : "Set a pack size on the ingredient to buy in packs"}><input type="checkbox" className="accent-saffron" disabled={pack <= 0} checked={l.packs} onChange={(e) => set(i, "packs", e.target.checked)} />{pack > 0 ? `×${pack}` : "—"}</label>

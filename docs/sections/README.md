@@ -70,7 +70,7 @@ apps/web/components/
 
 apps/web/lib/    auth, supabase clients, format, print, offline, ai, razorpay
 packages/shared/ constants, roles, modules, billing maths, GST — used by web and mobile
-supabase/migrations/   77 numbered .sql files, applied in order
+supabase/migrations/   79 numbered .sql files, applied in order
 ```
 
 ## Five things true of every screen

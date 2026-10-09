@@ -20,6 +20,16 @@ the property's own storefront. **Channels** are room distribution — the OTAs t
 turns it into a real ticket so the kitchen sees it like any other. Commission and payout are
 tracked per order so "Today's online sales" and "Commission" are both honest.
 
+**Kitchen pace** (`KitchenPace.tsx`, top of `/online-orders`) is Zomato's rush-hour switch:
+*Normal* / *Busy +15* / *Very busy +30* / *Pause 30 min*. It calls `set_rush` (migration 0079), which
+sets `restaurants.rush_extra_min` + `rush_until` (an hour) or `online_paused_until` (half an hour);
+*Normal* clears both. Both expire on their own — nothing has to remember to switch it back.
+`dine_order` adds the extra minutes to the quoted ETA while `rush_until > now()` and refuses a
+non-table order while paused (`not taking online orders right now — back at 1:30 pm`). **A table QR
+order (`dine_in`) is never paused** — the guest is already sitting there. The storefront reads
+`dine_busy(slug)` and shows an orange *kitchen is busy* or red *not taking online orders* banner on
+the Order tab. Aggregator webhooks are not paused by this; Swiggy/Zomato have their own switch.
+
 **Rooms out.** `/channels` maps a `room_type` to an OTA listing. `set_rate_inventory` pushes rate
 and availability; `push_channel` runs a sync; `ota_sync_log` records what happened so a failed push
 is visible rather than silent. `api/ical/[token]` exposes availability as an iCal feed for the

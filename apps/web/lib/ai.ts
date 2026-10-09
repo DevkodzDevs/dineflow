@@ -42,6 +42,8 @@ export async function askJson<S extends z.ZodTypeAny>(opts: {
   user: string;
   effort?: "low" | "medium" | "high";
   maxTokens?: number;
+  /** photos to read alongside the text — data URLs ("data:image/jpeg;base64,…"), e.g. a supplier bill or a printed menu */
+  images?: string[];
 }): Promise<AskResult<z.infer<S>>> {
   if (!aiEnabled()) return { ok: false, error: "AI is switched off on this server — add ANTHROPIC_API_KEY to turn it on." };
   try {
@@ -52,7 +54,9 @@ export async function askJson<S extends z.ZodTypeAny>(opts: {
       fallbacks: "default",
       output_config: { effort: opts.effort ?? "low", format: zodOutputFormat(opts.schema) },
       system: [{ type: "text", text: opts.system, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: opts.user }],
+      messages: [{ role: "user", content: opts.images?.length
+        ? [...opts.images.map(toImageBlock), { type: "text" as const, text: opts.user }]
+        : opts.user }],
     });
     // Branch on stop_reason before touching content: a refusal can arrive with an empty body.
     if (res.stop_reason === "refusal") return { ok: false, error: "The model declined this one. Fill it in by hand." };
@@ -72,6 +76,13 @@ export async function askJson<S extends z.ZodTypeAny>(opts: {
     return { ok: false, error: "Something went wrong asking the model." };
   }
 }
+
+/** A data URL from the camera or a file picker, as the image block the API reads. */
+const toImageBlock = (dataUrl: string) => {
+  const m = /^data:(image\/(?:jpeg|png|gif|webp));base64,(.+)$/.exec(dataUrl);
+  if (!m) throw new SyntaxError("not an image data URL");
+  return { type: "image" as const, source: { type: "base64" as const, media_type: m[1] as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: m[2] } };
+};
 
 /** The house style every drafted sentence follows. Kept in one place so the app sounds like one voice. */
 export const VOICE = `Write in plain, warm, everyday Indian English. Short sentences. No exclamation marks, no emojis, no marketing words like "delight", "exquisite", "indulge", "elevate". Sound like a proprietor who was there, not a brand.`;

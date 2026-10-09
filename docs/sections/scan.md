@@ -20,6 +20,11 @@ The hint rail (`.chip-rail`) lets the person narrow it down — **Auto**, *Veget
 A recognised loose product offers `QUICK_QTY` from `@dineflow/shared` — the unit-appropriate quick
 picks (100 g, ½ kg, 1 kg…) — so a receipt can be booked in without typing.
 
+**A bill's own QR reopens the bill.** `lookupCode` first checks for a `/pay/<token>` URL (the QR
+printed on every bill) and answers `{ kind: "bill" }` from `bills.pay_token`; the result card shows
+paid/unpaid, the date, `Bill #N · ₹total` and *Open bill* → `/billing/<order_id>`. Typing the URL in
+the code field does the same, so a torn or faded QR still works.
+
 `scan_log` records every scan. That is both the audit trail and the training signal for what the
 recogniser gets wrong.
 

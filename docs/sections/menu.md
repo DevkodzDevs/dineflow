@@ -34,6 +34,15 @@ known plate for common Indian dishes; `applyStandardRecipe` maps it and creates 
 lines. With `ANTHROPIC_API_KEY` set, `suggestDish` and `suggestRecipe` propose values the person then
 checks and saves — the server throws away any ingredient id the model invents.
 
+**From photo** (`MenuImport.tsx`, a toolbar button after *Add-ons*). `readMenuPhoto` reads a
+photographed printed or handwritten menu into dishes — name, section, price, veg — and writes
+nothing. The owner ticks what to keep, fixes a name or price, toggles veg, and *Add N dishes* →
+`importDishes` is the only write: it matches a section by name or creates it (`sort_order` 100+),
+validates every row with `menuItemSchema` (prep 15 min, available) and inserts in one go. **A dish
+whose name is already on the menu starts unticked**, so a second photo of the same page does not
+double the menu. Without the key it returns a three-dish sample (Ghee roast dosa, Mutton chukka,
+Jigarthanda) — on manoooo, Mutton chukka already exists and shows as *already on your menu*.
+
 **A dish with no recipe does not move stock**, and the card says so in red.
 
 ## Before you edit
@@ -43,7 +52,8 @@ checks and saves — the server throws away any ingredient id the model invents.
 - **`is_available` is the sold-out switch, not stock.** See [orders-and-till.md](orders-and-till.md).
 - **Deleting a category does not delete its dishes**; they fall back to uncategorised.
 - **The AI buttons only appear when `ai` is true** (the key is set). Everything must work without
-  them.
+  them. *From photo* is the exception — it always shows, and runs a labelled sample without the key,
+  the same way Scan does.
 - **The dish form is uncontrolled** (`defaultValue`). The model fills it by writing onto the inputs —
   the same thing a person would type — so nothing about how the form saves changes.
 

@@ -54,3 +54,12 @@ export async function suggestDishMap(lines: string[]) {
     .map((m) => ({ line: m.line, menu_item_id: m.menu_item_id && known.has(m.menu_item_id) ? m.menu_item_id : null, name: m.menu_item_id ? known.get(m.menu_item_id)?.name ?? null : null, confidence: Math.round(m.confidence * 100) }));
   return { ok: true as const, matches };
 }
+
+/** Rush hour: extra minutes on every quoted online order, or a pause on online orders. 0079. */
+export async function setRush(extra: number, forMin: number, pause: boolean) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("set_rush", { p_extra: extra, p_for_min: forMin, p_pause: pause });
+  if (error) return { error: error.message };
+  revalidatePath("/online-orders");
+  return { ok: true as const, pace: data as { rush_extra_min: number; rush_until: string | null; online_paused_until: string | null } };
+}
