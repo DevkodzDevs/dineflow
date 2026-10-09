@@ -44,7 +44,7 @@ shows the suggestion under its rate (green up, orange down); *Use suggested rate
 `set_rates_only` (0082), which changes the rate and nothing else — `set_rate_inventory` overwrites
 stop-sell and resets minimum stay, so it must not be used for this. Push rates still sends them out.
 
-**The night calendar** (`RateCalendar`). A month-style grid: seven columns, Monday first, with
+**The night calendar** (`RateCalendar`). From `sm` up, a month-style grid: seven columns, Monday first, with
 blank cells before the first night so every date sits under its weekday (Fri/Sat headers are bold
 — they are the weekend `suggestRate` prices up). One compact tile per night (66px tall on a phone,
 78px from `sm`): the date (today in a tint circle, the month beside the first night and each 1st),
@@ -56,6 +56,13 @@ use `rounded-[14px]`; and a button centres its content vertically, so they are `
 justify-start`. The first 14 nights show, with *Show all N nights* for the rest. Tapping a night
 sets From/To of the bulk update; tapping a later night extends it; the picked range takes a tint
 wash and border (`aria-pressed`). The bulk fields are 2 / 3 / 6 a row.
+
+**On a phone** (`sm:hidden`) the calendar is replaced by an inset list, one 64px row per night: a
+44px date tile (weekday over day; today filled with the tint), the rate over a thin booked bar and
+"0/8 booked", and on the right the suggestion chip, *Stop sell*, or "on target". A new month gets a
+small header row. The picked range is a tint wash with a 3px tint edge. The phone chip carries
+`data-suggested`, **not** `title` — the hidden desktop tiles already answer
+`[title^="Suggested:"]`, and a second set would double the b3 suite's count.
 
 Each channel carries its own token. A token is a credential: it is never rendered into a page a
 guest can see.

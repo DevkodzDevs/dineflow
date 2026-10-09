@@ -155,7 +155,8 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
           </div>
         </div>
         {days.length === 0 ? <p className="text-sm text-steel px-1">Add room types and rooms first.</p> : (
-          <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] gap-1 sm:gap-1.5">
+          <>
+          <div className="hidden sm:grid grid-cols-[repeat(7,minmax(0,1fr))] gap-1.5">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
               <div key={w} className={cn("text-center text-[10px] sm:text-[10.5px] font-bold uppercase tracking-[0.1em] pb-1", w === "Fri" || w === "Sat" ? "text-[var(--color-label)]" : "text-steel")}>{w}</div>
             ))}
@@ -190,6 +191,46 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
               );
             })}
           </div>
+          {/* Phone: one row per night in an inset list. A date tile, the rate over a thin booked bar,
+              and the suggestion as a chip on the right; tap two rows to set the bulk dates. The chip
+              carries data-suggested, not title, so the desktop calendar alone answers [title^=Suggested]. */}
+          <div className="sm:hidden -mx-1 rounded-2xl border border-[var(--color-separator)] overflow-hidden divide-y divide-[var(--color-separator)]">
+            {shown.map((d, n) => {
+              const r = Number(d.rate); const booked = Math.max(0, d.total - d.free); const full = d.free === 0;
+              const inRange = d.stay_date >= bulk.from && d.stay_date <= bulk.to; const h = hints[d.stay_date];
+              const isToday = d.stay_date === today; const wd = md(d.stay_date, { weekday: "short" });
+              const wknd = wd === "Fri" || wd === "Sat"; const up = h ? h.rate > r : false;
+              const newMonth = n > 0 && md(d.stay_date, { day: "numeric" }) === "1";
+              return (
+                <div key={d.stay_date}>
+                  {newMonth && <div className="px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-steel bg-[var(--color-fill)]">{md(d.stay_date, { month: "long" })}</div>}
+                  <button type="button" onClick={() => pick(d.stay_date)} aria-pressed={inRange}
+                    aria-label={`${md(d.stay_date, { weekday: "short", day: "numeric", month: "short" })}, ${formatINR(r, { whole: true })}, ${full ? "full" : `${booked} of ${d.total} booked`}${d.stop_sell ? ", stop sell" : ""}`}
+                    className={cn("relative w-full !rounded-none flex items-center justify-start gap-3 px-3.5 py-2.5 !min-h-[64px] text-left transition-colors",
+                      inRange ? "bg-[color-mix(in_srgb,var(--color-tint)_12%,transparent)]" : d.stop_sell ? "bg-[var(--color-red-2)]" : "")}>
+                    {inRange && <span className="absolute left-0 inset-y-2 w-[3px] rounded-r-full bg-[var(--color-tint)]" aria-hidden />}
+                    <span className={cn("h-11 w-11 shrink-0 rounded-[14px] grid place-items-center content-center leading-none",
+                      isToday ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : inRange ? "bg-[color-mix(in_srgb,var(--color-tint)_20%,transparent)]" : "bg-[var(--color-fill)]")}>
+                      <span className={cn("text-[9.5px] font-bold uppercase tracking-[0.1em]", isToday ? "" : wknd ? "text-[var(--color-label)]" : "text-steel")}>{isToday ? "Today" : wd}</span>
+                      <span className="num font-semibold text-[17px] mt-0.5">{md(d.stay_date, { day: "numeric" })}</span>
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-baseline gap-1.5"><span className="num text-[16px] font-semibold leading-none">{formatINR(r, { whole: true })}</span>{n === 0 && <span className="text-[11px] text-steel">{md(d.stay_date, { month: "short" })}</span>}</span>
+                      <span className="flex items-center gap-2 mt-1.5">
+                        <span className="h-1 w-14 shrink-0 rounded-full bg-[var(--color-fill-2)] overflow-hidden"><span className={cn("block h-full rounded-full", full ? "bg-[var(--color-red)]" : "bg-[var(--color-tint)]")} style={{ width: `${d.total ? (booked / d.total) * 100 : 0}%` }} /></span>
+                        <span className={cn("num text-[11px] truncate", full ? "text-[var(--color-red)] font-semibold" : "text-steel")}>{full ? "Full" : `${booked}/${d.total} booked`}</span>
+                      </span>
+                    </span>
+                    {d.stop_sell ? <span className="shrink-0 text-[10.5px] font-bold uppercase tracking-wide px-2.5 h-7 grid place-items-center rounded-full bg-[var(--color-red)] text-white">Stop sell</span>
+                      : h ? <span data-suggested={h.why} className={cn("shrink-0 inline-flex items-center gap-1 num text-[12.5px] font-semibold h-8 px-2.5 rounded-full", up ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[color-mix(in_srgb,var(--color-orange)_15%,transparent)] text-[var(--color-orange)]")}>
+                          {up ? <TrendingUp size={13} /> : <TrendingDown size={13} />}{formatINR(h.rate, { whole: true })}</span>
+                      : <span className="shrink-0 inline-flex items-center gap-1 text-[11.5px] text-steel"><Check size={13} className="text-[var(--color-green)]" /> on target</span>}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          </>
         )}
         {days.length > 14 && <div className="mt-3 flex justify-center"><Button variant="outline" size="sm" onClick={() => setAll(!all)}>{all ? "Show the next 14 nights" : `Show all ${days.length} nights`}</Button></div>}
       </div>
