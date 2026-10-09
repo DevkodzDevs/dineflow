@@ -47,6 +47,9 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0078_theme_follows_the_person
 0079_rush_hour                — set_rush, dine_busy; dine_order re-created from 0074 + pause/ETA
 0080_goes_well_with           — menu_pairings(): a security-invoker read; RLS does the fencing
+0081_online_checkin_and_room_move — bookings.checkin_token/precheckin; checkin_view/submit (anon,
+                                by token); booking_move_room
+0082_set_rates_only           — a rate per night, leaving stop-sell and minimum stay alone
 ```
 
 **Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`

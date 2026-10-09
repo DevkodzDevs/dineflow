@@ -4,7 +4,7 @@
 **Files** `app/(app)/frontdesk/page.tsx` · `FrontDeskClient.tsx` · `[id]/FolioClient.tsx` ·
 `night-audit/NightAuditClient.tsx` · `actions.ts`
 **Reads** `bookings`, `guests`, `rooms`, `room_types`, `booking_charges`, `orders`, `night_audits`
-**Writes** `create_booking`, `check_in`, `check_out`, `folio_totals`, `post_order_to_room`,
+**Writes** `booking_move_room`, `create_booking`, `check_in`, `check_out`, `folio_totals`, `post_order_to_room`,
 `run_night_audit`, `night_audit_numbers`
 
 ## What it is
@@ -29,6 +29,19 @@ discrepancy list — rooms the front office and housekeeping disagree about.
 
 The room chooser uses `.keycard` tiles with a condition dot in the corner, so the person booking can
 see at a glance which free room is actually sellable.
+
+**Online check-in on the folio** (`[id]/OnlineCheckin.tsx`, reserved bookings only): *not yet* /
+*done* with the time; *Send on WhatsApp*, *Copy link*, *Open on this tablet* (`/checkin/<token>?kiosk=1`
+in the same tab). Once done it shows arrival time, the ID to look at (type and last four),
+nationality and requests, and for a foreign national a Form C reminder. The link's host comes from
+`NEXT_PUBLIC_CLOUD_URL` or the request headers, as Pulse's queue link does. The arrival row says
+*Checked in online · arriving 14:30*. See [guest-facing.md](guest-facing.md).
+
+**A ready room for an arrival whose room is not.** `suggestRoom` (`lib/roomsuggest.ts`, 4 tests):
+same room type only, free of other stays for those nights, ready by the property's rule (inspected
+when `hk_inspect_required`, else clean or inspected), inspected before clean, same floor first.
+The arrival row shows *Move to 308*; `booking_move_room` (0081) re-checks all of that, releases the
+old room if this booking was holding it today and holds the new one.
 
 **WhatsApp from the folio** (`[id]/FolioClient.tsx`, in the Guest card). Reserved: *Confirm on
 WhatsApp* — room type and number, both dates, nights, booking number. Checked in: *Welcome on
@@ -71,6 +84,8 @@ squeezed the icon to a dot.
   inspected first.
 - **The details line truncates and the rate does not** — `truncate` on the line, `shrink-0` on the
   rate. A long guest name used to push the rate off the card.
+- **The folio's Back link is `shrink-0`.** A long room-and-guest title squeezed it to 34px wide on a
+  phone.
 - **The call link is an `.icon-btn`**, so it is 44px on a touch screen.
 - **Dates are IST.** `todayIST()` in `lib/format.ts`. Never `new Date().toISOString().slice(0,10)`.
 

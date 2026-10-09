@@ -1,10 +1,10 @@
 # Guest-facing pages (no sign-in)
 
-**Routes** `/dine` · `/dine/[slug]` · `/dine/track` · `/book/[slug]` · `/queue/[slug]` ·
+**Routes** `/dine` · `/dine/[slug]` · `/dine/track` · `/book/[slug]` · `/queue/[slug]` · `/checkin/[token]` ·
 `/pay/[token]` · `/record/[token]` · `/get` · `/offline`
-**Files** `app/dine/**` · `app/book/[slug]` · `app/queue/[slug]` · `app/pay/[token]` ·
+**Files** `app/dine/**` · `app/book/[slug]` · `app/queue/[slug]` · `app/checkin/[token]` · `app/pay/[token]` ·
 `app/record/[token]` · `app/get` · `app/offline`
-**Writes** `dine_storefront`, `dine_discover`, `dine_order`, `dine_reserve`, `dine_review`,
+**Writes** `checkin_view`, `checkin_submit`, `dine_storefront`, `dine_discover`, `dine_order`, `dine_reserve`, `dine_review`,
 `dine_slots`, `dine_track`, `public_property`, `public_availability`, `public_book`, `queue_join`,
 `queue_status`, `queue_leave`, `pay_link`, `pay_link_claim`, `pay_link_review`, `proof_open`
 
@@ -20,6 +20,7 @@ owner installs the app.
 | `/dine/track` | the same diner | where their order is |
 | `/book/[slug]` | a traveller | the room booking engine |
 | `/queue/[slug]` | a walk-in | join the queue, see the wait |
+| `/checkin/[token]` | a hotel guest, or the desk's tablet (`?kiosk=1`) | check in online before arriving |
 | `/pay/[token]` | a customer | pay one bill by link |
 | `/record/[token]` | a bank, a landlord | a sealed business record (see [reports](reports-and-forecast.md)) |
 | `/get` | a new owner | install the app |
@@ -47,6 +48,15 @@ anyway, which is the belt to the RPC's braces.
 
 **Payments run on the property's own gateway keys.** DineFlow is not the merchant of record for a
 guest's meal. See [legal.md](legal.md) and [settings.md](settings.md).
+
+**Online check-in** (`/checkin/[token]`, migration 0081). Every booking has a `checkin_token`.
+`checkin_view` returns that booking only — dates, room type, the guest's own details, the last four
+of their phone — and no internal ids; a wrong token, or a booking already checked in or closed,
+returns nothing and the page says the link has expired. `checkin_submit` validates everything
+server-side (name, address, one of five ID types, **exactly four characters of the ID — never the
+whole number**, optional email and HH:MM arrival, a confirmation tick) and may be sent again. A
+nationality other than Indian brings up the Form C note. `?kiosk=1` is the desk's tablet: the
+finish screen only asks for the tablet back. Paper theme (`app/checkin/layout.tsx`), like the queue.
 
 **Kitchen pace on the storefront.** `dine/[slug]/page.tsx` fetches `dine_busy(slug)` and the
 Order tab shows a red *Not taking online orders right now. Back at …* or an orange *The kitchen is

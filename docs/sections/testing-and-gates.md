@@ -7,7 +7,7 @@
 ```
 pnpm lint          # 0 errors (14 warnings are known and pre-existing)
 pnpm typecheck     # clean
-pnpm test          # 22 unit tests: lib/offline/outbox.test.ts (8) + lib/options.test.ts (7) + lib/wa.test.ts (4) + lib/bar.test.ts (3)
+pnpm test          # 31 unit tests: lib/offline/outbox.test.ts (8) + lib/options.test.ts (7) + lib/rates.test.ts (5) + lib/wa.test.ts (4) + lib/roomsuggest.test.ts (4) + lib/bar.test.ts (3)
 pnpm build         # a real production build
 ```
 

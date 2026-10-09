@@ -2,14 +2,15 @@
 import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, LogIn, CalendarDays, Moon, Users, Star, ClipboardCheck, List, Check } from "lucide-react";
+import { Plus, LogIn, CalendarDays, Moon, Users, Star, ClipboardCheck, List, Check, CheckCircle2, ArrowRightLeft } from "lucide-react";
+import { suggestRoom } from "@/lib/roomsuggest";
 import { useLive } from "@/lib/useLive";
 import { Button, Sheet, Field, StatTile, Pill, cn, Empty, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
-import { createBooking, checkIn, cancelBooking } from "./actions";
+import { createBooking, checkIn, cancelBooking, moveRoom } from "./actions";
 
 type Room = { id: string; number: string; floor: number; status: string; condition?: string | null; room_type_id: string | null; room_types: { name: string; base_rate: number; capacity: number } | null };
-type Booking = { id: string; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; guests: { full_name: string; phone: string | null; vip?: boolean; preferences?: string | null } | null; rooms: { number: string; condition?: string | null; room_types: { name: string } | null } | null };
+type Booking = { id: string; room_id: string | null; precheckin_at?: string | null; precheckin?: { arrival_time?: string | null } | null; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; guests: { full_name: string; phone: string | null; vip?: boolean; preferences?: string | null } | null; rooms: { number: string; condition?: string | null; room_types: { name: string } | null } | null };
 type RT = { id: string; name: string; base_rate: number; capacity: number };
 type G = { id: string; full_name: string; phone: string | null; vip?: boolean };
 /** housekeeping's word on a room, as the front desk needs to read it at a glance */
@@ -29,6 +30,8 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
      before it says "welcome" — and a VIP is marked before the desk has to remember. */
   const Row = ({ b, action }: { b: Booking; action?: React.ReactNode }) => {
     const cond = b.status === "reserved" ? b.rooms?.condition : null;
+    /* the room booked is not ready: offer a ready one of the same type, one tap to move (0081) */
+    const better = b.status === "reserved" && b.check_in <= today ? suggestRoom(b, rooms, bookings, inspectRule) : null;
     return (
       <Link href={`/frontdesk/${b.id}`} className="feather feather-lift flex items-center gap-4 p-4">
         <div className="keycard h-12 w-14 grid place-items-center font-display text-lg shrink-0 relative">{b.rooms?.number}{cond && <span title={`Housekeeping: ${cond}`} className={cn("absolute top-1 right-1 h-2 w-2 rounded-full", CONDITION_DOT[cond] ?? "bg-steel")} />}</div>
@@ -37,6 +40,13 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
           <div className="text-xs text-steel num truncate">#{b.booking_no} · {b.check_in.slice(5)} → {b.check_out.slice(5)} · {b.rooms?.room_types?.name} · <Users size={10} className="inline" /> {b.adults + b.children}</div>
           {b.guests?.preferences && <div className="text-xs text-champagne truncate mt-0.5">{b.guests.preferences}</div>}
           {cond && cond !== "inspected" && <div className={cn("text-[11px] mt-0.5", cond === "dirty" ? "text-chili" : "text-[var(--color-orange)]")}>{cond === "dirty" ? "Room not cleaned yet" : cond === "clean" ? (inspectRule ? "Room awaits inspection" : "Room cleaned") : "Room needs a touch-up"}</div>}
+          {b.precheckin_at && b.status === "reserved" && <div className="text-[11px] mt-0.5 text-[var(--color-green)] font-semibold flex items-center gap-1"><CheckCircle2 size={11} className="shrink-0" /> Checked in online{b.precheckin?.arrival_time ? ` · arriving ${b.precheckin.arrival_time}` : ""}</div>}
+          {better && (
+            <button type="button" title={`Room ${better.number} (${better.condition}) is ready — same type`} aria-label={`Move to room ${better.number}, which is ready`} disabled={pending} onClick={(e) => { e.preventDefault(); start(async () => { const r = await moveRoom(b.id, better.id); if ("error" in r) toast(r.error!, "err"); else toast(`${b.guests?.full_name ?? "Guest"} moved to room ${r.number}`); }); }}
+              className="mt-1.5 min-h-10 px-3 rounded-full inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110 transition max-w-full">
+              <ArrowRightLeft size={13} className="shrink-0" /><span className="truncate">Move to {better.number}</span>
+            </button>
+          )}
         </div>
         <div className="num text-sm font-semibold hidden sm:block shrink-0">{formatINR(Number(b.rate))}/n</div>
         {action}

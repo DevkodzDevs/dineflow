@@ -11,13 +11,14 @@ import { checkIn, checkOut, addCharge, postOrderToRoom } from "../actions";
 import { stayInvoice } from "../../invoices/actions";
 import { FileText, MessageCircle } from "lucide-react";
 import { waHref, waDate, firstName } from "@/lib/wa";
+import { OnlineCheckin } from "./OnlineCheckin";
 
-type B = { id: string; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; source: string; notes: string | null; checked_in_at: string | null; guests: { full_name: string; phone: string | null; email: string | null; id_type: string | null; id_last4: string | null; visits: number; vip?: boolean; preferences?: string | null } | null; rooms: { number: string; floor: number; room_types: { name: string } | null } | null };
+type B = { id: string; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; source: string; notes: string | null; checked_in_at: string | null; checkin_token?: string | null; precheckin?: { nationality?: string; arrival_time?: string | null; requests?: string | null; id_type?: string; id_last4?: string } | null; precheckin_at?: string | null; guests: { full_name: string; phone: string | null; email: string | null; id_type: string | null; id_last4: string | null; visits: number; vip?: boolean; preferences?: string | null } | null; rooms: { number: string; floor: number; room_types: { name: string } | null } | null };
 type C = { id: string; kind: string; description: string; amount: number; created_at: string };
 type T = { nights: number; room_total: number; extras: number; discounts: number; taxable: number; gst: number; total: number; paid: number; balance: number };
 type O = { id: string; order_no: number; order_items: { qty: number; price_snapshot: number; status: string }[] };
 
-export function FolioClient({ booking: b, charges, totals: t, openOrders, restaurant }: { booking: B; charges: C[]; totals: T; openOrders: O[]; restaurant: { name: string; gstin: string | null; address: string | null; room_gst_rate: number } }) {
+export function FolioClient({ booking: b, charges, totals: t, openOrders, restaurant, base = "" }: { booking: B; charges: C[]; totals: T; openOrders: O[]; restaurant: { name: string; gstin: string | null; address: string | null; room_gst_rate: number }; base?: string }) {
   const router = useRouter(); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   const [pays, setPays] = useState<{ method: PaymentMethod; amount: number; ref: string }[]>([{ method: "upi", amount: Number(t?.balance ?? 0), ref: "" }]);
   const [extra, setExtra] = useState({ kind: "extra" as "extra" | "discount", description: "", amount: 0 });
@@ -27,7 +28,7 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
       <div className="no-print">
         <div className="flex items-center gap-3 mb-6">
-          <Link href="/frontdesk" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
+          <Link href="/frontdesk" className="h-10 w-10 shrink-0 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
           <div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Booking #{b.booking_no} · {b.source?.replace("_", " ")}</div><h1 className="text-3xl">Room {b.rooms?.number} <em>{b.guests?.full_name}</em></h1></div>
           <Pill tone={tone}>{b.status.replace("_", " ")}</Pill>
         </div>
@@ -42,6 +43,7 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
             })()}</Card>
           <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel">Stay</div><div className="mt-2 font-semibold text-lg num">{b.check_in} → {b.check_out}</div><div className="text-sm text-steel">{t?.nights} night{t?.nights === 1 ? "" : "s"} · {b.rooms?.room_types?.name} · {b.adults} adult{b.adults > 1 ? "s" : ""}{b.children ? `, ${b.children} child` : ""}</div>{b.notes && <div className="text-xs text-steel mt-1">{b.notes}</div>}</Card>
         </div>
+        {b.status === "reserved" && b.checkin_token && <OnlineCheckin token={b.checkin_token} base={base} at={b.precheckin_at ?? null} pre={b.precheckin ?? null} guest={b.guests?.full_name ?? ""} phone={b.guests?.phone ?? null} property={restaurant.name} checkIn={b.check_in} />}
         {b.status === "reserved" && <Button size="lg" className="mt-4 w-full sm:w-auto" disabled={pending} onClick={() => start(async () => { const r = await checkIn(b.id); if ("error" in r) setErr(r.error!); })}><LogIn size={16} /> Check in guest</Button>}
         {b.status === "checked_in" && (
           <div className="mt-6 grid sm:grid-cols-2 gap-4">

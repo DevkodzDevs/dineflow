@@ -5,7 +5,10 @@ import { motion } from "framer-motion";
 import { Plus, Copy, RefreshCw, Globe, Bike, Calendar, Check, AlertTriangle, ExternalLink, Trash2, Info } from "lucide-react";
 import { Button, Sheet, Field, Card, Pill, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
-import { saveOta, deleteOta, setRates, pushChannel, sendTestOrder } from "./actions";
+import { saveOta, deleteOta, setRates, setRatesOnly, pushChannel, sendTestOrder } from "./actions";
+import { suggestRate } from "@/lib/rates";
+import { todayIST } from "@/lib/format";
+import { TrendingUp, TrendingDown, Wand2 } from "lucide-react";
 import { Upload, Send } from "lucide-react";
 import { saveChannel, deleteChannel } from "../online-orders/actions";
 
@@ -71,7 +74,8 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Sync log</div><ul className="text-sm space-y-1">{log.map((l) => <li key={l.id} className="flex gap-2"><span className="num text-xs text-steel w-28">{new Date(l.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span><Pill tone={l.ok ? "ready" : "alert"}>{l.direction}</Pill><span className="flex-1">{l.message}</span></li>)}{log.length === 0 && <li className="text-steel">Nothing yet.</li>}</ul></Card>
       </div>)}
 
-      {tab === "calendar" && <RateCalendar avail={avail} types={types} onSave={(a) => start(async () => { const r = await setRates(a.rt, a.from, a.to, a.rate, a.open, a.stop, a.min); if ("error" in r) setErr(r.error!); else setMsg("Calendar updated"); })} pending={pending} />}
+      {tab === "calendar" && <RateCalendar avail={avail} types={types} onSave={(a) => start(async () => { const r = await setRates(a.rt, a.from, a.to, a.rate, a.open, a.stop, a.min); if ("error" in r) setErr(r.error!); else setMsg("Calendar updated"); })}
+        onApply={(rt, nights) => start(async () => { const r = await setRatesOnly(rt, nights); if ("error" in r) setErr(r.error!); else setMsg(`${r.n} night${r.n === 1 ? "" : "s"} repriced — push rates to send them to your channels`); })} pending={pending} />}
       {err && <p className="text-sm text-chili">{err}</p>}
 
       <Sheet open={!!editOc} onClose={() => setEditOc(null)} title={editOc?.id ? editOc.label ?? "" : "Add delivery channel"}>
@@ -106,19 +110,37 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
   );
 }
 
-function RateCalendar({ avail, types, onSave, pending }: { avail: Av[]; types: { id: string; name: string; base_rate: number }[]; onSave: (a: { rt: string; from: string; to: string; rate: number | null; open: number | null; stop: boolean; min: number | null }) => void; pending: boolean }) {
+function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[]; types: { id: string; name: string; base_rate: number }[]; onSave: (a: { rt: string; from: string; to: string; rate: number | null; open: number | null; stop: boolean; min: number | null }) => void; onApply: (rt: string, nights: { date: string; rate: number }[]) => void; pending: boolean }) {
   const [sel, setSel] = useState(types[0]?.id ?? "");
   const [bulk, setBulk] = useState({ from: new Date().toISOString().slice(0, 10), to: new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 10), rate: "", open: "", stop: false, min: "" });
   const days = useMemo(() => avail.filter((a) => a.room_type_id === sel), [avail, sel]);
+  /* What the rate should be, from what is already booked (lib/rates.ts): next 14 nights only. */
+  const base = Number(types.find((t) => t.id === sel)?.base_rate ?? 0);
+  const hints = useMemo(() => { const today = todayIST(); return Object.fromEntries(days.map((d) => [d.stay_date, suggestRate({ ...d, rate: Number(d.rate) }, base, today)])); }, [days, base]);
+  const moves = days.filter((d) => hints[d.stay_date]);
+  const ups = moves.filter((d) => hints[d.stay_date]!.rate > Number(d.rate)).length;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">{types.map((t) => <button key={t.id} onClick={() => setSel(t.id)} className={cn("chip", sel === t.id && "on")}>{t.name}</button>)}</div>
+      {days.length > 0 && (
+        <div className="feather p-4 flex flex-wrap items-center gap-3">
+          <span className="h-10 w-10 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-[var(--color-tint)]"><Wand2 size={18} /></span>
+          <div className="flex-1 min-w-[12rem]">
+            <div className="text-[15px] font-semibold">{moves.length ? `Suggested rates for ${moves.length} night${moves.length === 1 ? "" : "s"}` : "Rates look right for the next 14 nights"}</div>
+            <div className="text-xs text-steel">{moves.length ? `${ups} up, ${moves.length - ups} down — from how full each night already is.` : "Suggestions appear when a night fills up or sits empty close in."}</div>
+          </div>
+          {moves.length > 0 && <Button disabled={pending} onClick={() => onApply(sel, moves.map((d) => ({ date: d.stay_date, rate: hints[d.stay_date]!.rate })))}>Use suggested rates</Button>}
+        </div>
+      )}
       <div className="feather p-4 overflow-x-auto"><div className="flex gap-2 min-w-max">{days.map((d) => (
         <motion.div key={d.stay_date} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={cn("w-24 rounded-xl border p-2 text-center", d.stop_sell ? "bg-chili-2 border-chili/40" : d.free === 0 ? "bg-porcelain-2 border-line" : "bg-card border-line")}>
           <div className="text-[10px] uppercase tracking-wide text-steel">{new Date(d.stay_date).toLocaleDateString("en-IN", { weekday: "short" })}</div>
           <div className="num font-semibold">{new Date(d.stay_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</div>
           <div className={cn("num text-lg mt-1", d.free === 0 && "text-chili")}>{d.free}<span className="text-xs text-steel">/{d.total}</span></div>
           <div className="num text-xs text-steel">{formatINR(Number(d.rate))}</div>
+          {hints[d.stay_date] && (() => { const h = hints[d.stay_date]!; const up = h.rate > Number(d.rate); return (
+            <div title={`Suggested: ${h.why}`} className={cn("num text-[11px] font-semibold mt-0.5 flex items-center justify-center gap-0.5", up ? "text-[var(--color-green)]" : "text-[var(--color-orange)]")}>
+              {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}{formatINR(h.rate, { whole: true })}</div>); })()}
           {d.stop_sell && <div className="text-[10px] font-bold text-chili mt-0.5">STOP SELL</div>}
         </motion.div>))}
         {days.length === 0 && <p className="text-sm text-steel">Add room types and rooms first.</p>}</div></div>

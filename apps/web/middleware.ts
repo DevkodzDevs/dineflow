@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC = ["/", "/login", "/signup", "/join", "/forgot", "/membership", "/offline", "/get"];
 /* The legal pages must answer a stranger. A payment gateway's reviewer, a regulator and someone
    deciding whether to sign up all read them before there is any session to check. */
-const PUBLIC_PREFIX = ["/legal", "/queue/", "/dine", "/book/", "/record/", "/pay/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/"];
+const PUBLIC_PREFIX = ["/legal", "/queue/", "/checkin/", "/dine", "/book/", "/record/", "/pay/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/"];
 /** Pages a signed-in user must always be able to reach, even with must_change_password set. Without
  *  this the password-change screen has no way out: the middleware bounces /login to /dashboard, and
  *  the app layout bounces /dashboard back to /account/password. */
@@ -51,7 +51,7 @@ export async function middleware(req: NextRequest) {
    * /login, /signup, / and /membership stay out of it — each one does read the session, to send a
    * signed-in person where they belong.
    */
-  const SESSION_FREE = ["/legal", "/dine", "/book/", "/queue/", "/record/", "/pay/", "/get", "/offline"];
+  const SESSION_FREE = ["/legal", "/dine", "/book/", "/queue/", "/checkin/", "/record/", "/pay/", "/get", "/offline"];
   if (SESSION_FREE.some((x) => path === x || path.startsWith(x))) return NextResponse.next({ request: req });
 
   let res = NextResponse.next({ request: req });

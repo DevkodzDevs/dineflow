@@ -11,6 +11,8 @@ export async function createBooking(input: unknown) {
   const { data, error } = await s.rpc("create_booking", { p_guest: d.guest, p_room_id: d.room_id, p_check_in: d.check_in, p_check_out: d.check_out, p_adults: d.adults, p_children: d.children, p_rate: d.rate, p_advance: d.advance, p_source: d.source, p_notes: d.notes ?? null });
   if (error) return { error: error.message }; bump(); return { ok: true, id: data as string };
 }
+/** Moves a booking that has not checked in to another room — offered when its own room is not ready. */
+export async function moveRoom(id: string, roomId: string) { const s = await createClient(); const { data, error } = await s.rpc("booking_move_room", { p_booking: id, p_room: roomId }); if (error) return { error: error.message }; bump(); return { ok: true as const, number: data as string }; }
 export async function checkIn(id: string) { const s = await createClient(); const { error } = await s.rpc("check_in", { p_booking_id: id }); if (error) return { error: error.message }; bump(); return { ok: true }; }
 export async function checkOut(id: string, payments: unknown) {
   const p = z.array(paymentSchema).safeParse(payments); if (!p.success) return { error: "Enter payment" };

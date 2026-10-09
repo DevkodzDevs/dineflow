@@ -5,7 +5,7 @@
 both `actions.ts`
 **Reads** `online_orders`, `order_channels`, `ota_channels`, `ota_sync_log`, `menu_items`,
 `room_types`
-**Writes** `accept_online_order`, `push_channel`, `set_rate_inventory`, `availability`
+**Writes** `accept_online_order`, `push_channel`, `set_rate_inventory`, `set_rates_only`, `availability`
 **Related API** `api/webhooks/aggregator/[token]`, `api/ota/sync`, `api/ical/[token]`
 
 ## What it is
@@ -34,6 +34,15 @@ the Order tab. Aggregator webhooks are not paused by this; Swiggy/Zomato have th
 and availability; `push_channel` runs a sync; `ota_sync_log` records what happened so a failed push
 is visible rather than silent. `api/ical/[token]` exposes availability as an iCal feed for the
 channels that only speak that.
+
+**Suggested rates** (Rates & availability tab). `suggestRate` in `lib/rates.ts` (5 tests) reads
+each of the next 14 nights from what is already booked: ≥90% full +25%, ≥75% +15%, ≥60% +8%; within
+3 days and under 30% −15%, within a week and under 40% −10%; a Friday or Saturday that is 40% full
++5% more. **Always moved off the room type's base rate, never the current rate**, so accepting twice
+does not compound; rounded to ₹50, kept within 70–150% of base; silent under ₹50 or 3%. Each night
+shows the suggestion under its rate (green up, orange down); *Use suggested rates* writes them with
+`set_rates_only` (0082), which changes the rate and nothing else — `set_rate_inventory` overwrites
+stop-sell and resets minimum stay, so it must not be used for this. Push rates still sends them out.
 
 Each channel carries its own token. A token is a credential: it is never rendered into a page a
 guest can see.

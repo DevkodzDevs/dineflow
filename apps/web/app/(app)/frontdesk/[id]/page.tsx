@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { FolioClient } from "./FolioClient";
@@ -14,5 +15,8 @@ export default async function FolioPage({ params }: { params: Promise<{ id: stri
     s.rpc("folio_totals", { p_booking_id: id }),
     s.from("orders").select("id, order_no, order_items(qty, price_snapshot, status)").eq("status", "open"),
   ]);
-  return <FolioClient booking={b as never} charges={charges ?? []} totals={(totals as never[])?.[0] as never} openOrders={(orders ?? []) as never} restaurant={session.restaurant} />;
+  // the check-in link goes to a guest, so it needs a whole address — same source as Pulse's queue link
+  const h = await headers();
+  const base = process.env.NEXT_PUBLIC_CLOUD_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
+  return <FolioClient booking={b as never} charges={charges ?? []} totals={(totals as never[])?.[0] as never} openOrders={(orders ?? []) as never} restaurant={session.restaurant} base={base} />;
 }

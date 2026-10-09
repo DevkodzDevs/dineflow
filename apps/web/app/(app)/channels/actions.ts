@@ -14,6 +14,13 @@ export async function setRates(roomTypeId: string, from: string, to: string, rat
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
 
+/** Sets a rate per night and nothing else — "Use suggested rates" (0082). Stop-sell and minimum stay stay as they were. */
+export async function setRatesOnly(roomTypeId: string, nights: { date: string; rate: number }[]) {
+  if (!nights.length) return { ok: true as const, n: 0 };
+  const s = await createClient(); const { data, error } = await s.rpc("set_rates_only", { p_room_type_id: roomTypeId, p_dates: nights.map((x) => x.date), p_rates: nights.map((x) => Math.round(x.rate)) });
+  if (error) return { error: error.message }; bump(); return { ok: true as const, n: Number(data) };
+}
+
 /** Push menu (delivery) or rates+availability (OTA). Simulates and logs when no partner key is set. */
 export async function pushChannel(id: string, kind: "menu" | "ari") {
   const s = await createClient(); const { data, error } = await s.rpc("push_channel", { p_channel_id: id, p_kind: kind });

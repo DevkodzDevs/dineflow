@@ -30,7 +30,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(app)/tax/**` | [tax-and-compliance.md](tax-and-compliance.md) |
 | `app/(app)/scan/**` | [scan.md](scan.md) |
 | `app/(app)/neighbours/**` | [neighbours.md](neighbours.md) |
-| `app/dine/**`, `app/book/**`, `app/queue/**`, `app/pay/**`, `app/record/**`, `app/get`, `app/offline` | [guest-facing.md](guest-facing.md) |
+| `app/dine/**`, `app/book/**`, `app/queue/**`, `app/checkin/**`, `app/pay/**`, `app/record/**`, `app/get`, `app/offline` | [guest-facing.md](guest-facing.md) |
 | `app/(auth)/**`, `app/account/**`, `app/page.tsx`, `middleware.ts`, `lib/auth.ts` | [auth-and-session.md](auth-and-session.md) |
 | `app/admin/**`, `app/membership/**`, `app/(app)/about/**` | [admin-and-membership.md](admin-and-membership.md) |
 | `app/legal/**`, `lib/company.ts` | [legal.md](legal.md) |
@@ -70,7 +70,7 @@ apps/web/components/
 
 apps/web/lib/    auth, supabase clients, format, print, offline, ai, razorpay
 packages/shared/ constants, roles, modules, billing maths, GST — used by web and mobile
-supabase/migrations/   80 numbered .sql files, applied in order
+supabase/migrations/   82 numbered .sql files, applied in order
 ```
 
 ## Five things true of every screen
