@@ -235,3 +235,6 @@ Then look at it, in both themes, at 1440 and 412.
 
 [testing-and-gates.md](testing-and-gates.md) · [shell-and-nav.md](shell-and-nav.md) ·
 [dashboard.md](dashboard.md)
+
+- **`.ci-form`** (end of `globals.css`) — the online check-in form's field border, 16% ink, tint on
+  focus. Scoped to that page; see [guest-facing.md](guest-facing.md).

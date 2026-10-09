@@ -65,25 +65,37 @@ export function CheckinClient({ token, initial, kiosk }: { token: string; initia
           {!kiosk && v.phone && <p className="text-sm text-[var(--color-label-2)] text-center">Questions? Call <a className="underline" href={`tel:${v.phone}`}>{v.phone}</a></p>}
         </div>
       ) : (
-        <form className="stack mt-6" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-          <div><label htmlFor="ci-name">Full name, as on your ID</label><input id="ci-name" value={f.full_name} onChange={set("full_name")} autoComplete="name" required /></div>
-          <div><label htmlFor="ci-email">Email (for your bill)</label><input id="ci-email" type="email" value={f.email} onChange={set("email")} autoComplete="email" inputMode="email" /></div>
-          <div><label htmlFor="ci-addr">Home address</label><textarea id="ci-addr" rows={2} value={f.address} onChange={set("address")} autoComplete="street-address" required /></div>
-          <div><label>ID you will show at the desk</label>
-            <div className="flex flex-wrap gap-2 mt-2">{IDS.map((x) => <button key={x} type="button" onClick={() => setF({ ...f, id_type: x })} className={`chip ${f.id_type === x ? "on" : ""}`}>{x}</button>)}</div></div>
-          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
-            <div className="min-w-0"><label htmlFor="ci-id4">Last 4 of the ID</label><input id="ci-id4" value={f.id_last4} maxLength={4} onChange={(e) => setF({ ...f, id_last4: e.target.value.replace(/[^a-z0-9]/gi, "").toUpperCase() })} className="num tracking-[0.3em]" autoComplete="off" required /></div>
-            <div className="min-w-0"><label htmlFor="ci-nat">Nationality</label><input id="ci-nat" value={f.nationality} onChange={set("nationality")} autoComplete="country-name" /></div>
-          </div>
-          <p className="text-xs text-[var(--color-label-2)] -mt-1">We keep only the last four characters. The desk looks at the card itself when you arrive.{f.nationality.trim().toLowerCase() !== "indian" && f.nationality.trim() ? " Guests from outside India: please bring your passport and visa — the desk files Form C." : ""}</p>
-          <div><label htmlFor="ci-time">Arriving at about</label><input id="ci-time" type="time" value={f.arrival_time} onChange={set("arrival_time")} className="num" /></div>
-          <div><label htmlFor="ci-req">Anything we should know?</label><textarea id="ci-req" rows={2} maxLength={300} value={f.requests} onChange={set("requests")} placeholder="Early check-in, extra bed, a quiet room, an allergy…" /></div>
-          <label className="flex items-start gap-3 text-sm normal-case !font-normal cursor-pointer min-h-11">
+        /* The form sits on white section cards: the paper page and a paper input are almost the same
+           colour, so a field on the bare page has no edge at all. On a card every field shows its
+           box, with a firm border, and focus still rings it in green. */
+        <form className="ci-form mt-6 space-y-4" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+          <section className="feather p-4 sm:p-5 space-y-4">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-label-2)]">About you</h2>
+            <div><label htmlFor="ci-name">Full name, as on your ID</label><input id="ci-name" value={f.full_name} onChange={set("full_name")} autoComplete="name" required /></div>
+            <div><label htmlFor="ci-email">Email (for your bill)</label><input id="ci-email" type="email" value={f.email} onChange={set("email")} autoComplete="email" inputMode="email" placeholder="you@example.com" /></div>
+            <div><label htmlFor="ci-addr">Home address</label><textarea id="ci-addr" rows={2} value={f.address} onChange={set("address")} autoComplete="street-address" required /></div>
+          </section>
+          <section className="feather p-4 sm:p-5 space-y-4">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-label-2)]">Your ID</h2>
+            <div><label>ID you will show at the desk</label>
+              <div className="flex flex-wrap gap-2">{IDS.map((x) => <button key={x} type="button" onClick={() => setF({ ...f, id_type: x })} aria-pressed={f.id_type === x} className={`chip ${f.id_type === x ? "on" : ""}`}>{x}</button>)}</div></div>
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+              <div className="min-w-0"><label htmlFor="ci-id4">Last 4 of the ID</label><input id="ci-id4" value={f.id_last4} maxLength={4} onChange={(e) => setF({ ...f, id_last4: e.target.value.replace(/[^a-z0-9]/gi, "").toUpperCase() })} className="num tracking-[0.3em]" autoComplete="off" placeholder="1234" required /></div>
+              <div className="min-w-0"><label htmlFor="ci-nat">Nationality</label><input id="ci-nat" value={f.nationality} onChange={set("nationality")} autoComplete="country-name" /></div>
+            </div>
+            <p className="text-xs text-[var(--color-label-2)] leading-relaxed">We keep only the last four characters. The desk looks at the card itself when you arrive.{f.nationality.trim().toLowerCase() !== "indian" && f.nationality.trim() ? " Guests from outside India: please bring your passport and visa — the desk files Form C." : ""}</p>
+          </section>
+          <section className="feather p-4 sm:p-5 space-y-4">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-label-2)]">Your arrival</h2>
+            <div><label htmlFor="ci-time">Arriving at about</label><input id="ci-time" type="time" value={f.arrival_time} onChange={set("arrival_time")} className="num" /></div>
+            <div><label htmlFor="ci-req">Anything we should know?</label><textarea id="ci-req" rows={2} maxLength={300} value={f.requests} onChange={set("requests")} placeholder="Early check-in, extra bed, a quiet room, an allergy…" /></div>
+          </section>
+          <label className="feather !mb-0 p-4 flex items-start gap-3 text-sm normal-case !font-normal cursor-pointer min-h-11">
             <input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} className="!w-5 !h-5 mt-0.5 shrink-0" />
             <span>These details are correct, and I will show the ID above when I arrive.</span>
           </label>
           {err && <p className="text-sm text-[var(--color-red)]" role="alert">{err.charAt(0).toUpperCase() + err.slice(1)}.</p>}
-          <button type="submit" disabled={busy || !f.agree || !f.full_name || !f.address || f.id_last4.length !== 4} className="btn btn-filled w-full !h-[52px] !text-base">{busy ? "Saving…" : "Check in"}</button>
+          <div className="pt-1"><button type="submit" disabled={busy || !f.agree || !f.full_name || !f.address || f.id_last4.length !== 4} className="btn btn-filled w-full !h-[52px] !text-base">{busy ? "Saving…" : "Check in"}</button></div>
         </form>
       )}
     </main>

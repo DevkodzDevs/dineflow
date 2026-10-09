@@ -986,3 +986,8 @@ a[aria-disabled="true"], [role="button"][aria-disabled="true"],
    disabled button still refuses clicks and focus, so nothing becomes usable. */
 button.btn[disabled] { pointer-events: auto; cursor: not-allowed; }
 input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
+
+/* Online check-in (/checkin/[token]): fields on the white section cards get a firm edge, so a guest
+   can see every box; paper's default field border (6% ink) vanishes on a phone in daylight. */
+[data-theme] .ci-form :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea) { border: 1.5px solid color-mix(in srgb, var(--color-label) 16%, transparent); }
+[data-theme] .ci-form :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea):focus { border-color: var(--color-tint); }

@@ -56,7 +56,11 @@ returns nothing and the page says the link has expired. `checkin_submit` validat
 server-side (name, address, one of five ID types, **exactly four characters of the ID — never the
 whole number**, optional email and HH:MM arrival, a confirmation tick) and may be sent again. A
 nationality other than Indian brings up the Form C note. `?kiosk=1` is the desk's tablet: the
-finish screen only asks for the tablet back. Paper theme (`app/checkin/layout.tsx`), like the queue.
+finish screen only asks for the tablet back. Paper theme (`app/checkin/layout.tsx`), like the queue. The form is
+three white section cards — About you · Your ID · Your arrival — plus the agreement card: on the bare
+paper page a paper field (`#f1f1ec`, 6% border) had no visible edge at all. Fields inside `.ci-form`
+get a 16%-ink border and a tint border on focus (`globals.css`). The page is paper whatever the
+app's theme cookie says, so dark and paper visitors see the same form.
 
 **What Google reads.** `/dine/[slug]` renders a `<script type="application/ld+json">` from
 `restaurantLd` (`lib/schemaorg.ts`, 3 tests): a schema.org `Restaurant` with only what the page
