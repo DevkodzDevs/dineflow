@@ -98,7 +98,25 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
       </div>
 
       <main className="max-w-4xl mx-auto px-5 py-5">
-        {d.address && <div className="flex items-center gap-4 text-sm text-[var(--color-label-2)] mb-4"><span className="flex items-center gap-1.5"><MapPin size={14} /> {d.address}</span>{d.phone && <a href={`tel:${d.phone}`} className="flex items-center gap-1.5 py-3 -my-3 hover:text-[var(--color-label)]"><Phone size={14} /> {d.phone}</a>}</div>}
+        {/* Phone: address and phone as one contact card, each a full-width row with its own action
+            (directions, call). Side by side they both wrapped mid-line. Wider screens keep the line. */}
+        {d.address && (
+          <div className="sm:hidden card !p-0 mb-4 overflow-hidden divide-y divide-[var(--color-separator)]">
+            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${d.name}, ${d.address}`)}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 min-h-[60px]">
+              <span className="h-10 w-10 rounded-xl grid place-items-center shrink-0 bg-[var(--color-green-2)] text-[var(--color-green)]"><MapPin size={18} /></span>
+              <span className="flex-1 min-w-0 text-[14px] leading-snug text-[var(--color-label)] line-clamp-2">{d.address}</span>
+              <span className="shrink-0 text-[13px] font-semibold text-[var(--color-green)]">Directions</span>
+            </a>
+            {d.phone && (
+              <a href={`tel:${d.phone}`} className="flex items-center gap-3 px-4 py-3 min-h-[60px]">
+                <span className="h-10 w-10 rounded-xl grid place-items-center shrink-0 bg-[var(--color-blue-2)] text-[var(--color-blue)]"><Phone size={18} /></span>
+                <span className="flex-1 min-w-0 num text-[15px] font-semibold text-[var(--color-label)] whitespace-nowrap">{d.phone}</span>
+                <span className="shrink-0 h-9 px-4 rounded-full grid place-items-center text-[13px] font-semibold bg-[var(--color-label)] text-[var(--color-on-label)]">Call</span>
+              </a>
+            )}
+          </div>
+        )}
+        {d.address && <div className="hidden sm:flex items-center gap-4 text-sm text-[var(--color-label-2)] mb-4"><span className="flex items-center gap-1.5"><MapPin size={14} /> {d.address}</span>{d.phone && <a href={`tel:${d.phone}`} className="flex items-center gap-1.5 py-3 -my-3 hover:text-[var(--color-label)]"><Phone size={14} /> {d.phone}</a>}</div>}
 
         {d.offers.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4 [scrollbar-width:none]">

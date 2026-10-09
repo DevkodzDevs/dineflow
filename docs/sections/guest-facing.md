@@ -72,6 +72,10 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
 
 ## Before you edit
 
+- **On a phone the address and phone are one contact card** (`sm:hidden`): a row with a map pin, the
+  address on up to two lines and "Directions" (Google Maps search for the name and address), and a row
+  with the number and a Call pill, each at least 60px tall. Side by side they both wrapped mid-line.
+  From `sm` the original single line returns (`hidden sm:flex`).
 - **Party-size chips are at least 44px wide** (`min-w-11`) — "1" was 34px. **The phone number under
   the address is a 44px target** (`py-3 -my-3`), the row's height unchanged; it was 20px tall.
 
