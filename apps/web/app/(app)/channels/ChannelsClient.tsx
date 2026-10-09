@@ -124,6 +124,11 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
   const shown = all ? days : days.slice(0, 14);
   const ist = (d: string) => new Date(`${d}T12:00:00+05:30`);
   const pick = (d: string) => setBulk((b) => (b.from === b.to && d > b.from ? { ...b, to: d } : { ...b, from: d, to: d }));
+  /* Monday-first weeks: blank cells before the first night line every date up under its weekday. */
+  const lead = shown.length ? (ist(shown[0].stay_date).getUTCDay() + 6) % 7 : 0;
+  const k = (n: number) => (n >= 1000 ? `${+(n / 1000).toFixed(n % 100 ? 2 : 1)}k` : `${n}`);
+  const md = (d: string, o: Intl.DateTimeFormatOptions) => ist(d).toLocaleDateString("en-IN", { ...o, timeZone: "Asia/Kolkata" });
+  const span = shown.length ? `${md(shown[0].stay_date, { day: "numeric", month: "short" })} – ${md(shown[shown.length - 1].stay_date, { day: "numeric", month: "short" })}` : "";
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">{types.map((t) => <button key={t.id} onClick={() => setSel(t.id)} className={cn("chip", sel === t.id && "on")}>{t.name}</button>)}</div>
@@ -137,41 +142,50 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
           {moves.length > 0 && <Button disabled={pending} onClick={() => onApply(sel, moves.map((d) => ({ date: d.stay_date, rate: hints[d.stay_date]!.rate })))}>Use suggested rates</Button>}
         </div>
       )}
-      {/* A grid of night cards that wraps to the screen: no sideways scrolling, numbers big enough to read. */}
-      <div className="feather p-4">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
-          <div className="min-w-0"><div className="text-[15px] font-semibold">Next {shown.length} nights</div><div className="text-xs text-steel">Tap a night, then another, to pick the dates for a bulk update.</div></div>
-          <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] text-steel">
-            <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-5 rounded-full bg-[var(--color-tint)]" /> booked</span>
+      {/* A month-style calendar: seven columns, Monday first, one compact tile per night — the date,
+          the rate, the suggestion and a thin occupancy line along the bottom. A phone shortens rupees
+          to 4.5k so seven columns still fit; tap a night, then a later one, to set the bulk dates. */}
+      <div className="feather p-3 sm:p-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3 px-1">
+          <div className="min-w-0"><span className="text-[15px] font-semibold">{span}</span><span className="text-xs text-steel ml-2">{shown.length} nights · tap two to pick dates</span></div>
+          <div className="ml-auto flex items-center gap-3 text-[11px] text-steel">
             <span className="inline-flex items-center gap-1 text-[var(--color-green)] font-semibold"><TrendingUp size={12} /> raise</span>
             <span className="inline-flex items-center gap-1 text-[var(--color-orange)] font-semibold"><TrendingDown size={12} /> lower</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-[3px] w-4 rounded-full bg-[var(--color-tint)]" /> booked</span>
           </div>
         </div>
-        {days.length === 0 ? <p className="text-sm text-steel">Add room types and rooms first.</p> : (
-          <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(7.25rem,1fr))]">
-            {shown.map((d) => {
-              const dt = ist(d.stay_date); const wd = dt.toLocaleDateString("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" });
-              const wknd = wd === "Fri" || wd === "Sat"; const booked = Math.max(0, d.total - d.free); const full = d.free === 0;
+        {days.length === 0 ? <p className="text-sm text-steel px-1">Add room types and rooms first.</p> : (
+          <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] gap-1 sm:gap-1.5">
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
+              <div key={w} className={cn("text-center text-[10px] sm:text-[10.5px] font-bold uppercase tracking-[0.1em] pb-1", w === "Fri" || w === "Sat" ? "text-[var(--color-label)]" : "text-steel")}>{w}</div>
+            ))}
+            {Array.from({ length: lead }, (_, n) => <div key={`l${n}`} aria-hidden />)}
+            {shown.map((d, n) => {
+              const r = Number(d.rate); const booked = Math.max(0, d.total - d.free); const full = d.free === 0;
               const inRange = d.stay_date >= bulk.from && d.stay_date <= bulk.to; const h = hints[d.stay_date];
+              const isToday = d.stay_date === today; const day = md(d.stay_date, { day: "numeric" });
+              const up = h ? h.rate > r : false;
               return (
                 <button key={d.stay_date} type="button" onClick={() => pick(d.stay_date)} aria-pressed={inRange}
-                  className={cn("min-w-0 text-left rounded-2xl border p-3 transition-colors flex flex-col gap-2",
-                    d.stop_sell ? "border-[color-mix(in_srgb,var(--color-red)_45%,transparent)] bg-[var(--color-red-2)]" : wknd ? "border-[var(--color-separator)] bg-[var(--color-fill)]" : "border-[var(--color-separator)]",
-                    inRange && "!border-[var(--color-tint)] ring-2 ring-[color-mix(in_srgb,var(--color-tint)_35%,transparent)]")}>
-                  <div className="flex items-center gap-1.5">
-                    <span className={cn("text-[10.5px] font-bold uppercase tracking-[0.12em]", wknd ? "text-[var(--color-label)]" : "text-steel")}>{wd}</span>
-                    {d.stay_date === today && <span className="ml-auto text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)]">Today</span>}
+                  aria-label={`${md(d.stay_date, { weekday: "short", day: "numeric", month: "short" })}, ${formatINR(r, { whole: true })}, ${full ? "full" : `${booked} of ${d.total} booked`}${d.stop_sell ? ", stop sell" : ""}`}
+                  className={cn("relative min-w-0 overflow-hidden text-left rounded-[14px] flex flex-col justify-start items-stretch border !min-h-0 h-[66px] sm:h-[78px] px-1.5 sm:px-2.5 pt-1.5 sm:pt-2 transition-colors",
+                    inRange ? "border-[var(--color-tint)] bg-[color-mix(in_srgb,var(--color-tint)_13%,transparent)]"
+                      : d.stop_sell ? "border-[color-mix(in_srgb,var(--color-red)_45%,transparent)] bg-[var(--color-red-2)]"
+                        : "border-[var(--color-separator)] bg-[var(--color-fill)] hover:border-[color-mix(in_srgb,var(--color-tint)_50%,transparent)]")}>
+                  <div className="flex items-center gap-1">
+                    <span className={cn("num font-semibold text-[14px] sm:text-[17px] leading-none", isToday && "h-[20px] sm:h-[22px] min-w-[20px] sm:min-w-[22px] px-1 -ml-0.5 rounded-full grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] text-[12px] sm:text-[13px]")}>{day}</span>
+                    {(day === "1" || n === 0) && <span className="hidden sm:inline text-[10.5px] text-steel">{md(d.stay_date, { month: "short" })}</span>}
+                    <span className={cn("hidden sm:inline ml-auto num text-[10.5px]", full ? "text-[var(--color-red)] font-bold" : "text-steel")}>{d.stop_sell ? "Stop" : full ? "Full" : `${booked}/${d.total}`}</span>
                   </div>
-                  <div className="flex items-baseline gap-1 -mt-1"><span className="num font-display text-[26px] leading-none">{dt.toLocaleDateString("en-IN", { day: "2-digit", timeZone: "Asia/Kolkata" })}</span><span className="text-xs text-steel">{dt.toLocaleDateString("en-IN", { month: "short", timeZone: "Asia/Kolkata" })}</span></div>
-                  <div>
-                    <div className="h-1.5 rounded-full bg-[var(--color-fill-2)] overflow-hidden"><div className={cn("h-full rounded-full", full ? "bg-[var(--color-red)]" : "bg-[var(--color-tint)]")} style={{ width: `${d.total ? (booked / d.total) * 100 : 0}%` }} /></div>
-                    <div className={cn("text-[11px] mt-1 num", full ? "text-[var(--color-red)] font-semibold" : "text-steel")}>{full ? "Full" : `${booked} of ${d.total} booked`}</div>
+                  <div className="num text-[11px] sm:text-[14px] font-semibold leading-none mt-1.5 sm:mt-2 truncate">
+                    <span className="sm:hidden">{k(r)}</span><span className="hidden sm:inline">{formatINR(r, { whole: true })}</span>
                   </div>
-                  <div className="num text-[15px] font-semibold leading-none">{formatINR(Number(d.rate), { whole: true })}</div>
-                  {d.stop_sell ? <span className="self-start text-[10.5px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-[var(--color-red)] text-white">Stop sell</span>
-                    : h ? <span title={`Suggested: ${h.why}`} className={cn("self-start inline-flex items-center gap-1 num text-[11.5px] font-semibold px-2 py-1 rounded-full", h.rate > Number(d.rate) ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[color-mix(in_srgb,var(--color-orange)_15%,transparent)] text-[var(--color-orange)]")}>
-                        {h.rate > Number(d.rate) ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{formatINR(h.rate, { whole: true })}</span>
-                    : <span className="text-[11px] text-steel">rate looks right</span>}
+                  {d.stop_sell ? <div className="text-[10px] sm:hidden font-bold text-[var(--color-red)] mt-1">Stop</div>
+                    : h ? <div title={`Suggested: ${h.why}`} className={cn("num inline-flex items-center gap-0.5 text-[10px] sm:text-[11.5px] font-semibold leading-none mt-1 sm:mt-1.5 max-w-full", up ? "text-[var(--color-green)]" : "text-[var(--color-orange)]")}>
+                        {up ? <TrendingUp size={10} className="shrink-0" /> : <TrendingDown size={10} className="shrink-0" />}
+                        <span className="sm:hidden">{k(h.rate)}</span><span className="hidden sm:inline">{formatINR(h.rate, { whole: true })}</span></div>
+                    : null}
+                  <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[var(--color-fill-2)]"><span className={cn("block h-full", full ? "bg-[var(--color-red)]" : "bg-[var(--color-tint)]")} style={{ width: `${d.total ? (booked / d.total) * 100 : 0}%` }} /></span>
                 </button>
               );
             })}

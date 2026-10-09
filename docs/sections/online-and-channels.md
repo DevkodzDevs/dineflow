@@ -44,13 +44,18 @@ shows the suggestion under its rate (green up, orange down); *Use suggested rate
 `set_rates_only` (0082), which changes the rate and nothing else — `set_rate_inventory` overwrites
 stop-sell and resets minimum stay, so it must not be used for this. Push rates still sends them out.
 
-**The night grid** (`RateCalendar`). Nights are cards in a wrapping grid
-(`repeat(auto-fill,minmax(7.25rem,1fr))`) — 2 a row on a phone, 5 at 834, 8 at 1194–1440, 12 at
-1920; no sideways scrolling. Each card: weekday (Fri/Sat shaded), Today pill, date, a booked bar
-(red and "Full" when sold out), the rate in whole rupees, then Stop sell, the suggestion chip
-(`title="Suggested: …"`, which the b3 suite reads) or "rate looks right". The first 14 show, with
-*Show all N nights* for the rest. Tapping a night sets From/To of the bulk update; tapping a later
-night extends it; the picked range is ringed (`aria-pressed`). The bulk fields are 2 / 3 / 6 a row.
+**The night calendar** (`RateCalendar`). A month-style grid: seven columns, Monday first, with
+blank cells before the first night so every date sits under its weekday (Fri/Sat headers are bold
+— they are the weekend `suggestRate` prices up). One compact tile per night (66px tall on a phone,
+78px from `sm`): the date (today in a tint circle, the month beside the first night and each 1st),
+booked/total or Full/Stop at the top right, the rate, the suggestion (`title="Suggested: …"`, which
+the b3 suite reads; green up, orange down) and a 3px occupancy line along the bottom edge. On a
+phone the tiles are ~47px wide, so rupees are shortened to 4.5k (the full figure is in the tile's
+`aria-label`). The tiles override two button defaults: `rounded-xl` is 28px in this theme, so they
+use `rounded-[14px]`; and a button centres its content vertically, so they are `flex flex-col
+justify-start`. The first 14 nights show, with *Show all N nights* for the rest. Tapping a night
+sets From/To of the bulk update; tapping a later night extends it; the picked range takes a tint
+wash and border (`aria-pressed`). The bulk fields are 2 / 3 / 6 a row.
 
 Each channel carries its own token. A token is a credential: it is never rendered into a page a
 guest can see.
