@@ -986,3 +986,13 @@ a[aria-disabled="true"], [role="button"][aria-disabled="true"],
    disabled button still refuses clicks and focus, so nothing becomes usable. */
 button.btn[disabled] { pointer-events: auto; cursor: not-allowed; }
 input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
+
+/* Facilities: one row per facility. A phone stacks it (name and edit, the chips, then price and
+   Book); from 768px it reads straight across: icon · name over chips · price · Book · edit. */
+.fac-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "icon name edit" "icon meta meta" "price price book"; column-gap: 14px; row-gap: 8px; align-items: center; padding: 14px 16px; }
+.fac-row .fa-icon { grid-area: icon; align-self: start; } .fac-row .fa-name { grid-area: name; } .fac-row .fa-meta { grid-area: meta; }
+.fac-row .fa-price { grid-area: price; padding-top: 6px; } .fac-row .fa-book { grid-area: book; justify-self: end; margin-top: 6px; } .fac-row .fa-edit { grid-area: edit; justify-self: end; }
+@media (min-width: 768px) {
+  .fac-row { grid-template-columns: auto minmax(0, 1fr) 7.5rem auto auto; grid-template-areas: "icon name price book edit" "icon meta price book edit"; row-gap: 6px; padding: 14px 20px; }
+  .fac-row .fa-icon { align-self: center; } .fac-row .fa-price { padding-top: 0; text-align: right; } .fac-row .fa-book { margin-top: 0; }
+}
