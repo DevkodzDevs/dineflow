@@ -1,16 +1,23 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Check, Copy, KeyRound, Clock, AlertTriangle, ShieldCheck, Pencil, X, User, Building2, FileText, BarChart3, Save } from "lucide-react";
+import { Check, Copy, KeyRound, Clock, AlertTriangle, ShieldCheck, Pencil, X, User, Building2, FileText, BarChart3, Save, Palmtree, UtensilsCrossed } from "lucide-react";
 import { Button, Pill, cn } from "@/components/ui";
 import type { PropertyDetail } from "./actions";
 import { resetPropertyPassword, setContactEmail, updateProperty } from "./actions";
 
 const label = (k: string) => k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+const when = (v: string) => new Date(v).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const show = (v: unknown) =>
   v === null || v === undefined || v === "" ? "—"
   : typeof v === "boolean" ? (v ? "Yes" : "No")
-  : String(v).length === 24 && /^\d{4}-\d{2}-\d{2}T/.test(String(v)) ? String(v).slice(0, 16).replace("T", " ")
+  : ISO.test(String(v)) && !Number.isNaN(Date.parse(String(v))) ? when(String(v))
   : String(v);
+const empty = (v: unknown) => v === null || v === undefined || v === "";
+/** Identifiers — ids, slugs, codes, logins — wrap anywhere and get a copy button; they were set in the
+ *  condensed display font with `.num`'s nowrap, and a UUID ran 40px out of the dialog. */
+const isIdent = (k: string) => /(^id$|_id$|slug|login|gstin|^pan$|fssai)/.test(k);
+const isNum = (k: string) => /(phone|rate|pct|pincode|amount|count)/.test(k);
 const fmt = (n: number) => n.toLocaleString("en-IN");
 
 function asText(d: PropertyDetail) {
@@ -36,33 +43,54 @@ function asText(d: PropertyDetail) {
 function CopyBtn({ text, label: l = "Copy", className }: { text: string; label?: string; className?: string }) {
   const [done, setDone] = useState(false);
   return (
-    <button className={cn("inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-semibold transition-colors",
-      done ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]", className)}
-      onClick={() => { navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1400); }}>
-      {done ? <><Check size={12} /> Copied</> : <><Copy size={12} /> {l}</>}
+    <button type="button" aria-label={l ? undefined : done ? "Copied" : "Copy"} title={l ? undefined : "Copy"}
+      className={cn("inline-flex items-center justify-center gap-1.5 !min-h-0 h-9 [@media(pointer:coarse)]:h-11 rounded-full text-xs font-semibold transition-colors shrink-0",
+        l ? "px-3.5" : "w-9 [@media(pointer:coarse)]:w-11",
+        done ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]", className)}
+      onClick={() => { void navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1400); }}>
+      {done ? <><Check size={13} />{l && " Copied"}</> : <><Copy size={13} />{l && ` ${l}`}</>}
     </button>
   );
 }
 
-function SectionHead({ icon, title, actions }: { icon: React.ReactNode; title: string; actions?: React.ReactNode }) {
+/** A section is one card: its title and actions in a header strip, its rows below. */
+function Panel({ icon, title, sub, actions, children }: { icon: React.ReactNode; title: string; sub?: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2.5 px-1 mb-3">
-      <span className="h-7 w-7 rounded-lg bg-[var(--color-fill)] grid place-items-center text-steel shrink-0">{icon}</span>
-      <span className="text-xs font-bold uppercase tracking-[0.08em] text-steel flex-1">{title}</span>
-      {actions}
-    </div>
+    <section className="rounded-[20px] border border-[var(--color-separator)] overflow-hidden">
+      <header className="flex items-center gap-3 px-4 py-3 bg-[color-mix(in_srgb,var(--color-fill)_55%,transparent)] border-b border-[var(--color-separator)]">
+        <span className="h-9 w-9 rounded-xl bg-[var(--color-fill-2)] grid place-items-center text-[var(--color-label-2)] shrink-0">{icon}</span>
+        <span className="flex-1 min-w-0"><span className="block text-[15px] font-semibold leading-tight truncate">{title}</span>{sub && <span className="block text-[11.5px] text-steel truncate">{sub}</span>}</span>
+        {actions && <span className="flex items-center gap-2 shrink-0">{actions}</span>}
+      </header>
+      {children}
+    </section>
   );
 }
 
-function InfoRow({ label: l, value, mono, warn, children }: { label: string; value?: string; mono?: boolean; warn?: boolean; children?: React.ReactNode }) {
+/** One label + value. Stacked (label over value) when the card is narrow, side by side from 28rem
+ *  of card — a container query, so a phone, a narrow sheet and a wide one each get the right one. */
+function Row({ k, label: l, children, tail }: { k?: string; label: string; children: React.ReactNode; tail?: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 py-2 border-b border-[var(--color-separator)]/50 last:border-0">
-      <span className="text-xs text-steel w-28 shrink-0 pt-0.5">{l}</span>
-      <span className={cn("text-sm flex-1 min-w-0 break-all", mono && "num", warn && "text-[var(--color-orange)]")}>
-        {children ?? value ?? "—"}
-      </span>
+    <div className="@container border-b border-[var(--color-separator)] last:border-0" data-row={k}>
+      <div className="flex flex-col gap-1 py-3 @[28rem]:flex-row @[28rem]:items-center @[28rem]:gap-4 @[28rem]:py-2.5 min-h-[52px] justify-center">
+        <span className="text-[11.5px] font-medium text-steel @[28rem]:w-36 shrink-0">{l}</span>
+        <span className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="flex-1 min-w-0 text-[14.5px] leading-snug [overflow-wrap:anywhere]">{children}</span>
+          {tail}
+        </span>
+      </div>
     </div>
   );
+}
+function Value({ k, v }: { k: string; v: unknown }) {
+  if (empty(v)) return <span className="text-[var(--color-label-3)]">Not set</span>;
+  if (typeof v === "boolean") return <span className={cn("inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold", v ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-steel")}>{v ? "Yes" : "No"}</span>;
+  if (isIdent(k)) return <span className="font-sans text-[13px] tabular-nums break-all">{String(v)}</span>;
+  return <span className={cn(isNum(k) && "tabular-nums")}>{show(v)}</span>;
+}
+
+function InfoRow({ label: l, value, children, warn }: { label: string; value?: string; mono?: boolean; warn?: boolean; children?: React.ReactNode }) {
+  return <Row label={l}><span className={cn(warn && "text-[var(--color-orange)]")}>{children ?? value ?? "—"}</span></Row>;
 }
 
 function daysLeft(iso: string | null) {
@@ -125,9 +153,9 @@ function UserCard({ u, restaurantId, onRefresh }: {
       </div>
 
       {/* details */}
-      <div className="px-4 py-1">
+      <div className="px-4">
         <InfoRow label="Login ID" mono>
-          <span className="flex items-center gap-2">{u.login_id} <CopyBtn text={u.login_id} label="" /></span>
+          <span className="flex items-center gap-2"><span className="flex-1 min-w-0 font-sans text-[13px] tabular-nums break-all">{u.login_id}</span><CopyBtn text={u.login_id} label="" /></span>
         </InfoRow>
 
         {/* contact email — editable inline */}
@@ -136,20 +164,20 @@ function UserCard({ u, restaurantId, onRefresh }: {
             <div className="flex items-center gap-2">
               <input type="email" value={contactDraft} onChange={(e) => setContactDraft(e.target.value)}
                 autoFocus placeholder="owner@gmail.com"
-                className="!h-8 !min-h-0 !py-0 !px-2.5 !text-sm !rounded-lg flex-1 num" />
+                className="!h-10 [@media(pointer:coarse)]:!h-11 !min-h-0 !py-0 !px-3 !text-sm !rounded-xl flex-1 min-w-0" />
               <Button size="sm" disabled={pending || !contactDraft.trim()} onClick={saveContact}
-                className="!h-8 !px-3 !rounded-lg"><Check size={13} /></Button>
+                className="!h-10 [@media(pointer:coarse)]:!h-11 !px-3 !rounded-xl shrink-0" aria-label="Save contact email"><Check size={14} /></Button>
               <button onClick={() => { setEditContact(false); setContactDraft(u.contact_email ?? ""); }}
-                className="h-8 w-8 grid place-items-center rounded-lg text-steel hover:bg-[var(--color-fill)]">
+                className="h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 shrink-0 grid place-items-center rounded-xl text-steel hover:bg-[var(--color-fill)]" aria-label="Cancel">
                 <X size={13} />
               </button>
             </div>
           ) : (
             <span className="flex items-center gap-2">
-              {u.contact_email ?? "not set"}
-              <button onClick={() => setEditContact(true)}
-                className="h-6 w-6 grid place-items-center rounded-md text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] transition-colors"
-                title="Edit contact email"><Pencil size={11} /></button>
+              <span className="flex-1 min-w-0 break-all">{u.contact_email ?? "Not set"}</span>
+              <button type="button" onClick={() => setEditContact(true)} aria-label="Edit contact email"
+                className="h-9 w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 shrink-0 grid place-items-center rounded-full bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)] transition-colors"
+                title="Edit contact email"><Pencil size={13} /></button>
             </span>
           )}
         </InfoRow>
@@ -167,7 +195,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
               <KeyRound size={12} /> Temporary password
             </div>
             <div className="flex items-center gap-3">
-              <code className="num text-base font-bold tracking-wider">{u.temp_password}</code>
+              <code className="font-sans text-base font-bold tracking-wider tabular-nums break-all flex-1 min-w-0">{u.temp_password}</code>
               <CopyBtn text={u.temp_password!} label="" />
             </div>
             {lockedOut ? (
@@ -223,7 +251,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
               New password — valid 7 days
             </div>
             <div className="flex items-center gap-3">
-              <code className="num text-base font-bold tracking-wider">{newPw.password}</code>
+              <code className="font-sans text-base font-bold tracking-wider tabular-nums break-all flex-1 min-w-0">{newPw.password}</code>
               <CopyBtn text={`${newPw.email} / ${newPw.password}`} label="Copy" />
             </div>
             <p className="text-xs text-steel">Share with the owner. They must change it at next sign-in.</p>
@@ -291,65 +319,56 @@ function EditableSection({ icon, title, data, editableKeys, restaurantId, onSave
     onSaved?.();
   });
 
+  const filled = Object.values(data).filter((v) => !empty(v)).length;
   return (
-    <section>
-      <SectionHead icon={icon} title={title}
+    <div>
+      <Panel icon={icon} title={title} sub={editing ? "Editing — fields without a box are read only" : `${filled} of ${Object.keys(data).length} filled in`}
         actions={editing
-          ? <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={cancel} disabled={pending}><X size={13} /> Cancel</Button>
-              <Button size="sm" onClick={save} disabled={pending}><Save size={13} /> Save</Button>
-            </div>
-          : <div className="flex items-center gap-2">
-              <button onClick={startEdit} className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-semibold bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)] transition-colors">
-                <Pencil size={11} /> Edit
+          ? <>
+              <Button size="sm" variant="outline" onClick={cancel} disabled={pending} className="!h-9 [@media(pointer:coarse)]:!h-11"><X size={13} /> Cancel</Button>
+              <Button size="sm" onClick={save} disabled={pending} className="!h-9 [@media(pointer:coarse)]:!h-11"><Save size={13} /> Save</Button>
+            </>
+          : <>
+              <button type="button" onClick={startEdit} className="inline-flex items-center gap-1.5 !min-h-0 h-9 [@media(pointer:coarse)]:h-11 px-3.5 rounded-full text-xs font-semibold bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)] transition-colors">
+                <Pencil size={13} /> Edit
               </button>
-              <CopyBtn text={Object.entries(data).map(([k, v]) => `${label(k)}: ${show(v)}`).join("\n")} />
-            </div>}
-      />
-      <div className="rounded-2xl border border-[var(--color-separator)] px-4 py-1">
-        {Object.entries(data).map(([k, v]) => {
-          const editable = editableKeys[k];
-          const isEditing = editing && !!editable;
-          return (
-            <div key={k} className="flex items-start gap-3 py-2.5 border-b border-[var(--color-separator)]/50 last:border-0">
-              <span className="text-xs text-steel w-28 shrink-0 pt-1.5">{label(k)}</span>
-              <span className="text-sm flex-1 min-w-0 break-all">
+              <CopyBtn text={Object.entries(data).map(([k, v]) => `${label(k)}: ${show(v)}`).join("\n")} label="" />
+            </>}>
+        <div className="px-4">
+          {Object.entries(data).map(([k, v]) => {
+            const editable = editableKeys[k];
+            const isEditing = editing && !!editable;
+            return (
+              <Row key={k} k={k} label={label(k)}
+                tail={!editing && isIdent(k) && !empty(v) ? <CopyBtn text={String(v)} label="" /> : undefined}>
                 {isEditing ? (
                   <input
                     type={editable.type ?? "text"}
                     value={draft[k] ?? ""}
                     onChange={(e) => setDraft({ ...draft, [k]: e.target.value })}
-                    placeholder={editable.placeholder}
-                    className={cn("!h-8 !min-h-0 !py-0 !px-2.5 !text-sm !rounded-lg w-full",
-                      /gstin|pan|slug|code|id$|email|phone|fssai|pincode/.test(k) && "num")}
+                    placeholder={editable.placeholder} aria-label={label(k)}
+                    className={cn("!h-10 [@media(pointer:coarse)]:!h-11 !min-h-0 !py-0 !px-3 !text-sm !rounded-xl w-full", isIdent(k) && "tabular-nums")}
                   />
-                ) : (
-                  <span className={cn(/gstin|pan|slug|code|id$|email|phone|rate|pct|fssai|pincode/.test(k) && "num")}>
-                    {show(v)}
-                  </span>
-                )}
-              </span>
-              {!isEditing && editing && !editable && (
-                <span className="text-[10px] text-[var(--color-label-3)] pt-1.5 shrink-0">read only</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                ) : <Value k={k} v={v} />}
+              </Row>
+            );
+          })}
+        </div>
+      </Panel>
       {err && <p className="text-sm text-chili mt-2 px-1">{err}</p>}
-    </section>
+    </div>
   );
 }
 
 /* ── content stats as a visual grid ───────────────────────────────────────── */
 function ContentGrid({ data }: { data: Record<string, number> }) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+    <div className="p-3 grid gap-2 grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]">
       {Object.entries(data).map(([k, n]) => (
-        <div key={k} className={cn("rounded-xl p-3 text-center",
-          n > 0 ? "bg-[var(--color-fill)]" : "bg-transparent border border-dashed border-[var(--color-separator)]")}>
-          <div className={cn("num text-xl font-bold", n > 0 ? "" : "text-steel")}>{fmt(n)}</div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-steel mt-0.5">{label(k)}</div>
+        <div key={k} className={cn("min-w-0 rounded-2xl px-3 py-3",
+          n > 0 ? "bg-[var(--color-fill)]" : "border border-dashed border-[var(--color-separator)]")}>
+          <div className={cn("text-[22px] leading-none font-semibold tabular-nums", n > 0 ? "" : "text-[var(--color-label-3)]")}>{fmt(n)}</div>
+          <div className="text-[11.5px] text-steel mt-1.5 leading-tight [overflow-wrap:anywhere]">{label(k)}</div>
         </div>
       ))}
     </div>
@@ -361,19 +380,28 @@ export function PropertyDetailView({ detail, restaurantId, onRefresh }: {
   detail: PropertyDetail; restaurantId: string; onRefresh?: () => void }) {
   const { property, tax, users, contents } = detail;
 
+  const p = property as Record<string, unknown>;
+  const kind = String(p.property_type ?? p.type ?? "");
+  const total = Object.values(contents).reduce((a, n) => a + n, 0);
   return (
-    <div className="space-y-6">
-      {/* top bar */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm text-steel">Full record for this property.</p>
-        </div>
-        <CopyBtn text={asText(detail)} label="Copy all" className="!h-8 !px-3" />
+    <div className="space-y-4">
+      {/* who this is, at a glance, and the one action that takes everything */}
+      <div className="rounded-[20px] border border-[var(--color-separator)] p-4 flex flex-wrap items-center gap-3">
+        <span className="h-12 w-12 rounded-2xl grid place-items-center shrink-0 bg-[var(--color-green-2)] text-[var(--color-green)]">{kind === "resort" ? <Palmtree size={22} /> : kind === "restaurant" ? <UtensilsCrossed size={22} /> : <Building2 size={22} />}</span>
+        <span className="flex-1 min-w-[10rem]">
+          <span className="block font-display text-[22px] leading-tight [overflow-wrap:anywhere]">{show(p.name)}</span>
+          <span className="flex flex-wrap gap-1.5 mt-1.5">
+            {kind && <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold capitalize">{kind}</span>}
+            <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold">{users.length} login{users.length === 1 ? "" : "s"}</span>
+            <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold tabular-nums">{fmt(total)} records</span>
+          </span>
+        </span>
+        <CopyBtn text={asText(detail)} label="Copy all" />
       </div>
 
       {/* property info — editable */}
       <EditableSection
-        icon={<Building2 size={14} />}
+        icon={<Building2 size={16} />}
         title="Property"
         data={property}
         editableKeys={EDITABLE_PROPERTY}
@@ -382,19 +410,18 @@ export function PropertyDetailView({ detail, restaurantId, onRefresh }: {
       />
 
       {/* users */}
-      <section>
-        <SectionHead icon={<User size={14} />} title="Users and sign-in"
-          actions={<CopyBtn text={users.map((u) => `${u.name} (${u.role}) — ${u.login_id} — ${u.contact_email ?? "no contact"}`).join("\n")} />} />
-        <div className="space-y-3">
+      <Panel icon={<User size={16} />} title="Users and sign-in" sub={users.length ? `${users.length} login${users.length === 1 ? "" : "s"}` : "No logins yet"}
+        actions={<CopyBtn text={users.map((u) => `${u.name} (${u.role}) — ${u.login_id} — ${u.contact_email ?? "no contact"}`).join("\n")} label="" />}>
+        <div className="p-3 space-y-3">
           {users.length === 0
-            ? <p className="text-sm text-steel px-1">No login has been created for this property yet.</p>
+            ? <p className="text-sm text-steel px-1 py-2">No login has been created for this property yet.</p>
             : users.map((u) => <UserCard key={u.login_id} u={u} restaurantId={restaurantId} onRefresh={onRefresh} />)}
         </div>
-      </section>
+      </Panel>
 
       {/* tax — editable */}
       <EditableSection
-        icon={<FileText size={14} />}
+        icon={<FileText size={16} />}
         title="Tax & GST"
         data={tax}
         editableKeys={EDITABLE_TAX}
@@ -403,10 +430,9 @@ export function PropertyDetailView({ detail, restaurantId, onRefresh }: {
       />
 
       {/* contents */}
-      <section>
-        <SectionHead icon={<BarChart3 size={14} />} title="What it holds" />
+      <Panel icon={<BarChart3 size={16} />} title="What it holds" sub={`${fmt(total)} records in all`}>
         <ContentGrid data={contents} />
-      </section>
+      </Panel>
     </div>
   );
 }

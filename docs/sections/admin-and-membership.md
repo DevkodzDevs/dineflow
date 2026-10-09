@@ -45,6 +45,13 @@ and only then `admin_delete_property`.
 - **The console is dense on purpose with a mouse (30–36px); under `pointer: coarse` its tabs, chips,
   search, actions and row Open/menu reach 44px** (`AdminToolbar.module.css`, `RowActions.module.css`).
 - **Compliance totals are compact rows on a phone** (label left, figure right), cards from `sm`.
+- **The full-record sheet** (`PropertyDetail.tsx`) is a header card (type icon, name, type · logins ·
+  records, Copy all) then one `Panel` per section — title, "N of M filled in", Edit and Copy in its
+  header strip. Each `Row` is its own container: label over value below 28rem of card, side by side
+  above. **Values must wrap**: `.num` is `white-space: nowrap` (globals), and a UUID set in it ran 40px
+  out of the sheet on a phone — identifiers (id, slug, login, GSTIN, PAN, FSSAI) use the sans face,
+  `break-all`, and a copy button; and `font-mono` is Oswald in this theme, not a monospace. Any ISO
+  timestamp reads as an IST date; empty reads "Not set". Buttons are 36px, 44px under a finger.
 - **The status filter is five tiles on a phone** (`@container (max-width: 560px)` at the end of
   `AdminToolbar.module.css`): one row, `repeat(5, minmax(0,1fr))`, count large over a short name (All
   · Active · Trial · Expired · Box), the colour as a corner dot and a 3px bottom bar on the one that is
