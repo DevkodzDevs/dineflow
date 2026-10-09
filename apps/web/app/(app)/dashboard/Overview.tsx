@@ -90,7 +90,7 @@ function Head({ title, note, href, label }: { title: string; note?: string; href
     <div className="flex items-baseline justify-between gap-3 mb-3">
       <h3 className="text-lg truncate">{title}</h3>
       {note && <span className="num text-sm font-semibold shrink-0">{note}</span>}
-      {href && <Link href={href} className="tap text-[11px] font-semibold text-steel hover:text-[var(--color-label)] shrink-0">{label ?? "All"} →</Link>}
+      {href && <Link href={href} className="tap min-w-11 justify-end text-[11px] font-semibold text-steel hover:text-[var(--color-label)] shrink-0">{label ?? "All"} →</Link>}
     </div>
   );
 }

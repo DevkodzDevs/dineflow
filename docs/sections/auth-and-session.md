@@ -65,10 +65,11 @@ code and `join_restaurant`; a staff member uses a login the owner created and is
 - **`AuthApiError: Invalid Refresh Token` in the server log is not a bug.** A browser presenting a
   dead refresh token already gets redirected to `/login` with the stale cookie cleared — the trace
   is `@supabase/auth-js` logging a condition we handle.
-- **`node_modules/@supabase/auth-js` currently carries an unmanaged hand-edit** softening those logs
-  from `console.error` to `console.warn`. It is not a pnpm patch, so it is not on Vercel and it
-  vanishes on the next `pnpm install`. Decide it deliberately — make it a patch, or revert it and
-  accept the log — rather than rediscovering it.
+- **`@supabase/auth-js` is stock — there is no hand-edit any more.** A local edit once softened
+  those logs to `console.warn`; checked 2026-10-10, the installed 2.112.4 is byte-identical to the
+  npm tarball (`npm pack` + `diff -r`: no differences), so a past `pnpm install` removed it. Decided:
+  keep it stock and accept the log line — it is harmless and the same on Vercel. If it is ever
+  wanted quieter, do it with `pnpm patch`, never by editing `node_modules`.
 - **Adding a public route means both lists.** See [guest-facing.md](guest-facing.md).
 - **Never widen `AUTH_CODES`/`AUTH_WORDS` to "be safe".** Every extra word is another outage that
   presents as a sign-out loop.

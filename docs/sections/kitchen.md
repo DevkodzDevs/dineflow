@@ -38,8 +38,8 @@ category with no station stays on the expo view only. The warn and target minute
 - **Status is a workflow, not a toggle.** A ticket that jumps `pending` → `ready` skips the timing
   data the speed report is built from.
 - **There is no `StatTile` row here**, so the split-flap treatment that `StatTile` applies elsewhere
-  does not reach this screen. `components/shell/FlipRow.tsx` exists for that and is currently unused
-  — wire it up if you want the tiles here.
+  does not reach this screen. (`FlipRow`, an unused three-tile row meant for it, was deleted on
+  2026-10-10 — use `StatTile` if tiles are ever wanted here.)
 
 ## Verify
 

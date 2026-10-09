@@ -25,7 +25,7 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
         <div className="stack mt-6">
           <input placeholder="Your name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input placeholder="Phone (optional, so we can call you)" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <div><label>How many of you</label><div className="flex gap-2 mt-2 flex-wrap">{[1, 2, 3, 4, 5, 6, 8].map((n) => <button key={n} onClick={() => setForm({ ...form, party: n })} className={`chip ${form.party === n ? "on" : ""}`}>{n}</button>)}</div></div>
+          <div><label>How many of you</label><div className="flex gap-2 mt-2 flex-wrap">{[1, 2, 3, 4, 5, 6, 8].map((n) => <button key={n} onClick={() => setForm({ ...form, party: n })} className={`chip min-w-11 justify-center ${form.party === n ? "on" : ""}`}>{n}</button>)}</div></div>
           {err && <p className="text-sm text-[var(--color-red)]">{err}</p>}
           <button disabled={!form.name || busy} onClick={join} className="btn btn-filled w-full !h-[52px] !text-base">Join the queue</button>
         </div>

@@ -39,7 +39,7 @@ export function BoardClient({ kots, name }: { kots: K[]; name: string }) {
         <div className="text-sm uppercase tracking-[0.2em] text-white/50">{name} · order board</div>
         <div className="flex items-center gap-4">
           <div className="num text-sm text-white/50">{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
-          <Link href="/kitchen" className="h-9 w-9 grid place-items-center rounded-full bg-white/10 hover:bg-white/20" aria-label="Back to the kitchen"><X size={16} /></Link>
+          <Link href="/kitchen" className="h-9 w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 grid place-items-center rounded-full bg-white/10 hover:bg-white/20" aria-label="Back to the kitchen"><X size={16} /></Link>
         </div>
       </div>
       <div className="flex-1 grid grid-cols-2 min-h-0">

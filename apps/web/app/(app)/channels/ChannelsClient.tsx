@@ -64,7 +64,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
           {orderChannels.length === 0 && <p className="text-sm text-steel">No delivery channels yet.</p>}</div>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Test it right now</div>
           <p className="text-sm text-steel">Press <b>Send test order</b> on any channel above and watch it appear on the Online orders screen. From outside the app the same thing looks like this:</p>
-          <pre className="mt-2 text-[11px] num bg-porcelain-2 rounded-xl p-3 overflow-x-auto">{`curl -X POST '${base}/api/webhooks/aggregator/<token>' \\
+          <pre className="mt-2 text-[11px] num bg-porcelain-2 rounded-xl p-3 !whitespace-pre-wrap [overflow-wrap:anywhere]">{`curl -X POST '${base}/api/webhooks/aggregator/<token>' \\
   -H 'content-type: application/json' \\
   -d '{"id":"TEST-1","customer_name":"Ravi","total":560,
        "items":[{"name":"Chicken biryani","qty":2,"price":280}]}'`}</pre></Card>

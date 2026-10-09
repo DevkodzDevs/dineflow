@@ -22,7 +22,7 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
   const leaks = report.items.filter((i) => i.gap_value < 0); const found = report.items.filter((i) => i.gap_value > 0);
   return (
     <div>
-      <Link href="/inventory" className="inline-flex items-center gap-1 text-sm text-steel mb-3"><ChevronLeft size={16} /> Pantry</Link>
+      <Link href="/inventory" className="tap inline-flex items-center gap-1 text-sm text-steel mb-3"><ChevronLeft size={16} /> Pantry</Link>
       <PageHeader eyebrow="Recipes versus the shelf" title="Leak finder" sub="Every dish sold takes its recipe out of stock. When a count comes in lower, that gap is the leak: over-portioning, spoilage nobody logged, or hands in the store." actions={<Button onClick={() => setCounting(true)}><ClipboardCheck size={16} /> Count stock now</Button>} />
       <div className="flip-row mb-8">
         <Flip value={Math.round(report.lost_value / 100) / 10} label="k ₹ lost" tone={report.lost_value > 0 ? "alert" : "live"} />

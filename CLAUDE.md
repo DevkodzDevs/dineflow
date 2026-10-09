@@ -99,10 +99,6 @@ PR descriptions end with:
 
 - Seven legal facts in `lib/company.ts` are still `null` — blocks launch and blocks subscription
   checkout. [legal.md](docs/sections/legal.md)
-- `node_modules/@supabase/auth-js` carries an unmanaged hand-edit that vanishes on `pnpm install`.
-  [auth-and-session.md](docs/sections/auth-and-session.md)
-- `components/shell/FlipRow.tsx` is imported by nothing.
-  [shell-and-nav.md](docs/sections/shell-and-nav.md)
 - Razorpay subscription checkout and Sentry are agreed but not built.
   [admin-and-membership.md](docs/sections/admin-and-membership.md)
 - The browser suites are rewritten every session and never committed; `scripts/verify.mjs` carries

@@ -30,7 +30,7 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
   const { sales, bills: billCount, by_day: byDay, top, consumption, cogs, waste_cost: wasteCost } = summary;
   return (
     <div className="space-y-6">
-      <div className="flex gap-2">{[1, 7, 30, 90].map((d) => <Link key={d} href={`/reports?days=${d}`} className={cn("rounded-full px-4 h-9 grid place-items-center text-sm font-semibold", days === d ? "bg-ink text-on-label" : "bg-card border border-line")}>{d === 1 ? "Today" : `${d} days`}</Link>)}</div>
+      <div className="flex gap-2">{[1, 7, 30, 90].map((d) => <Link key={d} href={`/reports?days=${d}`} className={cn("rounded-full px-4 h-9 [@media(pointer:coarse)]:h-11 grid place-items-center text-sm font-semibold", days === d ? "bg-ink text-on-label" : "bg-card border border-line")}>{d === 1 ? "Today" : `${d} days`}</Link>)}</div>
       <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
         <StatTile label="Sales" value={formatINR(sales)} sub={`${billCount} bills`} />
         <StatTile label="Avg bill" value={formatINR(billCount ? sales / billCount : 0)} delay={0.05} />

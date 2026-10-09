@@ -24,7 +24,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   return (
     <>
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/orders" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
+        <Link href="/orders" className="h-10 w-10 shrink-0 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
         <div className="min-w-0"><div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel">Order #{order.order_no}</div><h1 className="text-3xl">{order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery")}{order.customer_name && <span className="text-steel text-xl"> · {order.customer_name}</span>}</h1></div>
         <div className="ml-auto page-actions">
           {order.status === "open" && <Link href={`/orders/new?table=${order.table_id ?? ""}`}><Button variant="outline"><Plus size={16} /> Add items</Button></Link>}

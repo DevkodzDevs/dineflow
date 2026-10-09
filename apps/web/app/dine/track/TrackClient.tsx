@@ -15,7 +15,7 @@ export function TrackClient() {
   return (
     <div className="min-h-dvh bg-[var(--color-bg)] p-5">
       <div className="max-w-md mx-auto pt-8">
-        <Link href="/dine" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-label-2)] mb-4"><ChevronLeft size={16} /> Back</Link>
+        <Link href="/dine" className="tap inline-flex items-center gap-1.5 text-sm text-[var(--color-label-2)] mb-4"><ChevronLeft size={16} /> Back</Link>
         <h1 className="text-3xl">Track your <em>order</em></h1>
         <p className="text-sm text-[var(--color-label-2)] mt-1.5">Enter the reference you were given and the phone number you booked with.</p>
         <div className="card p-5 mt-5 space-y-3">

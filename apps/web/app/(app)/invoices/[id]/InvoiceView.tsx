@@ -28,7 +28,7 @@ export function InvoiceView({ inv, restaurant, cashier }: { inv: Inv; restaurant
   return (
     <div className="max-w-3xl mx-auto">
       <div className="no-print flex items-center gap-3 mb-6">
-        <Link href="/invoices" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
+        <Link href="/invoices" className="h-10 w-10 shrink-0 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
         <div className="min-w-0"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{inv.kind} invoice</div><h1 className="text-3xl num">{no}</h1></div>
         <Pill tone={inv.status === "paid" ? "ready" : "alert"}>{inv.status}</Pill>
         <div className="ml-auto page-actions"><Button variant="outline" onClick={() => setEdit(true)}><Pencil size={15} /> Guest / GSTIN</Button><Button variant="outline" onClick={share}><Share2 size={15} /> Share</Button><Button onClick={() => window.print()}><Printer size={15} /> Print</Button></div>
@@ -43,7 +43,7 @@ export function InvoiceView({ inv, restaurant, cashier }: { inv: Inv; restaurant
           <div><div className="text-xs font-semibold uppercase tracking-wide text-steel">Billed to</div><div className="font-semibold mt-1">{inv.guest_name ?? "Walk-in guest"}</div>{inv.guest_phone && <div className="text-steel">{inv.guest_phone}</div>}{inv.guest_gstin && <div className="num">GSTIN {inv.guest_gstin}</div>}</div>
           {inv.bookings && <div className="sm:text-right"><div className="text-xs font-semibold uppercase tracking-wide text-steel">Stay</div><div className="font-semibold mt-1">Room {inv.bookings.rooms?.number} · booking #{inv.bookings.booking_no}</div><div className="num text-steel">{inv.bookings.check_in} → {inv.bookings.check_out}</div></div>}
         </div>
-        <div className="mt-4 text-xs text-steel num">SAC {sac} · {inv.kind === "stay" ? "Accommodation services" : "Restaurant services"}{lab.stateName && <> · Place of supply: {lab.stateName} ({restaurant.gst_state_code})</>} · Reverse charge: No</div>
+        <div className="mt-4 text-xs text-steel tabular-nums">SAC {sac} · {inv.kind === "stay" ? "Accommodation services" : "Restaurant services"}{lab.stateName && <> · Place of supply: {lab.stateName} ({restaurant.gst_state_code})</>} · Reverse charge: No</div>
         <div className="table-wrap"><table className="w-full text-sm mt-4"><thead className="text-xs uppercase tracking-wide text-steel border-b border-line"><tr><th className="text-left py-2">Description</th><th className="text-right py-2">Qty</th><th className="text-right py-2">Rate</th><th className="text-right py-2">GST</th><th className="text-right py-2">Amount</th></tr></thead>
           <tbody>{inv.lines.map((l, i) => <tr key={i} className="border-b border-line/60"><td className="py-2.5">{l.description}</td><td className="py-2.5 text-right num">{Number(l.qty)}</td><td className="py-2.5 text-right num">{Number(l.rate).toFixed(2)}</td><td className="py-2.5 text-right num text-steel">{Number(l.gst_rate)}%</td><td className="py-2.5 text-right num">{Number(l.amount).toFixed(2)}</td></tr>)}</tbody></table></div>
         <div className="mt-4 grid sm:grid-cols-[minmax(0,1fr)_280px] gap-6">

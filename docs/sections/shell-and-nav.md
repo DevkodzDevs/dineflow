@@ -1,7 +1,7 @@
 # The shell — layout, nav and module gating
 
 **Files** `app/(app)/layout.tsx` · `components/shell/Nav.tsx` · `TopBar.tsx` · `PageHeader.tsx` ·
-`MasterBanner.tsx` · `FlipRow.tsx` · `packages/shared/src/constants.ts`
+`MasterBanner.tsx` · `packages/shared/src/constants.ts`
 **Also** `components/ui/Theme.tsx` · `components/assist/**` · `components/ErrorRecovery.tsx` ·
 `components/ServiceWorker.tsx`
 
@@ -113,9 +113,8 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
   `<head>` sets it before paint; `ThemeKeeper` in the root layout restores it whenever React re-applies
   the server's `data-theme="dark"` (the old "one page dark, the rest light" bug). Probe: `theme.mjs`.
 - **`Assist`** — the AI panel, lazy-loaded (`AssistLazy`). Talks to `api/assist`.
-- **`FlipRow`** — a shared three-tile split-flap row. **Currently imported by nothing**; the
-  `StatTile` change covered the screens that needed it. Use it or delete it, do not leave it as a
-  third way to do the same thing.
+- **`FlipRow` was deleted (2026-10-10).** It was imported by nothing — `StatTile` covers the screens
+  that needed split-flap tiles. Do not bring back a third way to do the same thing.
 
 ## Before you edit
 

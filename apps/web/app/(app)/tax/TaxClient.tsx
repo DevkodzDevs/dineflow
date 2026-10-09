@@ -50,7 +50,7 @@ export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings,
   return (
     <div>
       <div className="rail-fade sm:![-webkit-mask-image:none] sm:![mask-image:none] flex gap-1 p-1 bg-[var(--color-fill)] rounded-2xl w-fit max-w-full overflow-x-auto [scrollbar-width:none] mb-6">
-        {TABS.map((t) => <Link key={t.key} href={`/tax?tab=${t.key}&month=${month}&fy=${fy}`} className={cn("shrink-0 h-9 px-4 rounded-xl text-sm font-semibold grid place-items-center transition-colors", tab === t.key ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>{t.label}</Link>)}
+        {TABS.map((t) => <Link key={t.key} href={`/tax?tab=${t.key}&month=${month}&fy=${fy}`} className={cn("shrink-0 h-9 [@media(pointer:coarse)]:h-11 px-4 rounded-xl text-sm font-semibold grid place-items-center transition-colors", tab === t.key ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>{t.label}</Link>)}
       </div>
       {msg && <p className={cn("text-sm mb-4", /error|not|fail|cannot/i.test(msg) ? "text-[var(--color-red)]" : "text-[var(--color-green)]")}>{msg}</p>}
 

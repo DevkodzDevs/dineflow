@@ -74,7 +74,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
 
         <footer className="mt-12 pt-6 border-t border-line text-xs text-steel space-y-1">
           <div>{COMPANY.legalName ?? COMPANY.product} · {COMPANY.site}</div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <div className="legal-links flex flex-wrap gap-x-4 gap-y-1 pt-1">
             {DOCS.map((d) => <Link key={d.href} href={d.href} className="hover:text-[var(--color-label)]">{d.label}</Link>)}
             <Link href="/login" className="hover:text-[var(--color-label)]">Sign in</Link>
           </div>

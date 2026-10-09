@@ -44,6 +44,8 @@ a property.
 | `nt.mjs` | 10–11 | notifications: Sign out on the Settings title row (vertical overlap with the h1, 44px, POST); the card's 4 devices and 6 tones all ≥44px; a tone tap plays (counts `createOscillator` via an init script) and saves to `df-notify`; then **inserts a real `reservations` row** and expects the tone, a toast (poll — a toast lives 3.2s), the bell's count, the panel line, the *Sound & alerts* sheet, read-on-close, and on a phone the wordmark → /dashboard. **Deletes the probe reservation in `finally`** (`put back: probe reservation "Probe Notify" removed`). The settings sheet's labels are CSS-uppercased, so match them with `/i`. |
 | `logo.mjs` | 15–16 | the logo upload: the URL box is gone; a 6 MB file, an SVG, a GIF and a 64 px PNG are each refused in words with nothing saved; a 1200 px PNG made in the page is shrunk to 512 px WebP and saved (logo_url = the `brand` file, served publicly, < 1 MB); the bucket itself refuses another property's folder, a 1.1 MB file and an SVG sent straight to the Storage API; Replace leaves one file; Remove clears both; at 1440+ the sidebar shows the new logo. **Restores `logo_url` and removes probe files through the Storage API.** |
 | `props.mjs` | 8–10 | Settings → General's cards: titles in order (7 for a hotel, 6 for a restaurant), Property details holds only type/name/phone/address, Kitchen only `kds_*`, Rooms & stays the check-in/out and inspection; no sideways scroll; the save bar on screen mid-page, above the bottom nav, not under the Assist button; a Save that edits four cards writes exactly those columns and nothing else (24 columns compared). **Restores all 24 columns.** |
+| `diag3.mjs` | every route | `diag2` plus page errors: `Runtime.exceptionThrown`, console errors and any 4xx/5xx document/fetch/script/image, one line per page (`ok` / `ISSUE` + reasons). `CDP` from env so several can run; driven by `sweep2.sh` (one property per call). **Run properties one after another, not in parallel** — every probe signs in as the same master, and `admin_act_as` is per user, so parallel runs switch each other's property and produce false 404s (`/billing/<id>`, `/frontdesk/<id>`). |
+| `perf.mjs` / `perf2.mjs` | 26 screens | load speed, laptop and phone (4× CPU, 9 Mbps, 60 ms): server time, DCL, LCP warm and cold, CLS, JS kB; `perf2` also prints FCP and the LCP element — **check that element**: once it was the error screen ("Nothing you entered has been lost"), which reads as a slow page. |
 
 Every suite is checked at **1920, 1440, 1194 (iPad landscape), 834 (iPad portrait) and 412 (phone)**,
 and asserts **0 touch targets under 44px** on the touch widths — WCAG 2.5.5 and Apple HIG. An inline
@@ -121,3 +123,19 @@ property is easy to ship.
 ## See also
 
 [data-and-rls.md](data-and-rls.md) · [design-system.md](design-system.md) · [README.md](README.md)
+
+## Audit of 2026-10-10 — every screen, every width
+
+- **Sweep:** 1,127 page loads (hotel, resort, restaurant × dark at 412/834/1194/1440/1920 + paper at
+  412/1440, ~55 routes each). **0 page errors, 0 console errors, 0 failed requests** (the only 404s
+  were the parallel-acting race above). Fixed: 44px targets for card-title and dashboard "All →",
+  legal links (footers and `/legal/*`), Reports range, Tax tabs, Leak-finder and order-track back links,
+  order/invoice back buttons (were shrinking to 23–29px), Night audit (back, date stepper, room rows,
+  "Open housekeeping"), queue party chips, kitchen-board close; invoice "Reverse charge" line and the
+  Channels webhook example now wrap; Proof "Seal new months" no longer clipped. Known false positives
+  left: the kitchen board overlay "overlapping" the page under it, and pinned bars (Settings Save,
+  till cart) "overlapping" what scrolls beneath them.
+- **Speed (production build, after `FirstPaint`):** laptop — worst warm LCP 504 ms, worst cold 720 ms,
+  CLS 0. Phone (4× CPU, 4G) — worst warm LCP 760 ms, cold under 1 s on every screen but sign-in for a
+  signed-in master (1.24 s: it is a redirect to /admin), CLS ≤ 0.005. Before: phone warm up to 1.2 s
+  (5.5 s on one outlier), cold up to 1.97 s.

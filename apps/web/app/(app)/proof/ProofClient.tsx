@@ -46,14 +46,14 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
           action={<Button disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(`${r.sealed} month(s) sealed.`); })}>Seal my trading history</Button>} />
       ) : (<>
         {/* verification banner — the whole point of the feature */}
-        <Card className={cn("flex items-start gap-3 mb-5", v?.intact ? "!bg-mint-2 border-mint" : "!bg-chili-2 border-chili")}>
+        <Card className={cn("flex flex-wrap sm:flex-nowrap items-start gap-3 mb-5", v?.intact ? "!bg-mint-2 border-mint" : "!bg-chili-2 border-chili")}>
           {v?.intact ? <ShieldCheck size={20} className="shrink-0 mt-0.5" /> : <ShieldAlert size={20} className="shrink-0 mt-0.5 text-chili" />}
-          <div className="text-sm flex-1">
+          <div className="text-sm flex-1 min-w-[12rem]">
             {v?.intact ? <><b>{v.periods} months sealed and verified.</b> Each month&apos;s figures were fingerprinted when the month closed and chained to the one before it. Nothing has been altered since.</>
               : <><b className="text-chili">The chain is broken.</b> {v?.broken.map((b) => `${mon(b.period)}: ${b.reason}`).join(" · ")}. A reader of your record will be shown this too — that is what makes an intact chain worth something.</>}
             {v?.head && <div className="num text-[11px] text-steel mt-1.5 break-all">Head fingerprint {v.head.slice(0, 32)}…</div>}
           </div>
-          <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(r.sealed ? `${r.sealed} new month(s) sealed.` : "Already up to date."); })}>Seal new months</Button>
+          <Button size="sm" variant="outline" className="shrink-0 ml-auto" disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(r.sealed ? `${r.sealed} new month(s) sealed.` : "Already up to date."); })}>Seal new months</Button>
         </Card>
 
         <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 mb-5">

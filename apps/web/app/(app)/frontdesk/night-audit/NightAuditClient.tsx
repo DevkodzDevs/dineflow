@@ -29,7 +29,7 @@ function People({ rows, empty }: { rows: Row[]; empty: string }) {
   if (rows.length === 0) return <p className="text-sm text-steel">{empty}</p>;
   return (
     <ul className="space-y-1.5">{rows.map((r) => (
-      <li key={r.id}><Link href={`/frontdesk/${r.id}`} className="flex items-center gap-3 text-sm hover:underline"><span className="keycard h-8 w-10 grid place-items-center font-display text-sm shrink-0">{r.room}</span><span className="flex items-center gap-1.5 truncate">{r.vip && <Star size={12} className="text-champagne fill-current shrink-0" />}{r.guest}</span><span className="num text-xs text-steel ml-auto">#{r.no}</span></Link></li>
+      <li key={r.id}><Link href={`/frontdesk/${r.id}`} className="flex items-center gap-3 text-sm hover:underline min-h-10 [@media(pointer:coarse)]:min-h-11"><span className="keycard h-8 w-10 grid place-items-center font-display text-sm shrink-0">{r.room}</span><span className="flex items-center gap-1.5 truncate">{r.vip && <Star size={12} className="text-champagne fill-current shrink-0" />}{r.guest}</span><span className="num text-xs text-steel ml-auto">#{r.no}</span></Link></li>
     ))}</ul>
   );
 }
@@ -46,9 +46,9 @@ export function NightAuditClient({ today, date, audit, history, canClose }: { to
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/frontdesk/night-audit?date=${shift(-1)}`} className="h-9 px-3 rounded-full grid place-items-center text-sm font-semibold bg-card border border-line num">‹ {shift(-1).slice(5)}</Link>
+        <Link href={`/frontdesk/night-audit?date=${shift(-1)}`} className="h-9 [@media(pointer:coarse)]:h-11 px-3 rounded-full grid place-items-center text-sm font-semibold bg-card border border-line num">‹ {shift(-1).slice(5)}</Link>
         <div className="text-lg font-semibold px-2">{new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</div>
-        {date < today && <Link href={`/frontdesk/night-audit?date=${shift(1)}`} className="h-9 px-3 rounded-full grid place-items-center text-sm font-semibold bg-card border border-line num">{shift(1).slice(5)} ›</Link>}
+        {date < today && <Link href={`/frontdesk/night-audit?date=${shift(1)}`} className="h-9 [@media(pointer:coarse)]:h-11 px-3 rounded-full grid place-items-center text-sm font-semibold bg-card border border-line num">{shift(1).slice(5)} ›</Link>}
         {a.closed && <Pill tone="ready">closed {new Date(a.closed.closed_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</Pill>}
       </div>
 
@@ -77,7 +77,7 @@ export function NightAuditClient({ today, date, audit, history, canClose }: { to
             <li className="flex justify-between"><span>Out of order</span><span className="num font-semibold">{a.ooo_rooms}</span></li>
             <li className="flex justify-between"><span>Rooms in total</span><span className="num font-semibold">{a.rooms_total}</span></li>
           </ul>
-          <Link href="/housekeeping" className="text-xs font-semibold text-steel hover:text-[var(--color-label)] mt-3 inline-block">Open housekeeping →</Link>
+          <Link href="/housekeeping" className="tap text-xs font-semibold text-steel hover:text-[var(--color-label)] mt-3 inline-flex min-h-10">Open housekeeping →</Link>
         </Card>
       </div>
 
