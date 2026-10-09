@@ -107,3 +107,7 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
 
 [auth-and-session.md](auth-and-session.md) · [settings.md](settings.md) · [legal.md](legal.md) ·
 [api-routes.md](api-routes.md)
+
+- **`/book/[slug]` loads the Supabase client on demand** (a dynamic import inside `sb()`), not at the
+  top of `BookClient` — both calls run after paint, and the static import put ~63 kB of auth and
+  realtime code in front of the first paint of a page guests open on their phones (217 → ~150 kB).

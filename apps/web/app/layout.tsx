@@ -4,6 +4,7 @@ import "./globals.css";
 import { THEME_BOOT, ThemeKeeper } from "@/components/ui/Theme";
 import { INSTALL_CAPTURE } from "@/components/InstallApp";
 import { ServiceWorker } from "@/components/ServiceWorker";
+import { FirstPaint } from "@/components/FirstPaint";
 import { NavProgress } from "@/components/ui";
 
 // Fonts ship inside the app, so builds and the on-premise Box need no internet.
@@ -67,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning className={`${oswald.variable} ${manrope.variable} ${jet.variable} deck`}>
       <head>{process.env.NEXT_PUBLIC_SUPABASE_URL && <><link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" /><link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} /></>}<script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /><script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} /></head>
-      <body><NavProgress /><ThemeKeeper />{children}<ServiceWorker /></body>
+      <body><NavProgress /><ThemeKeeper /><FirstPaint>{children}</FirstPaint><ServiceWorker /></body>
     </html>
   );
 }

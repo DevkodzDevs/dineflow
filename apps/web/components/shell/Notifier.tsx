@@ -54,7 +54,10 @@ function describe(kind: NotifyKind, r: Row): { title: string; sub: string } {
  */
 export function NotifierProvider({ modules, propertyType, children }: { modules: string[]; propertyType: string; children: ReactNode }) {
   const toast = useToast();
-  const [prefs, setPrefsState] = useState<NotifyPrefs | null>(null);
+  /* Rendered from the start with fixed defaults, replaced by this device's saved choice right after
+     mount: the settings panel then has its full height in the server HTML, instead of appearing a
+     moment later and pushing every card below it down (Settings measured CLS 0.148). */
+  const [prefs, setPrefsState] = useState<NotifyPrefs | null>(() => stationPrefs("phone"));
   const [feed, setFeed] = useState<Item[]>([]);
   const [settings, setSettings] = useState(false);
   const kinds = useMemo(() => KINDS.filter((k) => modules.includes(k.module)).map((k) => k.kind), [modules]);

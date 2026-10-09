@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { BedDouble, Users, Check, Phone, MapPin, CalendarDays } from "lucide-react";
 import { Button, Field, cn } from "@/components/ui";
@@ -9,7 +8,11 @@ import { formatINR } from "@/lib/format";
 
 type RT = { id: string; name: string; base_rate: number; capacity: number; amenities: string[] };
 type P = { id: string; name: string; tagline: string | null; address: string | null; phone: string | null; cover_url: string | null; policies: string | null; check_in_time: string; check_out_time: string; room_gst_rate: number; room_gst_rate_high?: number; room_gst_threshold?: number; advance_pct: number; room_types: RT[] };
-const sb = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
+/* The Supabase client is fetched when first asked for, not with the page: both calls below run after
+   the page has painted (availability in an effect, booking on submit), and imported at the top it put
+   ~63 kB of auth and realtime code in front of the first paint of a page guests open on their phones. */
+let client: Promise<import("@supabase/supabase-js").SupabaseClient> | null = null;
+const sb = () => (client ??= import("@supabase/supabase-js").then((m) => m.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } })).catch((e) => { client = null; throw e; }));
 
 export function BookClient({ slug, property }: { slug: string; property: P }) {
   const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
@@ -22,11 +25,11 @@ export function BookClient({ slug, property }: { slug: string; property: P }) {
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const nights = Math.max(1, Math.round((new Date(f.to).getTime() - new Date(f.from).getTime()) / 86400000));
 
-  useEffect(() => { (async () => { const { data } = await sb().rpc("public_availability", { p_slug: slug, p_from: f.from, p_to: f.to }); setAvail((data as never) ?? {}); })(); }, [slug, f.from, f.to]);
+  useEffect(() => { (async () => { const { data } = await (await sb()).rpc("public_availability", { p_slug: slug, p_from: f.from, p_to: f.to }); setAvail((data as never) ?? {}); })(); }, [slug, f.from, f.to]);
 
   const book = async () => {
     if (!pick) return; setBusy(true); setErr(null);
-    const { data, error } = await sb().rpc("public_book", { p_slug: slug, p_room_type_id: pick.id, p_check_in: f.from, p_check_out: f.to, p_guest: g, p_adults: f.adults, p_children: f.children });
+    const { data, error } = await (await sb()).rpc("public_book", { p_slug: slug, p_room_type_id: pick.id, p_check_in: f.from, p_check_out: f.to, p_guest: g, p_adults: f.adults, p_children: f.children });
     setBusy(false);
     if (error) return setErr(error.message);
     setDone(data as never);

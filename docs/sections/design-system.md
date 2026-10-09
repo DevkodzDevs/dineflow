@@ -244,3 +244,15 @@ Then look at it, in both themes, at 1440 and 412.
 - **`PageHeader actionsInline`** keeps one small action on the title's row on a phone too (Settings'
   Sign out). Without it `.page-actions` is full width under the title below 640px, for rows of
   buttons — leave the default for those.
+
+- **Nothing that arrives with the page is invisible in its HTML (`components/FirstPaint.tsx`, root
+  layout).** ~58 `motion` elements (every `StatTile` via `Reveal`, page sections, the top bar) start at
+  `initial={{ opacity: 0 }}`, which framer-motion server-renders as `style="opacity:0"` — the page was
+  blank until the animation library had loaded, ~1.5 s on a first phone visit. `FirstPaint` provides a
+  `PresenceContext` with `initial: false` for the first render only, so those elements render in their
+  `animate` state; after mount it switches to the same context without `initial`, so screens opened by
+  navigation, sheets and toasts still animate. **The context must stay an object** — swapping it for
+  `null` makes framer-motion take a different hook path and React throws #311 on every page.
+  Corollary: anything that appears after mount now shows as layout shift (it used to be hidden in the
+  fade) — render it at full size from the start (the Notifications card renders with default prefs,
+  then loads the device's own).
