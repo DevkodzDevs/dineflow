@@ -32,6 +32,12 @@ category with no station stays on the expo view only. The warn and target minute
 - **On a phone the header's second line is clock + stale warning left, Order board right**
   (`order-first` on the clock block); from `sm` they sit right of the title as before.
 
+- **On a phone the order board is two stacked panels** (`sm:hidden` in `BoardClient.tsx`): a
+  two-line header (Order board, the property name under it, a clock, a 44px close), then **Ready to
+  collect first** — green, pulsing dot, count — and Preparing under it, each order a tile three across
+  (#number, where); an empty panel says so in a sentence with an icon. Two side-by-side columns on a
+  phone broke "Ready · please collect" over three lines and showed a lone dash. From `sm` it is the
+  wall layout, unchanged. Probe: `board.mjs` (4 checks; makes three tickets live and restores them).
 - **The board is read at distance.** Type on `/kitchen/board` is sized for a wall, not a desk. Do
   not shrink it to fit more tickets; fewer, legible tickets is the design.
 - **`useLive(["kots"])`** keeps both views current. Do not add a polling interval.

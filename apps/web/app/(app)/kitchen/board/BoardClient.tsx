@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { X, ChefHat, BellRing } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { cn } from "@/components/ui";
 
@@ -35,14 +35,29 @@ export function BoardClient({ kots, name }: { kots: K[]; name: string }) {
 
   return (
     <div className="fixed inset-0 z-[60] bg-[#0b0d10] text-white flex flex-col select-none" style={{ colorScheme: "dark" }}>
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+      {/* Phone: a two-line header that does not wrap, then Ready first and Preparing under it, as two
+          stacked panels of big number tiles — two narrow columns made "Ready · please collect" break
+          over three lines and left a lone dash for an empty side. sm and up keep the wall layout. */}
+      <div className="sm:hidden flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top)+14px)] pb-3 border-b border-white/10">
+        <div className="flex-1 min-w-0">
+          <div className="font-display text-[22px] leading-tight">Order board</div>
+          <div className="text-[11px] uppercase tracking-[0.18em] text-white/45 truncate">{name}</div>
+        </div>
+        <span className="num text-[13px] text-white/60 h-8 px-3 rounded-full bg-white/[.07] grid place-items-center">{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+        <Link href="/kitchen" className="h-11 w-11 shrink-0 grid place-items-center rounded-full bg-white/10 hover:bg-white/20" aria-label="Back to the kitchen"><X size={18} /></Link>
+      </div>
+      <div className="sm:hidden flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
+        <PhonePanel title="Ready to collect" items={ready} tone="ready" />
+        <PhonePanel title="Preparing" items={preparing} tone="prep" />
+      </div>
+      <div className="hidden sm:flex items-center justify-between px-6 py-4 border-b border-white/10">
         <div className="text-sm uppercase tracking-[0.2em] text-white/50">{name} · order board</div>
         <div className="flex items-center gap-4">
           <div className="num text-sm text-white/50">{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
           <Link href="/kitchen" className="h-9 w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 grid place-items-center rounded-full bg-white/10 hover:bg-white/20" aria-label="Back to the kitchen"><X size={16} /></Link>
         </div>
       </div>
-      <div className="flex-1 grid grid-cols-2 min-h-0">
+      <div className="hidden sm:grid flex-1 grid-cols-2 min-h-0">
         <Column title="Preparing" items={preparing} tone="prep" />
         <Column title="Ready · please collect" items={ready} tone="ready" />
       </div>
@@ -68,6 +83,40 @@ function Column({ title, items, tone }: { title: string; items: O[]; tone: "prep
         </AnimatePresence>
         {items.length === 0 && <div className="text-white/30 text-lg">—</div>}
       </div>
+    </section>
+  );
+}
+
+/** A phone's panel: a header with the count, the numbers as tiles three across, and a sentence when
+ *  there is nothing — "Ready" in the board's green, "Preparing" quiet. */
+function PhonePanel({ title, items, tone }: { title: string; items: O[]; tone: "prep" | "ready" }) {
+  const ready = tone === "ready";
+  return (
+    <section className={cn("rounded-[24px] border p-4", ready ? "bg-[rgb(76_217_100/.09)] border-[rgb(76_217_100/.28)]" : "bg-white/[.03] border-white/10")}>
+      <h2 className={cn("flex items-center gap-2.5 text-[19px] font-semibold", ready ? "text-[#4cd964]" : "text-white/85")}>
+        {ready ? <span className="h-2.5 w-2.5 rounded-full bg-[#4cd964] pulse-dot text-[#4cd964]" /> : <ChefHat size={18} className="text-white/55" />}
+        {title}
+        <span className={cn("ml-auto num text-[13px] font-bold min-w-7 h-7 px-2 rounded-full grid place-items-center", ready ? "bg-[#4cd964] text-[#04240c]" : "bg-white/10 text-white/70")}>{items.length}</span>
+      </h2>
+      {items.length > 0 ? (
+        <div className="grid grid-cols-3 gap-2 mt-3.5">
+          <AnimatePresence mode="popLayout">
+            {items.map((o) => (
+              <motion.div key={o.no} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                className={cn("rounded-2xl px-2 py-3 text-center min-w-0", ready ? "bg-[#4cd964] text-[#04240c]" : "bg-white/[.07]")}>
+                <div className="num text-[30px] font-bold leading-none">#{o.no}</div>
+                <div className={cn("text-[11.5px] mt-1.5 truncate", ready ? "opacity-80" : "text-white/50")}>{o.where}</div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      ) : (
+        <div className="mt-3.5 rounded-2xl border border-dashed border-white/12 px-4 py-6 text-center">
+          <span className={cn("mx-auto h-11 w-11 rounded-2xl grid place-items-center", ready ? "bg-[rgb(76_217_100/.14)] text-[#4cd964]" : "bg-white/[.06] text-white/50")}>{ready ? <BellRing size={20} /> : <ChefHat size={20} />}</span>
+          <div className="text-[14px] font-semibold text-white/80 mt-2.5">{ready ? "Nothing ready yet" : "No orders cooking"}</div>
+          <div className="text-[12px] text-white/45 mt-1">{ready ? "Numbers appear here the moment the kitchen marks them ready." : "New orders show here as soon as they reach the kitchen."}</div>
+        </div>
+      )}
     </section>
   );
 }
