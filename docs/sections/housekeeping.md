@@ -49,30 +49,26 @@ dirty room without a ticket.
     tiles, icon over label (`.dock-tile`, 52px, 56 on touch): Cleaned / Touched up / Pass in green,
     Fail red, Pickup blue, Dirty grey. One to a row under 520px, `auto-fill minmax(15rem)` to 639.
     Probe: `dock.mjs` (390 both themes, 600).
-  - **Wide (`sm` and up, `[data-room]`, an `@container`), two lines and one row of actions,
-    130px tall:** the number in a 44px tile washed with the condition's colour (16% wash, 38%
-    inner ring — red dirty and out of order, amber clean, green inspected, blue pickup); the guest,
-    or Vacant / Reserved / Cleaning, or the repair note; under it the condition and the one thing to
-    know — "Due out" in red on the day, "Out 17 Sep" (`dayMonth`; en-IN says "Sept"), how long
-    ago, or where the repair stands. Then the actions as 48px tiles with a 12px radius (`rounded-xl`
-    is 28px here and made pills): the standing first (Ready / Occupied / Sign-off), Back in service
-    for a room out of order. Tones are `SOFT` — the main move on the green wash, the rest on
-    `--color-fill` with red / blue / grey text; the dock's `bg-2` is the card's own colour in dark
-    and those buttons vanished. **One look per card width, always one row:** from a 15rem card
-    (an iPad in landscape, a laptop) every tile is icon beside label — four a little tighter
-    (12px, 15px icon, `gap-1 px-1`) so "Pickup" fits in ~71px at 1194; under 15rem (an
-    iPad-portrait third) every tile is icon over label, 3px apart. Mixing the two in one row, and a
-    four-action card going two by two, made the rows look uneven and was sent back. Only a card
-    under 185px inside (an iPad narrower than 820 in portrait) puts four two by two, where four in
-    a row would be under 44px each. Between 640 and 1023 the floor's padding (`sm:p-2.5`), the gap
-    (`sm:gap-2.5`) and the card's padding (`sm:p-2.5`) give back the pixels that keep four tiles
-    ≥44px: 46px at 834, 44 at 820.
+  - **Wide (`sm` and up, `[data-room]`, an `@container`): three quiet rows, 130px at every
+    width.** The number in plain display type with the condition as its pill on the right (the
+    only colour up top — `COND[...].chip`, dot + word); then the guest (or Vacant / Reserved /
+    Cleaning, or the repair note) and the one thing to know — "Due out" in red on the day,
+    "Awaiting sign-off", "Out 17 Sep" (`dayMonth`; en-IN says "Sept"), how long ago, or the repair
+    state in red; then **one outlined action bar** (`h-[46px]`, hairline border and dividers,
+    12px radius), a segment per move. Only the main move (Pass / Cleaned / Touched up) has a fill,
+    the green wash (`SEG.go`); Fail, Pickup and Dirty are text in red / blue / grey (`SEG`). There
+    is no Ready / Occupied / Sign-off tile here — the pill and the second line say it; the bar
+    holds only things to press, and a room out of order has one, Back in service. Icons beside the
+    labels from a 15rem card; text only below (an iPad-portrait third), at 11.5px, so four
+    segments stay ≥44px (46 at 834, 44 at 820) and "Pickup" is not cut. **Three tries before
+    this were sent back:** a 52px tinted number tile with a chip line and a 2×2 dock (~250px); a
+    44px tinted tile with filled tiles in one row; and the same with icon-over/icon-beside mixed
+    in one row. Each was a wall of coloured blocks — the fix was taking colour away, not moving it.
   - **Three across from `sm`, four from 1800px** (`sm:grid-cols-3 min-[1800px]:!grid-cols-4` — the
     `!` because Tailwind emits the arbitrary `min-[1800px]` before `sm`, which then won at 1920),
-    **top-aligned** (`sm:items-start`): every card is one height (130px; 126 under 15rem), so rows
-    are level; a four-action card on an iPad narrower than 820 in portrait is the one taller card,
-    on its own rather than stretching its neighbours into cards with a hole in the middle. The first wide version — a 52px tile, a line
-    of chips and the dock two to a row — came out ~250px a card and was sent back as too large.
+    **top-aligned** (`sm:items-start`): every card has the same three rows, so every card is one
+    height and every row is level. Between 640 and 1023 the floor's padding (`sm:p-2.5`) and the
+    grid gap (`sm:gap-2.5`) give back the few pixels that keep four segments ≥44px in a third.
   Probe: `hk.mjs`.
 
 - **Floors are an accordion** (`openFloor`: a floor number, `"all"` or null). The first floor is

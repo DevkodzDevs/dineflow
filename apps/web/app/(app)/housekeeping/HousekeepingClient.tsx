@@ -14,19 +14,20 @@ type Room = { id: string; number: string; floor: number; status: string; conditi
 type Stay = { room_id: string; check_out: string; guests: { full_name: string; vip: boolean } | null };
 type Done = { id: string; kind: string; done_at: string; rooms: { number: string } | null };
 
-/** The colours housekeeping boards have used for decades: red dirty, amber cleaned-not-yet-inspected, green inspected, blue pickup. */
-/* the wide room card's action tones: the move you will make most on a green wash; the others on the
-   soft fill (the dock's bg-2 is the card's own colour in dark and vanished there), coloured by their
-   meaning — Fail red text, not a red block: thirty filled red buttons read as thirty problems */
-const SOFT = {
+/* the wide room card's action bar: one segment per move, in one hairline outline. Only the move you
+   will make most has a fill (the green wash); the others are text in their meaning's colour — Fail
+   red, Pickup blue, Dirty grey. Filled tiles on every card made a board of thirty rooms a wall of
+   coloured blocks. */
+const SEG = {
   go: "bg-[var(--color-green-2)] text-[var(--color-tint)]",
-  red: "bg-[var(--color-fill)] text-[var(--color-red)]",
-  blue: "bg-[var(--color-fill)] text-[var(--color-blue)]",
-  quiet: "bg-[var(--color-fill)] text-[var(--color-label-2)]",
+  red: "text-[var(--color-red)]",
+  blue: "text-[var(--color-blue)]",
+  quiet: "text-[var(--color-label-2)]",
 } as const;
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** "2026-09-17" → "17 Sep" (en-IN would say "Sept") */
 const dayMonth = (d: string) => `${Number(d.slice(8, 10))} ${MON[Number(d.slice(5, 7)) - 1] ?? ""}`;
+/** The colours housekeeping boards have used for decades: red dirty, amber cleaned-not-yet-inspected, green inspected, blue pickup. */
 const COND: Record<Condition, { label: string; chip: string; rail: string }> = {
   dirty:     { label: "Dirty",     chip: "bg-chili-2 text-chili",                                rail: "bg-[var(--color-red)]" },
   clean:     { label: "Clean",     chip: "bg-[rgb(255_179_64/.18)] text-[var(--color-orange)]",  rail: "bg-[var(--color-orange)]" },
@@ -179,62 +180,40 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
               const status = out || hasMain ? null : sellable ? (s ? "Occupied" : "Ready") : waiting ? "Sign-off" : null;
               const tone = out ? "var(--color-red)" : r.condition === "dirty" ? "var(--color-red)" : r.condition === "clean" ? "var(--color-orange)" : r.condition === "inspected" ? "var(--color-tint)" : "var(--color-blue)";
               const fix = out ? tasks.find((t) => t.kind === "maintenance" && t.status !== "done" && t.rooms?.number === r.number) : undefined;
-              /* the wide card's actions: the room's standing (Ready / Occupied / Sign-off) and every move —
-                 for a room out of order, the way back (its repair state is on the second line) */
-              type Item = { key: string; label: string; icon: ReactNode; cls: string; title?: string; run?: () => void };
-              const items: Item[] = out ? [
-                { key: "service", label: "Back in service", icon: <Check size={16} />, cls: SOFT.quiet, run: () => act(() => setRoomStatus(r.id, "available")) },
-              ] : [
-                ...(status ? [{ key: "status", label: status, icon: status === "Sign-off" ? <ShieldCheck size={16} /> : <Check size={16} />, cls: status === "Sign-off" ? SOFT.quiet : SOFT.go, title: status === "Sign-off" ? "Awaiting a supervisor's sign-off" : status === "Ready" ? "Inspected and ready to sell" : "Guest in the room" }] : []),
-                ...tiles.map((t) => ({ key: t.key, label: t.label, icon: t.icon, cls: SOFT[t.tone], run: t.run })),
-              ];
-              const n = items.length;
-              /* one row of 48px tiles, and ONE look per card width so a row of cards matches: on a card of
-                 15rem or more (an iPad in landscape, a laptop) every tile is icon beside label — four
-                 a little tighter, so "Pickup" fits in ~71px at 1194; under 15rem (an iPad-portrait third)
-                 every tile is icon over label. Mixing the two, and putting a four-action card two by
-                 two, made the rows look uneven. Only under 185px — an iPad narrower than 834 in
-                 portrait — do four go two by two, where four in a row would be under 44px each. */
-              const tileCls = cn(n === 4 ? "gap-1 px-1 text-[12px] [&>svg]:w-[15px] [&>svg]:h-[15px]" : "gap-1.5 px-2 text-[12.5px]",
-                "@max-[15rem]:flex-col @max-[15rem]:gap-0.5 @max-[15rem]:px-0.5 @max-[15rem]:text-[10.5px] @max-[15rem]:[&>svg]:w-[16px] @max-[15rem]:[&>svg]:h-[16px]");
-              const dockCols = n === 4 ? "grid-cols-4 @max-[185px]:grid-cols-2" : n === 3 ? "grid-cols-3" : n === 2 ? "grid-cols-2" : "grid-cols-1";
-              const repair = fix ? (fix.status === "in_progress" ? "Being fixed" : "In repair") : "No repair task";
+              /* the wide card's actions: every move, as segments of one bar; a room out of order has one —
+                 back in service (where its repair stands is on the second line) */
+              type Seg = { key: string; label: string; icon: ReactNode; tone: keyof typeof SEG; run: () => void };
+              const segs: Seg[] = out
+                ? [{ key: "service", label: "Back in service", icon: <Check size={14} />, tone: "quiet", run: () => act(() => setRoomStatus(r.id, "available")) }]
+                : tiles.map((t) => ({ key: t.key, label: t.label, icon: t.icon, tone: t.tone, run: t.run }));
+              const detail = out ? (fix ? (fix.status === "in_progress" ? "Being fixed" : "In repair") : "No repair task")
+                : dueOut ? "Due out" : waiting ? "Awaiting sign-off" : s ? `Out ${dayMonth(s.check_out)}` : fmtSince(r.condition_at);
               return (
                 <Fragment key={r.id}>
-                {/* the wide card (sm and up), two lines and a row of actions: the number in a tile washed
-                    with the condition's colour; who is in the room (or Vacant / Reserved / Cleaning, or the
-                    repair); then the condition and the one thing to know about it — when the guest leaves
-                    ("Due out" in red on the day), how long it has been, or where the repair stands */}
-                <div data-room={r.number} className="@container hidden sm:flex feather relative p-3 sm:p-2.5 lg:p-3 flex-col gap-3 min-w-0">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="h-11 min-w-11 px-1.5 rounded-[12px] grid place-items-center font-display text-[19px] leading-none tracking-tight shrink-0"
-                      style={{ background: `color-mix(in srgb, ${tone} 16%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${tone} 38%, transparent)` }} data-num>{r.number}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1 min-w-0 text-[14px] leading-tight">
-                        {s ? <><span className="font-semibold truncate">{s.guests?.full_name}</span>{s.guests?.vip && <Star size={12} className="text-champagne fill-current shrink-0" />}</>
-                          : out ? <span className={cn("truncate", fix?.notes ? "font-semibold" : "text-[var(--color-label-2)]")}>{fix?.notes || "Maintenance"}</span>
-                            : <span className="text-[var(--color-label-2)] capitalize truncate">{r.status === "available" ? "Vacant" : r.status}</span>}
-                      </div>
-                      <div className="mt-1 flex items-center gap-1.5 text-[12px] leading-tight min-w-0 whitespace-nowrap" data-cond title={`${out ? "Out of order" : c.label} since ${fmtSince(r.condition_at)} ago`}>
-                        <span className="h-2 w-2 rounded-full shrink-0" style={{ background: tone }} />
-                        <span className="font-semibold shrink-0" data-cond-label>{out ? "Out of order" : c.label}</span>
-                        <span className="text-[var(--color-label-3)] shrink-0" aria-hidden>·</span>
-                        {out ? <span className="text-[var(--color-red)] truncate">{repair}</span>
-                          : dueOut ? <span className="text-[var(--color-red)] font-semibold truncate">Due out</span>
-                            : s ? <span className="num text-[var(--color-label-2)] truncate">Out {dayMonth(s.check_out)}</span>
-                              : <span className="num text-[var(--color-label-2)] truncate">{fmtSince(r.condition_at)}</span>}
-                      </div>
-                    </div>
+                {/* the wide card (sm and up), three quiet rows: the number and the condition as its pill; who
+                    is in the room and the one thing to know about it; one outlined bar of actions */}
+                <div data-room={r.number} className="@container hidden sm:flex feather relative p-3 flex-col gap-2.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-display text-[22px] leading-none tracking-tight" data-num>{r.number}</span>
+                    <span className={cn("ml-auto shrink-0 inline-flex items-center gap-1.5 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold", out ? "bg-chili-2 text-chili" : c.chip)} data-cond>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone }} /><span data-cond-label>{out ? "Out of order" : c.label}</span>
+                    </span>
                   </div>
-                  {n > 0 && (
-                    <div className={cn("mt-auto grid gap-1.5 @max-[15rem]:gap-[3px]", dockCols)} data-dock>
-                      {items.map((t) => {
-                        const cls = cn("min-w-0 h-12 rounded-[12px] inline-flex items-center justify-center font-semibold [&>svg]:shrink-0", tileCls, t.cls, t.run && "transition hover:brightness-110 active:scale-[.97] disabled:opacity-50");
-                        const body = <>{t.icon}<span className="max-w-full truncate">{t.label}</span></>;
-                        return t.run
-                          ? <button key={t.key} type="button" disabled={pending} onClick={t.run} aria-label={`${t.label} · room ${r.number}`} className={cls}>{body}</button>
-                          : <div key={t.key} className={cls} title={t.title}>{body}</div>;
-                      })}
+                  <div className="flex items-center gap-1.5 min-w-0 text-[13px] leading-tight whitespace-nowrap" data-line title={`${out ? "Out of order" : c.label} since ${fmtSince(r.condition_at)} ago`}>
+                    {s ? <><span className="font-semibold truncate">{s.guests?.full_name}</span>{s.guests?.vip && <Star size={12} className="text-champagne fill-current shrink-0" />}</>
+                      : out ? <span className={cn("truncate", fix?.notes ? "font-semibold" : "text-[var(--color-label-2)]")}>{fix?.notes || "Maintenance"}</span>
+                        : <span className="text-[var(--color-label-2)] capitalize truncate">{r.status === "available" ? "Vacant" : r.status}</span>}
+                    <span className="text-[var(--color-label-3)] shrink-0" aria-hidden>·</span>
+                    <span className={cn("shrink-0", dueOut || out ? "text-[var(--color-red)] font-semibold" : "num text-[var(--color-label-2)]")}>{detail}</span>
+                  </div>
+                  {segs.length > 0 && (
+                    <div className="mt-auto flex h-[46px] rounded-[12px] border border-[var(--color-separator)] overflow-hidden divide-x divide-[var(--color-separator)]" data-dock>
+                      {segs.map((t) => (
+                        <button key={t.key} type="button" disabled={pending} onClick={t.run} aria-label={`${t.label} · room ${r.number}`}
+                          className={cn("flex-1 min-w-0 inline-flex items-center justify-center gap-1 px-1 @max-[15rem]:px-0.5 text-[12px] @max-[15rem]:text-[11.5px] font-semibold transition-colors hover:bg-[var(--color-fill)] disabled:opacity-50 focus-visible:outline-offset-[-2px] [&_svg]:w-[14px] [&_svg]:h-[14px] [&_svg]:shrink-0", SEG[t.tone])}>
+                          <span className="hidden @[15rem]:contents">{t.icon}</span><span className="truncate">{t.label}</span>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
