@@ -1,9 +1,9 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
-import { Phone, Bell, Armchair, X, QrCode, UserPlus, MessageCircle } from "lucide-react";
+import { Phone, Bell, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check } from "lucide-react";
 import { waHref, firstName } from "@/lib/wa";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { Button, Card, Flip, useToast } from "@/components/ui";
+import { Button, Card, Flip, useToast, cn } from "@/components/ui";
 import { motion } from "framer-motion";
 import { listV, itemV } from "@/lib/motion";
 import { useLive } from "@/lib/useLive";
@@ -14,17 +14,38 @@ import { useOffline } from "@/lib/offline/OfflineProvider";
 
 type T = { id: string; name: string; capacity: number; stage: "free" | "ordered" | "eating" | "served" | "billed"; age: number; mins_left: number; free_at: string };
 type Pulse = { tables: T[]; free_now: number; seats_free_now: number; next_free_min: number | null; avg_dwell: number; history_days: number };
+type R = { id: string; table_id: string; guest_name: string; party_size: number; at_time: string };
 type W = { id: string; token: string; name: string; phone: string | null; party: number; quoted_min: number | null; status: "waiting" | "called"; joined_at: string; table_id: string | null };
 
 const STAGE = { free: ["free", "pill-ready"], ordered: ["ordered", "pill-pending"], eating: ["eating", "pill-preparing"], served: ["served", "pill-sky"], billed: ["bill out", "pill-gold"] } as const;
+/** Minutes as a person says them: 25 min, 2h 10m, 3 days — never "34736 min". */
+const dur = (m: number) => m < 60 ? `${m} min` : m < 1440 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${Math.floor(m / 1440)} day${m >= 2880 ? "s" : ""}`;
+/** 20:30:00 → 8:30 pm */
+const clock = (t: string) => { const [h, mm] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(mm).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
+/** An order open longer than this is not a sitting, it is a table someone forgot to bill or close. */
+const STALE = 12 * 60;
+type Tab = "all" | "free" | "reserved" | "busy";
 
-export function PulseClient({ pulse, queue, slug, base, listed, restaurant = "" }: { pulse: Pulse; queue: W[]; slug: string; base: string; listed: boolean; restaurant?: string }) {
+export function PulseClient({ pulse, queue, booked = [], slug, base, listed, restaurant = "" }: { pulse: Pulse; queue: W[]; booked?: R[]; slug: string; base: string; listed: boolean; restaurant?: string }) {
   useLive(["orders", "order_items", "bills", "dining_tables", "walkins"]);
   const toast = useToast(); const [pending, start] = useTransition(); const { online } = useOffline();
   const [party, setParty] = useState(2); const [q, setQ] = useState<number | null | undefined>(undefined);
   const [form, setForm] = useState({ name: "", phone: "" }); const [seat, setSeat] = useState<W | null>(null);
   useEffect(() => { let on = true; quote(party).then((m) => { if (on) setQ(m); }); return () => { on = false; }; }, [party, pulse]);
   const busy = pulse.tables.filter((t) => t.stage !== "free");
+  /* The floor in three kinds. A free table with a booking still to come today is Reserved, not Free —
+     seating a walk-in there is how a booked party ends up waiting. A table in use keeps its booking as
+     a note ("next: Meera 8:30 pm"). */
+  const minsOf = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const nowMin = minsOf(new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(11, 16));
+  // a booking still counts for half an hour after its time — the party may be running late
+  const nextBooking = (id: string) => booked.find((r) => r.table_id === id && minsOf(r.at_time) >= nowMin - 30);
+  const kindOf = (t: T): Exclude<Tab, "all"> => t.stage !== "free" ? "busy" : nextBooking(t.id) ? "reserved" : "free";
+  const counts = { all: pulse.tables.length, free: 0, reserved: 0, busy: 0 } as Record<Tab, number>;
+  pulse.tables.forEach((t) => { counts[kindOf(t)]++; });
+  const [tab, setTab] = useState<Tab>("all");
+  const order = (t: T) => kindOf(t) === "busy" ? (t.age > STALE ? -1 : t.mins_left) : kindOf(t) === "reserved" ? 1e4 : 2e4 + t.capacity;
+  const shown = pulse.tables.filter((t) => tab === "all" || kindOf(t) === tab).sort((a, b) => order(a) - order(b));
   const joinUrl = `${base}/queue/${slug}`;
 
   return (
@@ -62,14 +83,58 @@ export function PulseClient({ pulse, queue, slug, base, listed, restaurant = "" 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
         <div className="min-w-0">
           <div className="card-title"><h3>Tables · when they free up</h3><span className="more">{busy.length} in use · {pulse.seats_free_now} seats free</span></div>
-          <motion.div className="group" variants={listV} initial="hidden" animate="show">
-            {pulse.tables.map((t) => <motion.div key={t.id} variants={itemV} className="row">
-              <span className="font-display text-xl w-12">{t.name}</span>
-              <span className="text-xs text-steel w-14">{t.capacity} seats</span>
-              <span className={`pill ${STAGE[t.stage][1]}`}>{STAGE[t.stage][0]}</span>
-              <span className="flex-1 text-[13px] text-steel">{t.stage === "free" ? "" : `seated ${t.age} min ago`}</span>
-              {t.stage === "free" ? <span className="num text-mint">free now</span> : <><span className="num text-lg">{t.mins_left} min</span><span className="num text-steel text-sm w-12 text-right">{t.free_at}</span></>}
-            </motion.div>)}
+          {/* Free · Reserved · In use as tabs, each with its count; the tables as tiles you can read
+              from across the floor. In use is sorted by when it frees (a forgotten table first). */}
+          <div role="tablist" aria-label="Tables" className="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-[var(--color-fill)] mb-3">
+            {([["all", "All"], ["free", "Free"], ["reserved", "Reserved"], ["busy", "In use"]] as const).map(([k, label]) => (
+              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+                className={cn("!min-h-[52px] sm:!min-h-[44px] rounded-xl px-1 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-[12.5px] sm:text-[13px] font-semibold transition-colors min-w-0",
+                  tab === k ? "bg-[var(--color-label)] text-[var(--color-on-label)] shadow-sm" : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>
+                <span className="truncate max-w-full">{label}</span>
+                <span className={cn("num text-[11px] min-w-5 h-5 px-1.5 rounded-full grid place-items-center", tab === k ? "bg-[color-mix(in_srgb,var(--color-on-label)_18%,transparent)]" : "bg-[var(--color-fill-2)]")}>{counts[k]}</span>
+              </button>
+            ))}
+          </div>
+          <motion.div key={tab} className="grid gap-2.5 grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))]" variants={listV} initial="hidden" animate="show">
+            {shown.map((t) => {
+              const kind = kindOf(t); const r = nextBooking(t.id); const stale = kind === "busy" && t.age > STALE;
+              const share = kind === "busy" && !stale ? Math.min(100, Math.round((t.age / Math.max(1, t.age + t.mins_left)) * 100)) : 0;
+              return (
+                <motion.div key={t.id} variants={itemV} data-table={kind}
+                  className={cn("min-w-0 rounded-2xl border p-3.5 flex flex-col gap-2.5",
+                    stale ? "border-[color-mix(in_srgb,var(--color-orange)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-orange)_7%,transparent)]"
+                      : kind === "free" ? "border-[color-mix(in_srgb,var(--color-green)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-green)_6%,transparent)]"
+                        : kind === "reserved" ? "border-[color-mix(in_srgb,var(--color-blue)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-blue)_7%,transparent)]"
+                          : "border-[var(--color-separator)] bg-[var(--color-fill)]")}>
+                  <div className="flex items-center gap-2">
+                    <span className="font-display text-[24px] leading-none">{t.name}</span>
+                    <span className="ml-auto inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-fill-2)] text-[11.5px] font-semibold text-[var(--color-label-2)] num"><Users size={12} />{t.capacity}</span>
+                  </div>
+                  {kind === "free" && <>
+                    <span className="self-start inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11.5px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)]"><Check size={12} strokeWidth={3} />Free</span>
+                    <span className="text-[13px] text-[var(--color-label-2)]">Ready to seat</span>
+                  </>}
+                  {kind === "reserved" && r && <>
+                    <span className="self-start inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11.5px] font-bold bg-[var(--color-blue-2)] text-[var(--color-blue)]"><CalendarClock size={12} />Reserved · {clock(r.at_time)}</span>
+                    <span className="text-[13px] min-w-0"><span className="font-semibold truncate block">{r.guest_name}</span><span className="text-[var(--color-label-2)]">party of {r.party_size}</span></span>
+                  </>}
+                  {kind === "busy" && <>
+                    <span className={`pill self-start ${STAGE[t.stage][1]}`}>{STAGE[t.stage][0]}</span>
+                    {stale
+                      ? <span className="text-[12.5px] leading-snug text-[var(--color-orange)] font-semibold flex gap-1.5"><AlertTriangle size={14} className="shrink-0 mt-px" />Open {dur(t.age)} — bill or close it</span>
+                      : <div>
+                          <div className="flex items-baseline justify-between gap-2"><span className="num text-[20px] font-semibold leading-none">{dur(t.mins_left)}</span><span className="text-[11.5px] text-[var(--color-label-2)] num">frees ~{t.free_at}</span></div>
+                          <div className="h-1.5 rounded-full bg-[var(--color-fill-2)] overflow-hidden mt-2"><div className="h-full rounded-full bg-[var(--color-tint)]" style={{ width: `${share}%` }} /></div>
+                          <div className="text-[11.5px] text-[var(--color-label-2)] mt-1.5">seated {dur(t.age)} ago</div>
+                        </div>}
+                    {r && <span className="text-[11.5px] text-[var(--color-blue)] font-semibold truncate">Next: {r.guest_name} · {clock(r.at_time)}</span>}
+                  </>}
+                </motion.div>
+              );
+            })}
+            {shown.length === 0 && <div className="col-span-full rounded-2xl border border-dashed border-[var(--color-separator)] p-6 text-center text-sm text-[var(--color-label-2)]">
+              {tab === "free" ? "No table is free right now." : tab === "reserved" ? "No table is held for a booking today." : tab === "busy" ? "Every table is free." : "No tables yet — add them in Settings → Tables."}
+            </div>}
           </motion.div>
         </div>
         <div className="stack">

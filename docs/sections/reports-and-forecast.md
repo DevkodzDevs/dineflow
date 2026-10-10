@@ -54,6 +54,16 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   flip tiles in "Right now", and Quote a wait with party size as an even grid (4 across on a phone,
   8 above). The tiles sit in `.flip-fit`, which sizes them from the card (cqw) on a phone — sized
   from 100vw they ran the third tile out of the card at 412.
+- **Pulse's tables are tabs and tiles** — All · Free · Reserved · In use, each with a count (a 4-up
+  segmented control; on a phone the count stacks under the label so "Reserved" is not cut). The page
+  also reads today's `reservations` that hold a table (`requested`/`confirmed`, `table_id` set): a
+  free table with one still to come (from 30 min before now) is **Reserved**, not Free; a table in use
+  shows "Next: <guest> · <time>". Tiles: free (green, "Ready to seat"), reserved (blue, guest and
+  party), in use (stage pill, time left, a bar of how far through the sitting it is, "frees ~hh:mm",
+  "seated … ago"). Durations read as people say them (`dur`: 25 min, 2h 10m, 3 days); an order open
+  longer than 12 h (`STALE`) is not a sitting — it shows amber "Open N days — bill or close it" and
+  sorts first in In use. It used to print "seated 34736 min ago". Probe: `pulse.mjs` (7 checks;
+  inserts a booking and removes it), `fresh.mjs` (a live tile; restores the order's time).
 
 - **A sealed period must not move.** If a report lets a closed day change, the proof record is a
   lie. `close_day` and `run_night_audit` are the seals.
