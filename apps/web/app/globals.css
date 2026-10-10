@@ -286,6 +286,33 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
    rounded card, edge to edge, sidebar included. Dark, it reads as the frame's own gutter. Pages
    outside the app shell (sign-in, the guest storefront) have no .deck-card and keep their colour. */
 body:has(.deck-card) { background: #0a0a0d; }
+/* On a touch screen from iPad size up, the frame scrolls, not the page. Every iPad browser is WebKit,
+   and WebKit ignores overscroll-behavior on the page itself: html and body both carry it (base, below)
+   and an iPad still rubber-banded past the end of every screen, lifting the app off a band of empty
+   frame (the Assist button and the rail's avatar rode up with it — the tell of a page bounce, not of
+   extra height; measured in Chrome the page ends 12px under the card on every screen). WebKit does
+   honour it on an inner scroller. So here the page is locked to the screen and .deck scrolls with
+   overscroll-behavior: none — there is nothing left to bounce. Phones keep the page scroll: locked,
+   a phone's address bar would never collapse. Sticky things (the rail, the top bar, the Settings
+   save bar) stick to the frame the same way; fixed things are unaffected; print is screen-only. */
+@media screen and (any-pointer: coarse) and (min-width: 768px) {
+  html:has(.deck-card), html:has(.deck-card) body { height: 100%; overflow: hidden; }
+  /* body .deck: <html> carries the class too (root layout), and must not become a scroller */
+  body .deck { height: 100dvh; overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; }
+  /* a fixed-height flex row stretches its items to that height — the card would be one screen tall
+     and the page would spill out under it. Top-aligned, at least one screen tall (less its 12px
+     margins), as long as its content otherwise. */
+  body .deck { align-items: flex-start; }
+  body .deck > .deck-card { min-height: calc(100dvh - 24px); }
+  /* a dialog locks the page (Sheet sets overflow: hidden on html) — lock the frame with it */
+  html[style*="overflow: hidden"] body .deck { overflow-y: hidden; }
+  /* Next.js brings a new page's first element into view when its top is off screen; with the window
+     it scrolls the document to 0 first, which does nothing here. A scroll margin taller than the
+     header on the page's top-level elements makes that scrollIntoView land on 0 too, rather than
+     tucking the page's first line under the sticky top bar. The element it scrolls is the new
+     segment's first node — under the (app) template's motion div, two or three levels down. */
+  .deck-card > div > *, .deck-card > div > * > *, .deck-card > div > * > * > * { scroll-margin-top: 100vh; }
+}
 /* the wall is always graphite, whatever the theme — so is everything written on it */
 .wall { color: #f4f4f1; } .wall h1, .wall .flip-label, .wall .font-display { color: #f4f4f1; } .wall .flip-label { color: #9a9aa6; }
 /* the brand mark sits bare on the surface — no tile, no ring — so it ships in two inks: paper-white for the board, graphite for the bright room */

@@ -136,10 +136,33 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
   CSS (`.rail-only`), not by JavaScript — move the breakpoint there, and only there.
 - **The spacer must stay the aside's next sibling** (`aside[data-open] + .nav-spacer`). Put anything
   between them and opening the drawer slides the page 76px left.
-- **The page does not bounce: `html, body { overscroll-behavior: none }`.** On `html` alone iPad
-  Safari still rubber-banded past the end of a short screen and showed empty page under the app.
-  Keep it on both. It also stops the browser's own pull-to-refresh, which on a till would reload a
-  half-typed ticket — the app's pull-to-refresh below re-fetches data instead.
+- **On an iPad-size touch screen the frame scrolls, not the page** (globals.css, `@media screen and
+  (any-pointer: coarse) and (min-width: 768px)`). `html, body { overscroll-behavior: none }` (kept,
+  in base) does **not** stop WebKit — every iPad browser — from rubber-banding the page itself: past
+  the end of any screen the whole app lifted off a band of empty frame (the Assist button and the
+  rail's avatar rode up with it, the tell of a page bounce; in Chrome the page ends 12px under the
+  card on every screen). WebKit does honour it on an inner scroller, so there html and body are the
+  screen's height with `overflow: hidden`, and `body .deck` is `height: 100dvh; overflow-y: auto;
+  overscroll-behavior: none` — nothing left to bounce. Things that depend on it:
+  - **`body .deck`, never `.deck`:** `<html>` carries the class too (root layout); a bare `.deck`
+    rule made the root a scroller and `querySelector(".deck")` returns `<html>`.
+  - **The card is top-aligned with a one-screen minimum** (`align-items: flex-start`,
+    `min-height: calc(100dvh - 24px)`): a fixed-height flex row stretched it to exactly one screen
+    and the page spilled out under it.
+  - **A new page opens at its top:** Next.js scrolls the new segment's first node into view (with
+    the window it first sets the document to 0, which does nothing here); a `scroll-margin-top: 100vh`
+    on the first three levels under `.deck-card > div` (the `(app)` template's motion div, then the
+    page) makes that land on 0 instead of under the sticky top bar.
+  - **Back/forward land where you were:** `components/shell/DeckScroll.tsx` remembers the frame's
+    position per address and restores it on popstate; the browser only restores the page's own.
+  - **A dialog freezes the frame:** `Sheet` sets `overflow: hidden` on html; `html[style*="overflow:
+    hidden"] body .deck` follows it.
+  - **Pull to refresh still works:** `Gestures` only starts a pull when `innerCanScrollUp` finds no
+    scrolled ancestor — the frame is one. Sticky things (rail, top bar, Settings save bar) stick to
+    the frame; fixed ones are unaffected; print is `screen`-only.
+  - **Phones keep the page scroll** — locked, the phone's address bar would never collapse.
+  Confirmed in Chrome's emulation only (`deck.mjs`); the bounce itself is WebKit's and has to be
+  checked on the iPad once deployed.
 - **Gestures (`components/shell/Gestures.tsx`, mounted once in the `(app)` layout, coarse pointer
   only).** *Pull to refresh:* at `scrollY 0`, a downward drag (damped ×0.5) past 72px shows a ring
   that fills with the tint; letting go runs `router.refresh()` in a transition and the ring spins
