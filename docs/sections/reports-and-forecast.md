@@ -65,6 +65,11 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   sorts first in In use. It used to print "seated 34736 min ago". Probe: `pulse.mjs` (7 checks;
   inserts a booking and removes it), `fresh.mjs` (a live tile; restores the order's time).
 
+- **Speed of service: three tiles that stay level.** `Mini` truncates its label to one line and the
+  third is "On target" — "Within target" wrapped on a phone and made its tile taller than the other
+  two. The header (target · tickets · recalls) wraps under the title rather than squeezing it;
+  "1 ticket", "1 recall". Probe: `five.mjs`.
+
 - **A sealed period must not move.** If a report lets a closed day change, the proof record is a
   lie. `close_day` and `run_night_audit` are the seals.
 - **Do not recompute a figure client-side "just for this screen".** Add it to the RPC.

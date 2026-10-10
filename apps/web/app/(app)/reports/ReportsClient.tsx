@@ -51,14 +51,14 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
       <div className={cn("grid gap-4", hotel && "lg:grid-cols-2")}>
         {kitchen && (
           <Card>
-            <div className="flex items-baseline justify-between gap-3 mb-3"><h3 className="text-xl">Speed of service</h3><span className="text-xs text-steel num">target {kitchen.target ?? 15} min · {kitchen.tickets} tickets · {kitchen.recalls} recall{Number(kitchen.recalls) === 1 ? "" : "s"}</span></div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3"><h3 className="text-xl">Speed of service</h3><span className="text-xs text-steel num">target {kitchen.target ?? 15} min · {kitchen.tickets} ticket{Number(kitchen.tickets) === 1 ? "" : "s"} · {kitchen.recalls} recall{Number(kitchen.recalls) === 1 ? "" : "s"}</span></div>
             {Number(kitchen.tickets) === 0 ? <p className="text-sm text-steel">No tickets marked ready in this window yet.{Number(kitchen.ignored ?? 0) > 0 && <> {kitchen.ignored} ticket{Number(kitchen.ignored) === 1 ? " was" : "s were"} left open for hours and closed later, so {Number(kitchen.ignored) === 1 ? "it is" : "they are"} not counted as cooking time.</>}</p> : (
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
                 <div className="min-w-0">
                   <div className="grid grid-cols-3 gap-3">
                     <Mini label="Avg ticket" value={`${Number(kitchen.avg_min).toFixed(1)} min`} />
                     <Mini label="Slowest 10%" value={`${Number(kitchen.p90_min).toFixed(1)} min`} />
-                    <Mini label="Within target" value={`${kitchen.within_pct}%`} tone={Number(kitchen.within_pct) >= 90 ? "good" : Number(kitchen.within_pct) < 70 ? "alert" : undefined} />
+                    <Mini label="On target" value={`${kitchen.within_pct}%`} tone={Number(kitchen.within_pct) >= 90 ? "good" : Number(kitchen.within_pct) < 70 ? "alert" : undefined} />
                   </div>
                   {Number(kitchen.ignored ?? 0) > 0 && <p className="text-[11px] text-steel mt-2">{kitchen.ignored} ticket{Number(kitchen.ignored) === 1 ? "" : "s"} left open for hours and closed later — not counted as cooking time.</p>}
                   {kitchen.slowest.length > 0 && <div className="mt-4"><div className="text-xs uppercase text-steel mb-1.5">Slowest dishes</div><ul className="text-sm space-y-1">{kitchen.slowest.map((d) => <li key={d.name} className="flex justify-between gap-3"><span className="truncate">{d.name}</span><span className="num text-steel shrink-0">{Number(d.avg_min).toFixed(1)} min · {d.n}</span></li>)}</ul></div>}
@@ -103,7 +103,8 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
 }
 
 function Mini({ label, value, tone }: { label: string; value: string; tone?: "good" | "alert" }) {
-  return <div className="rounded-2xl bg-[var(--color-fill)] p-3"><div className="text-[10.5px] uppercase tracking-wide text-steel">{label}</div><div className={cn("num text-2xl font-semibold mt-1", tone === "good" && "text-[var(--color-tint)]", tone === "alert" && "text-chili")}>{value}</div></div>;
+  // one-line label, one-size figure: "Within target" wrapped to two lines on a phone and pushed its tile taller than the others
+  return <div className="rounded-2xl bg-[var(--color-fill)] p-3 min-w-0"><div className="text-[10.5px] uppercase tracking-wide text-steel truncate">{label}</div><div className={cn("num text-[22px] sm:text-2xl leading-tight font-semibold mt-1 truncate", tone === "good" && "text-[var(--color-tint)]", tone === "alert" && "text-chili")}>{value}</div></div>;
 }
 
 /** Twenty-four bars, one per hour: height is the average ticket time, colour is how much of that hour beat the target. */

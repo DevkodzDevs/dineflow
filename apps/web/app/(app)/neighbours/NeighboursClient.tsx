@@ -57,8 +57,9 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
         <Card className="!bg-champagne-2 flex items-start gap-3 mb-5"><Users size={18} className="shrink-0 mt-0.5" /><div className="text-sm flex-1"><b>You haven&apos;t joined yet.</b> Choose which streams to share — each one is separate, and you can take price data without offering labour, or any other combination.</div><Button size="sm" onClick={() => setSetup(true)}>Choose</Button></Card>
       )}
 
-      <div className="flex flex-wrap gap-2 mb-5">
-        {TABS.map(({ k, label, Icon }) => <button key={k} onClick={() => setT(k)} className={cn("chip gap-1.5", t === k && "on")}><Icon size={14} /> {label}</button>)}
+      {/* a phone: the four sections as an even 2×2 of tiles (they wrapped two-and-two at odd widths) */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap mb-5">
+        {TABS.map(({ k, label, Icon }) => <button key={k} onClick={() => setT(k)} className={cn("chip gap-1.5 max-sm:!h-12 max-sm:!rounded-2xl max-sm:justify-start max-sm:px-3.5 max-sm:min-w-0", t === k && "on")}><Icon size={15} className="shrink-0" /> <span className="truncate">{label}</span></button>)}
       </div>
 
       {/* ── 1. price index ── */}

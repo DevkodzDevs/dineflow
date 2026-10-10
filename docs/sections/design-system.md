@@ -114,6 +114,9 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   renders as plain text.
 - **Text links get height, not width**: `.card-title a`, `.legal-links a` and `.tap` are 40/44px
   tall with a negative margin so the line does not move. A text link is exempt from the width rule.
+- **A `.card-title` with a `.footnote` child stacks on a phone** (under 640px: column, 4px gap). Beside
+  the title the note ran down the right in a narrow column and broke the title over two lines (Tax →
+  Returns, "Outward supplies"). It applies everywhere the pair is used; from `sm` they share a row.
 
 - **`Sheet` (every dialog) lives in the *visible* viewport, not the layout viewport.** Its frame
   takes `top`/`height` from `window.visualViewport` on resize and scroll, so with an iPad keyboard

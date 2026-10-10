@@ -71,6 +71,15 @@ small header row. The picked range is a tint wash with a 3px tint edge. The phon
 `data-suggested`, **not** `title` — the hidden desktop tiles already answer
 `[title^="Suggested:"]`, and a second set would double the b3 suite's count.
 
+**An OTA card's actions are one row on a narrow card.** The row sits in its own `@container`; below
+28rem of card (a phone, or two cards side by side on a tablet — 338px and 293px) it is a grid: Sync
+and Push rates share the width, then Edit and Remove as 44px squares (a pencil on a grey wash, the
+bin on a red wash, both with `aria-label`). A wide card (506px at 1440) keeps the plain row with the
+word "Edit". It is measured on the card, not the screen: at 834 the flex row wrapped too, with the
+bin alone on a second line. The squares need `!bg-*`/`!text-*` — the ghost button's unlayered style
+beats a plain utility — and the two wide buttons `[&>svg]:shrink-0`, or the upload icon shrank to
+10px when the label was tight.
+
 Each channel carries its own token. A token is a credential: it is never rendered into a page a
 guest can see.
 

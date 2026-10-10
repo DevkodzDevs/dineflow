@@ -33,8 +33,13 @@ The property's CA can be recorded (`ca_name`, `ca_firm`, `ca_membership_no`, `ca
   break and ran out of the card at every width, 1920 to 412. The month's three figures are tiles
   in `repeat(auto-fit, minmax(8.5rem, 1fr))`, so they reflow rather than crowd.
 - **A document's number wraps, never truncates** — it is what an officer asks for at the counter.
-- **Wide tables (Returns, Guide) scroll inside `.table-wrap`.** An empty month's note goes under
-  the table, not in a `colSpan` row — centred across eight columns it was cut mid-word on a phone.
+- **Wide tables (Returns, Guide) scroll inside `.table-wrap`.** An empty month shows only its
+  sentence — no table at all. A header row of eight columns with nothing under it read as broken on
+  a phone, and the note in a `colSpan` row before that was cut mid-word.
+- **Returns' month on a phone is one stepper bar** (back · month centred · forward, 44px buttons on a
+  `--color-fill` bar) with "CSV for your CA" full width under it; from `sm` they share one row with
+  the button pushed right. The card titles' notes ("All sales · GSTR-3B…") stack under the title on a
+  phone by the global `.card-title:has(> .footnote)` rule. Probe: `five.mjs`.
 - **The tab rail fades only where it scrolls** (`rail-fade` plus `sm:![mask-image:none]`). Without
   the `!` the unlayered `.rail-fade` rule wins and "Guide" looks faded on a screen where it fits.
 

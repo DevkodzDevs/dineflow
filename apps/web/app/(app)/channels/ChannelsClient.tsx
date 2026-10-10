@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Plus, Copy, RefreshCw, Globe, Bike, Calendar, Check, AlertTriangle, ExternalLink, Trash2, Info } from "lucide-react";
+import { Plus, Copy, RefreshCw, Globe, Bike, Calendar, Check, AlertTriangle, ExternalLink, Trash2, Info, Pencil } from "lucide-react";
 import { Button, Sheet, Field, Card, Pill, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveOta, deleteOta, setRates, setRatesOnly, pushChannel, sendTestOrder } from "./actions";
@@ -80,8 +80,11 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <div className="mt-3"><label>Your DineFlow calendar (give this to them)</label><div className="mt-1 flex gap-2 min-w-0"><input readOnly className="num text-xs min-w-0" value={`${base}/api/ical/${c.export_token}.ics`} /><Button size="sm" variant="outline" onClick={() => copy(`${base}/api/ical/${c.export_token}.ics`)}><Copy size={14} /></Button></div></div>
             <div className="mt-2 text-xs text-steel">{c.import_url ? <>Their feed: <span className="num">{c.import_url.slice(0, 42)}…</span></> : "No incoming feed set"}</div>
             <div className="mt-1 text-xs flex items-center gap-1">{c.last_error ? <span className="text-chili flex items-center gap-1"><AlertTriangle size={12} /> {c.last_error}</span> : c.last_import_at ? <span className="text-mint flex items-center gap-1"><Check size={12} /> synced {new Date(c.last_import_at).toLocaleString("en-IN")}</span> : <span className="text-steel">never synced</span>}</div>
-            <div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => syncNow(c.id)}><RefreshCw size={14} /> Sync</Button>
-              <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await pushChannel(c.id, "ari"); setMsg("error" in r ? r.error! : r.message!); })}><Upload size={14} /> Push rates</Button><Button size="sm" variant="ghost" onClick={() => setEditOta(c)}>Edit</Button><Button size="sm" variant="ghost" onClick={() => { if (confirm(`Remove ${c.label}?`)) start(() => { deleteOta(c.id); }); }}><Trash2 size={14} /></Button></div></Card>))}
+            {/* a narrow card (a phone, or two cards side by side on a tablet): one row — Sync and Push rates share
+                the width, Edit and Remove are square buttons beside them; they wrapped with the bin alone on a
+                second line. Measured on the card, not the screen, so a wide card keeps the plain row */}
+            <div className="@container mt-3"><div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] @md:flex @md:flex-wrap gap-2"><Button size="sm" variant="outline" className="max-sm:!h-11 [&>svg]:shrink-0" onClick={() => syncNow(c.id)}><RefreshCw size={14} /> Sync</Button>
+              <Button size="sm" variant="outline" className="max-sm:!h-11 [&>svg]:shrink-0" disabled={pending} onClick={() => start(async () => { const r = await pushChannel(c.id, "ari"); setMsg("error" in r ? r.error! : r.message!); })}><Upload size={14} /> Push rates</Button><Button size="sm" variant="ghost" className="max-sm:!h-11 @max-md:!w-11 @max-md:!px-0 @max-md:!bg-[var(--color-fill)]" aria-label={`Edit ${c.label}`} onClick={() => setEditOta(c)}><Pencil size={14} className="@md:hidden" /><span className="hidden @md:inline">Edit</span></Button><Button size="sm" variant="ghost" className="max-sm:!h-11 @max-md:!w-11 @max-md:!px-0 @max-md:!bg-[var(--color-red-2)] @max-md:!text-[var(--color-red)]" aria-label={`Remove ${c.label}`} onClick={() => { if (confirm(`Remove ${c.label}?`)) start(() => { deleteOta(c.id); }); }}><Trash2 size={14} /></Button></div></div></Card>))}
           {ota.length === 0 && <p className="text-sm text-steel">No OTA channels yet.</p>}</div>
         <Card><div className="flex items-center gap-2"><Globe size={16} /><b>Your own booking page</b><Pill tone="ready">0% commission</Pill></div>
           <div className="mt-2 flex gap-2 min-w-0"><input readOnly className="num text-xs min-w-0" value={bookingUrl} /><Button size="sm" variant="outline" onClick={() => copy(bookingUrl)}><Copy size={14} /></Button><a href={bookingUrl} target="_blank" rel="noreferrer"><Button size="sm"><ExternalLink size={14} /> Open</Button></a></div>

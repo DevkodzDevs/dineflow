@@ -377,6 +377,9 @@ body:has(.deck-card) { background: #0a0a0d; }
 .card-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .card-title h3 { font-size: 20px; }
 .card-title a, .card-title .more { font-size: 13px; color: var(--color-label-2); }
+/* a phone: a title with a footnote stacks the note under it — beside it the title broke over two lines and
+   the note ran down the right in a narrow column (Tax → Returns, "Outward supplies") */
+@media (max-width: 639.98px) { .card-title:has(> .footnote) { flex-direction: column; align-items: flex-start; gap: 4px; } }
 /* "All →", "Reports →" and the legal links are text, but a finger still has to land on them: 40px
    of height, given back with a negative margin so the line they sit on does not move */
 .card-title a, .card-title .more, .legal-links a { display: inline-flex; align-items: center; min-height: 40px; margin-block: -10px; }

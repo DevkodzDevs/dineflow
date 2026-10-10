@@ -38,6 +38,9 @@ and the name others see.
 - **Leaving must stop the sharing immediately**, including anything cached.
 - **The privacy sheet on this screen is what the owner consented to.** If you change what is shared,
   change that copy in the same commit — and check [legal.md](legal.md).
+- **The four section tabs are an even 2×2 on a phone** (`grid grid-cols-2`, 48px tiles, icon and a
+  truncating label, left-aligned); from `sm` they are the original wrapping chips. As chips on a
+  phone they broke two-and-two at uneven widths. Probe: `five.mjs` (Neighbours at 412/834/1440).
 
 ## Verify
 

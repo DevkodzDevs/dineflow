@@ -144,21 +144,25 @@ function Returns({ r, lab, month, today, summary, error, go, monthly, status, on
   };
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <button className="h-10 w-10 grid place-items-center rounded-xl bg-[var(--color-fill)]" onClick={() => go({ month: shiftMonth(month, -1) })} aria-label="Previous month"><ChevronLeft size={16} /></button>
-        <h3 className="text-xl min-w-[200px]">{monthLabel(month)}</h3>
-        <button className="h-10 w-10 grid place-items-center rounded-xl bg-[var(--color-fill)]" onClick={() => go({ month: shiftMonth(month, 1) })} aria-label="Next month"><ChevronRight size={16} /></button>
-        <Button variant="outline" className="ml-auto" onClick={csv} disabled={!summary}><Download size={15} /> CSV for your CA</Button>
+      {/* a phone: the month as one stepper bar (back · month · forward, the month centred) and the CSV
+          button full width under it — they wrapped into a half-empty row with the button stranded */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <div className="flex items-center gap-2 max-sm:p-1 max-sm:rounded-2xl max-sm:bg-[var(--color-fill)]">
+          <button className="h-10 w-10 max-sm:h-11 max-sm:w-11 shrink-0 grid place-items-center rounded-xl bg-[var(--color-fill)] max-sm:bg-[var(--color-bg-2)]" onClick={() => go({ month: shiftMonth(month, -1) })} aria-label="Previous month"><ChevronLeft size={16} /></button>
+          <h3 className="text-xl flex-1 max-sm:text-center sm:min-w-[200px]">{monthLabel(month)}</h3>
+          <button className="h-10 w-10 max-sm:h-11 max-sm:w-11 shrink-0 grid place-items-center rounded-xl bg-[var(--color-fill)] max-sm:bg-[var(--color-bg-2)]" onClick={() => go({ month: shiftMonth(month, 1) })} aria-label="Next month"><ChevronRight size={16} /></button>
+        </div>
+        <Button variant="outline" className="max-sm:w-full sm:ml-auto" onClick={csv} disabled={!summary}><Download size={15} /> CSV for your CA</Button>
       </div>
       {error && <p className="text-sm text-[var(--color-red)]">Could not build the summary: {error}</p>}
       <Card>
         <div className="card-title"><h3>Outward supplies</h3><span className="footnote">All sales · GSTR-3B table 3.1(a). In GSTR-1 the B2B invoices below go in table 4, the rest in table 7.</span></div>
-        <div className="table-wrap"><table className="w-full text-sm"><thead className="text-xs uppercase tracking-wide text-[var(--color-label-2)] border-b border-[var(--color-separator)]"><tr><th className="text-left py-2">SAC</th><th className="text-left py-2">Supply</th><th className="text-right py-2">Rate</th><th className="text-right py-2">Nos.</th><th className="text-right py-2">Taxable</th><th className="text-right py-2">{lab.central}</th><th className="text-right py-2">{lab.state}</th><th className="text-right py-2">Value</th></tr></thead>
+        {rows.length > 0 && <div className="table-wrap"><table className="w-full text-sm"><thead className="text-xs uppercase tracking-wide text-[var(--color-label-2)] border-b border-[var(--color-separator)]"><tr><th className="text-left py-2">SAC</th><th className="text-left py-2">Supply</th><th className="text-right py-2">Rate</th><th className="text-right py-2">Nos.</th><th className="text-right py-2">Taxable</th><th className="text-right py-2">{lab.central}</th><th className="text-right py-2">{lab.state}</th><th className="text-right py-2">Value</th></tr></thead>
           <tbody>
             {rows.map((x, i) => <tr key={i} className="border-b border-[var(--color-separator)]/60"><td className="py-2 num">{x.sac}</td><td className="py-2">{x.kind === "dining" ? "Restaurant service" : "Accommodation"}</td><td className="py-2 text-right num">{x.rate}%</td><td className="py-2 text-right num">{x.count}</td><td className="py-2 text-right num">{n2(x.taxable)}</td><td className="py-2 text-right num">{n2(x.cgst)}</td><td className="py-2 text-right num">{n2(x.sgst)}</td><td className="py-2 text-right num">{n2(x.total)}</td></tr>)}
             {rows.length > 0 && <tr className="font-semibold"><td className="py-2" colSpan={3}>Total</td><td className="py-2 text-right num">{t("count")}</td><td className="py-2 text-right num">{n2(t("taxable"))}</td><td className="py-2 text-right num">{n2(t("cgst"))}</td><td className="py-2 text-right num">{n2(t("sgst"))}</td><td className="py-2 text-right num">{n2(t("total"))}</td></tr>}
-          </tbody></table></div>
-        {rows.length === 0 && <p className="py-5 text-sm text-[var(--color-label-2)]">No paid bills or stay invoices in this month.</p>}
+          </tbody></table></div>}
+        {rows.length === 0 && <p className="py-3 text-sm text-[var(--color-label-2)]">No paid bills or stay invoices in this month.</p>}
         <p className="footnote mt-3">Rate is derived from the tax actually charged on each bill, so a bill raised under an earlier rate lands in its own row. Alcohol, if sold, is outside GST and is not here. {lab.state === "UTGST" && "Your state half is UTGST because the property is in a Union Territory."}</p>
       </Card>
       <Card>
