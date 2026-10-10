@@ -40,21 +40,34 @@ dirty room without a ticket.
 
 ## Before you edit
 
-- **A room card is one shape everywhere**: the number (30px) with the guest or "Vacant" under it and
-  the state chip (dot + label); a `min-h-5` line with the since-time and "out MM-DD" / "Due out"
-  tags; then the **action dock** — every move the room allows, all visible (the owner asked for no
-  hidden menu), as equal tiles, icon over label (`.dock-tile`, 52px, 56 on touch): Cleaned / Touched
-  up / Pass in green, Fail red, Pickup blue, Dirty grey. A room with nothing pending shows Ready /
-  Occupied / Sign-off as its first tile; out of order shows In repair (note in its title and on the
-  meta line) and In service. One dock shape keeps every row of cards one height. Probe: `dock.mjs`.
-  The board grid is `repeat(auto-fill, minmax(15rem, 1fr))` from 520px (one per row below): fixed
-  column counts squeezed a four-tile dock to 37px tiles at 834.
-
-- **Floors are an accordion** (`openFloor`: a floor number, `"all"` or null). The first floor is
-  open; opening another closes it; tapping the open one closes it. The board head is "FLOORS n" and a
-  segmented switch, One at a time | All open; tapping a floor while all are open shows just that one.
-  Each floor head: its number in a tile (filled when open), bold name, tags for rooms / dirty /
-  out of order (or "all clear"), and the chevron in a round button. Probe: `acc.mjs` (1440 dark, 390 paper).
+- **A room card has two shapes, the phone's and the wide one.** Both are in the DOM and one is
+  `display: none` at each width, so a width has one grid item per room — a probe must read the
+  *visible* card (`offsetParent`), or it finds the hidden copy first.
+  - **Phone (below `sm`), as it was:** the number (30px), the guest or "Vacant", the state chip; a
+    `min-h-5` line with the since-time and "out MM-DD" / "Due out"; then the **action dock** in one
+    row — every move the room allows, all visible (the owner asked for no hidden menu), as equal
+    tiles, icon over label (`.dock-tile`, 52px, 56 on touch): Cleaned / Touched up / Pass in green,
+    Fail red, Pickup blue, Dirty grey. One to a row under 520px, `auto-fill minmax(15rem)` to 639.
+    Probe: `dock.mjs` (390 both themes, 600).
+  - **Wide (`sm` and up, `[data-room]`, an `@container`), two lines and one row of actions,
+    130px tall:** the number in a 44px tile washed with the condition's colour (16% wash, 38%
+    inner ring — red dirty and out of order, amber clean, green inspected, blue pickup); the guest,
+    or Vacant / Reserved / Cleaning, or the repair note; under it the condition and the one thing to
+    know — "Due out" in red on the day, "Out 17 Sep" (`dayMonth`; en-IN says "Sept"), how long
+    ago, or where the repair stands. Then the actions as 48px tiles with a 12px radius (`rounded-xl`
+    is 28px here and made pills): the standing first (Ready / Occupied / Sign-off), Back in service
+    for a room out of order. Tones are `SOFT` — the main move on the green wash, the rest on
+    `--color-fill` with red / blue / grey text; the dock's `bg-2` is the card's own colour in dark
+    and those buttons vanished. Icon beside label, except four on a card stack icon over label, and
+    under a 15rem card (an iPad-portrait third) two or three stack and four go two by two, so a
+    tile stays ≥44px wide and "Touched up" is never cut.
+  - **Three across from `sm`, four from 1800px** (`sm:grid-cols-3 min-[1800px]:!grid-cols-4` — the
+    `!` because Tailwind emits the arbitrary `min-[1800px]` before `sm`, which then won at 1920),
+    **top-aligned** (`sm:items-start`): every card is 130px, so rows are level; the one exception,
+    a four-action card on an iPad in portrait, is taller on its own instead of stretching its
+    neighbours into cards with a hole in the middle. The first wide version — a 52px tile, a line
+    of chips and the dock two to a row — came out ~250px a card and was sent back as too large.
+  Probe: `hk.mjs`.
 
 - **Floors are an accordion** (`openFloor`: a floor number, `"all"` or null). The first floor is
   open; opening another closes it; tapping the open one closes it. The board head is "FLOORS n" and a
