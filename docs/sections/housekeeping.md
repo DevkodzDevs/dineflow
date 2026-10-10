@@ -58,14 +58,20 @@ dirty room without a ticket.
     is 28px here and made pills): the standing first (Ready / Occupied / Sign-off), Back in service
     for a room out of order. Tones are `SOFT` — the main move on the green wash, the rest on
     `--color-fill` with red / blue / grey text; the dock's `bg-2` is the card's own colour in dark
-    and those buttons vanished. Icon beside label, except four on a card stack icon over label, and
-    under a 15rem card (an iPad-portrait third) two or three stack and four go two by two, so a
-    tile stays ≥44px wide and "Touched up" is never cut.
+    and those buttons vanished. **One look per card width, always one row:** from a 15rem card
+    (an iPad in landscape, a laptop) every tile is icon beside label — four a little tighter
+    (12px, 15px icon, `gap-1 px-1`) so "Pickup" fits in ~71px at 1194; under 15rem (an
+    iPad-portrait third) every tile is icon over label, 3px apart. Mixing the two in one row, and a
+    four-action card going two by two, made the rows look uneven and was sent back. Only a card
+    under 185px inside (an iPad narrower than 820 in portrait) puts four two by two, where four in
+    a row would be under 44px each. Between 640 and 1023 the floor's padding (`sm:p-2.5`), the gap
+    (`sm:gap-2.5`) and the card's padding (`sm:p-2.5`) give back the pixels that keep four tiles
+    ≥44px: 46px at 834, 44 at 820.
   - **Three across from `sm`, four from 1800px** (`sm:grid-cols-3 min-[1800px]:!grid-cols-4` — the
     `!` because Tailwind emits the arbitrary `min-[1800px]` before `sm`, which then won at 1920),
-    **top-aligned** (`sm:items-start`): every card is 130px, so rows are level; the one exception,
-    a four-action card on an iPad in portrait, is taller on its own instead of stretching its
-    neighbours into cards with a hole in the middle. The first wide version — a 52px tile, a line
+    **top-aligned** (`sm:items-start`): every card is one height (130px; 126 under 15rem), so rows
+    are level; a four-action card on an iPad narrower than 820 in portrait is the one taller card,
+    on its own rather than stretching its neighbours into cards with a hole in the middle. The first wide version — a 52px tile, a line
     of chips and the dock two to a row — came out ~250px a card and was sent back as too large.
   Probe: `hk.mjs`.
 

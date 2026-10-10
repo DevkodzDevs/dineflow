@@ -149,12 +149,12 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
               <ChevronDown size={17} className={cn("text-[var(--color-label-2)] transition-transform duration-200", on && "rotate-180")} />
             </span>
           </button>
-          {on && <div className="p-3 sm:p-4">
+          {on && <div className="p-3 sm:p-2.5 lg:p-4">
           {/* One room to a row on a phone, its actions in a single row of equal buttons (the phone
               card, kept as it is). From sm — an iPad, a laptop — three across, four from 1800px (a
               1920 screen), with the wide card below: auto-fill put four or five squeezed cards in a
               row and a four-tile dock cut "Pickup" to "Pick…". */}
-          <div className="grid grid-cols-1 min-[520px]:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] sm:grid-cols-3 min-[1800px]:!grid-cols-4 sm:items-start gap-3 sm:gap-3.5" data-board>
+          <div className="grid grid-cols-1 min-[520px]:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] sm:grid-cols-3 min-[1800px]:!grid-cols-4 sm:items-start gap-3 sm:gap-2.5 lg:gap-3.5" data-board>
             {rooms.filter((r) => r.floor === fl).map((r) => {
               const s = byRoom[r.id]; const out = r.status === "maintenance"; const c = COND[r.condition] ?? COND.clean;
               const sellable = r.condition === "inspected" || (r.condition === "clean" && !inspectRule);
@@ -189,14 +189,15 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                 ...tiles.map((t) => ({ key: t.key, label: t.label, icon: t.icon, cls: SOFT[t.tone], run: t.run })),
               ];
               const n = items.length;
-              /* one row of 48px tiles. Icon beside the label, except where a label would be cut: four on a
-                 card stack icon over label (~70px each at 1194); on a card under 15rem (an iPad-portrait
-                 third) two or three stack ("Touched up" did not fit beside its icon), and four go two by
-                 two so each stays a finger wide */
-              const ROW = "gap-1.5 px-2 text-[12.5px]", STACK = "flex-col gap-0.5 px-1 text-[11px]";
-              const tileCls = n === 4 ? cn(STACK, "@max-[15rem]:flex-row @max-[15rem]:gap-1.5 @max-[15rem]:px-2 @max-[15rem]:text-[12.5px]")
-                : n >= 2 ? cn(ROW, "@max-[15rem]:flex-col @max-[15rem]:gap-0.5 @max-[15rem]:px-1 @max-[15rem]:text-[11px]") : ROW;
-              const dockCols = n === 4 ? "grid-cols-4 @max-[15rem]:grid-cols-2" : n === 3 ? "grid-cols-3" : n === 2 ? "grid-cols-2" : "grid-cols-1";
+              /* one row of 48px tiles, and ONE look per card width so a row of cards matches: on a card of
+                 15rem or more (an iPad in landscape, a laptop) every tile is icon beside label — four
+                 a little tighter, so "Pickup" fits in ~71px at 1194; under 15rem (an iPad-portrait third)
+                 every tile is icon over label. Mixing the two, and putting a four-action card two by
+                 two, made the rows look uneven. Only under 185px — an iPad narrower than 834 in
+                 portrait — do four go two by two, where four in a row would be under 44px each. */
+              const tileCls = cn(n === 4 ? "gap-1 px-1 text-[12px] [&>svg]:w-[15px] [&>svg]:h-[15px]" : "gap-1.5 px-2 text-[12.5px]",
+                "@max-[15rem]:flex-col @max-[15rem]:gap-0.5 @max-[15rem]:px-0.5 @max-[15rem]:text-[10.5px] @max-[15rem]:[&>svg]:w-[16px] @max-[15rem]:[&>svg]:h-[16px]");
+              const dockCols = n === 4 ? "grid-cols-4 @max-[185px]:grid-cols-2" : n === 3 ? "grid-cols-3" : n === 2 ? "grid-cols-2" : "grid-cols-1";
               const repair = fix ? (fix.status === "in_progress" ? "Being fixed" : "In repair") : "No repair task";
               return (
                 <Fragment key={r.id}>
@@ -204,7 +205,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     with the condition's colour; who is in the room (or Vacant / Reserved / Cleaning, or the
                     repair); then the condition and the one thing to know about it — when the guest leaves
                     ("Due out" in red on the day), how long it has been, or where the repair stands */}
-                <div data-room={r.number} className="@container hidden sm:flex feather relative p-3 flex-col gap-3 min-w-0">
+                <div data-room={r.number} className="@container hidden sm:flex feather relative p-3 sm:p-2.5 lg:p-3 flex-col gap-3 min-w-0">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="h-11 min-w-11 px-1.5 rounded-[12px] grid place-items-center font-display text-[19px] leading-none tracking-tight shrink-0"
                       style={{ background: `color-mix(in srgb, ${tone} 16%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${tone} 38%, transparent)` }} data-num>{r.number}</span>
@@ -226,7 +227,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     </div>
                   </div>
                   {n > 0 && (
-                    <div className={cn("mt-auto grid gap-1.5", dockCols)} data-dock>
+                    <div className={cn("mt-auto grid gap-1.5 @max-[15rem]:gap-[3px]", dockCols)} data-dock>
                       {items.map((t) => {
                         const cls = cn("min-w-0 h-12 rounded-[12px] inline-flex items-center justify-center font-semibold [&>svg]:shrink-0", tileCls, t.cls, t.run && "transition hover:brightness-110 active:scale-[.97] disabled:opacity-50");
                         const body = <>{t.icon}<span className="max-w-full truncate">{t.label}</span></>;
