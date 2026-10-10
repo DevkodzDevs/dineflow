@@ -27,7 +27,17 @@ and at the end of a scrolling rail it was the first thing to disappear.
 
 **Options** (`Options.tsx`) holds three editors: `OptionsEditor` (a dish's sizes and which add-on
 groups it offers), `GroupsManager` (the groups themselves, shared across dishes) and `ComboParts`.
-A dish card shows what it has as small pills — `combo · 3 parts`, `Half / Full`, `2 add-on groups`.
+A dish card shows what it has as small pills — `combo · 3`, `Half / Full`, `2 add-ons`.
+
+**The dish card** (`MenuClient.tsx`, `data-dish`): as many across as fit
+(`repeat(auto-fill,minmax(17rem,1fr))` — 1 on a phone, 2 at 834, 3 at 1194–1440, 5 at 1920). On top,
+the square-and-dot veg mark (green veg, red non-veg), the name (two lines at most) and the price in
+whole rupees (`formatINR(…, { whole: true })` — "₹160", `from` above it when sizes exist); the
+description; then chips for prep minutes, combo, sizes, add-ons and the recipe — green "N ingredients"
+or red "No recipe" (· standard ready when `findStandardRecipe` knows the dish). A footer strip holds
+the sold-out `Switch` (its row is the 44px target) with Available/Sold out in green/red, and three
+round 40px (44 on touch) buttons: sizes and add-ons, recipe, edit. A sold-out dish dims its body,
+not its switch. Probe: `menu.mjs` (6 checks; flips the switch and restores it).
 
 **Recipes** map a dish to ingredients per plate. `findStandardRecipe` in `@dineflow/shared` offers a
 known plate for common Indian dishes; `applyStandardRecipe` maps it and creates any missing pantry

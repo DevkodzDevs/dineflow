@@ -1,8 +1,8 @@
 "use client";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Plus, Leaf, Drumstick, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers, Camera } from "lucide-react";
+import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers, Camera, Clock, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button, Card, Field, Sheet, Empty, cn, useToast } from "@/components/ui";
+import { Button, Field, Sheet, Empty, Switch, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { findStandardRecipe } from "@dineflow/shared";
 import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation } from "./actions";
@@ -77,41 +77,58 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
       {visible.length === 0 ? (
         <Empty title="No dishes yet" hint="Add your first dish, then map its ingredients so stock drops automatically." action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
       ) : (
-        <motion.div layout className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        /* One card per dish, as many across as fit (about 17rem each): the veg mark, the name and the
+           price on top, what it is in a line, what it carries as chips — prep, sizes, add-ons, recipe —
+           and a footer strip with the sold-out switch and the three editors as round buttons. */
+        <motion.div layout className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(17rem,1fr))]">
           <AnimatePresence>
-            {visible.map((it) => (
-              <motion.div key={it.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <Card lift className={cn("h-full flex flex-col", !it.is_available && "opacity-60")}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {it.is_veg ? <Leaf size={16} className="text-mint shrink-0" /> : <Drumstick size={16} className="text-chili shrink-0" />}
-                      <h3 className="font-sans font-semibold text-base truncate">{it.name}</h3>
+            {visible.map((it) => {
+              const vs = variantsOf(it.id); const gs = groupsOf(it.id); const mapped = recipeMap[it.id]?.length ?? 0;
+              const lo = vs.length ? Math.min(...vs.map((v) => Number(v.price))) : Number(it.price);
+              const chip = "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11.5px] font-semibold";
+              return (
+              <motion.div key={it.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} data-dish={it.id}
+                className="min-w-0 rounded-[22px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] overflow-hidden flex flex-col">
+                <div className={cn("p-4 flex-1 flex flex-col gap-2.5 transition-opacity", !it.is_available && "opacity-55")}>
+                  <div className="flex items-start gap-2.5">
+                    {/* the mark every Indian menu uses: a square with a dot, green for veg, red for not */}
+                    <span title={it.is_veg ? "Veg" : "Non-veg"} aria-label={it.is_veg ? "Veg" : "Non-veg"}
+                      className={cn("mt-1 h-[15px] w-[15px] shrink-0 rounded-[3px] border-[1.5px] grid place-items-center", it.is_veg ? "border-[var(--color-green)]" : "border-[var(--color-red)]")}>
+                      <span className={cn("h-[7px] w-[7px] rounded-full", it.is_veg ? "bg-[var(--color-green)]" : "bg-[var(--color-red)]")} />
+                    </span>
+                    <h3 className="flex-1 min-w-0 font-sans font-semibold text-[16px] leading-snug line-clamp-2">{it.name}</h3>
+                    <div className="shrink-0 text-right leading-none">
+                      {vs.length > 0 && <div className="text-[10.5px] text-steel mb-0.5">from</div>}
+                      <div className="num font-display text-[20px]">{formatINR(lo, { whole: true })}</div>
                     </div>
-                    <div className="num font-semibold">{(() => { const vs = variantsOf(it.id); if (!vs.length) return formatINR(Number(it.price)); const lo = Math.min(...vs.map((v) => Number(v.price))); return <><span className="text-[11px] text-steel font-normal">from </span>{formatINR(lo)}</>; })()}</div>
                   </div>
-                  <p className="text-xs text-steel mt-1 line-clamp-2 min-h-[2lh]">{it.description || `${it.prep_minutes} min prep`}</p>
-                  {(recipeMap[it.id]?.length ?? 0) > 0
-                    ? <div className="mt-3 text-[11px] text-steel">{recipeMap[it.id].length} ingredient{recipeMap[it.id].length === 1 ? "" : "s"} mapped</div>
-                    : <div className="mt-3 text-[11px] text-chili font-medium">No recipe · pantry won't move{findStandardRecipe(it.name) ? " · standard recipe available" : ""}</div>}
-                  {(variantsOf(it.id).length > 0 || groupsOf(it.id).length > 0 || it.is_combo) && (
-                    <div className="mt-2 flex flex-wrap gap-1 text-[10.5px] text-steel">
-                      {it.is_combo && <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 flex items-center gap-1"><Layers size={10} /> combo · {partsOf(it.id).length} part{partsOf(it.id).length === 1 ? "" : "s"}</span>}
-                      {variantsOf(it.id).length > 0 && <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5">{variantsOf(it.id).map((v) => v.name).join(" / ")}</span>}
-                      {groupsOf(it.id).length > 0 && <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5">{groupsOf(it.id).length} add-on group{groupsOf(it.id).length === 1 ? "" : "s"}</span>}
-                    </div>
-                  )}
-                  <div className="mt-auto pt-4 flex items-center gap-1.5">
-                    <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer mr-auto normal-case tracking-normal">
-                      <input type="checkbox" className="w-4 h-4 accent-saffron" checked={it.is_available} onChange={(e) => start(() => { toggleAvailable(it.id, e.target.checked); })} />
-                      {it.is_available ? "Available" : "Sold out"}
-                    </label>
-                    <Button size="sm" variant="ghost" onClick={() => setOptionsFor(it)} aria-label="Sizes and add-ons" title="Sizes and add-ons"><SlidersHorizontal size={15} /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => setRecipeFor(it)} aria-label="Recipe"><FlaskConical size={15} /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => openEditor(it)} aria-label="Edit"><Pencil size={15} /></Button>
+                  <p className="text-[13px] leading-snug text-[var(--color-label-2)] line-clamp-2 pl-[25px]">{it.description || "No description yet"}</p>
+                  <div className="flex flex-wrap gap-1.5 pl-[25px]">
+                    <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><Clock size={11} />{it.prep_minutes} min</span>
+                    {it.is_combo && <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><Layers size={11} />combo · {partsOf(it.id).length}</span>}
+                    {vs.length > 0 && <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)] max-w-full")}><span className="truncate">{vs.map((v) => v.name).join(" / ")}</span></span>}
+                    {gs.length > 0 && <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)]")}>{gs.length} add-on{gs.length === 1 ? "" : "s"}</span>}
+                    {mapped > 0
+                      ? <span className={cn(chip, "bg-[var(--color-green-2)] text-[var(--color-green)]")}><FlaskConical size={11} />{mapped} ingredient{mapped === 1 ? "" : "s"}</span>
+                      : <span className={cn(chip, "bg-[var(--color-red-2)] text-[var(--color-red)]")} title={findStandardRecipe(it.name) ? "A standard recipe is available — open Recipe" : undefined}><AlertTriangle size={11} />No recipe{findStandardRecipe(it.name) ? " · standard ready" : ""}</span>}
                   </div>
-                </Card>
+                </div>
+                <div className="flex items-center gap-1 pl-4 pr-2 py-2 border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)]">
+                  <label className="flex items-center gap-2.5 mr-auto cursor-pointer select-none min-h-11">
+                    <Switch on={it.is_available} onChange={(v) => start(() => { toggleAvailable(it.id, v); })} name={`${it.name} available`} />
+                    <span className={cn("text-[13px] font-semibold", it.is_available ? "text-[var(--color-green)]" : "text-[var(--color-red)]")}>{it.is_available ? "Available" : "Sold out"}</span>
+                  </label>
+                  {[
+                    { label: "Sizes and add-ons", icon: <SlidersHorizontal size={16} />, on: () => setOptionsFor(it) },
+                    { label: "Recipe", icon: <FlaskConical size={16} />, on: () => setRecipeFor(it) },
+                    { label: "Edit", icon: <Pencil size={16} />, on: () => openEditor(it) },
+                  ].map((b) => (
+                    <button key={b.label} type="button" onClick={b.on} aria-label={`${b.label} — ${it.name}`} title={b.label}
+                      className="h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 shrink-0 rounded-full grid place-items-center text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)] transition-colors">{b.icon}</button>
+                  ))}
+                </div>
               </motion.div>
-            ))}
+            ); })}
           </AnimatePresence>
         </motion.div>
       )}
