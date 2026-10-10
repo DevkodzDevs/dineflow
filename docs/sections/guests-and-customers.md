@@ -69,3 +69,7 @@ node guests-test.mjs     # 17 checks, ending with
 
 [front-desk.md](front-desk.md) · [legal.md](legal.md) ·
 [billing-and-invoices.md](billing-and-invoices.md)
+
+- **CSV exports neutralise formulas** (`lib/csv.ts`, `csvCell`): a cell starting = + - @ gets a leading
+  apostrophe (numbers, negative ones too, are left alone). Customer names arrive from public orders.
+  Tax's GST export uses the same helper.

@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { csvCell } from "@/lib/csv";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Landmark, Plus, Undo2, UserRound } from "lucide-react";
 import { Button, Card, Field, Pill, Sheet, cn } from "@/components/ui";
@@ -138,7 +139,7 @@ function Returns({ r, lab, month, today, summary, error, go, monthly, status, on
       ...rows.map((x) => [x.sac, x.kind === "dining" ? "Restaurant service" : "Accommodation", x.rate, x.count, n2(x.taxable), n2(x.cgst), n2(x.sgst), n2(x.total)]),
       ["", "Total", "", t("count"), n2(t("taxable")), n2(t("cgst")), n2(t("sgst")), n2(t("total"))], [], ["B2B (recipient GSTIN)", "Name", "Invoices", "Taxable value", lab.central, lab.state, "Invoice value"],
       ...(summary?.b2b ?? []).map((b) => [b.gstin, b.name ?? "", b.count, n2(b.taxable), n2(b.cgst), n2(b.sgst), n2(b.total)])];
-    const blob = new Blob([lines.map((l) => l.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n")], { type: "text/csv" });
+    const blob = new Blob([lines.map((l) => l.map(csvCell).join(",")).join("\n")], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `gst-${month}-${(r.gstin ?? r.name).replace(/\W+/g, "")}.csv`; a.click(); URL.revokeObjectURL(a.href);
   };
   return (

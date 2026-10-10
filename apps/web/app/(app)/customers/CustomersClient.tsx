@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { csvCell } from "@/lib/csv";
 import { motion } from "framer-motion";
 import { Plus, Search, MessageCircle, Download, Gift, Coins, Pencil, Cake, Heart } from "lucide-react";
 import { Button, Card, Field, Sheet, Empty, Pill, StatTile, cn, useToast } from "@/components/ui";
@@ -34,7 +35,7 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant }
 
   const exportCsv = () => {
     const rows = [["name", "phone", "email", "visits", "total_spend", "points", "last_visit", "birthday", "anniversary", "tags"], ...list.map((c) => [c.name ?? "", c.phone, c.email ?? "", c.visits, c.total_spend, c.points, c.last_visit_at ?? "", c.birthday ?? "", c.anniversary ?? "", c.tags.join(" ")])];
-    const csv = rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = rows.map((r) => r.map(csvCell).join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
   };
 

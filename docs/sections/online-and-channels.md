@@ -106,3 +106,9 @@ and reaches the kitchen.
 
 [orders-and-till.md](orders-and-till.md) · [api-routes.md](api-routes.md) ·
 [guest-facing.md](guest-facing.md)
+
+- **Send test order posts to this server's own webhook** — the address comes from the request's host,
+  not from the browser (it used to take `base` from the caller, which let anyone make the server fetch
+  any URL), and the token must be one of the caller's own channels.
+- **Sync now (OTA)** needs a signed-in user and runs only that property's feeds; see api-routes.md
+  for the cron secret and the feed-URL rules.

@@ -61,22 +61,27 @@ export async function changePassword(_: unknown, fd: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Decide whether this change is allowed BEFORE making it. It used to set the password first and
+  // check the code afterwards — so on a voluntary change (no forced reset pending) a session someone
+  // else had picked up could change the password without the emailed code; the failed check came too
+  // late to undo it.
+  const { data: profile } = await supabase
+    .from("profiles").select("must_change_password").eq("id", user.id).maybeSingle();
+  const forced = !!profile?.must_change_password;
+  if (!forced) {
+    // voluntary change: the verified one-time code is required, and checked first
+    const { error: flagError } = await supabase.rpc("clear_password_change_flag");
+    if (flagError) return { error: flagError.message };
+  }
+
   const { error } = await supabase.auth.updateUser({ password: next });
   if (error) return { error: error.message };
 
-  // Try the OTP-gated path first. If that fails because no OTP was verified, fall back to the
-  // direct path but only for a forced first-time change.
-  const { error: flagError } = await supabase.rpc("clear_password_change_flag");
-  if (flagError) {
-    // Check if this is a forced first-time change — if so, clear directly
-    const { data: profile } = await supabase
-      .from("profiles").select("must_change_password").eq("id", user.id).maybeSingle();
-    if (profile?.must_change_password) {
-      await supabase.rpc("clear_password_change_flag_forced");
-      // if that also fails, the error was something else
-    } else {
-      return { error: flagError.message };
-    }
+  if (forced) {
+    // first-time forced change: the OTP path if a code was verified, otherwise the temporary password
+    // they just signed in with is the proof (see above) — cleared only after the new password is set
+    const { error: flagError } = await supabase.rpc("clear_password_change_flag");
+    if (flagError) await supabase.rpc("clear_password_change_flag_forced");
   }
 
   revalidatePath("/", "layout");

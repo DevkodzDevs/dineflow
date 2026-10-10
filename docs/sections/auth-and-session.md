@@ -89,3 +89,10 @@ pnpm --filter @dineflow/web build
 
 [guest-facing.md](guest-facing.md) · [staff-and-labour.md](staff-and-labour.md) ·
 [shell-and-nav.md](shell-and-nav.md) · [data-and-rls.md](data-and-rls.md)
+
+- **A voluntary password change checks the emailed code first** (`changePassword`): it used to set the
+  new password and check the code afterwards, so a picked-up session could change it without the
+  code. A forced first-time change still needs no code — the temporary password is the proof.
+- **`DINEFLOW_OTP_ECHO` works only on a development server** (`otpEcho()` also requires
+  `NODE_ENV !== "production"`). Shown on screen, a reset code lets anyone who knows a login id take the
+  account; a production build — Vercel, a Box in the building — ignores the variable.

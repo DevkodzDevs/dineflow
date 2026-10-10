@@ -20,7 +20,10 @@ import "server-only";
 export type SendResult = { ok: true; echoed?: string } | { ok: false; error: string };
 
 export const emailConfigured = () => Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
-export const otpEcho = () => process.env.DINEFLOW_OTP_ECHO === "1";
+/* Honoured only by a development server (`next dev`, which is what the launcher's local mode runs).
+   A production build ignores it — on Vercel, on a Box in the building, anywhere — because a reset code
+   on screen lets anyone who knows a login id take that account. */
+export const otpEcho = () => process.env.DINEFLOW_OTP_ECHO === "1" && process.env.NODE_ENV !== "production";
 
 /**
  * The code that proves a new member of staff owns the address on their record. Worth its own wording:

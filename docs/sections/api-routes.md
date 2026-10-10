@@ -51,3 +51,24 @@ Replay a webhook twice and confirm the second one changes nothing.
 
 [auth-and-session.md](auth-and-session.md) · [online-and-channels.md](online-and-channels.md) ·
 [guest-facing.md](guest-facing.md) · [settings.md](settings.md)
+
+## Security notes (2026-10-10)
+
+- **`api/ota/sync`** — runs for the scheduler (`Authorization: Bearer $CRON_SECRET`, which Vercel Cron
+  sends, or `?key=`) or for a signed-in user, who gets only their own property's feeds (read through
+  RLS). **With `CRON_SECRET` unset the nightly run is refused** — set it on Vercel. Writes need
+  `SUPABASE_SERVICE_ROLE_KEY` (0085). Feed URLs must be public `https://` (no localhost, private or
+  link-local addresses), no redirects, 10 s timeout, 2 MB cap. It used to run for anyone, for every
+  property, whenever no key was given.
+- **`api/pay/[token]/verify` and `api/webhooks/razorpay`** settle a bill only when the Razorpay
+  **order** (created server-side by `/order` with `notes.pay_token`) names this bill and covers it —
+  a payment's own notes come from the guest's browser. Razorpay unreachable → not settled (verify
+  answers 502; the webhook answers 503 so Razorpay retries). One payment id, one bill (0085 index).
+  "No secret saved" and "bad signature" give the same answer.
+- **`api/scan`, `api/assist`** — per-user limits (`lib/ratelimit.ts`: 40 scans, 30 chats per 10 min;
+  in-memory per instance — a speed bump, not a quota) and size caps (8 MB image, 2,000-character
+  messages).
+- **`api/webhooks/aggregator`** answers "unknown channel" or "could not record the order", never the
+  database's message.
+- **Headers** add `object-src 'none'; base-uri 'self'` to the CSP. No `script-src` yet: Next's inline
+  bootstrap needs per-request nonces (a middleware change).

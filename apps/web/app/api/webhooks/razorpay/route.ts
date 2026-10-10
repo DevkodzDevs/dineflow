@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { gatewayFor, signatureOk, methodOf, paise, settle } from "@/lib/razorpay";
+import { gatewayFor, signatureOk, methodOf, paise, settle, razorpay } from "@/lib/razorpay";
 
 /**
  * Razorpay webhook — one URL for every property:  POST https://<your-app>/api/webhooks/razorpay
@@ -13,7 +13,7 @@ import { gatewayFor, signatureOk, methodOf, paise, settle } from "@/lib/razorpay
 export async function POST(req: Request) {
   const raw = await req.text();
   const sig = req.headers.get("x-razorpay-signature") ?? "";
-  let body: { event?: string; payload?: { payment?: { entity?: { id: string; amount: number; method?: string; notes?: Record<string, string> } } } };
+  let body: { event?: string; payload?: { payment?: { entity?: { id: string; amount: number; method?: string; order_id?: string; notes?: Record<string, string> } } } };
   try { body = JSON.parse(raw); } catch { return NextResponse.json({ error: "not json" }, { status: 400 }); }
 
   const pay = body.payload?.payment?.entity;
@@ -22,11 +22,18 @@ export async function POST(req: Request) {
 
   const g = await gatewayFor(token);
   if ("error" in g) return NextResponse.json({ error: g.error }, { status: g.status });
-  if (!g.gw.webhook_secret) return NextResponse.json({ error: "No webhook secret saved for this property" }, { status: 400 });
-  if (!signatureOk(g.gw.webhook_secret, raw, sig)) return NextResponse.json({ error: "bad signature" }, { status: 400 });
+  // one answer for "no secret" and "wrong signature": telling them apart told a caller the token exists
+  if (!g.gw.webhook_secret || !signatureOk(g.gw.webhook_secret, raw, sig)) return NextResponse.json({ error: "bad signature" }, { status: 400 });
 
   if (body.event !== "payment.captured") return NextResponse.json({ ok: true, ignored: body.event });
   if (pay.amount < paise(g.gw.total)) return NextResponse.json({ error: "payment short of the bill total" }, { status: 400 });
+  // the payment's notes come from the guest's browser; the order's were written by the server for this
+  // bill. Settle only when the order says so. Razorpay unreachable: answer 5xx and it retries later.
+  if (!pay.order_id) return NextResponse.json({ ok: true, ignored: "payment has no order" });
+  try {
+    const order = await razorpay<{ notes?: Record<string, string> }>(g.gw, `/orders/${pay.order_id}`);
+    if (order.notes?.pay_token !== token) return NextResponse.json({ ok: true, ignored: "order belongs to another bill" });
+  } catch { return NextResponse.json({ error: "could not confirm the order" }, { status: 503 }); }
 
   const r = await settle(token, methodOf(pay.method), pay.id);
   if ("error" in r) return NextResponse.json({ error: r.error }, { status: 500 });

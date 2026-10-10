@@ -7,7 +7,7 @@
 ```
 pnpm lint          # 0 errors (14 warnings are known and pre-existing)
 pnpm typecheck     # clean
-pnpm test          # 38 unit tests: lib/offline/outbox.test.ts (8) + lib/options.test.ts (7) + lib/rates.test.ts (5) + lib/wa.test.ts (4) + lib/roomsuggest.test.ts (4) + lib/marketing.test.ts (4) + lib/bar.test.ts (3) + lib/schemaorg.test.ts (3)
+pnpm test          # 43 unit tests: lib/offline/outbox.test.ts (8) + lib/security.test.ts (5) + lib/options.test.ts (7) + lib/rates.test.ts (5) + lib/wa.test.ts (4) + lib/roomsuggest.test.ts (4) + lib/marketing.test.ts (4) + lib/bar.test.ts (3) + lib/schemaorg.test.ts (3)
 pnpm build         # a real production build
 ```
 
@@ -45,6 +45,9 @@ a property.
 | `logo.mjs` | 15–16 | the logo upload: the URL box is gone; a 6 MB file, an SVG, a GIF and a 64 px PNG are each refused in words with nothing saved; a 1200 px PNG made in the page is shrunk to 512 px WebP and saved (logo_url = the `brand` file, served publicly, < 1 MB); the bucket itself refuses another property's folder, a 1.1 MB file and an SVG sent straight to the Storage API; Replace leaves one file; Remove clears both; at 1440+ the sidebar shows the new logo. **Restores `logo_url` and removes probe files through the Storage API.** |
 | `props.mjs` | 8–10 | Settings → General's cards: titles in order (7 for a hotel, 6 for a restaurant), Property details holds only type/name/phone/address, Kitchen only `kds_*`, Rooms & stays the check-in/out and inspection; no sideways scroll; the save bar on screen mid-page, above the bottom nav, not under the Assist button; a Save that edits four cards writes exactly those columns and nothing else (24 columns compared). **Restores all 24 columns.** |
 | `diag3.mjs` | every route | `diag2` plus page errors: `Runtime.exceptionThrown`, console errors and any 4xx/5xx document/fetch/script/image, one line per page (`ok` / `ISSUE` + reasons). `CDP` from env so several can run; driven by `sweep2.sh` (one property per call). **Run properties one after another, not in parallel** — every probe signs in as the same master, and `admin_act_as` is per user, so parallel runs switch each other's property and produce false 404s (`/billing/<id>`, `/frontdesk/<id>`). |
+| `walls.cjs` | 27 | database security (0084): as a low-role login and as an owner, through `set local role authenticated` + JWT claims in a transaction that is always rolled back — self-promotion, UPI change, free membership, deleting payments/invoices/the property, writing invites, editing bill or invoice totals, low role changing GSTIN, anon calling `box_apply`/`box_export`/`demo_user`/`seed_storefront`, reading `v_low_stock` — all refused; and what the app does (owner Settings/Tax, staff Neighbours, invoice bill-to, `create_invite`, `staff_login_domain`, `network_demand`, `forecast_day`, `session_bundle`, staff list) still works. `DRY=1` applies the migration inside each transaction first. |
+| `t0085.cjs` | 7 | a box token cannot rewrite another property's menu item but still updates its own; anon and signed-in cannot call the OTA functions, the service role can; one `pay_…` ref cannot settle two bills, cash refs may repeat. |
+| `testorder.mjs` | 3 | Channels → Send test order reaches this server's own webhook and records one order; **removes it**. |
 | `perf.mjs` / `perf2.mjs` | 26 screens | load speed, laptop and phone (4× CPU, 9 Mbps, 60 ms): server time, DCL, LCP warm and cold, CLS, JS kB; `perf2` also prints FCP and the LCP element — **check that element**: once it was the error screen ("Nothing you entered has been lost"), which reads as a slow page. |
 
 Every suite is checked at **1920, 1440, 1194 (iPad landscape), 834 (iPad portrait) and 412 (phone)**,

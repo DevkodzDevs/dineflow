@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 const bump = () => ["/channels", "/frontdesk", "/rooms"].forEach((p) => revalidatePath(p));
 export async function saveOta(fd: FormData) {
@@ -26,9 +27,23 @@ export async function pushChannel(id: string, kind: "menu" | "ari") {
   const s = await createClient(); const { data, error } = await s.rpc("push_channel", { p_channel_id: id, p_kind: kind });
   if (error) return { error: error.message }; bump(); return { ok: true, ...(data as { live: boolean; count: number; message: string }) };
 }
-/** Fires a realistic order at your own webhook so you can watch the whole flow. */
-export async function sendTestOrder(token: string, base: string) {
-  const res = await fetch(`${base}/api/webhooks/aggregator/${token}`, { method: "POST", headers: { "content-type": "application/json" },
+/**
+ * Fires a realistic order at your own webhook so you can watch the whole flow.
+ *
+ * The address is this server's own, worked out here — never taken from the browser. It used to post
+ * to whatever `base` the caller sent and hand the reply back, which let any caller make this server
+ * request any URL. And the token must be one of the caller's own channels (RLS answers that).
+ */
+export async function sendTestOrder(token: string, _base?: string) {
+  void _base;
+  const s = await createClient();
+  const { data: mine } = await s.from("order_channels").select("id").eq("webhook_token", token).maybeSingle();
+  if (!mine) return { error: "That channel is not on this property." };
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? (/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host) ? "http" : "https");
+  const base = `${proto}://${host}`;
+  const res = await fetch(`${base}/api/webhooks/aggregator/${encodeURIComponent(token)}`, { method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ id: `TEST-${Date.now().toString().slice(-6)}`, customer_name: "Test customer", customer_phone: "9840000000", address: "12 Test Street", total: 605,
       items: [{ name: "Chicken biryani", qty: 2, price: 280 }, { name: "Butter naan", qty: 1, price: 45 }] }) });
   const j = await res.json().catch(() => ({}));

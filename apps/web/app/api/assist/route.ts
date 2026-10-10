@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { allow } from "@/lib/ratelimit";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 
@@ -93,6 +94,10 @@ function insights(h: House, section: string): Insight[] {
 export async function POST(req: Request) {
   const { path, messages, mode } = (await req.json()) as { path: string; messages?: Msg[]; mode?: "insights" | "chat" };
   const session = await requireSession(); const s = await createClient();
+  // each chat turn is a paid call on our key: a cap per person, and on what they can send
+  if (mode !== "insights" && !allow(`assist:${session.profile.id ?? session.restaurant.id}`, 30, 10 * 60_000)) return NextResponse.json({ error: "Assist needs a short break — try again in a few minutes." }, { status: 429 });
+  const tooLong = (messages ?? []).some((m) => typeof m?.content !== "string" || m.content.length > 2000);
+  if (tooLong) return NextResponse.json({ error: "That message is too long for Assist — keep it under 2,000 characters." }, { status: 413 });
   const section = (path.split("/")[1] || "dashboard").toLowerCase();
   const screen = SCREEN[section] ?? "DineFlow";
   const h = await house(s);

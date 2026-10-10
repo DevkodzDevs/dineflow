@@ -1,3 +1,4 @@
+import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
@@ -17,7 +18,8 @@ export type Gateway = { key_id: string; key_secret: string; webhook_secret: stri
 
 export async function gatewayFor(token: string): Promise<{ gw: Gateway } | { error: string; status: number }> {
   const s = serviceClient();
-  if (!s) return { error: "Card payments are not switched on for this server: SUPABASE_SERVICE_ROLE_KEY is not set.", status: 503 };
+  // a guest sees this: say what it means for them, and log the reason for whoever runs the server
+  if (!s) { console.error("[razorpay] SUPABASE_SERVICE_ROLE_KEY is not set — card payments are off"); return { error: "Card payments are not available here right now. Please pay at the counter.", status: 503 }; }
   const { data, error } = await s.rpc("pay_link_gateway", { p_token: token });
   if (error) return { error: error.message, status: 500 };
   if (!data) return { error: "This bill has no card gateway.", status: 404 };

@@ -43,7 +43,7 @@ applied migration.
 ```
 pnpm lint        # 0 errors (14 warnings are known)
 pnpm typecheck
-pnpm test        # 38 unit tests
+pnpm test        # 43 unit tests
 pnpm build       # note: this clobbers .next and kills a running `next dev`
 ```
 
@@ -100,6 +100,13 @@ PR descriptions end with:
 - Seven legal facts in `lib/company.ts` are still `null` — blocks launch and blocks subscription
   checkout. [legal.md](docs/sections/legal.md)
 - Razorpay subscription checkout and Sentry are agreed but not built.
+- **Set `CRON_SECRET` (and keep `SUPABASE_SERVICE_ROLE_KEY`) on Vercel** — the nightly OTA sync now
+  fails closed without it. [api-routes.md](docs/sections/api-routes.md)
+- Security follow-ups not yet done (2026-10-10 audit): per-IP limits on the public write RPCs
+  (`public_book`, `queue_join`, `dine_reserve`, reviews); a nonce-based `script-src` CSP; OTP and temp
+  passwords still use `random()` (bounded by 5 tries/code, 5 codes/hour); any staff can still write
+  `menu_items`, `ota_channels`, `order_channels`, printers and offers of their own property.
+  [data-and-rls.md](docs/sections/data-and-rls.md)
   [admin-and-membership.md](docs/sections/admin-and-membership.md)
 - The browser suites are rewritten every session and never committed; `scripts/verify.mjs` carries
   paths from another machine and does not run.

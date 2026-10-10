@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createBare } from "@supabase/supabase-js";
 import { scanResultSchema } from "@dineflow/shared";
+import { allow } from "@/lib/ratelimit";
 
 /**
  * POST /api/scan  { image: base64 data URL, hint?: "ingredient"|"dish"|"room"|"labour"|"auto" }
@@ -33,8 +34,11 @@ export async function POST(req: Request) {
   const supabase = auth?.startsWith("Bearer ") ? createBare(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: auth } } }) : await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "not signed in" }, { status: 401 });
+  // every scan is a paid vision call on our key: bounded per person, and bounded in size
+  if (!allow(`scan:${user.id}`, 40, 10 * 60_000)) return NextResponse.json({ error: "That is a lot of scans in a few minutes — wait a moment and try again." }, { status: 429 });
   const key = process.env.ANTHROPIC_API_KEY;
   const { image, hint = "auto" } = await req.json();
+  if (typeof image !== "string" || image.length > 8_000_000) return NextResponse.json({ error: "That photo is too large — try again closer up." }, { status: 413 });
 
   // No API key? Return a realistic sample so the whole scan → confirm → create flow can be
   // tried end to end. The card is marked "sample" in the UI; add the key for real recognition.

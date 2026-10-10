@@ -55,3 +55,10 @@ pnpm --filter @dineflow/web test
 
 [orders-and-till.md](orders-and-till.md) · [tax-and-compliance.md](tax-and-compliance.md) ·
 [reports-and-forecast.md](reports-and-forecast.md)
+
+- **Printed bills and KOTs escape every value** (`lib/print/html.ts`, `e()`): item names, notes and
+  the guest's name reach them from public storefront orders, and the browser-print fallback writes the
+  HTML into a same-origin window — unescaped, a note could run script with the staff member's
+  session. The pay QR must be an image `data:` URL. Tested in `lib/security.test.ts`.
+- **Direct bill/invoice edits are fenced in the database (0084)**: voiding an unpaid bill and the
+  invoice's bill-to fields are the only direct updates allowed. See data-and-rls.md.

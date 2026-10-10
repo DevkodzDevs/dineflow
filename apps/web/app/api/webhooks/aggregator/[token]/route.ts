@@ -13,7 +13,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   const { token } = await params;
   const body = await req.json().catch(() => ({}));
   const { data, error } = await client().rpc("ingest_online_order", { p_token: token, p_payload: body });
-  if (error) return NextResponse.json({ error: error.message }, { status: error.message.includes("unknown channel") ? 404 : 500 });
+  // a public URL: say what the sender can act on, never the database's own words
+  if (error) { const unknown = error.message.includes("unknown channel"); if (!unknown) console.error("[aggregator]", error.message); return NextResponse.json({ error: unknown ? "unknown channel" : "could not record the order" }, { status: unknown ? 404 : 500 }); }
   return NextResponse.json(data);
 }
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
