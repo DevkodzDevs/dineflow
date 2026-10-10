@@ -70,3 +70,12 @@ Sign in as a non-owner on a demo property and confirm the sidebar matches the ti
 
 [auth-and-session.md](auth-and-session.md) · [shell-and-nav.md](shell-and-nav.md) ·
 [admin-and-membership.md](admin-and-membership.md)
+
+- **A labour card's month is a small calendar** (`MonthDots` in `LabourClient.tsx`): the month name
+  and a legend, then M–S across and one 28px cell per day with its number, Monday first — solid
+  green (`--color-green`, `--color-on-tint` text) on days worked, grey on days not, today ringed in
+  the tint; only the weeks up to this one are drawn, so early in the month the card stays short. It
+  was 31 thin dark-grey bars with no numbers, unreadable on a dark card. Cells use `rounded-[8px]`
+  (`rounded-lg` is 22px in this theme and turned them into pills). Probe: `lab.mjs` (4 checks; marks a
+  worker present and restores their attendance).
+

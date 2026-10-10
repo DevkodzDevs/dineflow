@@ -49,7 +49,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
                   <div className="flex-1 min-w-0"><div className="font-semibold truncate">{l.full_name}</div><div className="text-xs text-steel">{l.skill} · <span className="num">{l.code}</span> · {formatINR(Number(l.daily_wage))}/day</div></div>
                   <button onClick={() => setEdit(l)} className="text-steel hover:text-ink"><Pencil size={14} /></button></div>
                 <div className="mt-3 flex items-center gap-2 text-xs">{a ? <><Pill tone="ready">present</Pill><span className="num text-steel">{a.in_at ? new Date(a.in_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}{a.out_at ? ` → ${new Date(a.out_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} · ${a.hours} h` : ""}</span></> : <Pill tone="pending">absent</Pill>}
-                  <span className="ml-auto num text-steel">{byL(l.id).length} days this month</span></div>
+                  <span className="ml-auto num text-steel">{byL(l.id).length} day{byL(l.id).length === 1 ? "" : "s"} this month</span></div>
                 <MonthDots days={byL(l.id).map((x) => x.work_date)} today={today} />
                 <div className="mt-3 flex gap-2">{a ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => start(() => { markAttendance(l.id, today, false, 0); })}>Mark absent</Button> : <Button size="sm" className="flex-1" disabled={pending} onClick={() => start(() => { markAttendance(l.id, today, true, Number(l.daily_wage)); })}><Check size={14} /> Mark present</Button>}<Button size="sm" variant="ghost" onClick={() => setPay(l)}><Banknote size={14} /></Button></div>
               </Card></motion.div>); })}
@@ -101,21 +101,44 @@ function Labels({ property, labourers, rooms, ingredients }: { property: string;
 
 
 /**
- * One mark per day of the month, filled on the days somebody turned up. "11 days this month" is a
- * number; this says whether those eleven were a run or were scattered — which is the thing a
- * supervisor is actually looking for when they scan the wall of cards.
+ * The month as a small calendar: one cell per day with its number, Monday first, solid green on the
+ * days somebody turned up, today ringed. "11 days this month" is a number; this says whether those
+ * eleven were a run or were scattered — which is what a supervisor scanning the wall of cards wants.
+ * It was 31 thin dark-grey bars with no numbers, unreadable on a dark card and on a phone. Only the
+ * weeks up to this one are drawn, so early in the month a card stays short.
  */
 function MonthDots({ days, today }: { days: string[]; today: string }) {
   const worked = new Set(days);
   const y = Number(today.slice(0, 4)), m = Number(today.slice(5, 7)), dayNow = Number(today.slice(8, 10));
-  const inMonth = new Date(y, m, 0).getDate();   // day 0 of next month is the last of this one
+  const lead = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7;            // blanks before the 1st, Monday first
+  const inMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const lastCell = Math.min(inMonth, dayNow + (6 - ((lead + dayNow - 1) % 7)));    // to the end of this week
+  const count = days.filter((d) => d.slice(0, 7) === today.slice(0, 7)).length;
+  const month = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-IN", { month: "long", timeZone: "UTC" });
   return (
-    <div className="mt-2.5 flex gap-[3px]" role="img" aria-label={`${worked.size} of the first ${dayNow} days this month worked`}>
-      {Array.from({ length: inMonth }, (_, i) => {
-        const date = `${today.slice(0, 8)}${String(i + 1).padStart(2, "0")}`;
-        const on = worked.has(date), ahead = i + 1 > dayNow;
-        return <span key={date} title={date} className={cn("h-3 flex-1 rounded-[2px]", on ? "bg-mint" : ahead ? "bg-[var(--color-fill)]" : "bg-line-2")} />;
-      })}
+    <div className="mt-3 rounded-2xl bg-[color-mix(in_srgb,var(--color-fill)_60%,transparent)] p-3" role="img"
+      aria-label={`${count} of the first ${dayNow} days of ${month} worked`}>
+      <div className="flex items-center gap-3 mb-2">
+        <span className="text-[12.5px] font-semibold">{month}</span>
+        <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-[var(--color-label-2)]"><span className="h-2.5 w-2.5 rounded-[3px] bg-[var(--color-green)]" /> worked</span>
+        <span className="inline-flex items-center gap-1.5 text-[11px] text-[var(--color-label-2)]"><span className="h-2.5 w-2.5 rounded-[3px] bg-[var(--color-fill-2)]" /> off</span>
+      </div>
+      <div className="grid grid-cols-7 gap-1" aria-hidden>
+        {["M", "T", "W", "T", "F", "S", "S"].map((w, k) => <span key={k} className="text-center text-[10px] font-semibold text-[var(--color-label-3)] pb-0.5">{w}</span>)}
+        {Array.from({ length: lead }, (_, k) => <span key={`b${k}`} />)}
+        {Array.from({ length: lastCell }, (_, i) => {
+          const d = i + 1, date = `${today.slice(0, 8)}${String(d).padStart(2, "0")}`;
+          const on = worked.has(date), ahead = d > dayNow, isToday = d === dayNow;
+          return (
+            <span key={date} title={date}
+              className={cn("h-7 rounded-[8px] grid place-items-center num text-[11.5px] font-semibold",
+                on ? "bg-[var(--color-green)] text-[var(--color-on-tint)]"
+                  : ahead ? "text-[var(--color-label-3)] opacity-50"
+                    : "bg-[var(--color-fill-2)] text-[var(--color-label-2)]",
+                isToday && "ring-2 ring-[var(--color-tint)] ring-offset-1 ring-offset-[var(--color-bg-2)]")}>{d}</span>
+          );
+        })}
+      </div>
     </div>
   );
 }
