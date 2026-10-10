@@ -5,7 +5,7 @@
 > occasionally the disaster.
 
 **Files** `app/globals.css` (733 lines) · `components/ui/index.tsx` · `components/ui/flip.tsx` ·
-`components/ui/{DataTable,Theme,Ticket,AiButton,PasswordInput}.tsx`
+`components/ui/{DataTable,Theme,Ticket,AiButton,PasswordInput,Rail}.tsx`
 
 ## What it is
 
@@ -117,6 +117,19 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 - **A `.card-title` with a `.footnote` child stacks on a phone** (under 640px: column, 4px gap). Beside
   the title the note ran down the right in a narrow column and broke the title over two lines (Tax →
   Returns, "Outward supplies"). It applies everywhere the pair is used; from `sm` they share a row.
+- **A track that scrolls sideways gets a `Rail`** (`components/ui/Rail.tsx`, imported directly, not
+  from the index). It renders the track (`className`: its flex, gap, padding, mask) inside a
+  `relative` wrapper (`wrapClassName`) and, **only while something is hidden past the edge**
+  (`scrollWidth > clientWidth`, re-measured on scroll, resize and child changes), a `.rail-arrow` on
+  the right: a 34px see-through disc (`--color-bg-2` at 66%, blurred, opacity .8, 1 at hover) in a
+  40px button, 44 on touch. A tap scrolls ¾ of the track; at the end it turns round (`data-end`,
+  "Back to the start") and a tap goes back to 0. The arrow lives in the wrapper, not the track, so
+  the track's fade mask never fades it; it is centred with `top/bottom: 0; margin: auto`, not a
+  translate, because buttons scale on `:active`. A track with `pb-*` passes `arrowClassName="!bottom-2"`
+  so the arrow centres on the items. While it overflows the track carries `data-rail-more`, whose
+  `::after` is a 36px spacer so the last item scrolls clear of the arrow. With `label` the track is
+  `role="group"` with that `aria-label` — probes find a rail by it. Used on Rooms (state chips) and
+  the till (Order line, Categories, Goes well with). Probe: `rails.mjs`.
 
 - **`Sheet` (every dialog) lives in the *visible* viewport, not the layout viewport.** Its frame
   takes `top`/`height` from `window.visualViewport` on resize and scroll, so with an iPad keyboard

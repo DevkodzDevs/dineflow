@@ -115,7 +115,9 @@ pnpm --filter @dineflow/web typecheck
   width of the others. **It reports state, not a fixed sentence:** "No changes yet" (grey tick, Save
   disabled) → "Unsaved changes" (amber pulsing dot, Save live) once any field fires `input` (the logo
   picker excepted — it saves itself) → "Saving…" → "All changes saved" (green tick) or "Couldn't save"
-  with the reason. Probe: `props.mjs` (15 checks).
+  with the reason. The hint under the title is short ("Edit a card, then save") — pinned on a phone it
+  has ~170px, and "Edit any card above, then save" was cut off — and wraps to two lines rather than
+  truncating, so a long error reads in full. Probe: `props.mjs` (15 checks).
 - **Account & security is three rows in one panel** — Password (sign-in ID, or "Signed in from Master
   control" when there is none — it used to print "Signed in as ."), Recovery email (where codes go, or
   an amber "Missing"), Membership (plan and date, a status pill, the whole row links to /membership).

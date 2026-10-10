@@ -253,7 +253,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               const failed = !!msg && !pending && /error|fail|not|cannot|only/i.test(msg);
               const saved = !pending && !dirty && msg === "Saved.";
               const title = pending ? "Saving…" : failed ? "Couldn't save" : dirty ? "Unsaved changes" : saved ? "All changes saved" : "No changes yet";
-              const sub = pending ? "Saving all the cards" : failed ? msg : dirty ? "Saves all the cards at once" : saved ? "Saved just now" : "Edit any card above, then save";
+              const sub = pending ? "Saving all the cards" : failed ? msg : dirty ? "Saves all the cards at once" : saved ? "Saved just now" : "Edit a card, then save";
               return (
                 <div className={cn("settings-savebar sticky bottom-[calc(env(safe-area-inset-bottom)+92px)] md:bottom-4 z-10 flex items-center gap-3 border transition-[margin,border-radius,box-shadow,background-color] duration-200",
                   floating
@@ -269,7 +269,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   </span>
                   <span role="status" className="flex-1 min-w-0 leading-tight">
                     <span className={cn("block text-[14px] font-semibold truncate", failed && "text-[var(--color-red)]")}>{title}</span>
-                    <span className="block text-[12px] text-[var(--color-label-2)] truncate mt-0.5">{sub}</span>
+                    <span className="block text-[12px] text-[var(--color-label-2)] line-clamp-2 [overflow-wrap:anywhere] mt-0.5">{sub}</span>
                   </span>
                   <Button disabled={pending || !dirty} className="shrink-0 !rounded-full !h-11 !px-5"><span className="sm:hidden">Save</span><span className="hidden sm:inline">Save changes</span></Button>
                 </div>

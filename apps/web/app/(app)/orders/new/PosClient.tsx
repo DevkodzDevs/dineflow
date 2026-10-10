@@ -2,9 +2,10 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus } from "lucide-react";
-import { Button, Pill, Segmented, cn, useToast } from "@/components/ui";
+import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock } from "lucide-react";
+import { Button, Segmented, cn, useToast } from "@/components/ui";
 import { formatINR, fmtSince } from "@/lib/format";
+import { Rail } from "@/components/ui/Rail";
 import { placeOrder, parseOrder } from "../actions";
 import { lookupCustomer } from "../../billing/actions";
 import { enqueue } from "@/lib/offline/sync";
@@ -471,24 +472,32 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
               <span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{running.length}</span>
               <Link href="/orders" className="ml-auto inline-flex items-center min-h-11 pl-2 -my-3 text-xs font-semibold text-steel hover:text-[var(--color-label)]">All orders →</Link>
             </div>
-            <div className="rail-fade flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
+            {/* each ticket as a card that says, at a glance, which table's food is up: the table in big
+                type, its state as a tinted chip, number · items · age, and a three-step bar — ordered,
+                in the kitchen, ready — in the state's colour. A ready ticket carries a green wash and
+                edge so it stands out of the strip. The text stays in the ink colour (the hue is the
+                dot, the wash and the bar) so it reads in paper as well as dark. */}
+            <Rail className="rail-fade flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]" arrowClassName="!bottom-2" label="Order line">
               {running.slice(0, 12).map((o) => {
                 const n = (o.order_items ?? []).reduce((t, i) => t + Number(i.qty), 0);
+                // the real state of the ticket, not a label: every card used to read "in progress" in the
+                // same amber whatever the kitchen was doing
+                const s = lineState(o); const step = s.tone === "pending" ? 1 : s.tone === "preparing" ? 2 : 3;
+                const hue = s.tone === "ready" ? "--color-green" : s.tone === "preparing" ? "--color-orange" : s.tone === "served" ? "--color-blue" : "--color-label-3";
                 return (
-                  <Link key={o.id} href={`/orders/${o.id}`} className="feather feather-lift shrink-0 w-48 p-3">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-semibold text-sm truncate flex-1">{o.dining_tables?.name ?? "Table"}</span>
-                      <span className="num text-[11px] text-steel">#{o.order_no}</span>
+                  <Link key={o.id} href={`/orders/${o.id}`} data-line={s.tone} className="feather feather-lift shrink-0 w-52 p-3.5 flex flex-col gap-2"
+                    style={s.tone === "ready" ? { background: "color-mix(in srgb, var(--color-green) 10%, var(--color-bg-2))", borderColor: "color-mix(in srgb, var(--color-green) 50%, transparent)" } : undefined}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-display text-xl leading-tight truncate min-w-0">{o.dining_tables?.name ?? "Table"}</span>
+                      <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 h-6 px-2 rounded-full text-[11px] font-semibold text-[var(--color-label)]" style={{ background: `color-mix(in srgb, var(${hue}) 18%, transparent)` }}>
+                        <span className={cn("h-1.5 w-1.5 rounded-full", s.tone === "ready" && "pulse-dot")} style={{ background: `var(${hue})`, color: `var(${hue})` }} />{s.label.charAt(0).toUpperCase() + s.label.slice(1)}</span>
                     </div>
-                    <div className="text-[11px] text-steel mt-0.5 num">{n} item{n === 1 ? "" : "s"} · {fmtSince(o.created_at)}</div>
-                    {/* the real state of the ticket, not a label. Every card used to read "in progress"
-                        in the same amber whatever the kitchen was doing, which told a waiter nothing —
-                        the one thing this strip exists to say is which table's food is up. */}
-                    <div className="mt-2">{(() => { const s = lineState(o); return <Pill tone={s.tone}>{s.label}</Pill>; })()}</div>
+                    <div className="text-[11px] text-steel num flex items-center gap-1.5 min-w-0 whitespace-nowrap"><span>#{o.order_no}</span><span aria-hidden>·</span><span>{n} item{n === 1 ? "" : "s"}</span><span aria-hidden>·</span><span className="inline-flex items-center gap-1 min-w-0 truncate"><Clock size={11} className="shrink-0" />{fmtSince(o.created_at)}</span></div>
+                    <div className="grid grid-cols-3 gap-1" aria-hidden data-steps={step}>{[1, 2, 3].map((k) => <span key={k} className="h-1 rounded-full" style={{ background: k <= step ? `var(${hue})` : "var(--color-fill)" }} />)}</div>
                   </Link>
                 );
               })}
-            </div>
+            </Rail>
           </div>
         )}
         {ai && (
@@ -510,11 +519,11 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
             )}
           </div>
         )}
-        <div className="rail-fade flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
+        <Rail className="rail-fade flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]" arrowClassName="!bottom-2" label="Categories">
           {[{ id: "all", name: "All" }, ...categories].map((c) => <button key={c.id} onClick={() => setCat(c.id)} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line")}>{c.name}</button>)}
-        </div>
+        </Rail>
         {goesWith.length > 0 && (
-          <div className="mt-2 flex items-center gap-2 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 pb-1 [scrollbar-width:none]" aria-label="Goes well with">
+          <Rail wrapClassName="mt-2" className="rail-fade flex items-center gap-2 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 pb-1 [scrollbar-width:none]" arrowClassName="!bottom-1" label="Goes well with">
             <span className="eyebrow shrink-0 flex items-center gap-1"><Sparkles size={12} className="text-[var(--color-tint)]" /> Goes well with</span>
             {goesWith.map((it) => (
               <button key={it.id} type="button" onClick={() => tap(it)}
@@ -522,7 +531,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
                 <Plus size={14} className="text-[var(--color-tint)]" />{it.name}<span className="num text-xs font-medium text-steel">{(() => { const tp = tilePrice(it); return `${tp.from ? "from " : ""}${formatINR(tp.price, { whole: true })}`; })()}</span>
               </button>
             ))}
-          </div>
+          </Rail>
         )}
         {/* As many tiles as fit, never narrower than a dish name and a stepper need: 176 is three
             across in the 557px an iPad in landscape leaves beside the rail, with room for a 44px

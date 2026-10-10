@@ -50,6 +50,11 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
 
 ## Before you edit
 
+- **The state chips (Ready · Occupied · Arriving · Cleaning · Maintenance) are a `Rail`** labelled
+  "Rooms by state", wrapped `flex flex-1` so it still shares the toolbar with Room types & rates and
+  + Room. On a phone and an iPad in portrait the chips run past the edge; the round arrow on the right
+  slides them into view and turns round at the end. See [design-system.md](design-system.md).
+
 - **Facility cards** (`/facilities`) are one compact card: a kind-coloured icon tile (spa green,
   activity blue, venue amber via `KIND_TONE`), the name with duration and capacity as chips, a 44px
   edit button, then a divider, the price in whole rupees with "per person · N booked · next Sat 4:30

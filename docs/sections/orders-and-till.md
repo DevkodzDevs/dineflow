@@ -76,6 +76,18 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **The Order line, the category chips and Goes well with are `Rail`s** ("Order line", "Categories",
+  "Goes well with" — `role="group"`), each with the round arrow on the right while anything is past
+  the edge (phone and iPad; at 1920 they fit and show none). They keep their `-mx-4 px-4` bleed on a
+  phone; the arrow sits in the wrapper, so it lines up with the page gutter. See
+  [design-system.md](design-system.md).
+- **An Order line card** (`[data-line]` = the `lineState` tone, `w-52`) is: the table in display type
+  with its state as a chip on the right (a dot and an 18% wash of the state's hue — green ready,
+  orange in the kitchen, blue served, grey waiting — with the text in `--color-label`), then
+  "#no · N items · ⏱ age" on one line, then a three-segment bar (`data-steps`: 1 waiting, 2 in the
+  kitchen, 3 ready or served) in that hue. A ready ticket has a green wash and edge (inline style —
+  `.feather` sets its own background) and a pulsing dot: the one thing the strip is for is which
+  table's food is up. All cards are one height (92px).
 - **"All orders →" over the Order line is a 44px target** (`min-h-11 pl-2 -my-3`): the height is
   taken back by negative margin, so the row does not grow. It was 67×16. Do not add `-mr-*` — it
   pushed the link 8px past the section on the right.

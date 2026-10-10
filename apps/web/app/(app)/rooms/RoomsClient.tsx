@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Plus, Pencil, Sparkles, Wrench, Check, Trash2 } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Button, Sheet, Field, cn } from "@/components/ui";
+import { Rail } from "@/components/ui/Rail";
 import { formatINR } from "@/lib/format";
 import { saveRoom, setRoomStatus, deleteRoom, saveRoomType } from "./actions";
 
@@ -23,9 +24,9 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
   const counts = (s: string) => rooms.filter((r) => r.status === s).length;
   return (
     <div className="space-y-6">
-      <div className="toolbar"><div className="toolbar-group text-xs font-semibold">
+      <div className="toolbar"><Rail wrapClassName="flex flex-1" className="toolbar-group text-xs font-semibold" label="Rooms by state">
         {[["available", "Ready", "bg-card border border-line"], ["occupied", "Occupied", "bg-ink text-on-label"], ["reserved", "Arriving", "border border-dashed border-champagne bg-card"], ["cleaning", "Cleaning", "bg-sky-2"], ["maintenance", "Maintenance", "bg-chili-2 text-chili"]].map(([k, l, c]) => <span key={k} className={cn("rounded-full px-3 py-1.5", c)}>{l} <span className="num opacity-70">{counts(k)}</span></span>)}
-        </div><div className="toolbar-group toolbar-end"><Button variant="outline" onClick={() => setTypeSheet(true)}>Room types & rates</Button><Button onClick={() => setEdit({ floor: floors.at(-1) ?? 1 })}><Plus size={16} /> Room</Button></div>
+        </Rail><div className="toolbar-group toolbar-end"><Button variant="outline" onClick={() => setTypeSheet(true)}>Room types & rates</Button><Button onClick={() => setEdit({ floor: floors.at(-1) ?? 1 })}><Plus size={16} /> Room</Button></div>
       </div>
       {floors.map((f) => (
         <section key={f}><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel mb-3">Floor {f}</div>

@@ -634,6 +634,22 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
    bleed to the card edge with -mx-4 px-4, which that selector does not cover. */
 .rail-fade { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
   mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+/* Rail (components/ui/Rail.tsx): a round arrow on a scrolling track's right edge, only while something
+   is hidden past it. A soft, see-through disc (the track shows through it, blurred) so it reads as a
+   hint, not a control that competes with the chips. Positioned in the track's wrapper, not the
+   track, so the track's fade mask never fades the arrow. Centred with top/bottom/margin rather than
+   a transform: buttons scale on :active and would lose a translate. At the end it turns round and
+   takes you back. `[data-rail-more]` adds a spacer so the last item can scroll clear of it. */
+.rail-arrow { position: absolute; right: 0; top: 0; bottom: 0; margin-block: auto; z-index: 2; width: 40px; height: 40px; min-height: 0;
+  display: grid; place-items: center; padding: 0; border: 0; background: transparent; }
+.rail-arrow > span { width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; color: var(--color-label);
+  background: color-mix(in srgb, var(--color-bg-2) 66%, transparent); border: 1px solid var(--color-separator);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 4px 14px rgb(0 0 0 / .16);
+  opacity: .8; transition: opacity var(--dur-fast), transform .3s var(--ease-out); }
+.rail-arrow:hover > span, .rail-arrow:focus-visible > span { opacity: 1; }
+.rail-arrow[data-end] > span { transform: rotate(180deg); }
+@media (pointer: coarse) { .rail-arrow { width: 44px; height: 44px; } }
+[data-rail-more]::after { content: ""; flex: 0 0 36px; }
 
 .pulse-dot { position: relative; }
 .pulse-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 999px; border: 2px solid currentColor; opacity: .5; animation: pulse 1.8s var(--ease-out) infinite; }
