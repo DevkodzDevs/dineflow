@@ -1,7 +1,7 @@
 "use client";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing, Receipt, BedDouble, ChefHat, Timer, Sunrise } from "lucide-react";
+import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing, Receipt, BedDouble, ChefHat, Timer, Sunrise, Mail, Crown, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { NotificationSettings } from "@/components/shell/Notifier";
 import { LogoUpload } from "./LogoUpload";
 import { Button, Card, Field, Switch, cn } from "@/components/ui";
@@ -57,8 +57,18 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
   const [msg, setMsg] = useState<string | null>(null);
   const [boxToken, setBoxToken] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  /* the property form's save bar: what is unsaved, and whether the bar is floating (pinned at the
+     bottom of the screen, beside the Assist button) or resting at the end of the form */
+  const [dirty, setDirty] = useState(false);
+  const [floating, setFloating] = useState(false);
+  const barEnd = useRef<HTMLDivElement>(null);
   const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
   const [tab, setTab] = useState<Tab>("general");
+  useEffect(() => {
+    const el = barEnd.current; if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setFloating(!e.isIntersecting && e.boundingClientRect.top > 0), { rootMargin: "0px 0px -90px 0px" });
+    io.observe(el); return () => io.disconnect();
+  }, [tab]);
   const [loyaltyOn, setLoyaltyOn] = useState(!!restaurant.loyalty_enabled);
   const isHotel = restaurant.property_type !== "restaurant";
 
@@ -120,7 +130,8 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           {/* The property's settings, one card per subject — they were all one long form under
               "Property details". Still one <form> and one Save (saveRestaurant reads every field),
               with the save bar pinned to the bottom so it is in reach from any card. */}
-          <form className="space-y-6" action={(fd) => start(async () => { const r = await saveRestaurant(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
+          <form className="space-y-6" onInput={(e) => { if ((e.target as HTMLInputElement).type !== "file") { setDirty(true); setMsg(null); } }}
+            action={(fd) => start(async () => { const r = await saveRestaurant(fd); if ("error" in r) setMsg(r.error!); else { setMsg("Saved."); setDirty(false); } })}>
             <input type="hidden" name="id" value={restaurant.id} />
             <Card>
               <Section icon={<Building2 size={16} />} title="Property details" description="What the property is and how guests reach it.">
@@ -234,34 +245,82 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               </Section>
             </Card>
 
-            {/* one save for all the cards above, pinned where a thumb reaches it */}
-            <div className="settings-savebar sticky bottom-[calc(env(safe-area-inset-bottom)+92px)] md:bottom-4 z-10 rounded-2xl material-thick border border-[var(--color-separator)] shadow-[var(--shadow-pop)] pl-4 pr-[84px] py-3 flex items-center gap-3">
-              <span role="status" className={cn("flex-1 min-w-0 text-[13px] leading-snug", msg && !pending ? (/error|fail|not/i.test(msg) ? "text-[var(--color-red)]" : "text-[var(--color-green)] font-semibold") : "text-[var(--color-label-2)]")}>{pending ? "Saving…" : msg ?? "Changes in these cards are saved together."}</span>
-              <Button disabled={pending}>Save changes</Button>
-            </div>
+            {/* One save for all the cards above. Pinned at the bottom of the screen it floats — rounded,
+                lifted, and ending before the Assist button that sits beside it; at the end of the form
+                it rests as a card the width of the others. It says what state the cards are in rather
+                than a fixed sentence, and Save is live only when there is something to save. */}
+            {(() => {
+              const failed = !!msg && !pending && /error|fail|not|cannot|only/i.test(msg);
+              const saved = !pending && !dirty && msg === "Saved.";
+              const title = pending ? "Saving…" : failed ? "Couldn't save" : dirty ? "Unsaved changes" : saved ? "All changes saved" : "No changes yet";
+              const sub = pending ? "Saving all the cards" : failed ? msg : dirty ? "Saves all the cards at once" : saved ? "Saved just now" : "Edit any card above, then save";
+              return (
+                <div className={cn("settings-savebar sticky bottom-[calc(env(safe-area-inset-bottom)+92px)] md:bottom-4 z-10 flex items-center gap-3 border transition-[margin,border-radius,box-shadow,background-color] duration-200",
+                  floating
+                    ? "mr-[72px] rounded-[22px] pl-2.5 pr-2 py-2 material-thick border-[var(--color-separator)] shadow-[var(--shadow-pop)]"
+                    : "rounded-[22px] pl-3 pr-3 py-3 bg-[var(--color-bg-2)] border-[var(--color-separator)]")}>
+                  <span aria-hidden className={cn("h-10 w-10 shrink-0 rounded-full grid place-items-center",
+                    pending ? "bg-[var(--color-fill)] text-[var(--color-label-2)]"
+                      : failed ? "bg-[var(--color-red-2)] text-[var(--color-red)]"
+                        : dirty ? "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]"
+                          : saved ? "bg-[var(--color-green-2)] text-[var(--color-green)]"
+                            : "bg-[var(--color-fill)] text-[var(--color-label-3)]")}>
+                    {pending ? <Loader2 size={17} className="animate-spin" /> : failed ? <AlertTriangle size={17} /> : dirty ? <span className="h-2.5 w-2.5 rounded-full bg-current pulse-dot" /> : <Check size={18} strokeWidth={2.6} />}
+                  </span>
+                  <span role="status" className="flex-1 min-w-0 leading-tight">
+                    <span className={cn("block text-[14px] font-semibold truncate", failed && "text-[var(--color-red)]")}>{title}</span>
+                    <span className="block text-[12px] text-[var(--color-label-2)] truncate mt-0.5">{sub}</span>
+                  </span>
+                  <Button disabled={pending || !dirty} className="shrink-0 !rounded-full !h-11 !px-5"><span className="sm:hidden">Save</span><span className="hidden sm:inline">Save changes</span></Button>
+                </div>
+              );
+            })()}
+            <div ref={barEnd} aria-hidden className="h-px -mt-6" />
           </form>
 
           {/* account & security */}
           <Card>
-            <Section icon={<Shield size={16} />} title="Account & security">
-              <div className="rounded-xl bg-[var(--color-fill)] p-4 flex items-start gap-4">
-                <KeyRound size={18} className="text-steel shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold">Your password</div>
-                  <p className="text-xs text-steel mt-1">
-                    Signed in as <span className="num">{signInId}</span>.
-                    {contactEmail
-                      ? <> Codes go to <span className="num">{contactEmail}</span>.</>
-                      : <> No contact address — ask Master control to add one.</>}
-                  </p>
+            <Section icon={<Shield size={16} />} title="Account & security" description="How you sign in, where codes are sent, and your DineFlow plan.">
+              {/* three rows in one panel: each an icon tile, a title over one line of detail, and its
+                  action at the end — "Signed in as ." no longer shows when there is no sign-in ID */}
+              <div className="rounded-2xl border border-[var(--color-separator)] overflow-hidden divide-y divide-[var(--color-separator)]">
+                <div className="flex items-center gap-3.5 px-4 py-3.5">
+                  <span className="h-11 w-11 shrink-0 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><KeyRound size={18} /></span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[15px] font-semibold">Password</span>
+                    <span className="block text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2 [overflow-wrap:anywhere] mt-0.5">{signInId ? <>Sign-in ID <span className="text-[var(--color-label)] font-medium">{signInId}</span></> : "Signed in from Master control"}</span>
+                  </span>
+                  <a href="/account/password" className="btn btn-gray !h-11 !px-4 !rounded-full shrink-0 inline-flex items-center gap-1 text-[14px] font-semibold">Change <ChevronRight size={15} className="-mr-1" /></a>
                 </div>
-                <a href="/account/password" className="btn btn-gray !h-9 !px-3.5 !text-[13px] !rounded-[11px] shrink-0">
-                  Change
-                </a>
-              </div>
-              <div className="text-xs text-steel flex items-center justify-between px-1">
-                <span>Membership: <b className="uppercase">{restaurant.membership}</b>{restaurant.membership_plan ? ` · ${restaurant.membership_plan}` : ""}{restaurant.membership === "trial" ? ` · ends ${restaurant.trial_ends_at.slice(0, 10)}` : restaurant.membership_ends_at ? ` · until ${restaurant.membership_ends_at.slice(0, 10)}` : ""}</span>
-                <Link href="/membership" className="inline-flex items-center min-h-11 -my-3 pl-3 font-semibold underline text-[var(--color-label)]">Manage</Link>
+                <div className="flex items-center gap-3.5 px-4 py-3.5">
+                  <span className={cn("h-11 w-11 shrink-0 rounded-2xl grid place-items-center", contactEmail ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]")}><Mail size={18} /></span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[15px] font-semibold">Recovery email</span>
+                    <span className="block text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2 [overflow-wrap:anywhere] mt-0.5">{contactEmail ? <>Codes go to <span className="text-[var(--color-label)] font-medium">{contactEmail}</span></> : "Not set — ask Master control to add one"}</span>
+                  </span>
+                  {contactEmail
+                    ? <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]" aria-label="Set"><Check size={15} strokeWidth={2.6} /></span>
+                    : <span className="shrink-0 h-7 px-2.5 rounded-full grid place-items-center text-[11.5px] font-semibold bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]">Missing</span>}
+                </div>
+                {(() => {
+                  const m = restaurant.membership;
+                  const ends = m === "trial" ? restaurant.trial_ends_at : restaurant.membership_ends_at;
+                  const when = ends ? new Date(ends).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : null;
+                  const plan = restaurant.membership_plan ? `${restaurant.membership_plan[0].toUpperCase()}${restaurant.membership_plan.slice(1)} plan` : m === "trial" ? "Free trial" : "Plan";
+                  const detail = when ? `${plan} · ${m === "trial" ? "ends" : m === "active" ? "renews by" : "ended"} ${when}` : plan;
+                  const tone = m === "active" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : m === "trial" ? "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]" : "bg-[var(--color-red-2)] text-[var(--color-red)]";
+                  return (
+                    <Link href="/membership" className="flex items-center gap-3.5 px-4 py-3.5 hover:bg-[var(--color-fill)] transition-colors">
+                      <span className="h-11 w-11 shrink-0 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Crown size={18} /></span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[15px] font-semibold">Membership</span>
+                        <span className="block text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2 [overflow-wrap:anywhere] mt-0.5">{detail}</span>
+                      </span>
+                      <span className={cn("shrink-0 h-7 px-2.5 rounded-full grid place-items-center text-[11.5px] font-bold uppercase tracking-wide", tone)}>{m}</span>
+                      <ChevronRight size={17} className="shrink-0 text-[var(--color-label-3)] -mr-1" aria-label="Manage" />
+                    </Link>
+                  );
+                })()}
               </div>
             </Section>
           </Card>

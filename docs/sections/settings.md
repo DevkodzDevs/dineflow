@@ -109,5 +109,14 @@ pnpm --filter @dineflow/web typecheck
   hidden must still post its saved value (a restaurant posts the room GST and check-in times as
   hidden inputs; a switched-off promise posts `promise_minutes`/`promise_pct` — before this, every
   Save with the promise off reset the rate to 0). The Save sits in `.settings-savebar`, sticky above
-  the bottom nav (`bottom: 92px` on a phone), padded 84px on the right to clear the Assist button,
-  and it shows "Saving…" / "Saved." itself.
+  the bottom nav (`bottom: 92px` on a phone). **Two looks**, chosen by an IntersectionObserver on a
+  1px sentinel just after it: pinned (`floating`) it is a lifted, rounded bar with `margin-right: 72px`
+  so it ends before the Assist button beside it; at the end of the form it rests as a card exactly the
+  width of the others. **It reports state, not a fixed sentence:** "No changes yet" (grey tick, Save
+  disabled) → "Unsaved changes" (amber pulsing dot, Save live) once any field fires `input` (the logo
+  picker excepted — it saves itself) → "Saving…" → "All changes saved" (green tick) or "Couldn't save"
+  with the reason. Probe: `props.mjs` (15 checks).
+- **Account & security is three rows in one panel** — Password (sign-in ID, or "Signed in from Master
+  control" when there is none — it used to print "Signed in as ."), Recovery email (where codes go, or
+  an amber "Missing"), Membership (plan and date, a status pill, the whole row links to /membership).
+  Detail lines wrap to two lines on a phone rather than truncate.
