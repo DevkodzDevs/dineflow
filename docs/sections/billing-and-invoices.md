@@ -62,3 +62,14 @@ pnpm --filter @dineflow/web test
   session. The pay QR must be an image `data:` URL. Tested in `lib/security.test.ts`.
 - **Direct bill/invoice edits are fenced in the database (0084)**: voiding an unpaid bill and the
   invoice's bill-to fields are the only direct updates allowed. See data-and-rls.md.
+
+- **Invoiced by month is a column chart with a readout** (`MonthStrip` in `InvoicesClient.tsx`, every
+  width): one series, one hue — bars from a common baseline, the chosen month solid tint and the rest
+  32% tint, empty months a 3px stub — and the chosen month's total, invoice count and change on the
+  month before in a readout above. It opens on the latest month with invoices; tap, hover or focus a
+  bar to read another. No number on every bar; a `sr-only` table carries all six for a screen reader.
+  The bar buttons strip the global button chrome (`!border-0 !bg-transparent !p-0`) — without it each
+  column drew a heavy rounded box. It used to be a 3×2 grid of thin bars with twelve figures.
+- **On a phone the filters are two segmented rows** (`sm:hidden`): All · Stay · Dining, and 7 days ·
+  30 days · 90 days · 1 yr, each one row, 44px. sm and up keep the chips. Probe: `inv.mjs` (20 checks
+  over five widths, with the order header).

@@ -53,7 +53,21 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
         <StatTile label="Stay invoices" value={String(rows.filter((i) => i.kind === "stay").length)} delay={0.1} />
         <StatTile label="Outstanding" value={formatINR(outstanding)} tone={outstanding > 0 ? "alert" : "good"} delay={0.15} />
       </div>
-      <div className="flex flex-wrap gap-2 mb-4">
+      {/* Phone: what and when as two even segmented rows — the chips wrapped into a ragged pair of lines
+          with the date range pushed to the right on its own. sm and up keep the chips. */}
+      <div className="sm:hidden space-y-2 mb-4">
+        <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-[var(--color-fill)]" role="group" aria-label="Kind">
+          {[["", "All"], ["stay", "Stay"], ["dining", "Dining"]].map(([k, l]) => { const on = (kind ?? "") === k; return (
+            <Link key={k} href={`/invoices?days=${n}${k ? `&kind=${k}` : ""}`} aria-current={on ? "page" : undefined}
+              className={`h-11 rounded-xl grid place-items-center text-[14px] font-semibold transition-colors ${on ? "bg-[var(--color-label)] text-[var(--color-on-label)] shadow-sm" : "text-[var(--color-label-2)]"}`}>{l}</Link>); })}
+        </div>
+        <div className="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-[var(--color-fill)]" role="group" aria-label="Period">
+          {[7, 30, 90, 365].map((d) => { const on = n === d; return (
+            <Link key={d} href={`/invoices?days=${d}${kind ? `&kind=${kind}` : ""}`} aria-current={on ? "page" : undefined}
+              className={`h-11 rounded-xl grid place-items-center num text-[14px] font-semibold transition-colors ${on ? "bg-[var(--color-label)] text-[var(--color-on-label)] shadow-sm" : "text-[var(--color-label-2)]"}`}>{d === 365 ? "1 yr" : `${d} days`}</Link>); })}
+        </div>
+      </div>
+      <div className="hidden sm:flex flex-wrap gap-2 mb-4">
         {[["", "All"], ["stay", "Stay"], ["dining", "Dining"]].map(([k, l]) => (
           <Link key={k} href={`/invoices?days=${n}${k ? `&kind=${k}` : ""}`} className={`chip ${(kind ?? "") === k ? "on" : ""}`}>{l}</Link>
         ))}

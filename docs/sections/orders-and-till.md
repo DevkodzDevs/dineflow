@@ -122,3 +122,8 @@ node fit.mjs             # nine dishes on the ticket at 7 real screen sizes (not
 ## See also
 
 [menu.md](menu.md) · [kitchen.md](kitchen.md) · [billing-and-invoices.md](billing-and-invoices.md)
+
+- **The order page header on a phone** (`orders/[id]/page.tsx`): the title gets its own row and Add
+  items / Bill sit under it as an even 48px pair (`grid-cols-2`, one column when the role cannot bill);
+  from `sm` it is one row again. It used to squeeze "Order #1400 / T3" between the back button and
+  two large buttons.
