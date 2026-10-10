@@ -51,6 +51,8 @@ Numbered, additive, applied in order. Recent ones give the flavour:
                                 by token); booking_move_room
 0082_set_rates_only           — a rate per night, leaving stop-sell and minimum stay alone
 0083_brand_logo_storage       — the first Storage bucket: public `brand`, 1 MB, PNG/JPEG/WebP; owner/manager write own folder
+0084_role_walls_and_lockdown  — role walls inside a property; internal definer functions out of public reach; v_low_stock invoker
+0085_box_tenant_guard_ota_lockdown — box_push scoped to its own property; OTA sync functions service-role only; one payment, one bill
 ```
 
 **Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`
@@ -102,3 +104,40 @@ hole in the wall) · [testing-and-gates.md](testing-and-gates.md)
   insert/update/delete only where `(storage.foldername(name))[1] = auth_restaurant_id()::text` and
   `auth_role() in ('owner','manager')`; select on the same folder (to clear old logos). Remove files
   through the Storage API, not `delete from storage.objects` — that leaves the blob behind.
+
+## Role walls inside a property (0084, 0085) — read before adding a table or a direct write
+
+`tenant_all` walls properties off from each other. It does **not** wall roles off inside one: by
+itself it lets any active staff login write any row of its own property straight through the API.
+On 2026-10-10 a housekeeping login could, in a rolled-back test, make itself owner, change the UPI
+ID, and delete 1,388 payments; an owner could give itself a 10-year membership. What now holds:
+
+- **`restaurants`** — `guard_restaurant_update` (BEFORE UPDATE, direct API writes only: it returns
+  early unless `current_user` is `authenticated`/`anon`, so RPCs and the service role are untouched):
+  membership/plan/trial/enabled_modules/code/login_domain/box_*/rating/is_shadow/network_alias are
+  RPC-only; district/pincode/lat/lng any staff (Neighbours); the Tax columns owner/manager/supervisor;
+  every other column the owner. Restrictive policies refuse direct INSERT and DELETE.
+- **`profiles`, `invites`** — no direct writes at all (restrictive `using (false)` for
+  insert/update/delete to authenticated, anon). Staff RPCs (`staff_create_login`, `owner_set_access`,
+  `create_invite`, `join_restaurant`) check rank themselves and run as owner.
+- **Money** — `payments`: no direct writes. `bills`: no direct insert/delete; a direct update may
+  only void an unpaid bill (`guard_bill_update`). `invoices`: no direct insert/delete; a direct update
+  may change only `guest_name/phone/gstin` (`guard_invoice_update`). `day_closes`, `shift_closes`,
+  `business_periods`, `night_audits`: no direct delete.
+- **Internal functions** revoked from public/anon/authenticated (every caller is itself DEFINER):
+  `box_export`, `box_apply`, `demo_user`, `seed_storefront`, `assign_login_domain`, `next_staff_code`,
+  `table_pulse_for`, `membership_state_for`, `suggest_staff_login`, `forecast_area_factor`,
+  `price_line`, `sweep_expired_temp_passwords`; signed-in only: `staff_login_domain`,
+  `network_demand`, `next_labour_code`; service role only: `ical_channels`, `ingest_ota_booking`,
+  `ota_log`. `v_low_stock` is `security_invoker`. TRUNCATE/TRIGGER/REFERENCES revoked from the API roles.
+- **`box_push`** updates a row only if it is the box's own property's (`where <t>.restaurant_id = r.id`
+  on all eleven `do update`s) — menu, category and room-type ids are public.
+- **`payments_gateway_ref_once`** — a Razorpay payment id (`pay_…`) settles one bill.
+- **`create_invite`** pins `search_path = public, extensions` (it calls pgcrypto); before 0084,
+  inviting by code failed with "gen_random_bytes does not exist".
+
+**Adding a direct write from a screen?** It will be refused if it touches a guarded table or column —
+that is the point. Route it through an RPC that checks the caller's role, or widen the guard in a new
+migration *with a reason*. **Adding a SECURITY DEFINER function?** Supabase grants EXECUTE to anon by
+default: `revoke … from public, anon` unless strangers are meant to call it, and check the caller
+inside. Re-verify with `walls.cjs` (27 checks) and `t0085.cjs` (7) — see testing-and-gates.md.
