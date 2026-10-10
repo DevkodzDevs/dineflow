@@ -5,7 +5,7 @@
 > occasionally the disaster.
 
 **Files** `app/globals.css` (733 lines) · `components/ui/index.tsx` · `components/ui/flip.tsx` ·
-`components/ui/{DataTable,Theme,Ticket,AiButton,PasswordInput,Rail}.tsx`
+`components/ui/{DataTable,Theme,Ticket,AiButton,PasswordInput,Rail,AnalogClock}.tsx`
 
 ## What it is
 
@@ -130,6 +130,13 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   `::after` is a 36px spacer so the last item scrolls clear of the arrow. With `label` the track is
   `role="group"` with that `aria-label` — probes find a rail by it. Used on Rooms (state chips) and
   the till (Order line, Categories, Goes well with). Probe: `rails.mjs`.
+- **`AnalogClock`** is a 100×100 SVG: a ring (`--color-label`) round a face (`--color-bg-2`), 48 minute
+  dots (`--color-label-3`), 12 hour bars (12/3/6/9 longer and thicker), rounded hour and minute hands
+  in the ink colour, a red second hand (`--color-red`) with a disc near its tip and a red cap. So the
+  face is white with a black ring in paper, graphite with a light ring in dark. Hands rotate about
+  `50px 50px` in the view box (`transform-box: view-box`); only the second hand has a transition — a
+  small overshoot tick, dropped for the one update a day when its angle resets. Size it with classes
+  on the component (`h-16 w-16 md:h-[76px] md:w-[76px]` on the dashboard).
 - **`Ticket` (the KOT paper) has a `top`**: `"tear"` (the torn edge, the default — the kitchen board
   uses only this) or `"slot"` (it comes out of a printer slot: no torn edge, the machine's shadow
   across its top, and one mounted after first paint feeds down 44px from behind the machine). The

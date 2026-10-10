@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Wallet, Users, Timer, BedDouble, Bike, Boxes, ConciergeBell, Sparkles, Flame, ReceiptText } from "lucide-react";
 import { Flip, cn } from "@/components/ui";
+import { AnalogClock } from "@/components/ui/AnalogClock";
 import { formatINR } from "@/lib/format";
 
 /**
@@ -228,8 +229,8 @@ export function Overview({
   const shown = panels.find((p) => p.key === tab) ?? panels[0];
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => { const t = () => setNow(new Date()); t(); const i = setInterval(t, 30000); return () => clearInterval(i); }, []);
-  const clock = now ? now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }) : "";
-  const date = now ? now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", weekday: "short", timeZone: "Asia/Kolkata" }) : "";
+  const weekday = now ? now.toLocaleDateString("en-IN", { weekday: "long", timeZone: "Asia/Kolkata" }) : "";
+  const dayMonth = now ? now.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : "";
 
   /* Every number on the board in one row. They were two grids in two columns — five tiles in a
      two-column grid leaves a hole at the end of it, and the other two sat in a grid of their own
@@ -250,7 +251,11 @@ export function Overview({
           <div className="text-[13px] text-steel">{greet}</div>
           <h1 className="text-[28px] md:text-[38px] leading-none mt-0.5 truncate">{property}</h1>
         </div>
-        <div className="text-right shrink-0"><div className="text-[11px] text-steel uppercase tracking-wide">{date}</div><div className="num text-xl">{clock}</div></div>
+        {/* the day, and the time as a wall clock — it was "SAT, 10 OCT" over "12:09" in small type */}
+        <div className="flex items-center gap-3 shrink-0" data-clock>
+          <div className="text-right leading-tight"><div className="text-[11px] text-steel uppercase tracking-[0.14em]">{weekday}</div><div className="num text-lg md:text-xl mt-0.5">{dayMonth}</div></div>
+          <AnalogClock className="h-16 w-16 md:h-[76px] md:w-[76px]" />
+        </div>
       </header>
 
       {/* The split-flap row, back where it belongs. It reads from the pass, which no stat card

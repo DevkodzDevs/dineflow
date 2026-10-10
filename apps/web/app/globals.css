@@ -634,6 +634,25 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
    bleed to the card edge with -mx-4 px-4, which that selector does not cover. */
 .rail-fade { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
   mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+/* AnalogClock (components/ui/AnalogClock.tsx): the Control room's wall clock. Tokens only — a black
+   ring round a white face in paper, a light ring round a graphite face in dark. The hands rotate
+   about the centre of the 100×100 view box. Only the second hand moves visibly; it ticks with a
+   small overshoot, and the transition is dropped for the one update a day when its angle resets. */
+.analog-clock { display: block; overflow: visible; filter: drop-shadow(0 6px 14px rgb(0 0 0 / .16)); }
+.analog-clock .ac-bezel { fill: var(--color-label); }
+.analog-clock .ac-face { fill: var(--color-bg-2); }
+.analog-clock .ac-tick { stroke: var(--color-label); stroke-linecap: round; }
+.analog-clock .ac-dot { fill: var(--color-label-3); }
+.analog-clock .ac-hour { stroke: var(--color-label); stroke-width: 4.6; stroke-linecap: round; }
+.analog-clock .ac-min { stroke: var(--color-label); stroke-width: 3; stroke-linecap: round; }
+.analog-clock .ac-sec line { stroke: var(--color-red); stroke-width: 1.3; stroke-linecap: round; }
+.analog-clock .ac-sec circle { fill: var(--color-red); }
+.analog-clock .ac-cap { fill: var(--color-red); stroke: var(--color-bg-2); stroke-width: 1; }
+.analog-clock .ac-hand { transform-box: view-box; transform-origin: 50px 50px; }
+.analog-clock .ac-sec.ticks { transition: transform .22s cubic-bezier(.4, 2.1, .55, 1); }
+.analog-clock .ac-hands { opacity: 0; transition: opacity .3s; }
+.analog-clock .ac-hands.on { opacity: 1; }
+
 /* Rail (components/ui/Rail.tsx): a round arrow on a scrolling track's right edge, only while something
    is hidden past it. A soft, see-through disc (the track shows through it, blurred) so it reads as a
    hint, not a control that competes with the chips. Positioned in the track's wrapper, not the

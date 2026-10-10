@@ -24,7 +24,8 @@ the board polls on its own.**
 `Overview.tsx` is built in **bands, not columns**. A band is a row of panels that share a top *and* a
 bottom:
 
-1. header — greeting, property, date, clock
+1. header — greeting, property, and on the right the weekday over the date beside an analog
+   `AnalogClock` (64px on a phone, 76 from `md`, `[data-clock]`); it was "SAT, 10 OCT" over "12:09"
 2. `.flip-row` — three split-flap tiles, the numbers readable from across a kitchen
 3. `.stat-grid` — every stat tile in one row, count-aware tracks
 4. band: **On now** (2/3) beside **Where it came from** over **This week** (1/3)
@@ -38,6 +39,12 @@ content happened to be, so at 1440 six panels sat at six different tops — 443,
 component on the client.
 
 ## Before you edit
+
+- **The header clock's hands are placed by script, not by CSS animation** (`components/ui/AnalogClock.tsx`).
+  globals.css switches every animation off under `prefers-reduced-motion`, which would leave CSS-driven
+  hands standing at twelve. It ticks from the time in India (UTC+5:30, no daylight saving) once a
+  second, in step with the real second, and re-reads it when the tab comes back. No hands before
+  mount, so the server render cannot disagree with the client. Probe: `clock.mjs`.
 
 - **On a phone the flip tiles size from the row, not the screen height rule.** `.flip-row .flip`
   takes `--tile: clamp(64px, (100vw - 56px) / 3.6, 112px)` under 480px, with a fixed 12px gap. A
