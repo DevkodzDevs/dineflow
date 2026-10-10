@@ -17,6 +17,17 @@ type Order = { id: string; order_no: number; status: string; table_id: string | 
 type Table = { id: string; name: string; status: string };
 type Open = { id: string; order_no: number; table_id: string | null; dining_tables: { name: string } | null };
 
+/** One ticket on the order page, hanging from its own printer: the slot is inset px-3.5 and so is the
+ *  paper, tucked 4px up under the machine (which paints above it) so the teeth bite its top edge. */
+function PrintedTicket({ status, children }: { status: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0" data-unit>
+      <PrinterHead label="Kitchen printer" status={status} />
+      <div className="relative z-[1] -mt-1 px-3.5">{children}</div>
+    </div>
+  );
+}
+
 export function OrderDetail({ order, tables = [], open = [] }: { order: Order; tables?: Table[]; open?: Open[] }) {
   const router = useRouter(); const [pending, start] = useTransition(); const toast = useToast();
   useEffect(() => {
@@ -49,7 +60,6 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
      belong to the ticket the kitchen printed for the order they were split from */
   const kotIds = new Set(order.kots.map((k) => k.id));
   const orphans = order.order_items.filter((i) => !i.kot_id || !kotIds.has(i.kot_id));
-  const tickets = order.kots.length + (orphans.length > 0 ? 1 : 0);
 
   const Line = ({ i }: { i: Item }) => (
     <div key={i.id} className="flex items-start gap-2 text-sm">
@@ -68,31 +78,28 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      {/* the tickets come out of the kitchen printer, like the bill comes out of the counter printer: one
-          machine across the top, a slot over each first-row ticket (one on a phone, two from sm), the
-          first row hanging from the slots and the rest torn off below */}
-      <div className="min-w-0">
-      {tickets > 0 && <PrinterHead label="Kitchen printer" status={`${order.kots.length} KOT${order.kots.length === 1 ? "" : "S"}`} slots={tickets > 1 ? 2 : 1} />}
-      <div className={cn("grid gap-4 sm:grid-cols-2", tickets > 0 && "relative z-[1] -mt-1 px-3.5 sm:px-5")}>
-        {[...order.kots].sort((a, b) => a.kot_no - b.kot_no).map((k, n) => {
+      {/* every ticket comes out of a kitchen printer, the way the bill comes out of the counter printer —
+          one machine per ticket, so on a phone the second and third tickets do not hang in the air under
+          the first one's machine; two across from sm, each with its own */}
+      <div className="grid gap-5 sm:grid-cols-2 items-start min-w-0">
+        {[...order.kots].sort((a, b) => a.kot_no - b.kot_no).map((k) => {
           const course = Math.max(1, ...order.order_items.filter((i) => i.kot_id === k.id).map((i) => i.course ?? 1));
           return (
-            <Ticket key={k.id} top={n === 0 ? "slot" : n === 1 ? "slot-sm" : "tear"} no={k.kot_no} title={k.held ? `Course ${course} · held` : `${fmtTime(k.created_at)} · ${fmtSince(k.created_at)} ago`} tone={k.held ? "warn" : tone(k.status)}
+            <PrintedTicket key={k.id} status={k.held ? "HELD" : k.status.toUpperCase()}><Ticket top="slot" no={k.kot_no} title={k.held ? `Course ${course} · held` : `${fmtTime(k.created_at)} · ${fmtSince(k.created_at)} ago`} tone={k.held ? "warn" : tone(k.status)}
               footer={<div className="flex justify-between items-center">
                 {k.held ? <Pill tone="gold"><PauseCircle size={11} /> held</Pill> : <Pill tone={tone(k.status)}>{k.status}</Pill>}
                 {k.held && isOpen && <Button size="sm" disabled={pending} onClick={() => start(async () => { const r = await fireKot(k.id); if ("error" in r) fail(r.error!); else router.refresh(); })}><Flame size={14} /> Fire to kitchen</Button>}
                 {k.status === "ready" && isOpen && <Button size="sm" variant="ink" disabled={pending} onClick={() => start(async () => { for (const i of order.order_items.filter((x) => x.kot_id === k.id && x.status === "ready")) await setItemStatus(i.id, "served"); })}>Mark served</Button>}</div>}>
               {order.order_items.filter((i) => i.kot_id === k.id).map((i) => <Line key={i.id} i={i} />)}
-            </Ticket>
+            </Ticket></PrintedTicket>
           );
         })}
         {orphans.length > 0 && (
-          <Ticket top={order.kots.length === 0 ? "slot" : order.kots.length === 1 ? "slot-sm" : "tear"} no={order.order_no} title={order.split_from ? "Split from another bill" : "Lines"} tone="served"
+          <PrintedTicket status="SPLIT"><Ticket top="slot" no={order.order_no} title={order.split_from ? "Split from another bill" : "Lines"} tone="served"
             footer={<div className="text-[11px] text-steel">These lines were cooked on the ticket of the order they were split from.</div>}>
             {orphans.map((i) => <Line key={i.id} i={i} />)}
-          </Ticket>
+          </Ticket></PrintedTicket>
         )}
-      </div>
       </div>
       <Card className="h-fit lg:sticky lg:top-6">
         <div className="text-xs font-semibold uppercase tracking-wide text-steel">Running total</div>

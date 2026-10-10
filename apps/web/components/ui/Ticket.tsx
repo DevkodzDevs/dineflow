@@ -4,11 +4,10 @@ import { cn } from "./index";
 import type { ReactNode } from "react";
 
 /** The KOT ticket: DineFlow's signature surface — real thermal paper, torn top edge, mono numbers.
- *  `top`: "tear" (the torn edge — the default), "slot" (it comes out of a `PrinterHead` slot: no torn
- *  edge, the machine's shadow across its top, and a new one feeds down out of the slot), or "slot-sm"
- *  (out of a slot only from `sm`, where it is the second ticket of the first row; torn on a phone). */
+ *  `top`: "tear" (the torn edge — the default), or "slot" (it comes out of a `PrinterHead` slot: no
+ *  torn edge, the machine's shadow across its top, and a new one feeds down out of the slot). */
 export function Ticket({ no, title, meta, tone = "pending", children, footer, className, layoutId, aside, top = "tear" }:
-  { no: string | number; title: string; meta?: string; tone?: "pending" | "preparing" | "ready" | "served" | "alert" | "warn"; children: ReactNode; footer?: ReactNode; className?: string; layoutId?: string; aside?: ReactNode; top?: "tear" | "slot" | "slot-sm" }) {
+  { no: string | number; title: string; meta?: string; tone?: "pending" | "preparing" | "ready" | "served" | "alert" | "warn"; children: ReactNode; footer?: ReactNode; className?: string; layoutId?: string; aside?: ReactNode; top?: "tear" | "slot" }) {
   // "warn" is the amber between fine and late: the ticket is past the hurry-up mark but not yet past the target
   const bar = { pending: "bg-line-2", preparing: "bg-saffron", ready: "bg-mint", served: "bg-steel", alert: "bg-chili", warn: "bg-saffron" }[tone];
   return (
@@ -17,10 +16,10 @@ export function Ticket({ no, title, meta, tone = "pending", children, footer, cl
       animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
       exit={{ opacity: 0, scale: 0.95, y: -6 }}
       transition={top === "slot" ? { duration: 0.9, ease: [0.16, 1, 0.3, 1] } : { type: "spring", stiffness: 340, damping: 32 }}
-      className={cn("relative", top === "tear" ? "mt-2.5" : top === "slot" ? "mt-0" : "mt-2.5 sm:mt-0", className)}>
-      <div className={cn("tear-strip tear-top", top === "slot" && "hidden", top === "slot-sm" && "sm:hidden")} aria-hidden />
+      className={cn("relative", top === "slot" ? "mt-0" : "mt-2.5", className)}>
+      <div className={cn("tear-strip tear-top", top === "slot" && "hidden")} aria-hidden />
       {/* the machine's shadow across the paper where it leaves the slot */}
-      {top !== "tear" && <div className={cn("pointer-events-none absolute inset-x-0 top-0 h-6 z-10", top === "slot-sm" && "hidden sm:block")} aria-hidden
+      {top === "slot" && <div className="pointer-events-none absolute inset-x-0 top-0 h-6 z-10" aria-hidden
         style={{ background: "linear-gradient(180deg, rgb(13 28 23 / .38), rgb(13 28 23 / .06) 55%, transparent)" }} />}
       <div className="paper thermal p-4 relative">
       {/* the coloured spine that says how urgent this ticket is */}

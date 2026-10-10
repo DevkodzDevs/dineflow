@@ -135,15 +135,15 @@ node fit.mjs             # nine dishes on the ticket at 7 real screen sizes (not
 
 [menu.md](menu.md) · [kitchen.md](kitchen.md) · [billing-and-invoices.md](billing-and-invoices.md)
 
-- **The order page's tickets come out of a kitchen printer** (`OrderDetail.tsx` + `PrinterHead`),
-  as the bill comes out of the counter printer. One machine across the ticket column — vent, "Kitchen
-  printer", "N KOTS", the green LED — with a slot over each first-row ticket: one on a phone, two
-  from `sm` when there are two or more tickets (the KOTs plus the "Lines" ticket for split-off
-  lines). The slots and the tickets share one grid (`gap-4 sm:grid-cols-2`, inset `px-3.5 sm:px-5`),
-  so each slot lies exactly over its ticket; the tickets are pulled 4px up under the machine
-  (`-mt-1`, `z-[1]` under its `z-[3]`) so the teeth bite the paper. First-row tickets are
-  `top="slot"`/`"slot-sm"` (no torn edge); the rest keep the torn top. An order with no tickets
-  shows no machine. Probe: `kpr.mjs`.
+- **Every ticket on the order page comes out of its own kitchen printer** (`PrintedTicket` in
+  `OrderDetail.tsx` + `PrinterHead`), as the bill comes out of the counter printer: the machine —
+  vent, "Kitchen printer", the ticket's state (PENDING, PREPARING, READY, SERVED, HELD; SPLIT on the
+  "Lines" ticket), the green LED — then the ticket hanging from its slot with no torn top. One
+  printer per ticket, not one across the column: with one machine the second and third tickets on a
+  phone hung in the air under the first. Tickets stack on a phone and go two across from `sm`
+  (`gap-5`, `items-start`), each with its own machine. The slot and the paper share the `px-3.5`
+  inset, so the slot lies exactly over the paper; the paper is pulled 4px up under the machine
+  (`-mt-1`, `z-[1]` under its `z-[3]`) so the teeth bite it. Probe: `kpr.mjs`.
 - **The order page header on a phone** (`orders/[id]/page.tsx`): the title gets its own row and Add
   items / Bill sit under it as an even 48px pair (`grid-cols-2`, one column when the role cannot bill);
   from `sm` it is one row again. It used to squeeze "Order #1400 / T3" between the back button and
