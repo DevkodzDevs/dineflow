@@ -8,11 +8,12 @@ import { saveOta, deleteOta, setRates, setRatesOnly, pushChannel, sendTestOrder 
 import { suggestRate } from "@/lib/rates";
 import { todayIST } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wand2 } from "lucide-react";
-import { Upload, Send } from "lucide-react";
+import { Upload, Send, Clock, Percent, Link2 } from "lucide-react";
 import { saveChannel, deleteChannel } from "../online-orders/actions";
 
 type Ota = { id: string; kind: string; label: string; mode: string; room_type_id: string | null; import_url: string | null; export_token: string; api_base: string | null; hotel_ref: string | null; commission_pct: number; rate_offset_pct: number; is_live: boolean; last_import_at: string | null; last_error: string | null };
 type Oc = { id: string; kind: string; label: string; outlet_ref: string | null; webhook_token: string; commission_pct: number; prep_minutes: number; auto_accept: boolean; is_live: boolean; last_sync_at: string | null; api_base?: string | null };
+const OTA_HUE: Record<string, string> = { booking_com: "--color-blue", airbnb: "--color-red", makemytrip: "--color-orange", agoda: "--color-green", expedia: "--color-orange", ical: "--color-tint" };
 type Av = { room_type_id: string; stay_date: string; total: number; booked: number; free: number; rate: number; stop_sell: boolean };
 
 export function ChannelsClient({ base, ota, orderChannels, types, log, avail, restaurant }: { base: string; ota: Ota[]; orderChannels: Oc[]; types: { id: string; name: string; base_rate: number }[]; log: { id: string; direction: string; ok: boolean; message: string | null; count: number | null; created_at: string }[]; avail: Av[]; restaurant: { property_type: string; booking_slug: string | null; name: string } }) {
@@ -74,18 +75,47 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
           <b>Two ways to stop double-bookings.</b> <b>iCal</b> works today with Airbnb, Booking.com, Agoda and MakeMyTrip Connect: paste their calendar link into "their feed", and paste your DineFlow link into their site. Sync runs every 15 minutes and on demand.
           <b> API</b> mode (live rates and instant confirmation) needs a certified connection with each OTA or a channel-manager partner; the fields are here so you can switch over without changing anything else.</div></Card>
-        <div className="flex justify-end"><Button variant="outline" onClick={() => syncNow()}><RefreshCw size={15} /> Sync now</Button><span className="w-2" /><Button onClick={() => setEditOta({ kind: "booking_com", mode: "ical", commission_pct: 15 })}><Plus size={16} /> Add OTA</Button></div>
-        <div className="grid gap-3 md:grid-cols-2 [&>*]:min-w-0">{ota.map((c) => (
-          <Card key={c.id}><div className="flex items-center gap-2"><span className="font-semibold">{c.label}</span><Pill tone={c.mode === "ical" ? "sky" : "gold"}>{c.mode}</Pill><Pill tone={c.is_live ? "ready" : "pending"}>{c.is_live ? "live" : "draft"}</Pill><span className="ml-auto num text-xs text-steel">{c.commission_pct}%</span></div>
-            <div className="mt-3"><label>Your DineFlow calendar (give this to them)</label><div className="mt-1 flex gap-2 min-w-0"><input readOnly className="num text-xs min-w-0" value={`${base}/api/ical/${c.export_token}.ics`} /><Button size="sm" variant="outline" onClick={() => copy(`${base}/api/ical/${c.export_token}.ics`)}><Copy size={14} /></Button></div></div>
-            <div className="mt-2 text-xs text-steel">{c.import_url ? <>Their feed: <span className="num">{c.import_url.slice(0, 42)}…</span></> : "No incoming feed set"}</div>
-            <div className="mt-1 text-xs flex items-center gap-1">{c.last_error ? <span className="text-chili flex items-center gap-1"><AlertTriangle size={12} /> {c.last_error}</span> : c.last_import_at ? <span className="text-mint flex items-center gap-1"><Check size={12} /> synced {new Date(c.last_import_at).toLocaleString("en-IN")}</span> : <span className="text-steel">never synced</span>}</div>
-            {/* a narrow card (a phone, or two cards side by side on a tablet): one row — Sync and Push rates share
-                the width, Edit and Remove are square buttons beside them; they wrapped with the bin alone on a
-                second line. Measured on the card, not the screen, so a wide card keeps the plain row */}
-            <div className="@container mt-3"><div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] @md:flex @md:flex-wrap gap-2"><Button size="sm" variant="outline" className="max-sm:!h-11 [&>svg]:shrink-0" onClick={() => syncNow(c.id)}><RefreshCw size={14} /> Sync</Button>
-              <Button size="sm" variant="outline" className="max-sm:!h-11 [&>svg]:shrink-0" disabled={pending} onClick={() => start(async () => { const r = await pushChannel(c.id, "ari"); setMsg("error" in r ? r.error! : r.message!); })}><Upload size={14} /> Push rates</Button><Button size="sm" variant="ghost" className="max-sm:!h-11 @max-md:!w-11 @max-md:!px-0 @max-md:!bg-[var(--color-fill)]" aria-label={`Edit ${c.label}`} onClick={() => setEditOta(c)}><Pencil size={14} className="@md:hidden" /><span className="hidden @md:inline">Edit</span></Button><Button size="sm" variant="ghost" className="max-sm:!h-11 @max-md:!w-11 @max-md:!px-0 @max-md:!bg-[var(--color-red-2)] @max-md:!text-[var(--color-red)]" aria-label={`Remove ${c.label}`} onClick={() => { if (confirm(`Remove ${c.label}?`)) start(() => { deleteOta(c.id); }); }}><Trash2 size={14} /></Button></div></div></Card>))}
-          {ota.length === 0 && <p className="text-sm text-steel">No OTA channels yet.</p>}</div>
+        {/* the OTAs as one list on every screen (they were cards two-up, which left the third alone and wrapped
+            each card's buttons): a header with the count, Sync now and Add OTA, then one row per channel —
+            its initial, name and pills, a status line, the calendar link; the actions trail the row on a wide
+            list and sit as one row under it on a narrow one. Sized from the list (@container), not the screen */}
+        <Card className="@container" >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
+            <div className="flex items-center gap-2 min-w-0"><h3 className="text-xl">OTA channels</h3><span className="num text-xs font-semibold rounded-full px-2 py-0.5 bg-[var(--color-fill)] text-[var(--color-label-2)]">{ota.length}</span></div>
+            <div className="grid grid-cols-2 gap-2 w-full @lg:w-auto @lg:flex @lg:ml-auto">
+              <Button variant="outline" className="[&>svg]:shrink-0" onClick={() => syncNow()}><RefreshCw size={15} /> Sync now</Button>
+              <Button className="[&>svg]:shrink-0" onClick={() => setEditOta({ kind: "booking_com", mode: "ical", commission_pct: 15 })}><Plus size={16} /> Add OTA</Button>
+            </div>
+          </div>
+          <ul className="mt-4 border-t border-[var(--color-separator)] divide-y divide-[var(--color-separator)]" aria-label="OTA channels">{ota.map((c) => {
+            const hue = OTA_HUE[c.kind] ?? "--color-label-2"; const link = `${base}/api/ical/${c.export_token}.ics`;
+            return (
+            <li key={c.id} data-ota={c.kind} className="grid grid-cols-[44px_minmax(0,1fr)] gap-x-3 gap-y-3 pt-4 pb-4 last:pb-0 @3xl:grid-cols-[44px_minmax(0,1fr)_auto] @3xl:items-center @3xl:gap-x-5">
+              <span aria-hidden className="h-11 w-11 rounded-[12px] grid place-items-center font-display text-lg font-semibold self-start" style={{ background: `color-mix(in srgb, var(${hue}) 16%, transparent)`, color: `var(${hue})` }}>{c.label.trim().charAt(0).toUpperCase() || "·"}</span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className="font-semibold min-w-0 truncate">{c.label}</span><Pill tone={c.mode === "ical" ? "sky" : "gold"}>{c.mode === "ical" ? "iCal" : "API"}</Pill><Pill tone={c.is_live ? "ready" : "pending"}>{c.is_live ? "Live" : "Draft"}</Pill></div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-steel" data-status>
+                  {c.last_error ? <span className="text-chili flex items-center gap-1 min-w-0"><AlertTriangle size={12} className="shrink-0" /> <span className="truncate" title={c.last_error}>{c.last_error}</span></span>
+                    : c.last_import_at ? <span className="text-mint flex items-center gap-1"><Check size={12} /> Synced {new Date(c.last_import_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span>
+                    : <span className="flex items-center gap-1"><Clock size={12} /> Never synced</span>}
+                  <span className="flex items-center gap-1"><Percent size={12} /> <span><span className="num">{c.commission_pct}%</span> commission</span></span>
+                  {c.import_url ? <span className="flex items-center gap-1 min-w-0 max-w-[18rem]" title={c.import_url}><Link2 size={12} className="shrink-0" /> <span className="truncate">Their feed: {c.import_url}</span></span> : <span className="flex items-center gap-1"><Link2 size={12} /> No incoming feed</span>}
+                </div>
+                <div className="mt-2.5 flex items-center gap-2 min-w-0">
+                  <input readOnly aria-label={`Your DineFlow calendar for ${c.label} (give this to them)`} title="Your DineFlow calendar — give this to them" className="num text-xs min-w-0 flex-1" value={link} />
+                  <Button variant="outline" className="shrink-0 !h-10 !w-10 !px-0 !rounded-xl" aria-label={`Copy the calendar link for ${c.label}`} onClick={() => copy(link)}><Copy size={14} /></Button>
+                </div>
+              </div>
+              <div className="col-span-2 @3xl:col-span-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] @3xl:flex gap-2" data-actions>
+                <Button size="sm" variant="outline" className="[&>svg]:shrink-0" onClick={() => syncNow(c.id)}><RefreshCw size={14} /> Sync</Button>
+                <Button size="sm" variant="outline" className="[&>svg]:shrink-0" disabled={pending} onClick={() => start(async () => { const r = await pushChannel(c.id, "ari"); setMsg("error" in r ? r.error! : r.message!); })}><Upload size={14} /> Push rates</Button>
+                <Button variant="ghost" className="!h-10 !w-10 !px-0 !rounded-xl !bg-[var(--color-fill)]" aria-label={`Edit ${c.label}`} title="Edit" onClick={() => setEditOta(c)}><Pencil size={14} /></Button>
+                <Button variant="ghost" className="!h-10 !w-10 !px-0 !rounded-xl !bg-[var(--color-red-2)] !text-[var(--color-red)]" aria-label={`Remove ${c.label}`} title="Remove" onClick={() => { if (confirm(`Remove ${c.label}?`)) start(() => { deleteOta(c.id); }); }}><Trash2 size={14} /></Button>
+              </div>
+            </li>); })}
+            {ota.length === 0 && <li className="pt-6 pb-2 text-center"><div className="mx-auto h-11 w-11 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Globe size={18} /></div><p className="mt-3 text-sm text-steel">No OTA channels yet. Add Booking.com, Airbnb or any iCal calendar to keep your rooms from double-booking.</p></li>}
+          </ul>
+        </Card>
         <Card><div className="flex items-center gap-2"><Globe size={16} /><b>Your own booking page</b><Pill tone="ready">0% commission</Pill></div>
           <div className="mt-2 flex gap-2 min-w-0"><input readOnly className="num text-xs min-w-0" value={bookingUrl} /><Button size="sm" variant="outline" onClick={() => copy(bookingUrl)}><Copy size={14} /></Button><a href={bookingUrl} target="_blank" rel="noreferrer"><Button size="sm"><ExternalLink size={14} /> Open</Button></a></div>
           <p className="text-xs text-steel mt-2">Put this link in your Google Business profile, Instagram bio and WhatsApp. Bookings land straight in Front desk with no commission.</p></Card>

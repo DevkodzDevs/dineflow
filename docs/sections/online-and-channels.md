@@ -71,14 +71,17 @@ small header row. The picked range is a tint wash with a 3px tint edge. The phon
 `data-suggested`, **not** `title` — the hidden desktop tiles already answer
 `[title^="Suggested:"]`, and a second set would double the b3 suite's count.
 
-**An OTA card's actions are one row on a narrow card.** The row sits in its own `@container`; below
-28rem of card (a phone, or two cards side by side on a tablet — 338px and 293px) it is a grid: Sync
-and Push rates share the width, then Edit and Remove as 44px squares (a pencil on a grey wash, the
-bin on a red wash, both with `aria-label`). A wide card (506px at 1440) keeps the plain row with the
-word "Edit". It is measured on the card, not the screen: at 834 the flex row wrapped too, with the
-bin alone on a second line. The squares need `!bg-*`/`!text-*` — the ghost button's unlayered style
-beats a plain utility — and the two wide buttons `[&>svg]:shrink-0`, or the upload icon shrank to
-10px when the label was tight.
+**The OTAs are one list on every screen** (not cards two-up: the third sat alone and each card's
+buttons wrapped). One `Card` (`@container`) with a header — "OTA channels", the count, *Sync now* and
+*Add OTA* (an even pair on a phone) — then `ul[aria-label="OTA channels"]`, one `li[data-ota]` per
+channel: a 44px initial tile tinted by kind (`OTA_HUE`: tokens only), the name with iCal/API and
+Live/Draft pills, a status line (`[data-status]`: synced / never synced / the error, commission, their
+feed — each with its own 12px icon, so a wrap never strands a "·"), and the calendar link with a copy
+square. The actions (`[data-actions]`: Sync, Push rates, then Edit and Remove as squares on a grey and
+a red wash) trail the row from a 48rem list (1194 and up) and sit as one row under it below that.
+**The square buttons are not `size="sm"`**: sm's `!px-4` sorts after `!px-0` and wins, which left an
+8px content box and squeezed the icon to a few pixels at 1440. They are `!h-10 !w-10 !px-0` on the
+default size (40px with a mouse, 44 on touch via the `.btn` floor). Probe: `otalist.mjs`.
 
 Each channel carries its own token. A token is a credential: it is never rendered into a page a
 guest can see.
