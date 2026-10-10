@@ -35,10 +35,17 @@ a labourer from an ID card.
 
 **The Staff page layout.** A toolbar on top (head count, "n not signed in", "n email
 unconfirmed" on the left; Invite with a code and Add staff on the right), then the list at full
-width. Each person is one grid row — `[avatar] [minmax(0,1fr): name, code·email·phone, then a
-wrapping line of state pills] [key button + Access]` — so state wraps under the name and can never
-print over the buttons. Open invites and "Two ways in" sit beside the list from `xl` (1280) and in
-two cards under it below that.
+width. Each person (`[data-person]`) is a grid `44px · minmax(0,1fr) · auto`: the avatar, name over
+code·email·phone, and the buttons (`[data-actions]`: a key square and Access — a square on a phone,
+the word from `sm`) on one line, centred together; under the name, spanning to the right edge, a
+wrapping line of 28px state chips (`[data-state]`). The role and its access are one chip
+("Housekeeping · default access" / "· 6 sections"); *Not signed in* (clock, orange wash), *Email
+unconfirmed* (mail, red wash) and *Off* (ban, red wash) carry their own icon, and every chip's text
+is `--color-label` — the hue is only the icon and the wash, so it reads in paper too. On a phone the
+old pills broke into three ragged lines ("role default" on its own) and the buttons floated halfway
+down the row; now it is at most two lines at 412. State can never print over the buttons. Open
+invites and "Two ways in" sit beside the list from `xl` (1280) and in two cards under it below
+that. Probe: `staffrow.mjs`.
 
 ## Before you edit
 

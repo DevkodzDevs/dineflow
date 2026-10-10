@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Copy, UserPlus, KeyRound, Check } from "lucide-react";
+import { Copy, UserPlus, KeyRound, Check, Clock, MailWarning, Ban } from "lucide-react";
 import { SlidersHorizontal as AccessIcon } from "lucide-react";
 import { Button, Field, Sheet, Pill, cn, useToast } from "@/components/ui";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, rolesIMayAssign, canManage, type Role, type PropertyType } from "@dineflow/shared";
@@ -97,28 +97,32 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
           {staff.map((p) => {
             const mine = p.id !== me && canManage(myRole, p.role);
             return (
-              <div key={p.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 px-4 py-3.5 sm:px-5">
-                <span className={cn("h-11 w-11 rounded-full grid place-items-center font-display text-lg shrink-0", p.is_active ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel")}>{p.full_name.slice(0, 1).toUpperCase()}</span>
+              /* one person: avatar, who they are and the two buttons on one line, centred together; their
+                 state as a line of small chips under the name. The role and its access are one chip
+                 ("Housekeeping · default access"), each warning carries its own icon, and the text stays in
+                 the ink colour (the hue is the icon and the wash) so it reads in both themes. On a phone
+                 the pills broke into three ragged lines and the buttons floated halfway down the row. */
+              <div key={p.id} data-person={p.id} className="grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-2.5 px-4 py-4 sm:px-5">
+                <span aria-hidden className={cn("h-11 w-11 rounded-full grid place-items-center font-display text-lg shrink-0", p.is_active ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel")}>{p.full_name.slice(0, 1).toUpperCase()}</span>
                 <div className="min-w-0">
                   <div className={cn("font-semibold truncate", !p.is_active && "text-steel line-through")}>{p.full_name}{p.id === me && <span className="text-xs text-steel font-normal"> (you)</span>}</div>
                   <div className="text-xs text-steel truncate mt-0.5">{p.staff_code && <span className="num font-semibold text-[var(--color-label-2)]">{p.staff_code}</span>}{p.staff_code && " · "}{p.email}{p.phone && <> · {p.phone}</>}</div>
-                  {/* their state, on its own line: it wraps here rather than printing over the buttons */}
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <Pill tone="gold">{ROLE_LABEL[p.role]}</Pill>
-                    {p.role !== "owner" && <span className="text-[11px] text-steel">{p.allowed_modules ? `${p.allowed_modules.length} sections` : "role default"}</span>}
-                    {/* still on the slip they were handed — they have not chosen their own password yet */}
-                    {p.must_change_password && <span title="Has not signed in and set their own password yet"><Pill tone="pending">Not signed in</Pill></span>}
-                    {p.contact_email && !p.contact_verified_at && <span title="Their email is unconfirmed, so they cannot reset their own password yet"><Pill tone="alert">Email unconfirmed</Pill></span>}
-                    {!p.is_active && <Pill tone="alert">Off</Pill>}
-                  </div>
                 </div>
                 {mine ? (
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0" data-actions>
                     <button type="button" disabled={pending} onClick={() => showLogin(p)} title="Sign-in details" aria-label={`Sign-in details for ${p.full_name}`}
-                      className="h-10 w-10 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] disabled:opacity-40"><KeyRound size={16} /></button>
-                    <Button size="sm" variant="outline" onClick={() => openAccess(p)}><AccessIcon size={14} /> <span className="hidden sm:inline">Access</span></Button>
+                      className="h-10 w-10 rounded-xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)] disabled:opacity-40"><KeyRound size={16} /></button>
+                    <Button variant="outline" className="!h-10 !rounded-xl max-sm:!w-10 max-sm:!px-0 sm:!px-4 !text-[13px] [&>svg]:shrink-0" aria-label={`Access for ${p.full_name}`} title="Access" onClick={() => openAccess(p)}><AccessIcon size={15} /> <span className="hidden sm:inline">Access</span></Button>
                   </div>
                 ) : <span />}
+                {/* their state, on its own line under the name: it wraps here rather than printing over the buttons */}
+                <div className="col-start-2 col-span-2 flex flex-wrap items-center gap-1.5" data-state>
+                  <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap bg-[var(--color-fill)] text-[var(--color-label)]">{ROLE_LABEL[p.role]}{p.role !== "owner" && <span className="font-normal text-[var(--color-label-2)]">· {p.allowed_modules ? `${p.allowed_modules.length} sections` : "default access"}</span>}</span>
+                  {/* still on the slip they were handed — they have not chosen their own password yet */}
+                  {p.must_change_password && <span title="Has not signed in and set their own password yet" className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap text-[var(--color-label)] bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)]"><Clock size={13} className="text-[var(--color-orange)]" /> Not signed in</span>}
+                  {p.contact_email && !p.contact_verified_at && <span title="Their email is unconfirmed, so they cannot reset their own password yet" className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap text-[var(--color-label)] bg-[var(--color-red-2)]"><MailWarning size={13} className="text-[var(--color-red)]" /> Email unconfirmed</span>}
+                  {!p.is_active && <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap text-[var(--color-label)] bg-[var(--color-red-2)]"><Ban size={13} className="text-[var(--color-red)]" /> Off</span>}
+                </div>
               </div>
             );
           })}
