@@ -5,6 +5,7 @@ import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { ArrowRightLeft, Merge, Scissors, Flame, PauseCircle } from "lucide-react";
 import { getClient } from "@/lib/supabase/lazy";
 import { Ticket } from "@/components/ui/Ticket";
+import { PrinterHead } from "@/components/receipt/PrinterHead";
 import { Button, Pill, Card, cn, useToast } from "@/components/ui";
 import { formatINR, fmtTime, fmtSince } from "@/lib/format";
 import { lineExtras } from "@dineflow/shared";
@@ -48,6 +49,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
      belong to the ticket the kitchen printed for the order they were split from */
   const kotIds = new Set(order.kots.map((k) => k.id));
   const orphans = order.order_items.filter((i) => !i.kot_id || !kotIds.has(i.kot_id));
+  const tickets = order.kots.length + (orphans.length > 0 ? 1 : 0);
 
   const Line = ({ i }: { i: Item }) => (
     <div key={i.id} className="flex items-start gap-2 text-sm">
@@ -66,11 +68,16 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="grid gap-4 sm:grid-cols-2">
-        {[...order.kots].sort((a, b) => a.kot_no - b.kot_no).map((k) => {
+      {/* the tickets come out of the kitchen printer, like the bill comes out of the counter printer: one
+          machine across the top, a slot over each first-row ticket (one on a phone, two from sm), the
+          first row hanging from the slots and the rest torn off below */}
+      <div className="min-w-0">
+      {tickets > 0 && <PrinterHead label="Kitchen printer" status={`${order.kots.length} KOT${order.kots.length === 1 ? "" : "S"}`} slots={tickets > 1 ? 2 : 1} />}
+      <div className={cn("grid gap-4 sm:grid-cols-2", tickets > 0 && "relative z-[1] -mt-1 px-3.5 sm:px-5")}>
+        {[...order.kots].sort((a, b) => a.kot_no - b.kot_no).map((k, n) => {
           const course = Math.max(1, ...order.order_items.filter((i) => i.kot_id === k.id).map((i) => i.course ?? 1));
           return (
-            <Ticket key={k.id} no={k.kot_no} title={k.held ? `Course ${course} · held` : `${fmtTime(k.created_at)} · ${fmtSince(k.created_at)} ago`} tone={k.held ? "warn" : tone(k.status)}
+            <Ticket key={k.id} top={n === 0 ? "slot" : n === 1 ? "slot-sm" : "tear"} no={k.kot_no} title={k.held ? `Course ${course} · held` : `${fmtTime(k.created_at)} · ${fmtSince(k.created_at)} ago`} tone={k.held ? "warn" : tone(k.status)}
               footer={<div className="flex justify-between items-center">
                 {k.held ? <Pill tone="gold"><PauseCircle size={11} /> held</Pill> : <Pill tone={tone(k.status)}>{k.status}</Pill>}
                 {k.held && isOpen && <Button size="sm" disabled={pending} onClick={() => start(async () => { const r = await fireKot(k.id); if ("error" in r) fail(r.error!); else router.refresh(); })}><Flame size={14} /> Fire to kitchen</Button>}
@@ -80,11 +87,12 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
           );
         })}
         {orphans.length > 0 && (
-          <Ticket no={order.order_no} title={order.split_from ? "Split from another bill" : "Lines"} tone="served"
+          <Ticket top={order.kots.length === 0 ? "slot" : order.kots.length === 1 ? "slot-sm" : "tear"} no={order.order_no} title={order.split_from ? "Split from another bill" : "Lines"} tone="served"
             footer={<div className="text-[11px] text-steel">These lines were cooked on the ticket of the order they were split from.</div>}>
             {orphans.map((i) => <Line key={i.id} i={i} />)}
           </Ticket>
         )}
+      </div>
       </div>
       <Card className="h-fit lg:sticky lg:top-6">
         <div className="text-xs font-semibold uppercase tracking-wide text-steel">Running total</div>

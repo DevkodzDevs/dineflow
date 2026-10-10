@@ -130,6 +130,13 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   `::after` is a 36px spacer so the last item scrolls clear of the arrow. With `label` the track is
   `role="group"` with that `aria-label` — probes find a rail by it. Used on Rooms (state chips) and
   the till (Order line, Categories, Goes well with). Probe: `rails.mjs`.
+- **`Ticket` (the KOT paper) has a `top`**: `"tear"` (the torn edge, the default — the kitchen board
+  uses only this), `"slot"` (it comes out of a printer slot: no torn edge, the machine's shadow
+  across its top, and one mounted after first paint feeds down 44px from behind the machine) or
+  `"slot-sm"` (out of a slot only from `sm`; torn on a phone, where it is the second row). The
+  machine is `components/receipt/PrinterHead.tsx` — the bill printer's body, vent, LED, slot and
+  teeth (`.printer-*` in globals.css, shared with `PrinterOutput`), with one or two slots laid out
+  in the same grid as the tickets under it. It is dark green in both themes, like the bill's.
 
 - **`Sheet` (every dialog) lives in the *visible* viewport, not the layout viewport.** Its frame
   takes `top`/`height` from `window.visualViewport` on resize and scroll, so with an iPad keyboard
