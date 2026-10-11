@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock } from "lucide-react";
-import { Button, Segmented, cn, useToast } from "@/components/ui";
+import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText } from "lucide-react";
+import { Button, Segmented, Sheet, cn, useToast } from "@/components/ui";
 import { formatINR, fmtSince } from "@/lib/format";
 import { Rail } from "@/components/ui/Rail";
 import { placeOrder, parseOrder } from "../actions";
@@ -40,6 +40,9 @@ function lineState(o: Running): { label: string; tone: "ready" | "preparing" | "
  *  Half and as Full is two lines. `ask` marks a line that still owes a required choice — a voice
  *  order can put a dish on the ticket before anyone has said which bread. */
 type Line = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number; note: string; ask?: boolean; course: number };
+
+/** the requests a kitchen hears most, to tap instead of type */
+const QUICK_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain", "Kids portion", "Serve together", "Pack separately"];
 
 export function PosClient({ categories, items, tables, initialTable, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {} }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]> }) {
   const router = useRouter();
@@ -407,8 +410,6 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       <div className="shrink-0 pt-2.5 mt-2 border-t border-line">
         {/* one request for the whole ticket, the way a guest actually asks it — place_order has
             carried a slot for this all along and the till never offered anywhere to type it */}
-        {askNote && <input autoFocus className="mb-2 !py-1.5 !text-xs" maxLength={200} placeholder="All mild · no onion · serve everything together"
-          value={ticketNote} onChange={(e) => setTicketNote(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") setAskNote(false); }} />}
         {promise && (
           <button type="button" onClick={() => setPromised((v) => !v)} aria-pressed={promised}
             className={cn("mt-2 w-full flex items-center gap-3 rounded-2xl border p-2.5 text-left transition", promised ? "border-[var(--color-tint)] bg-[var(--color-green-2)]" : "border-line hover:bg-[var(--color-fill)]")}>
@@ -434,10 +435,12 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         {/* the request chip and the total share a row: the chip is a ticket-wide extra, the total
             what it all comes to — each had a row of its own and the ticket paid for both */}
         <div className="mt-1 flex items-center justify-between gap-3">
-          <button type="button" onClick={() => setAskNote((v) => !v)} aria-pressed={askNote || !!ticketNote} title={ticketNote || "One request for the whole ticket"}
-            className={cn("min-w-0 h-9 rounded-full px-3 text-[12px] font-semibold inline-flex items-center gap-1 border transition",
-              ticketNote ? "border-tint text-[var(--color-tint)]" : "border-line text-steel hover:text-[var(--color-label)]")}>
-            <Plus size={12} className="shrink-0" /> <span className="truncate">{ticketNote ? ticketNote : "Cooking request"}</span>
+          {/* the request opens in a dialog — inline at the foot of the rail, an iPad keyboard squeezed
+              it into a sliver and pushed Send to kitchen out of the panel */}
+          <button type="button" onClick={() => setAskNote(true)} aria-haspopup="dialog" title={ticketNote || "One request for the whole ticket"} data-note-chip
+            className={cn("min-w-0 h-9 rounded-full px-3 text-[12px] font-semibold inline-flex items-center gap-1.5 border transition",
+              ticketNote ? "border-transparent bg-[var(--color-green-2)] text-[var(--color-tint)]" : "border-line text-steel hover:text-[var(--color-label)]")}>
+            {ticketNote ? <MessageSquareText size={13} className="shrink-0" /> : <Plus size={12} className="shrink-0" />} <span className="truncate">{ticketNote ? ticketNote : "Cooking request"}</span>
           </button>
           <span className="text-right shrink-0">
             <span className="block text-[10px] uppercase tracking-[0.14em] text-steel num">Total · {count} item{count === 1 ? "" : "s"}</span>
@@ -589,6 +592,28 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           {visible.length === 0 && <p className="col-span-full text-sm text-steel py-8">No dishes match. Check Menu → availability.</p>}
         </div>
       </section>
+      <Sheet open={askNote} onClose={() => setAskNote(false)} title="Cooking request">
+        <div className="space-y-4" data-note-sheet>
+          <p className="text-[13px] text-steel -mt-1">One note for the whole ticket. It prints in capitals at the top of the kitchen ticket.</p>
+          <div>
+            <textarea autoFocus rows={3} maxLength={200} value={ticketNote} onChange={(e) => setTicketNote(e.target.value)}
+              placeholder="All mild · no onion · serve everything together" className="w-full resize-none !text-[15px] leading-snug" />
+            <div className="mt-1 text-right text-[11px] text-steel num">{ticketNote.length}/200</div>
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel mb-2">Quick add</div>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_NOTES.map((q) => { const on = ticketNote.toLowerCase().includes(q.toLowerCase()); return (
+                <button key={q} type="button" aria-pressed={on} onClick={() => setTicketNote((t) => on ? t.split(" · ").filter((x) => x.toLowerCase() !== q.toLowerCase()).join(" · ") : (t.trim() ? `${t.trim()} · ${q}` : q).slice(0, 200))}
+                  className={cn("chip", on && "on")}>{on ? <Check size={13} /> : <Plus size={13} />} {q}</button>); })}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Button variant="outline" disabled={!ticketNote} onClick={() => setTicketNote("")}>Clear</Button>
+            <Button onClick={() => { setTicketNote((t) => t.trim()); setAskNote(false); }}><Check size={16} /> Done</Button>
+          </div>
+        </div>
+      </Sheet>
       <aside ref={railRef} className="hidden lg:block self-start feather p-4 sticky top-[92px] h-[calc(100dvh-3rem)]">{CartPanel}</aside>
       {/* mobile cart bar */}
       <div className="lg:hidden fixed bottom-[72px] inset-x-4 z-30">

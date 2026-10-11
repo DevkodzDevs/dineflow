@@ -76,6 +76,12 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **The cooking request (one note for the whole ticket) opens in a `Sheet`**, not inline: inline at
+  the foot of the rail, an iPad keyboard squeezed the field to a sliver and pushed Send to kitchen
+  out of the panel; the Sheet already sits in the visible viewport above a keyboard. A 3-row note
+  (200 max, a counter), eight quick chips (`QUICK_NOTES` — tap to add, tap again to take away,
+  joined with " · "), Clear and Done. The footer chip shows the saved request on the green wash.
+  It still travels as `** NOTE **` at the top of the KOT. Probe: `note.mjs`.
 - **The ticket rail sticks under the shell's floating top bar**, not at 24px: there the bar (sticky
   top-4) covered the rail's head — Dine in / Takeaway / Delivery / Room and the table — as soon as
   the page scrolled. The `railRef` effect measures the bar (16 + its height + 12 → `--till-top`,
