@@ -53,18 +53,21 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
           <Card>
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3"><h3 className="text-xl">Speed of service</h3><span className="text-xs text-steel num">target {kitchen.target ?? 15} min · {kitchen.tickets} ticket{Number(kitchen.tickets) === 1 ? "" : "s"} · {kitchen.recalls} recall{Number(kitchen.recalls) === 1 ? "" : "s"}</span></div>
             {Number(kitchen.tickets) === 0 ? <p className="text-sm text-steel">No tickets marked ready in this window yet.{Number(kitchen.ignored ?? 0) > 0 && <> {kitchen.ignored} ticket{Number(kitchen.ignored) === 1 ? " was" : "s were"} left open for hours and closed later, so {Number(kitchen.ignored) === 1 ? "it is" : "they are"} not counted as cooking time.</>}</p> : (
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+              /* side by side only when the card itself is wide (52rem): at an iPad's half of the screen
+                 the three tiles had ~100px each and "5.7 min" was cut. Otherwise the figures sit in a
+                 row on top and the hour chart takes the card's full width under them. */
+              <div className="@container"><div className="grid gap-4 @[52rem]:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" data-speed>
                 <div className="min-w-0">
                   <div className="grid grid-cols-3 gap-3">
-                    <Mini label="Avg ticket" value={`${Number(kitchen.avg_min).toFixed(1)} min`} />
-                    <Mini label="Slowest 10%" value={`${Number(kitchen.p90_min).toFixed(1)} min`} />
-                    <Mini label="On target" value={`${kitchen.within_pct}%`} tone={Number(kitchen.within_pct) >= 90 ? "good" : Number(kitchen.within_pct) < 70 ? "alert" : undefined} />
+                    <Mini label="Avg ticket" value={Number(kitchen.avg_min).toFixed(1)} unit="min" />
+                    <Mini label="Slowest 10%" value={Number(kitchen.p90_min).toFixed(1)} unit="min" />
+                    <Mini label="On target" value={String(kitchen.within_pct)} unit="%" bar={Number(kitchen.within_pct)} tone={Number(kitchen.within_pct) >= 90 ? "good" : Number(kitchen.within_pct) < 70 ? "alert" : undefined} />
                   </div>
                   {Number(kitchen.ignored ?? 0) > 0 && <p className="text-[11px] text-steel mt-2">{kitchen.ignored} ticket{Number(kitchen.ignored) === 1 ? "" : "s"} left open for hours and closed later — not counted as cooking time.</p>}
                   {kitchen.slowest.length > 0 && <div className="mt-4"><div className="text-xs uppercase text-steel mb-1.5">Slowest dishes</div><ul className="text-sm space-y-1">{kitchen.slowest.map((d) => <li key={d.name} className="flex justify-between gap-3"><span className="truncate">{d.name}</span><span className="num text-steel shrink-0">{Number(d.avg_min).toFixed(1)} min · {d.n}</span></li>)}</ul></div>}
                 </div>
-                <div><div className="text-xs uppercase text-steel mb-1.5">By hour of day</div><Hours rows={kitchen.by_hour} target={Number(kitchen.target ?? 15)} /></div>
-              </div>
+                <div className="min-w-0"><div className="text-xs uppercase text-steel mb-1.5">By hour of day</div><Hours rows={kitchen.by_hour} target={Number(kitchen.target ?? 15)} /></div>
+              </div></div>
             )}
           </Card>
         )}
@@ -72,12 +75,13 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
           <Card>
             {/* the denominator is named on screen: occupancy is over the rooms that can be sold, which is what the night audit divides by too */}
             <div className="flex items-baseline justify-between gap-3 mb-3"><h3 className="text-xl">Rooms</h3><span className="text-xs text-steel num">{hotel.sellable ?? hotel.rooms} sellable{Number(hotel.ooo ?? 0) > 0 && ` · ${hotel.ooo} out of order`} · {hotel.room_nights} room-nights sold</span></div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {/* four across only where the card has room for them (30rem); two by two otherwise */}
+            <div className="@container mb-4"><div className="grid grid-cols-2 @[30rem]:grid-cols-4 gap-3" data-rooms>
               <Mini label="Occupancy" value={`${hotel.occ_pct}%`} tone={Number(hotel.occ_pct) >= 80 ? "good" : undefined} />
-              <Mini label="ADR" value={formatINR(Number(hotel.adr))} />
-              <Mini label="RevPAR" value={formatINR(Number(hotel.revpar))} />
-              <Mini label="Room revenue" value={formatINR(Number(hotel.revenue))} />
-            </div>
+              <Mini label="ADR" value={formatINR(Number(hotel.adr), { whole: true })} />
+              <Mini label="RevPAR" value={formatINR(Number(hotel.revpar), { whole: true })} />
+              <Mini label="Room revenue" value={formatINR(Number(hotel.revenue), { whole: true })} />
+            </div></div>
             <div className="text-xs uppercase text-steel mb-1.5">Occupancy by day</div>
             <div className="flex items-stretch gap-[3px] h-24">{hotel.by_day.map((d) => <div key={d.day} className="flex-1 h-full flex flex-col justify-end" title={`${d.day} — ${d.occupied}/${d.total} rooms · ADR ${formatINR(Number(d.adr))} · RevPAR ${formatINR(Number(d.revpar))}`}><div className={cn("rounded-t", Number(d.occ_pct) >= 80 ? "bg-mint" : "bg-[var(--color-label)]/70")} style={{ height: `${Math.max(2, Math.min(100, Number(d.occ_pct)))}%` }} /></div>)}</div>
             <div className="flex text-[10px] text-steel num mt-1">{hotel.by_day.map((d, i) => <span key={d.day} className="flex-1 text-center truncate">{hotel.by_day.length <= 7 || i % Math.ceil(hotel.by_day.length / 7) === 0 ? d.day.slice(0, 2) : ""}</span>)}</div>
@@ -102,9 +106,20 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
   );
 }
 
-function Mini({ label, value, tone }: { label: string; value: string; tone?: "good" | "alert" }) {
-  // one-line label, one-size figure: "Within target" wrapped to two lines on a phone and pushed its tile taller than the others
-  return <div className="rounded-2xl bg-[var(--color-fill)] p-3 min-w-0"><div className="text-[10.5px] uppercase tracking-wide text-steel truncate">{label}</div><div className={cn("num text-[22px] sm:text-2xl leading-tight font-semibold mt-1 truncate", tone === "good" && "text-[var(--color-tint)]", tone === "alert" && "text-chili")}>{value}</div></div>;
+function Mini({ label, value, unit, tone, bar }: { label: string; value: string; unit?: string; tone?: "good" | "alert"; bar?: number }) {
+  /* one-line label; the figure big and its unit small beside it, so "5.7 min" never truncates to
+     "5.7 m…"; an optional bar for a percentage, in the tile's tone */
+  const hue = tone === "good" ? "var(--color-green)" : tone === "alert" ? "var(--color-red)" : "var(--color-label-2)";
+  return (
+    <div className="rounded-2xl bg-[var(--color-fill)] p-3 min-w-0 flex flex-col" data-mini>
+      <div className="text-[10.5px] uppercase tracking-wide text-steel truncate">{label}</div>
+      <div className="mt-1 flex items-baseline gap-1 min-w-0 whitespace-nowrap">
+        <span className={cn("num text-[24px] leading-none font-semibold min-w-0 truncate", tone === "good" && "text-[var(--color-green)]", tone === "alert" && "text-[var(--color-red)]")}>{value}</span>
+        {unit && <span className="text-[11px] font-semibold text-steel">{unit}</span>}
+      </div>
+      {bar !== undefined && <div className="mt-2 h-1 rounded-full bg-[var(--color-separator)] overflow-hidden" aria-hidden><div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, bar))}%`, background: hue }} /></div>}
+    </div>
+  );
 }
 
 /** Twenty-four bars, one per hour: height is the average ticket time, colour is how much of that hour beat the target. */

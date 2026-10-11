@@ -65,10 +65,13 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   sorts first in In use. It used to print "seated 34736 min ago". Probe: `pulse.mjs` (7 checks;
   inserts a booking and removes it), `fresh.mjs` (a live tile; restores the order's time).
 
-- **Speed of service: three tiles that stay level.** `Mini` truncates its label to one line and the
-  third is "On target" — "Within target" wrapped on a phone and made its tile taller than the other
-  two. The header (target · tickets · recalls) wraps under the title rather than squeezing it;
-  "1 ticket", "1 recall". Probe: `five.mjs`.
+- **Speed of service: the tiles in a row, the chart under them.** The card is an `@container`;
+  tiles and the hour chart sit side by side only from a 52rem card — at an iPad's half of the screen
+  the three tiles had ~100px each and "5.7 min" was cut. Below that the tiles are a row on top and
+  the chart takes the full width. `Mini` shows the figure large and its unit small beside it
+  (`unit`), so nothing truncates, and "On target" carries a thin bar in its tone (`bar`; green
+  ≥90%, red <70%). The Rooms tiles use the same `Mini` in whole rupees, two by two until the card
+  is 30rem, then four across. "1 ticket", "1 recall". Probe: `speed.mjs`.
 
 - **Pulse's Join by QR card shows the real code** (`components/QR.tsx`, 148px on a white tile in
   both themes — a scanner wants dark on light) for `/queue/<booking_slug>`; it was a QR *icon*
