@@ -70,6 +70,14 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   two. The header (target · tickets · recalls) wraps under the title rather than squeezing it;
   "1 ticket", "1 recall". Probe: `five.mjs`.
 
+- **Pulse's Join by QR card shows the real code** (`components/QR.tsx`, 148px on a white tile in
+  both themes — a scanner wants dark on light) for `/queue/<booking_slug>`; it was a QR *icon*
+  beside the address, nothing to scan or print. Beside or under it (`@container`, row from 26rem):
+  "Scan to join the queue", the link as a copy chip, Open, and **Print poster** — `printPoster`
+  opens a window with an A4 door sign (the property, a 640px code, three steps, the link) and
+  prints it. A property that is not Listed publicly gets "Join by QR is off" and a link to
+  Settings → Storefront instead. Probe: `joinqr.mjs`.
+
 - **A sealed period must not move.** If a report lets a closed day change, the proof record is a
   lie. `close_day` and `run_night_audit` are the seals.
 - **Do not recompute a figure client-side "just for this screen".** Add it to the RPC.

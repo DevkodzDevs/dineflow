@@ -1,6 +1,8 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
-import { Phone, Bell, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check } from "lucide-react";
+import { Phone, Bell, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check, Copy, ExternalLink, Printer } from "lucide-react";
+import Link from "next/link";
+import { QR, qrDataUrl } from "@/components/QR";
 import { waHref, firstName } from "@/lib/wa";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button, Card, Flip, useToast, cn } from "@/components/ui";
@@ -25,6 +27,21 @@ const clock = (t: string) => { const [h, mm] = t.split(":").map(Number); return 
 /** An order open longer than this is not a sitting, it is a table someone forgot to bill or close. */
 const STALE = 12 * 60;
 type Tab = "all" | "free" | "reserved" | "busy";
+
+/** A door sign for the queue: the property, the code, how to use it — printed from a window of its own. */
+async function printPoster(url: string, name: string) {
+  const img = await qrDataUrl(url, 640);
+  const w = window.open("", "_blank", "width=720,height=960"); if (!w) return;
+  const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Join the queue · ${esc(name)}</title><style>
+    @page{size:A4;margin:18mm}body{font-family:system-ui,-apple-system,sans-serif;color:#111;text-align:center;margin:0;padding:40px 24px}
+    h1{font-size:44px;margin:0 0 6px;letter-spacing:-.02em}h2{font-size:22px;font-weight:500;color:#555;margin:0 0 28px}
+    img{width:340px;height:340px;border:1px solid #ddd;border-radius:24px;padding:16px}ol{display:inline-block;text-align:left;font-size:19px;line-height:1.7;margin:28px 0 0}
+    .u{margin-top:22px;font:14px ui-monospace,monospace;color:#666}</style></head><body>
+    <h1>Join the queue</h1><h2>${esc(name)}</h2><img src="${img}" alt=""><ol><li>Scan with your phone camera</li><li>Add your name and party size</li><li>We'll message you when your table is ready</li></ol>
+    <div class="u">${esc(url)}</div><script>onload=()=>{print()}</script></body></html>`);
+  w.document.close();
+}
 
 export function PulseClient({ pulse, queue, booked = [], slug, base, listed, restaurant = "" }: { pulse: Pulse; queue: W[]; booked?: R[]; slug: string; base: string; listed: boolean; restaurant?: string }) {
   useLive(["orders", "order_items", "bills", "dining_tables", "walkins"]);
@@ -161,13 +178,36 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
               {pulse.tables.filter((t) => t.stage === "free" && t.capacity >= w.party).length === 0 && <span className="text-xs text-steel">No free table big enough yet.</span>}
             </div>}
           </Card>)}
-          <Card>
-            <div className="flex items-center gap-4">
-              <span className="h-16 w-16 rounded-xl grid place-items-center bg-[var(--color-label)] text-[var(--color-on-label)]"><QrCode size={30} /></span>
-              <div className="flex-1 min-w-0"><div className="font-semibold text-[15px]">Join by QR</div>
-                <div className="text-xs text-steel mt-0.5">{listed ? "Print this for the door. Guests join the queue and watch their place on their own phone." : "Turn on Listed publicly in Settings → Storefront to let guests join from their phones."}</div>
-                {listed && <div className="num text-xs mt-1.5 break-all">{joinUrl}</div>}</div>
-            </div>
+          {/* the door QR, as the real code: guests scan it to join the queue and watch their place. It
+              was a QR *icon* beside the address, so there was nothing to scan and nothing to print.
+              The code sits on white in both themes (a scanner wants dark on light); Print poster
+              opens a door sign — the property, the code, three words of instruction. */}
+          <Card className="@container">
+            {listed ? (
+              <div className="flex flex-col @[26rem]:flex-row items-center @[26rem]:items-stretch gap-4" data-joinqr>
+                <div className="shrink-0 rounded-[18px] bg-white p-2.5 shadow-[0_0_0_1px_var(--color-separator)]" data-code><QR value={joinUrl} size={148} /></div>
+                <div className="min-w-0 flex-1 flex flex-col items-center @[26rem]:items-start text-center @[26rem]:text-left">
+                  <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-tint)]"><QrCode size={13} /> Join by QR</div>
+                  <div className="font-display text-[22px] leading-tight mt-1">Scan to join the queue</div>
+                  <p className="text-[13px] text-steel mt-1 leading-snug">Guests add themselves from their own phone and watch their place move up — no app, no sign-in.</p>
+                  <button type="button" onClick={() => { void navigator.clipboard?.writeText(joinUrl); toast("Link copied"); }} title="Copy the link"
+                    className="mt-3 max-w-full inline-flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-full bg-[var(--color-fill)] text-[12px] num text-[var(--color-label-2)] hover:text-[var(--color-label)]">
+                    <span className="truncate">{joinUrl.replace(/^https?:\/\//, "")}</span><Copy size={13} className="shrink-0" />
+                  </button>
+                  <div className="mt-3 @[26rem]:mt-auto pt-0 @[26rem]:pt-3 grid grid-cols-2 gap-2 w-full">
+                    <Button variant="outline" size="sm" onClick={() => window.open(joinUrl, "_blank", "noopener")}><ExternalLink size={14} /> Open</Button>
+                    <Button size="sm" onClick={() => void printPoster(joinUrl, restaurant)}><Printer size={14} /> Print poster</Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <span className="h-14 w-14 shrink-0 rounded-[16px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><QrCode size={26} /></span>
+                <div className="min-w-0 flex-1"><div className="font-semibold text-[15px]">Join by QR is off</div>
+                  <div className="text-[13px] text-steel mt-0.5">Turn on <b>Listed publicly</b> to give guests a code to scan at the door.</div>
+                  <Link href="/settings/storefront" className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--color-tint)] min-h-11 -my-2">Open Storefront settings →</Link></div>
+              </div>
+            )}
           </Card>
         </div>
       </div>
