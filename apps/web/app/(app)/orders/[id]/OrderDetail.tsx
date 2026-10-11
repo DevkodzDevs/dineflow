@@ -7,9 +7,10 @@ import { getClient } from "@/lib/supabase/lazy";
 import { Ticket } from "@/components/ui/Ticket";
 import { PrinterHead } from "@/components/receipt/PrinterHead";
 import { Button, Pill, Card, cn, useToast } from "@/components/ui";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { formatINR, fmtTime, fmtSince } from "@/lib/format";
 import { lineExtras } from "@dineflow/shared";
-import { setItemStatus, cancelOrder, moveOrder, mergeOrders, splitOrder, fireKot } from "../actions";
+import { setItemStatus, cancelOrder, cancelLine, moveOrder, mergeOrders, splitOrder, fireKot } from "../actions";
 
 type Item = { id: string; kot_id: string | null; name_snapshot: string; qty: number; price_snapshot: number; status: string; notes: string | null; course?: number; addons?: { name: string; price: number }[] | null; components?: { name: string; qty: number }[] | null };
 type Kot = { id: string; kot_no: number; status: string; held?: boolean; created_at: string };
@@ -55,6 +56,8 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
   const allPicked = picked.length > 0 && live.every((i) => (pick[i.id] ?? 0) >= i.qty);
   const isOpen = order.status === "open";
   const fail = (m: string) => toast(m, "err");
+  /* a cancel asks why first — the reason goes on the line or the order and into the audit trail (0087) */
+  const [cancelling, setCancelling] = useState<{ kind: "order" } | { kind: "line"; item: Item } | null>(null);
 
   /* lines the tickets on this order do not account for: they came over in a split, and still
      belong to the ticket the kitchen printed for the order they were split from */
@@ -71,7 +74,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
         </span>
       ) : <span className="num w-7 font-semibold">{i.qty}×</span>}
       <span className={i.status === "cancelled" ? "line-through text-steel flex-1" : "flex-1"}>{i.name_snapshot}{lineExtras(i).map((x, j) => <span key={j} className="block text-xs text-steel">{x}</span>)}{i.notes && <span className="block text-xs text-steel">{i.notes}</span>}</span>
-      {isOpen && i.status === "pending" && mode !== "split" && <button className="text-xs text-steel hover:text-chili" disabled={pending} onClick={() => start(() => { setItemStatus(i.id, "cancelled"); })}>cancel</button>}
+      {isOpen && ["pending", "preparing", "ready"].includes(i.status) && mode !== "split" && <button type="button" className="text-xs text-steel hover:text-chili !min-h-0 h-10 [@media(pointer:coarse)]:h-11 -my-2.5 px-2 inline-flex items-center rounded-lg" disabled={pending} onClick={() => setCancelling({ kind: "line", item: i })} data-cancel-line>cancel</button>}
       {i.status !== "pending" && <Pill tone={tone(i.status)}>{i.status}</Pill>}
     </div>
   );
@@ -152,9 +155,17 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
           </div>
         )}
 
-        {isOpen && <Button variant="danger" size="sm" className="w-full mt-5" disabled={pending} onClick={() => { if (confirm("Cancel this whole order? Stock will be returned.")) start(async () => { await cancelOrder(order.id); router.push("/orders"); }); }}>Cancel order</Button>}
+        {isOpen && <Button variant="danger" size="sm" className="w-full mt-5" disabled={pending} onClick={() => setCancelling({ kind: "order" })} data-cancel-order>Cancel order</Button>}
         {!isOpen && <div className="mt-4"><Pill tone="served">{order.status}</Pill></div>}
       </Card>
+      <ReasonDialog open={cancelling?.kind === "order"} onClose={() => setCancelling(null)} title={`Cancel order #${order.order_no}?`}
+        hint="Every dish on it is cancelled. Dishes the kitchen has already started keep their stock draw. The reason is kept with the order."
+        chips={["Guest left without eating", "Wrong table", "Duplicate order", "Kitchen could not make it", "Guest complaint"]} confirmLabel="Cancel the order"
+        onConfirm={async (reason) => { const r = await cancelOrder(order.id, reason); if ("error" in r) return { error: r.error }; router.push("/orders"); }} />
+      <ReasonDialog open={cancelling?.kind === "line"} onClose={() => setCancelling(null)} title={cancelling?.kind === "line" ? `Cancel ${cancelling.item.qty}× ${cancelling.item.name_snapshot}?` : ""}
+        hint={cancelling?.kind === "line" && cancelling.item.status !== "pending" ? "The kitchen has started this one — only a manager can take it off, and the stock already used stays used." : "The dish comes off the ticket and the bill."}
+        chips={["Guest changed mind", "Wrong item punched", "Out of stock", "Duplicate", "Took too long"]} confirmLabel="Cancel the dish"
+        onConfirm={async (reason) => { if (cancelling?.kind !== "line") return; const r = await cancelLine(cancelling.item.id, reason); if ("error" in r) return { error: r.error }; router.refresh(); }} />
     </div>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { dishMatch } from "@/lib/tillSearch";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText } from "lucide-react";
+import { Star, Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText } from "lucide-react";
 import { Button, Segmented, Sheet, cn, useToast } from "@/components/ui";
 import { formatINR, fmtSince } from "@/lib/format";
 import { Rail } from "@/components/ui/Rail";
@@ -16,7 +17,7 @@ import { hasOptions, defaultVariant, linePrice, lineKey, lineName, lineExtras, o
 import Link from "next/link";
 
 type Cat = { id: string; name: string };
-type Item = Optioned & { is_veg: boolean; category_id: string | null; is_available: boolean; image_url: string | null };
+type Item = Optioned & { is_veg: boolean; category_id: string | null; is_available: boolean; image_url: string | null; station?: string | null; categories?: { station: string | null } | null };
 type Table = { id: string; name: string; status: string };
 type Guest = { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null };
 /** What the pantry can still cover, keyed by dish. A dish that is absent has no recipe: it moves no
@@ -42,9 +43,11 @@ function lineState(o: Running): { label: string; tone: "ready" | "preparing" | "
 type Line = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number; note: string; ask?: boolean; course: number };
 
 /** the requests a kitchen hears most, to tap instead of type */
+/** One dish's requests (the ticket-wide ones are QUICK_NOTES). Joined with " · " like the ticket note. */
+const LINE_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain", "Parcel", "Well done", "No ice"];
 const QUICK_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain", "Kids portion", "Serve together", "Pack separately"];
 
-export function PosClient({ categories, items, tables, initialTable, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {} }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]> }) {
+export function PosClient({ categories, items, tables, initialTable, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {}, popular = {} }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]>; popular?: Record<string, number> }) {
   const router = useRouter();
   const [type, setType] = useState<"dine_in" | "takeaway" | "delivery" | "room_service">("dine_in");
   const [room, setRoom] = useState("");
@@ -85,7 +88,8 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
      for the dish that needs its own. */
   const [ticketNote, setTicketNote] = useState(""); const [askNote, setAskNote] = useState(false);
   /* Which lines have their note field showing. A line that already carries a note always shows it. */
-  const [noteOpen, setNoteOpen] = useState<Set<string>>(new Set());
+  /* which line's request sheet is open — one sheet for the whole ticket, not a box inside every card */
+  const [noteFor, setNoteFor] = useState<string | null>(null);
 
   /* ── the ticket ── */
   const qtyOf = (id: string) => lines.filter((l) => l.item.id === id).reduce((s, l) => s + l.qty, 0);
@@ -170,7 +174,17 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
     r.onend = () => setHearing(false); r.onerror = () => setHearing(false); r.start();
   };
 
-  const visible = useMemo(() => items.filter((i) => i.is_available && (cat === "all" || i.category_id === cat) && i.name.toLowerCase().includes(q.toLowerCase())), [items, cat, q]);
+  /* The dishes on screen. Typing searches the whole menu whatever chip is on, best match first
+     (dishMatch: the start of the name, of a word, initials — "cb" is Chicken Biryani), so Enter adds
+     the top one. "Popular" is the 12 most-ordered here in the last 30 days, most first. */
+  const popularIds = useMemo(() => Object.entries(popular).sort((a, b) => b[1] - a[1]).map(([id]) => id).filter((id) => items.some((i) => i.id === id && i.is_available)).slice(0, 12), [popular, items]);
+  const visible = useMemo(() => {
+    const live = items.filter((i) => i.is_available);
+    if (q.trim()) return live.map((i) => [i, dishMatch(i.name, q)] as const).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]).map(([i]) => i);
+    if (cat === "popular") return popularIds.map((id) => live.find((i) => i.id === id)!).filter(Boolean);
+    return live.filter((i) => cat === "all" || i.category_id === cat);
+  }, [items, cat, q, popularIds]);
+  const searchRef = useRef<HTMLInputElement>(null);
   const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "";
   const unit = (l: Line) => linePrice(l.item, l.variant, l.addons);
   const total = lines.reduce((s, l) => s + unit(l) * l.qty, 0);
@@ -223,7 +237,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         const course = courses.length > 1 ? (c > 1 ? `COURSE ${c} · HELD — fire from the kitchen screen` : "COURSE 1") : null;
         const heading = [course, ticketNote.trim() ? `** ${ticketNote.trim().toUpperCase()} **` : null].filter(Boolean).join(" · ") || undefined;
         await printKot({ kotNo: "KOT", when, tableOrType: label, heading,
-          items: on.map((l) => ({ name: lineName(l.item, l.variant), qty: l.qty, note: l.note || null, extras: lineExtras({ addons: l.addons, components: l.item.components }) })) });
+          items: on.map((l) => ({ name: lineName(l.item, l.variant), qty: l.qty, note: l.note || null, extras: lineExtras({ addons: l.addons, components: l.item.components }), station: l.item.station ?? l.item.categories?.station ?? null })) });
       }
     } catch { /* never block an order because a printer is off */ }
 
@@ -239,6 +253,17 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
     router.push(`/orders/${r.orderId}`);
   });
 
+  /* the keyboard at a counter: "/" jumps to the search, Ctrl/⌘ + Enter sends the ticket */
+  const submitRef = useRef(submit); submitRef.current = submit;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null; const typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      if (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey) { e.preventDefault(); searchRef.current?.focus(); }
+      else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submitRef.current(); }
+    };
+    window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   /* ── the ticket rail ── */
   /* The table picker is a row that opens, not fourteen loose chips: a rail that is a third of the
      screen cannot afford a keypad above an empty ticket. Picking closes it again. */
@@ -246,7 +271,6 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
   const tableName = tables.find((t) => t.id === tableId)?.name ?? null;
   /* The grid goes photo-first the day most of the menu has a picture. Until then it does not show
      sixty grey squares with a letter in each and call them thumbnails. */
-  const photoFirst = useMemo(() => items.length > 0 && items.filter((i) => i.image_url).length * 2 >= items.length, [items]);
   const clearTicket = () => { setLines([]); setTicketNote(""); setAskNote(false); setWarned(false); setErr(null); };
   const grand = total + (promised && promise ? total * promise.pct / 100 : 0);
   const typeOptions = [
@@ -375,33 +399,36 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
             /* every line is its own card: what it is and a cross on top, how many and what it
                comes to underneath — the shape a guest reads back to you */
             <motion.div key={l.key} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
-              className="rounded-2xl border border-line bg-[var(--color-bg-3)] p-2.5">
-              <div className="flex items-start gap-2.5">
-                {photoFirst && <Thumb item={l.item} size="sm" />}
-                <div className="flex-1 min-w-0 pt-0.5">
-                  <div className="font-semibold text-sm leading-snug">{lineName(l.item, l.variant)}</div>
+              className="rounded-2xl border border-line bg-[var(--color-bg-3)] p-2.5" data-ticket-line>
+              {/* what it is and what it comes to on one line; its details under; the controls on a row
+                  of their own below — count, course, the request, and the cross at the far end */}
+              <div className="flex items-start gap-2.5 min-w-0">
+                {l.item.image_url && <Thumb item={l.item} size="sm" />}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <div className="font-semibold text-[14px] leading-snug flex-1 min-w-0">{lineName(l.item, l.variant)}</div>
+                    <span className="num font-semibold text-[14px] shrink-0">{formatINR(unit(l) * l.qty, { whole: true })}</span>
+                  </div>
                   {lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <div key={j} className="text-[11px] text-steel truncate">{x}</div>)}
-                  {l.qty > 1 && <div className="text-[11px] text-steel num mt-0.5">{formatINR(unit(l), { whole: true })} each</div>}
+                  {l.qty > 1 && <div className="text-[11px] text-steel num">{formatINR(unit(l), { whole: true })} each</div>}
                   {coverOf(l.item.id) && qtyOf(l.item.id) > coverOf(l.item.id)!.portions && <div className="text-[11px] font-semibold text-[var(--color-orange)]">pantry covers {coverOf(l.item.id)!.portions}</div>}
-                  {l.ask && <button type="button" onClick={() => askFor(l)} className="mt-0.5 text-[11px] font-semibold text-[var(--color-orange)] underline">Choose options</button>}
+                  {l.ask && <button type="button" onClick={() => askFor(l)} className="mt-0.5 text-[11px] font-semibold text-[var(--color-orange)] underline !min-h-0">Choose options</button>}
+                  {l.note && <div className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-[var(--color-tint)] min-w-0" data-line-request><MessageSquareText size={11} className="shrink-0" /><span className="truncate">{l.note}</span></div>}
                 </div>
-                {coursing && <button type="button" onClick={() => cycleCourse(l.key)} title="Course — tap to change" className={cn("h-9 min-w-9 px-1.5 rounded-full text-[11px] font-bold border shrink-0", l.course > 1 ? "border-tint text-[var(--color-tint)]" : "border-line text-steel")}>C{l.course}</button>}
-                <button type="button" onClick={() => bump(l.key, -l.qty)} aria-label={`Remove ${lineName(l.item, l.variant)}`}
-                  className="h-10 w-10 -mr-1.5 -mt-1.5 rounded-full grid place-items-center text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-fill)] shrink-0"><X size={15} /></button>
               </div>
-              <div className="mt-1.5 flex items-center gap-2">
-                <div className="stepper">
+              <div className="mt-2 flex items-center gap-1.5 min-w-0">
+                <div className="stepper shrink-0">
                   <button type="button" onClick={() => bump(l.key, -1)} aria-label="One less" className="less"><Minus size={15} /></button>
                   <span className="n num">{l.qty}</span>
                   <button type="button" onClick={() => bump(l.key, 1)} aria-label="One more" className="more"><Plus size={15} /></button>
                 </div>
-                {!(l.note || noteOpen.has(l.key)) && (
-                  <button type="button" onClick={() => setNoteOpen((n) => new Set(n).add(l.key))} aria-label={`Note for the kitchen on ${lineName(l.item, l.variant)}`} title="Note for kitchen"
-                    className="h-10 w-10 rounded-full grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><MessageSquarePlus size={16} /></button>
-                )}
-                <span className="ml-auto num font-semibold text-[15px]">{formatINR(unit(l) * l.qty, { whole: true })}</span>
+                {coursing && <button type="button" onClick={() => cycleCourse(l.key)} title="Course — tap to change" className={cn("h-10 min-w-10 px-2 rounded-full text-[11px] font-bold border shrink-0", l.course > 1 ? "border-tint text-[var(--color-tint)]" : "border-line text-steel")}>C{l.course}</button>}
+                <button type="button" onClick={() => setNoteFor(l.key)} aria-label={`Request for ${lineName(l.item, l.variant)}`} data-line-note-btn
+                  className={cn("h-10 px-3 rounded-full text-[12px] font-semibold inline-flex items-center gap-1.5 border shrink-0 transition", l.note ? "border-transparent bg-[var(--color-green-2)] text-[var(--color-label)]" : "border-line text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]")}>
+                  <MessageSquarePlus size={14} />{l.note ? "Edit" : "Request"}</button>
+                <button type="button" onClick={() => bump(l.key, -l.qty)} aria-label={`Remove ${lineName(l.item, l.variant)}`}
+                  className="ml-auto h-10 w-10 rounded-full grid place-items-center text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-fill)] shrink-0"><X size={15} /></button>
               </div>
-              {(l.note || noteOpen.has(l.key)) && <input autoFocus={!l.note} className="mt-2 !py-1.5 !text-xs" placeholder="Less spicy, no onion…" value={l.note} onChange={(e) => setNote(l.key, e.target.value)} />}
             </motion.div>
           ))}
         </AnimatePresence>
@@ -473,7 +500,12 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           {/* the search is what yields, not the title: `w-full max-w-xs` on the field squeezed the
               heading until "New order" broke across two lines on a tablet */}
           <h1 className="text-2xl md:text-3xl shrink-0 whitespace-nowrap">New order</h1>
-          <div className="relative ml-auto min-w-0 flex-1 max-w-xs"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel" /><input className="!pl-9" placeholder="Search dishes" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <div className="relative ml-auto min-w-0 flex-1 max-w-sm" data-till-search><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
+            <input ref={searchRef} className="!pl-9 !pr-16" placeholder="Search · try “cb”" aria-label="Search dishes — a name, a word, or initials; Enter adds the first" value={q} onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && visible[0]) { e.preventDefault(); tap(visible[0]); setQ(""); } else if (e.key === "Escape") { setQ(""); (e.target as HTMLInputElement).blur(); } }} />
+            {q ? <button type="button" onClick={() => { setQ(""); searchRef.current?.focus(); }} aria-label="Clear the search" className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 !min-h-0 rounded-lg grid place-items-center text-steel hover:text-[var(--color-label)]"><X size={15} /></button>
+              : <kbd className="hidden lg:grid absolute right-2.5 top-1/2 -translate-y-1/2 h-6 min-w-6 px-1.5 place-items-center rounded-md border border-line text-[11px] text-steel pointer-events-none" aria-hidden>/</kbd>}
+          </div>
         </div>
 
         {/* What is already running, at the top of the screen the waiter is standing in front of.
@@ -534,7 +566,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           </div>
         )}
         <Rail wrapClassName="lg:sticky lg:top-[calc(var(--till-top,24px)+var(--till-head,56px))] lg:z-10 lg:bg-[var(--color-bg)] lg:pt-1" className="rail-fade flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]" arrowClassName="!bottom-2" label="Categories">
-          {[{ id: "all", name: "All" }, ...categories].map((c) => <button key={c.id} onClick={() => setCat(c.id)} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line")}>{c.name}</button>)}
+          {[{ id: "all", name: "All" }, ...(popularIds.length >= 4 ? [{ id: "popular", name: "Popular" }] : []), ...categories].map((c) => <button key={c.id} onClick={() => { setCat(c.id); setQ(""); }} data-cat={c.id} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold inline-flex items-center gap-1.5", cat === c.id && !q ? "bg-ink text-on-label" : "bg-card border border-line")}>{c.id === "popular" && <Star size={13} className={cat === c.id && !q ? "" : "text-[var(--color-orange)]"} fill="currentColor" />}{c.name}</button>)}
         </Rail>
         {goesWith.length > 0 && (
           <Rail wrapClassName="mt-2" className="rail-fade flex items-center gap-2 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 pb-1 [scrollbar-width:none]" arrowClassName="!bottom-1" label="Goes well with">
@@ -551,7 +583,11 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
             across in the 557px an iPad in landscape leaves beside the rail, with room for a 44px
             minus, count and plus on a tapped tile. Two across on a phone by decree: auto-fill would
             give one, and a waiter scrolls a phone menu twice as far. */}
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(176px,1fr))] gap-2.5">
+        {q.trim() && <p className="mt-3 text-xs text-steel" data-search-note>{visible.length ? <>{visible.length} match{visible.length === 1 ? "" : "es"} for “{q.trim()}” · <b className="text-[var(--color-label)]">Enter</b> adds {visible[0].name}</> : <>Nothing matches “{q.trim()}”.</>}</p>}
+        {/* rows, not cards: a 64px row shows the photo, the name, the price and the control in one
+            glance, and twice as many dishes fit a screen as the 145px tiles did. One across on a
+            phone, then as many 250px rows as the column holds — 2 beside the rail at 1194, 3 at 1440. */}
+        <div className="mt-3 grid grid-cols-1 min-[560px]:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-2">
           {visible.map((it) => {
             const qty = qtyOf(it.id); const tp = tilePrice(it); const asks = hasOptions(it);
             const c = coverOf(it.id);
@@ -561,30 +597,29 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
                  At zero the tile shows one plus and nothing else. Once the dish is on the ticket the
                  minus and the count slide in on the left of it — the plus itself never moves, so a
                  thumb that found it once finds it again. */
-              <motion.div key={it.id} layout className={cn("feather relative flex flex-col transition-colors", qty > 0 && "picked")}>
-                <motion.button whileTap={{ scale: 0.985 }} onClick={() => tap(it)} className="text-left p-3 pb-0 flex-1 min-w-0">
-                  {photoFirst && <Thumb item={it} size="lg" />}
-                  <span className="flex items-center gap-1.5">
-                    {!photoFirst && <VegMark veg={it.is_veg} />}
-                    <span className="text-[11px] text-steel truncate flex-1">{catName(it.category_id)}</span>
-                    {/* a dish that asks a question, or is a meal of other dishes, says so here */}
-                    {it.is_combo && <Layers size={11} className="text-steel shrink-0" aria-label="Combo" />}
-                    {asks && <SlidersHorizontal size={11} className="text-steel shrink-0" aria-label="Has options" />}
-                    <span className="num text-[13px] font-semibold shrink-0">{tp.from ? <span className="text-[11px] font-normal text-steel">from </span> : null}{formatINR(tp.price, { whole: true })}</span>
+              <motion.div key={it.id} layout className={cn("feather relative flex items-center gap-2 pl-2.5 pr-2 py-2 min-h-[64px] transition-colors", qty > 0 && "picked")} data-tile>
+                {/* the dish — its photo, name and price — is one tap target; the stepper beside it is a
+                    sibling (a button in a button is not markup), and its plus never moves */}
+                <motion.button whileTap={{ scale: 0.985 }} onClick={() => tap(it)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left !min-h-0">
+                  {it.image_url ? <Thumb item={it} size="sm" /> : <span className={cn("h-10 w-10 shrink-0 rounded-lg grid place-items-center", it.is_veg ? "bg-[var(--color-mint-2)]" : "bg-[var(--color-chili-2)]")}><VegMark veg={it.is_veg} /></span>}
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-[14.5px] leading-tight line-clamp-2">{it.name}</span>
+                    <span className="mt-0.5 flex items-center gap-1 min-w-0 text-[12px] text-steel leading-tight">
+                      <span className="num font-semibold text-[var(--color-label)] shrink-0">{tp.from ? <span className="font-normal text-steel">from </span> : null}{formatINR(tp.price, { whole: true })}</span>
+                      {c?.portions === 0 ? <span className="truncate font-semibold text-[var(--color-orange)]">· Pantry short{c.short[0] ? ` · ${c.short[0].name}` : ""}</span>
+                        : !!c?.portions && c.portions <= 5 ? <span className="truncate num">· {c.portions} left</span>
+                        : <span className="truncate">· {catName(it.category_id)}</span>}
+                      {it.is_combo && <Layers size={11} className="shrink-0" aria-label="Combo" />}
+                      {asks && <SlidersHorizontal size={11} className="shrink-0" aria-label="Has options" />}
+                    </span>
                   </span>
-                  <span className="block font-semibold text-[15px] mt-1 leading-snug line-clamp-2">{it.name}</span>
-                  {c?.portions === 0 && <span className="block mt-1 text-[11px] font-semibold text-[var(--color-orange)]">Pantry short{c.short[0] ? ` · ${c.short[0].name}` : ""}</span>}
-                  {!!c?.portions && c.portions <= 5 && <span className="block mt-1 text-[11px] text-steel num">{c.portions} left in the pantry</span>}
                 </motion.button>
-                {/* the count lives on the dish, so a miscount is fixed where it happened */}
-                <div className="flex items-center justify-end px-3 pb-3 pt-2">
-                  <div className="stepper">
-                    {qty > 0 && (<>
-                      <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`} className="less"><Minus size={15} /></button>
-                      <span className="n num">{qty}</span>
-                    </>)}
-                    <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="more"><Plus size={16} /></button>
-                  </div>
+                <div className="stepper shrink-0">
+                  {qty > 0 && (<>
+                    <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`} className="less"><Minus size={15} /></button>
+                    <span className="n num">{qty}</span>
+                  </>)}
+                  <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="more"><Plus size={16} /></button>
                 </div>
               </motion.div>
             );
@@ -592,6 +627,23 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           {visible.length === 0 && <p className="col-span-full text-sm text-steel py-8">No dishes match. Check Menu → availability.</p>}
         </div>
       </section>
+      {/* one dish's request: the floor's usual asks as chips, a box for the rest — in a sheet, so a
+          phone keyboard never squeezes the ticket, and the line itself stays two rows tall */}
+      {(() => { const ln = lines.find((l) => l.key === noteFor); const parts = (ln?.note ?? "").split(" · ").filter(Boolean); return (
+        <Sheet open={!!ln} onClose={() => setNoteFor(null)} title={ln ? `Request · ${lineName(ln.item, ln.variant)}` : "Request"}>
+          {ln && <div className="space-y-4" data-line-note>
+            <p className="text-[13px] text-steel -mt-1">For this dish only. It prints under the dish on the kitchen ticket.</p>
+            <div className="flex flex-wrap gap-2">
+              {LINE_NOTES.map((n) => { const on = parts.includes(n); return (
+                <button key={n} type="button" aria-pressed={on} onClick={() => setNote(ln.key, (on ? parts.filter((x) => x !== n) : [...parts, n]).join(" · "))} className={cn("chip", on && "on")}>{n}</button>); })}
+            </div>
+            <textarea rows={2} maxLength={120} value={ln.note} onChange={(e) => setNote(ln.key, e.target.value)} placeholder="Or type it — less salt, extra raita…" className="w-full resize-none !text-[15px] leading-snug" />
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+              <Button type="button" variant="outline" onClick={() => setNote(ln.key, "")} disabled={!ln.note}>Clear</Button>
+              <Button type="button" onClick={() => setNoteFor(null)} data-note-done><Check size={16} /> Done</Button>
+            </div>
+          </div>}
+        </Sheet>); })()}
       <Sheet open={askNote} onClose={() => setAskNote(false)} title="Cooking request">
         <div className="space-y-4" data-note-sheet>
           <p className="text-[13px] text-steel -mt-1">One note for the whole ticket. It prints in capitals at the top of the kitchen ticket.</p>

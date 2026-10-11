@@ -24,18 +24,44 @@ right.
   <aside className="feather p-4 sticky …"> … the ticket (CartPanel) … </aside>
 ```
 
-**Dish tiles** are `grid-cols-2` on a phone and `repeat(auto-fill, minmax(176px, 1fr))` above it —
-3 across at 1194 and 1440 beside the rail, 6 at 1920, 4 on a tablet without the rail. A tile is: veg mark · category · price
-(`formatINR(…, { whole: true })`, so ₹280 not ₹280.00) on one line, the name on two (`min-h-[2lh]`
-keeps rows level), and a `.stepper` right-anchored at the bottom. **At zero the tile shows one plus
-and nothing else.** Once the dish is on the ticket, the minus and the count appear to the left of
-the plus — the plus itself never moves, which is the whole contract (design-test measures it).
-`takeOne` removes one; clearing a dish outright is the cross on its ticket line.
+**Dishes are rows, not cards** (2026-10-12): one across on a phone, then `repeat(auto-fill,
+minmax(250px, 1fr))` — 2 beside the rail at 1194, 2–3 at 1440, 4 at 1920. A row is 64px: the photo
+(`Thumb size="sm"`, 40px) or a tinted square with the veg mark, the name (two lines at most) over
+"₹price · category" (the pantry warning takes the category's place when there is one), and the
+`.stepper` on the right. **At zero the row shows one plus and nothing else.** Once the dish is on the
+ticket, the minus and the count slide in to the left of the plus — the plus itself never moves. The
+row has the whole dish as one tap target and the stepper as its sibling. `takeOne` removes one;
+clearing a dish outright is the cross on its ticket line. It was a 145px card (286px with a photo)
+with the name on top, an empty middle and the plus far down-right: three dishes on a 1440 screen
+where ten fit now.
 
-The grid is **photo-first only when at least half the menu has `image_url`** (`photoFirst`):
-`Thumb size="lg"` becomes a full-width 4:3 picture on every tile (initial stand-in for the few
-without one) and `size="sm"` a 40px thumb on each ticket line. Under that threshold no thumbs are
-drawn at all — sixty grey squares with letters in them are not thumbnails.
+**A dish with a photo shows it as a 40px square** on its row and on its ticket line; a dish without
+one shows the veg mark on a tinted square, never a big letter. Until 2026-10-12 the grid went
+"photo-first" once half the menu had photos — a full-width 4:3 picture on every tile — which made a
+tile 286px tall. `photoFirst` is gone.
+
+**Search** (`lib/tillSearch.ts`, `dishMatch`, 4 unit tests) covers the whole menu whatever chip is on,
+best first: the whole name, the start of it, the starts of words in order ("chi bir"), any word's
+start ("biry"), initials ("cb" = Chicken Biryani, "pbm" = Paneer Butter Masala — the short codes
+counter staff learn on every Indian POS), then the middle ("65"). **Enter adds the top match and
+clears the box**; Escape clears; a ✕ clears on touch; a line under the box says how many matched and
+what Enter will add. **"/" jumps to the search** from anywhere on the till (a `kbd` hint shows from
+`lg`), and **Ctrl/⌘ + Enter sends the ticket** (`submitRef`, a window listener).
+
+**Popular** — a ★ chip after All, when at least four dishes sold here in the last 30 days: the 12
+most-ordered, most first (`popular` from `page.tsx`, summed from `order_items`, cancelled excluded,
+first 5,000 rows).
+
+**A ticket line** is two rows: the name with its price on the right (the photo beside them when
+there is one; sizes, add-ons, "₹x each", the pantry note and the request in green under the name),
+then the controls — the stepper, the course chip, a **Request** pill (filled green and reading *Edit*
+once set) and the cross at the far end. **Request opens a sheet** (`noteFor`, one for the whole
+ticket): the floor's usual asks as chips (`LINE_NOTES`: Less spicy, Extra spicy, No onion, No garlic,
+Jain, Parcel, Well done, No ice — a tap adds, a second tap takes back, joined " · "), a box for the
+rest, Clear and Done. It is the per-item special request Toast and Petpooja's captain app put on a
+line; the ticket-wide one is still the Cooking request sheet. Chips inside the line itself (tried for
+an hour) wrapped to three rows and ate the ticket's space; a box under every line before that did
+the same on a phone keyboard.
 
 **The ticket rail** (`CartPanel`, used in the desktop `<aside>` and the phone sheet alike) reads top
 to bottom: "Order details" + Clear · `Segmented` type (Dine in / Takeaway / Delivery / Room when
@@ -114,8 +140,9 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 - **The control floor is unlayered CSS** (`:where(button) { min-height: 40px }`, 44 under a coarse
   pointer). A plain `h-8` utility loses to it; only an `!important` utility wins. Size tile and rail
   controls at 40 (`h-10`) and let the floor lift them on touch — do not fight it with `!h-8`.
-- **Narrow tiles cannot hold price + × + stepper on one row** (176px tile, 44px touch targets).
-  That is why the price lives in the top meta row and the tile has no cross.
+- **A 250px row with a picked dish leaves ~95px for the name** beside a 40px photo and a 102px
+  stepper, which is why names clamp to two lines and the price shares a line with the category.
+  There is no cross on a row; the ticket line has it.
 - **`minmax(0,1fr)`, never `1fr`, for the dish track.** A `1fr` grid item will not shrink below its
   content and pushes the ticket rail off the screen. Pair with `min-w-0` on the section.
 - **A floor table is one card** (`feather`, `filled` when occupied): the `Link` on top, and for a
@@ -161,3 +188,21 @@ node fit.mjs             # nine dishes on the ticket at 7 real screen sizes (not
   items / Bill sit under it as an even 48px pair (`grid-cols-2`, one column when the role cannot bill);
   from `sm` it is one row again. It used to squeeze "Order #1400 / T3" between the back button and
   two large buttons.
+
+- **Cancelling asks why (0087).** The order page's per-line *cancel* and *Cancel order* open a
+  `ReasonDialog` and call `cancel_line` / `cancel_order`; the reason and the name land on the row and
+  in the audit trail. A waiter may cancel a pending dish; a dish the kitchen has started needs a
+  manager (the server says so); a whole order needs owner/manager/supervisor/cashier. Direct
+  `status = 'cancelled'` writes are refused by `guard_cancel`. The old confirm said "Stock will be
+  returned" — it never was (0055) and the dialog now says the opposite.
+- **Each till line knows its station** (`item.station ?? item.categories?.station`) and the printed
+  KOT carries it, so station printers get their own lines. See kitchen.md.
+
+- **The order-taking upgrade (2026-10-12)** came from the owner's ask to research other order-taking
+  apps. Toast's order screen offers quantity / repeat / special request on a selected line; Petpooja's
+  captain app recommends dishes and takes voice; Square fires and holds courses. DineFlow already had
+  recommendations (Goes well with), voice, courses, offline sending and station printing, so what was
+  added is what was missing: compact photo tiles, initials search with Enter-to-add, Popular, line
+  request chips and keyboard sending. Probe: `tillnew.mjs` (13 — places no order; restores photos).
+- **The order page's per-line "cancel" is 44px to the thumb** (`h-10`, 44 on touch, `-my-2.5` so the
+  line does not grow) while staying small text. It was 16px tall after the reason dialog landed.

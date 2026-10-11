@@ -55,7 +55,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
       ) : (
         <div className="feather overflow-x-auto table-wrap">
           <table className="w-full text-sm">
-            <thead className="bg-porcelain text-xs uppercase tracking-wide text-steel"><tr><th className="text-left px-4 py-3">Ingredient</th><th className="text-right px-4 py-3">In stock</th><th className="text-right px-4 py-3 hidden sm:table-cell">Reorder at</th><th className="text-right px-4 py-3 hidden md:table-cell">Cost/unit</th><th className="px-4 py-3"></th></tr></thead>
+            <thead className="bg-porcelain text-xs uppercase tracking-wide text-steel"><tr><th className="text-left px-4 py-3">Ingredient</th><th className="text-right px-4 py-3 hidden sm:table-cell">In stock</th><th className="text-right px-4 py-3 hidden sm:table-cell">Reorder at</th><th className="text-right px-4 py-3 hidden md:table-cell">Cost/unit</th><th className="px-4 py-3"></th></tr></thead>
             <tbody>
               {ingredients.map((i, idx) => {
                 const isLow = Number(i.current_stock) <= Number(i.reorder_level);
@@ -64,9 +64,11 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
                   <motion.tr key={i.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.02 }} className="border-t border-line">
                     <td className="px-4 py-3">
                       <div className="font-semibold flex items-center gap-2">{i.name}{i.category && <span className="text-[10px] text-steel font-normal">{i.category}</span>}{i.barcode && <span className="text-[10px] num text-steel">▮▯▮ {i.barcode.slice(-4)}</span>}{isLow && <Pill tone="alert"><AlertTriangle size={11} /> low</Pill>}</div>
+                      {/* on a phone the In stock column is off the right edge of a sideways-scrolling table, so the figure sits here */}
+                      <div className={cn("sm:hidden mt-0.5 num text-[13px] font-semibold", isLow && "text-[var(--color-red)]")} data-stock-inline>{Number(i.current_stock).toFixed(i.unit === "pcs" ? 0 : 2)} <span className="text-xs font-normal text-steel">{i.unit} · reorder at {Number(i.reorder_level)}</span></div>
                       <div className="mt-1.5 h-1.5 w-32 rounded-full bg-line overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.7, delay: 0.1 + idx * 0.02 }} className={cn("h-full rounded-full", isLow ? "bg-chili" : "bg-mint")} /></div>
                     </td>
-                    <td className="px-4 py-3 text-right num font-semibold">{Number(i.current_stock).toFixed(i.unit === "pcs" ? 0 : 2)} <span className="text-xs text-steel">{i.unit}</span></td>
+                    <td className="px-4 py-3 text-right num font-semibold hidden sm:table-cell">{Number(i.current_stock).toFixed(i.unit === "pcs" ? 0 : 2)} <span className="text-xs text-steel">{i.unit}</span></td>
                     <td className="px-4 py-3 text-right num text-steel hidden sm:table-cell">{Number(i.reorder_level)} {i.unit}</td>
                     <td className="px-4 py-3 text-right num text-steel hidden md:table-cell">{formatINR(Number(i.cost_per_unit))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">

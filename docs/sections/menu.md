@@ -25,6 +25,15 @@ Category chips use the shared `.chip` / `.chip.on` classes so they match every o
 app. *Manage categories* lives in the action group, not at the end of the rail — it is not a filter,
 and at the end of a scrolling rail it was the first thing to disappear.
 
+Five actions (*Categories*, *Add-ons*, *From photo*, *Find photos*, *New dish*) come to ~690px, and
+the content column at 834 is 682px — so this toolbar stacks (a
+`.toolbar:has(> .toolbar-end > .btn:nth-child(4))` rule in `globals.css`): the rail on top, the
+actions wrapping into full rows under it, *New dish* on a line of its own. The stack holds from
+721 to 1183px, and again from 1280 to 1363px where the full sidebar narrows the column; a 1194
+iPad and a 1366 laptop keep the single row with ~300px of rail beside the actions. Before, the
+chips collapsed to nothing and *New dish* ran off the right edge of an iPad, and at 1024 one chip
+was in view. On a phone the general toolbar rules apply.
+
 **Options** (`Options.tsx`) holds three editors: `OptionsEditor` (a dish's sizes and which add-on
 groups it offers), `GroupsManager` (the groups themselves, shared across dishes) and `ComboParts`.
 A dish card shows what it has as small pills — `combo · 3`, `Half / Full`, `2 add-ons`.
@@ -82,3 +91,48 @@ pnpm --filter @dineflow/web test    # lib/options.test.ts — 7 tests on the opt
 
 [orders-and-till.md](orders-and-till.md) · [inventory.md](inventory.md) ·
 [design-system.md](design-system.md)
+
+## Dish photos (0088, 2026-10-12)
+
+Every dish can carry a photo (`menu_items.image_url`, `image_credit`, `image_source`). Three ways in:
+
+- **The dish form** — a *Photo* field under the description (`components/menu/DishPhotoPicker.tsx`).
+  As the name is typed (650 ms after the last key, 3+ letters) it searches; on a new dish, or one
+  without a photo, the best match is chosen by itself when it is a confident one (score ≥ 6) and a tap
+  on any of the others changes it. *Take a photo* opens the phone or tablet's own camera (`capture="environment"`, a real tap is needed — a scripted click is refused by the browser); on a laptop, which has no camera app to hand to, a live preview takes the photo's place at the top of the picker with *Capture* and *Cancel*, and the camera is released after the shot. *Upload* and the camera both shrink to 900 px WebP in the browser and stores
+  it in the public `menu` bucket under the property's folder (`uploadDishPhoto`). The ✕ removes it.
+  The choice rides in three hidden inputs and `saveMenuItem` validates it (`photoSchema`: a Wikimedia
+  file or this project's own `menu` bucket — nothing else).
+- **A card** — the photo is a small square beside the name (64px, 72 from `sm`, rounded), the veg mark,
+  name and price beside it and the description under the name; a tap opens *Photo · dish*, which saves
+  the moment one is picked (`setDishPhoto`). With none, the square shows an **outline drawing of the
+  kind of dish** (`components/menu/DishGlyph.tsx` — `glyphFor(name, category)`: cup for coffee/tea,
+  bowl for curries, bread for naan/appam, fish, drumstick, rice, dessert…; a plate when nothing
+  matches) on a soft veg/non-veg tint, with a small + badge. It was a dashed square saying *Photo*,
+  and before that a full-width 16:10 banner — too big for a working menu list.
+- **Find photos** (toolbar) — `autoPhotos()`: every active dish without a photo gets the best one
+  found, only when it is confident; three at a time (Wikipedia throttles a burst — 25 at once came
+  back as fallbacks only) and at most 40 a press. It says how many were added and how many are left to
+  choose by hand. **It also runs by itself** the first time Menu opens in a browser session with any
+  dish missing a photo (`sessionStorage` `dineflow.autoPhotos`), then refreshes the page if it saved
+  some — the owner saw a whole menu of empty squares because nobody had pressed the button. There is
+  no AI image generator wired in; photos are real, freely licensed Wikimedia pictures or the
+  property's own.
+
+**Where the photos come from** — `lib/dishPhotos.ts`, no key and no account: Wikipedia search
+(`generator=search`, `prop=pageimages|description`, free licences only) with three queries — the
+name, the name + "dish"/"drink"/"dessert" by its category, the name + "food" — scored by
+`scoreArticle()`: shared words (menu spellings normalised — briyani → biryani, tacos → taco), the
+description saying it is a dish/drink/dessert (+5), equipment ("Filter used to brew coffee", −4),
+films/festivals/places/lists (−10). Then Wikimedia Commons file search for more choices, scored by
+`scoreFile()` (a file named for every word of the dish → 7). Each photo's licence is read from
+Commons (`extmetadata`); anything non-free (an enwiki "fair use" file) is dropped. The credit
+("Photo: author · CC BY-SA 4.0 · Wikimedia Commons") is stored with the photo, shown under it in the
+picker, as the card photo's tooltip, and links to its source. Measured on 25 dishes from Tamil,
+North Indian, Thai, Italian, French, Japanese, Mexican and bar menus: 21 had the right dish first
+(Masala dosa, Pongal, Kuzhambu, Idli, Medu vada, Indian filter coffee, Curd rice, Gulab jamun, Pad
+thai, Sushi, Mojito, Tiramisu…), every one had 4–8 choices. `findPhotos` is limited to 60 searches
+per person per 10 minutes.
+
+**The till** already showed `image_url` (photo-first tiles once half the menu has photos); the guest
+storefront now does too — see guest-facing.md.

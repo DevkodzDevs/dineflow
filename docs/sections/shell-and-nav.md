@@ -231,3 +231,8 @@ Sign in as a non-owner on a demo property and confirm the sidebar matches the ti
 - **"My attendance"** sits above *Install the app* in the sidebar's foot and the More sheet, only when
   the owner has turned on Fingerprint or Selfie (`attend` from `app/(app)/layout.tsx`, never while
   Master control is acting). `/attendance` is not a module in `ROUTE_MODULE`, so every role can open it.
+- **"New menu"** is a fifth group in the sidebar and the More sheet (`FRESH` in `Nav.tsx`): Intelligence,
+  Cash & controls, Audit trail. They are **not modules** — no `ROUTE_MODULE` entry, no `role_modules`
+  row, no tick in Staff → Access. `FRESH[].roles` decides who sees the link; each page redirects the
+  rest (`/dashboard?locked=…`) and its RPCs check the role again. See
+  [controls-and-intelligence.md](controls-and-intelligence.md).

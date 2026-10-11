@@ -11,7 +11,7 @@ import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type V
 
 /** As the storefront sends it: the add-on groups are carried once on the property, and a dish
  *  names the ones it offers by id. `resolve` below puts them back together for the screen. */
-type RawItem = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; variants?: Variant[]; addon_group_ids?: string[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
+type RawItem = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; image_url?: string | null; variants?: Variant[]; addon_group_ids?: string[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
 type Item = Omit<RawItem, "addon_group_ids"> & { addon_groups?: AddonGroup[] };
 /** One basket line: a dish with the size and extras it was chosen with. */
 type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
@@ -197,14 +197,29 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                 <h2 className="text-xl mb-3">{c.name}</h2>
                 <div className="space-y-2">
                   {c.items.map((i) => (
-                    <div key={i.id} className={cn("card p-4 flex items-start gap-4", !i.available && "opacity-50")}>
+                    <div key={i.id} className={cn("card p-4 flex items-start gap-4", !i.available && "opacity-50")} data-dish-row>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">{i.is_veg ? <Leaf size={13} className="text-[var(--color-green)]" /> : <Drumstick size={13} className="text-[var(--color-red)]" />}<span className="font-semibold">{i.name}</span></div>
                         <div className="num text-sm text-[var(--color-label-2)] mt-0.5">{tilePrice(i).from ? "from " : ""}{formatINR(tilePrice(i).price)}{hasOptions(i) && <span className="ml-2 text-[11px] font-sans">customisable</span>}</div>
                         {i.is_combo && (i.components?.length ?? 0) > 0 && <p className="text-xs text-[var(--color-label-2)] mt-1">Comes with {i.components!.map((c) => `${c.qty}× ${c.name}`).join(", ")}</p>}
                         {i.description && <p className="text-xs text-[var(--color-label-2)] mt-1">{i.description}</p>}
                       </div>
-                      {i.available ? (qtyOf(i.id) ? (
+                      {i.image_url ? (
+                        /* with a photo: the photo on the right, the add control riding its bottom edge */
+                        <div className="relative shrink-0 w-[112px] sm:w-[128px] pb-4">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload */}
+                          <img src={i.image_url} alt={i.name} loading="lazy" className="h-[104px] sm:h-[116px] w-full rounded-2xl object-cover bg-[var(--color-fill)]" data-dish-photo />
+                          <div className="absolute inset-x-2 bottom-0 flex justify-center">
+                            {i.available ? (qtyOf(i.id) ? (
+                              <div className="flex items-center gap-1 bg-[var(--color-tint)] rounded-xl h-9 px-1 shadow-[var(--shadow-pop)]">
+                                <button onClick={() => add(i.id, -1)} className="h-7 w-7 grid place-items-center rounded-lg" aria-label={`One less ${i.name}`}><Minus size={14} /></button>
+                                <span className="num w-6 text-center font-bold text-sm">{qtyOf(i.id)}</span>
+                                <button onClick={() => add(i.id, 1)} className="h-7 w-7 grid place-items-center rounded-lg" aria-label={`One more ${i.name}`}><Plus size={14} /></button>
+                              </div>
+                            ) : <Button size="sm" variant="tinted" className="!h-9 shadow-[var(--shadow-pop)] !bg-[var(--color-bg-2)]" onClick={() => add(i.id, 1)}>Add</Button>) : <span className="pill pill-served">sold out</span>}
+                          </div>
+                        </div>
+                      ) : i.available ? (qtyOf(i.id) ? (
                         <div className="flex items-center gap-1 bg-[var(--color-tint)] rounded-xl h-9 px-1 shrink-0">
                           <button onClick={() => add(i.id, -1)} className="h-7 w-7 grid place-items-center rounded-lg"><Minus size={14} /></button>
                           <span className="num w-6 text-center font-bold text-sm">{qtyOf(i.id)}</span>

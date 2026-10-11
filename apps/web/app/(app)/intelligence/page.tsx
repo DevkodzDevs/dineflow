@@ -1,0 +1,31 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { IntelligenceClient, type Compare, type Engineering, type Exceptions } from "./IntelligenceClient";
+export const metadata = { title: "Intelligence" };
+export const dynamic = "force-dynamic";
+
+/** Owner, managers and supervisors: the people who act on margins and exceptions. The RPCs check the same. */
+const SEES = ["owner", "manager", "supervisor"];
+
+export default async function IntelligencePage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
+  const { days: d } = await searchParams;
+  const days = [7, 28, 90].includes(Number(d)) ? Number(d) : 28;
+  const session = await requireSession();
+  if (!SEES.includes(session.profile.role)) redirect("/dashboard?locked=intelligence");
+  const s = await createClient();
+  const [{ data: eng, error: e1 }, { data: ex, error: e2 }, { data: cmp, error: e3 }] = await Promise.all([
+    s.rpc("menu_engineering", { p_days: days }),
+    s.rpc("exceptions_summary", { p_days: days }),
+    s.rpc("day_compare"),
+  ]);
+  const error = e1?.message ?? e2?.message ?? e3?.message ?? null;
+  return (
+    <>
+      <PageHeader eyebrow="DineFlow Intelligence" title="Intelligence" accent="& exceptions"
+        sub="What the numbers say, from the rows themselves: which dishes earn, what is being given away, and where the cash went. Rule-based — nothing here is guessed." />
+      <IntelligenceClient days={days} engineering={(eng ?? null) as Engineering | null} exceptions={(ex ?? null) as Exceptions | null} compare={(cmp ?? null) as Compare | null} error={error} />
+    </>
+  );
+}

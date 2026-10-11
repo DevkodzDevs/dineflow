@@ -177,6 +177,18 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 - **`mask-image` on a scroller is fine, but scope it.** `.toolbar-group` fades its clip edge only
   when it holds no `input`/`select` and is not `.toolbar-end` — otherwise it fades the right edge of
   a field or of the primary button.
+- **A `StatTile` row with no flap tile is `.stat-flat`.** The figure's `--stat-band` min-height
+  exists to line a money figure up beside a split-flap tile; on a row of nothing but figures it
+  floats the number in 107px of space (Reports at 834). `.stat-flat` on the row sets the band to 0.
+- **A slider is `input[type="range"].range`.** The base range is the 6px track with a 28px knob;
+  `.range` makes it 44px tall, fills the track in the tint to `--pct` (the screen sets it from
+  min/max/value) and turns off the input hover wash and focus ring that would otherwise paint the
+  box. The Notifier's volume slider still uses the bare base control.
+- **`.toolbar-end` never shrinks, so count its buttons.** It is `flex: 0 0 auto` above 720px; four
+  or more actions are wider than the content column at 834 and the primary ran off the page on Menu.
+  A `.toolbar:has(> .toolbar-end > .btn:nth-child(4))` rule stacks such a toolbar from 721 to
+  1183px and from 1280 to 1363px (the full sidebar takes 256px of the column there) and wraps its
+  actions into full rows. Two- and three-button toolbars are untouched.
 - **Never add a chart library.** The gauge and the week curve on the dashboard are hand-drawn SVG
   paths on purpose: the control room is the most-opened screen in the app and should not ship a
   plotting engine to draw five arcs.

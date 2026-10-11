@@ -1,18 +1,21 @@
 "use client";
-import { useMemo, useRef, useState, useTransition } from "react";
-import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers, Camera, Clock, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers, Camera, Clock, AlertTriangle, Images, ImagePlus } from "lucide-react";
+import { DishPhotoPicker, type DishPhoto } from "@/components/menu/DishPhotoPicker";
+import { DishGlyph } from "@/components/menu/DishGlyph";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Field, Sheet, Empty, Switch, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { findStandardRecipe } from "@dineflow/shared";
-import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation } from "./actions";
+import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation, setDishPhoto, autoPhotos } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
 import { OptionsEditor, GroupsManager, ComboParts } from "./Options";
 import { MenuImport } from "./MenuImport";
 import type { VariantRow, GroupRow, LinkRow, ComboRow } from "@/lib/menuOptions";
 
 type Cat = { id: string; name: string; sort_order: number; station?: string | null };
-type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; prep_minutes: number; description: string | null; station?: string | null; is_combo?: boolean };
+type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; prep_minutes: number; description: string | null; station?: string | null; is_combo?: boolean; image_url?: string | null; image_credit?: string | null; image_source?: string | null };
 type Ing = { id: string; name: string; unit: string };
 type Rec = { menu_item_id: string; ingredient_id: string; qty: number };
 
@@ -47,7 +50,29 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
   const [groupsSheet, setGroupsSheet] = useState(false);
   const [combo, setCombo] = useState(false);
   const [parts, setParts] = useState<{ menu_item_id: string; qty: number }[]>([]);
-  const openEditor = (it: Partial<Item>) => { setEditing(it); setCombo(!!it.is_combo); setParts(it.id ? combos.filter((c) => c.combo_id === it.id).map((c) => ({ menu_item_id: c.menu_item_id, qty: c.qty })) : []); };
+  /* the photo: in the dish form it follows the name as it is typed; from a card it saves at once */
+  const [photo, setPhoto] = useState<DishPhoto | null>(null);
+  const [dishName, setDishName] = useState(""); const [dishCat, setDishCat] = useState<string | null>(null);
+  const [photoFor, setPhotoFor] = useState<Item | null>(null);
+  const [finding, setFinding] = useState(false);
+  /* Photos find themselves: the first time the menu opens in a session with dishes that have none,
+     autoPhotos() runs in the background (the same as pressing Find photos) and the page refreshes
+     when it has saved some. Once per session, so a dish nobody could match is not searched on
+     every visit — those keep their outline drawing until someone picks or takes a photo. */
+  const router = useRouter();
+  const missing = items.filter((i) => !i.image_url).length;
+  useEffect(() => {
+    if (!missing) return;
+    const KEY = "dineflow.autoPhotos";
+    try { if (sessionStorage.getItem(KEY)) return; sessionStorage.setItem(KEY, "1"); } catch { return; }
+    let on = true; setFinding(true);
+    autoPhotos().then((r) => { if (!on || "error" in r) return; if (r.found) { toast(`Photos added to ${r.found} dish${r.found === 1 ? "" : "es"}`); router.refresh(); } })
+      .catch(() => {}).finally(() => { if (on) setFinding(false); });
+    return () => { on = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on the first open with dishes missing photos
+  }, []);
+  const catName = (id: string | null | undefined) => categories.find((c) => c.id === id)?.name ?? null;
+  const openEditor = (it: Partial<Item>) => { setPhoto(it.image_url ? { url: it.image_url, credit: it.image_credit, source: it.image_source } : null); setDishName(it.name ?? ""); setDishCat(it.category_id ?? null); setEditing(it); setCombo(!!it.is_combo); setParts(it.id ? combos.filter((c) => c.combo_id === it.id).map((c) => ({ menu_item_id: c.menu_item_id, qty: c.qty })) : []); };
   const variantsOf = (id: string) => variants.filter((v) => v.menu_item_id === id);
   const groupsOf = (id: string) => links.filter((l) => l.menu_item_id === id).map((l) => l.group_id);
   const partsOf = (id: string) => combos.filter((c) => c.combo_id === id);
@@ -71,6 +96,11 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
           <Button variant="outline" onClick={() => setCatSheet(true)} title="Add, rename or remove categories"><Plus size={16} /> Categories</Button>
           <Button variant="outline" onClick={() => setGroupsSheet(true)}><SlidersHorizontal size={16} /> Add-ons</Button>
           <Button variant="outline" onClick={() => setImporting(true)} title="Photograph a printed menu and add its dishes"><Camera size={16} /> From photo</Button>
+          <Button variant="outline" loading={finding} data-find-photos title="Find a photo for every dish that has none" onClick={async () => {
+            setFinding(true);
+            try { const r = await autoPhotos(); if ("error" in r) toast(r.error!, "err"); else toast(r.found ? `Photos added to ${r.found} dish${r.found === 1 ? "" : "es"}${r.left ? ` · ${r.left} to choose by hand` : ""}` : r.left ? `No sure match for ${r.left} — open a dish to choose` : "Every dish has a photo"); }
+            finally { setFinding(false); }
+          }}><Images size={16} /> Find photos</Button>
           <Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15, category_id: cat === "all" ? null : cat })}><Plus size={16} /> New dish</Button></div>
       </div>
 
@@ -89,21 +119,36 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
               return (
               <motion.div key={it.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} data-dish={it.id}
                 className="min-w-0 rounded-[22px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] overflow-hidden flex flex-col">
-                <div className={cn("p-4 flex-1 flex flex-col gap-2.5 transition-opacity", !it.is_available && "opacity-55")}>
-                  <div className="flex items-start gap-2.5">
-                    {/* the mark every Indian menu uses: a square with a dot, green for veg, red for not */}
-                    <span title={it.is_veg ? "Veg" : "Non-veg"} aria-label={it.is_veg ? "Veg" : "Non-veg"}
-                      className={cn("mt-1 h-[15px] w-[15px] shrink-0 rounded-[3px] border-[1.5px] grid place-items-center", it.is_veg ? "border-[var(--color-green)]" : "border-[var(--color-red)]")}>
-                      <span className={cn("h-[7px] w-[7px] rounded-full", it.is_veg ? "bg-[var(--color-green)]" : "bg-[var(--color-red)]")} />
-                    </span>
-                    <h3 className="flex-1 min-w-0 font-sans font-semibold text-[16px] leading-snug line-clamp-2">{it.name}</h3>
-                    <div className="shrink-0 text-right leading-none">
-                      {vs.length > 0 && <div className="text-[10.5px] text-steel mb-0.5">from</div>}
-                      <div className="num font-display text-[20px]">{formatINR(lo, { whole: true })}</div>
+                <div className={cn("p-4 flex-1 flex flex-col gap-3 transition-opacity", !it.is_available && "opacity-55")}>
+                  {/* the photo is a small square beside the name — a tap changes it; with none, a dashed square that offers one */}
+                  <div className="flex items-start gap-3 min-w-0">
+                    <button type="button" onClick={() => setPhotoFor(it)} aria-label={`${it.image_url ? "Change" : "Add"} the photo — ${it.name}`} title={it.image_url ? (it.image_credit ?? "Change the photo") : "Add a photo"} data-photo
+                      className={cn("relative shrink-0 h-16 w-16 sm:h-[72px] sm:w-[72px] !min-h-0 rounded-2xl overflow-hidden group", "bg-[var(--color-fill)]")}>
+                      {it.image_url
+                        // eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload
+                        ? <><img src={it.image_url} alt={it.name} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                            <span className="absolute inset-0 grid place-items-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition"><Pencil size={15} /></span></>
+                        /* no photo yet: an outline drawing of the kind of dish, with a small + to add one */
+                        : <><DishGlyph name={it.name} category={catName(it.category_id)} veg={it.is_veg} size={28} className="transition duration-300 group-hover:scale-105" />
+                            <span className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-[var(--color-bg-2)] text-[var(--color-label-2)] grid place-items-center shadow-sm group-hover:text-[var(--color-label)]"><ImagePlus size={11} /></span></>}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-2">
+                        {/* the mark every Indian menu uses: a square with a dot, green for veg, red for not */}
+                        <span title={it.is_veg ? "Veg" : "Non-veg"} aria-label={it.is_veg ? "Veg" : "Non-veg"}
+                          className={cn("mt-1 h-[14px] w-[14px] shrink-0 rounded-[3px] border-[1.5px] grid place-items-center", it.is_veg ? "border-[var(--color-green)]" : "border-[var(--color-red)]")}>
+                          <span className={cn("h-[6px] w-[6px] rounded-full", it.is_veg ? "bg-[var(--color-green)]" : "bg-[var(--color-red)]")} />
+                        </span>
+                        <h3 className="flex-1 min-w-0 font-sans font-semibold text-[15.5px] leading-snug line-clamp-2">{it.name}</h3>
+                        <div className="shrink-0 text-right leading-none">
+                          {vs.length > 0 && <div className="text-[10.5px] text-steel mb-0.5">from</div>}
+                          <div className="num font-display text-[19px]">{formatINR(lo, { whole: true })}</div>
+                        </div>
+                      </div>
+                      <p className="mt-1 text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2">{it.description || "No description yet"}</p>
                     </div>
                   </div>
-                  <p className="text-[13px] leading-snug text-[var(--color-label-2)] line-clamp-2 pl-[25px]">{it.description || "No description yet"}</p>
-                  <div className="flex flex-wrap gap-1.5 pl-[25px]">
+                  <div className="flex flex-wrap gap-1.5">
                     <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><Clock size={11} />{it.prep_minutes} min</span>
                     {it.is_combo && <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><Layers size={11} />combo · {partsOf(it.id).length}</span>}
                     {vs.length > 0 && <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)] max-w-full")}><span className="truncate">{vs.map((v) => v.name).join(" / ")}</span></span>}
@@ -140,14 +185,14 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? "Edit dish" : "New dish"}>
         <form ref={formRef} className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveMenuItem(fd); if (r && "error" in r) setErr(r.error!); else setEditing(null); })}>
           {editing?.id && <input type="hidden" name="id" value={editing.id} />}
-          <Field label="Dish name"><div className="flex gap-2 items-center"><input name="name" defaultValue={editing?.name} required autoFocus className="flex-1 min-w-0" />
+          <Field label="Dish name"><div className="flex gap-2 items-center"><input name="name" defaultValue={editing?.name} required autoFocus className="flex-1 min-w-0" onInput={(e) => setDishName((e.target as HTMLInputElement).value)} />
             {ai && <AiButton label="Fill the rest" busy={filling} onClick={() => { void fillDish(); }} />}</div></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Price (₹)"><input name="price" type="number" step="0.01" min="0" defaultValue={editing?.price} required /></Field>
             <Field label="Prep minutes"><input name="prep_minutes" type="number" min="0" defaultValue={editing?.prep_minutes ?? 15} /></Field>
           </div>
           <Field label="Category">
-            <select name="category_id" defaultValue={editing?.category_id ?? ""}><option value="">— none —</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            <select name="category_id" defaultValue={editing?.category_id ?? ""} onChange={(e) => setDishCat(e.target.value || null)}><option value="">— none —</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           </Field>
           {stations.length > 0 && (
             <Field label="Kitchen station" hint="Leave on the category's station unless this dish is made somewhere else">
@@ -155,6 +200,10 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
             </Field>
           )}
           <Field label="Description"><textarea name="description" rows={2} defaultValue={editing?.description ?? ""} /></Field>
+          <div className="space-y-1.5"><label>Photo</label>
+            {editing && <DishPhotoPicker key={editing.id ?? "new"} name={dishName} category={catName(dishCat)} value={photo} onChange={setPhoto} autoPick={!editing.id || !editing.image_url} />}
+          </div>
+          <input type="hidden" name="image_url" value={photo?.url ?? ""} /><input type="hidden" name="image_credit" value={photo?.credit ?? ""} /><input type="hidden" name="image_source" value={photo?.source ?? ""} />
           <div className="flex gap-6">
             <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_veg" className="w-4 h-4 accent-saffron" defaultChecked={editing?.is_veg ?? true} /> Vegetarian</label>
             <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_available" className="w-4 h-4 accent-saffron" defaultChecked={editing?.is_available ?? true} /> Available now</label>
@@ -168,6 +217,13 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
             {editing?.id && <Button type="button" variant="danger" onClick={() => start(async () => { await deleteMenuItem(editing.id!); setEditing(null); })}><Trash2 size={16} /></Button>}
           </div>
         </form>
+      </Sheet>
+
+      {/* the photo alone, from a card: saved the moment one is picked */}
+      <Sheet open={!!photoFor} onClose={() => setPhotoFor(null)} title={`Photo · ${photoFor?.name ?? ""}`}>
+        {photoFor && <DishPhotoPicker key={photoFor.id} name={photoFor.name} category={catName(photoFor.category_id)}
+          value={photoFor.image_url ? { url: photoFor.image_url, credit: photoFor.image_credit, source: photoFor.image_source } : null}
+          onChange={(p) => start(async () => { const r = await setDishPhoto(photoFor.id, p); if (r && "error" in r) toast(r.error!, "err"); else { setPhotoFor({ ...photoFor, image_url: p?.url ?? null, image_credit: p?.credit ?? null, image_source: p?.source ?? null }); toast(p ? "Photo saved" : "Photo removed"); } })} />}
       </Sheet>
 
       {/* sizes and add-ons for one dish */}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins } from "lucide-react";
 import { Button, Field, Card, cn, Pill } from "@/components/ui";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod } from "@dineflow/shared";
 import { generateBill, settleBill, voidBill, lookupCustomer, checkCoupon, type Customer, type Coupon } from "../actions";
 import { enqueue } from "@/lib/offline/sync";
@@ -27,7 +28,8 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
   const [roomFor, setRoomFor] = useState("");
   const [inv, setInv] = useState({ name: "", gstin: "" });
   const { online } = useOffline();
-  const { printBill, hasPrinter } = usePrinters();
+  const { printBill, hasPrinter, openDrawer } = usePrinters();
+  const [voiding, setVoiding] = useState(false);
   const [justPrinted, setJustPrinted] = useState(false);
   const lastBillId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -221,10 +223,15 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
               const settled = pays.map((p) => ({ ...p, amount: p.method === "cash" && paid > totals.total ? p.amount - (paid - totals.total) : p.amount }));
               setJustPrinted(true);
               try { await printBill(billData()); } catch { /* printer trouble must not stop the payment */ }
+              // cash changes hands: the drawer pops on any bill printer set up to kick it (0087 — the setting was saved but never fired)
+              if (settled.some((p) => p.method === "cash" && p.amount > 0)) { try { await openDrawer(); } catch { /* a drawer that will not open is not a payment problem */ } }
               if (!online) { await enqueue("settle_bill", { bill_id: bill.id, payments: settled, client_id: crypto.randomUUID() }, `Payment · ${bill.bill_no}`); router.push("/billing?queued=1"); return; }
               const r = await settleBill(bill.id, settled); if ("error" in r) setErr(r.error!); else router.refresh();
             })}>Mark paid{!online && " (offline)"}</Button>
-            <button className="mt-3 text-xs text-steel hover:text-chili w-full" disabled={pending} onClick={() => start(async () => { await voidBill(bill.id); router.refresh(); })}>Void bill and edit order</button>
+            <button type="button" className="mt-3 text-xs text-steel hover:text-chili w-full" disabled={pending} onClick={() => setVoiding(true)} data-void-bill>Void bill and edit order</button>
+            <ReasonDialog open={voiding} onClose={() => setVoiding(false)} title={`Void bill ${bill.bill_no}?`} hint="The bill is cancelled and the order goes back to the floor to be edited and billed again. The reason and your name stay on it."
+              chips={["Wrong table", "Item missed", "Discount missed", "Guest changed order", "Billed twice"]} confirmLabel="Void the bill"
+              onConfirm={async (reason) => { const r = await voidBill(bill.id, reason); if ("error" in r) return { error: r.error }; router.refresh(); }} />
           </Card>
           {payUrl && (
             <Card className="mt-4">

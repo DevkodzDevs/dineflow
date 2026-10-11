@@ -72,10 +72,28 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
       {/* Two cards that line up, not three tiles floating over an empty corner beside a form. The
           tiles sit in a "Right now" card centred in its height; the quote card reads top to bottom:
           party size (an even grid, not a wrapping row), the wait it gets, who, add. */}
-      <div className="grid xl:grid-cols-[auto_minmax(0,1fr)] gap-5 mb-8 items-stretch">
-        <Card className="flex flex-col">
+      {/* The left track is a share of the row, not `auto`: .flip-fit is an inline-size container,
+          which has no width of its own, so an auto track collapsed to nothing and the three tiles
+          stacked into a 600px column beside a half-empty quote card. Under the tiles, the tables
+          that free next — the thing a host quoting a wait looks at anyway. */}
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] gap-5 mb-8 items-stretch" data-pulse-top>
+        <Card className="flex flex-col min-w-0">
           <div className="card-title"><h3>Right now</h3><span className="more num">{pulse.free_now} of {pulse.tables.length} tables free</span></div>
-          <div className="flip-fit flex-1 grid place-items-center py-2"><div className="flip-row"><Flip value={queue.length} label="waiting" tone={queue.length ? "alert" : undefined} /><Flip value={pulse.next_free_min ?? 0} label="next free · min" tone={pulse.free_now ? "live" : undefined} /><Flip value={pulse.free_now} label="tables free" /></div></div>
+          <div className="flip-fit py-1"><div className="flip-row"><Flip value={queue.length} label="waiting" tone={queue.length ? "alert" : undefined} /><Flip value={pulse.next_free_min ?? 0} label="next free · min" tone={pulse.free_now ? "live" : undefined} /><Flip value={pulse.free_now} label="tables free" /></div></div>
+          {(() => { const soon = busy.filter((t) => t.age <= STALE).sort((a, b) => a.mins_left - b.mins_left).slice(0, 3); return (
+            <div className="mt-auto pt-4 border-t border-line" data-frees-next>
+              <div className="text-[11px] uppercase tracking-wide text-steel mb-2">Frees next</div>
+              {soon.length === 0 ? <p className="text-sm text-steel">{busy.length ? "Only tables open for days — bill or close them below." : "Every table is free — seat straight away."}</p> : (
+                <div className="grid grid-cols-3 gap-2">
+                  {soon.map((t) => (
+                    <div key={t.id} className="rounded-xl bg-[var(--color-fill)] px-3 py-2 min-w-0">
+                      <div className="flex items-center justify-between gap-1"><span className="font-display text-[17px] leading-none truncate">{t.name}</span><span className="text-[11px] text-steel inline-flex items-center gap-0.5 shrink-0"><Users size={11} />{t.capacity}</span></div>
+                      <div className="mt-1 num text-[13px] font-semibold text-[var(--color-tint)]">{t.mins_left <= 0 ? "any minute" : `~${dur(t.mins_left)}`}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>); })()}
         </Card>
         <Card className="min-w-0">
           <div className="card-title"><h3>Quote a wait</h3><span className="more num">avg sitting {pulse.avg_dwell} min</span></div>

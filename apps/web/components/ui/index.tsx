@@ -57,9 +57,10 @@ export function DeckHandle({ href, onClick }: { href?: string; onClick?: () => v
   return href ? <a href={href} onClick={() => tap()}>{inner}</a> : <button onClick={() => { tap(); onClick?.(); }}>{inner}</button>;
 }
 
-export function Card({ className, children, lift, glow }: { className?: string; children: ReactNode; lift?: boolean; glow?: boolean }) {
+/** `rest` lets a screen mark its cards (`data-briefing`, `id`, `aria-*`) — a probe or an anchor needs the card, not a wrapper. */
+export function Card({ className, children, lift, glow, ...rest }: { className?: string; children: ReactNode; lift?: boolean; glow?: boolean } & Omit<React.HTMLAttributes<HTMLDivElement>, "className" | "children">) {
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => { if (!glow) return; const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`); e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`); };
-  return <div onMouseMove={onMove} className={cn("card p-5", lift && "feather-lift", glow && "spotlight", className)}>{children}</div>;
+  return <div {...rest} onMouseMove={onMove} className={cn("card p-5", lift && "feather-lift", glow && "spotlight", className)}>{children}</div>;
 }
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {

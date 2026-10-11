@@ -43,12 +43,15 @@ export async function recallKot(kotId: string) {
   const s = await createClient(); const { error } = await s.rpc("recall_kot", { p_kot_id: kotId });
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
-export async function cancelOrder(id: string) {
-  const s = await createClient();
-  await s.from("order_items").update({ status: "cancelled" }).eq("order_id", id);
-  const { data: o } = await s.from("orders").update({ status: "cancelled" }).eq("id", id).select("table_id").single();
-  if (o?.table_id) await s.from("dining_tables").update({ status: "free" }).eq("id", o.table_id);
-  bump(); return { ok: true };
+/** Through cancel_order (0087): managers and cashiers, with a reason; one audit line; the table freed if nothing else runs on it. */
+export async function cancelOrder(id: string, reason: string) {
+  const s = await createClient(); const { error } = await s.rpc("cancel_order", { p_order_id: id, p_reason: reason });
+  if (error) return { error: error.message }; bump(); return { ok: true };
+}
+/** One dish off an open order. Anyone while it is pending; once the kitchen has started it, a manager. */
+export async function cancelLine(id: string, reason: string) {
+  const s = await createClient(); const { error } = await s.rpc("cancel_line", { p_item_id: id, p_reason: reason });
+  if (error) return { error: error.message }; bump(); return { ok: true };
 }
 /** The whole order goes to another table. */
 export async function moveOrder(orderId: string, tableId: string) {

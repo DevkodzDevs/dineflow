@@ -16,7 +16,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(app)/dashboard/**` | [dashboard.md](dashboard.md) |
 | `app/(app)/orders/**` (incl. `orders/new`, the till) | [orders-and-till.md](orders-and-till.md) |
 | `app/(app)/kitchen/**` | [kitchen.md](kitchen.md) |
-| `app/(app)/menu/**` | [menu.md](menu.md) |
+| `app/(app)/menu/**`, `components/menu/**`, `lib/dishPhotos.ts` | [menu.md](menu.md) |
 | `app/(app)/billing/**`, `app/(app)/invoices/**` | [billing-and-invoices.md](billing-and-invoices.md) |
 | `app/(app)/frontdesk/**` | [front-desk.md](front-desk.md) |
 | `app/(app)/rooms/**`, `app/(app)/reservations/**`, `app/(app)/facilities/**` | [rooms-and-reservations.md](rooms-and-reservations.md) |
@@ -27,6 +27,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(app)/online-orders/**`, `app/(app)/channels/**` | [online-and-channels.md](online-and-channels.md) |
 | `app/(app)/reports/**`, `app/(app)/pulse/**`, `app/(app)/tomorrow/**`, `app/(app)/proof/**` | [reports-and-forecast.md](reports-and-forecast.md) |
 | `app/(app)/settings/**` | [settings.md](settings.md) |
+| `app/(app)/controls/**`, `app/(app)/audit/**`, `app/(app)/intelligence/**`, `components/ui/ReasonDialog.tsx` — the "New menu" | [controls-and-intelligence.md](controls-and-intelligence.md) |
 | `app/(app)/tax/**` | [tax-and-compliance.md](tax-and-compliance.md) |
 | `app/(app)/scan/**` | [scan.md](scan.md) |
 | `app/(app)/neighbours/**` | [neighbours.md](neighbours.md) |

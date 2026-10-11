@@ -5,7 +5,7 @@
 `app/(app)/invoices/InvoicesClient.tsx` · `[id]/InvoiceView.tsx` · both `actions.ts`
 **Reads** `bills`, `orders`, `bookings`, `day_closes`, `invoices`
 **Writes** `generate_bill`, `settle_bill`, `close_day`, `shift_close`, `shift_expected`,
-`coupon_check`, `customer_lookup`, `generate_dining_invoice`, `generate_stay_invoice`
+`coupon_check`, `customer_lookup`, `generate_dining_invoice`, `generate_stay_invoice`, `void_bill` (0087)
 
 ## What it is
 
@@ -17,7 +17,8 @@ requirements, generated from a bill or a stay.
 
 **Bill → payment → settle.** `generate_bill` freezes the ticket into a `bills` row with its own
 numbering and its GST breakdown. `settle_bill` records one or more payments (`cash`, `card`, `upi`…)
-against it. A bill can be part-paid; the till shows what is owed.
+against it. **A bill cannot be part-paid**: `settle_bill` (0077) refuses unless the payments in one call
+cover the total — the till's "Split" is several methods on one settlement, not a deferred balance.
 
 **The maths lives in `@dineflow/shared/billing.ts`**, not in the screen, because the mobile app and
 the printed receipt must agree with it to the paisa.
@@ -27,8 +28,12 @@ the printed receipt must agree with it to the paisa.
 facilities. `service_charge_pct` is separate and is not a tax.
 
 **Shift and day close.** `shift_expected` says what the drawer should hold; `shift_close` records
-what it actually held and the difference. `close_day` seals the day — after it, the day's figures
-stop moving, which is what the reports and `proof` depend on.
+what it actually held and the difference — since 0087 against `cash_drawer` = cash sales + cash in −
+cash out (Cash & controls records the in/out), so a float top-up no longer reads as "over". `close_day`
+writes the day's row for the reports; **it does not lock anything** — it is an upsert that can be run
+again, and nothing refuses a change to a closed day. Monthly sealing is `business_periods` (`proof`).
+0087 also fixed its `total_sales`: it joined bills to payments and summed the bill once per payment,
+so a bill paid half cash / half UPI counted twice.
 
 **Invoices** are a separate, numbered series. `/invoices` has a month strip with a bar per month and
 a reading pane beside the list; on a phone that pane becomes a sheet.
@@ -60,8 +65,15 @@ pnpm --filter @dineflow/web test
   the guest's name reach them from public storefront orders, and the browser-print fallback writes the
   HTML into a same-origin window — unescaped, a note could run script with the staff member's
   session. The pay QR must be an image `data:` URL. Tested in `lib/security.test.ts`.
-- **Direct bill/invoice edits are fenced in the database (0084)**: voiding an unpaid bill and the
-  invoice's bill-to fields are the only direct updates allowed. See data-and-rls.md.
+- **Direct bill/invoice edits are fenced in the database (0084, tightened 0087)**: a bill cannot be
+  changed directly at all now — a void goes through `void_bill(p_bill, p_reason)`, which checks the role
+  (owner/manager/supervisor/cashier), insists on a reason, puts the name on the bill and the order back
+  to `open`, and leaves a `bill.void` row in the audit trail. The invoice's bill-to fields remain the
+  one direct update. The "Void bill and edit order" link opens a `ReasonDialog`. See
+  [controls-and-intelligence.md](controls-and-intelligence.md).
+- **Cash settles pop the drawer** (`openDrawer()` in `usePrinter.ts`): every bill printer with the
+  "kick the drawer" switch gets ESC p after the receipt. The switch had been saved since 0004 and read
+  by nothing.
 
 - **Invoiced by month is a column chart with a readout** (`MonthStrip` in `InvoicesClient.tsx`, every
   width): one series, one hue — bars from a common baseline, the chosen month solid tint and the rest

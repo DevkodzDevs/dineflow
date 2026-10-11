@@ -32,9 +32,10 @@ export async function checkCoupon(code: string, subtotal: number) {
   const s = await createClient(); const { data, error } = await s.rpc("coupon_check", { p_code: code.trim(), p_subtotal: subtotal });
   if (error) return { error: error.message }; return { ok: true as const, coupon: data as Coupon };
 }
-export async function voidBill(billId: string) {
-  const s = await createClient(); const { error } = await s.from("bills").update({ status: "void" }).eq("id", billId).eq("status", "unpaid");
-  if (error) return { error: error.message }; bump(); return { ok: true };
+/** Through void_bill (0087): a role check, a reason, a name on the bill, the order back on the floor, a line in the audit trail. */
+export async function voidBill(billId: string, reason: string) {
+  const s = await createClient(); const { error } = await s.rpc("void_bill", { p_bill_id: billId, p_reason: reason });
+  if (error) return { error: error.message }; bump(); revalidatePath("/controls"); revalidatePath("/audit"); return { ok: true };
 }
 export async function settleBill(billId: string, payments: unknown) {
   const parsed = z.array(paymentSchema).min(1).safeParse(payments);

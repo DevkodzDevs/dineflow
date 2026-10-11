@@ -1,8 +1,14 @@
 "use client";
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+/** The same box a chart fills, saying why it is empty — a blank 224px card read as a broken one. */
+function Empty({ text }: { text: string }) {
+  return <div className="h-56 grid place-items-center rounded-2xl border border-dashed border-[var(--color-separator)] text-sm text-[var(--color-label-2)] text-center px-6" data-empty-chart>{text}</div>;
+}
+
 /** Split out so the charting library loads only when Reports is opened, not with the app shell. */
 export function SalesChart({ data }: { data: { day: string; total: number }[] }) {
+  if (!data.some((d) => Number(d.total) > 0)) return <Empty text="No paid bills in this window — the curve draws from the first settled bill." />;
   return (
     <div className="h-56"><ResponsiveContainer>
       <AreaChart data={data}>
@@ -16,6 +22,7 @@ export function SalesChart({ data }: { data: { day: string; total: number }[] })
   );
 }
 export function TopChart({ data }: { data: { name: string; qty: number }[] }) {
+  if (!data.some((d) => Number(d.qty) > 0)) return <Empty text="Nothing sold in this window yet." />;
   return (
     <div className="h-56"><ResponsiveContainer>
       <BarChart data={data} layout="vertical" margin={{ left: 0, right: 8 }}>

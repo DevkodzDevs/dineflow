@@ -16,9 +16,10 @@ one that goes on a screen above the pass and is read from across the room.
 A **KOT** (kitchen order ticket) is a row in `kots` with a status: `pending` → `preparing` →
 `ready`. The till fires one with `fire_kot`; `recall_kot` pulls it back.
 
-`stale_kot_count` is what drives "Running late" on the dashboard and the bell badge in the shell —
-a ticket older than 15 minutes that is not yet `ready`. That threshold lives with the RPC, not in
-the UI, so every screen agrees on what "late" means.
+`stale_kot_count(p_hours)` drives "Running late" on the dashboard and the bell badge in the shell —
+pending/preparing tickets older than `p_hours` (the kitchen page passes 24, so it is "left over from
+earlier", not "late"). The amber/red lateness on the board itself is computed in the browser from
+`kds_warn_minutes` / `kds_target_minutes` (0067). The note used to say 15 minutes; the RPC never did.
 
 Stations (`kds_stations` on the restaurant) route a category's dishes to a particular screen; a
 category with no station stays on the expo view only. The warn and target minutes
@@ -59,3 +60,10 @@ Then open `/kitchen/board` at 1920 and stand back from it.
 ## See also
 
 [orders-and-till.md](orders-and-till.md) · [reports-and-forecast.md](reports-and-forecast.md)
+
+- **Station printers print again (0087).** `printKot` routes with `ticketsFor()` (`lib/print/route.ts`,
+  unit-tested): a printer with no station prints the whole ticket, a station printer only the lines
+  whose station is its own (the dish's `station`, else its category's), nothing when none are. Before
+  this no screen passed a station, so a station-bound printer never received a ticket. The till's
+  menu query now selects `station, categories(station)` and each printed line carries it; the kitchen
+  Reprint passes `stationOf(i)`. Online orders carry no station and still go to station-less printers.

@@ -37,7 +37,12 @@ honest the model has been. `buy_purchase_list` turns a forecast into a basket fo
 `proof_create` mints a link; `proof_links_list` and `proof_revoke` manage them. A revoked link is
 dead immediately. The reader's view is `/record/[token]` — see [guest-facing.md](guest-facing.md).
 
-**Charts are hand-drawn SVG.** No plotting library anywhere in this app.
+**Charts on /reports are recharts** (`Charts.tsx` imports `BarChart`); the dashboard's `Gauge` and
+`Week` are hand-drawn SVG. The note used to say no plotting library anywhere — it was wrong.
+
+**Intelligence** (`/intelligence`, 0087) sits beside Reports: plate cost and margin per dish,
+menu-engineering classes, exceptions against a 28-day baseline and the owner's briefing. See
+[controls-and-intelligence.md](controls-and-intelligence.md).
 
 **Table ready on WhatsApp.** A queued guest with a phone gets a green WhatsApp button beside the
 ring button: "Hi Ravi, your table at … is ready. Please come to the host stand." plus their own
@@ -50,10 +55,25 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
 - **Tomorrow's header actions wrap on a phone**: the day arrows and Prep sheet on one line, Send to
   the team on the next. As one row they were 398px in a 358px column.
 
-- **Pulse's top is two cards that line up** (`xl:grid-cols-[auto_minmax(0,1fr)]`, stretched): the
-  flip tiles in "Right now", and Quote a wait with party size as an even grid (4 across on a phone,
-  8 above). The tiles sit in `.flip-fit`, which sizes them from the card (cqw) on a phone — sized
-  from 100vw they ran the third tile out of the card at 412.
+- **Tomorrow's adjust block** (`[data-adjust]`, under the forecast number) is a label row, a
+  full-width `Segmented` of the four moods (`MOODS`: Quiet ×0.7, Normal ×1, Busy ×1.25,
+  Festival ×1.6 — each segment shows the covers it means; a slider value between them lights
+  none), and a `.range` slider with its track filled to the value (`--pct` from `sMin`/`sMax`).
+  *Reset to N* appears only when the count has moved. It was a bare 6px range and four 32px chips
+  with a different gap above each; the moods were 32px on an iPad.
+
+- **Reports' KPI row is `.stat-flat`** (`[data-kpis]`): four money figures, never a flap, so the
+  tiles carry no flap-alignment band — ~108px tall instead of 177px at 834, where two rows of them
+  sat before the first chart. Pantry's row stays banded because it mixes flaps and a figure.
+
+- **Pulse's top is two cards that line up** (`xl:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]`,
+  stretched, `[data-pulse-top]`): "Right now" — three flip tiles in one row, then *Frees next*
+  (`[data-frees-next]`, the three busy tables nearest to freeing, stale ones left out) pinned to
+  the bottom — and Quote a wait with party size as an even grid (4 across on a phone, 8 above).
+  The tiles sit in `.flip-fit`, which sizes them from the card (cqw) at every width and never
+  wraps. **Do not give that card an `auto` track**: `.flip-fit` is an inline-size container with
+  no width of its own, so the track collapsed, the tiles stacked into a 600px column and the quote
+  card beside it was half empty (2026-10-12).
 - **Pulse's tables are tabs and tiles** — All · Free · Reserved · In use, each with a count (a 4-up
   segmented control; on a phone the count stacks under the label so "Reserved" is not cut). The page
   also reads today's `reservations` that hold a table (`requested`/`confirmed`, `table_id` set): a
@@ -101,3 +121,7 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
 
 [billing-and-invoices.md](billing-and-invoices.md) · [inventory.md](inventory.md) ·
 [dashboard.md](dashboard.md)
+- **An empty chart says why** (`Empty` in `Charts.tsx`, `[data-empty-chart]`): with no paid bill in the
+  window *Sales by day* and *Top dishes* show a dashed 224px box reading "No paid bills in this window"
+  / "Nothing sold in this window yet" — the same height the chart takes, so the row does not jump
+  when data arrives. They were blank cards, which read as broken (2026-10-12 whole-app review).

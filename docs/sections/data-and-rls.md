@@ -159,3 +159,32 @@ inside. Re-verify with `walls.cjs` (27 checks) and `t0085.cjs` (7) — see testi
   (DEFINER) call it on the caller's behalf.
 - Storage bucket `attendance` — private, 1.5 MB, jpeg/webp/png; read by the property's staff through
   `storage.foldername(name)[1] = auth_restaurant_id()`; written only by the server.
+
+## Controls, audit trail, intelligence (0087)
+
+- **`audit_events`** — written only by triggers through `audit_log()` (definer, revoked from the API):
+  bills (`discount.give` on insert, `bill.void`), orders (`order.cancel`, `order.merge`), order_items
+  (`line.cancel`; a whole-order cancel sets `dineflow.audit_skip_lines` and logs once), payments
+  (`payment.take`), stock_ledger (`stock.adjust|waste|opening`), menu_items (`menu.price|availability|
+  active`), profiles (`staff.access`), restaurants (`settings.change`, watched columns, changed keys
+  only), shift/day closes, cash_movements (`cash.in|out`), purchase_orders (`po.status`). Select for
+  owner/manager/supervisor of the property; no insert/update/delete policy at all.
+- **`cash_movements`** — select for the property; writes only through `cash_move` (owner/manager/
+  supervisor/cashier). `shift_expected` adds `cash_in`, `cash_out`, `cash_drawer`; `shift_close`
+  measures against `cash_drawer` and now checks the role.
+- **Reasons and names**: `bills.void_reason/voided_by/voided_at`, `orders.cancel_reason/cancelled_by/
+  cancelled_at`, `order_items` the same. `void_bill`, `cancel_order`, `cancel_line` are the only ways to
+  set them; `guard_bill_update` refuses every direct bill change, `guard_cancel` every direct
+  `status = 'cancelled'` on orders and order_items (other status changes pass).
+- **`close_day`** sums bills and payments apart (it used to count a split-paid bill once per payment).
+- **Read RPCs** `menu_engineering(p_days)`, `exceptions_summary(p_days)`, `day_compare()` — owner/
+  manager/supervisor, checked inside. Plate cost = `recipe_items.qty × ingredients.cost_per_unit`.
+- Verified by `dry87.cjs` (33 checks, rolled back) — see testing-and-gates.md.
+
+## Dish photos (0088)
+
+`menu_items.image_credit`, `image_source` (the existing `image_url` holds the photo). A public
+Storage bucket `menu` (1.5 MB, PNG/JPEG/WebP), one folder per property; insert/update/delete for
+owner, manager, supervisor, supervisor_2 and chef in their own folder only; select on their own
+folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothing else changed
+(`dry88.cjs`: same payload size without it, anon still has execute).

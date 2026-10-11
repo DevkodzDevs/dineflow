@@ -10,10 +10,10 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const { table } = await searchParams;
   const s = await createClient();
   // the session travels with the page's own rows, not in front of them: one trip, not two
-  const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, { data: variants }, { data: groups }, { data: links }, { data: combos }, { data: pairings }] = await Promise.all([
+  const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, { data: variants }, { data: groups }, { data: links }, { data: combos }, { data: pairings }, { data: sold }] = await Promise.all([
     requireSession(),
     s.from("categories").select("id, name").order("sort_order"),
-    s.from("menu_items").select("id, name, price, is_veg, category_id, is_available, is_combo, image_url").order("name"),
+    s.from("menu_items").select("id, name, price, is_veg, category_id, is_available, is_combo, image_url, station, categories(station)").order("name"),
     s.from("dining_tables").select("id, name, status").order("sort_order"),
     s.from("bookings").select("id, booking_no, rooms(number), guests(full_name)").eq("status", "checked_in"),
     // how many portions of each dish the pantry can still cover, so the till can say so before a
@@ -28,11 +28,15 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
     s.from("combo_items").select(OPTION_SELECTS.combos),
     // what this property's guests order together, for "Goes well with" at the till (0080)
     s.rpc("menu_pairings"),
+    // what sells most here, for the till's Popular chip: plates in the last 30 days
+    s.from("order_items").select("menu_item_id, qty").gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString()).neq("status", "cancelled").not("menu_item_id", "is", null).limit(5000),
   ]);
+  const popular: Record<string, number> = {};
+  for (const r of (sold ?? []) as { menu_item_id: string; qty: number }[]) popular[r.menu_item_id] = (popular[r.menu_item_id] ?? 0) + Number(r.qty);
   const pairs: Record<string, { id: string; n: number }[]> = {};
   for (const p of (pairings ?? []) as { item: string; pair: string; together: number }[]) (pairs[p.item] ??= []).push({ id: p.pair, n: p.together });
   const menu = withOptions(items ?? [], (variants ?? []) as never, (groups ?? []) as never, links ?? [], combos ?? []);
   return <PosClient categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={table ?? null}
     inHouse={(inHouse ?? []) as never} stock={(stock ?? {}) as never} running={(running ?? []) as never} ai={aiEnabled()}
-    promise={session.restaurant.promise_enabled ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} pairs={pairs} />;
+    promise={session.restaurant.promise_enabled ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} pairs={pairs} popular={popular} />;
 }

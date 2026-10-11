@@ -130,3 +130,6 @@ pnpm --filter @dineflow/web typecheck
   only the face of it. When the server has no `SUPABASE_SERVICE_ROLE_KEY`, an orange note says the
   phone ways cannot work yet. With five tabs the bar scrolls on a phone, so a tapped tab scrolls itself
   into view. See [staff-and-labour.md](staff-and-labour.md).
+- **Printers → "kick the drawer" does something now** (0087): `openDrawer()` sends ESC p to every
+  bill printer with the switch on, after a cash settlement and after a cash in/out on Cash & controls.
+  Browser printing cannot kick a drawer.

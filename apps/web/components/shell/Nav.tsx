@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, Menu, X, LayoutGrid, Fingerprint } from "lucide-react";
+import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, Menu, X, LayoutGrid, Fingerprint, BrainCircuit, Wallet, ScrollText } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn, Sheet } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
@@ -38,6 +38,19 @@ const ITEMS = [
   { key: "staff", href: "/staff", label: "Staff", Icon: Users },
   { key: "settings", href: "/settings", label: "Settings", Icon: Settings },
 ];
+
+/**
+ * "New menu": the screens added in the 2026-10-11 upgrade — Intelligence, Cash & controls, the Audit
+ * trail. They are not modules (no row in role_modules, no tick in Staff → Access): the owner asked for
+ * them under one heading, and each page checks the role on the server itself. The role list here only
+ * decides who sees the link; the page and the RPCs decide who gets in.
+ */
+const FRESH = [
+  { key: "intelligence", href: "/intelligence", label: "Intelligence", Icon: BrainCircuit, roles: ["owner", "manager", "supervisor"] },
+  { key: "controls", href: "/controls", label: "Cash & controls", Icon: Wallet, roles: ["owner", "manager", "supervisor", "cashier"] },
+  { key: "audit", href: "/audit", label: "Audit trail", Icon: ScrollText, roles: ["owner", "manager", "supervisor"] },
+];
+const freshFor = (role: Role) => FRESH.filter((i) => i.roles.includes(role));
 
 /** One titled block of the menu. Declared here, not inside Sidebar: a component created during
  *  render is a new type every time, which unmounts and rebuilds the whole menu on each pass. */
@@ -138,6 +151,7 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
         <Group title={type === "resort" ? "Resort" : "Hotel"} items={hospitality} path={path} />
         <Group title="Dining" items={dining} path={path} />
         <Group title="Manage" items={manage} path={path} />
+        <Group title="New menu" items={freshFor(role)} path={path} />
       </nav>
       {/* the foot: who you are, and the way out. Settings keeps its own row up in Manage,
           so the second button for it down here was only costing a row of height. */}
@@ -205,7 +219,8 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
   /* what needs attention, as a count on its section: tickets over 15 minutes in the kitchen */
   const badge = (key: string) => (key === "kitchen" && lateKots > 0 ? lateKots : 0);
   const rest = allowed.filter((i) => !primary.includes(i));
-  const onMore = rest.some((i) => path.startsWith(i.href));
+  const fresh = freshFor(role);
+  const onMore = rest.some((i) => path.startsWith(i.href)) || fresh.some((i) => path.startsWith(i.href));
   const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0);
   const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num">{n > 99 ? "99+" : n}</span>;
   const groups = [
@@ -213,6 +228,7 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
     { title: type === "resort" ? "Resort" : "Hotel", items: allowed.filter((i) => HOSPITALITY.includes(i.key)) },
     { title: "Dining", items: allowed.filter((i) => !HOSPITALITY.includes(i.key) && !MANAGE.includes(i.key) && !TOP.includes(i.key)) },
     { title: "Manage", items: allowed.filter((i) => MANAGE.includes(i.key)) },
+    { title: "New menu", items: fresh },
   ].filter((g) => g.items.length);
   const tab = (active: boolean) => cn("flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 text-[11px] font-display tracking-wide transition-colors", active ? "text-[var(--color-tint)]" : "text-[var(--color-label-2)]");
   const pip = (active: boolean) => cn("h-8 w-12 grid place-items-center rounded-full transition", active && "bg-[rgb(76_217_100/.16)]");

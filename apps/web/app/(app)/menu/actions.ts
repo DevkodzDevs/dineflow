@@ -33,7 +33,12 @@ export async function saveMenuItem(fd: FormData) {
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const id = fd.get("id") as string | null;
-  const q = id ? s.from("menu_items").update(parsed.data).eq("id", id).select("id").single() : s.from("menu_items").insert(parsed.data).select("id").single();
+  // the photo rides along as three hidden fields; empty means none (0088)
+  const url = String(fd.get("image_url") ?? "").trim();
+  const photo = url ? photoSchema.safeParse({ url, credit: String(fd.get("image_credit") ?? "") || null, source: String(fd.get("image_source") ?? "") || null }) : null;
+  if (photo && !photo.success) return { error: photo.error.issues[0].message };
+  const row = { ...parsed.data, image_url: photo?.success ? photo.data.url : null, image_credit: photo?.success ? photo.data.credit ?? null : null, image_source: photo?.success ? photo.data.source ?? null : null };
+  const q = id ? s.from("menu_items").update(row).eq("id", id).select("id").single() : s.from("menu_items").insert(row).select("id").single();
   const { data, error } = await q; if (error) return { error: error.message };
   /* A combo's parts ride along as JSON: [{menu_item_id, qty}]. A dish that stops being a combo
      loses its parts, so the kitchen ticket stops listing them. */
@@ -253,4 +258,62 @@ export async function importDishes(rows: ImportDish[]) {
   if (error) return { error: error.message };
   ok();
   return { ok: true as const, added: items.length };
+}
+
+/* ── dish photos (0088) ─────────────────────────────────────────────────────────────────── */
+/** Photos for a dish name, best first — Wikipedia's lead photo of the dish, then Commons. Never writes. */
+export async function findPhotos(name: string, category?: string | null) {
+  const session = await requireSession();
+  const { allow } = await import("@/lib/ratelimit");
+  if (!allow(`photos:${session.userId}`, 60, 10 * 60_000)) return { error: "Too many photo searches — wait a few minutes." };
+  const { findDishPhotos } = await import("@/lib/dishPhotos");
+  return { ok: true as const, photos: await findDishPhotos(name, category, 8) };
+}
+const photoSchema = z.object({ url: z.string().url().max(600).refine((u) => /^https:\/\/(upload|thumb)\.wikimedia\.org\//.test(u) || u.includes("/storage/v1/object/public/menu/"), "That photo is not from Wikimedia or this menu's own uploads"),
+  credit: z.string().max(200).nullable().optional(), source: z.string().url().max(600).nullable().optional() });
+/** Put a photo on a dish (or take it off with null). Only a Wikimedia file or the property's own upload. */
+export async function setDishPhoto(id: string, photo: { url: string; credit?: string | null; source?: string | null } | null) {
+  const s = await createClient();
+  if (photo) { const p = photoSchema.safeParse(photo); if (!p.success) return { error: p.error.issues[0].message }; }
+  const { error } = await s.from("menu_items").update(photo ? { image_url: photo.url, image_credit: photo.credit ?? null, image_source: photo.source ?? null } : { image_url: null, image_credit: null, image_source: null }).eq("id", id);
+  if (error) return { error: error.message }; revalidatePath("/dine", "layout"); return ok();
+}
+/**
+ * Every dish without a photo gets the best one found for it, when the best one is a confident match
+ * (the article *is* the dish, or a photo named for all of it). Three at a time — Wikipedia throttles a
+ * burst — and at most 40 a run, so a big menu is done in a few presses rather than one long wait.
+ */
+export async function autoPhotos() {
+  const s = await createClient(); await requireSession();
+  const { findDishPhotos } = await import("@/lib/dishPhotos");
+  const { data: items, error } = await s.from("menu_items").select("id, name, categories(name)").is("image_url", null).eq("is_active", true).order("name").limit(40);
+  if (error) return { error: error.message };
+  let found = 0; const missed: string[] = [];
+  const list = (items ?? []) as unknown as { id: string; name: string; categories: { name: string } | null }[];
+  for (let i = 0; i < list.length; i += 3) {
+    await Promise.all(list.slice(i, i + 3).map(async (it) => {
+      const [best] = await findDishPhotos(it.name, it.categories?.name, 3);
+      if (!best || best.score < 6) { missed.push(it.name); return; }
+      const { error: e } = await s.from("menu_items").update({ image_url: best.url, image_credit: best.credit, image_source: best.source }).eq("id", it.id);
+      if (e) missed.push(it.name); else found++;
+    }));
+  }
+  const { count } = await s.from("menu_items").select("id", { count: "exact", head: true }).is("image_url", null).eq("is_active", true);
+  revalidatePath("/dine", "layout"); ok();
+  return { ok: true as const, found, missed, left: count ?? 0 };
+}
+/** A photo the property took itself, into the public `menu` bucket under its own folder (0088). The browser
+ *  shrinks it to 900 px first; the bucket refuses anything over 1.5 MB or not PNG/JPEG/WebP. */
+export async function uploadDishPhoto(fd: FormData): Promise<{ url?: string; error?: string }> {
+  const session = await requireSession(); const s = await createClient();
+  const file = fd.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo first." };
+  if (file.size > 1_572_864) return { error: "That photo is over 1.5 MB even after shrinking — try another." };
+  const b = new Uint8Array(await file.arrayBuffer());
+  const type = b[0] === 0xff && b[1] === 0xd8 ? "image/jpeg" : b[0] === 0x89 && b[1] === 0x50 ? "image/png" : b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50 ? "image/webp" : null;
+  if (!type) return { error: "Use a JPG, PNG or WebP photo." };
+  const path = `${session.restaurant.id}/dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${type === "image/jpeg" ? "jpg" : type.slice(6)}`;
+  const up = await s.storage.from("menu").upload(path, b, { contentType: type, cacheControl: "31536000", upsert: false });
+  if (up.error) return { error: /row-level security|unauthori[sz]ed|403/i.test(up.error.message) ? "Your role cannot add menu photos — ask a manager or the chef." : up.error.message };
+  return { url: s.storage.from("menu").getPublicUrl(path).data.publicUrl };
 }

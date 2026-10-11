@@ -70,3 +70,7 @@ Then receive a small PO on a demo property and confirm the ledger and the level 
 ## See also
 
 [menu.md](menu.md) · [reports-and-forecast.md](reports-and-forecast.md) · [scan.md](scan.md)
+- **The pantry list on a phone shows the stock under the name** (`[data-stock-inline]`, `sm:hidden`:
+  "168 pcs · reorder at 3", red when at or below reorder) and hides the *In stock* column until `sm`.
+  The table scrolls sideways inside `.table-wrap`, and on a 412 screen the one number a store keeper
+  opens the page for was off the right edge behind the name and its bar (2026-10-12 review).

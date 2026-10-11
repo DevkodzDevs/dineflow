@@ -130,3 +130,8 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
 - **`/book/[slug]` loads the Supabase client on demand** (a dynamic import inside `sb()`), not at the
   top of `BookClient` — both calls run after paint, and the static import put ~63 kB of auth and
   realtime code in front of the first paint of a page guests open on their phones (217 → ~150 kB).
+
+- **Dish photos on the storefront (0088).** `dine_storefront` sends `image_url` per dish. A dish with a
+  photo shows it on the right (112px, 128 from `sm`, rounded) with *Add* / the − n + stepper riding its
+  bottom edge, the way delivery apps lay it out; a dish without one keeps the old row. Photos are lazy
+  loaded. See menu.md for where they come from and how they are credited.

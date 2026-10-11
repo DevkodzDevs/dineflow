@@ -68,7 +68,7 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   return p.bytes();
 }
 
-export type KotData = { kotNo: string; when: string; tableOrType: string; waiter?: string; station?: string | null; items: { name: string; qty: number; note?: string | null; extras?: string[] }[]; reprint?: boolean; heading?: string };
+export type KotData = { kotNo: string; when: string; tableOrType: string; waiter?: string; station?: string | null; items: { name: string; qty: number; note?: string | null; extras?: string[]; station?: string | null }[]; reprint?: boolean; heading?: string };
 export function buildKot(d: KotData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
   p.align("c").size(2).bold(true).line(d.reprint ? "KOT (REPRINT)" : "KOT").size(1).line(d.station ?? "").bold(false).rule("=").align("l");
@@ -80,3 +80,5 @@ export function buildKot(d: KotData, width: 58 | 80 = 80) {
   p.rule().feed(1).cut();
   return p.bytes();
 }
+/** ESC p — the pulse that pops a cash drawer wired to the bill printer. Sent on its own, after the bill. */
+export function drawerBytes() { return new Escpos(80).drawer().bytes(); }

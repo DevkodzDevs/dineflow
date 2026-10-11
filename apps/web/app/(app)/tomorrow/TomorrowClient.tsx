@@ -1,9 +1,9 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type CSSProperties } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Sun, ChefHat, ShoppingBasket, Printer, Share2, Check, TrendingUp, Info, ChevronLeft, ChevronRight, Sparkles, Target } from "lucide-react";
-import { Button, Card, StatTile, cn, Empty } from "@/components/ui";
+import { Button, Card, StatTile, Segmented, Empty } from "@/components/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { formatINR } from "@/lib/format";
 import { usePrinters } from "@/lib/print/usePrinter";
@@ -16,6 +16,10 @@ type Dish = { id: string; name: string; qty: number };
 type Buy = { id: string; name: string; unit: string; need: number; have: number; buy: number; cost: number };
 type F = { area_factor?: number; neighbourhood?: { available: boolean; peers?: number; index?: number; label?: string; detail?: string }; for_date: string; weekday: string; predicted_covers: number; low: number; high: number; confidence: number; basis: string; samples: number; in_house: number; arrivals: number; departures: number; rooms: number; drivers: { label: string; detail: string }[]; dishes: Dish[]; purchase: Buy[]; est_purchase_cost: number; buffer_pct: number };
 type Score = { days: number; accuracy: number | null; within_range: number | null; recent: { date: string; predicted: number; actual: number }[] };
+/* the owner's words for the day, each a multiple of what the numbers expect; "custom" is the
+   slider somewhere between them, and lights no segment */
+const MOODS = [{ key: "quiet", label: "Quiet", f: 0.7 }, { key: "normal", label: "Normal", f: 1 }, { key: "busy", label: "Busy", f: 1.25 }, { key: "festival", label: "Festival", f: 1.6 }] as const;
+type Mood = (typeof MOODS)[number]["key"] | "custom";
 
 export function TomorrowClient({ date, forecast, score, saved, restaurant }: { date: string; forecast: F; score: Score; saved: { chef_notes: Record<string, number> } | null; restaurant: { name: string; phone: string | null; brief_whatsapp?: string | null } }) {
   const [pending, start] = useTransition();
@@ -69,6 +73,10 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
   };
 
   const cold = forecast.samples === 0;
+  // the slider's reach, the mood the count matches, and how far along the track it stands
+  const sMin = Math.max(1, Math.round(forecast.low * 0.5)), sMax = Math.max(10, Math.round(forecast.high * 1.8));
+  const mood: Mood = MOODS.find((m) => covers === Math.round(forecast.predicted_covers * m.f))?.key ?? "custom";
+  const pct = Math.max(0, Math.min(100, Math.round(((covers - sMin) / Math.max(1, sMax - sMin)) * 100)));
   const move = (days: number) => { const d = new Date(date); d.setDate(d.getDate() + days); return `/tomorrow?date=${d.toISOString().slice(0, 10)}`; };
 
   return (
@@ -99,17 +107,25 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
               <p className="text-sm text-steel mt-2 leading-relaxed">{forecast.basis}</p>
             </div>
           </div>
-          {/* the owner knows things the data doesn't — let them say so */}
-          <div className="mt-5 pt-4 border-t border-line no-print">
-            <div className="flex items-center justify-between text-xs font-semibold text-steel mb-2">
-              <span>Something the numbers don&apos;t know? Adjust and everything below recalculates.</span>
-              {covers !== forecast.predicted_covers && <button onClick={() => setCovers(forecast.predicted_covers)} className="underline">reset</button>}
+          {/* the owner knows things the data doesn't — let them say so. The four moods are one
+              control, each showing the covers it means; the slider is for anything in between,
+              its track filled to where it stands. The big number above is the readout, so this
+              block carries none of its own. It was a bare 6px range and four 32px chips with a
+              different gap above each. */}
+          <div className="mt-5 pt-4 border-t border-line no-print" data-adjust>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <span className="text-xs font-semibold text-steel leading-snug">Know something the numbers don&apos;t? Adjust — the prep and the buy list follow.</span>
+              {covers !== forecast.predicted_covers && <button type="button" onClick={() => setCovers(forecast.predicted_covers)} data-reset
+                className="shrink-0 text-xs font-semibold text-[var(--color-tint)] !min-h-0 h-9 -my-2.5 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:-my-3.5 px-2 rounded-lg hover:bg-[var(--color-fill)] inline-flex items-center">Reset to {forecast.predicted_covers}</button>}
             </div>
-            <input type="range" min={Math.max(1, Math.round(forecast.low * 0.5))} max={Math.max(10, Math.round(forecast.high * 1.8))} value={covers} onChange={(e) => setCovers(Number(e.target.value))} className="w-full !p-0 !border-0 !shadow-none accent-[var(--color-saffron)]" />
-            <div className="flex gap-2 mt-2 flex-wrap">
-              {[["Quiet", 0.7], ["Normal", 1], ["Busy", 1.25], ["Festival", 1.6]].map(([l, f]) => (
-                <button key={l as string} onClick={() => setCovers(Math.round(forecast.predicted_covers * (f as number)))} className={cn("chip !h-8 text-xs", covers === Math.round(forecast.predicted_covers * (f as number)) && "on")}>{l as string}</button>
-              ))}
+            <Segmented value={mood} onChange={(m) => { const f = MOODS.find((x) => x.key === m)?.f; if (f) setCovers(Math.round(forecast.predicted_covers * f)); }}
+              options={MOODS.map((m) => ({ value: m.key as Mood, label: <>{m.label} <span className="num text-[11px] opacity-60">{Math.round(forecast.predicted_covers * m.f)}</span></> }))}
+              className="w-full [&>button]:flex-1 [&>button]:!px-1 [&>button]:!text-[13px]" />
+            <div className="mt-2 flex items-center gap-2.5">
+              <span className="num text-[11px] text-steel w-5 text-right shrink-0">{sMin}</span>
+              <input type="range" min={sMin} max={sMax} value={covers} onChange={(e) => setCovers(Number(e.target.value))} aria-label="Covers to expect"
+                className="range flex-1 min-w-0" style={{ "--pct": `${pct}%` } as CSSProperties} data-covers-range />
+              <span className="num text-[11px] text-steel w-5 shrink-0">{sMax}</span>
             </div>
           </div>
         </Card>
