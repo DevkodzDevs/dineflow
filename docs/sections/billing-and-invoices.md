@@ -70,6 +70,15 @@ pnpm --filter @dineflow/web test
   bar to read another. No number on every bar; a `sr-only` table carries all six for a screen reader.
   The bar buttons strip the global button chrome (`!border-0 !bg-transparent !p-0`) — without it each
   column drew a heavy rounded box. It used to be a 3×2 grid of thin bars with twelve figures.
+- **An invoice's detail (`Detail`, the pane beside the list from 1280 and the dialog below it)** reads
+  like an invoice: a headline block washed green when settled or red when not — the number, the
+  kind, "Paid in full" or "₹X due", the total in 34px, the issue date and property; then who it is
+  billed to (the phone is a tap-to-call link); the charges as a receipt list (description, qty ×
+  rate · GST, amount); the sums in order (subtotal, discount, GST with its CGST/SGST split, total,
+  paid, balance); and **Open invoice / Print as real buttons** (`btn-filled`, `btn-gray`). Open
+  invoice was `btn btn-primary`, a class this app does not have, and rendered as plain text. The
+  pane sticks at 92px, under the floating top bar. Probe: `invdlg.mjs`; `design-test`'s invoice
+  checks predate this and the month chart (they read a hidden month table as invoice rows).
 - **On a phone the filters are two segmented rows** (`sm:hidden`): All · Stay · Dining, and 7 days ·
   30 days · 90 days · 1 yr, each one row, 44px. sm and up keep the chips. Probe: `inv.mjs` (20 checks
   over five widths, with the order header).

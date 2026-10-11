@@ -71,7 +71,7 @@ export function InvoicesClient({ invoices, months, property }: { invoices: Invoi
         </div>
 
         {/* beside the list on a wide screen, so you can read one invoice after another without leaving */}
-        <aside className="hidden xl:block sticky top-4">
+        <aside className="hidden xl:block sticky top-[92px]">
           {current
             ? <div className="feather p-5"><Detail inv={current} property={property} /></div>
             : <div className="feather p-8 text-center">
@@ -167,84 +167,83 @@ function MonthStrip({ months }: { months: Month[] }) {
   );
 }
 
+/**
+ * One invoice, read the way a guest would read it: what it comes to and whether it is settled, who it
+ * is for, what it is made of as a receipt, then the sums. Shared by the pane beside the list (wide
+ * screens) and the dialog (everything narrower). Its two actions are real buttons: "Open invoice"
+ * used `btn-primary`, which this app does not have, and rendered as plain text.
+ */
 function Detail({ inv, property }: { inv: Invoice; property: string }) {
   const lines = inv.lines ?? [];
   const balance = due(inv);
   const gst = Number(inv.cgst) + Number(inv.sgst);
   const guest = inv.guest_name ?? "Walk-in guest";
+  const settled = balance <= 0.01;
+  const when = new Date(inv.issued_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
   return (
-    <div className="space-y-4">
-      {/* three columns, the way an invoice is actually read: which one, who issued it, who owes it */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="min-w-0">
-          <div className="text-[11px] text-steel mb-1.5">Invoice</div>
-          <div className="num text-lg font-bold leading-none truncate">{no(inv)}</div>
-          <div className="mt-2"><Pill tone={inv.status === "paid" ? "ready" : "alert"}>{inv.status}</Pill></div>
+    <div className="space-y-4" data-invoice={no(inv)}>
+      {/* the headline: the total, and whether anything is still owed */}
+      <div className="rounded-[20px] p-4" style={{ background: `color-mix(in srgb, var(${settled ? "--color-green" : "--color-red"}) 10%, transparent)` }} data-head>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="num text-[12px] font-semibold text-steel">{no(inv)}</span>
+          <Pill tone={inv.kind === "stay" ? "gold" : "preparing"}>{inv.kind}</Pill>
+          <span className="ml-auto inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-semibold"
+            style={{ background: `color-mix(in srgb, var(${settled ? "--color-green" : "--color-red"}) 18%, transparent)`, color: `var(${settled ? "--color-green" : "--color-red"})` }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />{settled ? "Paid in full" : `${formatINR(balance)} due`}</span>
         </div>
-        <div className="min-w-0">
-          <div className="text-[11px] text-steel mb-1.5">From</div>
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="h-6 w-6 rounded-lg bg-ink text-on-label grid place-items-center font-display text-xs shrink-0">{property.slice(0, 1)}</span>
-            <span className="text-sm font-semibold truncate">{property}</span>
-          </div>
-          <div className="mt-2"><Pill tone={inv.kind === "stay" ? "gold" : "preparing"}>{inv.kind}</Pill></div>
-        </div>
-        <div className="min-w-0">
-          <div className="text-[11px] text-steel mb-1.5">Billed to</div>
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="h-6 w-6 rounded-full bg-[var(--color-fill)] grid place-items-center font-display text-xs shrink-0">{guest.slice(0, 1)}</span>
-            <span className="text-sm font-semibold truncate">{guest}</span>
-          </div>
-          <div className="mt-2 text-[11px] text-steel num truncate">{inv.guest_phone ?? `issued ${day(inv.issued_at)}`}</div>
-        </div>
+        <div className="num text-[34px] font-bold leading-none tracking-tight mt-3">{formatINR(Number(inv.total))}</div>
+        <div className="text-[12px] text-steel mt-1.5">Issued {when} · {property}</div>
       </div>
 
-      {/* each line its own small card, so the shape of the bill is visible before the numbers are read */}
+      {/* who it is for */}
+      <div className="flex items-center gap-3 min-w-0" data-guest>
+        <span className="h-10 w-10 rounded-full bg-[var(--color-fill)] grid place-items-center font-display text-base shrink-0">{guest.slice(0, 1).toUpperCase()}</span>
+        <div className="min-w-0">
+          <div className="text-[11px] text-steel">Billed to</div>
+          <div className="text-[15px] font-semibold truncate">{guest}</div>
+        </div>
+        {inv.guest_phone && <a href={`tel:${inv.guest_phone}`} className="ml-auto num text-[12px] text-steel hover:text-[var(--color-label)] shrink-0 min-h-11 inline-flex items-center">{inv.guest_phone}</a>}
+      </div>
+
+      {/* what it is made of, as a receipt */}
       <div>
-        <div className="eyebrow mb-2">What it is made of</div>
+        <div className="eyebrow mb-1.5">What it is made of</div>
         {lines.length === 0 ? <p className="text-sm text-steel">No lines recorded on this invoice.</p> : (
-          <div className="grid grid-cols-2 gap-2 max-h-[34vh] overflow-y-auto pr-0.5">
+          <ul className="divide-y divide-[var(--color-separator)] max-h-[32vh] overflow-y-auto" data-lines>
             {lines.map((l, i) => (
-              <div key={i} className="rounded-2xl bg-[var(--color-fill)] p-3">
-                <div className="flex items-start gap-1.5">
-                  <span className="text-[11px] text-steel leading-snug line-clamp-2 flex-1">{l.description}</span>
-                  <ArrowUpRight size={12} className="text-steel shrink-0 mt-0.5" />
+              <li key={i} className="py-2.5 flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[14px] font-medium leading-snug">{l.description}</div>
+                  <div className="text-[11px] text-steel num mt-0.5">{Number(l.qty)} × {formatINR(Number(l.rate))} · GST {Number(l.gst_rate)}%</div>
                 </div>
-                <div className="num text-base font-bold mt-1.5">{formatINR(Number(l.amount))}</div>
-                <div className="text-[10px] text-steel num">{Number(l.qty)} × {Number(l.rate).toFixed(2)} · GST {Number(l.gst_rate)}%</div>
-              </div>
+                <div className="num text-[14px] font-semibold shrink-0">{formatINR(Number(l.amount))}</div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
 
-      {/* subtotal, total, what is left — side by side, not stacked in a receipt column */}
-      <div className="rounded-2xl border border-line p-3">
-        <div className="grid grid-cols-3 gap-2">
-          <Big k="Subtotal" v={Number(inv.subtotal)} />
-          <Big k="Total" v={Number(inv.total)} strong />
-          <Big k={balance > 0.01 ? "Balance due" : "Settled"} v={balance} tone={balance > 0.01 ? "bad" : "good"} />
-        </div>
-        {(Number(inv.discount) > 0 || gst > 0) && (
-          <div className="mt-2.5 pt-2.5 border-t border-line flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-steel num">
-            {Number(inv.discount) > 0 && <span>Discount {formatINR(Number(inv.discount))}</span>}
-            {gst > 0 && <span>GST {formatINR(gst)}</span>}
-            <span>Paid {formatINR(Number(inv.paid))}</span>
-          </div>
-        )}
-        <div className="mt-3 flex gap-2">
-          <Link href={`/invoices/${inv.id}`} className="btn btn-primary flex-1 justify-center !h-10 !text-sm"><ArrowUpRight size={15} /> Open invoice</Link>
-          <Link href={`/invoices/${inv.id}?print=1`} className="btn btn-outline !h-10 !w-10 !px-0" aria-label="Print"><Printer size={15} /></Link>
-        </div>
+      {/* the sums, in the order an invoice adds them up */}
+      <div className="rounded-[16px] bg-[var(--color-fill)] p-3.5 space-y-1.5 text-[13px]" data-sums>
+        <Row k="Subtotal" v={Number(inv.subtotal)} />
+        {Number(inv.discount) > 0 && <Row k="Discount" v={-Number(inv.discount)} />}
+        {gst > 0 && <Row k={`GST (CGST ${formatINR(Number(inv.cgst))} + SGST ${formatINR(Number(inv.sgst))})`} v={gst} />}
+        <div className="pt-1.5 mt-1.5 border-t border-[var(--color-separator)]"><Row k="Total" v={Number(inv.total)} strong /></div>
+        <Row k="Paid" v={Number(inv.paid)} />
+        <Row k={settled ? "Balance" : "Balance due"} v={balance} tone={settled ? "good" : "bad"} />
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+        <Link href={`/invoices/${inv.id}`} className="btn btn-filled justify-center"><ArrowUpRight size={16} /> Open invoice</Link>
+        <Link href={`/invoices/${inv.id}?print=1`} className="btn btn-gray justify-center"><Printer size={16} /> Print</Link>
       </div>
     </div>
   );
 }
 
-const Big = ({ k, v, strong, tone }: { k: string; v: number; strong?: boolean; tone?: "good" | "bad" }) => (
-  <div className="min-w-0">
-    <div className="text-[10px] uppercase tracking-wide text-steel truncate">{k}</div>
-    <div className={cn("num mt-0.5 leading-tight", strong ? "text-lg font-bold" : "text-sm font-semibold",
-      tone === "bad" && "text-chili", tone === "good" && "text-mint")}>{formatINR(v)}</div>
+const Row = ({ k, v, strong, tone }: { k: string; v: number; strong?: boolean; tone?: "good" | "bad" }) => (
+  <div className="flex items-baseline justify-between gap-3">
+    <span className={cn("min-w-0 truncate", strong ? "font-semibold text-[var(--color-label)]" : "text-steel")}>{k}</span>
+    <span className={cn("num shrink-0", strong ? "text-[18px] font-bold" : "font-semibold", tone === "bad" && "text-[var(--color-red)]", tone === "good" && "text-[var(--color-green)]")}>{v < 0 ? `− ${formatINR(-v)}` : formatINR(v)}</span>
   </div>
 );
