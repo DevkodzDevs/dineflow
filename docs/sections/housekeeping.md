@@ -54,16 +54,19 @@ dirty room without a ticket.
     only colour up top — `COND[...].chip`, dot + word); then the guest (or Vacant / Reserved /
     Cleaning, or the repair note) and the one thing to know — "Due out" in red on the day,
     "Awaiting sign-off", "Out 17 Sep" (`dayMonth`; en-IN says "Sept"), how long ago, or the repair
-    state in red; then **one outlined action bar** (`h-[46px]`, hairline border and dividers,
-    12px radius), a segment per move. Only the main move (Pass / Cleaned / Touched up) has a fill,
-    the green wash (`SEG.go`); Fail, Pickup and Dirty are text in red / blue / grey (`SEG`). There
-    is no Ready / Occupied / Sign-off tile here — the pill and the second line say it; the bar
-    holds only things to press, and a room out of order has one, Back in service. Icons beside the
-    labels from a 15rem card; text only below (an iPad-portrait third), at 11.5px, so four
-    segments stay ≥44px (46 at 834, 44 at 820) and "Pickup" is not cut. **Three tries before
-    this were sent back:** a 52px tinted number tile with a chip line and a 2×2 dock (~250px); a
-    44px tinted tile with filled tiles in one row; and the same with icon-over/icon-beside mixed
-    in one row. Each was a wall of coloured blocks — the fix was taking colour away, not moving it.
+    state in red; then **the actions as small pills** sized to their words, left-aligned (30px to
+    the eye, `rounded-full`, `!min-h-0` against the 44px button floor). Only the main move (Pass /
+    Cleaned / Touched up) has a fill, the green wash (`SEG.go`); Fail, Pickup and Dirty are a
+    hairline outline with the word in red / blue / grey, washing with their colour on hover. The
+    finger still gets 44px: an invisible `::before` 7px above and below and 2px each side, with
+    `min-w-10` (40 + 4) — the `.switch` trick. There is no Ready / Occupied / Sign-off pill — the
+    condition pill and the second line say it; a room out of order has one, Back in service.
+    Icons beside the words from a 15rem card; text only below (an iPad-portrait third), at 11px with
+    6px sides and 3px gaps, so 101's four pills fit in 181px. **Four tries before this were sent
+    back:** a 52px tinted number tile with a 2×2 dock (~250px); a 44px tinted tile and filled tiles
+    in a row; the same with tile looks mixed in a row; and a full-width outlined bar ("looks like a
+    big button"). Each was too heavy — the fix was making the actions smaller, not rearranging them.
+    A probe must not read a pill's `scrollWidth`: the `::before` makes it 4px wider than the box.
   - **Three across from `sm`, four from 1800px** (`sm:grid-cols-3 min-[1800px]:!grid-cols-4` — the
     `!` because Tailwind emits the arbitrary `min-[1800px]` before `sm`, which then won at 1920),
     **top-aligned** (`sm:items-start`): every card has the same three rows, so every card is one

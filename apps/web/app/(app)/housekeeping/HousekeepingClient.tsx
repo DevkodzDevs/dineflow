@@ -14,15 +14,16 @@ type Room = { id: string; number: string; floor: number; status: string; conditi
 type Stay = { room_id: string; check_out: string; guests: { full_name: string; vip: boolean } | null };
 type Done = { id: string; kind: string; done_at: string; rooms: { number: string } | null };
 
-/* the wide room card's action bar: one segment per move, in one hairline outline. Only the move you
-   will make most has a fill (the green wash); the others are text in their meaning's colour — Fail
-   red, Pickup blue, Dirty grey. Filled tiles on every card made a board of thirty rooms a wall of
-   coloured blocks. */
+/* the wide room card's actions: small pills sized to their words, left-aligned — not a bar across the
+   card, which read as one big button. The main move (Pass / Cleaned / Touched up) is the green wash;
+   the others are a hairline outline with the word in its meaning's colour (Fail red, Pickup blue,
+   Dirty grey), and take their colour as a faint wash on hover. 30px to the eye; the finger gets 44
+   from an invisible ::before (7px above and below, 2px each side), the way .switch does it. */
 const SEG = {
-  go: "bg-[var(--color-green-2)] text-[var(--color-tint)]",
-  red: "text-[var(--color-red)]",
-  blue: "text-[var(--color-blue)]",
-  quiet: "text-[var(--color-label-2)]",
+  go: "bg-[var(--color-green-2)] text-[var(--color-tint)] border-transparent hover:brightness-110",
+  red: "border-[var(--color-separator)] text-[var(--color-red)] hover:bg-[var(--color-red-2)]",
+  blue: "border-[var(--color-separator)] text-[var(--color-blue)] hover:bg-[var(--color-blue-2)]",
+  quiet: "border-[var(--color-separator)] text-[var(--color-label-2)] hover:bg-[var(--color-fill)]",
 } as const;
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** "2026-09-17" → "17 Sep" (en-IN would say "Sept") */
@@ -180,8 +181,8 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
               const status = out || hasMain ? null : sellable ? (s ? "Occupied" : "Ready") : waiting ? "Sign-off" : null;
               const tone = out ? "var(--color-red)" : r.condition === "dirty" ? "var(--color-red)" : r.condition === "clean" ? "var(--color-orange)" : r.condition === "inspected" ? "var(--color-tint)" : "var(--color-blue)";
               const fix = out ? tasks.find((t) => t.kind === "maintenance" && t.status !== "done" && t.rooms?.number === r.number) : undefined;
-              /* the wide card's actions: every move, as segments of one bar; a room out of order has one —
-                 back in service (where its repair stands is on the second line) */
+              /* the wide card's actions: every move, as small pills; a room out of order has one — back in
+                 service (where its repair stands is on the second line) */
               type Seg = { key: string; label: string; icon: ReactNode; tone: keyof typeof SEG; run: () => void };
               const segs: Seg[] = out
                 ? [{ key: "service", label: "Back in service", icon: <Check size={14} />, tone: "quiet", run: () => act(() => setRoomStatus(r.id, "available")) }]
@@ -191,7 +192,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
               return (
                 <Fragment key={r.id}>
                 {/* the wide card (sm and up), three quiet rows: the number and the condition as its pill; who
-                    is in the room and the one thing to know about it; one outlined bar of actions */}
+                    is in the room and the one thing to know about it; the actions as small pills */}
                 <div data-room={r.number} className="@container hidden sm:flex feather relative p-3 flex-col gap-2.5 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-display text-[22px] leading-none tracking-tight" data-num>{r.number}</span>
@@ -207,11 +208,11 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     <span className={cn("shrink-0", dueOut || out ? "text-[var(--color-red)] font-semibold" : "num text-[var(--color-label-2)]")}>{detail}</span>
                   </div>
                   {segs.length > 0 && (
-                    <div className="mt-auto flex h-[46px] rounded-[12px] border border-[var(--color-separator)] overflow-hidden divide-x divide-[var(--color-separator)]" data-dock>
+                    <div className="mt-auto flex items-center gap-1.5 @max-[15rem]:gap-[3px] min-w-0" data-dock>
                       {segs.map((t) => (
                         <button key={t.key} type="button" disabled={pending} onClick={t.run} aria-label={`${t.label} · room ${r.number}`}
-                          className={cn("flex-1 min-w-0 inline-flex items-center justify-center gap-1 px-1 @max-[15rem]:px-0.5 text-[12px] @max-[15rem]:text-[11.5px] font-semibold transition-colors hover:bg-[var(--color-fill)] disabled:opacity-50 focus-visible:outline-offset-[-2px] [&_svg]:w-[14px] [&_svg]:h-[14px] [&_svg]:shrink-0", SEG[t.tone])}>
-                          <span className="hidden @[15rem]:contents">{t.icon}</span><span className="truncate">{t.label}</span>
+                          className={cn("relative shrink-0 inline-flex items-center justify-center gap-1 h-[30px] !min-h-0 min-w-10 px-2.5 @max-[15rem]:px-1.5 rounded-full border text-[12px] @max-[15rem]:text-[11px] font-semibold whitespace-nowrap transition disabled:opacity-50 active:scale-[.97] [&_svg]:w-[13px] [&_svg]:h-[13px] [&_svg]:shrink-0 before:absolute before:-inset-y-[7px] before:-inset-x-[2px] before:content-['']", SEG[t.tone])}>
+                          <span className="hidden @[15rem]:contents">{t.icon}</span>{t.label}
                         </button>
                       ))}
                     </div>
