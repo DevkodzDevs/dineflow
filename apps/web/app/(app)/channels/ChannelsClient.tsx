@@ -10,6 +10,7 @@ import { todayIST } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wand2 } from "lucide-react";
 import { Upload, Send, Clock, Percent, Link2 } from "lucide-react";
 import { saveChannel, deleteChannel } from "../online-orders/actions";
+import { copyText } from "@/lib/clipboard";
 
 type Ota = { id: string; kind: string; label: string; mode: string; room_type_id: string | null; import_url: string | null; export_token: string; api_base: string | null; hotel_ref: string | null; commission_pct: number; rate_offset_pct: number; is_live: boolean; last_import_at: string | null; last_error: string | null };
 type Oc = { id: string; kind: string; label: string; outlet_ref: string | null; webhook_token: string; commission_pct: number; prep_minutes: number; auto_accept: boolean; is_live: boolean; last_sync_at: string | null; api_base?: string | null };
@@ -20,7 +21,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
   const [tab, setTab] = useState<"food" | "rooms" | "calendar">(restaurant.property_type === "restaurant" ? "food" : "rooms");
   const [editOta, setEditOta] = useState<Partial<Ota> | null>(null); const [editOc, setEditOc] = useState<Partial<Oc> | null>(null);
   const [err, setErr] = useState<string | null>(null); const [msg, setMsg] = useState<string | null>(null); const [pending, start] = useTransition();
-  const copy = (t: string) => { navigator.clipboard.writeText(t); setMsg("Copied"); setTimeout(() => setMsg(null), 1500); };
+  const copy = (t: string) => { copyText(t); setMsg("Copied"); setTimeout(() => setMsg(null), 1500); };
   const syncNow = async (id?: string) => { setMsg("Syncing…"); const r = await fetch(`/api/ota/sync${id ? `?channel=${id}` : ""}`); const j = await r.json(); setMsg(r.ok ? "Sync finished" : j.error ?? "failed"); location.reload(); };
   const bookingUrl = `${base}/book/${restaurant.booking_slug ?? ""}`;
 

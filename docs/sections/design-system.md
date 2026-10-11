@@ -130,6 +130,15 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   `::after` is a 36px spacer so the last item scrolls clear of the arrow. With `label` the track is
   `role="group"` with that `aria-label` — probes find a rail by it. Used on Rooms (state chips) and
   the till (Order line, Categories, Goes well with). Probe: `rails.mjs`.
+- **Copy and share go through `lib/clipboard.ts`, never `navigator.clipboard` / `navigator.share`
+  directly.** `copyText(text)` tries the clipboard, falls back to a hidden textarea + `execCommand`,
+  never throws and returns whether it worked; `shareText(data)` returns "shared", "cancelled" (the
+  person closed the sheet — not an error) or "unavailable" (no share here: copy instead). Seventeen
+  call sites wrote the clipboard bare; a refused write was an uncaught error while the button still
+  said "Copied", and closing the iPad share sheet threw (Tomorrow's brief, an invoice's Share).
+- **A visually hidden file input needs `sr-only !w-px !h-px !min-w-0 !p-0 !border-0`**: the
+  unlayered `input` width beats `sr-only`, and the invisible input stuck out of its dialog (Menu →
+  From photo, Inventory → Record purchase), the same thing the logo upload hit.
 - **`AnalogClock`** is a 100×100 SVG: a ring (`--color-label`) round a face (`--color-bg-2`), 48 minute
   dots (`--color-label-3`), 12 hour bars (12/3/6/9 longer and thicker), rounded hour and minute hands
   in the ink colour, a red second hand (`--color-red`) with a disc near its tip and a red cap. So the

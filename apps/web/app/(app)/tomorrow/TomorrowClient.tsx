@@ -10,6 +10,7 @@ import { usePrinters } from "@/lib/print/usePrinter";
 import { Escpos } from "@/lib/print/escpos";
 import { sendToPrinter } from "@/lib/print/transport";
 import { saveForecast, buyList, saveChefNotes } from "./actions";
+import { copyText, shareText } from "@/lib/clipboard";
 
 type Dish = { id: string; name: string; qty: number };
 type Buy = { id: string; name: string; unit: string; need: number; have: number; buy: number; cost: number };
@@ -47,8 +48,9 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
     const text = whatsappText();
     const num = (restaurant.brief_whatsapp ?? "").replace(/\D/g, "");
     if (num) { window.open(`https://wa.me/${num.length === 10 ? "91" + num : num}?text=${encodeURIComponent(text)}`, "_blank"); return; }
-    if (navigator.share) { await navigator.share({ title: "Tomorrow brief", text }); return; }
-    await navigator.clipboard.writeText(text); setMsg("Brief copied — paste it into your WhatsApp group");
+    const shared = await shareText({ title: "Tomorrow brief", text });
+    if (shared !== "unavailable") return; // shared, or the sheet was closed
+    setMsg(await copyText(text) ? "Brief copied — paste it into your WhatsApp group" : "Couldn't copy — select the brief and copy it");
   };
 
   const printSheet = async () => {

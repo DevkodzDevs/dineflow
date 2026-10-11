@@ -42,7 +42,7 @@ export function MenuImport({ existing, onDone }: { existing: string[]; onDone: (
           <span className="block text-[15px] font-semibold">{reading ? "Reading the menu…" : rows ? "Read another page" : "Photograph your menu"}</span>
           <span className="block text-xs text-[var(--color-label-2)]">A printed or handwritten menu, one page at a time. You check every dish before it is added.</span>
         </span>
-        <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={reading}
+        <input type="file" accept="image/*" capture="environment" className="sr-only !w-px !h-px !min-w-0 !p-0 !border-0" disabled={reading}
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void read(f); }} />
       </label>
       {err && <p className="text-sm text-chili">{err}</p>}

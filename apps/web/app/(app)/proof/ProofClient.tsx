@@ -6,6 +6,7 @@ import { Button, Card, Field, Pill, StatTile, Sheet, cn, Empty } from "@/compone
 import { PageHeader } from "@/components/shell/PageHeader";
 import { formatINR } from "@/lib/format";
 import { sealAll, createLink, revokeLink } from "./actions";
+import { copyText } from "@/lib/clipboard";
 
 type P = { period: string; rooms_revenue: number; dining_revenue: number; delivery_revenue: number; total_revenue: number; gst_collected: number; supplier_paid: number; wages_paid: number; covers: number; invoices_issued: number; occupancy_pct: number | null; avg_ticket: number | null; days_traded: number; hash: string };
 type Rec = { property: { name: string; address: string | null; gstin: string | null; type: string; since: string }; from: string; to: string; months: number; periods: P[]; total_revenue: number; gst_collected: number; avg_monthly: number; verification: { periods: number; intact: boolean; broken: { period: string; reason: string }[]; head: string | null } };
@@ -129,7 +130,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
                   </div>
                   <div className="text-xs text-steel flex items-center gap-1.5"><Eye size={13} /> {l.views} open{l.views === 1 ? "" : "s"}{l.last_viewed && ` · last ${new Date(l.last_viewed).toLocaleDateString("en-IN")}`}</div>
                   {!dead && <>
-                    <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(url); setMsg("Link copied"); }}><Copy size={14} /> Copy</Button>
+                    <Button size="sm" variant="outline" onClick={() => { copyText(url); setMsg("Link copied"); }}><Copy size={14} /> Copy</Button>
                     <Button size="sm" variant="ghost" disabled={pending} onClick={() => { if (confirm(`Revoke "${l.label}"? Anyone holding it loses access immediately.`)) start(async () => { await revokeLink(l.id); setMsg("Revoked"); }); }}><Ban size={14} /></Button>
                   </>}
                 </div>);
@@ -141,7 +142,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
       <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Lock size={13} className="mt-0.5 shrink-0" /> This record is yours. DineFlow does not send it anywhere, does not score you, and does not show it to lenders unless you create a link and hand it over yourself.</p>
 
       <Sheet open={sheet} onClose={() => setSheet(false)} title="Share your business record">
-        <NewLink periods={periods} onDone={(t, label) => { setSheet(false); navigator.clipboard.writeText(`${base}/record/${t}`); setMsg(`"${label}" created and copied to the clipboard.`); }} onError={setErr} />
+        <NewLink periods={periods} onDone={(t, label) => { setSheet(false); copyText(`${base}/record/${t}`); setMsg(`"${label}" created and copied to the clipboard.`); }} onError={setErr} />
       </Sheet>
     </>
   );

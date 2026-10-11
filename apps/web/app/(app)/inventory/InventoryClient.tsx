@@ -205,7 +205,7 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
           <span className="block text-xs text-[var(--color-label-2)] mt-0.5">Snap a photo; the supplier, invoice number and items fill in for you to check.</span>
         </span>
         <span className="hidden sm:inline-flex shrink-0 items-center gap-1.5 h-10 px-4 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] text-sm font-semibold"><Camera size={15} /> Take photo</span>
-        <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={reading}
+        <input type="file" accept="image/*" capture="environment" className="sr-only !w-px !h-px !min-w-0 !p-0 !border-0" disabled={reading}
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void scanBill(f); }} />
       </label>
 

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Apple, BookOpen, Check, Copy, Download, ExternalLink, Lock, Monitor, Share, Smartphone, SquarePlus } from "lucide-react";
 import { QR } from "@/components/QR";
+import { copyText } from "@/lib/clipboard";
 
 /**
  * One address to hand anybody — an owner, a new waiter, a cook on their own phone — that works out
@@ -197,7 +198,7 @@ function Gated({ url }: { url: string }) {
 function WrongWindow({ spot, url }: { spot: Where; url: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2500); }
+    try { await copyText(url); setCopied(true); setTimeout(() => setCopied(false), 2500); }
     catch { /* an old browser with no clipboard: the address is printed below to read out */ }
   };
   const inApp = spot === "inapp";

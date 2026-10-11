@@ -5,11 +5,12 @@ import { SlidersHorizontal as AccessIcon } from "lucide-react";
 import { Button, Field, Sheet, Pill, cn, useToast } from "@/components/ui";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, rolesIMayAssign, canManage, type Role, type PropertyType } from "@dineflow/shared";
 import { createInvite, setAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact } from "./actions";
+import { copyText } from "@/lib/clipboard";
 
 /** The slip you hand over: a login ID and a temporary password, which they must change on first use. */
 function Credentials({ title, loginId, password, staffCode, note }: { title: string; loginId: string; password: string | null; staffCode?: string | null; note?: string }) {
   const toast = useToast();
-  const copy = (text: string, what: string) => { void navigator.clipboard.writeText(text); toast(`${what} copied`); };
+  const copy = (text: string, what: string) => { void copyText(text); toast(`${what} copied`); };
   return (
     <div className="space-y-3">
       <div className="feather p-4 space-y-3">
@@ -248,7 +249,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
         ) : (
           <div className="text-center space-y-4"><p className="text-sm text-steel">Share this code. It works once and expires in 7 days.</p>
             <div className="num text-4xl tracking-[0.3em] font-semibold">{code}</div>
-            <Button variant="outline" onClick={() => navigator.clipboard.writeText(code)}><Copy size={16} /> Copy</Button></div>
+            <Button variant="outline" onClick={() => copyText(code)}><Copy size={16} /> Copy</Button></div>
         )}
       </Sheet>
     </div>

@@ -4,6 +4,7 @@ import { Check, Copy, KeyRound, Clock, AlertTriangle, ShieldCheck, Pencil, X, Us
 import { Button, Pill, cn } from "@/components/ui";
 import type { PropertyDetail } from "./actions";
 import { resetPropertyPassword, setContactEmail, updateProperty } from "./actions";
+import { copyText } from "@/lib/clipboard";
 
 const label = (k: string) => k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
@@ -47,7 +48,7 @@ function CopyBtn({ text, label: l = "Copy", className }: { text: string; label?:
       className={cn("inline-flex items-center justify-center gap-1.5 !min-h-0 h-9 [@media(pointer:coarse)]:h-11 rounded-full text-xs font-semibold transition-colors shrink-0",
         l ? "px-3.5" : "w-9 [@media(pointer:coarse)]:w-11",
         done ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]", className)}
-      onClick={() => { void navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1400); }}>
+      onClick={() => { void copyText(text); setDone(true); setTimeout(() => setDone(false), 1400); }}>
       {done ? <><Check size={13} />{l && " Copied"}</> : <><Copy size={13} />{l && ` ${l}`}</>}
     </button>
   );

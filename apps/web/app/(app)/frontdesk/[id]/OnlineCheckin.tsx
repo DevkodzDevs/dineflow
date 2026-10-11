@@ -3,6 +3,7 @@ import { useState } from "react";
 import { CheckCircle2, Copy, MessageCircle, Tablet } from "lucide-react";
 import { Card, Pill, useToast } from "@/components/ui";
 import { waHref, waDate, firstName } from "@/lib/wa";
+import { copyText } from "@/lib/clipboard";
 
 type Pre = { nationality?: string; arrival_time?: string | null; requests?: string | null; id_type?: string; id_last4?: string } | null;
 
@@ -17,7 +18,7 @@ export function OnlineCheckin({ token, base, at, pre, guest, phone, property, ch
   const toast = useToast(); const [copied, setCopied] = useState(false);
   const url = `${base}/checkin/${token}`;
   const wa = waHref(phone, `Hi ${firstName(guest)}, save time at ${property}: check in online before you arrive on ${waDate(checkIn)} — it takes a minute. ${url}`);
-  const copy = async () => { try { await navigator.clipboard.writeText(url); setCopied(true); toast("Check-in link copied"); setTimeout(() => setCopied(false), 2000); } catch { toast(url); } };
+  const copy = async () => { try { await copyText(url); setCopied(true); toast("Check-in link copied"); setTimeout(() => setCopied(false), 2000); } catch { toast(url); } };
   const btn = "min-h-11 rounded-full px-4 flex items-center justify-center gap-2 text-sm font-semibold transition";
 
   return (

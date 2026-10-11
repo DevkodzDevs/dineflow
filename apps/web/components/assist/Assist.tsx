@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X, ArrowUp, RotateCcw, Mic, MicOff, Check, Copy, ChevronRight } from "lucide-react";
 import { AssistMark, type MarkState } from "./Mark";
 import { cn, tap, Loader } from "@/components/ui";
+import { copyText } from "@/lib/clipboard";
 
 type Msg = { role: "user" | "assistant"; content: string; action?: Act; done?: string; text?: string };
 type Act = { kind: string; label: string; arg: string };
@@ -131,7 +132,7 @@ export function Assist() {
                     <div className={cn("rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap min-h-[38px]", m.role === "user" ? "bg-[var(--color-label)] text-[var(--color-on-label)] rounded-br-md" : "bg-[var(--color-fill)] rounded-bl-md")}>{m.content || (busy && i === msgs.length - 1 ? <Loader size="xs" className="!-my-0.5" /> : "")}</div>
                     {m.action && <button onClick={() => act(i, m.action!)} className="btn btn-filled !h-10 mt-2"><Check size={15} /> {m.action.label}</button>}
                     {m.done && <div className="text-[13px] text-[var(--color-label-2)] mt-2 px-1">{m.done}</div>}
-                    {m.text && <div className="mt-2 rounded-2xl bg-[var(--color-bg-3)] p-3 text-[13px] whitespace-pre-wrap relative">{m.text}<button onClick={() => { navigator.clipboard.writeText(m.text!); setCopied(i); }} className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full bg-[var(--color-bg-2)]" aria-label="Copy">{copied === i ? <Check size={14} /> : <Copy size={14} />}</button></div>}
+                    {m.text && <div className="mt-2 rounded-2xl bg-[var(--color-bg-3)] p-3 text-[13px] whitespace-pre-wrap relative">{m.text}<button onClick={() => { copyText(m.text!); setCopied(i); }} className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-full bg-[var(--color-bg-2)]" aria-label="Copy">{copied === i ? <Check size={14} /> : <Copy size={14} />}</button></div>}
                   </div>
                 ))}
                 <div ref={end} />

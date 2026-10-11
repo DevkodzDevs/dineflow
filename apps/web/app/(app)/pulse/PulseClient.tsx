@@ -13,6 +13,7 @@ import { fmtSince } from "@/lib/format";
 import { addWalkin, setWalkin, quote } from "./actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
+import { copyText } from "@/lib/clipboard";
 
 type T = { id: string; name: string; capacity: number; stage: "free" | "ordered" | "eating" | "served" | "billed"; age: number; mins_left: number; free_at: string };
 type Pulse = { tables: T[]; free_now: number; seats_free_now: number; next_free_min: number | null; avg_dwell: number; history_days: number };
@@ -190,7 +191,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                   <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-tint)]"><QrCode size={13} /> Join by QR</div>
                   <div className="font-display text-[22px] leading-tight mt-1">Scan to join the queue</div>
                   <p className="text-[13px] text-steel mt-1 leading-snug">Guests add themselves from their own phone and watch their place move up — no app, no sign-in.</p>
-                  <button type="button" onClick={() => { void navigator.clipboard?.writeText(joinUrl); toast("Link copied"); }} title="Copy the link"
+                  <button type="button" onClick={() => { void copyText(joinUrl); toast("Link copied"); }} title="Copy the link"
                     className="mt-3 max-w-full inline-flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-full bg-[var(--color-fill)] text-[12px] num text-[var(--color-label-2)] hover:text-[var(--color-label)]">
                     <span className="truncate">{joinUrl.replace(/^https?:\/\//, "")}</span><Copy size={13} className="shrink-0" />
                   </button>

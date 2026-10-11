@@ -6,6 +6,7 @@ import { formatINR } from "@/lib/format";
 import { waHref, firstName } from "@/lib/wa";
 import { inAudience, type Audience, type Facts, type Idea } from "@/lib/marketing";
 import { marketingIdeas } from "./actions";
+import { copyText } from "@/lib/clipboard";
 
 type Person = { id: string; phone: string; name: string | null; visits: number; points: number; first_visit_at: string | null; last_visit_at: string | null };
 const WHO: Record<Audience, string> = { all: "Everyone", regulars: "Regulars", lapsed: "Not seen lately", new: "New this month", points: "Can redeem points" };
@@ -52,7 +53,7 @@ export function MarketingIdeas({ customers, minRedeem }: { customers: Person[]; 
                   <button type="button" onClick={() => setOpen(i)} disabled={n === 0}
                     className="flex-1 min-h-11 rounded-full px-4 flex items-center justify-center gap-2 text-sm font-semibold bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110 transition disabled:opacity-50">
                     <Users size={15} className="shrink-0" /> {n ? `Send to ${n} · ${WHO[i.audience]}` : i.audience === "all" ? "No saved customers yet" : `No one in ${WHO[i.audience]} yet`}</button>
-                  <button type="button" aria-label="Copy the message" onClick={() => { void navigator.clipboard.writeText(i.message.replace(/\{name\}/g, "").replace(/^Hi\s*,\s*/, "Hi, ")).then(() => toast("Message copied")); }} className="icon-btn !rounded-full bg-[var(--color-fill)] shrink-0"><Copy size={15} /></button>
+                  <button type="button" aria-label="Copy the message" onClick={() => { void copyText(i.message.replace(/\{name\}/g, "").replace(/^Hi\s*,\s*/, "Hi, ")).then(() => toast("Message copied")); }} className="icon-btn !rounded-full bg-[var(--color-fill)] shrink-0"><Copy size={15} /></button>
                 </div>
               </div>
             );

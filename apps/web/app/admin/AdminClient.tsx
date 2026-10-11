@@ -19,6 +19,7 @@ import { MODULES_BY_TYPE, MODULE_GROUPS, ALWAYS_ON, PLAN_PRESETS, PROPERTY_FILTE
 import { DataTable } from "@/components/ui/DataTable";
 import { setModules } from "./actions";
 import styles from "./AdminToolbar.module.css";
+import { copyText } from "@/lib/clipboard";
 
 type T = { id: string; name: string; property_type: PropertyType; membership: string; trial_ends_at: string; membership_ends_at: string | null; plan: string | null; users: number; sales_today: number; sales_30d: number; open_orders: number; rooms: number; occupied_rooms: number; created_at: string };
 type K = { code: string; plan: string; days: number; restaurant_id: string | null; redeemed_by: string | null; redeemed_at: string | null; created_at: string };
@@ -173,7 +174,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
               <div key={k.code} className="flex items-center gap-3 px-4 py-3 text-sm">
                 <span className="num font-semibold tracking-[0.15em]">{k.code}</span><Pill tone="gold">{k.plan}</Pill>
                 <span className="text-steel flex-1 truncate">{k.restaurant_id ? `for ${nameOf(k.restaurant_id)}` : "any property"}</span>
-                {k.redeemed_at ? <Pill tone="served">used · {nameOf(k.redeemed_by)}</Pill> : <button onClick={() => navigator.clipboard.writeText(k.code)} className="text-steel hover:text-ink" aria-label="Copy"><Copy size={15} /></button>}
+                {k.redeemed_at ? <Pill tone="served">used · {nameOf(k.redeemed_by)}</Pill> : <button onClick={() => copyText(k.code)} className="text-steel hover:text-ink" aria-label="Copy"><Copy size={15} /></button>}
               </div>
             ))}
           </div>
@@ -204,7 +205,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
             <div className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-steel">Issue a key for this property</div>
               <div className="grid grid-cols-2 gap-2"><Button disabled={pending} onClick={() => start(async () => { const r = await issueKey("monthly", sel.id); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Monthly key</Button><Button disabled={pending} variant="ink" onClick={() => start(async () => { const r = await issueKey("yearly", sel.id); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Yearly key</Button></div>
-              {issued && <div className="feather p-4 text-center"><div className="num text-2xl tracking-[0.2em] font-semibold">{issued}</div><button className="text-xs text-steel mt-1 underline" onClick={() => navigator.clipboard.writeText(issued)}>Copy and send to the owner</button></div>}
+              {issued && <div className="feather p-4 text-center"><div className="num text-2xl tracking-[0.2em] font-semibold">{issued}</div><button className="text-xs text-steel mt-1 underline" onClick={() => copyText(issued)}>Copy and send to the owner</button></div>}
             </div>
             <div className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-steel">Owner login</div>
@@ -213,7 +214,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
                   <div><div className="text-[11px] uppercase tracking-wide text-steel">User ID</div><div className="num font-semibold break-all">{creds.email}</div></div>
                   <div><div className="text-[11px] uppercase tracking-wide text-steel">Temporary password</div><div className="num font-semibold">{creds.password}</div></div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(`${creds.email} / ${creds.password}`)}><Copy size={14} /> Copy</Button>
+                    <Button size="sm" variant="outline" onClick={() => copyText(`${creds.email} / ${creds.password}`)}><Copy size={14} /> Copy</Button>
                     <Button size="sm" variant="plain" onClick={() => setCreds(null)}>Hide</Button>
                   </div>
                   <p className="text-xs text-steel">Shown once. They must choose their own password at the next sign-in.</p>
@@ -309,7 +310,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
             <p className="text-sm text-mint font-semibold">Six properties created. These are their logins — every one uses the same password.</p>
             <div className="feather overflow-hidden"><div className="table-wrap"><table className="w-full text-sm"><thead><tr><th className="text-left px-3 py-2">Property</th><th className="text-left px-3 py-2">Type</th><th className="text-left px-3 py-2">Email</th><th className="text-left px-3 py-2">Password</th></tr></thead>
               <tbody>{estate.map((p) => <tr key={p.email} className="border-t border-line"><td className="px-3 py-2 font-semibold">{p.name}</td><td className="px-3 py-2 capitalize text-steel">{p.type}</td><td className="px-3 py-2 num">{p.email}</td><td className="px-3 py-2 num">{p.password}</td></tr>)}</tbody></table></div></div>
-            <Button variant="outline" className="w-full" onClick={() => { navigator.clipboard.writeText(estate.map((p) => `${p.name} (${p.type}) — ${p.email} / ${p.password}`).join("\n")); }}>Copy all logins</Button>
+            <Button variant="outline" className="w-full" onClick={() => { copyText(estate.map((p) => `${p.name} (${p.type}) — ${p.email} / ${p.password}`).join("\n")); }}>Copy all logins</Button>
             <p className="text-xs text-steel">Sign in as any of them to see the app as a client, or press <b>Open</b> on their row here to walk in as Master. Change or delete these before you go live.</p>
             <Button className="w-full" onClick={() => { setEstate(null); setSheet(null); }}>Done</Button>
           </>)}
@@ -324,7 +325,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
               <div><div className="text-[11px] uppercase tracking-wide text-steel">User ID</div><div className="num text-lg font-semibold break-all">{creds.email}</div></div>
               <div><div className="text-[11px] uppercase tracking-wide text-steel">Temporary password</div><div className="num text-lg font-semibold">{creds.password}</div></div>
             </div>
-            <Button variant="outline" className="w-full" onClick={() => navigator.clipboard.writeText([creds.code && `DineFlow code: ${creds.code}`, `User ID: ${creds.email}`, `Temporary password: ${creds.password}`].filter(Boolean).join("\n"))}><Copy size={15} /> Copy all</Button>
+            <Button variant="outline" className="w-full" onClick={() => copyText([creds.code && `DineFlow code: ${creds.code}`, `User ID: ${creds.email}`, `Temporary password: ${creds.password}`].filter(Boolean).join("\n"))}><Copy size={15} /> Copy all</Button>
             <p className="text-xs text-steel">They sign in at the normal login screen and are asked to choose their own password before anything else opens.</p>
             <Button className="w-full" onClick={() => { setCreds(null); setSheet(null); router.push("/dashboard"); }}>Done, open the property</Button>
           </>) : (<>
@@ -378,7 +379,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
         <div className="space-y-4">
           <p className="text-sm text-steel">An open key can be redeemed by any property. Use the Manage button on a row to lock a key to one client.</p>
           <div className="grid grid-cols-2 gap-2"><Button disabled={pending} onClick={() => start(async () => { const r = await issueKey("monthly", null); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Monthly · 30 days</Button><Button disabled={pending} variant="ink" onClick={() => start(async () => { const r = await issueKey("yearly", null); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Yearly · 365 days</Button></div>
-          {issued && <div className="feather p-4 text-center"><div className="num text-2xl tracking-[0.2em] font-semibold">{issued}</div><button className="text-xs text-steel mt-1 underline" onClick={() => navigator.clipboard.writeText(issued)}>Copy</button></div>}
+          {issued && <div className="feather p-4 text-center"><div className="num text-2xl tracking-[0.2em] font-semibold">{issued}</div><button className="text-xs text-steel mt-1 underline" onClick={() => copyText(issued)}>Copy</button></div>}
           {err && <p className="text-sm text-chili">{err}</p>}
         </div>
       </Sheet>

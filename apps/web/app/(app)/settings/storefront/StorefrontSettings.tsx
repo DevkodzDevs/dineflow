@@ -8,6 +8,7 @@ import { saveStorefront, suggestTagline } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
 import { GoogleLinks } from "./GoogleLinks";
 import { saveOffer, deleteOffer } from "../../reservations/actions";
+import { copyText } from "@/lib/clipboard";
 
 type R = { booking_slug: string | null; name: string; property_type?: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; photos: string[]; is_listed: boolean; dining_enabled: boolean; delivery_enabled: boolean; takeaway_enabled: boolean; opens_at: string; closes_at: string; slot_minutes: number; seats_per_slot: number | null; min_order: number; delivery_fee: number; packing_charge: number; delivery_radius_km: number; rating: number | null; rating_count: number };
 type O = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; from_time: string | null; to_time: string | null; code: string | null; is_active: boolean };
@@ -97,7 +98,7 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
         <div className="eyebrow mb-3">Your public page</div>
         <QR value={url} size={150} />
         <div className="num text-xs mt-2 break-all">{url}</div>
-        <div className="flex gap-2 mt-3"><Button size="sm" variant="gray" className="flex-1" onClick={() => { navigator.clipboard.writeText(url); toast("Link copied"); }}><Copy size={14} /> Copy</Button>
+        <div className="flex gap-2 mt-3"><Button size="sm" variant="gray" className="flex-1" onClick={() => { copyText(url); toast("Link copied"); }}><Copy size={14} /> Copy</Button>
           <a href={url} target="_blank" rel="noreferrer" className="flex-1"><Button size="sm" className="w-full"><ExternalLink size={14} /> Open</Button></a></div>
         {r.rating && <p className="text-sm mt-4">★ {r.rating} from {r.rating_count} review{r.rating_count === 1 ? "" : "s"}</p>}
         <p className="text-xs text-[var(--color-label-2)] mt-3 text-left">Print the QR for your counter and table tents. Every booking and order through it costs you <b>0% commission</b>, against 18–25% on an aggregator.</p>

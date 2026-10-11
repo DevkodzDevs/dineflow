@@ -4,6 +4,7 @@ import { Copy, ExternalLink, QrCode } from "lucide-react";
 import { Button, Field, Card } from "@/components/ui";
 import { QR } from "../../labour/LabourClient";
 import { saveBookingPage } from "./actions";
+import { copyText } from "@/lib/clipboard";
 
 export function BookingPageClient({ base, r }: { base: string; r: { booking_slug: string | null; tagline: string | null; policies: string | null; advance_pct: number; booking_engine: boolean; name: string } }) {
   const [slug, setSlug] = useState(r.booking_slug ?? ""); const [msg, setMsg] = useState<string | null>(null); const [pending, start] = useTransition();
@@ -21,7 +22,7 @@ export function BookingPageClient({ base, r }: { base: string; r: { booking_slug
       </form></Card>
       <Card className="text-center h-fit"><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Share it</div>
         <QR value={url} size={160} /><div className="num text-xs mt-2 break-all">{url}</div>
-        <div className="flex gap-2 mt-3"><Button size="sm" variant="outline" className="flex-1" onClick={() => navigator.clipboard.writeText(url)}><Copy size={14} /> Copy</Button><a href={url} target="_blank" rel="noreferrer" className="flex-1"><Button size="sm" className="w-full"><ExternalLink size={14} /> Open</Button></a></div>
+        <div className="flex gap-2 mt-3"><Button size="sm" variant="outline" className="flex-1" onClick={() => copyText(url)}><Copy size={14} /> Copy</Button><a href={url} target="_blank" rel="noreferrer" className="flex-1"><Button size="sm" className="w-full"><ExternalLink size={14} /> Open</Button></a></div>
         <p className="text-xs text-steel mt-3 text-left"><QrCode size={12} className="inline" /> Print the QR for your reception desk and visiting cards. Every booking through it costs you 0% commission instead of 15–20%.</p></Card>
     </div>
   );

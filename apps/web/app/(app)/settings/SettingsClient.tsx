@@ -9,6 +9,7 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
 import { InstallApp } from "@/components/InstallApp";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments, saveLoyalty } from "./actions";
+import { copyText } from "@/lib/clipboard";
 
 type Rest = { id: string; name: string; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number; qr_token?: string | null };
@@ -458,7 +459,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   <Button variant="outline" size="sm" disabled={pending} onClick={() => start(async () => {
                     const r = await issueBoxToken();
                     if ("error" in r) setMsg(r.error!);
-                    else { setBoxToken(r.token!); navigator.clipboard.writeText(r.token!); setMsg("Box token copied to clipboard."); }
+                    else { setBoxToken(r.token!); copyText(r.token!); setMsg("Box token copied to clipboard."); }
                   })}>Issue box token</Button>
                   {boxToken && <span className="num text-xs text-steel break-all">{boxToken}</span>}
                 </div>

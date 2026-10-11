@@ -1,6 +1,7 @@
 "use client";
 import { Copy, ExternalLink, Search } from "lucide-react";
 import { Card, useToast } from "@/components/ui";
+import { copyText } from "@/lib/clipboard";
 
 /**
  * Bookings and orders straight from Google Search and Maps, with no commission: the links to paste
@@ -20,7 +21,7 @@ export function GoogleLinks({ base, slug, listed, dining, ordering, rooms }: { b
     ...(ordering ? [{ label: "Order ahead link", hint: "Edit profile → Contact → Order ahead / Delivery", url: `${site}?tab=order` }] : []),
     ...(rooms ? [{ label: "Room booking link", hint: "Edit profile → Contact → Booking link (or use it as the Website)", url: `${base}/book/${slug}` }] : []),
   ];
-  const copy = (u: string, label: string) => { void navigator.clipboard.writeText(u).then(() => toast(`${label} copied`), () => toast(u)); };
+  const copy = (u: string, label: string) => { void copyText(u).then((ok) => toast(ok ? `${label} copied` : u)); };
 
   return (
     <Card>
