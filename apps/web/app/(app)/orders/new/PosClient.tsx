@@ -264,11 +264,20 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         if (!el.offsetParent) return; // below lg the rail is hidden and the sheet is used instead
+        // the sticky line sits under the shell's floating top bar (sticky top-4), not at 24px: there
+        // the bar covered the rail's head — Dine in / Takeaway / Delivery / Room and the table — as
+        // soon as the page scrolled. Measured, so a taller bar moves it. The dish column's search
+        // row and category chips stick on the same line (--till-top, --till-head).
+        const bar = document.querySelector<HTMLElement>("main header.material");
+        const line = bar ? 16 + bar.offsetHeight + 12 : 24;
+        el.style.top = `${line}px`;
+        const box = el.parentElement; const head = box?.querySelector<HTMLElement>("[data-till-head]");
+        box?.style.setProperty("--till-top", `${line}px`); box?.style.setProperty("--till-head", `${head?.offsetHeight ?? 56}px`);
         // capped at the dish column's own bottom: a rail taller than the column lengthens the page,
-        // and the page then scrolls it up off its sticky line. Measured from the sticky line (24px,
-        // top-6) at the least — a rail already pushed above it would otherwise measure from its
-        // pushed-up top, keep its full height, and stay pushed.
-        const top = Math.max(el.getBoundingClientRect().top, 24);
+        // and the page then scrolls it up off its sticky line. Measured from the sticky line at the
+        // least — a rail already pushed above it would otherwise measure from its pushed-up top,
+        // keep its full height, and stay pushed.
+        const top = Math.max(el.getBoundingClientRect().top, line);
         const floor = (el.previousElementSibling as HTMLElement | null)?.getBoundingClientRect().bottom ?? Infinity;
         el.style.height = `${Math.max(360, Math.min(window.innerHeight - top - 16, floor - top))}px`;
       });
@@ -454,7 +463,9 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           is always long enough for the rail to stick in: with a short menu or one category, the
           rail was the tallest thing in the row, lengthened the page as it grew, and got pushed up. */}
       <section className="min-w-0 lg:min-h-[calc(100dvh-2.5rem)]">
-        <div className="flex items-center gap-3 mb-4">
+        {/* on a tablet in landscape and up the title and search stay under the top bar as the dishes
+            scroll, and so do the category chips below — a waiter searches mid-menu */}
+        <div data-till-head className="flex items-center gap-3 mb-4 lg:sticky lg:top-[var(--till-top,24px)] lg:z-10 lg:bg-[var(--color-bg)] lg:shadow-[0_-14px_0_var(--color-bg)] lg:-mt-2 lg:pt-2 lg:pb-2 lg:mb-2">
           <Link href="/orders" className="h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 shrink-0 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
           {/* the search is what yields, not the title: `w-full max-w-xs` on the field squeezed the
               heading until "New order" broke across two lines on a tablet */}
@@ -519,7 +530,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
             )}
           </div>
         )}
-        <Rail className="rail-fade flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]" arrowClassName="!bottom-2" label="Categories">
+        <Rail wrapClassName="lg:sticky lg:top-[calc(var(--till-top,24px)+var(--till-head,56px))] lg:z-10 lg:bg-[var(--color-bg)] lg:pt-1" className="rail-fade flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]" arrowClassName="!bottom-2" label="Categories">
           {[{ id: "all", name: "All" }, ...categories].map((c) => <button key={c.id} onClick={() => setCat(c.id)} className={cn("shrink-0 rounded-full px-4 h-9 text-sm font-semibold", cat === c.id ? "bg-ink text-on-label" : "bg-card border border-line")}>{c.name}</button>)}
         </Rail>
         {goesWith.length > 0 && (
@@ -578,7 +589,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
           {visible.length === 0 && <p className="col-span-full text-sm text-steel py-8">No dishes match. Check Menu → availability.</p>}
         </div>
       </section>
-      <aside ref={railRef} className="hidden lg:block self-start feather p-4 sticky top-6 h-[calc(100dvh-3rem)]">{CartPanel}</aside>
+      <aside ref={railRef} className="hidden lg:block self-start feather p-4 sticky top-[92px] h-[calc(100dvh-3rem)]">{CartPanel}</aside>
       {/* mobile cart bar */}
       <div className="lg:hidden fixed bottom-[72px] inset-x-4 z-30">
         <motion.button animate={{ y: count ? 0 : 80 }} onClick={() => setCartOpen(true)} className="w-full h-13 rounded-2xl bg-ink text-on-label flex items-center justify-between px-5 shadow-lift">

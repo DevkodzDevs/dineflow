@@ -76,6 +76,13 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **The ticket rail sticks under the shell's floating top bar**, not at 24px: there the bar (sticky
+  top-4) covered the rail's head — Dine in / Takeaway / Delivery / Room and the table — as soon as
+  the page scrolled. The `railRef` effect measures the bar (16 + its height + 12 → `--till-top`,
+  ~90px), sets the rail's `top` and measures its height from that line. From `lg` the dish column's
+  title-and-search row (`[data-till-head]`, `--till-head`) and the category chips stick on the same
+  line, on the page colour, with a `-14px` shadow of it painting the gap under the bar so cards do
+  not show through. Below `lg` nothing is pinned. Probe: `till.mjs`.
 - **The Order line, the category chips and Goes well with are `Rail`s** ("Order line", "Categories",
   "Goes well with" — `role="group"`), each with the round arrow on the right while anything is past
   the edge (phone and iPad; at 1920 they fit and show none). They keep their `-mx-4 px-4` bleed on a
