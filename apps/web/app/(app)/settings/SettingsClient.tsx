@@ -1,9 +1,10 @@
 "use client";
 import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing, Receipt, BedDouble, ChefHat, Timer, Sunrise, Mail, Crown, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing, Receipt, BedDouble, ChefHat, Timer, Sunrise, Mail, Crown, Check, AlertTriangle, Loader2, Fingerprint } from "lucide-react";
 import { NotificationSettings } from "@/components/shell/Notifier";
 import { LogoUpload } from "./LogoUpload";
+import { AttendanceSettings } from "./AttendanceSettings";
 import { Button, Card, Field, Switch, cn } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
@@ -11,14 +12,15 @@ import { InstallApp } from "@/components/InstallApp";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments, saveLoyalty } from "./actions";
 import { copyText } from "@/lib/clipboard";
 
-type Rest = { id: string; name: string; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null };
+type Rest = { id: string; name: string; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null; attendance_methods?: string[]; attend_lat?: number | null; attend_lng?: number | null; attend_radius_m?: number };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number; qr_token?: string | null };
-type Tab = "general" | "payments" | "tables" | "advanced";
+type Tab = "general" | "payments" | "tables" | "attendance" | "advanced";
 
 const TABS: { key: Tab; label: string; icon: typeof Building2 }[] = [
   { key: "general", label: "General", icon: Building2 },
   { key: "payments", label: "Payments", icon: CreditCard },
   { key: "tables", label: "Tables", icon: LayoutGrid },
+  { key: "attendance", label: "Attendance", icon: Fingerprint },
   { key: "advanced", label: "Advanced", icon: Server },
 ];
 
@@ -50,9 +52,9 @@ function QuickLink({ href, icon, label, hint }: { href: string; icon: React.Reac
   );
 }
 
-export function SettingsClient({ restaurant, tables, gateway, signInId, contactEmail }:
+export function SettingsClient({ restaurant, tables, gateway, signInId, contactEmail, owner = false, phoneReady = true }:
   { restaurant: Rest; tables: Table[]; gateway: { key_id: string; hasSecret: boolean; hasWebhook: boolean };
-    signInId: string; contactEmail: string | null }) {
+    signInId: string; contactEmail: string | null; owner?: boolean; phoneReady?: boolean }) {
   const [promise, setPromise] = useState<boolean>(restaurant.promise_enabled ?? false);
   const [gstinOn, setGstinOn] = useState<boolean>(!!restaurant.gstin?.trim());
   const [msg, setMsg] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
       {/* tab bar */}
       <div className="flex gap-1 p-1 bg-[var(--color-fill)] rounded-2xl w-fit max-w-full overflow-x-auto">
         {TABS.map((t) => (
-          <button key={t.key} onClick={() => { setTab(t.key); setMsg(null); }}
+          <button key={t.key} onClick={(e) => { setTab(t.key); setMsg(null); e.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" }); }}
             className={cn("shrink-0 h-9 px-4 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors",
               tab === t.key ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>
             <t.icon size={15} /> {t.label}
@@ -443,6 +445,8 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
       )}
 
       {/* ═══════ ADVANCED ═══════ */}
+      {tab === "attendance" && <AttendanceSettings owner={owner} phoneReady={phoneReady} initial={{ methods: restaurant.attendance_methods ?? ["manual", "qr"], lat: restaurant.attend_lat ?? null, lng: restaurant.attend_lng ?? null, radius: restaurant.attend_radius_m ?? 150 }} />}
+
       {tab === "advanced" && (
         <div className="space-y-6">
           {/* box mode */}

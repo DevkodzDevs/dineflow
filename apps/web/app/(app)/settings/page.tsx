@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { LogOut } from "lucide-react";
 import { SettingsClient } from "./SettingsClient";
+import { serviceRoleConfigured } from "@/lib/supabase/admin";
 export const metadata = { title: "Settings" };
 export default async function SettingsPage() {
   const s = await createClient(); const session = await requireSession();
@@ -13,5 +14,5 @@ export default async function SettingsPage() {
   ]);
   // only the owner can read that row, and even the owner's browser gets booleans, never the secrets
   const gateway = { key_id: gw?.key_id ?? "", hasSecret: !!gw?.key_secret, hasWebhook: !!gw?.webhook_secret };
-  return (<><PageHeader eyebrow="Your restaurant" title="Settings" actionsInline actions={<form action="/logout" method="post"><button className="btn btn-gray !h-11 px-4 inline-flex items-center gap-2 text-sm font-semibold"><LogOut size={16} /> Sign out</button></form>} /><SettingsClient restaurant={session.restaurant as never} tables={tables ?? []} gateway={gateway} signInId={me?.email ?? ""} contactEmail={me?.contact_email ?? null} /></>);
+  return (<><PageHeader eyebrow="Your restaurant" title="Settings" actionsInline actions={<form action="/logout" method="post"><button className="btn btn-gray !h-11 px-4 inline-flex items-center gap-2 text-sm font-semibold"><LogOut size={16} /> Sign out</button></form>} /><SettingsClient restaurant={session.restaurant as never} tables={tables ?? []} gateway={gateway} signInId={me?.email ?? ""} contactEmail={me?.contact_email ?? null} owner={session.profile.role === "owner"} phoneReady={serviceRoleConfigured()} /></>);
 }

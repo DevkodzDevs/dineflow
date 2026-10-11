@@ -6,7 +6,7 @@ import { Camera, ScanLine, Upload, Leaf, Drumstick, BedDouble, HardHat, Boxes, U
 import { Button, Field, Card, Pill, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { QUICK_QTY, INGREDIENT_CATEGORIES, LABOUR_SKILLS, UNITS, type ScanResult } from "@dineflow/shared";
-import { lookupCode, createProductFromScan, stockFromScan, createDishFromScan, createLabourFromScan, punch, roomQuick } from "./actions";
+import { lookupCode, createProductFromScan, stockFromScan, createDishFromScan, createLabourFromScan, punch, punchStaff, roomQuick } from "./actions";
 
 type Mode = "idle" | "camera" | "result";
 type Found = Awaited<ReturnType<typeof lookupCode>>;
@@ -38,6 +38,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
     const r = await lookupCode(code);
     setFound(r); setMode("result"); setBusy(null); stopCamera();
     if (r.kind === "labour" && "labourer" in r) { /* badge scan → punch */ const p = await punch(r.labourer.code); if ("event" in p) setToast(`${p.name} punched ${p.event === "in" ? "IN" : p.event === "out" ? `OUT · ${p.hours} h` : "(already done today)"}`); }
+    if (r.kind === "staff" && "person" in r && r.person) { const p = await punchStaff(String(r.person.staff_code)); if ("event" in p) setToast(`${p.name} punched ${p.event === "in" ? "IN" : p.event === "out" ? `OUT · ${p.hours} h` : "(already done today)"}`); else if ("error" in p) setErr(p.error ?? null); }
     if (r.kind === "unknown" && source === "barcode") setAi({ kind: "ingredient", name: "", confidence: 0, unit: "kg", barcode: code, category: "grocery" });
   };
   const snap = async () => {
@@ -129,6 +130,8 @@ function FoundCard({ found, onDone, onReset }: { found: Found; onDone: (m: strin
         <Button variant="ghost" onClick={onReset}>Scan next</Button></div></motion.div>; }
   if (found.kind === "labour" && "labourer" in found) { const l = found.labourer as unknown as { id: string; code: string; full_name: string; skill: string | null; daily_wage: number };
     return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-5"><Pill tone="gold">labour · {l.code}</Pill><h3 className="text-2xl mt-2">{l.full_name}</h3><div className="text-sm text-steel">{l.skill} · {formatINR(Number(l.daily_wage))}/day · attendance punched automatically</div><div className="mt-4 flex gap-2"><Link href={`/labour?open=${l.id}`}><Button>Open profile</Button></Link><Button variant="ghost" onClick={onReset}>Scan next</Button></div></motion.div>; }
+  if (found.kind === "staff" && "person" in found) { const p = found.person as unknown as { full_name: string; staff_code: string; role: string };
+    return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-5"><Pill tone="sky">staff · {p.staff_code}</Pill><h3 className="text-2xl mt-2">{p.full_name}</h3><div className="text-sm text-steel capitalize">{p.role} · attendance punched automatically</div><div className="mt-4 flex gap-2"><Link href="/staff"><Button>Staff</Button></Link><Button variant="ghost" onClick={onReset}>Scan next</Button></div></motion.div>; }
   if (found.kind === "bill" && "bill" in found) { const b = found.bill as unknown as { id: string; bill_no: number; order_id: string; total: number; status: string; created_at: string }; return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="feather p-5"><div className="flex items-center gap-2"><Pill tone={b.status === "paid" ? "ready" : "pending"}>{b.status === "paid" ? "paid" : "unpaid"}</Pill><span className="text-xs text-steel num">{new Date(b.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span></div><h3 className="text-2xl mt-2">Bill #{b.bill_no} · <span className="num">{formatINR(Number(b.total))}</span></h3><div className="mt-4"><Link href={`/billing/${b.order_id}`}><Button>Open bill</Button></Link></div></motion.div>; }
   if (found.kind === "booking" && "booking" in found) { const b = found.booking as unknown as { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null }; return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-5"><Pill tone="sky">booking #{b.booking_no}</Pill><h3 className="text-2xl mt-2">Room {b.rooms?.number} · {b.guests?.full_name}</h3><div className="mt-4"><Link href={`/frontdesk/${b.id}`}><Button>Open folio</Button></Link></div></motion.div>; }
   return null;

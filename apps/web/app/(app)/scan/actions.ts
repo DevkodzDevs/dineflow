@@ -15,13 +15,14 @@ export async function lookupCode(code: string) {
     if (bill) return { kind: "bill" as const, bill };
     return { kind: "unknown", code: c };
   }
-  const own = /^df:(room|ing|dish|lab|book):(.+)$/.exec(c);
+  const own = /^df:(room|ing|dish|lab|book|staff):(.+)$/.exec(c);
   if (own) {
     const [, kind, id] = own;
     if (kind === "room") { const { data } = await s.from("rooms").select("id, number, floor, status, room_types(name, base_rate)").eq("id", id).maybeSingle(); if (data) { const { data: b } = await s.from("bookings").select("id, guests(full_name), check_out").eq("room_id", id).eq("status", "checked_in").maybeSingle(); return { kind: "room", room: data, booking: b }; } }
     if (kind === "ing") { const { data } = await s.from("ingredients").select("*").eq("id", id).maybeSingle(); if (data) return { kind: "ingredient", ingredient: data }; }
     if (kind === "dish") { const { data } = await s.from("menu_items").select("*").eq("id", id).maybeSingle(); if (data) return { kind: "dish", dish: data }; }
     if (kind === "lab") { const { data } = await s.from("labourers").select("*").eq("code", id.toUpperCase()).maybeSingle(); if (data) return { kind: "labour", labourer: data }; }
+    if (kind === "staff") { const { data } = await s.from("profiles").select("id, full_name, staff_code, role").ilike("staff_code", id).maybeSingle(); if (data) return { kind: "staff", person: data }; }
     if (kind === "book") { const { data } = await s.from("bookings").select("id, booking_no, status, rooms(number), guests(full_name)").eq("id", id).maybeSingle(); if (data) return { kind: "booking", booking: data }; }
     return { kind: "unknown", code: c };
   }
@@ -83,4 +84,9 @@ export async function roomQuick(roomId: string, action: "cleaning" | "available"
   if (action === "available") { await s.from("housekeeping_tasks").update({ status: "done" }).eq("room_id", roomId).neq("status", "done"); await s.from("rooms").update({ status: "available" }).eq("id", roomId).neq("status", "occupied"); }
   else { await s.from("rooms").update({ status: action }).eq("id", roomId).neq("status", "occupied"); await s.from("housekeeping_tasks").insert({ room_id: roomId, kind: action === "cleaning" ? "clean" : "maintenance" }); }
   ["/rooms", "/housekeeping", "/scan"].forEach((x) => revalidatePath(x)); return { ok: true };
+}
+/** Staff badge (df:staff:<code>) scanned → punch in/out through staff_punch_code. */
+export async function punchStaff(code: string) {
+  const s = await createClient(); const { data, error } = await s.rpc("staff_punch_code", { p_code: code });
+  if (error) return { error: error.message }; revalidatePath("/staff"); return { ok: true, ...(data as { name: string; event: string; hours?: number }) };
 }

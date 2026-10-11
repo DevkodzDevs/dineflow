@@ -75,3 +75,11 @@ export async function setAccess(userId: string, role: string, modules: string[] 
   if (error) return { error: error.message };
   revalidatePath("/staff"); return { ok: true as const };
 }
+
+/** A staff member ticked present (or not) by hand — staff_mark checks the role and that Manual is on. */
+export async function markStaff(profileId: string, date: string, present: boolean) {
+  const s = await createClient();
+  const { error } = await s.rpc("staff_mark", { p_profile: profileId, p_date: date, p_present: present });
+  if (error) return { error: error.message };
+  revalidatePath("/staff"); return { error: null };
+}

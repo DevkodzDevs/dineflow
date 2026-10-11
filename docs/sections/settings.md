@@ -122,3 +122,11 @@ pnpm --filter @dineflow/web typecheck
   control" when there is none — it used to print "Signed in as ."), Recovery email (where codes go, or
   an amber "Missing"), Membership (plan and date, a status pill, the whole row links to /membership).
   Detail lines wrap to two lines on a phone rather than truncate.
+- **Attendance is its own tab** (`AttendanceSettings.tsx`): four rows — Manual, QR badge, Fingerprint /
+  Face ID, Selfie + location — each a switch for the owner and an On/Off label for anyone else, under a
+  "Only the owner can change how attendance is taken" line. Turning on Selfie shows *Where the property
+  is*: "Use this device's location" (needs `geolocation=(self)` in the Permissions-Policy) and a 50–500
+  m radius. Saved through `set_attendance_settings` — the owner check is in the RPC; the switches are
+  only the face of it. When the server has no `SUPABASE_SERVICE_ROLE_KEY`, an orange note says the
+  phone ways cannot work yet. With five tabs the bar scrolls on a phone, so a tapped tab scrolls itself
+  into view. See [staff-and-labour.md](staff-and-labour.md).

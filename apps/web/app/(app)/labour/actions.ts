@@ -15,9 +15,9 @@ export async function saveLabourer(fd: FormData) {
 export async function setLabourStatus(id: string, status: "active" | "inactive") { const s = await createClient(); await s.from("labourers").update({ status }).eq("id", id); bump(); return { ok: true }; }
 export async function punchCode(code: string) { const s = await createClient(); const { data, error } = await s.rpc("labour_punch", { p_code: code }); if (error) return { error: error.message }; bump(); return { ok: true, ...(data as object) }; }
 export async function markAttendance(labourerId: string, date: string, present: boolean, wage: number, note?: string) {
-  const s = await createClient(); const { data: { user } } = await s.auth.getUser();
-  if (!present) { await s.from("labour_attendance").delete().eq("labourer_id", labourerId).eq("work_date", date); bump(); return { ok: true }; }
-  const { error } = await s.from("labour_attendance").upsert({ labourer_id: labourerId, work_date: date, wage, note: note ?? null, in_at: new Date().toISOString(), created_by: user?.id }, { onConflict: "labourer_id,work_date" });
+  // through labour_mark (0086): it refuses when the owner has turned manual attendance off, and logs the punch
+  const s = await createClient();
+  const { error } = await s.rpc("labour_mark", { p_labourer: labourerId, p_date: date, p_present: present, p_wage: wage, p_note: note ?? null });
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
 export async function payLabour(labourerId: string, amount: number, method: string, from: string, to: string, note: string) {

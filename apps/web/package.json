@@ -13,6 +13,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",
     "@dineflow/shared": "workspace:*",
+    "@simplewebauthn/browser": "13",
+    "@simplewebauthn/server": "13",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
     "@zxing/browser": "^0.1.5",

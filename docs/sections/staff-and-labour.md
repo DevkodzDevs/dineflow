@@ -1,12 +1,15 @@
 # Staff and labour
 
-**Routes** `/staff` · `/labour`
+**Routes** `/staff` · `/labour` · `/attendance` (staff self-punch) · `/attend/[token]` (a labourer's own link, no sign-in)
 **Files** `app/(app)/staff/page.tsx` · `StaffClient.tsx` · `app/(app)/labour/LabourClient.tsx` ·
-both `actions.ts`
-**Reads** `profiles`, `invites`, `labourers`, `labour_attendance`, `labour_payments`
+both `actions.ts` · `staff/StaffAttendance.tsx` · `app/attend/actions.ts` · `lib/attendance.ts` ·
+`components/attendance/PunchPanel.tsx`
+**Reads** `profiles`, `invites`, `labourers`, `labour_attendance`, `labour_payments`, `staff_attendance`,
+`attendance_punches`, the private `attendance` bucket (selfies, signed URLs)
 **Writes** `create_invite`, `owner_set_access`, `staff_create_login`, `staff_login_details`,
 `staff_login_domain`, `staff_request_contact_otp`, `staff_verify_contact`, `staff_reset_password`,
-`labour_punch`, `next_labour_code`
+`labour_punch`, `labour_mark`, `staff_mark`, `staff_punch_code`, `next_labour_code`; service role only:
+`_attend`, `attendance_passkeys`, `attendance_challenges`
 
 ## What it is
 
@@ -86,3 +89,47 @@ Sign in as a non-owner on a demo property and confirm the sidebar matches the ti
   (`rounded-lg` is 22px in this theme and turned them into pills). Probe: `lab.mjs` (4 checks; marks a
   worker present and restores their attendance).
 
+## Attendance — four ways, the owner chooses (0086, 2026-10-11)
+
+`restaurants.attendance_methods` (default `{manual,qr}`) says which ways a person may be marked
+present; only the owner changes it (Settings → Attendance, `set_attendance_settings`, which checks
+`auth_role() = 'owner'` itself). **A way that is off is refused in the database, not just hidden** —
+`labour_mark`, `staff_mark` and `_attend` each check it.
+
+| Way | Who does it | Path |
+| --- | --- | --- |
+| Manual | owner / manager / supervisor (staff); any staff (labour) | Labour card *Mark present* → `labour_mark`; Staff → *Attendance today* → `staff_mark` |
+| QR badge | whoever holds the scanner | `/scan`: `df:lab:<code>` → `labour_punch`, `df:staff:<staff_code>` → `staff_punch_code` (first scan in, next out) |
+| Fingerprint / Face ID | the person, on their own phone | a passkey (WebAuthn, `@simplewebauthn` v13), platform authenticator, user verification required |
+| Selfie + location | the person, on their own phone | a photo (shrunk to 640px JPEG in the browser) and a GPS fix inside `attend_radius_m` of `attend_lat/lng` |
+
+**Who is punching is decided on the server, never by the browser.** A labourer by the secret
+`labourers.punch_token` in their link (`/attend/<token>` — Labour → a card's link button → QR, Copy,
+WhatsApp); a staff member by their session (`/attendance`, *My attendance* in the menu, shown only
+when fingerprint or selfie is on). `lib/attendance.ts` does the WebAuthn verification and the distance
+check, then calls `_attend`, which the service role alone may execute. **So both phone ways need
+`SUPABASE_SERVICE_ROLE_KEY` on the server**; without it the punch pages and Settings say so in words.
+A challenge is used once and lives 5 minutes; a replayed assertion is refused. The distance test
+gives the phone's own accuracy (capped at 100 m) the benefit of the doubt.
+
+**What a passkey proves.** That someone enrolled on *that device* unlocked it. On the worker's own
+phone that is the worker; on a shared tablet it is anyone enrolled there — the screens say the
+fingerprint never leaves the phone. Selfies are kept (private bucket `attendance/<property>/<date>/…`)
+and shown as thumbnails in Labour → *Today's punches*, so a manager can check a face against a name.
+
+Every punch, whatever the way, writes a line to `attendance_punches` (method, direction, distance,
+photo). `labour_attendance` / `staff_attendance` keep one row per person per IST day with
+`method_in` / `method_out`.
+
+- **Direct writes to `labour_attendance` are refused** (restrictive policies, 0086). The Labour page's
+  *Mark present* used to upsert straight into the table; it now calls `labour_mark`. Anything new that
+  marks attendance goes through an RPC.
+- **The Permissions-Policy header allows `geolocation=(self)`** (`next.config.ts`). It was `()` —
+  nothing asked for a location then — and the browser refused every location request on the site
+  with "disabled in this document by permissions policy". Camera is not needed: the selfie uses a
+  file input with `capture="user"`.
+- **WebAuthn will not take an IP address as its RP ID.** Test on `localhost`, not `127.0.0.1`. The RP ID
+  is the request's host, so a passkey made on one domain does not work on another (the production
+  domain and a preview URL are different keys).
+
+Probes: `att.mjs` (21) and `wa.mjs` (5) — see testing-and-gates.md.

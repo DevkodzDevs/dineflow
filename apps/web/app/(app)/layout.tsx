@@ -67,6 +67,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
   // the profile avatar becomes a button only for people whose role can open settings
   const accountHref = mods.includes("settings") ? "/settings" : null;
+  // "My attendance" appears once the owner turns on a way to punch from one's own phone
+  const attend = !s.actingAs && ((s.restaurant.attendance_methods as string[] | undefined) ?? []).some((m) => m === "biometric" || m === "selfie");
   // the late-ticket badge rides along with the session now; it used to cost a query of its own here
   const count = s.lateKots;
   const dl = s.membership === "trial" ? daysLeft(s.restaurant.trial_ends_at) : daysLeft(s.restaurant.membership_ends_at);
@@ -82,7 +84,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
-      <Sidebar name={s.profile.full_name} role={s.profile.role} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} />
+      <Sidebar name={s.profile.full_name} role={s.profile.role} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />
       <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-28 md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
@@ -91,7 +93,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}
       </div></main>
       <BottomNav role={s.profile.role} type={s.restaurant.property_type} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
-        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} />
+        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} />
       <Assist />
       {/* pull to refresh everywhere on touch; edge swipe back/forward in the installed app */}
       <Gestures />

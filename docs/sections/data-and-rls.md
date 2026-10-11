@@ -141,3 +141,21 @@ that is the point. Route it through an RPC that checks the caller's role, or wid
 migration *with a reason*. **Adding a SECURITY DEFINER function?** Supabase grants EXECUTE to anon by
 default: `revoke … from public, anon` unless strangers are meant to call it, and check the caller
 inside. Re-verify with `walls.cjs` (27 checks) and `t0085.cjs` (7) — see testing-and-gates.md.
+
+## Attendance (0086)
+
+- `restaurants.attendance_methods text[]` (check: subset of manual/qr/biometric/selfie, default
+  `{manual,qr}`), `attend_lat`, `attend_lng`, `attend_radius_m` (25–2000, default 150). Changed only by
+  `set_attendance_settings` (owner; selfie needs a location). `guard_restaurant_update` already keeps
+  these columns owner-only on a direct write.
+- `labourers.punch_token` — unique, random, the identity in `/attend/<token>`. Readable by the
+  property's staff (they hand it out); treat it like a password in anything you log.
+- `staff_attendance`, `attendance_punches`, `attendance_passkeys`: **select-only** for the property's
+  staff; no direct writes. `attendance_challenges`: no policies at all — service role only.
+- `labour_attendance`: restrictive policies now **refuse direct insert/update/delete** to
+  authenticated. Use `labour_mark` (manual) / `labour_punch` (QR).
+- `_attend(...)` is the one place a punch is written (IST day, in → out → done, refuses a method that is
+  off, logs the punch). EXECUTE is the service role's only; `labour_punch`, `staff_punch_code`
+  (DEFINER) call it on the caller's behalf.
+- Storage bucket `attendance` — private, 1.5 MB, jpeg/webp/png; read by the property's staff through
+  `storage.foldername(name)[1] = auth_restaurant_id()`; written only by the server.

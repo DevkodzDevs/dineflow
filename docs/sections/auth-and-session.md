@@ -46,7 +46,9 @@ PUBLIC_PREFIX  // reachable without a session, but still processed
 everything else // needs a session, else → /login
 ```
 
-`SESSION_FREE` is checked **first**, before any Supabase work. Cookies are read and written through
+`SESSION_FREE` is checked **first**, before any Supabase work. `/attend/` is in it and in `PUBLIC_PREFIX`
+(a labourer's punch link has no session; the token is the identity — but `/attendance`, the staff
+screen, is not, and the two must not share a prefix match: `"/attendance".startsWith("/attend/")` is false). Cookies are read and written through
 `getAll`/`setAll` on `createServerClient` from `@supabase/ssr`.
 
 ### Signing in

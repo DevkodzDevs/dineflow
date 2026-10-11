@@ -228,3 +228,6 @@ Sign in as a non-owner on a demo property and confirm the sidebar matches the ti
   hears nothing.
 - **The phone wordmark** "DineFlow" in the top bar is a link to `/dashboard`, like the sidebar's
   logo; the layout sends a role without the control room to its first section.
+- **"My attendance"** sits above *Install the app* in the sidebar's foot and the More sheet, only when
+  the owner has turned on Fingerprint or Selfie (`attend` from `app/(app)/layout.tsx`, never while
+  Master control is acting). `/attendance` is not a module in `ROUTE_MODULE`, so every role can open it.

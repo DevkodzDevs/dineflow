@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, Menu, X, LayoutGrid } from "lucide-react";
+import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, Menu, X, LayoutGrid, Fingerprint } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn, Sheet } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
@@ -90,9 +90,9 @@ function useKeepMenuInPlace(path: string) {
   return ref;
 }
 
-type Props = { name: string; role: Role; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null };
+type Props = { name: string; role: Role; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null; attend?: boolean };
 
-export function Sidebar({ name, role, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref }: Props) {
+export function Sidebar({ name, role, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref, attend }: Props) {
   const path = usePathname();
   const navRef = useKeepMenuInPlace(path);
   /* The drawer. On an iPad or a tablet (768–1279) the menu is an icon rail; the hamburger at its
@@ -142,6 +142,8 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
       {/* the foot: who you are, and the way out. Settings keeps its own row up in Manage,
           so the second button for it down here was only costing a row of height. */}
       <div className="mt-auto pt-3">
+        {/* only when the owner has turned on a way to punch from one's own phone (fingerprint or selfie) */}
+        {attend && <Link href="/attendance" title="My attendance" className={cn("mb-2 flex items-center gap-3 h-[42px] px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/attendance") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}><Fingerprint size={17} className="shrink-0" /><span className="rail-hide">My attendance</span></Link>}
         <InstallEntry variant="rail" />
         {isAdmin && <Link href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
         {/* p-[7px] plus the 1px border puts the card at exactly 52px across — the width the rail
@@ -170,7 +172,7 @@ const HOSPITALITY = ["frontdesk", "rooms", "housekeeping", "guests", "facilities
 const MANAGE = ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"];
 const TOP = ["dashboard", "tomorrow", "scan"];
 
-type MoreProps = { role: Role; type: PropertyType; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number };
+type MoreProps = { role: Role; type: PropertyType; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number; attend?: boolean };
 
 /**
  * The phone's navigation: four sections and More. It used to be one sideways-scrolling strip of
@@ -178,7 +180,7 @@ type MoreProps = { role: Role; type: PropertyType; enabled?: string[] | null; al
  * phone had no way to sign out at all. More opens every section this person can use, grouped the
  * way the sidebar groups them, with the account, Master control and Sign out at the foot.
  */
-export function BottomNav({ role, type, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0 }: MoreProps) {
+export function BottomNav({ role, type, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0, attend }: MoreProps) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [path]);
@@ -284,6 +286,7 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
                 ? <Link href={accountHref} className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors">{who}<span className="text-xs text-[var(--color-label-2)] shrink-0">Settings</span></Link>
                 : <div className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)]">{who}</div>;
             })()}
+            {attend && <Link href="/attendance" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><Fingerprint size={17} /> My attendance</Link>}
             <InstallEntry variant="sheet" />
             {isAdmin && <Link href="/admin" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><ShieldCheck size={17} /> Master control</Link>}
             <form action="/logout" method="post">

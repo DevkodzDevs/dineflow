@@ -37,7 +37,8 @@ const config: NextConfig = {
        * Applied to every response. X-Frame-Options and the frame-ancestors directive keep the app out
        * of someone else's iframe, which is what a clickjacked "settle bill" button needs to exist.
        * Permissions-Policy keeps the camera (the scanner) and the microphone (Assist's voice input)
-       * for this origin and shuts the rest: nothing in the app asks for a location, so nothing can.
+       * for this origin, and the location for selfie attendance (Settings → Attendance sets where the
+       * property is; a selfie punch is accepted only inside that radius). Everything else stays shut.
        * HSTS is set only in production: on localhost it would pin a certificate the dev server
        * has not got, and lock the machine out of http://localhost for six months.
        */
@@ -48,7 +49,7 @@ const config: NextConfig = {
         // object-src/base-uri: no plugins, and no injected <base> re-pointing relative URLs. A script-src
         // policy is not set yet: Next's inline bootstrap needs nonces, which means a middleware change.
         { key: "Content-Security-Policy", value: "frame-ancestors 'self'; object-src 'none'; base-uri 'self'" },
-        { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), interest-cohort=()" },
+        { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(self), interest-cohort=()" },
         ...(process.env.NODE_ENV === "production" ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }] : []),
       ] },
     ];

@@ -1,7 +1,7 @@
 # Guest-facing pages (no sign-in)
 
 **Routes** `/dine` · `/dine/[slug]` · `/dine/track` · `/book/[slug]` · `/queue/[slug]` · `/checkin/[token]` ·
-`/pay/[token]` · `/record/[token]` · `/get` · `/offline`
+`/pay/[token]` · `/record/[token]` · `/attend/[token]` · `/get` · `/offline`
 **Files** `app/dine/**` · `app/book/[slug]` · `app/queue/[slug]` · `app/checkin/[token]` · `app/pay/[token]` ·
 `app/record/[token]` · `app/get` · `app/offline`
 **Writes** `checkin_view`, `checkin_submit`, `dine_storefront`, `dine_discover`, `dine_order`, `dine_reserve`, `dine_review`,
@@ -23,6 +23,7 @@ owner installs the app.
 | `/checkin/[token]` | a hotel guest, or the desk's tablet (`?kiosk=1`) | check in online before arriving |
 | `/pay/[token]` | a customer | pay one bill by link |
 | `/record/[token]` | a bank, a landlord | a sealed business record (see [reports](reports-and-forecast.md)) |
+| `/attend/[token]` | a labourer, on their own phone | punch in/out by fingerprint or selfie — see [staff-and-labour.md](staff-and-labour.md) |
 | `/get` | a new owner | install the app |
 | `/offline` | anyone | the service-worker fallback |
 

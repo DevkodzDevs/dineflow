@@ -121,3 +121,11 @@ export async function removeLogo(rid: string): Promise<{ ok?: boolean; error?: s
   await clearOldLogos(s, rid);
   bump(); return { ok: true };
 }
+
+/** Which ways attendance may be taken. set_attendance_settings refuses anyone but the owner. */
+export async function saveAttendanceSettings(methods: string[], lat: number | null, lng: number | null, radius: number) {
+  const s = await createClient();
+  const { error } = await s.rpc("set_attendance_settings", { p_methods: methods, p_lat: lat, p_lng: lng, p_radius: radius });
+  if (error) return { error: error.message };
+  bump(); return { ok: true as const, error: null };
+}

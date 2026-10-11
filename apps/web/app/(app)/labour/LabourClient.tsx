@@ -4,17 +4,24 @@ import { QR } from "@/components/QR";
 export { QR };   // the booking-page and storefront settings import it from here
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, QrCode, Printer, Check, Banknote, Pencil } from "lucide-react";
+import { Plus, QrCode, Printer, Check, Banknote, Pencil, Link2, Copy, MessageCircle, Fingerprint, Camera, ClipboardCheck, MapPin } from "lucide-react";
+import { copyText } from "@/lib/clipboard";
 import { Button, Sheet, Field, Card, Pill, StatTile, cn, Empty } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { LABOUR_SKILLS } from "@dineflow/shared";
 import { saveLabourer, setLabourStatus, markAttendance, payLabour, punchCode } from "./actions";
 
-type L = { id: string; code: string; full_name: string; phone: string | null; skill: string | null; daily_wage: number; id_type: string | null; id_last4: string | null; address: string | null; emergency_contact: string | null; notes: string | null; joined_on: string; status: string };
-type A = { id: string; labourer_id: string; work_date: string; in_at: string | null; out_at: string | null; hours: number | null; wage: number };
+type L = { id: string; code: string; full_name: string; phone: string | null; skill: string | null; daily_wage: number; id_type: string | null; id_last4: string | null; address: string | null; emergency_contact: string | null; notes: string | null; joined_on: string; status: string; punch_token?: string | null };
+type A = { id: string; labourer_id: string; work_date: string; in_at: string | null; out_at: string | null; hours: number | null; wage: number; method_in?: string | null; method_out?: string | null };
+type Log = { id: string; labourer_id: string; at: string; direction: "in" | "out"; method: string; distance_m: number | null; photo: string | null };
+const HOW: Record<string, { label: string; Icon: typeof QrCode }> = { manual: { label: "Manual", Icon: ClipboardCheck }, qr: { label: "Badge", Icon: QrCode }, biometric: { label: "Fingerprint", Icon: Fingerprint }, selfie: { label: "Selfie", Icon: Camera } };
+const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
 type P = { id: string; labourer_id: string; amount: number; method: string; period_from: string | null; period_to: string | null; created_at: string };
 
-export function LabourClient({ today, labourers, attendance, payments, tab, openId, rooms, ingredients, property }: { today: string; labourers: L[]; attendance: A[]; payments: P[]; tab: "today" | "wages" | "labels"; openId: string | null; rooms: { id: string; number: string; floor: number }[]; ingredients: { id: string; name: string; unit: string; barcode: string | null }[]; property: string }) {
+export function LabourClient({ today, labourers, attendance, payments, tab, openId, rooms, ingredients, property, methods = ["manual", "qr"], log = [] }: { today: string; labourers: L[]; attendance: A[]; payments: P[]; tab: "today" | "wages" | "labels"; openId: string | null; rooms: { id: string; number: string; floor: number }[]; ingredients: { id: string; name: string; unit: string; barcode: string | null }[]; property: string; methods?: string[]; log?: Log[] }) {
+  const [link, setLink] = useState<L | null>(null); const [copied, setCopied] = useState(false);
+  const manual = methods.includes("manual"), phone = methods.includes("biometric") || methods.includes("selfie");
+  const linkUrl = (l: L) => (typeof window === "undefined" ? "" : window.location.origin) + `/attend/${l.punch_token ?? ""}`;
   const [edit, setEdit] = useState<Partial<L> | null>(openId ? labourers.find((l) => l.id === openId) ?? null : null);
   const [pay, setPay] = useState<L | null>(null); const [err, setErr] = useState<string | null>(null); const [pending, start] = useTransition(); const [code, setCode] = useState(""); const [toast, setToast] = useState<string | null>(null);
   const active = labourers.filter((l) => l.status === "active");
@@ -48,13 +55,14 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
                 <div className="flex items-start gap-3"><span className={cn("h-11 w-11 rounded-2xl grid place-items-center font-display text-lg", a ? "bg-mint-2 text-ink" : "bg-ink text-on-label")}>{l.full_name.slice(0, 1)}</span>
                   <div className="flex-1 min-w-0"><div className="font-semibold truncate">{l.full_name}</div><div className="text-xs text-steel">{l.skill} · <span className="num">{l.code}</span> · {formatINR(Number(l.daily_wage))}/day</div></div>
                   <button onClick={() => setEdit(l)} className="text-steel hover:text-ink"><Pencil size={14} /></button></div>
-                <div className="mt-3 flex items-center gap-2 text-xs">{a ? <><Pill tone="ready">present</Pill><span className="num text-steel">{a.in_at ? new Date(a.in_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}{a.out_at ? ` → ${new Date(a.out_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} · ${a.hours} h` : ""}</span></> : <Pill tone="pending">absent</Pill>}
+                <div className="mt-3 flex items-center gap-2 text-xs">{a ? <><Pill tone="ready">present</Pill><span className="num text-steel min-w-0 truncate" data-times>{a.in_at ? hhmm(a.in_at) : ""}{a.out_at ? ` → ${hhmm(a.out_at)} · ${a.hours} h` : ""}{a.method_in && HOW[a.method_in] ? ` · ${HOW[a.method_in].label}` : ""}</span></> : <Pill tone="pending">absent</Pill>}
                   <span className="ml-auto num text-steel">{byL(l.id).length} day{byL(l.id).length === 1 ? "" : "s"} this month</span></div>
                 <MonthDots days={byL(l.id).map((x) => x.work_date)} today={today} />
-                <div className="mt-3 flex gap-2">{a ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => start(() => { markAttendance(l.id, today, false, 0); })}>Mark absent</Button> : <Button size="sm" className="flex-1" disabled={pending} onClick={() => start(() => { markAttendance(l.id, today, true, Number(l.daily_wage)); })}><Check size={14} /> Mark present</Button>}<Button size="sm" variant="ghost" onClick={() => setPay(l)}><Banknote size={14} /></Button></div>
+                <div className="mt-3 flex gap-2">{manual ? (a ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await markAttendance(l.id, today, false, 0); if ("error" in r) setErr(r.error!); })}>Mark absent</Button> : <Button size="sm" className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await markAttendance(l.id, today, true, Number(l.daily_wage)); if ("error" in r) setErr(r.error!); })}><Check size={14} /> Mark present</Button>) : <span className="flex-1 min-w-0 self-center text-[12px] text-steel truncate">Manual marking is off</span>}{phone && <Button size="sm" variant="outline" aria-label={`Punch link for ${l.full_name}`} title="Punch link" onClick={() => { setCopied(false); setLink(l); }} data-punch-link><Link2 size={14} /></Button>}<Button size="sm" variant="ghost" aria-label="Pay" onClick={() => setPay(l)}><Banknote size={14} /></Button></div>
               </Card></motion.div>); })}
         </div>
       ))}
+      {tab === "today" && log.length > 0 && <PunchLog log={log} labourers={labourers} />}
 
       {tab === "wages" && (
         <div className="feather overflow-x-auto table-wrap"><table className="w-full text-sm min-w-[720px]"><thead><tr><th className="text-left px-4 py-3">Worker</th><th className="text-right px-4 py-3">Days</th><th className="text-right px-4 py-3">Hours</th><th className="text-right px-4 py-3">Earned</th><th className="text-right px-4 py-3">Paid</th><th className="text-right px-4 py-3">Balance</th><th className="px-4 py-3"></th></tr></thead>
@@ -75,6 +83,17 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
           <div className="flex gap-2"><Button className="flex-1" disabled={pending}>Save</Button>{edit?.id && <Button type="button" variant="outline" onClick={() => start(async () => { await setLabourStatus(edit.id!, edit.status === "active" ? "inactive" : "active"); setEdit(null); })}>{edit.status === "active" ? "Deactivate" : "Reactivate"}</Button>}</div>
           {edit?.id && <div className="pt-3 border-t border-line"><QR value={`df:lab:${edit.code}`} label={`${edit.full_name} · ${edit.code}`} /></div>}
         </form>
+      </Sheet>
+      <Sheet open={!!link} onClose={() => setLink(null)} title={`Punch link · ${link?.full_name ?? ""}`}>
+        {link && <div className="space-y-4" data-link-sheet>
+          <p className="text-sm text-steel">{link.full_name} opens this on their own phone and punches in with {[methods.includes("biometric") && "fingerprint / Face ID", methods.includes("selfie") && "a selfie at the property"].filter(Boolean).join(" or ")}. The link is theirs alone — do not share it with anyone else.</p>
+          <div className="grid place-items-center rounded-2xl bg-white p-4"><QR value={linkUrl(link)} size={200} /></div>
+          <div className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[12px] num break-all" data-link-url>{linkUrl(link)}</div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={async () => setCopied(await copyText(linkUrl(link)))}>{copied ? <Check size={16} /> : <Copy size={16} />} {copied ? "Copied" : "Copy link"}</Button>
+            <a className="btn btn-filled" target="_blank" rel="noreferrer" href={`https://wa.me/${(link.phone ?? "").replace(/\D/g, "").replace(/^(\d{10})$/, "91$1")}?text=${encodeURIComponent(`Your attendance link for ${property}: ${linkUrl(link)}`)}`}><MessageCircle size={16} /> WhatsApp</a>
+          </div>
+        </div>}
       </Sheet>
       <Sheet open={!!pay} onClose={() => setPay(null)} title={`Pay · ${pay?.full_name ?? ""}`}>
         {pay && <form className="space-y-4" action={(fd) => start(async () => { const r = await payLabour(pay.id, Number(fd.get("amount")), String(fd.get("method")), String(fd.get("from")), String(fd.get("to")), String(fd.get("note"))); if ("error" in r) setErr(r.error!); else setPay(null); })}>
@@ -140,5 +159,28 @@ function MonthDots({ days, today }: { days: string[]; today: string }) {
         })}
       </div>
     </div>
+  );
+}
+
+/** Today's punches, newest first: who, in or out, how — and the selfie, so a manager can see it was them. */
+function PunchLog({ log, labourers }: { log: Log[]; labourers: L[] }) {
+  const name = (id: string) => labourers.find((l) => l.id === id)?.full_name ?? "—";
+  return (
+    <section className="feather p-4 sm:p-5" data-punch-log>
+      <div className="flex items-center gap-2 mb-3"><h3 className="text-base font-semibold">Today&apos;s punches</h3><span className="ml-auto text-xs text-steel num">{log.length}</span></div>
+      <ul className="divide-y divide-[var(--color-separator)]">
+        {log.map((p) => { const H = HOW[p.method] ?? HOW.manual; return (
+          <li key={p.id} className="flex items-center gap-3 py-2.5 min-w-0">
+            {p.photo ? <a href={p.photo} target="_blank" rel="noreferrer" className="shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element -- a short-lived signed URL from a private bucket */}
+              <img src={p.photo} alt={`Selfie · ${name(p.labourer_id)}`} className="h-11 w-11 rounded-xl object-cover" /></a>
+              : <span className="h-11 w-11 shrink-0 rounded-xl bg-[var(--color-fill)] grid place-items-center text-steel"><H.Icon size={17} /></span>}
+            <div className="min-w-0 flex-1"><div className="text-sm font-semibold truncate">{name(p.labourer_id)}</div>
+              <div className="text-xs text-steel truncate">{H.label}{p.distance_m != null && <> · <MapPin size={11} className="inline -mt-0.5" /> {p.distance_m} m away</>}</div></div>
+            <span className={cn("shrink-0 text-[11px] font-semibold uppercase rounded-full px-2 py-0.5", p.direction === "in" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}>{p.direction}</span>
+            <span className="shrink-0 num text-sm w-12 text-right">{hhmm(p.at)}</span>
+          </li>); })}
+      </ul>
+    </section>
   );
 }
