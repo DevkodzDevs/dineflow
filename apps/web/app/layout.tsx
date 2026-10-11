@@ -33,7 +33,10 @@ export const metadata: Metadata = {
   metadataBase: siteUrl,
   title: { default: "DineFlow", template: "%s · DineFlow" },
   description: "Pantry, kitchen, orders and billing — one live control room for your restaurant.",
-  manifest: "/manifest.json",
+  // the manifest and the home-screen tags are written into <head> by the layout below, not here: Next 15
+  // streams metadata into <body> for an ordinary browser on a dynamic page, and Chrome looks for the
+  // manifest — Safari for apple-touch-icon / apple-mobile-web-app-* — only in <head>. Chrome's
+  // installability check said "no-manifest" on /get itself, so no browser offered to install.
   applicationName: "DineFlow",
   // the manifest listed icon-192 and icon-512 for months while neither file existed, so an installed
   // app fell back to a screenshot of the page; these are the real mark
@@ -43,13 +46,7 @@ export const metadata: Metadata = {
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
-  appleWebApp: { capable: true, title: "DineFlow", statusBarStyle: "black-translucent" },
-  /* Next emits the standardised `mobile-web-app-capable`, which Safari only began honouring through
-     the manifest in iOS 16.4. An older iPad — and hotels keep those for years — needs the original
-     spelling, or "Add to Home Screen" opens the app with browser furniture still around it. */
-  other: { "apple-mobile-web-app-capable": "yes" },
   openGraph: { title: "DineFlow", description: "One live control room for your restaurant.", images: ["/icon-512.png"], type: "website" },
 };
 export const viewport: Viewport = { themeColor: "#0a0a0d", width: "device-width", initialScale: 1, viewportFit: "cover" };
@@ -67,7 +64,17 @@ export const viewport: Viewport = { themeColor: "#0a0a0d", width: "device-width"
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning className={`${oswald.variable} ${manrope.variable} ${jet.variable} deck`}>
-      <head>{process.env.NEXT_PUBLIC_SUPABASE_URL && <><link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" /><link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} /></>}<script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /><script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} /></head>
+      <head>
+        {/* installing: Chrome/Edge (Android, Windows, Mac) read the manifest; Safari (iPhone, iPad) reads
+            these apple-* tags. Both only from <head> — see the metadata note above. The original
+            apple-mobile-web-app-capable spelling is kept for iPads older than iOS 16.4. */}
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="DineFlow" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        {process.env.NEXT_PUBLIC_SUPABASE_URL && <><link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" /><link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} /></>}<script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /><script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} /></head>
       <body><NavProgress /><ThemeKeeper /><FirstPaint>{children}</FirstPaint><ServiceWorker /></body>
     </html>
   );

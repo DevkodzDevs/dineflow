@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Apple, BookOpen, Check, Copy, Download, ExternalLink, Lock, Monitor, Share, Smartphone, SquarePlus } from "lucide-react";
+import { Apple, BookOpen, Check, Copy, Download, ExternalLink, Lock, Monitor, MonitorDown, MoreVertical, Share, Smartphone, SquarePlus } from "lucide-react";
 import { QR } from "@/components/QR";
 import { copyText } from "@/lib/clipboard";
 
@@ -129,7 +129,7 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
         {!installed && (
           <div className={reach === "gated" ? "mt-5 opacity-60" : "mt-8"}>
             {spot === "normal"
-              ? <Primary kind={kind} links={links} canPrompt={canPrompt} onPwa={installPwa} />
+              ? <Primary kind={kind} canPrompt={canPrompt} onPwa={installPwa} />
               : <WrongWindow spot={spot} url={pageUrl} />}
           </div>
         )}
@@ -137,9 +137,14 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
         <div className="mt-8 pt-6 border-t border-white/10">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#62626e] text-center">Another device</div>
           <div className="mt-4 grid gap-2.5">
-            {(kind !== "windows" || !links.windows) && <Other icon={<Monitor size={16} />} title="Windows" note={links.windows ? "Installer · 79 MB" : "Not published yet"} href={links.windows} />}
-            {kind !== "android" && <Other icon={<Smartphone size={16} />} title="Android" note={links.android ? "APK · install straight from the file" : "Not published yet"} href={links.android} />}
-            {kind !== "ios" && <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open this page in Safari on the device" href={null} />}
+            {/* every device installs from its own browser — no store, nothing to publish. A packaged file,
+                where one is hosted, is offered beside it; it used to say "Not published yet", which read
+                as "this device cannot install". */}
+            {kind !== "windows" && <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note="Open this page in Edge or Chrome → Install" href={null} />}
+            {kind === "windows" && links.windows && <Other icon={<Monitor size={16} />} title="Windows installer" note="DineFlow-Setup.exe · 79 MB · for a PC without Edge or Chrome" href={links.windows} />}
+            {kind !== "android" && <Other icon={<Smartphone size={16} />} title="Android phone or tablet" note="Open this page in Chrome → Install" href={null} />}
+            {kind === "android" && links.android && <Other icon={<Smartphone size={16} />} title="Android APK" note="Install straight from the file" href={links.android} />}
+            {kind !== "ios" && <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open this page in Safari → Share → Add to Home Screen" href={null} />}
           </div>
         </div>
 
@@ -225,7 +230,7 @@ function WrongWindow({ spot, url }: { spot: Where; url: string }) {
   );
 }
 
-function Primary({ kind, links, canPrompt, onPwa }: { kind: Kind; links: Links; canPrompt: boolean; onPwa: () => void }) {
+function Primary({ kind, canPrompt, onPwa }: { kind: Kind; canPrompt: boolean; onPwa: () => void }) {
   /* The browser's own install comes first on every platform that offers it — Windows, Android, Mac,
      Linux. It is one click, it raises no warning, it needs no file to be downloaded or trusted, and
      it updates itself the moment the site does. A packaged installer can do none of those things, so
@@ -251,25 +256,31 @@ function Primary({ kind, links, canPrompt, onPwa }: { kind: Kind; links: Links; 
     </div>
   );
 
-  /* No install prompt here — Firefox, or Safari on a Mac. The packaged file is the fallback, and its
-     warning is named rather than discovered: an unsigned installer stops Windows in its tracks, and
-     somebody who was told to expect one click will assume the file is unsafe and abandon it. */
-  if (kind === "windows" && links.windows) return (
-    <div>
-      <Big href={links.windows} icon={<Download size={20} />} title="Download for Windows" note="DineFlow-Setup.exe · 79 MB" />
-      <p className="text-xs text-[#62626e] mt-3 leading-relaxed">
-        Windows will say <i>“Windows protected your PC”</i> because this installer is not signed yet.
-        Choose <b>More info</b>, then <b>Run anyway</b>. Installing from Chrome or Edge instead avoids that entirely.
-      </p>
+  /* Windows and Android lead with the browser's own install even where a packaged file exists: it
+     needs nothing published or downloaded and raises no "Windows protected your PC" warning. The
+     file, when one is hosted, stays offered underneath under "Another device". */
+  /* no one-tap prompt (the browser has not offered it yet, or it is not Chrome/Edge): the steps for
+     this device, from the browser's own menu — the same app, no download */
+  if (kind === "android") return (
+    <div className="feather p-5 !bg-[#1f2027] !border-white/10">
+      <p className="text-sm text-[#9a9aa6]">Install from Chrome&apos;s menu — no store, no download:</p>
+      <ol className="mt-4 space-y-3 text-[15px] text-[#f4f4f1]">
+        <Step icon={<MoreVertical size={15} />} n="1">Tap <b>⋮</b> at the top right of Chrome</Step>
+        <Step icon={<Download size={15} />} n="2">Choose <b>Install app</b> (or <b>Add to Home screen</b>)</Step>
+        <Step icon={<Check size={15} />} n="3">Tap <b>Install</b> — DineFlow joins your apps</Step>
+      </ol>
+      <p className="text-xs text-[#62626e] mt-3">In Samsung Internet: <b>☰</b> → <b>Add page to</b> → <b>Home screen</b>.</p>
     </div>
   );
 
-  if (kind === "android" && links.android) return (
-    <div>
-      <Big href={links.android} icon={<Download size={20} />} title="Download for Android" note="APK · open the file when it finishes" />
-      <p className="text-xs text-[#62626e] mt-3 leading-relaxed">
-        Android will ask permission to install from this source. Opening this page in <b>Chrome</b> installs it in one tap with nothing to allow.
-      </p>
+  if (kind === "windows") return (
+    <div className="feather p-5 !bg-[#1f2027] !border-white/10">
+      <p className="text-sm text-[#9a9aa6]">Install from Edge or Chrome — no download, no warning:</p>
+      <ol className="mt-4 space-y-3 text-[15px] text-[#f4f4f1]">
+        <Step icon={<MonitorDown size={15} />} n="1"><b>Edge:</b> <b>⋯</b> → <b>Apps</b> → <b>Install DineFlow</b></Step>
+        <Step icon={<MonitorDown size={15} />} n="2"><b>Chrome:</b> the install icon at the right of the address bar, or <b>⋮</b> → <b>Cast, save and share</b> → <b>Install page as app</b></Step>
+        <Step icon={<Check size={15} />} n="3">It opens in its own window, pinned to Start and the taskbar</Step>
+      </ol>
     </div>
   );
 
@@ -282,15 +293,6 @@ function Primary({ kind, links, canPrompt, onPwa }: { kind: Kind; links: Links; 
         <li><b className="text-[#f4f4f1]">Firefox</b> — no desktop install; on Android, <i>Add to Home screen</i>.</li>
       </ul>
     </div>
-  );
-}
-
-function Big({ href, icon, title, note }: { href: string; icon: React.ReactNode; title: string; note: string }) {
-  return (
-    <a href={href} download className="w-full feather !bg-[var(--color-tint)] !border-transparent text-[#06120a] p-5 flex items-center gap-4 transition hover:brightness-110">
-      <span className="shrink-0">{icon}</span>
-      <span><span className="block font-semibold text-[17px]">{title}</span><span className="block text-[13px] opacity-75 mt-0.5">{note}</span></span>
-    </a>
   );
 }
 

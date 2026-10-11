@@ -90,6 +90,24 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
 - **Assume the oldest phone in the restaurant.** These are the only screens in the app where that is
   the typical device rather than the edge case.
 - **Never render a tenant id, a gateway key or an internal id into these pages.**
+- **Installing needs nothing published.** Android (Chrome), Windows and Mac (Edge/Chrome) install
+  from the browser — `/get` shows the one-tap button when the browser offers it (the root layout
+  catches `beforeinstallprompt` in `<head>`), and otherwise the steps for the device in hand: Android
+  ⋮ → Install app; Windows Edge ⋯ → Apps → Install DineFlow, Chrome's address-bar icon; iPhone and
+  iPad Safari Share → Add to Home Screen. A packaged file (Windows .exe, Android .apk) is offered only
+  underneath, in "Another device", never as the headline — it used to lead on Windows, with an
+  unsigned-installer warning, and the list said "Not published yet" for devices that could install.
+- **The manifest and the apple-* tags are written into `<head>` by the root layout**, not through
+  `metadata`: Next 15 streams metadata into `<body>` for an ordinary browser on a dynamic page, and
+  Chrome (manifest) and Safari (apple-touch-icon, apple-mobile-web-app-*) only read `<head>`. Chrome's
+  installability check said `no-manifest` on `/get` itself until this moved. The manifest has an
+  `id`, `standalone`, a maskable icon and four shortcuts (New order, Kitchen, Front desk, Billing).
+  Probe: `pwa.mjs`.
+- **The service worker's install and activate never fail on storage** (`public/sw.js`). When the
+  browser could not open its cache ("Failed to execute 'open' on 'CacheStorage'" — low space, private
+  mode, a damaged profile) the precache rejected and the whole worker was discarded: no offline copy,
+  no notification taps. A failed precache now only means nothing is cached yet. `pwa.mjs` asserts the
+  worker reaches `active`.
 - **`/get` and `/offline` are part of the PWA.** Changing the service worker
   (`components/ServiceWorker.tsx`) can strand installed users on a cached build.
 

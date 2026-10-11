@@ -8,6 +8,7 @@ import { cn, Sheet } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
 import { barFor } from "@/lib/bar";
+import { InstallEntry } from "./InstallEntry";
 
 const ITEMS = [
   { key: "dashboard", href: "/dashboard", label: "Control room", Icon: LayoutDashboard },
@@ -141,6 +142,7 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
       {/* the foot: who you are, and the way out. Settings keeps its own row up in Manage,
           so the second button for it down here was only costing a row of height. */}
       <div className="mt-auto pt-3">
+        <InstallEntry variant="rail" />
         {isAdmin && <Link href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
         {/* p-[7px] plus the 1px border puts the card at exactly 52px across — the width the rail
             leaves once it collapses, so the avatar alone still sits square inside it */}
@@ -282,6 +284,7 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
                 ? <Link href={accountHref} className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors">{who}<span className="text-xs text-[var(--color-label-2)] shrink-0">Settings</span></Link>
                 : <div className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)]">{who}</div>;
             })()}
+            <InstallEntry variant="sheet" />
             {isAdmin && <Link href="/admin" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><ShieldCheck size={17} /> Master control</Link>}
             <form action="/logout" method="post">
               <button className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] text-[15px] font-semibold hover:brightness-110 transition"><LogOut size={17} /> Sign out</button>

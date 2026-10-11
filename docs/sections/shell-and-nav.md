@@ -132,6 +132,9 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
 - **`ALWAYS_ON` bypasses the master's enabled set.** Adding to it is a product decision.
 - **`.ink-panel` deliberately sets no `position`** — an unlayered rule here would beat Tailwind's
   `.sticky` and unstick the sidebar.
+- **"Install the app" sits in the sidebar's foot and the phone's More sheet** (`InstallEntry`): it runs
+  the browser's held install prompt when there is one and otherwise opens `/get`; it disappears in the
+  installed app (`display-mode: standalone`). See [guest-facing.md](guest-facing.md).
 - **The rail range lives in one media query** (`768px`–`1279.98px`) and the hamburger is drawn by
   CSS (`.rail-only`), not by JavaScript — move the breakpoint there, and only there.
 - **The spacer must stay the aside's next sibling** (`aside[data-open] + .nav-spacer`). Put anything

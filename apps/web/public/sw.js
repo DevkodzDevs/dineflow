@@ -9,8 +9,17 @@
 const V = "dineflow-v15";   // renamed so the caches written by v13, which could hold failures, are dropped
 const SHELL = ["/", "/icon-192.png", "/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/scan", "/tomorrow", "/inventory", "/menu", "/offline"];
 
-self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting())); });
-self.addEventListener("activate", (e) => { e.waitUntil((async () => { const keys = await caches.keys(); await Promise.all(keys.filter((k) => k !== V).map((k) => caches.delete(k))); if (self.registration.navigationPreload) await self.registration.navigationPreload.enable(); await self.clients.claim(); })()); });
+/* Install and activate never fail on storage. When the browser cannot open its cache (low space,
+   private mode, a damaged profile — Chrome reports "Failed to execute 'open' on 'CacheStorage'") the
+   precache rejected, waitUntil rejected, and the whole worker was discarded: no offline copy, no
+   notification taps, nothing. Now a failed precache only means nothing is cached yet; the worker
+   still installs, and pages fill the cache as they are visited. */
+self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting())); });
+self.addEventListener("activate", (e) => { e.waitUntil((async () => {
+  try { const keys = await caches.keys(); await Promise.all(keys.filter((k) => k !== V).map((k) => caches.delete(k))); } catch { /* storage unavailable */ }
+  try { if (self.registration.navigationPreload) await self.registration.navigationPreload.enable(); } catch { /* not supported */ }
+  await self.clients.claim();
+})()); });
 
 /* Only a good response is worth keeping. The previous version stored whatever came back, so a 404
    for a build file that a deploy had just replaced was cached permanently, and that URL then failed
@@ -28,20 +37,20 @@ self.addEventListener("fetch", (e) => {
 
   // build output is content-hashed: cache first, forever
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/fonts/")) {
-    e.respondWith(caches.match(e.request).then((m) => m || fetch(e.request).then((r) => put(e.request, r)).catch(() => new Response("", { status: 504 }))));
+    e.respondWith(caches.match(e.request).catch(() => undefined).then((m) => m || fetch(e.request).then((r) => put(e.request, r)).catch(() => new Response("", { status: 504 }))));
     return;
   }
   // pages: try the network, fall back to what we had, then to the offline page
   if (e.request.mode === "navigate") {
     e.respondWith((async () => {
       try { const pre = await e.preloadResponse; if (pre) return put(e.request, pre); const r = await fetch(e.request); return put(e.request, r); }
-      catch { return (await caches.match(e.request)) || (await caches.match("/offline")) || new Response("Offline", { status: 503 }); }
+      catch { return (await caches.match(e.request).catch(() => undefined)) || (await caches.match("/offline").catch(() => undefined)) || new Response("Offline", { status: 503 }); }
     })());
     return;
   }
   // everything else: show the copy now, refresh it behind the scenes
   e.respondWith((async () => {
-    const cached = await caches.match(e.request);
+    const cached = await caches.match(e.request).catch(() => undefined);
     const network = fetch(e.request).then((r) => put(e.request, r)).catch(() => null);
     return cached || (await network) || new Response("", { status: 504 });
   })());
