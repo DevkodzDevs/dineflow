@@ -19,11 +19,12 @@ type Done = { id: string; kind: string; done_at: string; rooms: { number: string
    the others are a hairline outline with the word in its meaning's colour (Fail red, Pickup blue,
    Dirty grey), and take their colour as a faint wash on hover. 30px to the eye; the finger gets 44
    from an invisible ::before (7px above and below, 2px each side), the way .switch does it. */
-const SEG = {
-  go: "bg-[var(--color-green-2)] text-[var(--color-tint)] border-transparent hover:brightness-110",
-  red: "border-[var(--color-separator)] text-[var(--color-red)] hover:bg-[var(--color-red-2)]",
-  blue: "border-[var(--color-separator)] text-[var(--color-blue)] hover:bg-[var(--color-blue-2)]",
-  quiet: "border-[var(--color-separator)] text-[var(--color-label-2)] hover:bg-[var(--color-fill)]",
+/* the footer strip's sections: the main move on a soft green, the rest in their colour on the strip */
+const FOOT = {
+  go: "!bg-[var(--color-green-2)] text-[var(--color-tint)] hover:brightness-110",
+  red: "!bg-transparent text-[var(--color-red)] hover:!bg-[var(--color-red-2)]",
+  blue: "!bg-transparent text-[var(--color-blue)] hover:!bg-[var(--color-blue-2)]",
+  quiet: "!bg-transparent text-[var(--color-label-2)] hover:!bg-[var(--color-fill)] hover:text-[var(--color-label)]",
 } as const;
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** "2026-09-17" → "17 Sep" (en-IN would say "Sept") */
@@ -183,7 +184,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
               const fix = out ? tasks.find((t) => t.kind === "maintenance" && t.status !== "done" && t.rooms?.number === r.number) : undefined;
               /* the wide card's actions: every move, as small pills; a room out of order has one — back in
                  service (where its repair stands is on the second line) */
-              type Seg = { key: string; label: string; icon: ReactNode; tone: keyof typeof SEG; run: () => void };
+              type Seg = { key: string; label: string; icon: ReactNode; tone: keyof typeof FOOT; run: () => void };
               const segs: Seg[] = out
                 ? [{ key: "service", label: "Back in service", icon: <Check size={14} />, tone: "quiet", run: () => act(() => setRoomStatus(r.id, "available")) }]
                 : tiles.map((t) => ({ key: t.key, label: t.label, icon: t.icon, tone: t.tone, run: t.run }));
@@ -193,7 +194,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                 <Fragment key={r.id}>
                 {/* the wide card (sm and up), three quiet rows: the number and the condition as its pill; who
                     is in the room and the one thing to know about it; the actions as small pills */}
-                <div data-room={r.number} className="@container hidden sm:flex feather relative p-3 flex-col gap-2.5 min-w-0">
+                <div data-room={r.number} className="@container hidden sm:flex feather relative overflow-hidden p-3 flex-col gap-2.5 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-display text-[22px] leading-none tracking-tight" data-num>{r.number}</span>
                     <span className={cn("ml-auto shrink-0 inline-flex items-center gap-1.5 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold", out ? "bg-chili-2 text-chili" : c.chip)} data-cond>
@@ -207,12 +208,15 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     <span className="text-[var(--color-label-3)] shrink-0" aria-hidden>·</span>
                     <span className={cn("shrink-0", dueOut || out ? "text-[var(--color-red)] font-semibold" : "num text-[var(--color-label-2)]")}>{detail}</span>
                   </div>
+                  {/* the actions as the card's footer strip — a hairline across, a tinted band from edge to edge,
+                      one equal section per action split by hairlines (the Menu card's footer, which the owner
+                      pointed at); the main move sits on a soft green */}
                   {segs.length > 0 && (
-                    <div className="mt-auto flex items-center gap-1.5 @max-[15rem]:gap-[3px] min-w-0" data-dock>
+                    <div className="-mx-3 -mb-3 mt-auto grid border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)] divide-x divide-[var(--color-separator)]" style={{ gridTemplateColumns: `repeat(${segs.length}, minmax(0, 1fr))` }} data-dock>
                       {segs.map((t) => (
                         <button key={t.key} type="button" disabled={pending} onClick={t.run} aria-label={`${t.label} · room ${r.number}`}
-                          className={cn("relative shrink-0 inline-flex items-center justify-center gap-1 h-[30px] !min-h-0 min-w-10 px-2.5 @max-[15rem]:px-1.5 rounded-full border text-[12px] @max-[15rem]:text-[11px] font-semibold whitespace-nowrap transition disabled:opacity-50 active:scale-[.97] [&_svg]:w-[13px] [&_svg]:h-[13px] [&_svg]:shrink-0 before:absolute before:-inset-y-[7px] before:-inset-x-[2px] before:content-['']", SEG[t.tone])}>
-                          <span className="hidden @[15rem]:contents">{t.icon}</span>{t.label}
+                          className={cn("w-full min-w-0 inline-flex items-center justify-center gap-1.5 h-11 max-xl:h-9 !min-h-0 !rounded-none px-1.5 text-[12.5px] @max-[15rem]:text-[11.5px] font-semibold whitespace-nowrap transition-colors disabled:opacity-50 [&_svg]:w-[15px] [&_svg]:h-[15px] [&_svg]:shrink-0", FOOT[t.tone])}>
+                          <span className="hidden @[15rem]:contents">{t.icon}</span><span className="truncate">{t.label}</span>
                         </button>
                       ))}
                     </div>

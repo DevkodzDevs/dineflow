@@ -5,7 +5,7 @@ import { Building2, Palmtree, UtensilsCrossed, KeyRound, Copy, Pause, Play, Cloc
 import { Button, Sheet, Field, StatTile, cn, Pill, Waiting } from "@/components/ui";
 import { formatINR, PROPERTY_LABEL, type PropertyType } from "@dineflow/shared";
 import { daysLeft } from "@/lib/format";
-import { issueKey, setMembership, actAs, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type PropertyDetail } from "./actions";
+import { issueKey, setMembership, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type PropertyDetail } from "./actions";
 import { Trash2 } from "lucide-react";
 import { PropertyDetailView } from "./PropertyDetail";
 import { RowActions } from "./RowActions";
@@ -40,10 +40,10 @@ const shut = (e: { currentTarget: HTMLElement }) => { const d = e.currentTarget.
 
 const Icon = ({ t }: { t: PropertyType }) => (t === "hotel" ? <Building2 size={16} /> : t === "resort" ? <Palmtree size={16} /> : <UtensilsCrossed size={16} />);
 
-export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [] }: { tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; codes?: { id: string; code: string | null }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
+export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [], openError = null }: { openError?: string | null; tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; codes?: { id: string; code: string | null }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
   const codeOf = (id: string) => codes.find((c) => c.id === id)?.code ?? null;
   const [q, setQ] = useState(""); const [filter, setFilter] = useState("all");
-  const [sel, setSel] = useState<T | null>(null); const [issued, setIssued] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
+  const [sel, setSel] = useState<T | null>(null); const [issued, setIssued] = useState<string | null>(null); const [err, setErr] = useState<string | null>(openError);  // /admin/open sends a refusal back as ?error=
   const [pending, start] = useTransition();
   const [sheet, setSheetState] = useState<"tenant" | "key" | "password" | "new" | "estate" | "access" | "delete" | "detail" | null>(null);
   const router = useRouter();
@@ -89,6 +89,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
 
   return (
     <div className="space-y-6">
+      {openError && <p role="alert" className="rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] text-sm font-semibold px-4 py-3" data-open-error>Could not open that property: {openError}</p>}
       <div className="aurora"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Platform</div><h1 className="text-4xl">{tenants.length} properties <em>under control</em></h1></div>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatTile label="Active memberships" value={String(tenants.filter((t) => t.membership === "active").length)} tone="good" />
@@ -160,7 +161,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
           actions={(r) => { const t = r as unknown as T; return (
             <RowActions
               name={t.name} code={codeOf(t.id)} pending={pending}
-              onOpen={() => { const tab = window.open("", "_blank"); start(async () => { const x = await actAs(t.id); if ("error" in x) { tab?.close(); setErr(x.error!); } else if (tab) tab.location.href = "/dashboard"; else router.push("/dashboard"); }); }}
+              openId={t.id}
               onDetails={() => openDetail(t)}
               onAccess={() => { setSel(t); setMods(access.find((x) => x.id === t.id)?.enabled_modules ?? null); setErr(null); setSheet("access"); }}
               onManage={() => { setSel(t); setIssued(null); setErr(null); setSheet("tenant"); }}

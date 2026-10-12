@@ -94,7 +94,7 @@ export function Assist() {
     <>
       <motion.button onClick={() => { tap(); setOpen(true); }} aria-label={`Open Assist (⌘J)${urgent.length ? ` · ${urgent.length} things need you` : ""}`} title={urgent[0]?.text ?? "Assist · ⌘J"}
         initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 20, delay: .4 }} whileTap={{ scale: .92 }}
-        className={cn("fixed z-40 right-4 md:right-6 bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] md:bottom-6 h-14 w-14 rounded-full grid place-items-center bg-[#0a0a0d]", state === "alert" ? "shadow-[0_0_0_1px_rgb(255_255_255/.08),0_16px_40px_-12px_rgb(0_0_0/.9),0_0_0_6px_rgb(255_69_58/.14)]" : "shadow-[0_0_0_1px_rgb(255_255_255/.08),0_16px_40px_-12px_rgb(0_0_0/.9),0_0_0_6px_rgb(76_217_100/.08)]", open && "opacity-0 pointer-events-none")}>
+        data-assist className={cn("fixed z-40 right-4 md:right-6 bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] md:bottom-6 h-14 w-14 rounded-full grid place-items-center bg-[#0a0a0d]", state === "alert" ? "shadow-[0_0_0_1px_rgb(255_255_255/.08),0_16px_40px_-12px_rgb(0_0_0/.9),0_0_0_6px_rgb(255_69_58/.14)]" : "shadow-[0_0_0_1px_rgb(255_255_255/.08),0_16px_40px_-12px_rgb(0_0_0/.9),0_0_0_6px_rgb(76_217_100/.08)]", open && "opacity-0 pointer-events-none")}>
         <AssistMark size={32} state={state} />
         {urgent.length > 0 && unseen && <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 rounded-full bg-[#ff453a] text-white text-[11px] font-display grid place-items-center ring-2 ring-[#0a0a0d]">{urgent.length}</span>}
       </motion.button>

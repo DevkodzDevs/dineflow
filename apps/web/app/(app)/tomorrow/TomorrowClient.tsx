@@ -3,7 +3,7 @@ import { useMemo, useState, useTransition, type CSSProperties } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Sun, ChefHat, ShoppingBasket, Printer, Share2, Check, TrendingUp, Info, ChevronLeft, ChevronRight, Sparkles, Target } from "lucide-react";
-import { Button, Card, StatTile, Segmented, Empty } from "@/components/ui";
+import { Button, Card, StatTile, Segmented, Empty, cn } from "@/components/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { formatINR } from "@/lib/format";
 import { usePrinters } from "@/lib/print/usePrinter";
@@ -13,7 +13,7 @@ import { saveForecast, buyList, saveChefNotes } from "./actions";
 import { copyText, shareText } from "@/lib/clipboard";
 
 type Dish = { id: string; name: string; qty: number };
-type Buy = { id: string; name: string; unit: string; need: number; have: number; buy: number; cost: number };
+type Buy = { id: string; name: string; unit: string; need: number; have: number; buy: number; cost: number; why?: "tomorrow" | "reorder"; reorder?: number };
 type F = { area_factor?: number; neighbourhood?: { available: boolean; peers?: number; index?: number; label?: string; detail?: string }; for_date: string; weekday: string; predicted_covers: number; low: number; high: number; confidence: number; basis: string; samples: number; in_house: number; arrivals: number; departures: number; rooms: number; drivers: { label: string; detail: string }[]; dishes: Dish[]; purchase: Buy[]; est_purchase_cost: number; buffer_pct: number };
 type Score = { days: number; accuracy: number | null; within_range: number | null; recent: { date: string; predicted: number; actual: number }[] };
 /* the owner's words for the day, each a multiple of what the numbers expect; "custom" is the
@@ -32,9 +32,17 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
   // Everything scales when the owner overrides the cover count — they know about the wedding down the road.
   const scale = forecast.predicted_covers > 0 ? covers / forecast.predicted_covers : 1;
   const dishes = useMemo(() => forecast.dishes.map((d) => ({ ...d, qty: Math.max(1, Math.round(d.qty * scale)) })), [forecast.dishes, scale]);
+  /* The list is rescaled here as the owner moves the covers, by the same rule the database used
+     (forecast_day, 0092): what tomorrow needs beyond the shelf, and where the shelf after tomorrow
+     would sit at or under the reorder level, enough to reach twice the level. Computing only
+     need − have here dropped every reorder line — need 0, shelf 200, nothing "to buy". */
   const purchase = useMemo(() => forecast.purchase.map((p) => {
-    const need = Math.round(p.need * scale * 100) / 100; const buy = Math.max(0, Math.round((need - p.have) * 100) / 100);
-    return { ...p, need, buy, cost: Math.round(buy * (p.buy > 0 ? p.cost / p.buy : 0) * 100) / 100 };
+    const need = Math.round(p.need * scale * 100) / 100;
+    const level = Number(p.reorder ?? 0);
+    const low = level > 0 && p.have - need <= level;
+    const buy = Math.max(0, Math.round(Math.max(need - p.have, low ? need + level * 2 - p.have : 0) * 100) / 100);
+    const why = need > p.have ? "tomorrow" as const : "reorder" as const;
+    return { ...p, need, buy, why, cost: Math.round(buy * (p.buy > 0 ? p.cost / p.buy : 0) * 100) / 100 };
   }).filter((p) => p.buy > 0), [forecast.purchase, scale]);
   const chosen = purchase.filter((p) => picked[p.id]);
   const cost = chosen.reduce((t, p) => t + p.cost, 0);
@@ -182,15 +190,21 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
         {/* ── market list ── */}
         <Card>
           <div className="flex items-center gap-2 mb-1"><ShoppingBasket size={17} /><h2 className="text-2xl">Buy in the morning</h2></div>
-          <p className="text-xs text-steel mb-4">What the pantry is short of after tomorrow&apos;s cooking. Tick what you actually bought and it goes straight into stock.</p>
+          <p className="text-xs text-steel mb-4">What the pantry is short of after tomorrow&apos;s cooking, and anything that has slipped to its reorder level — topped up to twice the level. Tick what you actually bought and it goes straight into stock.</p>
           {purchase.length === 0 ? (
             <div className="feather p-6 text-center bg-mint-2 border-mint"><Check size={22} className="mx-auto text-ink" /><p className="font-semibold mt-2">Pantry covers tomorrow</p><p className="text-xs text-steel mt-1">Nothing to buy on today&apos;s numbers.</p></div>
           ) : (<>
             <div className="divide-y divide-line">
               {purchase.map((p, i) => (
                 <motion.label key={p.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }} className="flex items-center gap-3 py-2.5 cursor-pointer">
-                  <input type="checkbox" checked={!!picked[p.id]} onChange={(e) => setPicked({ ...picked, [p.id]: e.target.checked })} className="!w-auto no-print" />
-                  <div className="flex-1 min-w-0"><div className="font-medium truncate">{p.name}</div><div className="text-xs text-steel num">need {p.need} · have {p.have} {p.unit}</div></div>
+         <input type="checkbox" checked={!!picked[p.id]} onChange={(e) => setPicked({ ...picked, [p.id]: e.target.checked })} className="no-print" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate flex items-center gap-2 min-w-0"><span className="truncate">{p.name}</span>
+                      {/* why it is here: tomorrow's cooking needs more than the shelf holds, or the shelf has slipped to its reorder level */}
+                      {p.why && <span className={cn("shrink-0 inline-flex items-center h-5 px-1.5 rounded-full text-[10.5px] font-semibold", p.why === "reorder" ? "bg-[var(--color-orange)]/15 text-[var(--color-orange)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")} data-why={p.why}>{p.why === "reorder" ? "below reorder level" : "for tomorrow"}</span>}
+                    </div>
+                    <div className="text-xs text-steel num">need {p.need} · have {p.have} {p.unit}{p.why === "reorder" && p.reorder ? ` · reorder at ${p.reorder}` : ""}</div>
+                  </div>
                   <div className="text-right"><div className="num font-semibold">{p.buy} {p.unit}</div><div className="text-xs text-steel num">{formatINR(p.cost)}</div></div>
                 </motion.label>
               ))}

@@ -184,6 +184,12 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   `.range` makes it 44px tall, fills the track in the tint to `--pct` (the screen sets it from
   min/max/value) and turns off the input hover wash and focus ring that would otherwise paint the
   box. The Notifier's volume slider still uses the bare base control.
+- **A checkbox is the global 24px box and a radio the global 22px ring — never sized on the element.**
+  Both are `appearance: none` and drawn in `globals.css` (`input[type="checkbox"]`,
+  `input[type="radio"]`, the mark as `::after`). A utility on the element breaks them: `!w-auto`
+  collapsed the Tomorrow buy list's box to 8px wide — a green capsule on a phone — and `w-4 h-4
+  accent-saffron` made a 16px native box elsewhere. Three recipes were in use across 24 inputs
+  (2026-10-12); all stripped. Probe `cb.mjs` (20 controls on 12 pages × 2 widths).
 - **`.toolbar-end` never shrinks, so count its buttons.** It is `flex: 0 0 auto` above 720px; four
   or more actions are wider than the content column at 834 and the primary ran off the page on Menu.
   A `.toolbar:has(> .toolbar-end > .btn:nth-child(4))` rule stacks such a toolbar from 721 to

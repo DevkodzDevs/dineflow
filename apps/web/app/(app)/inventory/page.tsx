@@ -23,7 +23,7 @@ export default async function InventoryPage() {
   ]);
   return (
     <>
-      <PageHeader eyebrow="What's on the shelves" title="Pantry" actions={<Link href="/inventory/leaks" className="btn btn-gray"><Droplets size={16} /> Leak finder</Link>} />
+      <PageHeader eyebrow="What's on the shelves" title="Pantry" actionsInline actions={<Link href="/inventory/leaks" className="btn btn-gray"><Droplets size={16} /> Leak finder</Link>} />
       <InventoryClient ingredients={ingredients ?? []} ledger={ledger ?? []} purchases={purchases ?? []} suppliers={suppliers ?? []} orders={(orders ?? []) as never} wastage={(wastage ?? null) as never} restaurant={session.restaurant.name} />
     </>
   );

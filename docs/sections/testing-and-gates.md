@@ -188,6 +188,66 @@ Then `pm.mjs` (7): Pulse at 1920 / 1440 / 1194 / 834 / 412 — three tiles in on
 and ≥8px apart, *Frees next* under them, the two cards side by side with ≤60px under the quote form
 (21px; it was a 600px tile column beside a half-empty card), no sideways scroll — and Menu opened
 in a fresh session finds photos by itself (0 → 22 of 28 for manoooo; **kept**, that is the fix),
-the other dishes drawing an outline glyph, none the old dashed box. The `small` count flags `role=switch` (31px with a
+the other dishes drawing an outline glyph, none the old dashed box.
+Then `ph.mjs` (12), from the owner's iPhone screenshots: at 375 / 412 / 834 — Audit's four
+periods on one line at one height, none wrapped; Cash reasons in an even 2-column grid, 44px, none
+cut, a tap ticks one and leaves the free-text box empty; the till's cart bar absent on an empty
+ticket and, with a dish, ≥6px above the tab bar (12px) with the assistant button ≥6px above it.
+`more.mjs` (10): at 375×667 and 412×915, More opened from /audit, /controls, /settings and /reports
+shows that section in view (within 15px of the sheet's middle, or as far as the list can scroll); a
+section high in the list (Kitchen) is in view too — on a short phone that means a 257px scroll, not
+the top, which the first version of the probe wrongly expected.
+**Speed and scale — 2026-10-12.** `perf.mjs` times every in-app route twice (server TTFB and ready)
+on the production build; `dq.mjs` times each Control room request alone. Before: Control room ~490 ms
+(one request, the last six paid bills, ~450 ms — RLS called `auth_restaurant_id()` per row). After
+0089–0091: Control room ~200 ms, every other screen 80–230 ms. `MSYS_NO_PATHCONV=1` is needed to pass
+`ROUTES=/a,/b` from Git Bash, or it rewrites them into Windows paths. `mc.mjs` (6) — Master control
+round trips; poll with a 1.5 s timeout per question, as a page being replaced never answers.
+**Pantry from the kitchen — 2026-10-12.** `dry92.cjs` (14): as manoooo's owner in a rolled-back
+transaction, a dish ×2 sent to the kitchen draws exactly −2× its recipe; start → ready → served draws
+nothing more; cancelled while pending (through `cancel_line`) is credited back to net 0; cancelled after
+Start cooking keeps its consumption; 'cook' mode draws only on Start and once; a property switched
+cook → ticket mid-service still draws its pending lines; a line sent then billed draws once; a made-up
+mode is refused (23514, inside a savepoint — a refused statement poisons the transaction otherwise);
+Tomorrow lists an ingredient pushed under its reorder level with `why = reorder` and
+`buy = need + 2×level − shelf`; every line says why; the migration is idempotent. `stk.mjs` (10): Menu →
+Recipes shows "25 of 28 dishes move the pantry" with 28 rows (25 mapped, 2 the library knows, 1 by
+hand); a mapped dish prints its plate in cook's units; one press sets the 2 up (27 in the database, 10
+ingredients added — all put back); no sideways scroll at 412; Settings → Kitchen shows the switch with
+the saved value, choosing *Start cooking* writes `stock_draw = cook`; Tomorrow tags "Tender coconut"
+*below reorder level · reorder at 405.36 · 608.04 pcs* at 1440 and fits 412; the Pantry strip names it
+and says the 10 level-less ones are not on the list; *Draft a purchase order* opens the Orders tab.
+Restores the reorder level, the mode, the 41 recipe lines and removes the 10 added ingredients.
+`apps/web/lib/recipes.test.ts` (7) is in `pnpm test` — 66 now.
+`cb.mjs`: every checkbox and radio on 12 screens at 412 (touch) and 1440 — 24×24 and 22×22, the mark
+drawn when checked (`::after` width > 0). It pushes one ingredient under its reorder level so
+Tomorrow has a row, and puts it back. Before the fix: Tomorrow's box 8×24, Booking page 8×24,
+Settings' radios 13×13 native.
+
+## The self-test console — Master control → Testing (2026-10-12)
+
+The app now tests itself from inside: `/admin/testing` runs seven suites and keeps every run in
+`selftest_runs` (0093/0094). What each checks is in [admin-and-membership.md](admin-and-membership.md);
+the budgets are the trade's — server answer under 600 ms good / over 1.5 s failing (Lighthouse's lab
+TTFB figure), the header set a scanner such as securityheaders.com grades, anonymous reads of every
+tenant table must be empty, signed-out visits must be sent to sign in. It is a monitor, not a
+replacement for the gates and the probes here: it runs read-only checks against the live system, and
+the browser suite reads what a frame shows (crash card, sideways scroll, missing image, unnamed
+visible button, a link that errors) — it does not press buttons.
+
+- `dry93.cjs` (10) — selftest_db's report; selftest_functions' 19 calls for manoooo with no failure
+  and the master's acting context put back (none → none, and a set context → the same property); an
+  owner refused by both (`42501 master only`; roll back to a savepoint before `reset role`, or the
+  reset's own "transaction is aborted" error hides the refusal); the results table visible to the
+  master and empty for an owner; anon cannot execute; idempotent.
+- `tst.mjs` (10) — the Testing tab; the page with 7 suites, Run all and 7 Run buttons; one suite alone;
+  Run all outside a property: every suite answers in 12–16 s, "89 passed · 5 warnings · 0 failed · 2
+  skipped" (the warnings: 14 orders open over 24 h in the sample data, three server keys unset
+  locally, legal facts). A closed menu's items keep their boxes while `visibility: hidden`, so the
+  browser suite judges a button by `checkVisibility()` and names it by `textContent` — `innerText`
+  is empty for a hidden element and three named items read as unnamed until that was fixed;
+  8 runs kept; inside manoooo, Screens & buttons loads 14 property screens at 412 and 1280 (29 checks,
+  none failing) and Speed times them (17 checks); the phone layout. It removes the runs it wrote.
+  Wait on a single suite's own Run button, not Run all — the first version read the previous run. The `small` count flags `role=switch` (31px with a
 7px `::before`) and the housekeeping pills (30px with a 44px hit area) — not real; `past` on
 `/kitchen/board` is its own fixed overlay.

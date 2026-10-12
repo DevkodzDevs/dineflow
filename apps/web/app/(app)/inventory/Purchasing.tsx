@@ -102,7 +102,7 @@ function PoForm({ po, suppliers, ingredients, onDone }: { po: Po | null; supplie
               <input type="number" step="0.001" min="0" className="num" value={r.qty || ""} onChange={(e) => set(i, { qty: Number(e.target.value) })} placeholder={r.packs ? "packs" : ing?.unit} />
               <input type="number" step="0.01" min="0" className="num" value={r.unit_cost || ""} onChange={(e) => set(i, { unit_cost: Number(e.target.value) })} placeholder={r.packs ? "per pack" : "per unit"} />
               <label className={cn("flex items-center justify-center gap-1 text-[11px]", pack > 0 ? "text-steel" : "text-line")} title={pack > 0 ? `One pack is ${pack} ${ing.unit}` : "Set a pack size on the ingredient to buy in packs"}>
-                <input type="checkbox" className="accent-saffron" disabled={pack <= 0} checked={r.packs} onChange={(e) => set(i, { packs: e.target.checked, unit_cost: e.target.checked ? r.unit_cost * pack : pack > 0 ? r.unit_cost / pack : r.unit_cost })} />{pack > 0 ? `×${pack}` : "—"}
+                <input type="checkbox" disabled={pack <= 0} checked={r.packs} onChange={(e) => set(i, { packs: e.target.checked, unit_cost: e.target.checked ? r.unit_cost * pack : pack > 0 ? r.unit_cost / pack : r.unit_cost })} />{pack > 0 ? `×${pack}` : "—"}
               </label>
               <button onClick={() => setRows(rows.filter((_, j) => j !== i))} className="text-steel hover:text-chili" aria-label="Remove"><Trash2 size={15} /></button>
             </div>

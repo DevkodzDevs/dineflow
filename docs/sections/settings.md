@@ -46,6 +46,13 @@ never be reachable on a real one.
 
 ## Before you edit
 
+- **Kitchen → "Pantry stock leaves when…"** (`[data-stock-draw]`, two radio cards, saved by
+  `saveRestaurant` as `stock_draw` — `ticket` unless *Start cooking* is chosen). It decides whether a
+  dish draws its recipe when the order reaches the kitchen or when the kitchen presses Start (0092).
+  Native radios, `defaultChecked` from the session's restaurant row (session_bundle sends the whole
+  row, so no new plumbing). See [inventory.md](inventory.md).
+
+
 - **Sections share one frame** (`Section` → `.settings-section`). Two in the same card get a rule
   and 28px between them — "Save payment settings" used to sit flush on the "Loyalty points"
   heading. The icon is top-aligned with the title, not centred on a five-line description.

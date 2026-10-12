@@ -16,7 +16,7 @@ export function BookingPageClient({ base, r }: { base: string; r: { booking_slug
         <Field label="Tagline"><input name="tagline" defaultValue={r.tagline ?? ""} placeholder="Sea-facing rooms, five minutes from the sunrise point" /></Field>
         <Field label="Policies shown to guests"><textarea name="policies" rows={3} defaultValue={r.policies ?? ""} placeholder="Free cancellation up to 48 hours. ID required at check-in." /></Field>
         <Field label="Advance to collect %" hint="Shown on the page; payment gateway comes next version"><input name="advance_pct" type="number" className="num" defaultValue={r.advance_pct} /></Field>
-        <label className="flex items-center gap-2 text-sm normal-case"><input type="checkbox" name="booking_engine" defaultChecked={r.booking_engine} className="!w-auto" /> Accept direct bookings</label>
+        <label className="flex items-center gap-2 text-sm normal-case"><input type="checkbox" name="booking_engine" defaultChecked={r.booking_engine} /> Accept direct bookings</label>
         {msg && <p className="text-sm text-mint">{msg}</p>}
         <Button disabled={pending}>Save</Button>
       </form></Card>

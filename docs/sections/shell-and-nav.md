@@ -102,6 +102,15 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
 
 - **`TopBar`** — search, theme switch, the bell (count comes from `session.lateKots`, already in
   the session bundle — no second query), the avatar.
+  **Pinned, it runs edge to edge** (2026-10-12): `sticky top-[env(safe-area-inset-top)]`; a 1px marker
+  above it and an IntersectionObserver set `data-stuck` once it reaches the top, and
+  `.topbar[data-stuck]` (globals.css) pulls it out over the main column's padding to the sidebar's
+  edge and over the frame's 12px gutter to the screen's right (`--bx` / `--br` per breakpoint: 16/16,
+  32/44 from 768, 48/60 from 1536), grows its own padding by the same so nothing inside moves,
+  squares it, slims it (2px above and below instead of 8 — the 12px goes to its bottom margin so the
+  page does not jump) and puts a hairline under it; a `::before` band fills the iPhone status bar in the
+  installed app. At rest it is the floating card. The till's sticky rows measure it
+  (`bar.offsetHeight + 12`) — they assumed `top-4` before. Probe: `tbar.mjs` (5 widths + the till, 11).
 - **`MasterBanner`** — the amber "viewing X as its owner" strip when a master is acting as a
   property. Everything done under it is real and logged.
 - **`PageHeader`** — the title block each screen passes its own copy into.
@@ -118,6 +127,19 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
 
 ## Before you edit
 
+- **`app/(app)/error.tsx` keeps the shell up when one screen fails** (`ErrorRecovery inline`): the
+  sidebar, tab bar and top bar stay, with *Try again*. Before, only the root boundary caught it and
+  one failing screen replaced the whole app with a bare card. (Still **no** `loading.tsx` — see
+  above.)
+
+
+- **More opens on the section you are in** (`[data-more]`, `sheetRef` in `BottomNav`): 80 ms after
+  it opens, the sheet's own `.sheet-body` scroller brings the `aria-current="page"` tile to its
+  middle (smoothly; not `scrollIntoView`, which also nudges the page behind). If the tile is already
+  in view nothing moves. It used to open at the top every time, so after choosing Audit trail or
+  Settings and coming back, the current section was below the fold (2026-10-12). Probe `more.mjs`.
+
+
 - **The page is as wide as `--page-max` (1760px, `globals.css`)**, set on the inner `div` of `<main>`
   in `app/(app)/layout.tsx`. It was 1280: on a 1920 screen that left ~190px of empty ground either
   side of every page. At 1920 the content is now 1556px (main 1652 less the 48px `2xl:px-12`); at
@@ -132,9 +154,30 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
 - **`ALWAYS_ON` bypasses the master's enabled set.** Adding to it is a product decision.
 - **`.ink-panel` deliberately sets no `position`** — an unlayered rule here would beat Tailwind's
   `.sticky` and unstick the sidebar.
-- **"Install the app" sits in the sidebar's foot and the phone's More sheet** (`InstallEntry`): it runs
-  the browser's held install prompt when there is one and otherwise opens `/get`; it disappears in the
-  installed app (`display-mode: standalone`). See [guest-facing.md](guest-facing.md).
+- **Installing — `InstallSheet.tsx`.** Apple gives a page no install button, so on iPhone, iPad and
+  Safari on a Mac the app is added from the browser's own menu; the sheet shows the exact taps for
+  the device and browser (`detectDevice()`: an iPad asks for the desktop site and says "Macintosh" —
+  its touch points give it away). iPhone: Share in the address bar (or More ⋯ → Share) → Add to Home
+  Screen → keep *Open as Web App* on → Add; Chrome/Edge on iOS the same; iPad: Share at the top
+  right; Mac Safari: File → Add to Dock (Sonoma+); inside WhatsApp/Instagram: "this window can't
+  install" + Copy the address. Where Chrome/Edge have offered the one-tap prompt
+  (`window.__dfInstall`) the sheet shows a single *Install DineFlow* button instead.
+  **Where it opens from:** a download button in the top bar (`InstallButton`, hidden from 1280px
+  where the sidebar's foot has *Install the app*, and hidden once installed — standalone) and the
+  sidebar's *Install the app* (`InstallEntry`), which now opens the sheet in place instead of going
+  to `/get`. It is **not** in the phone's More sheet — the owner had that row removed (2026-10-12).
+  **The sheet is portalled into `<body>`**: rendered inside the sidebar it opened behind the page,
+  and inside the sticky top bar the tab bar and the assistant's button covered it. Don't write "⋯"
+  or "⋮" as text — the font draws them as dashes; use the `Glyph` with the Lucide icon. Probe
+  `inst.mjs` (6) — clear `window.__dfInstall` first, or headless Chrome's own offer replaces the
+  Apple steps.
+  **On iPhone and iPad the steps are drawn, not listed** (`IosGuide.tsx`): four screens in the
+  app's tokens — Safari's bar with Share ringed (bottom on iPhone, top right on iPad), the share
+  sheet with *Add to Home Screen* ringed, the Add dialog with *Open as Web App* on and *Add* ringed,
+  and the Home Screen with the DineFlow icon — Next/Back, dots, and a swipe. The owner could not
+  follow three lines of text. Keep each target and its label inside the 248px drawing and the step
+  count out of it (it covered Cancel and the iPad toolbar). Probe `guide.mjs` (10). A true one-tap
+  install on iPhone is not possible for a web app — it needs an App Store app (see `apps/mobile`). See [guest-facing.md](guest-facing.md) for `/get`.
 - **The rail range lives in one media query** (`768px`–`1279.98px`) and the hamburger is drawn by
   CSS (`.rail-only`), not by JavaScript — move the breakpoint there, and only there.
 - **The spacer must stay the aside's next sibling** (`aside[data-open] + .nav-spacer`). Put anything
@@ -228,10 +271,10 @@ Sign in as a non-owner on a demo property and confirm the sidebar matches the ti
   hears nothing.
 - **The phone wordmark** "DineFlow" in the top bar is a link to `/dashboard`, like the sidebar's
   logo; the layout sends a role without the control room to its first section.
-- **"My attendance"** sits above *Install the app* in the sidebar's foot and the More sheet, only when
+- **"My attendance"** sits above *Install the app* in the sidebar's foot, and above Master control in the More sheet, only when
   the owner has turned on Fingerprint or Selfie (`attend` from `app/(app)/layout.tsx`, never while
   Master control is acting). `/attendance` is not a module in `ROUTE_MODULE`, so every role can open it.
-- **"New menu"** is a fifth group in the sidebar and the More sheet (`FRESH` in `Nav.tsx`): Intelligence,
+- **"Insights & control"** is a fifth group in the sidebar and the More sheet (`FRESH` in `Nav.tsx`): Intelligence,
   Cash & controls, Audit trail. They are **not modules** — no `ROUTE_MODULE` entry, no `role_modules`
   row, no tick in Staff → Access. `FRESH[].roles` decides who sees the link; each page redirects the
   rest (`/dashboard?locked=…`) and its RPCs check the role again. See

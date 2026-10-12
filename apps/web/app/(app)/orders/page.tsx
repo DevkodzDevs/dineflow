@@ -16,7 +16,7 @@ export default async function OrdersPage() {
   ]);
   return (
     <>
-      <PageHeader eyebrow="Front of house" title="Orders" actions={<Link href="/orders/new"><Button><Plus size={16} /> New order</Button></Link>} />
+      <PageHeader eyebrow="Front of house" title="Orders" actionsInline actions={<Link href="/orders/new"><Button><Plus size={16} /> New order</Button></Link>} />
       <OrdersClient tables={tables ?? []} orders={(orders ?? []) as never} />
     </>
   );

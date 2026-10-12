@@ -142,6 +142,25 @@ export async function applyStandardRecipe(menuItemId: string, dishName: string) 
   const r = (data ?? {}) as { created?: number; mapped?: number; skipped?: string[] };
   return { ok: true, dish: std.dish, created: r.created ?? 0, mapped: r.mapped ?? 0, skipped: r.skipped ?? [] };
 }
+/** Every active dish without a recipe that the library knows gets its standard plate, and the pantry
+ *  gains any ingredient it lacked — the same as pressing "Use it" on each. At most 60 a press. */
+export async function autoRecipes() {
+  const s = await createClient(); await requireSession();
+  const { data: items, error } = await s.from("menu_items").select("id, name").eq("is_active", true).order("name");
+  if (error) return { error: error.message };
+  const { data: have } = await s.from("recipe_items").select("menu_item_id");
+  const mapped = new Set((have ?? []).map((r) => r.menu_item_id));
+  let done = 0, created = 0; const unknown: string[] = []; const failed: string[] = [];
+  for (const it of (items ?? []).filter((i) => !mapped.has(i.id)).slice(0, 60)) {
+    const std = findStandardRecipe(it.name);
+    if (!std) { unknown.push(it.name); continue; }
+    const { data, error: e } = await s.rpc("apply_standard_recipe", { p_menu_item: it.id, p_lines: std.lines });
+    if (e) { failed.push(it.name); continue; }
+    done++; created += (data as { created?: number } | null)?.created ?? 0;
+  }
+  revalidatePath("/menu"); revalidatePath("/inventory"); revalidatePath("/kitchen"); revalidatePath("/orders/new");
+  return { ok: true as const, done, created, unknown, failed };
+}
 /** Replace the whole recipe of a dish: [{ingredient_id, qty}] */
 export async function saveRecipe(menuItemId: string, rows: { ingredient_id: string; qty: number }[]) {
   const s = await createClient();

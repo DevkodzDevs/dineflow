@@ -43,7 +43,7 @@ applied migration.
 ```
 pnpm lint        # 0 errors (14 warnings are known)
 pnpm typecheck
-pnpm test        # 59 unit tests
+pnpm test        # 66 unit tests
 pnpm build       # note: this clobbers .next and kills a running `next dev`
 ```
 
@@ -52,6 +52,10 @@ number. If a suite fails, check your probe before you change the screen — the 
 wrong more often than the code. The browser suites are **not committed** — they are written per
 session into the scratchpad; [testing-and-gates.md](docs/sections/testing-and-gates.md) records
 what each one checks so you can rebuild rather than reinvent it.
+
+**Master control → Testing** (`/admin/testing`) runs the app's own self-test suites against the live
+system — database, functions, API, security, speed, code, screens. It is a monitor for the owner, not
+a substitute for the four gates and the session probes. [admin-and-membership.md](docs/sections/admin-and-membership.md)
 
 **Tests restore what they touch.** `guests-test.mjs` prints
 `put back: "…" restored to how it was found`. Match that.

@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AdminClient } from "./AdminClient";
 export const metadata = { title: "Master control" };
 export const dynamic = "force-dynamic";
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab } = await searchParams;
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string; error?: string }> }) {
+  const { tab, error } = await searchParams;
   const s = await createClient();
   // sweep expired demo sandboxes before loading the estate list
   try { await s.rpc("sweep_expired_demos"); } catch { /* best effort */ }
@@ -16,5 +16,5 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     s.rpc("admin_box_status"),
   ]);
   const rows = (access ?? []) as { id: string; enabled_modules: string[] | null; code: string | null }[];
-  return <AdminClient tenants={(tenants ?? []) as never} keys={(keys ?? []) as never} log={(log ?? []) as never} tab={tab === "keys" ? "keys" : "properties"} boxes={(boxes ?? []) as never} access={rows} codes={rows.map((r) => ({ id: r.id, code: r.code }))} />;
+  return <AdminClient tenants={(tenants ?? []) as never} keys={(keys ?? []) as never} log={(log ?? []) as never} tab={tab === "keys" ? "keys" : "properties"} boxes={(boxes ?? []) as never} access={rows} codes={rows.map((r) => ({ id: r.id, code: r.code }))} openError={error ?? null} />;
 }

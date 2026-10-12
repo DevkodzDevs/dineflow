@@ -102,6 +102,19 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **The Orders header keeps *New order* beside the title on a phone** (`PageHeader actionsInline`). Without it a single button dropped onto its own row under the title, an empty half-line beside it. Probe `hdr.mjs` (8, with Pantry) at 375 / 412 / 834 / 1440.
+
+
+- **The phone/tablet cart bar** (`[data-cart-bar]`, below lg) sits at
+  `max(10px, safe-area) + 78px` on a phone — above the bottom tab bar — and 16px off the edge on a
+  tablet (no tab bar). It is absent on an empty ticket (it used to park 80px down, half under the tab
+  bar), and is a tint bar: count badge, "N items" over the total, *Review ›*. It sat at a fixed 72px
+  and the tab bar covered it on an iPhone (2026-10-12). While it shows, a `body:has([data-cart-bar]
+  button) [data-assist]` rule in `globals.css` lifts the assistant's round button above it — they
+  were at the same height, the button over *Review*. The dish list has `max-lg:pb-20` so its last
+  row scrolls clear of the bar.
+
+
 - **The cooking request (one note for the whole ticket) opens in a `Sheet`**, not inline: inline at
   the foot of the rail, an iPad keyboard squeezed the field to a sliver and pushed Send to kitchen
   out of the panel; the Sheet already sits in the visible viewport above a keyboard. A 3-row note

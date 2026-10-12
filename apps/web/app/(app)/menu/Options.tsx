@@ -91,7 +91,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
                   <div key={a.id} className="flex items-center gap-2 px-3 py-2 text-sm">
                     <span className={cn("flex-1 min-w-0 truncate", !a.is_available && "line-through text-steel")}>{a.name}{a.ingredient_id && ingOf(a.ingredient_id) && <span className="text-[11px] text-steel"> · draws {a.ingredient_qty} {ingOf(a.ingredient_id)!.unit} {ingOf(a.ingredient_id)!.name}</span>}</span>
                     <span className="num text-steel shrink-0">{Number(a.price) > 0 ? `+${formatINR(Number(a.price))}` : "free"}</span>
-                    <label className="flex items-center gap-1 text-[11px] text-steel shrink-0" title="Untick when it has run out for the day"><input type="checkbox" className="accent-saffron" checked={a.is_available} onChange={(e) => start(() => { toggleAddon(a.id, e.target.checked); })} /> today</label>
+                    <label className="flex items-center gap-1 text-[11px] text-steel shrink-0" title="Untick when it has run out for the day"><input type="checkbox" checked={a.is_available} onChange={(e) => start(() => { toggleAddon(a.id, e.target.checked); })} /> today</label>
                     <button type="button" className="icon-btn icon-btn-danger" onClick={() => start(async () => { await deleteAddon(a.id); })} aria-label="Remove"><Trash2 size={14} /></button>
                   </div>
                 ))}
@@ -102,7 +102,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
                 <div className="flex flex-wrap items-end gap-2">
                   <div className="flex-1 min-w-[11rem]"><Field label="New add-on"><input name="name" placeholder="Extra cheese" required /></Field></div>
                   <div className="w-[6.5rem]"><Field label="Price"><input name="price" type="number" min={0} step="0.01" className="num" placeholder="0" /></Field></div>
-                  <label className="flex items-center gap-1.5 h-10 px-1 text-xs normal-case tracking-normal shrink-0"><input type="checkbox" name="is_veg" defaultChecked className="accent-saffron" /> veg</label>
+                  <label className="flex items-center gap-1.5 h-10 px-1 text-xs normal-case tracking-normal shrink-0"><input type="checkbox" name="is_veg" defaultChecked /> veg</label>
                 </div>
                 <div className="flex flex-wrap items-end gap-2">
                   <div className="flex-1 min-w-[12rem]"><Field label="Draws from the pantry"><select name="ingredient_id" defaultValue=""><option value="">— nothing —</option>{ingredients.map((i) => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></Field></div>

@@ -17,6 +17,58 @@ property's app; it sits above all of them.
 
 ## How it works
 
+**Testing** (`/admin/testing`, the fourth tab, `AdminNav`). A self-test console: *Run all tests* and
+one *Run* per suite, each a list of checks that pass, warn or fail with what was seen, kept in
+`selftest_runs` (0093, master-only) so the page opens on the last result of each. Six suites run on
+the server through `POST /api/admin/selftest` (`{ suite, restaurant }`, master only): **Database**
+(`selftest_db()` — round trip, migrations, RLS on every table, no bare policy, required functions,
+triggers, indexes, integrity: negative stock, orders open > 24 h, paid bills vs payments, properties
+without an owner, load, row counts), **Functions** (`selftest_functions(rid)` — 19 report and screen
+RPCs for one property, timed, errors caught per call; it sets the master's acting context for the
+calls and puts it back), **API & connectivity** (Supabase REST / Auth / Storage, the app's own routes,
+the public storefront and queue, Wikimedia, which server keys are set), **Security** (the headers a
+scanner grades, anonymous reads of ten tenant tables must be empty, anonymous `admin_overview`
+refused, signed-out visits redirect to sign-in, this route without a session is 401, the nightly
+sync without its secret is 401, no secret under a `NEXT_PUBLIC_` name, legal facts), **Speed** (server
+time per screen and per database call against Lighthouse's lab budget — under 600 ms good, over 1.5 s
+failing — property screens only while acting) and **Code checks** (money, dates, the bill, recipes,
+the till search, run in place). The seventh, **Screens & buttons**, runs in the master's own browser
+(`TestingClient` → `runBrowser`): every screen in a hidden same-origin frame at 412 and 1280 — crash
+card, sideways scroll, images that did not arrive, unnamed buttons, a missing heading, where it
+landed — then every internal link those screens offer is fetched; the result is kept through
+`recordRun`. Nothing in any suite writes a property's data.
+
+The page, top to bottom (redesigned 2026-10-12 after the owner found the first dashboard messy): a
+**header** with the property picker, *Export PDF* and *Run all tests* (on a phone the picker takes its
+own line — in one row *Run all* was squeezed to 46px and scrolled the page 9px, which the Screens suite
+caught on its own page); **one overview panel** — while running, a progress bar naming the suite and
+the percent (`[data-progress]`); then the health-score ring (a pass counts whole, a warning half, a
+failure nothing; skipped not judged) with the verdict, the four totals in divided columns, and every
+check as one stacked bar; **one Suites list** (`[data-suites]`) — a row per suite with its status
+pill, a pass/warn/fail bar, "12/13 passed · 1 warn", time and age, *Run*, and a chevron that opens its
+checks (each with its time) inline; and **Slowest answers** — the ten slowest server, API and database
+timings on one axis (0, 600 ms, 1.5 s, max) coloured by budget. The Screens suite's whole-page frame
+loads are left out of that chart: the 600 ms server budget does not apply to them and they painted
+every bar amber. **Export PDF** (`exportPdf.ts`, `jspdf`, loaded only on press): a dark cover with
+the score, the totals, the suite table, then every check in three columns (status chip, name in
+165pt, what was seen) with zebra rows and page numbers, saved as `dineflow-self-test-YYYY-MM-DD-HHMM.pdf`;
+₹, dashes and arrows become plain text (jsPDF's fonts are Latin-1). Probe `dash.mjs` (7): the
+progress bar while running, the overview, 7 rows, the speed chart, a row's checks, a 104 KB 4-page
+`%PDF-` file, and the phone layout — measured by element edges, since a mobile viewport widens to
+fit and `scrollWidth − innerWidth` reads 0 there.
+
+Added the same day: **Needs attention** (`[data-attention]`) — every warning and failure across the
+suites, failures first, each with its suite; a tap opens that suite filtered to its issues. The
+overview gains a **health trend** (`[data-trend]`, the score of each Run all — runs within three
+minutes are one sitting — over the last twelve, with the change since the previous) and **response
+figures** (`[data-latency]`: median, 95th percentile and the slowest of every timed server-side check).
+Each suite row carries its **last eight results as dots** (`[data-history]`), and an open suite has a
+**Show All / Issues** switch (`[data-filter]`). The page loads the last 200 runs for the history.
+Probe `enh.mjs` (7): issue count = warnings + failures, dots on every row, the trend line, the three
+figures, an issue tap opening its suite filtered, All restoring every check, nothing past a phone's
+edge. It records the run ids that existed before and removes only its own.
+
+
 **Acting as.** `admin_act_as` puts a master inside one property; the rest of the app then behaves
 exactly as that property's owner sees it, with the amber `MasterBanner` across the top saying so.
 `admin_stop_acting` steps back out. **Everything done while acting is real and is logged** to
@@ -36,6 +88,25 @@ and only then `admin_delete_property`.
 **`install_sample_estate`** builds a whole demo estate; `sweep_expired_demos` clears sandboxes.
 
 ## Before you edit
+
+- **Testing's property screens need the master inside a property.** `/dashboard` and the rest
+  redirect a master who is not acting, so Speed and Screens skip them with a note until *Open* is
+  pressed; Functions does not — `selftest_functions` sets and restores the context itself. Keep the
+  suites read-only: a test that writes tenant data is not a test. The browser suite's frames rely on
+  `X-Frame-Options: SAMEORIGIN` / `frame-ancestors 'self'` — tightening either to DENY breaks it.
+
+
+- **Open and Back are plain form posts, in the same tab.** *Open* posts the property id to
+  `/admin/open` (route handler → `admin_act_as` → 303 `/dashboard`; a refusal comes back as
+  `/admin?error=…` and shows at the top of the list, `[data-open-error]`). The banner's *Back to
+  Master control* posts to `/admin/leave` (`admin_stop_acting` → 303 `/admin`). Both redirect with a
+  **relative** `Location` so the browser never changes host. Why: acting-as is one value per account,
+  not per tab — Open used to open a new tab, which silently switched the first tab's property, and
+  Back in one tab broke the other; on an installed iPhone app a new tab opened in Safari without the
+  app's sign-in. And as onClick handlers both waited for hydration, so a tap in the first second was
+  lost — "sometimes it doesn't work". Probe `mc.mjs` (6): five instant-tap round trips, same tab,
+  ~0.6–1.0 s each way.
+
 
 - **The Master control header is two rows on a phone**: shield, brand + email (truncating) and a
   40px sign-out on the first; `AdminNav` (client, `usePathname` + `useSearchParams` in a `Suspense`)

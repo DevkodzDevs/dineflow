@@ -52,6 +52,19 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
 
 ## Before you edit
 
+- **Tomorrow's buy list carries reorder-level items (0092).** `forecast_day` lists an ingredient when
+  tomorrow's cooking needs more than the shelf holds *or* the shelf after tomorrow would sit at or
+  under its reorder level; it buys what tomorrow needs plus, where the shelf would be at the line,
+  enough to reach **twice** the reorder level after tomorrow. Each line carries `why` (`tomorrow` |
+  `reorder`) and `reorder`; the screen tags it (`[data-why]`: *for tomorrow* / *below reorder
+  level · reorder at N*). An ingredient with `reorder_level = 0` is never listed for reorder — the
+  standard-recipe RPC creates ingredients at 0, so a property sets the levels it cares about in Pantry.
+  **The client rescales the list by the same rule** (`TomorrowClient`'s `purchase` memo) as the owner
+  moves the covers slider: it used to compute only `need − have`, which dropped every reorder line
+  (need 0, shelf 200 → "nothing to buy") — the page said *Pantry covers tomorrow* while `forecast_day`
+  listed the item. Change the rule in one place and the other.
+
+
 - **Tomorrow's header actions wrap on a phone**: the day arrows and Prep sheet on one line, Send to
   the team on the next. As one row they were 398px in a 358px column.
 

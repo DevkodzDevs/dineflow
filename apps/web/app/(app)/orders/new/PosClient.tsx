@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { dishMatch } from "@/lib/tillSearch";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText } from "lucide-react";
+import { Star, Leaf, Drumstick, Minus, Plus, Search, ChevronLeft, ChevronDown, ChevronRight, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText } from "lucide-react";
 import { Button, Segmented, Sheet, cn, useToast } from "@/components/ui";
 import { formatINR, fmtSince } from "@/lib/format";
 import { Rail } from "@/components/ui/Rail";
@@ -291,12 +291,13 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         if (!el.offsetParent) return; // below lg the rail is hidden and the sheet is used instead
-        // the sticky line sits under the shell's floating top bar (sticky top-4), not at 24px: there
+        // the sticky line sits under the shell's top bar (pinned at the top edge), not at 24px: there
         // the bar covered the rail's head — Dine in / Takeaway / Delivery / Room and the table — as
         // soon as the page scrolled. Measured, so a taller bar moves it. The dish column's search
         // row and category chips stick on the same line (--till-top, --till-head).
         const bar = document.querySelector<HTMLElement>("main header.material");
-        const line = bar ? 16 + bar.offsetHeight + 12 : 24;
+        // the bar pins at the top edge (it was 16px down, sticky top-4): its height plus a 12px gap
+        const line = bar ? bar.offsetHeight + 12 : 24;
         el.style.top = `${line}px`;
         const box = el.parentElement; const head = box?.querySelector<HTMLElement>("[data-till-head]");
         box?.style.setProperty("--till-top", `${line}px`); box?.style.setProperty("--till-head", `${head?.offsetHeight ?? 56}px`);
@@ -587,7 +588,7 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         {/* rows, not cards: a 64px row shows the photo, the name, the price and the control in one
             glance, and twice as many dishes fit a screen as the 145px tiles did. One across on a
             phone, then as many 250px rows as the column holds — 2 beside the rail at 1194, 3 at 1440. */}
-        <div className="mt-3 grid grid-cols-1 min-[560px]:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-2">
+        <div className="mt-3 grid grid-cols-1 min-[560px]:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-2 max-lg:pb-20">
           {visible.map((it) => {
             const qty = qtyOf(it.id); const tp = tilePrice(it); const asks = hasOptions(it);
             const c = coverOf(it.id);
@@ -668,10 +669,18 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
       </Sheet>
       <aside ref={railRef} className="hidden lg:block self-start feather p-4 sticky top-[92px] h-[calc(100dvh-3rem)]">{CartPanel}</aside>
       {/* mobile cart bar */}
-      <div className="lg:hidden fixed bottom-[72px] inset-x-4 z-30">
-        <motion.button animate={{ y: count ? 0 : 80 }} onClick={() => setCartOpen(true)} className="w-full h-13 rounded-2xl bg-ink text-on-label flex items-center justify-between px-5 shadow-lift">
-          <span className="text-sm font-semibold">{count} items</span><span className="num font-semibold">{formatINR(total)}</span><span className="text-sm font-semibold text-saffron">Review →</span>
-        </motion.button>
+      {/* It sat at a fixed 72px from the bottom, which is under the phone's tab bar (that bar is
+          ~66px tall and starts at the safe-area inset, ~34px on an iPhone) — the two overlapped.
+          It now rides above the bar on a phone and near the edge on a tablet, where there is no
+          tab bar; it is gone, not parked half-hidden, while the ticket is empty. */}
+      <div className="lg:hidden fixed inset-x-4 z-30 bottom-[calc(max(10px,env(safe-area-inset-bottom))+78px)] md:bottom-[max(16px,env(safe-area-inset-bottom))] pointer-events-none" data-cart-bar>
+        <AnimatePresence>{count > 0 && (
+          <motion.button initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 34 }}
+            onClick={() => setCartOpen(true)} className="pointer-events-auto w-full h-14 rounded-2xl bg-[var(--color-tint)] text-[#06120a] flex items-center gap-3 pl-2.5 pr-4 shadow-[0_10px_30px_-8px_rgb(0_0_0/.6)]">
+            <span className="h-9 min-w-9 px-2 rounded-xl bg-black/15 grid place-items-center num text-[15px] font-bold">{count}</span>
+            <span className="flex-1 min-w-0 text-left leading-tight"><span className="block text-[11px] font-semibold opacity-70">{count === 1 ? "1 item" : `${count} items`}</span><span className="block num text-[17px] font-bold">{formatINR(total)}</span></span>
+            <span className="text-[15px] font-bold inline-flex items-center gap-1">Review <ChevronRight size={18} /></span>
+          </motion.button>)}</AnimatePresence>
       </div>
       <AnimatePresence>
         {cartOpen && (<>

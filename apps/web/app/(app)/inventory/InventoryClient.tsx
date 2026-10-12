@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Plus, ArrowDownToLine, Trash2, Pencil, PackagePlus, AlertTriangle, History, ScanText, Loader2, Camera, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -52,7 +53,28 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
 
       {tab === "stock" && (ingredients.length === 0 ? (
         <Empty title="Pantry is empty" hint="Add ingredients like rice, oil, chicken, paneer. Then record a purchase or an opening balance." />
-      ) : (
+      ) : (<>
+        {/* what has slipped to its reorder level is already on Tomorrow's buy list (0092); say so here,
+            where the store keeper is looking, and offer the purchase order a press away */}
+        {low.length > 0 && (() => {
+          /* an ingredient with no reorder level (the library creates them at 0) is "low" at 0 in stock, but
+             Tomorrow's list only tops up a level that is set — say which is which */
+          const listed = low.filter((i) => Number(i.reorder_level) > 0), unset = low.filter((i) => !(Number(i.reorder_level) > 0));
+          return (
+          <div className="mb-3 rounded-2xl border border-[var(--color-orange)]/35 bg-[color-mix(in_srgb,var(--color-orange)_10%,var(--color-bg-2))] px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2" data-low-strip data-listed={listed.length} data-unset={unset.length}>
+            <div className="flex-1 min-w-[12rem]">
+              <div className="text-[14px] font-semibold">{listed.length > 0 ? `${listed.length} ingredient${listed.length === 1 ? " is" : "s are"} at or below reorder level` : `${unset.length} ingredient${unset.length === 1 ? " has" : "s have"} nothing in stock and no reorder level`}</div>
+              <div className="text-xs text-[var(--color-label-2)] mt-0.5">
+                {listed.length > 0 && <>{listed.slice(0, 4).map((i) => i.name).join(", ")}{listed.length > 4 ? ` +${listed.length - 4}` : ""} — already on Tomorrow&apos;s buy list, topped up to twice the level.</>}
+                {unset.length > 0 && <> {listed.length > 0 ? `${unset.length} more` : unset.slice(0, 4).map((i) => i.name).join(", ") + (unset.length > 4 ? ` +${unset.length - 4}` : "")} {unset.length === 1 && listed.length === 0 ? "has" : "have"} no reorder level yet — set one (the pencil) and {unset.length === 1 ? "it joins" : "they join"} the list.</>}
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Link href="/tomorrow" className="btn btn-gray !h-10 !px-3.5 !text-[13px]">Tomorrow&apos;s list</Link>
+              <button type="button" onClick={() => setTab("orders")} className="btn btn-filled !h-10 !px-3.5 !text-[13px]" data-draft-po>Draft a purchase order</button>
+            </div>
+          </div>
+        ); })()}
         <div className="feather overflow-x-auto table-wrap">
           <table className="w-full text-sm">
             <thead className="bg-porcelain text-xs uppercase tracking-wide text-steel"><tr><th className="text-left px-4 py-3">Ingredient</th><th className="text-right px-4 py-3 hidden sm:table-cell">In stock</th><th className="text-right px-4 py-3 hidden sm:table-cell">Reorder at</th><th className="text-right px-4 py-3 hidden md:table-cell">Cost/unit</th><th className="px-4 py-3"></th></tr></thead>
@@ -81,7 +103,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
             </tbody>
           </table>
         </div>
-      ))}
+      </>))}
 
       {tab === "purchases" && (purchases.length === 0 ? <Empty title="No purchases recorded" hint="Record a supplier bill and the stock lands in the pantry instantly — or draft an order under Orders and receive it when the van comes." /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

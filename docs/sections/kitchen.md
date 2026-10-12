@@ -27,6 +27,12 @@ category with no station stays on the expo view only. The warn and target minute
 
 ## Before you edit
 
+- **Stock moves when the ticket arrives, by default (0092)** — not when *Start cooking* is pressed. A
+  kitchen that works the board can switch back (Settings → Kitchen, `stock_draw = 'cook'`). On the
+  board nothing changes: a `pending` line cancelled through `cancel_line` is credited back; one
+  cancelled after *Start cooking* keeps its consumption. See [inventory.md](inventory.md).
+
+
 - **"All day" is a labelled rail of compact chips** (count badge + dish, `max-w-[15rem]` truncating,
   whole name in the title), with `rail-fade` and no scrollbar, and a "n portions" total beside the
   label. It was tall pills with the browser scrollbar under them, the last dish cut mid-word.

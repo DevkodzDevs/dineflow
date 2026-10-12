@@ -40,6 +40,13 @@ a reading pane beside the list; on a phone that pane becomes a sheet.
 
 ## Before you edit
 
+- **Invoices' figures come from `invoice_summary` (0089)**, not from the rows on screen: *Invoiced*,
+  *GST collected*, *Stay invoices*, *Outstanding* and the six-month strip are counted by the database
+  over the whole window. The list itself is the latest **300** (`SHOWN`); past that a footnote
+  (`[data-shown]`) says "Showing the latest 300 of N — the totals above count all N". Summing the
+  rows in the page was wrong past PostgREST's 1000-row cap.
+
+
 - **Never recompute a settled bill.** The GST breakdown on a `bills` row is the legal record of what
   was charged. If a rate changes, it changes for the next bill.
 - **Do not invent invoice numbers in the client.** The series is allocated server-side; a gap or a

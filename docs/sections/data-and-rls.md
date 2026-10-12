@@ -70,6 +70,35 @@ made in between is silently undone.
 
 ## Before you edit
 
+- **0093** — `selftest_runs` (master-only policy, wrapped `is_platform_admin()`), `selftest_db()` and
+  `selftest_functions(uuid)` (both raise `42501 master only` for anyone else; anon has no execute).
+  `selftest_functions` upserts `admin_context` for the calls and restores it — the previous row, or
+  none — inside the same transaction. `dry93.cjs` (10).
+
+
+- **0092** — `restaurants.stock_draw` (`ticket` | `cook`, check constraint), `consume_recipe()` rewritten
+  (draw on insert in ticket mode; credit on `pending → cancelled`; once-only by the ledger's net for the
+  line; `dineflow.skip_consume` still honoured), `forecast_day` replaced whole (0025's body plus the
+  reorder lines). No new table or policy. `dry92.cjs` (14) — both modes, the credit, the mid-service
+  switch, billing after sending, the check constraint, the reorder arithmetic, idempotence.
+
+
+- **Write policies wrapped: `(select auth_restaurant_id())`, never a bare call** — the same for
+  `auth_role()` and `is_platform_admin()`. Bare, Postgres calls the function once per row and cannot
+  use the `(restaurant_id, …)` indexes: "the last six paid bills" scanned every property's bills,
+  64.7 ms at 2 477 bills and growing with every bill written. **0091** rewrote all 70 such policies
+  (an `alter policy` loop over `pg_policies`; idempotent): 2.1 ms. Its dry run counted every one of
+  83 RLS tables as owner, staff, another property's owner, master-acting and anon — identical before
+  and after. A new migration that adds a policy should use the wrapped form from the start.
+- **Don't add up rows in Node.** PostgREST returns at most 1000 rows a request, so a page that sums
+  what it fetched is silently wrong past 1000 — and slow long before. Count in SQL: **0089**
+  `invoice_summary(p_days, p_kind)` (Invoices' tiles and six-month strip) and **0090**
+  `dashboard_figures()` (Control room: takings today, the 7-day curve, top 5 dishes) — both read-only,
+  security definer, scoped to `auth_restaurant_id()` and gated by `has_module`. Dry runs: `dry89.cjs`
+  (8 — matches the rows; 1 500 extra invoices still exact), `dry90.cjs` (4 — 1 200 bills and 1 500
+  dish lines still exact), `dry91.cjs` (4).
+
+
 - **A new table needs its RLS policy in the same migration.** A table without one is open to every
   tenant, and nothing in the app will tell you.
 - **A new column on `restaurants` ships in every session payload.** See

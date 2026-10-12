@@ -219,7 +219,7 @@ function SetupForm({ status, restaurant, onDone, onError }: { status: Status; re
   const [pending, start] = useTransition();
   const Row = ({ k, title, gives, takes }: { k: keyof typeof v; title: string; gives: string; takes: string }) => (
     <label className={cn("feather p-4 flex gap-3 cursor-pointer transition", v[k] && "border-mint bg-mint-2/40")}>
-      <input type="checkbox" checked={!!v[k]} onChange={(e) => setV({ ...v, [k]: e.target.checked })} className="!w-auto mt-1" />
+   <input type="checkbox" checked={!!v[k]} onChange={(e) => setV({ ...v, [k]: e.target.checked })} className="mt-1" />
       <div><div className="font-semibold">{title}</div>
         <div className="text-xs text-steel mt-1"><b className="text-ink">You give:</b> {gives}</div>
         <div className="text-xs text-steel"><b className="text-ink">You get:</b> {takes}</div></div>

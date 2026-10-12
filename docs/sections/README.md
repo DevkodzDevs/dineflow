@@ -27,7 +27,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(app)/online-orders/**`, `app/(app)/channels/**` | [online-and-channels.md](online-and-channels.md) |
 | `app/(app)/reports/**`, `app/(app)/pulse/**`, `app/(app)/tomorrow/**`, `app/(app)/proof/**` | [reports-and-forecast.md](reports-and-forecast.md) |
 | `app/(app)/settings/**` | [settings.md](settings.md) |
-| `app/(app)/controls/**`, `app/(app)/audit/**`, `app/(app)/intelligence/**`, `components/ui/ReasonDialog.tsx` — the "New menu" | [controls-and-intelligence.md](controls-and-intelligence.md) |
+| `app/(app)/controls/**`, `app/(app)/audit/**`, `app/(app)/intelligence/**`, `components/ui/ReasonDialog.tsx` — the "Insights & control" | [controls-and-intelligence.md](controls-and-intelligence.md) |
 | `app/(app)/tax/**` | [tax-and-compliance.md](tax-and-compliance.md) |
 | `app/(app)/scan/**` | [scan.md](scan.md) |
 | `app/(app)/neighbours/**` | [neighbours.md](neighbours.md) |

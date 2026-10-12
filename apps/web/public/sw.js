@@ -6,7 +6,7 @@
  *   everything else GET → stale-while-revalidate
  * Writes are never touched here; they go through the IndexedDB outbox so they survive a reload.
  */
-const V = "dineflow-v15";   // renamed so the caches written by v13, which could hold failures, are dropped
+const V = "dineflow-v16";   // v16 drops the page-data (RSC) answers v15 cached — see the fetch handler
 const SHELL = ["/", "/icon-192.png", "/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/scan", "/tomorrow", "/inventory", "/menu", "/offline"];
 
 /* Install and activate never fail on storage. When the browser cannot open its cache (low space,
@@ -34,6 +34,12 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== location.origin) return;      // writes and third parties pass through
   if (url.pathname.startsWith("/api/")) return;                                   // never cache an answer that must be current
+  /* Next.js's own page data — a tap on a link, router.refresh() (every live screen does one every
+     10–60 s), a prefetch — is a GET with ?_rsc= and an RSC header. It must always come from the
+     network. Served stale-while-revalidate it showed the previous answer on a live screen, and after
+     a deploy it handed the page data of the old build to the new one; Next.js answers that mismatch
+     with a full page reload — the app "reloading itself" every minute or so after each update. */
+  if (url.searchParams.has("_rsc") || e.request.headers.get("RSC") === "1" || e.request.headers.has("Next-Router-State-Tree")) return;
 
   // build output is content-hashed: cache first, forever
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/fonts/")) {

@@ -66,6 +66,27 @@ Jigarthanda) — on manoooo, Mutton chukka already exists and shows as *already 
 
 ## Before you edit
 
+- **Recipes** (toolbar, `[data-recipes]`) opens the overview — every active dish by category with a
+  state (`[data-recipe-row][data-state=mapped|ready|none]`): mapped dishes show their plate in cook's
+  units (`fmtQty`: 0.18 kg → "180 g", 0.015 l → "15 ml"), dishes the library knows show the library's
+  plate greyed with *Use the library plate*, the rest say *map by hand*. **Set up N dishes from the
+  library** (`[data-setup-recipes]` → `autoRecipes()`) applies `apply_standard_recipe` to every active
+  dish without a recipe that `findStandardRecipe` knows, at most 60 a press, and the pantry gains any
+  ingredient it lacked. The owner asked which foods take how much oil and flour; the answer had been
+  spread over one sheet per dish.
+- **The library is 282 dishes, 193 ingredients** (`packages/shared/src/recipes.ts`; it was 102/156).
+  Raw weights per plate, at yield (200 g of chicken raw → ~150 g plated; curry cut ~90%, boneless
+  ~60%) — the trade's costing convention, not a nutrition serving. `apps/web/lib/recipes.test.ts`
+  (7) checks every line names a vocabulary ingredient in its unit, amounts are plate-sized (protein
+  30 g–1 kg, oil ≤ 60 ml, rice ≤ 250 g), no dish repeats, and the matcher: a library key left with
+  only style words ("Veg biryani" → "biryani") answers only a name as bare as itself — it used to hand
+  "Hyderabadi chicken dum biryani" a *veg* biryani — and a bare half-match must agree on the kind of
+  dish ("Mango juice" is not a mango lassi). Size words (family pack, large) are ignored. Add a dish:
+  one entry, vocabulary names only; run the test.
+- **The toolbar has six actions now**, so it stacks everywhere below 1482px (`:nth-child(6)` rule in
+  `globals.css`); see [design-system.md](design-system.md).
+
+
 - **The photo import's name and price boxes are `!min-h-10`, 44 on touch** — they were `!min-h-0`,
   35px, under the touch floor at 412, 834 and 1194.
 

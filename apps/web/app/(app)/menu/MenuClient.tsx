@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers, Camera, Clock, AlertTriangle, Images, ImagePlus } from "lucide-react";
+import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers, Camera, Clock, AlertTriangle, Images, ImagePlus, ChevronDown } from "lucide-react";
 import { DishPhotoPicker, type DishPhoto } from "@/components/menu/DishPhotoPicker";
 import { DishGlyph } from "@/components/menu/DishGlyph";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Field, Sheet, Empty, Switch, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
-import { findStandardRecipe } from "@dineflow/shared";
-import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation, setDishPhoto, autoPhotos } from "./actions";
+import { findStandardRecipe, fmtQty } from "@dineflow/shared";
+import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation, setDishPhoto, autoPhotos, autoRecipes } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
 import { OptionsEditor, GroupsManager, ComboParts } from "./Options";
 import { MenuImport } from "./MenuImport";
@@ -55,6 +55,7 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
   const [dishName, setDishName] = useState(""); const [dishCat, setDishCat] = useState<string | null>(null);
   const [photoFor, setPhotoFor] = useState<Item | null>(null);
   const [finding, setFinding] = useState(false);
+  const [recipesOpen, setRecipesOpen] = useState(false);
   /* Photos find themselves: the first time the menu opens in a session with dishes that have none,
      autoPhotos() runs in the background (the same as pressing Find photos) and the page refreshes
      when it has saved some. Once per session, so a dish nobody could match is not searched on
@@ -96,6 +97,7 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
           <Button variant="outline" onClick={() => setCatSheet(true)} title="Add, rename or remove categories"><Plus size={16} /> Categories</Button>
           <Button variant="outline" onClick={() => setGroupsSheet(true)}><SlidersHorizontal size={16} /> Add-ons</Button>
           <Button variant="outline" onClick={() => setImporting(true)} title="Photograph a printed menu and add its dishes"><Camera size={16} /> From photo</Button>
+          <Button variant="outline" onClick={() => setRecipesOpen(true)} title="Which foods take what from the pantry" data-recipes><FlaskConical size={16} /> Recipes</Button>
           <Button variant="outline" loading={finding} data-find-photos title="Find a photo for every dish that has none" onClick={async () => {
             setFinding(true);
             try { const r = await autoPhotos(); if ("error" in r) toast(r.error!, "err"); else toast(r.found ? `Photos added to ${r.found} dish${r.found === 1 ? "" : "es"}${r.left ? ` · ${r.left} to choose by hand` : ""}` : r.left ? `No sure match for ${r.left} — open a dish to choose` : "Every dish has a photo"); }
@@ -205,10 +207,10 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
           </div>
           <input type="hidden" name="image_url" value={photo?.url ?? ""} /><input type="hidden" name="image_credit" value={photo?.credit ?? ""} /><input type="hidden" name="image_source" value={photo?.source ?? ""} />
           <div className="flex gap-6">
-            <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_veg" className="w-4 h-4 accent-saffron" defaultChecked={editing?.is_veg ?? true} /> Vegetarian</label>
-            <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_available" className="w-4 h-4 accent-saffron" defaultChecked={editing?.is_available ?? true} /> Available now</label>
+            <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_veg" defaultChecked={editing?.is_veg ?? true} /> Vegetarian</label>
+            <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_available" defaultChecked={editing?.is_available ?? true} /> Available now</label>
           </div>
-          <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_combo" className="w-4 h-4 accent-saffron" checked={combo} onChange={(e) => setCombo(e.target.checked)} /> Combo — a meal made of other dishes</label>
+          <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_combo" checked={combo} onChange={(e) => setCombo(e.target.checked)} /> Combo — a meal made of other dishes</label>
           {combo && <ComboParts items={items.filter((m) => m.id !== editing?.id && !m.is_combo)} rows={parts} onChange={setParts} />}
           <input type="hidden" name="parts" value={JSON.stringify(parts)} />
           {err && <p className="text-sm text-chili">{err}</p>}
@@ -237,6 +239,9 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
       </Sheet>
 
       {/* recipe editor */}
+      <Sheet open={recipesOpen} onClose={() => setRecipesOpen(false)} title="Recipes · what each dish takes" wide>
+        {recipesOpen && <RecipesOverview items={items} categories={categories} recipeMap={recipeMap} ingredients={ingredients} onEdit={(it) => { setRecipesOpen(false); setRecipeFor(it); }} />}
+      </Sheet>
       <Sheet open={!!recipeFor} onClose={() => setRecipeFor(null)} title={`Recipe · ${recipeFor?.name ?? ""}`}>
         {recipeFor && <RecipeEditor item={recipeFor} ingredients={ingredients} initial={recipeMap[recipeFor.id] ?? []} onDone={() => setRecipeFor(null)} ai={ai} />}
       </Sheet>
@@ -257,6 +262,78 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
           <Button>Add</Button>
         </form>
       </Sheet>
+    </div>
+  );
+}
+
+/**
+ * Every dish on one screen, with what it takes from the pantry per plate — the owner asked which foods
+ * take how much oil and flour, and the answer was spread over 28 recipe sheets. A dish with no recipe
+ * that the library knows can be set up here, one or all at once; the rest say "map by hand".
+ */
+function RecipesOverview({ items, categories, recipeMap, ingredients, onEdit }: { items: Item[]; categories: Cat[]; recipeMap: Record<string, Rec[]>; ingredients: Ing[]; onEdit: (it: Item) => void }) {
+  const router = useRouter(); const toast = useToast();
+  const [busy, setBusy] = useState(false); const [open, setOpen] = useState<string | null>(null);
+  const ingOf = (id: string) => ingredients.find((i) => i.id === id);
+  const rows = useMemo(() => items.map((it) => ({ it, lines: recipeMap[it.id] ?? [], std: findStandardRecipe(it.name) })), [items, recipeMap]);
+  const withRecipe = rows.filter((r) => r.lines.length).length;
+  const ready = rows.filter((r) => !r.lines.length && r.std).length;
+  const byHand = rows.length - withRecipe - ready;
+  const setupAll = async () => {
+    setBusy(true);
+    try {
+      const r = await autoRecipes();
+      if ("error" in r) { toast(r.error!, "err"); return; }
+      toast(`${r.done} dish${r.done === 1 ? "" : "es"} set up${r.created ? ` · ${r.created} ingredient${r.created === 1 ? "" : "s"} added to the pantry` : ""}${r.unknown.length ? ` · ${r.unknown.length} to map by hand` : ""}`);
+      router.refresh();
+    } finally { setBusy(false); }
+  };
+  const applyStd = async (it: Item) => {
+    setBusy(true);
+    try { const r = await applyStandardRecipe(it.id, it.name); if (!r.ok) toast(r.error ?? "Could not map the recipe", "err"); else { toast(`${r.mapped} ingredients mapped from "${r.dish}"`); router.refresh(); } }
+    finally { setBusy(false); }
+  };
+  const groups = [{ id: null as string | null, name: "Uncategorised" }, ...categories].map((c) => ({ c, rows: rows.filter((r) => (r.it.category_id ?? null) === c.id) })).filter((g) => g.rows.length);
+  return (
+    <div className="space-y-4" data-recipes-overview>
+      <div className="rounded-2xl bg-[var(--color-fill)] p-3.5">
+        <div className="text-[15px] font-semibold" data-recipes-summary>{withRecipe} of {rows.length} dishes move the pantry</div>
+        <p className="text-xs text-[var(--color-label-2)] mt-1 leading-relaxed">A dish with a recipe takes its ingredients out of stock the moment it is sent to the kitchen (or when cooking starts — Settings → Kitchen).{ready > 0 && <> <b>{ready}</b> can be set up from the library in one press.</>}{byHand > 0 && <> <b>{byHand}</b> need mapping by hand.</>}</p>
+        {ready > 0 && <Button className="mt-3 w-full" loading={busy} onClick={() => { void setupAll(); }} data-setup-recipes><Sparkles size={16} /> Set up {ready} dish{ready === 1 ? "" : "es"} from the library</Button>}
+      </div>
+      {groups.map(({ c, rows: g }) => (
+        <section key={c.id ?? "none"}>
+          <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-[var(--color-label-3)] mb-1.5">{c.name}</div>
+          <div className="divide-y divide-[var(--color-separator)] rounded-2xl border border-[var(--color-separator)] bg-[var(--color-bg-2)]">
+            {g.map(({ it, lines, std }) => {
+              const isOpen = open === it.id;
+              const text = lines.length
+                ? lines.map((l) => { const ing = ingOf(l.ingredient_id); return ing ? `${fmtQty(Number(l.qty), ing.unit)} ${ing.name}` : null; }).filter(Boolean)
+                : std ? std.lines.map((l) => `${fmtQty(l.qty, l.unit)} ${l.name}`) : [];
+              return (
+                <div key={it.id} data-recipe-row={it.id} data-state={lines.length ? "mapped" : std ? "ready" : "none"}>
+                  <button type="button" onClick={() => setOpen(isOpen ? null : it.id)} className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left min-h-12" aria-expanded={isOpen}>
+                    <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", lines.length ? "bg-[var(--color-green)]" : std ? "bg-[var(--color-orange)]" : "bg-[var(--color-red)]")} />
+                    <span className="flex-1 min-w-0"><span className="block font-semibold text-[14px] truncate">{it.name}</span>
+                      <span className="block text-xs text-[var(--color-label-2)] truncate">{lines.length ? `${lines.length} ingredient${lines.length === 1 ? "" : "s"} per plate` : std ? `No recipe · library knows "${std.dish}"` : "No recipe · map by hand"}</span></span>
+                    <ChevronDown size={16} className={cn("shrink-0 text-[var(--color-label-3)] transition-transform", isOpen && "rotate-180")} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-3.5 pb-3.5 -mt-1">
+                      {text.length ? <p className={cn("text-[13px] leading-relaxed", lines.length ? "" : "text-[var(--color-label-2)]")} data-recipe-lines>{text.join(" · ")}{!lines.length && <span className="text-xs"> (the library&apos;s plate)</span>}</p>
+                        : <p className="text-[13px] text-[var(--color-label-2)]">Nothing mapped yet — this dish does not move stock.</p>}
+                      <div className="flex gap-2 mt-2.5">
+                        {!lines.length && std && <Button size="sm" disabled={busy} onClick={() => { void applyStd(it); }} data-use-standard><Sparkles size={14} /> Use the library plate</Button>}
+                        <Button size="sm" variant="outline" onClick={() => onEdit(it)}><Pencil size={14} /> {lines.length ? "Edit" : "Map by hand"}</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

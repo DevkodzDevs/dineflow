@@ -7,7 +7,8 @@ type Props = {
   name: string;
   code: string | null;
   pending: boolean;
-  onOpen: () => void;
+  /** the property's id: Open posts it to /admin/open */
+  openId: string;
   onDetails: () => void;
   onAccess: () => void;
   onManage: () => void;
@@ -25,7 +26,7 @@ type Props = {
  * horizontally, and an absolutely positioned menu would be cut off at the cell's edge. Light
  * dismiss, Escape and focus return come with it rather than being rebuilt.
  */
-export function RowActions({ name, code, pending, onOpen, onDetails, onAccess, onManage, onDelete }: Props) {
+export function RowActions({ name, code, pending, openId, onDetails, onAccess, onManage, onDelete }: Props) {
   const id = useId().replace(/:/g, "");
   const menu = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -71,10 +72,13 @@ export function RowActions({ name, code, pending, onOpen, onDetails, onAccess, o
 
   return (
     <div className={styles.row}>
-      <button type="button" className={styles.open} disabled={pending} onClick={onOpen}
-        title={`Open ${name} in a new tab`}>
-        <LogIn size={14} /> Open
-      </button>
+      {/* a form, in the same tab: it works before hydration (app/admin/open/route.ts) */}
+      <form action="/admin/open" method="post" className="contents">
+        <input type="hidden" name="id" value={openId} />
+        <button type="submit" className={styles.open} disabled={pending} title={`Open ${name}`} data-open-property={name}>
+          <LogIn size={14} /> Open
+        </button>
+      </form>
 
       <button ref={trigger} type="button" className={styles.more} disabled={pending}
         popoverTarget={id} aria-haspopup="menu" aria-label={`More actions for ${name}`}

@@ -12,7 +12,7 @@ import { InstallApp } from "@/components/InstallApp";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments, saveLoyalty } from "./actions";
 import { copyText } from "@/lib/clipboard";
 
-type Rest = { id: string; name: string; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null; attendance_methods?: string[]; attend_lat?: number | null; attend_lng?: number | null; attend_radius_m?: number };
+type Rest = { id: string; name: string; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null; attendance_methods?: string[]; attend_lat?: number | null; attend_lng?: number | null; attend_radius_m?: number; stock_draw?: "ticket" | "cook" };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number; qr_token?: string | null };
 type Tab = "general" | "payments" | "tables" | "attendance" | "advanced";
 
@@ -198,7 +198,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                 <Section icon={<BedDouble size={16} />} title="Rooms & stays" description="Check-in times and the housekeeping rule.">
                   <Field label="Check-in and check-out" hint="Shown on bookings and the guest's confirmation"><div className="grid grid-cols-2 gap-2"><input name="check_in_time" type="time" defaultValue={restaurant.check_in_time?.slice(0, 5)} className="num" /><input name="check_out_time" type="time" defaultValue={restaurant.check_out_time?.slice(0, 5)} className="num" /></div></Field>
                   <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
-                    <input type="checkbox" name="hk_inspect_required" className="w-4 h-4 accent-saffron mt-0.5" defaultChecked={restaurant.hk_inspect_required ?? false} />
+                    <input type="checkbox" name="hk_inspect_required" className="mt-0.5" defaultChecked={restaurant.hk_inspect_required ?? false} />
                     <span>A supervisor inspects every room before it is sold<span className="block text-xs text-steel mt-0.5">The five-star rule. A cleaned room waits as “clean” until an owner, manager or supervisor signs it off on the Housekeeping page, and check-in is refused until then. Off, a finished clean puts the room back on sale at once.</span></span>
                   </label>
                 </Section>
@@ -214,13 +214,26 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   <Field label="Hurry after (minutes)" hint="The ticket turns amber"><input name="kds_warn_minutes" type="number" min={1} max={120} step={1} defaultValue={restaurant.kds_warn_minutes ?? 10} className="num" /></Field>
                   <Field label="Late after (minutes)" hint="The ticket turns red and counts against speed of service"><input name="kds_target_minutes" type="number" min={1} max={240} step={1} defaultValue={restaurant.kds_target_minutes ?? 15} className="num" /></Field>
                 </div>
+                {/* when a dish's recipe leaves the pantry (0092): the moment the ticket is sent, or when the
+                    kitchen presses Start cooking. A kitchen that only prints tickets never presses Start. */}
+                <div className="mt-4" data-stock-draw>
+                  <div className="text-[13px] font-semibold mb-1.5">Pantry stock leaves when…</div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {([["ticket", "the order reaches the kitchen", "Recommended. Every dish sent is taken out of the pantry at once; a dish cancelled before cooking goes straight back."],
+                       ["cook", "the kitchen presses Start cooking", "For a kitchen that works the board. Until it presses Start, the pantry still shows the stock on the shelf."]] as const).map(([v, t, d]) => (
+                      <label key={v} className="flex items-start gap-2.5 rounded-2xl border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-3 cursor-pointer has-[:checked]:border-[var(--color-tint)] has-[:checked]:bg-[var(--color-green-2)] normal-case tracking-normal">
+                        <input type="radio" name="stock_draw" value={v} defaultChecked={(restaurant.stock_draw ?? "ticket") === v} className="mt-0.5" />
+                        <span className="min-w-0"><span className="block text-[14px] font-semibold">{t}</span><span className="block text-xs font-normal text-[var(--color-label-2)] mt-0.5">{d}</span></span>
+                      </label>))}
+                  </div>
+                </div>
               </Section>
             </Card>
 
             <Card>
               <Section icon={<Timer size={16} />} title="On-time promise" description="An optional delivery deadline you can sell with an order.">
                 <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
-                  <input type="checkbox" name="promise_enabled" className="w-4 h-4 accent-saffron mt-0.5" defaultChecked={restaurant.promise_enabled ?? false} onChange={(e) => setPromise(e.target.checked)} />
+                  <input type="checkbox" name="promise_enabled" className="mt-0.5" defaultChecked={restaurant.promise_enabled ?? false} onChange={(e) => setPromise(e.target.checked)} />
                   <span>Offer guests a delivery deadline<span className="block text-xs text-steel mt-0.5">A guest can be offered “on your table in {restaurant.promise_minutes ?? 30} minutes, or the food is free”. They pay the percentage below for it. Miss the deadline and the whole bill comes to zero — the fee included.</span></span>
                 </label>
                 {/* switched off, the two fields are not on the page — carry the saved values, or every Save

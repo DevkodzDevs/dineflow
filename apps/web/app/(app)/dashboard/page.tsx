@@ -10,31 +10,28 @@ export const metadata = { title: "Control room" };
 export const dynamic = "force-dynamic";
 
 const IST = 5.5 * 3600e3;
-/** "Mon" for an instant, counted in the only timezone this property trades in. */
-const istDay = (iso: string) => new Date(new Date(iso).getTime() + IST).toISOString().slice(0, 10);
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ locked?: string }> }) {
   const s = await createClient();
   const today = todayIST();
-  const weekAgo = new Date(Date.now() + IST - 6 * 86400e3).toISOString().slice(0, 10);
   // The session travels with the page's own rows rather than in front of them: one round trip
   // to Mumbai, not two. The rooms queries are asked unconditionally — a restaurant has none, so
   // they come back empty, and waiting to learn which kind of property this is cost more than
   // the empty answers do.
-  const [session, { data: bills }, { data: open }, { data: kots }, { data: low }, { data: tables }, { data: top }, { data: rooms }, { data: bookings }, { data: hk }, { data: online }, { data: week }, { data: recent }, { data: staff }] = await Promise.all([
+  /* Today's takings, the week's curve and the top dishes are counted by the database
+     (dashboard_figures, 0090). Added up here from raw rows they came out short past 1000 rows — a
+     busy week of bills, a busy day of dish lines — and made this the slowest screen in the app. */
+  const [session, { data: figs }, { data: open }, { data: kots }, { data: low }, { data: tables }, { data: rooms }, { data: bookings }, { data: hk }, { data: online }, { data: recent }, { data: staff }] = await Promise.all([
     requireSession(),
-    s.from("bills").select("total, payments(method, amount)").eq("status", "paid").gte("paid_at", `${today}T00:00:00+05:30`),
+    s.rpc("dashboard_figures"),
     s.from("orders").select("id, order_no, created_at, type, customer_name, dining_tables(name), order_items(qty, price_snapshot, status)").eq("status", "open"),
     s.from("kots").select("id, status, created_at").in("status", ["pending", "preparing", "ready"]),
     s.from("v_low_stock").select("id, name, unit, current_stock, reorder_level").limit(8),
     s.from("dining_tables").select("status"),
-    s.from("order_items").select("name_snapshot, qty").gte("created_at", `${today}T00:00:00+05:30`).neq("status", "cancelled"),
     s.from("rooms").select("status"),
     s.from("bookings").select("id, status, check_in, check_out, rate, rooms(number), guests(full_name)").in("status", ["reserved", "checked_in"]),
     s.from("housekeeping_tasks").select("id", { count: "exact", head: true }).neq("status", "done"),
     s.from("online_orders").select("id, status, gross").gte("placed_at", `${today}T00:00:00+05:30`),
-    // the week behind today, for the takings curve — seven points, one query
-    s.from("bills").select("total, paid_at").eq("status", "paid").gte("paid_at", `${weekAgo}T00:00:00+05:30`),
     // the last few settlements, newest first
     s.from("bills").select("id, bill_no, total, paid_at, payments(method)").eq("status", "paid").order("paid_at", { ascending: false }).limit(6),
     // who else is on the books, for the faces on the board
@@ -42,15 +39,15 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   ]);
 
   const hotel = session.restaurant.property_type !== "restaurant";   // decides what is drawn, not what is asked
-  const sales = (bills ?? []).reduce((t, b) => t + Number(b.total), 0);
+  const fig = (figs ?? null) as { sales_today: number; week: { day: string; total: number }[]; top: { name: string; qty: number }[] } | null;
+  const sales = Number(fig?.sales_today ?? 0);
   const inHouse = (bookings ?? []).filter((b: { status: string }) => b.status === "checked_in");
   const roomRevenue = inHouse.reduce((t: number, b: { rate: number }) => t + Number(b.rate), 0);
   const arrivals = (bookings ?? []).filter((b: { status: string; check_in: string }) => b.status === "reserved" && b.check_in <= today);
   const departures = inHouse.filter((b: { check_out: string }) => b.check_out <= today);
   const occ = rooms?.length ? Math.round((rooms.filter((r) => r.status === "occupied").length / rooms.length) * 100) : 0;
   const ready = rooms?.filter((r) => r.status === "available").length ?? 0;
-  const topMap = new Map<string, number>(); (top ?? []).forEach((i) => topMap.set(i.name_snapshot, (topMap.get(i.name_snapshot) ?? 0) + i.qty));
-  const dishes: Rank[] = [...topMap].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value }));
+  const dishes: Rank[] = (fig?.top ?? []).map((d) => ({ name: d.name, value: Number(d.qty) }));
   const occupied = (tables ?? []).filter((t) => t.status === "occupied").length;
   const hour = new Date(Date.now() + IST).getUTCHours();
   const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -61,10 +58,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   /* Seven labelled days, oldest first, so the curve always has the same number of points
      whether the property traded every day or only twice. */
-  const byDay = new Map<string, number>();
-  for (const b of (week ?? []) as { total: number; paid_at: string }[]) {
-    const k = istDay(b.paid_at); byDay.set(k, (byDay.get(k) ?? 0) + Number(b.total));
-  }
+  const byDay = new Map<string, number>((fig?.week ?? []).map((d) => [d.day, Number(d.total)]));
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(Date.now() + IST - (6 - i) * 86400e3);
     const key = d.toISOString().slice(0, 10);

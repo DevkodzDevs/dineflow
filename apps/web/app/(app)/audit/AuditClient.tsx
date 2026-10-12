@@ -59,7 +59,7 @@ export function AuditClient({ events, names, days, more, error }: { events: Even
       <Card className="!p-3 sm:!p-4" data-filters>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div data-period className="shrink-0">
-            <Segmented value={String(days)} onChange={(v) => router.push(`/audit?days=${v}`)} className="w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none"
+            <Segmented value={String(days)} onChange={(v) => router.push(`/audit?days=${v}`)} className="w-full sm:w-auto [&>button]:flex-1 [&>button]:min-w-0 [&>button]:whitespace-nowrap max-sm:[&>button]:!px-1.5 max-sm:[&>button]:!text-[13px] sm:[&>button]:flex-none" data-period
               options={[{ value: "1", label: "Today" }, { value: "7", label: "7 days" }, { value: "30", label: "30 days" }, { value: "90", label: "90 days" }]} />
           </div>
           <Rail className="rail-fade flex gap-2 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 py-0.5" arrowClassName="!bottom-0.5" label="Kind">

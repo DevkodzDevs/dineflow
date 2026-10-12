@@ -1,9 +1,9 @@
-# Cash & controls · Audit trail · Intelligence — the "New menu"
+# Cash & controls · Audit trail · Intelligence — the "Insights & control"
 
 **Routes** `/controls` · `/audit` · `/intelligence`
 **Files** `app/(app)/controls/{page,ControlsClient,actions}.tsx|ts` · `app/(app)/audit/{page,AuditClient}.tsx` ·
 `app/(app)/intelligence/{page,IntelligenceClient}.tsx` · `components/ui/ReasonDialog.tsx` ·
-`components/shell/Nav.tsx` (`FRESH`, the "New menu" group)
+`components/shell/Nav.tsx` (`FRESH`, the "Insights & control" group)
 **Reads** `audit_events`, `cash_movements`, `shift_closes`, `bills`, `order_items`, `profiles`
 **Writes** `cash_move` · (from other screens) `void_bill`, `cancel_order`, `cancel_line`
 **RPCs (read)** `shift_expected`, `menu_engineering`, `exceptions_summary`, `day_compare`
@@ -12,7 +12,7 @@
 ## What it is
 
 Three screens added on 2026-10-11 from the product audit (`docs/audit-2026-10-11.md`), grouped in
-the menu under **New menu** because that is what the owner asked for. They share one idea: money
+the menu under **Insights & control** because that is what the owner asked for. They share one idea: money
 and stock that leave the building without a sale should be *seen* — by whom, why, and against what
 baseline.
 
@@ -84,6 +84,14 @@ be there (`?locked=…`), while the RPCs and the RLS policy check the same roles
 fourth screen: one line in `FRESH`, a role check in its page, and the same check in its RPCs.
 
 ## Before you edit
+
+- **Cash reasons are an even 2-column grid** (`[data-reasons]`, 44px tiles, a tick on the picked
+  one, a long reason wraps to two lines inside the tile), with *Something else? Type it* below —
+  that box shows only a typed reason, not a picked one. They were `.chip`s wrapping into ragged
+  rows on a phone.
+- **Audit's period control fits a phone**: `[data-period]` buttons are equal, `whitespace-nowrap`,
+  13px with 6px padding below `sm` — "90 days" broke onto two lines at 390.
+
 
 - **Never write to `audit_events` from the app.** If a new table needs a trail, add a trigger that
   calls `audit_log()` in a new migration, with an `after` timing so a failure cannot block the row.

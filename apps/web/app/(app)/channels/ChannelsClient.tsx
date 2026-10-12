@@ -137,7 +137,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <Field label="Prep time (min)"><input name="prep_minutes" type="number" className="num" defaultValue={editOc?.prep_minutes ?? 20} /></Field></div>
           <Field label="Partner API base (optional)" hint="Fill once you have direct or middleware credentials"><input name="api_base" defaultValue={editOc?.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
           <Field label="API key (optional)"><input name="api_key" type="password" placeholder="••••••" /></Field>
-          <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="auto_accept" defaultChecked={editOc?.auto_accept} className="!w-auto" /> Auto-accept matched orders</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_live" defaultChecked={editOc?.is_live} className="!w-auto" /> Live</label></div>
+          <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="auto_accept" defaultChecked={editOc?.auto_accept} /> Auto-accept matched orders</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_live" defaultChecked={editOc?.is_live} /> Live</label></div>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
       </Sheet>
       <Sheet open={!!editOta} onClose={() => setEditOta(null)} title={editOta?.id ? editOta.label ?? "" : "Add OTA channel"}>
@@ -152,7 +152,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
           <Field label="Their calendar link (iCal import)"><input name="import_url" className="num text-xs min-w-0" defaultValue={editOta?.import_url ?? ""} placeholder="https://ical.booking.com/v1/export?t=..." /></Field>
           <Field label="API base (API mode)"><input name="api_base" defaultValue={editOta?.api_base ?? ""} /></Field>
           <div className="grid grid-cols-2 gap-3"><Field label="Property id at the OTA"><input name="hotel_ref" className="num" defaultValue={editOta?.hotel_ref ?? ""} /></Field><Field label="API key"><input name="api_key" type="password" placeholder="••••••" /></Field></div>
-          <label className="flex items-center gap-2 text-sm normal-case"><input type="checkbox" name="is_live" defaultChecked={editOta?.is_live} className="!w-auto" /> Live</label>
+          <label className="flex items-center gap-2 text-sm normal-case"><input type="checkbox" name="is_live" defaultChecked={editOta?.is_live} /> Live</label>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
       </Sheet>
     </div>
@@ -298,7 +298,7 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
           <Field label="Rate ₹"><input type="number" className="num" value={bulk.rate} onChange={(e) => setBulk({ ...bulk, rate: e.target.value })} placeholder="keep" /></Field>
           <Field label="Rooms open"><input type="number" className="num" value={bulk.open} onChange={(e) => setBulk({ ...bulk, open: e.target.value })} placeholder="all" /></Field>
           <Field label="Min nights"><input type="number" className="num" value={bulk.min} onChange={(e) => setBulk({ ...bulk, min: e.target.value })} placeholder="1" /></Field>
-          <div className="flex gap-2"><label className="flex items-center gap-1.5 text-sm normal-case"><input type="checkbox" checked={bulk.stop} onChange={(e) => setBulk({ ...bulk, stop: e.target.checked })} className="!w-auto" /> Stop sell</label></div>
+     <div className="flex gap-2"><label className="flex items-center gap-1.5 text-sm normal-case"><input type="checkbox" checked={bulk.stop} onChange={(e) => setBulk({ ...bulk, stop: e.target.checked })} /> Stop sell</label></div>
         </div>
         <Button className="mt-3" disabled={pending || !sel} onClick={() => onSave({ rt: sel, from: bulk.from, to: bulk.to, rate: bulk.rate ? Number(bulk.rate) : null, open: bulk.open ? Number(bulk.open) : null, stop: bulk.stop, min: bulk.min ? Number(bulk.min) : null })}>Apply to these dates</Button></Card>
     </div>

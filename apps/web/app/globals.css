@@ -41,7 +41,7 @@
   --font-sans: var(--font-manrope), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: var(--font-oswald), "Oswald", ui-monospace, monospace;   /* numbers wear the clock face */
 
-  --radius-xs: 8px; --radius-sm: 12px; --radius-md: 16px; --radius-lg: 22px; --radius-xl: 28px; --radius-feather: 22px;
+  --radius-xs: 8px; --radius-sm: 0px; --radius-md: 12px; --radius-lg: 14px; --radius-xl: 16px; --radius-feather: 22px;
   --shadow-card: 0 1px 0 rgb(255 255 255 / .04) inset, 0 10px 30px -18px rgb(0 0 0 / .9);
   --shadow-pop: 0 1px 0 rgb(255 255 255 / .06) inset, 0 30px 60px -20px rgb(0 0 0 / .95);
   --shadow-feather: var(--shadow-card); --shadow-lift: var(--shadow-pop);
@@ -585,8 +585,8 @@ select:disabled { opacity: .45; cursor: not-allowed; }
     padding: 6px; margin-block: 6px; box-shadow: var(--shadow-pop); max-height: min(340px, 55dvh); overflow-y: auto; overscroll-behavior: contain;
     opacity: 1; transform: none; transform-origin: top center;
     transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur) var(--ease-spring), display var(--dur) allow-discrete, overlay var(--dur) allow-discrete; }
-  ::picker(select):popover-open { opacity: 1; transform: none; }
-  @starting-style { ::picker(select):popover-open { opacity: 0; transform: translateY(-6px) scale(.97); } }
+  select:open::picker(select) { opacity: 1; transform: none; }
+  @starting-style { select:open::picker(select) { opacity: 0; transform: translateY(-6px) scale(.97); } }
   [data-theme="paper"] ::picker(select) { background: var(--color-bg-2); }
   select option { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 9px 12px; border-radius: 10px; font-size: 15px;
     color: var(--color-label); background: transparent; cursor: pointer; transition: background var(--dur-fast); }
@@ -600,6 +600,14 @@ select:disabled { opacity: .45; cursor: not-allowed; }
 input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 24px; height: 24px; border-radius: 8px; border: 1.5px solid var(--color-line-2); background: var(--color-bg-3); display: inline-grid; place-items: center; cursor: pointer; transition: all var(--dur-fast); flex: none; }
 input[type="checkbox"]:checked { background: var(--color-tint); border-color: var(--color-tint); }
 input[type="checkbox"]:checked::after { content: ""; width: 6px; height: 11px; border: solid #06120a; border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
+/* A radio drawn the same way as the checkbox: a 22px ring, a solid tint dot when chosen. Native
+   radios are 13px and look like nothing beside the 24px box (Settings → Kitchen, 2026-10-12). Sized
+   here, not by a utility on the element: a `w-auto` or `w-4` on a drawn control collapses or shrinks
+   it — the Tomorrow buy list's box was 8px wide, a green capsule, for that reason. */
+input[type="radio"] { appearance: none; -webkit-appearance: none; width: 22px; height: 22px; min-width: 22px; border-radius: 50%; border: 1.5px solid var(--color-line-2); background: var(--color-bg-3); display: inline-grid; place-items: center; cursor: pointer; transition: all var(--dur-fast); flex: none; }
+input[type="radio"]:checked { border-color: var(--color-tint); }
+input[type="radio"]:checked::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--color-tint); }
+input[type="checkbox"] { min-width: 24px; }
 input[type="range"] { appearance: none; -webkit-appearance: none; height: 6px; background: var(--color-fill-2); border-radius: 99px; padding: 0; border: 0; min-height: 0; }
 input[type="range"]::-webkit-slider-thumb { appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgb(0 0 0 / .5); cursor: grab; transition: transform var(--dur-fast); }
 input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.1); cursor: grabbing; }
@@ -880,6 +888,13 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
   .toolbar:has(> .toolbar-end > .btn:nth-child(4)) { flex-direction: column; align-items: stretch; gap: 10px; }
   .toolbar:has(> .toolbar-end > .btn:nth-child(4)) > .toolbar-end { margin-left: 0; flex-wrap: wrap; justify-content: flex-start; }
   .toolbar:has(> .toolbar-end > .btn:nth-child(4)) > .toolbar-end > .btn { flex: 1 1 auto; }
+/* Six actions (Menu grew a Recipes button) are ~880px: on the icon rail no width leaves 300px of rail
+   beside them, and under the full sidebar only 1482 and up does. So six stack everywhere below that. */
+@media (min-width: 721px) and (max-width: 1481px) {
+  .toolbar:has(> .toolbar-end > .btn:nth-child(6)) { flex-direction: column; align-items: stretch; gap: 10px; }
+  .toolbar:has(> .toolbar-end > .btn:nth-child(6)) > .toolbar-end { margin-left: 0; flex-wrap: wrap; justify-content: flex-start; }
+  .toolbar:has(> .toolbar-end > .btn:nth-child(6)) > .toolbar-end > .btn { flex: 1 1 auto; }
+}
 }
 /* every control in a toolbar shares one height, so nothing sits a few pixels proud of its neighbour */
 .toolbar-group > .chip, .toolbar-group > .btn, .toolbar-group > select, .toolbar-group input, .toolbar-group > .segmented { height: 40px; min-height: 40px; }
@@ -1102,3 +1117,31 @@ input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
 
 /* Settings → logo preview: a soft checkerboard, so a logo's transparent edge reads as transparent */
 .logo-well { background-color: var(--color-bg-2); background-image: conic-gradient(var(--color-fill-2) 25%, transparent 0 50%, var(--color-fill-2) 0 75%, transparent 0); background-size: 12px 12px; }
+
+/* The till's cart bar (PosClient, [data-cart-bar]) and the assistant's round button
+   (Assist.tsx, [data-assist]) sat at the same height on a phone, the button over "Review →".
+   While the bar is showing, the button rides above it: the bar is 56px with 10–12px of air.
+   Below lg only — on a laptop the ticket is a rail and there is no bar. */
+@media (max-width: 1023.98px) {
+  body:has([data-cart-bar] button) [data-assist] { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 78px + 68px); transition: bottom var(--dur) var(--ease-out); }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  body:has([data-cart-bar] button) [data-assist] { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 68px); }
+}
+
+/* The top bar, pinned (TopBar sets data-stuck when it reaches the top). It runs from the sidebar's
+   edge to the right of the screen: the main column's padding (--bx) on the left, that padding plus
+   the frame's 12px gutter (--br) on the right; its own padding grows by the same amounts, so nothing
+   inside it moves sideways when it pins. Square, a hairline under it, and a band above it in the
+   installed iPhone app so the status bar never shows the page scrolling behind. */
+.topbar { transition: border-radius var(--dur-fast) var(--ease-out); }
+.topbar[data-stuck] { --bx: 16px; --br: 16px;
+  margin-left: calc(-1 * var(--bx)); margin-right: calc(-1 * var(--br));
+  padding-left: calc(var(--bx) + 16px); padding-right: calc(var(--br) + 16px);
+  border-radius: 0; border-width: 0 0 .5px; box-shadow: 0 10px 24px -18px rgb(0 0 0 / .7);
+  /* slimmer pinned: 2px above and below instead of 8 (the buttons keep 44px); the 12px it loses is
+     added to its bottom margin, so the page under it does not jump as it pins */
+  padding-top: 2px; padding-bottom: 2px; margin-bottom: calc(2rem + 12px); }
+.topbar[data-stuck]::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: env(safe-area-inset-top, 0px); background: inherit; }
+@media (min-width: 768px) { .topbar[data-stuck] { --bx: 32px; --br: 44px; } }
+@media (min-width: 1536px) { .topbar[data-stuck] { --bx: 48px; --br: 60px; } }

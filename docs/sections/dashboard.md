@@ -40,6 +40,13 @@ component on the client.
 
 ## Before you edit
 
+- **Takings today, the 7-day curve and the top dishes come from `dashboard_figures()` (0090)** —
+  one small row instead of every bill of the week and every dish line of the day (which came out
+  short past 1000 rows). The page was ~490 ms on the server; with 0090 and the RLS change in 0091 it
+  is ~200 ms. The "last six" settlements list stays a query (`limit 6`) — it was the 450 ms request
+  until 0091 let it use the index.
+
+
 - **The header clock's hands are placed by script, not by CSS animation** (`components/ui/AnalogClock.tsx`).
   globals.css switches every animation off under `prefers-reduced-motion`, which would leave CSS-driven
   hands standing at twelve. It ticks from the time in India (UTC+5:30, no daylight saving) once a

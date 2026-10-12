@@ -168,7 +168,7 @@ function NewLink({ periods, onDone, onError }: { periods: P[]; onDone: (token: s
       </div>
       <Field label="Link expires in"><div className="flex gap-2">{[7, 30, 90, 180].map((d) => <button key={d} onClick={() => setF({ ...f, days: d })} className={cn("chip", f.days === d && "on")}>{d} days</button>)}</div></Field>
       <label className={cn("feather p-3 flex gap-3 cursor-pointer text-sm", f.showCosts && "border-mint")}>
-        <input type="checkbox" checked={f.showCosts} onChange={(e) => setF({ ...f, showCosts: e.target.checked })} className="!w-auto mt-0.5" />
+    <input type="checkbox" checked={f.showCosts} onChange={(e) => setF({ ...f, showCosts: e.target.checked })} className="mt-0.5" />
         <span><b>Include supplier and wage costs</b><br /><span className="text-steel text-xs">A lender assessing margin will want these. A supplier negotiating with you probably should not see them.</span></span>
       </label>
       <Button className="w-full" disabled={pending} onClick={() => start(async () => { const r = await createLink(f); if ("error" in r) onError(r.error!); else onDone(r.link!.token, f.label); })}>Create link</Button>

@@ -92,7 +92,7 @@ export function NightAuditClient({ today, date, audit, history, canClose }: { to
         <p className="text-xs text-steel mb-4">{ready ? "Nothing is outstanding." : "Anything still listed above goes into the record as it stands — settle what you can first."}{a.closed ? " Closing again replaces the snapshot with the numbers as they are now." : ""}</p>
         {canClose ? (
           <div className="space-y-3">
-            <label className="flex items-start gap-2.5 text-sm"><input type="checkbox" className="w-4 h-4 accent-saffron mt-0.5" checked={noShows} onChange={(e) => setNoShows(e.target.checked)} />
+            <label className="flex items-start gap-2.5 text-sm"><input type="checkbox" className="mt-0.5" checked={noShows} onChange={(e) => setNoShows(e.target.checked)} />
               <span>Mark the {a.not_arrived.length} arrival{a.not_arrived.length === 1 ? "" : "s"} that never came as no-shows<span className="block text-xs text-steel mt-0.5">Their rooms go back on sale. A guest who turns up later gets a fresh booking.</span></span></label>
             <Field label="Notes for the record"><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Power cut 9–10 pm; 204 comped for the noise…" /></Field>
             <Button size="lg" disabled={pending} onClick={close}>{pending ? "Closing…" : `Close ${date}`}</Button>

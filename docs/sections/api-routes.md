@@ -4,6 +4,13 @@
 
 ## What they are
 
+- **`POST /api/admin/selftest`** — Master control → Testing's server suites (`{ suite:
+  database|functions|api|security|performance|unit, restaurant? }`). Master only: no session → 401,
+  a non-master → 403. It records every run in `selftest_runs`. The performance suite fetches the
+  app's own screens with the caller's cookie; the security suite fetches them without one.
+  See [admin-and-membership.md](admin-and-membership.md).
+
+
 Fifteen HTTP endpoints for things a page cannot do: inbound webhooks, device sync, feeds and
 health.
 

@@ -14,7 +14,10 @@ import { RefreshCw, AlertTriangle } from "lucide-react";
 const STALE = /ChunkLoadError|Loading chunk|Loading CSS chunk|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
 const ONCE = "df-reloaded-after-stale-build";   // holds the time of the last automatic reload
 
-export function ErrorRecovery({ error, reset }: { error: Error & { digest?: string }; reset?: () => void }) {
+export function ErrorRecovery({ error, reset, inline = false }: { error: Error & { digest?: string }; reset?: () => void; inline?: boolean }) {
+  // inside the app shell the card sits in the page column, under the sidebar and above the tab bar;
+  // at the root it is the whole screen
+  const frame = inline ? "min-h-[60dvh] grid place-items-center p-2" : "min-h-dvh grid place-items-center bg-[var(--color-bg)] p-6";
   const [reloading, setReloading] = useState(false);
 
   useEffect(() => {
@@ -37,7 +40,7 @@ export function ErrorRecovery({ error, reset }: { error: Error & { digest?: stri
   }, [error]);
 
   if (reloading) return (
-    <div className="min-h-dvh grid place-items-center bg-[var(--color-bg)] p-6">
+    <div className={frame} data-error-screen>
       <div className="text-center">
         <RefreshCw size={22} className="mx-auto animate-spin text-[var(--color-label-2)]" />
         <p className="mt-3 text-sm text-[var(--color-label-2)]">A newer version is ready. Loading it…</p>
@@ -46,7 +49,7 @@ export function ErrorRecovery({ error, reset }: { error: Error & { digest?: stri
   );
 
   return (
-    <div className="min-h-dvh grid place-items-center bg-[var(--color-bg)] p-6">
+    <div className={frame} data-error-screen>
       <div className="card p-6 max-w-md w-full text-center">
         <span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-red-2)] text-[var(--color-red)]"><AlertTriangle size={22} /></span>
         <h1 className="text-2xl mt-4">This screen did not load</h1>

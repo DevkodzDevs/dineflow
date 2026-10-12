@@ -42,6 +42,24 @@ it is cooked, and the leak report cannot see it. See [menu.md](menu.md).
 
 ## Before you edit
 
+- **When stock leaves (0092).** `restaurants.stock_draw`: **`ticket`** (default) — a line draws its recipe
+  the moment it is inserted, which is the moment the order reaches the kitchen (`place_order` /
+  `add_items` insert lines as `pending`); a line cancelled while still pending is credited straight back
+  (positive `sale` rows, note *cancelled before cooking*; the leak report and `report_summary` sum the
+  ledger, so a credit nets out). **`cook`** — the 0055 rule, on *Start cooking*. Either way a line draws
+  **once**: the guard is the ledger's net for that line, so a credited line can draw again if revived,
+  and a property switched from `cook` to `ticket` mid-service still draws its pending lines when they
+  start or are billed (billing marks lines served). Settings → Kitchen holds the switch. Dry run
+  `dry92.cjs` (14).
+- **The Stock tab says when something is at or below its reorder level** (`[data-low-strip]`): names,
+  "already on Tomorrow's buy list", *Tomorrow's list* and *Draft a purchase order* (→ the Orders tab,
+  where `po_suggest` drafts from reorder levels). Tomorrow's list (`forecast_day`, 0092) now carries
+  every such ingredient, topped up to twice the level — see [reports-and-forecast.md](reports-and-forecast.md).
+
+
+- **Pantry's header keeps *Leak finder* beside the title on a phone** (`PageHeader actionsInline`). The Leak finder page itself does not — "Leak finder" and "Count stock now" do not fit one 375px row.
+
+
 - **Never write a stock level directly.** Append to `stock_ledger`; the level is derived. A direct
   write silently breaks the leak report, which compares expected against actual movement.
 - **Units are per-ingredient and do not convert automatically.** `applyStandardRecipe` skips an

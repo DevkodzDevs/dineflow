@@ -2,55 +2,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, LogOut, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ShieldCheck, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, Menu, X, LayoutGrid, Fingerprint, BrainCircuit, Wallet, ScrollText } from "lucide-react";
+import { LogOut, ShieldCheck, Menu, X, LayoutGrid, Fingerprint } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn, Sheet } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
 import { barFor } from "@/lib/bar";
 import { InstallEntry } from "./InstallEntry";
-
-const ITEMS = [
-  { key: "dashboard", href: "/dashboard", label: "Control room", Icon: LayoutDashboard },
-  { key: "tomorrow", href: "/tomorrow", label: "Tomorrow", Icon: Sun },
-  { key: "scan", href: "/scan", label: "Scan", Icon: ScanLine },
-  { key: "frontdesk", href: "/frontdesk", label: "Front desk", Icon: ConciergeBell },
-  { key: "rooms", href: "/rooms", label: "Rooms", Icon: BedDouble },
-  { key: "housekeeping", href: "/housekeeping", label: "Housekeeping", Icon: Sparkles },
-  { key: "guests", href: "/guests", label: "Guests", Icon: Contact },
-  { key: "facilities", href: "/facilities", label: "Facilities", Icon: Waves },
-  { key: "reservations", href: "/reservations", label: "Reservations", Icon: CalendarCheck },
-  { key: "pulse", href: "/pulse", label: "Pulse", Icon: Activity },
-  { key: "orders", href: "/orders", label: "Orders", Icon: ClipboardList },
-  { key: "online-orders", href: "/online-orders", label: "Online orders", Icon: Bike },
-  { key: "customers", href: "/customers", label: "Customers", Icon: HeartHandshake },
-  { key: "kitchen", href: "/kitchen", label: "Kitchen", Icon: Flame },
-  { key: "billing", href: "/billing", label: "Billing", Icon: Receipt },
-  { key: "invoices", href: "/invoices", label: "Invoices", Icon: FileText },
-  { key: "menu", href: "/menu", label: "Menu", Icon: UtensilsCrossed },
-  { key: "inventory", href: "/inventory", label: "Pantry", Icon: Boxes },
-  { key: "labour", href: "/labour", label: "Labour", Icon: HardHat },
-  { key: "proof", href: "/proof", label: "Proof of business", Icon: BadgeCheck },
-  { key: "neighbours", href: "/neighbours", label: "Neighbours", Icon: Users2 },
-  { key: "channels", href: "/channels", label: "Channels", Icon: Radio },
-  { key: "reports", href: "/reports", label: "Reports", Icon: BarChart3 },
-  { key: "tax", href: "/tax", label: "Tax & GST", Icon: Landmark },
-  { key: "staff", href: "/staff", label: "Staff", Icon: Users },
-  { key: "settings", href: "/settings", label: "Settings", Icon: Settings },
-];
-
-/**
- * "New menu": the screens added in the 2026-10-11 upgrade — Intelligence, Cash & controls, the Audit
- * trail. They are not modules (no row in role_modules, no tick in Staff → Access): the owner asked for
- * them under one heading, and each page checks the role on the server itself. The role list here only
- * decides who sees the link; the page and the RPCs decide who gets in.
- */
-const FRESH = [
-  { key: "intelligence", href: "/intelligence", label: "Intelligence", Icon: BrainCircuit, roles: ["owner", "manager", "supervisor"] },
-  { key: "controls", href: "/controls", label: "Cash & controls", Icon: Wallet, roles: ["owner", "manager", "supervisor", "cashier"] },
-  { key: "audit", href: "/audit", label: "Audit trail", Icon: ScrollText, roles: ["owner", "manager", "supervisor"] },
-];
-const freshFor = (role: Role) => FRESH.filter((i) => i.roles.includes(role));
+import { ITEMS, freshFor } from "./sections";
 
 /** One titled block of the menu. Declared here, not inside Sidebar: a component created during
  *  render is a new type every time, which unmounts and rebuilds the whole menu on each pass. */
@@ -151,7 +110,7 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
         <Group title={type === "resort" ? "Resort" : "Hotel"} items={hospitality} path={path} />
         <Group title="Dining" items={dining} path={path} />
         <Group title="Manage" items={manage} path={path} />
-        <Group title="New menu" items={freshFor(role)} path={path} />
+        <Group title="Insights & control" items={freshFor(role)} path={path} />
       </nav>
       {/* the foot: who you are, and the way out. Settings keeps its own row up in Manage,
           so the second button for it down here was only costing a row of height. */}
@@ -206,6 +165,23 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
   const [editing, setEditing] = useState(false);
   useEffect(() => { try { const v = JSON.parse(localStorage.getItem(PIN_KEY) ?? "null"); if (Array.isArray(v)) setPins(v.filter((x) => typeof x === "string")); } catch { /* none saved */ } }, []);
   useEffect(() => { if (!open) setEditing(false); }, [open]);
+  /* The sheet opened at its top every time, so after choosing a section far down the list (Manage,
+     Insights & control) and coming back to More, the one you were on was below the fold — it looked lost.
+     On open, the sheet's own scroller brings the current section to the middle. Only that scroller
+     moves; scrollIntoView would also nudge the page behind it. */
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      const box = sheetRef.current?.closest(".sheet-body") as HTMLElement | null;
+      const cur = sheetRef.current?.querySelector('[aria-current="page"]') as HTMLElement | null;
+      if (!box || !cur) return;
+      const b = box.getBoundingClientRect(), c = cur.getBoundingClientRect();
+      if (c.top >= b.top + 8 && c.bottom <= b.bottom - 8) return;
+      box.scrollTo({ top: box.scrollTop + (c.top - b.top) - (b.height - c.height) / 2, behavior: "smooth" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [open]);
   const savePins = (v: string[] | null) => { setPins(v); try { if (v) localStorage.setItem(PIN_KEY, JSON.stringify(v)); else localStorage.removeItem(PIN_KEY); } catch { /* fine */ } };
   const primary = barFor(role, type, allowed.map((i) => i.key), pins).map((k) => allowed.find((i) => i.key === k)!);
   /* What the person chose — not what the bar shows. When fewer than four are pinned the bar fills the
@@ -228,13 +204,13 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
     { title: type === "resort" ? "Resort" : "Hotel", items: allowed.filter((i) => HOSPITALITY.includes(i.key)) },
     { title: "Dining", items: allowed.filter((i) => !HOSPITALITY.includes(i.key) && !MANAGE.includes(i.key) && !TOP.includes(i.key)) },
     { title: "Manage", items: allowed.filter((i) => MANAGE.includes(i.key)) },
-    { title: "New menu", items: fresh },
+    { title: "Insights & control", items: fresh },
   ].filter((g) => g.items.length);
   const tab = (active: boolean) => cn("flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 text-[11px] font-display tracking-wide transition-colors", active ? "text-[var(--color-tint)]" : "text-[var(--color-label-2)]");
   const pip = (active: boolean) => cn("h-8 w-12 grid place-items-center rounded-full transition", active && "bg-[rgb(76_217_100/.16)]");
   return (
     <>
-      <nav aria-label="Sections" className="md:hidden fixed bottom-[max(10px,env(safe-area-inset-bottom))] inset-x-3 z-30 material-thick rounded-[26px] shadow-[var(--shadow-pop)]">
+      <nav aria-label="Sections" className="md:hidden fixed bottom-[max(10px,env(safe-area-inset-bottom))] left-[max(12px,env(safe-area-inset-left))] right-[max(12px,env(safe-area-inset-right))] z-30 material-thick rounded-[26px] shadow-[var(--shadow-pop)]">
         <div className="flex px-1">
           {primary.map(({ key, href, label, Icon }) => {
             const active = path.startsWith(href);
@@ -251,7 +227,7 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
       </nav>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Menu">
-        <div className="space-y-5">
+        <div className="space-y-5" ref={sheetRef} data-more>
           <div className={cn("flex items-center gap-2 rounded-2xl p-2.5 pl-3.5", editing ? "bg-[var(--color-green-2)]" : "bg-[var(--color-fill)]")}>
             <span className="flex-1 min-w-0 text-[12.5px] leading-snug">{editing ? <><b>Tap to pin</b> up to 4 sections to your bar.</> : <>Your bar: <b>{primary.map((i) => i.label).join(" · ")}</b></>}</span>
             {editing && pins && <button type="button" onClick={() => savePins(null)} className="h-10 px-3 rounded-xl text-[12.5px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)]">Reset</button>}
@@ -303,7 +279,6 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
                 : <div className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)]">{who}</div>;
             })()}
             {attend && <Link href="/attendance" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><Fingerprint size={17} /> My attendance</Link>}
-            <InstallEntry variant="sheet" />
             {isAdmin && <Link href="/admin" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><ShieldCheck size={17} /> Master control</Link>}
             <form action="/logout" method="post">
               <button className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] text-[15px] font-semibold hover:brightness-110 transition"><LogOut size={17} /> Sign out</button>

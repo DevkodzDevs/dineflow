@@ -104,6 +104,11 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
   installability check said `no-manifest` on `/get` itself until this moved. The manifest has an
   `id`, `standalone`, a maskable icon and four shortcuts (New order, Kitchen, Front desk, Billing).
   Probe: `pwa.mjs`.
+- **The service worker never touches Next.js page data** (`?_rsc=`, the `RSC` /
+  `Next-Router-State-Tree` headers), v16, 2026-10-12. Served stale-while-revalidate it showed live
+  screens the previous answer and, after a deploy, handed the new build the old build's page data —
+  Next.js answers that with a full reload, so every open tab "refreshed itself" within a minute of
+  each update. Bump `V` whenever what the worker caches changes, so old entries are dropped.
 - **The service worker's install and activate never fail on storage** (`public/sw.js`). When the
   browser could not open its cache ("Failed to execute 'open' on 'CacheStorage'" — low space, private
   mode, a damaged profile) the precache rejected and the whole worker was discarded: no offline copy,

@@ -65,8 +65,14 @@ export function ControlsClient({ expected, moves, shifts, voids, lines, names, m
           <div className="mt-4 space-y-3">
             <Field label="Amount (₹)"><input type="number" inputMode="decimal" min={1} step="1" className="num !text-xl" value={amount} onChange={(e) => { setAmount(e.target.value); setErr(null); }} placeholder="0" data-amount /></Field>
             <div className="space-y-1.5"><label>What for</label>
-              <div className="flex flex-wrap gap-2">{REASONS[kind].map((r) => <button key={r} type="button" onClick={() => { setReason(r); setErr(null); }} className={cn("chip", reason === r && "on")}>{r}</button>)}</div>
-              <input value={reason} onChange={(e) => { setReason(e.target.value); setErr(null); }} placeholder="or type a reason" maxLength={80} data-reason />
+              {/* an even grid of equal tiles, not chips wrapping into ragged rows of 2, 2 and 2 with
+                  different widths; the picked one is ticked, and the box below is for anything else */}
+              <div className="grid grid-cols-2 gap-2" data-reasons>{REASONS[kind].map((r) => { const on = reason === r; return (
+                <button key={r} type="button" aria-pressed={on} onClick={() => { setReason(on ? "" : r); setErr(null); }}
+                  className={cn("h-11 min-w-0 px-3 rounded-xl text-[13px] font-semibold flex items-center justify-between gap-1.5 text-left border transition-colors",
+                    on ? "bg-[var(--color-label)] text-[var(--color-on-label)] border-transparent" : "bg-[var(--color-fill)] border-transparent hover:bg-[var(--color-fill-2)]")}>
+                  <span className="line-clamp-2 leading-[1.15]" data-r>{r}</span>{on && <Check size={15} className="shrink-0" />}</button>); })}</div>
+              <input value={REASONS[kind].includes(reason) ? "" : reason} onChange={(e) => { setReason(e.target.value); setErr(null); }} placeholder="Something else? Type it" maxLength={80} data-reason />
             </div>
             <Field label="Note (optional)"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Bill number, who took it…" maxLength={160} /></Field>
             {err && <p className="text-sm text-chili">{err}</p>}

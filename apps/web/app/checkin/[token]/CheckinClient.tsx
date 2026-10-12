@@ -91,7 +91,7 @@ export function CheckinClient({ token, initial, kiosk }: { token: string; initia
             <div><label htmlFor="ci-req">Anything we should know?</label><textarea id="ci-req" rows={2} maxLength={300} value={f.requests} onChange={set("requests")} placeholder="Early check-in, extra bed, a quiet room, an allergy…" /></div>
           </section>
           <label className="feather !mb-0 p-4 flex items-start gap-3 text-sm normal-case !font-normal cursor-pointer min-h-11">
-            <input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} className="!w-5 !h-5 mt-0.5 shrink-0" />
+      <input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} className="mt-0.5 shrink-0" />
             <span>These details are correct, and I will show the ID above when I arrive.</span>
           </label>
           {err && <p className="text-sm text-[var(--color-red)]" role="alert">{err.charAt(0).toUpperCase() + err.slice(1)}.</p>}

@@ -10,8 +10,6 @@ export const metadata = { title: "Invoices" };
 export const dynamic = "force-dynamic";
 
 const IST = 5.5 * 3600 * 1000;
-/** "2026-09" for the month an instant falls in, counted in the only timezone this app bills in. */
-const monthKey = (iso: string | Date) => new Date(new Date(iso).getTime() + IST).toISOString().slice(0, 7);
 
 export default async function Invoices({ searchParams }: { searchParams: Promise<{ days?: string; kind?: string }> }) {
   const { days = "30", kind } = await searchParams;
@@ -19,17 +17,20 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
   const s = await createClient();
 
   const cols = "id, invoice_no, kind, guest_name, guest_phone, total, paid, subtotal, discount, cgst, sgst, status, issued_at, lines";
+  /* The list is the latest SHOWN invoices; the figures come from invoice_summary (0089), counted by
+     the database over the whole window. Adding the rows up here was wrong past 1000 invoices —
+     PostgREST stops there — and slower every month until then. */
+  const SHOWN = 300;
   let q = s.from("invoices").select(cols)
     .gte("issued_at", new Date(Date.now() - n * 86400000).toISOString())
-    .order("issued_at", { ascending: false });
+    .order("issued_at", { ascending: false }).limit(SHOWN);
   if (kind) q = q.eq("kind", kind);
-
-  // six months of totals for the strip, regardless of which window the table is showing
-  const from = new Date(Date.now() + IST); from.setUTCDate(1); from.setUTCMonth(from.getUTCMonth() - 5); from.setUTCHours(0, 0, 0, 0);
-  const history = s.from("invoices").select("issued_at, total").gte("issued_at", new Date(from.getTime() - IST).toISOString());
+  const summary = s.rpc("invoice_summary", { p_days: n, p_kind: kind ?? null });
 
   // both queries leave together; the page waits once rather than twice
-  const [session, { data: inv }, { data: hist }] = await Promise.all([requireSession(), q, history]);
+  const [session, { data: inv }, { data: sum }] = await Promise.all([requireSession(), q, summary]);
+  type Sum = { count: number; total: number; gst: number; stay: number; outstanding: number; months: { key: string; total: number; count: number }[] };
+  const fig = (sum ?? null) as Sum | null;
 
   const months: Month[] = [];
   for (let i = 5; i >= 0; i--) {
@@ -37,20 +38,23 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
     months.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleDateString("en-IN", { month: "short", timeZone: "UTC" }), total: 0, count: 0 });
   }
   const byKey = new Map(months.map((m) => [m.key, m]));
-  for (const h of hist ?? []) { const m = byKey.get(monthKey(h.issued_at)); if (m) { m.total += Number(h.total); m.count += 1; } }
+  for (const h of fig?.months ?? []) { const m = byKey.get(h.key); if (m) { m.total = Number(h.total); m.count = Number(h.count); } }
 
   const rows = (inv ?? []) as unknown as Invoice[];
-  const total = rows.reduce((t, i) => t + Number(i.total), 0);
-  const gst = rows.reduce((t, i) => t + Number(i.cgst) + Number(i.sgst), 0);
-  const outstanding = rows.filter((i) => i.status === "due").reduce((t, i) => t + Number(i.total) - Number(i.paid), 0);
+  // the database's figures; if the summary could not be had, the rows on screen are the fallback
+  const total = fig ? Number(fig.total) : rows.reduce((t, i) => t + Number(i.total), 0);
+  const gst = fig ? Number(fig.gst) : rows.reduce((t, i) => t + Number(i.cgst) + Number(i.sgst), 0);
+  const outstanding = fig ? Number(fig.outstanding) : rows.filter((i) => i.status === "due").reduce((t, i) => t + Number(i.total) - Number(i.paid), 0);
+  const count = fig ? Number(fig.count) : rows.length;
+  const stays = fig ? Number(fig.stay) : rows.filter((i) => i.kind === "stay").length;
 
   return (
     <>
       <PageHeader eyebrow="Numbered GST tax invoices" title="Invoices" accent="& tax" sub="Stay invoices combine room, food, spa and extras. Dining invoices come from paid bills." />
       <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 mb-4">
-        <StatTile label={`Invoiced · ${n} days`} value={formatINR(total)} sub={`${rows.length} invoices`} />
+        <StatTile label={`Invoiced · ${n} days`} value={formatINR(total)} sub={`${count} invoices`} />
         <StatTile label="GST collected" value={formatINR(gst)} sub="CGST + SGST" delay={0.05} />
-        <StatTile label="Stay invoices" value={String(rows.filter((i) => i.kind === "stay").length)} delay={0.1} />
+        <StatTile label="Stay invoices" value={String(stays)} delay={0.1} />
         <StatTile label="Outstanding" value={formatINR(outstanding)} tone={outstanding > 0 ? "alert" : "good"} delay={0.15} />
       </div>
       {/* Phone: what and when as two even segmented rows — the chips wrapped into a ragged pair of lines
@@ -77,7 +81,10 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
       </div>
       {!rows.length
         ? <Empty title="No invoices yet" hint="Check a guest out, or open a paid bill and press Tax invoice." />
-        : <InvoicesClient invoices={rows} months={months} property={session.restaurant.name} />}
+        : <>
+            {count > rows.length && <p className="footnote mb-3" data-shown>Showing the latest {rows.length} of {count} invoices — the totals above count all {count}. Pick a shorter window to reach the older ones.</p>}
+            <InvoicesClient invoices={rows} months={months} property={session.restaurant.name} />
+          </>}
     </>
   );
 }

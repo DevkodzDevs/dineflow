@@ -117,7 +117,7 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
             <Field label="To (optional)"><input name="to_time" type="time" className="num" defaultValue={offer?.to_time?.slice(0, 5) ?? ""} /></Field>
           </div>
           <Field label="Code (optional)"><input name="code" className="num uppercase" defaultValue={offer?.code ?? ""} placeholder="EARLY15" /></Field>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" defaultChecked={offer?.is_active ?? true} className="!w-auto" /> Active</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" defaultChecked={offer?.is_active ?? true} /> Active</label>
           <Button className="w-full" loading={pending}>Save offer</Button>
         </form>
       </Sheet>

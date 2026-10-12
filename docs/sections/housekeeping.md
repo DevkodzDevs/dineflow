@@ -54,8 +54,11 @@ dirty room without a ticket.
     only colour up top — `COND[...].chip`, dot + word); then the guest (or Vacant / Reserved /
     Cleaning, or the repair note) and the one thing to know — "Due out" in red on the day,
     "Awaiting sign-off", "Out 17 Sep" (`dayMonth`; en-IN says "Sept"), how long ago, or the repair
-    state in red; then **the actions as small pills** sized to their words, left-aligned (30px to
-    the eye, `rounded-full`, `!min-h-0` against the 44px button floor). Only the main move (Pass /
+    state in red; then **the actions as the card's footer strip** (2026-10-12, modelled on the Menu card's footer at
+    the owner's request): a hairline across, a band of `--color-fill` at 45% from edge to edge (`-mx-3
+    -mb-3`, the card `overflow-hidden`), one equal section per action (`repeat(n, minmax(0,1fr))`) split
+    by hairlines, 44px tall (36px below 1280 — iPad and tablet, at the owner's request), `FOOT` tones — the main move on the green wash, the rest in their colour.
+    It replaced the pills below, which read as loose buttons. (The pills were 30px to the eye, `rounded-full`, `!min-h-0` against the 44px button floor). Only the main move (Pass /
     Cleaned / Touched up) has a fill, the green wash (`SEG.go`); Fail, Pickup and Dirty are a
     hairline outline with the word in red / blue / grey, washing with their colour on hover. The
     finger still gets 44px: an invisible `::before` 7px above and below and 2px each side, with

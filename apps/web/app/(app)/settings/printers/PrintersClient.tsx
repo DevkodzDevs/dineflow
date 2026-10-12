@@ -47,7 +47,7 @@ export function PrintersClient({ printers, restaurant }: { printers: Pr[]; resta
             <Field label="Copies"><input name="copies" type="number" min={1} max={5} className="num" defaultValue={edit?.copies ?? 1} /></Field>
           </div>
           <Field label="Footer line"><input name="footer" defaultValue={edit?.footer ?? ""} placeholder="Thank you, visit again" /></Field>
-          <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="cut" defaultChecked={edit?.cut ?? true} className="!w-auto" /> Auto-cut paper</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="drawer" defaultChecked={edit?.drawer} className="!w-auto" /> Open cash drawer</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_default" defaultChecked={edit?.is_default} className="!w-auto" /> Default</label></div>
+          <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="cut" defaultChecked={edit?.cut ?? true} /> Auto-cut paper</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="drawer" defaultChecked={edit?.drawer} /> Open cash drawer</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_default" defaultChecked={edit?.is_default} /> Default</label></div>
           <Button className="w-full" disabled={pending}>Save printer</Button>
         </form>
       </Sheet>
