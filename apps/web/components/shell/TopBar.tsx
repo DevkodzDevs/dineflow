@@ -24,7 +24,7 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
     <>
     <div ref={mark} aria-hidden className="h-px -mb-px" />
     <motion.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} data-stuck={stuck ? "" : undefined} className="topbar material sticky top-[env(safe-area-inset-top,0px)] z-20 mb-8 flex items-center gap-3 px-4 py-2 rounded-[20px]">
-      <div className="hidden sm:flex items-center gap-2 text-steel text-sm flex-1"><Search size={16} /><span className="text-xs">Search tables, rooms, guests, dishes…</span><kbd className="ml-auto text-[10px] num bg-[var(--color-fill)] rounded-md px-1.5 py-0.5 text-[var(--color-label-2)]">⌘K</kbd></div>
+      <div className="hidden sm:flex items-center gap-2 text-steel text-sm flex-1"><Search size={18} /><span className="text-xs">Search tables, rooms, guests, dishes…</span><kbd className="ml-auto text-[10px] num bg-[var(--color-fill)] rounded-md px-1.5 py-0.5 text-[var(--color-label-2)]">⌘K</kbd></div>
       {/* the wordmark goes home, like the sidebar's: /dashboard, or the first section this person holds */}
       <div className="sm:hidden flex-1 min-w-0"><Link href="/dashboard" aria-label="DineFlow — home" className="inline-flex items-center !min-h-11 font-display text-xl tracking-wide">DineFlow</Link></div>
       {boxSync !== null && boxSync !== undefined && (

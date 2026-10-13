@@ -164,8 +164,20 @@ one), `split_order` (one into two) — all RPCs, all atomic.
   under the card — a 16px target that made free cards look shorter than occupied ones.
 - **Reserved is `--color-orange` with a dashed border**, never `--color-saffron`, which is green in
   the dark theme. Free carries a green dot.
-- **Open orders carry a 3px state strip** (ready green, preparing orange, served blue, pending
-  grey); the dish line sits under a hairline with the total `shrink-0`.
+- **Open orders are a grid of cards under the floor, at every width** (2026-10-13): one across on a
+  phone, two from `md` (iPad, tablet), three from `xl` (laptop), four from `min-[100rem]` (1600px,
+  desktop). Write that breakpoint in rem: Tailwind v4 sorts an arbitrary `min-[1600px]` ahead of its
+  own rem breakpoints, so `xl:grid-cols-3` beat it and a 1920 screen showed three. Before, the orders
+  were a 380px column beside the floor from 1280 and one full-width card per row below it. The floor
+  now spans the page at every width; its tiles at 1280+ are the size they already were on an iPad.
+- **An order card** (`[data-order]`, `data-state`): a 3px strip and a status chip in the kitchen's
+  words — Waiting · On the fire · Ready to serve · Served (ready pulses, and its card takes a green
+  wash and edge); the table name in a square (or the kind's icon for takeaway / room service /
+  delivery), `#no · N items · age` — the age amber past 12 h, Pulse's STALE; the customer; the
+  kitchen's progress as a bar by plates (served · ready · on the fire · waiting) with counts; the
+  first three dishes, each with its own state dot, then "+N more"; and the total in a footer strip
+  edge to edge, like the Menu and Housekeeping cards. Rows stretch, so a row's cards are one height.
+  The header counts the open orders and how many are ready / on the fire / waiting.
 - **Stock is not `is_available`.** `is_available` is the dish-level sold-out switch the menu owns;
   `menu_stock` is the live count derived from recipes and the pantry. Both can hide a dish.
 - **Never write `order_items` directly.** `place_order` recomputes the ticket, applies variants and

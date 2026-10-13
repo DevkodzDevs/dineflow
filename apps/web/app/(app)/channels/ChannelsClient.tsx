@@ -1,20 +1,30 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Copy, RefreshCw, Globe, Bike, Calendar, Check, AlertTriangle, ExternalLink, Trash2, Info, Pencil } from "lucide-react";
-import { Button, Sheet, Field, Card, Pill, cn } from "@/components/ui";
+import { Button, Sheet, Field, Card, Pill, CardStrip, cn, useToast, type StripAction } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveOta, deleteOta, setRates, setRatesOnly, pushChannel, sendTestOrder } from "./actions";
 import { suggestRate } from "@/lib/rates";
 import { todayIST } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wand2 } from "lucide-react";
-import { Upload, Send, Clock, Percent, Link2 } from "lucide-react";
+import { Upload, Send, Clock, Link2, Loader2 } from "lucide-react";
 import { saveChannel, deleteChannel } from "../online-orders/actions";
 import { copyText } from "@/lib/clipboard";
 
 type Ota = { id: string; kind: string; label: string; mode: string; room_type_id: string | null; import_url: string | null; export_token: string; api_base: string | null; hotel_ref: string | null; commission_pct: number; rate_offset_pct: number; is_live: boolean; last_import_at: string | null; last_error: string | null };
 type Oc = { id: string; kind: string; label: string; outlet_ref: string | null; webhook_token: string; commission_pct: number; prep_minutes: number; auto_accept: boolean; is_live: boolean; last_sync_at: string | null; api_base?: string | null };
 const OTA_HUE: Record<string, string> = { booking_com: "--color-blue", airbnb: "--color-red", makemytrip: "--color-orange", agoda: "--color-green", expedia: "--color-orange", ical: "--color-tint" };
+/** who the calendar link is given to — "Paste into Booking.com"; any other calendar is "their site" */
+const OTA_NAME: Record<string, string> = { booking_com: "Booking.com", airbnb: "Airbnb", makemytrip: "MakeMyTrip", agoda: "Agoda", expedia: "Expedia" };
+/** what a sync did, in a sentence: the route answers one report line per feed it read */
+const syncSaid = (rep: { added?: number; error?: string; note?: string }[]): [string, "ok" | "err" | "info"] => {
+  if (rep.some((x) => x.note)) return ["Nothing to read yet — add their calendar link with Edit", "info"];
+  const bad = rep.find((x) => x.error); if (bad) return [`Sync failed: ${bad.error}`, "err"];
+  const n = rep.reduce((t, x) => t + (x.added ?? 0), 0);
+  return [n ? `Synced · ${n} new booking${n === 1 ? "" : "s"}` : "Synced · nothing new", "ok"];
+};
 type Av = { room_type_id: string; stay_date: string; total: number; booked: number; free: number; rate: number; stop_sell: boolean };
 
 export function ChannelsClient({ base, ota, orderChannels, types, log, avail, restaurant }: { base: string; ota: Ota[]; orderChannels: Oc[]; types: { id: string; name: string; base_rate: number }[]; log: { id: string; direction: string; ok: boolean; message: string | null; count: number | null; created_at: string }[]; avail: Av[]; restaurant: { property_type: string; booking_slug: string | null; name: string } }) {
@@ -22,7 +32,33 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
   const [editOta, setEditOta] = useState<Partial<Ota> | null>(null); const [editOc, setEditOc] = useState<Partial<Oc> | null>(null);
   const [err, setErr] = useState<string | null>(null); const [msg, setMsg] = useState<string | null>(null); const [pending, start] = useTransition();
   const copy = (t: string) => { copyText(t); setMsg("Copied"); setTimeout(() => setMsg(null), 1500); };
-  const syncNow = async (id?: string) => { setMsg("Syncing…"); const r = await fetch(`/api/ota/sync${id ? `?channel=${id}` : ""}`); const j = await r.json(); setMsg(r.ok ? "Sync finished" : j.error ?? "failed"); location.reload(); };
+  const router = useRouter(); const toast = useToast();
+  /* which OTA action is running ("sync:all", "sync:<id>", "push:<id>") — its section spins — and which
+     card's link was just copied */
+  const [busy, setBusy] = useState<string | null>(null); const [copied, setCopied] = useState<string | null>(null);
+  /* Sync reads their calendars in, then the page refreshes in place: it used to reload the whole tab
+     (a white flash, back to the top) and say "Sync finished" even when there was nothing to read */
+  const syncNow = async (id?: string) => {
+    setBusy(`sync:${id ?? "all"}`);
+    try {
+      const r = await fetch(`/api/ota/sync${id ? `?channel=${id}` : ""}`); const j = await r.json().catch(() => ({}));
+      if (r.ok) toast(...syncSaid(j.report ?? [])); else toast(j.error ?? "Sync failed", "err");
+      router.refresh();
+    } catch { toast("Sync failed — check the connection", "err"); }
+    finally { setBusy(null); }
+  };
+  const pushRates = (id: string) => {
+    setBusy(`push:${id}`);
+    start(async () => {
+      try { const r = await pushChannel(id, "ari"); if ("error" in r) toast(r.error!, "err"); else toast(r.message!); }
+      catch { toast("Could not push rates — check the connection", "err"); }
+      finally { setBusy(null); }
+    });
+  };
+  const copyLink = async (id: string, t: string) => {
+    if (await copyText(t)) { setCopied(id); setTimeout(() => setCopied((x) => (x === id ? null : x)), 1800); }
+    else prompt("Copy your calendar link", t);
+  };
   const bookingUrl = `${base}/book/${restaurant.booking_slug ?? ""}`;
 
   return (
@@ -76,47 +112,81 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
           <b>Two ways to stop double-bookings.</b> <b>iCal</b> works today with Airbnb, Booking.com, Agoda and MakeMyTrip Connect: paste their calendar link into "their feed", and paste your DineFlow link into their site. Sync runs every 15 minutes and on demand.
           <b> API</b> mode (live rates and instant confirmation) needs a certified connection with each OTA or a channel-manager partner; the fields are here so you can switch over without changing anything else.</div></Card>
-        {/* the OTAs as one list on every screen (they were cards two-up, which left the third alone and wrapped
-            each card's buttons): a header with the count, Sync now and Add OTA, then one row per channel —
-            its initial, name and pills, a status line, the calendar link; the actions trail the row on a wide
-            list and sit as one row under it on a narrow one. Sized from the list (@container), not the screen */}
-        <Card className="@container" >
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
+        {/* The OTAs as cards, one per channel (they were rows of one list, each with four loose buttons).
+            The grid sizes itself from its own width (@container): one card across below a 64rem list (a
+            phone, an iPad upright) — so three channels never leave one alone — and from 64rem (an iPad on
+            its side, a laptop, a desktop) as many 20rem cards as fit, auto-fit so two or three fill the row.
+            A card, the way an Orders card reads: the initial, the name over "iCal · 15% commission" and a
+            Live/Draft chip on the right; the sync state and their feed; the calendar link as one field with
+            Copy inside it, kept to the card's foot so the fields line up along a row; and the actions as
+            the card's footer strip, edge to edge — Sync on a soft green, Push rates, Edit, Remove in red
+            (the Housekeeping and Menu cards' footer). A card narrower than 26rem puts each section's icon
+            over its word; a card from 48rem (one channel on a wide screen) sets the link beside the name. */}
+        <section className="@container" data-ota-list>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-3 mb-3">
             <div className="flex items-center gap-2 min-w-0"><h3 className="text-xl">OTA channels</h3><span className="num text-xs font-semibold rounded-full px-2 py-0.5 bg-[var(--color-fill)] text-[var(--color-label-2)]">{ota.length}</span></div>
             <div className="grid grid-cols-2 gap-2 w-full @lg:w-auto @lg:flex @lg:ml-auto">
-              <Button variant="outline" className="[&>svg]:shrink-0" onClick={() => syncNow()}><RefreshCw size={15} /> Sync now</Button>
+              <Button variant="outline" className="[&>svg]:shrink-0" disabled={!!busy} onClick={() => syncNow()}><RefreshCw size={15} className={cn(busy === "sync:all" && "animate-spin")} /> {busy === "sync:all" ? "Syncing…" : "Sync now"}</Button>
               <Button className="[&>svg]:shrink-0" onClick={() => setEditOta({ kind: "booking_com", mode: "ical", commission_pct: 15 })}><Plus size={16} /> Add OTA</Button>
             </div>
           </div>
-          <ul className="mt-4 border-t border-[var(--color-separator)] divide-y divide-[var(--color-separator)]" aria-label="OTA channels">{ota.map((c) => {
+          <ul className="grid grid-cols-1 @5xl:grid-cols-[repeat(auto-fit,minmax(20rem,1fr))] gap-3 @3xl:gap-4" aria-label="OTA channels">{ota.map((c) => {
             const hue = OTA_HUE[c.kind] ?? "--color-label-2"; const link = `${base}/api/ical/${c.export_token}.ics`;
+            const to = OTA_NAME[c.kind] ?? "their site"; const shown = link.replace(/^https?:\/\//, "");
+            const syncing = busy === `sync:${c.id}`, pushing = busy === `push:${c.id}`;
+            /* the card's footer strip (CardStrip): Sync, the main move, on a soft green; Remove in red */
+            const acts: StripAction[] = [
+              { key: "sync", label: syncing ? "Syncing…" : "Sync", icon: <RefreshCw className={cn(syncing && "animate-spin")} />, tone: "go", onClick: () => syncNow(c.id), disabled: !!busy, aria: `Sync · ${c.label}` },
+              { key: "push", label: pushing ? "Pushing…" : "Push rates", icon: pushing ? <Loader2 className="animate-spin" /> : <Upload />, onClick: () => pushRates(c.id), disabled: !!busy, aria: `Push rates · ${c.label}` },
+              { key: "edit", label: "Edit", icon: <Pencil />, onClick: () => setEditOta(c), aria: `Edit · ${c.label}` },
+              { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", onClick: () => { if (confirm(`Remove ${c.label}?`)) start(() => { deleteOta(c.id); }); }, aria: `Remove · ${c.label}` },
+            ];
             return (
-            <li key={c.id} data-ota={c.kind} className="grid grid-cols-[44px_minmax(0,1fr)] gap-x-3 gap-y-3 pt-4 pb-4 last:pb-0 @3xl:grid-cols-[44px_minmax(0,1fr)_auto] @3xl:items-center @3xl:gap-x-5">
-              <span aria-hidden className="h-11 w-11 rounded-[12px] grid place-items-center font-display text-lg font-semibold self-start" style={{ background: `color-mix(in srgb, var(${hue}) 16%, transparent)`, color: `var(${hue})` }}>{c.label.trim().charAt(0).toUpperCase() || "·"}</span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className="font-semibold min-w-0 truncate">{c.label}</span><Pill tone={c.mode === "ical" ? "sky" : "gold"}>{c.mode === "ical" ? "iCal" : "API"}</Pill><Pill tone={c.is_live ? "ready" : "pending"}>{c.is_live ? "Live" : "Draft"}</Pill></div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-steel" data-status>
-                  {c.last_error ? <span className="text-chili flex items-center gap-1 min-w-0"><AlertTriangle size={12} className="shrink-0" /> <span className="truncate" title={c.last_error}>{c.last_error}</span></span>
-                    : c.last_import_at ? <span className="text-mint flex items-center gap-1"><Check size={12} /> Synced {new Date(c.last_import_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span>
-                    : <span className="flex items-center gap-1"><Clock size={12} /> Never synced</span>}
-                  <span className="flex items-center gap-1"><Percent size={12} /> <span><span className="num">{c.commission_pct}%</span> commission</span></span>
-                  {c.import_url ? <span className="flex items-center gap-1 min-w-0 max-w-[18rem]" title={c.import_url}><Link2 size={12} className="shrink-0" /> <span className="truncate">Their feed: {c.import_url}</span></span> : <span className="flex items-center gap-1"><Link2 size={12} /> No incoming feed</span>}
+            <li key={c.id} data-ota={c.kind} className="feather @container overflow-hidden flex flex-col min-w-0">
+              <div className="p-4 flex flex-col gap-3 flex-1 min-w-0 @[48rem]:flex-row @[48rem]:items-center @[48rem]:gap-6">
+                <div className="flex flex-col gap-3 min-w-0 @[48rem]:flex-1">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span aria-hidden className="h-11 w-11 shrink-0 rounded-[12px] grid place-items-center font-display text-lg font-semibold" style={{ background: `color-mix(in srgb, var(${hue}) 16%, transparent)`, color: `var(${hue})` }}>{c.label.trim().charAt(0).toUpperCase() || "·"}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[15px] font-semibold truncate" title={c.label} data-name>{c.label}</div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-steel min-w-0 whitespace-nowrap">
+                        <span className="font-semibold" style={{ color: c.mode === "ical" ? "var(--color-blue)" : "var(--color-orange)" }} data-mode>{c.mode === "ical" ? "iCal" : "API"}</span><span aria-hidden>·</span>
+                        <span className="truncate"><span className="num">{c.commission_pct}%</span> commission</span>
+                      </div>
+                    </div>
+                    <span className="shrink-0 inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11.5px] font-semibold whitespace-nowrap" data-live
+                      style={{ background: `color-mix(in srgb, ${c.is_live ? "var(--color-green)" : "var(--color-label-2)"} ${c.is_live ? 16 : 14}%, transparent)`, color: c.is_live ? "var(--color-green)" : "var(--color-label-2)" }}>
+                      <span className={cn("h-1.5 w-1.5 rounded-full", c.is_live && "animate-pulse")} style={{ background: "currentColor" }} />{c.is_live ? "Live" : "Draft"}
+                    </span>
+                  </div>
+                  {/* the sync state and their feed, each with its own icon so a wrap never strands a "·" */}
+                  <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-steel min-w-0" data-status>
+                    {c.last_error ? <span className="text-chili flex items-center gap-1 min-w-0 max-w-full"><AlertTriangle size={12} className="shrink-0" /> <span className="truncate" title={c.last_error}>{c.last_error}</span></span>
+                      : c.last_import_at ? <span className="text-mint flex items-center gap-1"><Check size={12} /> Synced {new Date(c.last_import_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span>
+                      : <span className="flex items-center gap-1"><Clock size={12} /> Never synced</span>}
+                    {c.import_url ? <span className="flex items-center gap-1 min-w-0 max-w-full" title={c.import_url}><Link2 size={12} className="shrink-0" /> <span className="truncate">Their feed: {c.import_url.replace(/^https?:\/\//, "")}</span></span> : <span className="flex items-center gap-1"><Link2 size={12} /> No incoming feed</span>}
+                  </div>
                 </div>
-                <div className="mt-2.5 flex items-center gap-2 min-w-0">
-                  <input readOnly aria-label={`Your DineFlow calendar for ${c.label} (give this to them)`} title="Your DineFlow calendar — give this to them" className="num text-xs min-w-0 flex-1" value={link} />
-                  <Button variant="outline" className="shrink-0 !h-10 !w-10 !px-0 !rounded-xl" aria-label={`Copy the calendar link for ${c.label}`} onClick={() => copy(link)}><Copy size={14} /></Button>
+                {/* your calendar, as one field: who it is for, the link (its end kept in view — the start
+                    gives way first), and Copy inside it, "Copied" for a moment once it is */}
+                <div className="mt-auto flex items-center gap-2.5 min-w-0 rounded-[14px] p-1.5 pl-3 ring-1 ring-inset ring-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_60%,transparent)] @[48rem]:mt-0 @[48rem]:w-[24rem] @[48rem]:shrink-0" title={`Your DineFlow calendar — give this link to ${to}`} data-cal-link>
+                  <Calendar size={16} className="shrink-0 text-[var(--color-label-2)]" aria-hidden />
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <div className="text-[10.5px] font-semibold uppercase tracking-[.12em] text-steel truncate">Paste into {to}</div>
+                    <div className="mt-0.5 flex min-w-0 text-[12.5px] font-medium tabular-nums text-[var(--color-label)] select-all" data-link><span className="truncate">{shown.slice(0, -12)}</span><span className="shrink-0">{shown.slice(-12)}</span></div>
+                  </div>
+                  <button type="button" onClick={() => copyLink(c.id, link)} aria-label={`Copy the calendar link for ${c.label}`} data-copy
+                    className="shrink-0 px-3 rounded-[10px] inline-flex items-center gap-1.5 text-[12.5px] font-semibold bg-[var(--color-fill-2)] text-[var(--color-label)] hover:brightness-125 transition focus-visible:!outline-offset-0 [&_svg]:shrink-0">
+                    {copied === c.id ? <><Check size={14} className="text-[var(--color-tint)]" /> Copied</> : <><Copy size={14} /> Copy</>}
+                  </button>
                 </div>
               </div>
-              <div className="col-span-2 @3xl:col-span-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] @3xl:flex gap-2" data-actions>
-                <Button size="sm" variant="outline" className="[&>svg]:shrink-0" onClick={() => syncNow(c.id)}><RefreshCw size={14} /> Sync</Button>
-                <Button size="sm" variant="outline" className="[&>svg]:shrink-0" disabled={pending} onClick={() => start(async () => { const r = await pushChannel(c.id, "ari"); setMsg("error" in r ? r.error! : r.message!); })}><Upload size={14} /> Push rates</Button>
-                <Button variant="ghost" className="!h-10 !w-10 !px-0 !rounded-xl !bg-[var(--color-fill)]" aria-label={`Edit ${c.label}`} title="Edit" onClick={() => setEditOta(c)}><Pencil size={14} /></Button>
-                <Button variant="ghost" className="!h-10 !w-10 !px-0 !rounded-xl !bg-[var(--color-red-2)] !text-[var(--color-red)]" aria-label={`Remove ${c.label}`} title="Remove" onClick={() => { if (confirm(`Remove ${c.label}?`)) start(() => { deleteOta(c.id); }); }}><Trash2 size={14} /></Button>
-              </div>
+              {/* the actions as the card's footer strip, edge to edge, one equal section each */}
+              <CardStrip actions={acts} data-actions />
             </li>); })}
-            {ota.length === 0 && <li className="pt-6 pb-2 text-center"><div className="mx-auto h-11 w-11 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Globe size={18} /></div><p className="mt-3 text-sm text-steel">No OTA channels yet. Add Booking.com, Airbnb or any iCal calendar to keep your rooms from double-booking.</p></li>}
+            {ota.length === 0 && <li className="feather p-6 text-center"><div className="mx-auto h-11 w-11 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Globe size={18} /></div><p className="mt-3 text-sm text-steel">No OTA channels yet. Add Booking.com, Airbnb or any iCal calendar to keep your rooms from double-booking.</p></li>}
           </ul>
-        </Card>
+        </section>
         <Card><div className="flex items-center gap-2"><Globe size={16} /><b>Your own booking page</b><Pill tone="ready">0% commission</Pill></div>
           <div className="mt-2 flex gap-2 min-w-0"><input readOnly className="num text-xs min-w-0" value={bookingUrl} /><Button size="sm" variant="outline" onClick={() => copy(bookingUrl)}><Copy size={14} /></Button><a href={bookingUrl} target="_blank" rel="noreferrer"><Button size="sm"><ExternalLink size={14} /> Open</Button></a></div>
           <p className="text-xs text-steel mt-2">Put this link in your Google Business profile, Instagram bio and WhatsApp. Bookings land straight in Front desk with no commission.</p></Card>

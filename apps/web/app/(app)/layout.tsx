@@ -7,6 +7,7 @@ import { Sidebar, BottomNav } from "@/components/shell/Nav";
 import { TopBar } from "@/components/shell/TopBar";
 import { Gestures } from "@/components/shell/Gestures";
 import { DeckScroll } from "@/components/shell/DeckScroll";
+import { TouchSelect } from "@/components/ui/TouchSelect";
 import { NotifierProvider } from "@/components/shell/Notifier";
 import { OfflineProvider } from "@/lib/offline/OfflineProvider";
 import { MasterBanner } from "@/components/shell/MasterBanner";
@@ -99,6 +100,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Gestures />
       {/* on an iPad-size touch screen the frame scrolls, not the page: back/forward land where you were */}
       <DeckScroll />
+      <TouchSelect />
     </div>
    </NotifierProvider>
    </ToastProvider>

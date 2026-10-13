@@ -6,7 +6,8 @@ const at = new Map<string, number>(); // where the frame was, per address, for t
 let traversing = false;
 const here = () => location.pathname + location.search;
 const scroller = () => {
-  const d = document.querySelector<HTMLElement>("body .deck"); // <html> carries the class too
+  // the app's frame, or Master control's (<html> carries the deck class too, hence "body")
+  const d = document.querySelector<HTMLElement>("body .deck, body .admin-frame");
   return d && getComputedStyle(d).overflowY === "auto" ? d : null; // only when the frame is the scroller
 };
 

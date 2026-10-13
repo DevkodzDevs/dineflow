@@ -89,6 +89,12 @@ fourth screen: one line in `FRESH`, a role check in its page, and the same check
   one, a long reason wraps to two lines inside the tile), with *Something else? Type it* below —
   that box shows only a typed reason, not a picked one. They were `.chip`s wrapping into ragged
   rows on a phone.
+- **Audit's kind chips sit in one `shrink-0` box inside their `Rail`** (`[data-kinds]`,
+  2026-10-13). Without `shrink-0` that box, a flex item of the rail, shrank to the rail's width and
+  the chips spilled out of it. The rail's end spacer then sat under the chips, so at the end of the
+  scroll "People & settings" stopped under the arrow and the fade (Chrome), or cut at its left with
+  an empty run after it (an iPad). Now one tap on the arrow ends with the last chip fully in view,
+  clear of the arrow, at 412, 834, 1194, 1366 and 1440. Probe: `fivefix.mjs`.
 - **Audit's period control fits a phone**: `[data-period]` buttons are equal, `whitespace-nowrap`,
   13px with 6px padding below `sm` — "90 days" broke onto two lines at 390.
 

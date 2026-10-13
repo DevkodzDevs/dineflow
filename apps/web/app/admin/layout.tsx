@@ -2,10 +2,13 @@ import { requireAdmin } from "@/lib/auth";
 import { ShieldCheck, LogOut } from "lucide-react";
 import { Suspense } from "react";
 import { AdminNav } from "./AdminNav";
+import { DeckScroll } from "@/components/shell/DeckScroll";
+import { TouchSelect } from "@/components/ui/TouchSelect";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const a = await requireAdmin();
   return (
-    <div className="min-h-dvh">
+    /* admin-frame: on an iPad-size touch screen this box scrolls, not the page (globals.css) */
+    <div className="min-h-dvh admin-frame">
       {/* Brand and sign-out on one line, the sections on the next on a phone; one line from md.
           As a single row it ran 13px off a 390px phone and took the sign-out button with it. */}
       <header className="ink-panel">
@@ -22,6 +25,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 min-w-0">{children}</main>
+      <DeckScroll />
+      <TouchSelect />
     </div>
   );
 }

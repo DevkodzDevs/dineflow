@@ -63,7 +63,10 @@ export function AuditClient({ events, names, days, more, error }: { events: Even
               options={[{ value: "1", label: "Today" }, { value: "7", label: "7 days" }, { value: "30", label: "30 days" }, { value: "90", label: "90 days" }]} />
           </div>
           <Rail className="rail-fade flex gap-2 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 py-0.5" arrowClassName="!bottom-0.5" label="Kind">
-            <div className="flex gap-2" role="tablist" aria-label="Kind" data-kinds>
+            {/* shrink-0: as a flex item of the rail this box shrank to the rail's width and the chips spilled
+                out of it, so the spacer that keeps the last chip clear of the arrow sat under the chips — at
+                the end "People & settings" stopped under the arrow and the fade, half hidden */}
+            <div className="flex gap-2 shrink-0" role="tablist" aria-label="Kind" data-kinds>
               {GROUPS.map(({ key, label, Icon }) => (
                 <button key={key} type="button" role="tab" aria-selected={group === key} onClick={() => setGroup(key)} className={cn("chip shrink-0 whitespace-nowrap", group === key && "on")} data-group={key}>
                   <Icon size={13} /> {label}{key !== "all" && counts[key] ? <span className={cn("num text-[11px] rounded-full px-1.5 py-px", group === key ? "bg-white/20" : "bg-[var(--color-bg-2)] text-[var(--color-label-2)]")}>{counts[key]}</span> : null}

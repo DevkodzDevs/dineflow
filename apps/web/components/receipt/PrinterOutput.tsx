@@ -15,10 +15,19 @@ import { Receipt, PAPER_PX, type ReceiptData } from "./Receipt";
  */
 const BEZEL = 22;
 
-export function PrinterOutput({ data, printing, onTear, label = "Counter printer" }: { data: ReceiptData; printing?: boolean; onTear?: () => void; label?: string }) {
+/* `fit`: the machine's sides narrow (22px down to 8px) to fit the box it is in, so the paper keeps its
+   width in a narrow column — the folio's is 344px on an iPad held upright. The paper never shrinks. */
+export function PrinterOutput({ data, printing, onTear, label = "Counter printer", fit }: { data: ReceiptData; printing?: boolean; onTear?: () => void; label?: string; fit?: boolean }) {
   const reduce = useReducedMotion();
   const paperW = PAPER_PX[data.width ?? 80];
-  const bodyW = paperW + BEZEL * 2;
+  const root = useRef<HTMLDivElement>(null);
+  const [bezel, setBezel] = useState(BEZEL);
+  useLayoutEffect(() => {
+    const box = root.current?.parentElement; if (!fit || !box) return;
+    const size = () => setBezel(Math.max(8, Math.min(BEZEL, Math.floor((box.clientWidth - paperW) / 2))));
+    size(); const ro = new ResizeObserver(size); ro.observe(box); return () => ro.disconnect();
+  }, [fit, paperW]);
+  const bodyW = paperW + bezel * 2;
   const [phase, setPhase] = useState<"idle" | "feeding" | "done" | "torn">(printing ? "feeding" : "done");
   const paperRef = useRef<HTMLDivElement>(null);
   const [h, setH] = useState(0);
@@ -35,9 +44,9 @@ export function PrinterOutput({ data, printing, onTear, label = "Counter printer
   const visible = phase === "torn" ? 0 : h;
 
   return (
-    <div className="printer flex flex-col items-center" style={{ width: bodyW }}>
-      {/* ── machine ─────────────────────────────────────────────── */}
-      <div className="printer-body" style={{ width: bodyW }}>
+    <div ref={root} className="printer flex flex-col items-center" style={{ width: bodyW }} data-printer>
+      {/* ── machine — on screen only: a printed page is the paper ─── */}
+      <div className="printer-body no-print" style={{ width: bodyW }}>
         <span className="printer-led" aria-hidden />
         <div className="flex items-center gap-2 text-white/55 text-[11px] font-semibold mb-3" style={{ paddingLeft: 68, paddingRight: 38 }}>
           <PrinterIcon size={13} className="shrink-0" />
@@ -62,7 +71,7 @@ export function PrinterOutput({ data, printing, onTear, label = "Counter printer
         >
           <div className={`relative ${feeding && !reduce ? "feeding-shake" : ""}`} style={{ width: paperW }}>
             {/* shadow cast by the bezel onto the sheet, only across the paper */}
-            <div className="absolute inset-x-0 top-0 h-6 z-10 pointer-events-none" style={{ background: "linear-gradient(180deg, rgb(13 28 23 / .38), rgb(13 28 23 / .06) 55%, transparent)" }} />
+            <div className="no-print absolute inset-x-0 top-0 h-6 z-10 pointer-events-none" style={{ background: "linear-gradient(180deg, rgb(13 28 23 / .38), rgb(13 28 23 / .06) 55%, transparent)" }} />
             <Receipt ref={paperRef} data={data} noTopEdge />
           </div>
         </motion.div>

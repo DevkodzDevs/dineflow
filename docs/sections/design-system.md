@@ -90,8 +90,32 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   the field surface with a chevron in a 26px round chip (a background SVG, a darker one in paper).
   Open: under `@supports (appearance: base-select)` (Chrome/Edge 135+) the list is a styled
   `::picker(select)` card — 16px radius, shadow, 40/44px option rows, hover wash, `::checkmark` tick —
-  springing open via `@starting-style`. Safari, Firefox and phones keep the native picker.
-  Probe: `dropdown.mjs` (open, read, pick, both themes) and `dropdown-dialog.mjs` (inside a Sheet).
+  springing open via `@starting-style`. **The list is at least as wide as its field**
+  (`min-width: anchor-size(width)`, 2026-10-13) — it was as wide as its longest option. Probe:
+  `dropdown.mjs` (open, read, pick, both themes) and `dropdown-dialog.mjs` (inside a Sheet).
+- **On a tablet the list is ours, the field's width** (`components/ui/TouchSelect.tsx`, mounted in the
+  app and Master control layouts, 2026-10-13). The iPad's native menu is as wide as its longest
+  option and floats over the middle of the field — New room → Type was a 370px menu on a 780px
+  field — and a page cannot size it.
+  - **When it takes over:** the browser cannot style the list (`CSS.supports("appearance:
+    base-select")` is false — every iPad browser is WebKit), the pointer is coarse and the screen is
+    640px or wider. A *tap* on a select is then caught on `touchend` (capture, `preventDefault`: no
+    click, no focus, no native menu, no keyboard). A drag of more than 10px is left alone.
+  - **What opens:** a `role="listbox"` (`[data-touch-select]`, `.touch-select` in the DROPDOWNS
+    block) in a portal, exactly the field's width, 6px under it — or above it when there is more
+    room there — up to 340px tall. It has 44px rows, the chosen one tinted and ticked, and group
+    labels. The field wears `select[data-open]`, the open ring.
+  - **A pick:** the select's value is set through the native setter and `input` and `change` are
+    fired, so a React onChange (Tax's *What is it* drives the form) and a form's FormData both see
+    it.
+  - **Closing:** a tap outside closes the list only (a backdrop at z-70, above a Sheet's z-50).
+    Escape is stopped before the dialog's own handler. A scroll elsewhere or a resize also closes it.
+  - **Who keeps the native control:** phones (the wheel), mice, keyboards, `multiple`/`size`
+    selects, and any select with `data-native`.
+  - **Testing it:** Chrome supports base-select, so `fivefix.mjs` hides it from JS with
+    `Page.addScriptToEvaluateOnNewDocument` (`CSS.supports` answers false) and taps with
+    `Input.dispatchTouchEvent`. That proves the list, the pick and the close. That the iPad's own
+    menu stays shut is the `touchend` rule, which only a real iPad can show.
 - **Never use the `background:` shorthand on an input/select/textarea rule.** It resets
   `background-image` and `background-repeat`: the hover and focus rules erased the chevron in dark
   and, re-applied by the paper rule, tiled it across the whole box in paper. `background-color` only.
@@ -122,7 +146,9 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   `relative` wrapper (`wrapClassName`) and, **only while something is hidden past the edge**
   (`scrollWidth > clientWidth`, re-measured on scroll, resize and child changes), a `.rail-arrow` on
   the right: a 34px see-through disc (`--color-bg-2` at 66%, blurred, opacity .8, 1 at hover) in a
-  40px button, 44 on touch. A tap scrolls ¾ of the track; at the end it turns round (`data-end`,
+  40px button, 44 on touch. A tap scrolls ¾ of the track — or straight to the end when less than
+  160px would be left after it, so one tap never stops with the last item half under the arrow
+  (2026-10-13). At the end it turns round (`data-end`,
   "Back to the start") and a tap goes back to 0. The arrow lives in the wrapper, not the track, so
   the track's fade mask never fades it; it is centred with `top/bottom: 0; margin: auto`, not a
   translate, because buttons scale on `:active`. A track with `pb-*` passes `arrowClassName="!bottom-2"`
@@ -161,6 +187,17 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   Safari has shifted never shows through undimmed. While open, `html` and `body` are both
   `overflow: hidden`, and both are put back on close. Probe: `dlg.mjs` (8 sizes, including
   1194×420 and 834×560 for the keyboard) and `dialog-audit.mjs` (35 dialogs, 0 with two scrollbars).
+- **On a touch screen nothing in a `Sheet` takes focus by itself** (2026-10-13). A field's `autoFocus`
+  raised the keyboard as the dialog opened, and the frame then shrank to the strip above it — on an
+  iPad with a keyboard case, above a shortcuts bar Safari reports as ~200px taller than it is:
+  "Edit ingredient" opened 344px tall in a 588px window, its first label and last field cut off and
+  empty screen under it. `Sheet` now blurs a focused field inside it in a layout effect when the
+  pointer is coarse — after the fields' own `autoFocus`, still inside the tap — so the dialog opens
+  at its own height (up to the screen less 48px, centred; a bottom sheet on a phone) and the keyboard
+  comes when a field is tapped. A mouse keeps the cursor in the first field. Keep `autoFocus` on the
+  first field of a form: the laptop wants it, and the touch screen no longer pays for it. Probe:
+  `dlg2.mjs` (15 — Edit ingredient, New dish, Record purchase at 1000×588, 1194×834, 834×1112,
+  412×915 and 1440×900).
 
 - **A utility cannot recolour a kit card.** `.feather`/`.card` set `background` and `box-shadow`
   unlayered, so `bg-[…]` and `ring-…` on the same element silently lose — the till's "selected"
@@ -209,10 +246,32 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   `--color-bg-2`, so on a card its top edge is invisible and the 3px near-black border reads as a
   hole punched in the card. `.flip-stat` overrides the housing, the flap halves and the pins for
   card use. On the graphite wall the original is right — leave it alone there.
-- **Container queries: write the at-rule, not the variant.** Tailwind v4 did not generate
-  `@[15rem]:` (that is the v3 plugin syntax) and did not generate `@min-[15rem]:` either. The plain
-  `@container (min-width: …)` block in this file works. The `@container` *utility* does apply
-  `container-type: inline-size` correctly.
+- **Container query variants work on the Tailwind we have (4.3).** `@[26rem]:flex-row` and
+  `@max-[15rem]:` are generated and fire at the right width. `otacards.mjs` measured a strip
+  section's `flex-direction` turn from column to row exactly at a 416px card (2026-10-13), and
+  Housekeeping's `@[15rem]:` works the same way. An earlier note here said they were not generated;
+  that was an older v4. The plain `@container (min-width: …)` block in this file still works too. The
+  `@container` *utility* applies `container-type: inline-size`. Keep the units in **rem**: px and rem
+  thresholds are not sorted against each other (see `min-[100rem]` on Orders).
+- **A card's actions along its foot are `CardStrip`** (`components/ui/index.tsx`, 2026-10-13). It
+  draws a hairline across, a tinted band, and one equal section per action split by hairlines, edge
+  to edge — the Menu card's footer, which the owner pointed at. `actions: StripAction[]` takes
+  `{ key, label, icon, tone?, onClick?, href?, external?, disabled?, aria? }`, up to four. A section
+  is a `<button>`, or an `<a>` when it has `href`; `external` opens a new tab. Tones:
+  - `go`: the main move, on a soft green. It is
+    `linear-gradient(green-2) over --color-bg-2`, so it stays green on a red overdue card; plain
+    `--color-green-2` over the red wash came out olive.
+  - `red`: removes.
+  - `quiet`: the default.
+
+  `data-*` props pass through to the strip (`data-actions`, `data-doc-actions`), and each section
+  carries `data-act={key}`. The strip is its own `@container`: while a section would be under ~104px
+  (26rem for four, 19.5rem for three, 13rem for two, 6.5rem for one) its icon sits over its word, 56px
+  tall; wider, icon beside word, 44px. The icons are 15px. To use it, make it the card's last child
+  on a card with no padding of its own: `!p-0 overflow-hidden flex flex-col`, with the content in a
+  padded `flex-1` div. Then the strip sits on the bottom edge however tall the grid row makes the
+  card. Used by Channels (OTA cards) and Tax (filing and document cards). Housekeeping keeps its own
+  copy (`FOOT`, 40px on an iPad at the owner's request); the Menu card's footer is a band of its own (a row of controls, not equal sections).
 - **A container query measures the content box.** A 268px card with `p-5` is a 228px container, so
   a `15rem` (240px) threshold never fires on it. Subtract the padding when you pick the number —
   and check the widest row too: a four-across card at 1920 is 271px, one pixel under 17rem.

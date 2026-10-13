@@ -215,7 +215,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     <div className="-mx-3 -mb-3 mt-auto grid border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)] divide-x divide-[var(--color-separator)]" style={{ gridTemplateColumns: `repeat(${segs.length}, minmax(0, 1fr))` }} data-dock>
                       {segs.map((t) => (
                         <button key={t.key} type="button" disabled={pending} onClick={t.run} aria-label={`${t.label} · room ${r.number}`}
-                          className={cn("w-full min-w-0 inline-flex items-center justify-center gap-1.5 h-11 max-xl:h-9 !min-h-0 !rounded-none px-1.5 text-[12.5px] @max-[15rem]:text-[11.5px] font-semibold whitespace-nowrap transition-colors disabled:opacity-50 [&_svg]:w-[15px] [&_svg]:h-[15px] [&_svg]:shrink-0", FOOT[t.tone])}>
+                          className={cn("w-full min-w-0 inline-flex items-center justify-center gap-1.5 h-11 max-xl:h-10 !min-h-0 !rounded-none px-1.5 text-[12.5px] @max-[15rem]:text-[11.5px] font-semibold whitespace-nowrap transition-colors disabled:opacity-50 [&_svg]:w-[15px] [&_svg]:h-[15px] [&_svg]:shrink-0", FOOT[t.tone])}>
                           <span className="hidden @[15rem]:contents">{t.icon}</span><span className="truncate">{t.label}</span>
                         </button>
                       ))}

@@ -89,6 +89,15 @@ and only then `admin_delete_property`.
 
 ## Before you edit
 
+- **On an iPad Master control scrolls in its own frame** (2026-10-13). Its layout is not the app's,
+  so the page scrolled and WebKit rubber-banded past the end of every screen: Testing showed a dark
+  band under the last card. The root is `.admin-frame`. Under the same `@media` as the app's frame,
+  html and body are locked, and the frame is `height: 100dvh; overflow-y: auto;
+  overscroll-behavior: none`. It always has a pixel to scroll — an absolute 1px `::after` at
+  `top: 100%` — so a short page (Compliance) takes the swipe too. `DeckScroll` (mounted here as
+  well) keeps its place on back and forward. The pages' first levels carry `scroll-margin-top:
+  100vh`, so a new page opens at its top. A mouse screen still scrolls the page.
+  Probe: `fivefix.mjs`.
 - **Testing's property screens need the master inside a property.** `/dashboard` and the rest
   redirect a master who is not acting, so Speed and Screens skip them with a note until *Open* is
   pressed; Functions does not — `selftest_functions` sets and restores the context itself. Keep the

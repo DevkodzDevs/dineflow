@@ -107,7 +107,7 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
   `.topbar[data-stuck]` (globals.css) pulls it out over the main column's padding to the sidebar's
   edge and over the frame's 12px gutter to the screen's right (`--bx` / `--br` per breakpoint: 16/16,
   32/44 from 768, 48/60 from 1536), grows its own padding by the same so nothing inside moves,
-  squares it, slims it (2px above and below instead of 8 — the 12px goes to its bottom margin so the
+  squares it, slims it (5px above and below instead of 8 — the 6px goes to its bottom margin so the
   page does not jump) and puts a hairline under it; a `::before` band fills the iPhone status bar in the
   installed app. At rest it is the floating card. The till's sticky rows measure it
   (`bar.offsetHeight + 12`) — they assumed `top-4` before. Probe: `tbar.mjs` (5 widths + the till, 11).
@@ -192,15 +192,19 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
   overscroll-behavior: none` — nothing left to bounce. Things that depend on it:
   - **`body .deck`, never `.deck`:** `<html>` carries the class too (root layout); a bare `.deck`
     rule made the root a scroller and `querySelector(".deck")` returns `<html>`.
-  - **The card is top-aligned with a one-screen minimum** (`align-items: flex-start`,
-    `min-height: calc(100dvh - 24px)`): a fixed-height flex row stretched it to exactly one screen
+  - **The card is top-aligned with a one-screen-plus-one-pixel minimum** (`align-items: flex-start`,
+    `min-height: calc(100dvh - 23px)`). The extra pixel is on purpose (2026-10-13): with nothing to
+    scroll, WebKit does not treat the frame as a scroller, a swipe on a short screen (Neighbours, the
+    Audit trail) went to the page behind it and the whole app bounced off a dark band. Before that: a fixed-height flex row stretched it to exactly one screen
     and the page spilled out under it.
   - **A new page opens at its top:** Next.js scrolls the new segment's first node into view (with
     the window it first sets the document to 0, which does nothing here); a `scroll-margin-top: 100vh`
     on the first three levels under `.deck-card > div` (the `(app)` template's motion div, then the
     page) makes that land on 0 instead of under the sticky top bar.
   - **Back/forward land where you were:** `components/shell/DeckScroll.tsx` remembers the frame's
-    position per address and restores it on popstate; the browser only restores the page's own.
+    position per address and restores it on popstate; the browser only restores the page's own. It
+    finds `body .deck` or `body .admin-frame` — Master control has the same frame on an iPad
+    (2026-10-13), see [admin-and-membership.md](admin-and-membership.md).
   - **A dialog freezes the frame:** `Sheet` sets `overflow: hidden` on html; `html[style*="overflow:
     hidden"] body .deck` follows it.
   - **Pull to refresh still works:** `Gestures` only starts a pull when `innerCanScrollUp` finds no

@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { X, Check, ChevronDown, Search } from "lucide-react";
-import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 export const cn = clsx;
 export { snap, glide, settle, flipT, fast, listV, itemV, pageV, sheetV, flipV, press, pressCard } from "@/lib/motion";
@@ -63,6 +63,46 @@ export function Card({ className, children, lift, glow, ...rest }: { className?:
   return <div {...rest} onMouseMove={onMove} className={cn("card p-5", lift && "feather-lift", glow && "spotlight", className)}>{children}</div>;
 }
 
+/* ── A card's footer strip ────────────────────────────────────────────────────────────────
+   The card's actions along its foot, edge to edge: a hairline across, a tinted band, one equal
+   section per action split by hairlines — the Menu card's footer, which the owner pointed at (Channels
+   and Tax use this; Housekeeping keeps its own copy). Make it the card's last child, on a card with no
+   padding of its own (`!p-0 overflow-hidden flex flex-col`, the content in a padded `flex-1` div), so
+   it sits on the bottom edge however tall the row makes the card. A section is a button, or a link
+   when it has `href` (`external` opens a new tab). Tones: `go` the main move on a soft green, `red`
+   removes, `quiet` (the default) the rest. Up to four. The strip is its own @container: while a
+   section would be under ~104px (26rem for four, 19.5rem for three, 13rem for two) it puts its icon
+   over its word, 56px tall; wider, icon beside word, 44px. */
+export type StripAction = { key: string; label: string; icon: ReactNode; tone?: "go" | "red" | "quiet"; onClick?: () => void; href?: string; external?: boolean; disabled?: boolean; aria?: string };
+/* `go` lays its see-through green over the card colour, so it is the same soft green on a red
+   (overdue) card as on a plain one — over the red wash alone it came out olive */
+const STRIP_TONE = {
+  go: "![background:linear-gradient(var(--color-green-2),var(--color-green-2)),var(--color-bg-2)] text-[var(--color-tint)] hover:brightness-110",
+  red: "!bg-transparent text-[var(--color-red)] hover:!bg-[var(--color-red-2)]",
+  quiet: "!bg-transparent text-[var(--color-label-2)] hover:!bg-[var(--color-fill)] hover:text-[var(--color-label)]",
+} as const;
+const STRIP_SIDE = ["",
+  "@[6.5rem]:flex-row @[6.5rem]:gap-1.5 @[6.5rem]:h-11 @[6.5rem]:text-[12.5px]",
+  "@[13rem]:flex-row @[13rem]:gap-1.5 @[13rem]:h-11 @[13rem]:text-[12.5px]",
+  "@[19.5rem]:flex-row @[19.5rem]:gap-1.5 @[19.5rem]:h-11 @[19.5rem]:text-[12.5px]",
+  "@[26rem]:flex-row @[26rem]:gap-1.5 @[26rem]:h-11 @[26rem]:text-[12.5px]"];
+export function CardStrip({ actions, className, style, ...rest }: { actions: StripAction[] } & React.HTMLAttributes<HTMLDivElement>) {
+  const n = actions.length;
+  return (
+    <div {...rest} className={cn("@container mt-auto grid border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)] divide-x divide-[var(--color-separator)]", className)}
+      style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, ...style }}>
+      {actions.map((a) => {
+        const cls = cn("w-full min-w-0 inline-flex flex-col items-center justify-center gap-1 h-14 !min-h-0 !rounded-none px-1 text-[11.5px] font-semibold whitespace-nowrap transition-colors disabled:opacity-50 focus-visible:!outline-offset-[-3px] [&_svg]:w-[15px] [&_svg]:h-[15px] [&_svg]:shrink-0",
+          STRIP_SIDE[Math.min(n, 4)], STRIP_TONE[a.tone ?? "quiet"]);
+        const body = <>{a.icon}<span className="truncate max-w-full">{a.label}</span></>;
+        return a.href
+          ? <a key={a.key} href={a.href} target={a.external ? "_blank" : undefined} rel={a.external ? "noreferrer" : undefined} aria-label={a.aria} className={cls} data-act={a.key}>{body}</a>
+          : <button key={a.key} type="button" onClick={a.onClick} disabled={a.disabled} aria-label={a.aria} className={cls} data-act={a.key}>{body}</button>;
+      })}
+    </div>
+  );
+}
+
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return <div className="space-y-1.5"><label>{label}</label>{children}{hint && <p className="footnote">{hint}</p>}</div>;
 }
@@ -98,6 +138,20 @@ export function Reveal({ children, className, delay = 0 }: { children: ReactNode
 export function Sheet({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   const frame = useRef<HTMLDivElement>(null);
   useEffect(() => { if (!open) return; const k = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [open, onClose]);
+  /* On a touch screen nothing in a dialog takes focus by itself. A field marked autoFocus raised the
+     keyboard the moment the dialog opened, before the person had seen it, and the frame below then
+     shrank to the strip above the keyboard — on an iPad with a keyboard case, above the shortcuts
+     bar, which Safari reports as ~200px taller than it is. "Edit ingredient" opened as a squeezed
+     half-height box, its first label and its last field cut off, empty screen under it (2026-10-13).
+     So the dialog opens at its own height and the keyboard comes when a field is tapped. This runs
+     as a layout effect, after the fields' own autoFocus and still inside the tap that opened the
+     dialog, so the keyboard never starts to rise. A mouse and a keyboard keep the cursor in the
+     first field. */
+  useLayoutEffect(() => {
+    if (!open || !window.matchMedia("(pointer: coarse)").matches) return;
+    const el = document.activeElement as HTMLElement | null;
+    if (el && frame.current?.contains(el) && el.matches("input, textarea, select, [contenteditable]")) el.blur();
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const html = document.documentElement, body = document.body;

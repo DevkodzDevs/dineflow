@@ -34,8 +34,11 @@ export function Rail({ className, wrapClassName, arrowClassName, label, children
   }, []);
   const go = () => {
     const el = ref.current; if (!el) return;
-    if (end) el.scrollTo({ left: 0, behavior: "smooth" });
-    else el.scrollBy({ left: Math.max(120, el.clientWidth * 0.75), behavior: "smooth" });
+    if (end) { el.scrollTo({ left: 0, behavior: "smooth" }); return; }
+    // three quarters of the track per tap — but when less than about a chip would be left after it,
+    // go to the end: one tap used to stop with the last item half under the arrow, needing another
+    const left = el.scrollWidth - el.clientWidth - el.scrollLeft, step = Math.max(120, el.clientWidth * 0.75);
+    el.scrollBy({ left: left - step < 160 ? left : step, behavior: "smooth" });
   };
   return (
     <div className={cn("relative min-w-0", wrapClassName)}>

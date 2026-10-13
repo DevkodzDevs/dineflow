@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ChevronLeft, LogIn, LogOut, Plus, Printer, UtensilsCrossed } from "lucide-react";
 import { Button, Card, Pill, cn } from "@/components/ui";
-import { Receipt } from "@/components/receipt/Receipt";
+import { PrinterOutput } from "@/components/receipt/PrinterOutput";
 import { formatINR, PAYMENT_METHODS, type PaymentMethod } from "@dineflow/shared";
 import { checkIn, checkOut, addCharge, postOrderToRoom } from "../actions";
 import { stayInvoice } from "../../invoices/actions";
@@ -25,7 +25,7 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
   const paid = pays.reduce((s, p) => s + Number(p.amount || 0), 0);
   const tone = b.status === "checked_in" ? "ready" : b.status === "reserved" ? "gold" : "served";
   return (
-    <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_344px] xl:grid-cols-[minmax(0,1fr)_400px] items-start">
+    <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_344px] lg:grid-cols-[minmax(0,1fr)_372px] xl:grid-cols-[minmax(0,1fr)_400px] items-start">
       <div className="no-print min-w-0">
         <div className="flex items-start gap-3 mb-5">
           <Link href="/frontdesk" className="h-10 w-10 shrink-0 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
@@ -87,16 +87,17 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
         {b.status === "checked_out" && <div className="mt-4 flex gap-2"><Button disabled={pending} onClick={() => start(async () => { const r = await stayInvoice(b.id); if ("id" in r) router.push(`/invoices/${r.id}`); })}><FileText size={16} /> Final tax invoice</Button><Button variant="outline" onClick={() => window.print()}><Printer size={16} /> Print folio</Button></div>}
       </div>
 
-      {/* folio */}
+      {/* the folio, coming out of the machine like the bill does — the printer's sides narrow to fit the
+          344px column on an iPad held upright (`fit`); 372px from lg holds it whole */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="w-full justify-self-center md:sticky md:top-24">
-        <Receipt data={{ restaurant, title: "Guest folio", no: `FOLIO-${String(b.booking_no).padStart(4, "0")}`,
+        <div className="flex justify-center" data-folio><PrinterOutput label="Front desk" fit data={{ restaurant, title: "Guest folio", no: `FOLIO-${String(b.booking_no).padStart(4, "0")}`,
           when: `${b.check_in} → ${b.check_out}`, where: `Room ${b.rooms?.number ?? ""}`, cashier: b.guests?.full_name,
           lines: [{ name: `Room · ${t?.nights ?? 1} night${(t?.nights ?? 1) > 1 ? "s" : ""}`, qty: t?.nights ?? 1, price: Number(b.rate) },
             ...charges.filter((c) => !(c.kind === "discount")).map((c) => ({ name: c.description, qty: 1, price: Number(c.amount) }))],
           subtotal: Number(t?.room_total ?? 0) + Number(t?.extras ?? 0), discount: Number(t?.discounts ?? 0),
           cgst: Number(t?.gst ?? 0) / 2, sgst: Number(t?.gst ?? 0) / 2, total: Number(t?.total ?? 0),
           payments: charges.filter((c) => c.description === "Advance received" || c.description.startsWith("Payment ·")).map((c) => ({ method: c.description, amount: -Number(c.amount) })),
-          balance: Number(t?.balance ?? 0), footer: "We hope you enjoyed your stay" }} className="mx-auto" />
+          balance: Number(t?.balance ?? 0), footer: "We hope you enjoyed your stay" }} /></div>
       </motion.div>
     </div>
   );

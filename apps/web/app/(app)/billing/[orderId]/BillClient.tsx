@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins } from "lucide-react";
+import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink } from "lucide-react";
 import { Button, Field, Card, cn, Pill } from "@/components/ui";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod } from "@dineflow/shared";
@@ -15,6 +15,8 @@ import { PrinterOutput } from "@/components/receipt/PrinterOutput";
 import type { ReceiptData } from "@/components/receipt/Receipt";
 import { QR, qrDataUrl } from "@/components/QR";
 import { useLive } from "@/lib/useLive";
+import { upiUri, validVpa } from "@/lib/upi";
+import { copyText } from "@/lib/clipboard";
 import { postOrderToRoom } from "../../frontdesk/actions";
 import { BedDouble, FileText } from "lucide-react";
 import { diningInvoice } from "../../invoices/actions";
@@ -22,7 +24,7 @@ import { diningInvoice } from "../../invoices/actions";
 type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; notes?: string | null; addons?: { name: string; price: number }[] | null; components?: { name: string; qty: number }[] | null };
 type Order = { id: string; order_no: number; status: string; type: string; customer_name: string | null; customer_phone?: string | null; created_at: string; promised_at?: string | null; served_at?: string | null; promise_minutes?: number | null; promise_pct?: number | null; dining_tables: { name: string } | null; order_items: Item[] };
 type Bill = { id: string; bill_no: number; promise_fee?: number; promise_waived?: number; promise_kept?: boolean | null; points_redeemed?: number; points_earned?: number; coupon_code?: string | null; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; payments: { method: string; amount: number; ref: string | null }[] } | null;
-type Rest = { name: string; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; legal_name?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; fssai_no?: string | null; loyalty_enabled?: boolean; loyalty_point_value?: number; loyalty_min_redeem?: number };
+type Rest = { name: string; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; legal_name?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; fssai_no?: string | null; loyalty_enabled?: boolean; loyalty_point_value?: number; loyalty_min_redeem?: number; upi_vpa?: string | null; upi_payee?: string | null };
 
 export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: { order: Order; bill: Bill; restaurant: Rest; cashier: string; inHouse?: { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null }[] }) {
   const [roomFor, setRoomFor] = useState("");
@@ -113,7 +115,18 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
   const totals = bill ? { subtotal: Number(bill.subtotal), discount: Number(bill.discount_amount), serviceCharge: Number(bill.service_charge), cgst: Number(bill.cgst), sgst: Number(bill.sgst), roundOff: Number(bill.round_off), total: Number(bill.total) } : preview;
   const [pays, setPays] = useState<{ method: PaymentMethod; amount: number; ref: string }[]>([{ method: "upi", amount: totals.total, ref: "" }]);
   const paid = pays.reduce((t, p) => t + Number(p.amount || 0), 0);
+  /* The scan-to-pay QR: a UPI request for exactly what is being paid by UPI on this screen — the whole
+     bill, or the UPI part of a split — so the guest's UPI app opens with the amount filled in. Drawn
+     only when the property has a UPI ID (Settings → Payments) and UPI is one of the methods. */
+  const upiTyped = pays.filter((p) => p.method === "upi").reduce((t, p) => t + Number(p.amount || 0), 0);
+  // a UPI row left blank (as it is right after Generate bill) asks for what the other rows leave unpaid
+  const upiAmount = Math.round((pays.some((p) => p.method === "upi") && upiTyped === 0
+    ? Math.max(0, totals.total - pays.filter((p) => p.method !== "upi").reduce((t, p) => t + Number(p.amount || 0), 0))
+    : upiTyped) * 100) / 100;
+  const hasVpa = validVpa(restaurant.upi_vpa);
+  const upiQr = bill ? upiUri({ vpa: restaurant.upi_vpa, payee: restaurant.upi_payee || restaurant.name, amount: upiAmount, note: `BILL-${String(bill.bill_no).padStart(4, "0")} ${restaurant.name}` }) : null;
   const where = order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery");
+  const [copied, setCopied] = useState(false);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
@@ -194,6 +207,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
         ) : bill.status === "unpaid" ? (<>
           <Card>
             <div className="flex items-center justify-between"><h3 className="text-xl">Take payment</h3><Pill tone="pending">unpaid</Pill></div>
+            {/* the scan-to-pay QR lives in its own card below — one QR on the screen, never two */}
             {bill.pay_claim_ref && (
               <div className="mt-3 flex items-center gap-2 rounded-xl bg-mint-2 px-3 py-2 text-sm">
                 <Smartphone size={15} className="shrink-0 text-mint" />
@@ -233,19 +247,59 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
               chips={["Wrong table", "Item missed", "Discount missed", "Guest changed order", "Billed twice"]} confirmLabel="Void the bill"
               onConfirm={async (reason) => { const r = await voidBill(bill.id, reason); if ("error" in r) return { error: r.error }; router.refresh(); }} />
           </Card>
-          {payUrl && (
-            <Card className="mt-4">
-              <div className="flex items-center gap-4">
-                <QR value={payUrl} size={128} />
-                <div className="min-w-0">
-                  <h3 className="text-lg flex items-center gap-1.5"><QrCode size={16} /> Guest can scan to pay</h3>
-                  <p className="text-sm text-steel mt-1">Opens this bill on their phone with UPI and card options. Turn the screen to them — it is printed on the bill too.</p>
-                  <a href={payUrl} target="_blank" rel="noreferrer" className="text-[11px] text-steel underline break-all mt-1 inline-block">{payUrl}</a>
-                  {waPhone.length === 10 && <div className="mt-2"><a href={waHref(`${restaurant.name}: your bill BILL-${bill.bill_no} is ${formatINR(totals.total)}. Pay here: ${payUrl}`)} target="_blank" rel="noreferrer" className="btn btn-outline !h-8 !text-xs"><MessageCircle size={13} /> Send the pay link on WhatsApp</a></div>}
+          {/* Scan to pay — the QR is the card. With UPI among the methods (and a UPI ID in Settings →
+              Payments) it is a UPI request for exactly the UPI amount: the whole bill, or the UPI part of
+              a split, redrawn as the rows above change — the guest's app opens with it filled in. With
+              card or cash chosen it is the bill link instead, which opens this bill on their phone with
+              UPI and card. The link's actions sit in a footer strip, edge to edge. */}
+          {(upiQr || payUrl) && (() => {
+            const mode = upiQr ? "upi" : "link";
+            const upiChosen = pays.some((p) => p.method === "upi");
+            return (
+              <Card className="mt-4 !p-0 overflow-hidden" data-scan-pay data-mode={mode}>
+                <div className="p-5 pb-6 flex flex-col items-center text-center">
+                  <div className="w-full flex items-center justify-between gap-2">
+                    <h3 className="text-[15px] font-semibold flex items-center gap-1.5"><QrCode size={16} /> {mode === "upi" ? "Scan to pay" : "Guest can scan the bill"}</h3>
+                    <span className="h-6 px-2.5 rounded-full text-[11px] font-semibold inline-flex items-center gap-1.5 shrink-0"
+                      style={{ background: mode === "upi" ? "var(--color-green-2)" : "var(--color-fill)", color: mode === "upi" ? "var(--color-tint)" : "var(--color-label-2)" }}>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />{mode === "upi" ? "UPI · exact amount" : "UPI or card"}
+                    </span>
+                  </div>
+                  {/* the code: a white tile a phone's camera reads at arm's length */}
+                  <div className="mt-5 rounded-[24px] bg-white p-3 ring-1 ring-black/5 shadow-[0_18px_40px_-18px_rgb(0_0_0/.75)]" data-qr>
+                    <QR value={upiQr ?? payUrl!} size={216} />
+                  </div>
+                  {mode === "upi" ? (<>
+                    <div className="mt-5 text-[11px] font-semibold uppercase tracking-[.16em] text-steel">Pay with any UPI app</div>
+                    <div className="font-display num text-[44px] leading-none mt-1.5" data-upi-amount>{formatINR(upiAmount)}</div>
+                    {upiAmount + 0.01 < totals.total && <div className="text-xs text-steel mt-1.5 num">UPI part of {formatINR(totals.total)}</div>}
+                    <div className="mt-3 text-[13px] leading-snug max-w-full"><span className="text-steel">To </span><b className="break-words">{restaurant.upi_payee || restaurant.name}</b></div>
+                    <div className="text-xs text-steel num break-all">{restaurant.upi_vpa}</div>
+                    <div className="mt-3.5 flex flex-wrap justify-center gap-1.5 text-[11px] font-semibold">
+                      {["Google Pay", "PhonePe", "Paytm", "BHIM"].map((a) => <span key={a} className="h-6 px-2.5 rounded-full bg-[var(--color-fill)] inline-flex items-center">{a}</span>)}
+                    </div>
+                  </>) : (<>
+                    <div className="font-display num text-[36px] leading-none mt-5">{formatINR(totals.total)}</div>
+                    <p className="mt-2.5 text-[13px] text-steel max-w-[19rem] leading-snug">Opens this bill on their phone — they pay by UPI or card there. It is printed on the bill too.</p>
+                    {upiChosen && !hasVpa && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-left" data-upi-missing><b>Want the exact amount in the QR?</b> Add your UPI ID in <Link href="/settings" className="underline">Settings → Payments</Link> and this turns into a UPI code for the amount.</p>}
+                  </>)}
                 </div>
-              </div>
-            </Card>
-          )}
+                {payUrl && (
+                  <div className="border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)]">
+                    {mode === "upi" && <div className="px-5 pt-2.5 text-[11px] font-semibold uppercase tracking-[.14em] text-steel text-left">Or send the bill to their phone</div>}
+                    <div className="grid divide-x divide-[var(--color-separator)]" style={{ gridTemplateColumns: `repeat(${waPhone.length === 10 ? 3 : 2}, minmax(0, 1fr))` }} data-link-actions>
+                      <a href={payUrl} target="_blank" rel="noreferrer" className="h-12 inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] transition-colors"><ExternalLink size={15} /> Open</a>
+                      <button type="button" onClick={async () => { if (await copyText(payUrl)) { setCopied(true); setTimeout(() => setCopied(false), 2000); } }}
+                        className="h-12 !min-h-0 !rounded-none !bg-transparent inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:!bg-[var(--color-fill)] transition-colors" data-copy-link>
+                        {copied ? <><Check size={15} className="text-[var(--color-tint)]" /> Copied</> : <><Copy size={15} /> Copy link</>}
+                      </button>
+                      {waPhone.length === 10 && <a href={waHref(`${restaurant.name}: your bill BILL-${bill.bill_no} is ${formatINR(totals.total)}. Pay here: ${payUrl}`)} target="_blank" rel="noreferrer" className="h-12 inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold text-[var(--color-tint)] hover:bg-[var(--color-fill)] transition-colors"><MessageCircle size={15} /> WhatsApp</a>}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })()}
         </>) : (
           <Card className="border-mint"><div className="flex items-center justify-between"><h3 className="text-xl">Paid</h3><Pill tone="ready">settled</Pill></div>
             <ul className="mt-3 text-sm space-y-1">{bill.payments.map((p, i) => <li key={i} className="flex justify-between"><span className="uppercase">{p.method}{p.ref ? ` · ${p.ref}` : ""}</span><span className="num">{formatINR(Number(p.amount))}</span></li>)}</ul>

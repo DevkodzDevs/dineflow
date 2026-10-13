@@ -314,7 +314,11 @@ body:has(.deck-card) { background: #0a0a0d; }
      and the page would spill out under it. Top-aligned, at least one screen tall (less its 12px
      margins), as long as its content otherwise. */
   body .deck { align-items: flex-start; }
-  body .deck > .deck-card { min-height: calc(100dvh - 24px); }
+  /* one pixel taller than the screen, on purpose: a frame with nothing to scroll is not a scroll
+     container to WebKit, so on a short screen (Neighbours, the Audit trail) a swipe went to the page
+     behind it, which rubber-banded — the whole app, sidebar and all, lifted off a dark band. With 1px
+     to scroll the frame takes the swipe, and its overscroll-behavior: none holds it still. */
+  body .deck > .deck-card { min-height: calc(100dvh - 23px); }
   /* a dialog locks the page (Sheet sets overflow: hidden on html) — lock the frame with it */
   html[style*="overflow: hidden"] body .deck { overflow-y: hidden; }
   /* Next.js brings a new page's first element into view when its top is off screen; with the window
@@ -323,6 +327,16 @@ body:has(.deck-card) { background: #0a0a0d; }
      tucking the page's first line under the sticky top bar. The element it scrolls is the new
      segment's first node — under the (app) template's motion div, two or three levels down. */
   .deck-card > div > *, .deck-card > div > * > *, .deck-card > div > * > * > * { scroll-margin-top: 100vh; }
+  /* Master control is not inside the app's frame — its own layout, the page scrolling — so an iPad
+     rubber-banded past the end of its screens the same way (Testing: a dark band under the last card,
+     2026-10-13). The same treatment: its frame scrolls with overscroll-behavior: none, and always has at
+     least one pixel to scroll — a pixel placed just under its bottom edge (an absolute box counts toward
+     what a scroller can scroll), so a short page's swipe is the frame's too. */
+  html:has(.admin-frame), html:has(.admin-frame) body { height: 100%; overflow: hidden; }
+  .admin-frame { position: relative; height: 100dvh; overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; }
+  .admin-frame::after { content: ""; position: absolute; top: 100%; left: 0; width: 1px; height: 1px; pointer-events: none; }
+  html[style*="overflow: hidden"] .admin-frame { overflow-y: hidden; }
+  .admin-frame main > *, .admin-frame main > * > * { scroll-margin-top: 100vh; }
 }
 /* the wall is always graphite, whatever the theme — so is everything written on it */
 .wall { color: #f4f4f1; } .wall h1, .wall .flip-label, .wall .font-display { color: #f4f4f1; } .wall .flip-label { color: #9a9aa6; }
@@ -583,6 +597,7 @@ select:disabled { opacity: .45; cursor: not-allowed; }
   select:open { background-color: var(--color-bg-2); border-color: rgb(76 217 100 / .6); box-shadow: 0 0 0 4px rgb(76 217 100 / .18); }
   ::picker(select) { border: .5px solid var(--color-separator); border-radius: 16px; background: var(--color-bg-3); color: var(--color-label);
     padding: 6px; margin-block: 6px; box-shadow: var(--shadow-pop); max-height: min(340px, 55dvh); overflow-y: auto; overscroll-behavior: contain;
+    min-width: anchor-size(width);   /* at least as wide as its field — it was as wide as its longest option */
     opacity: 1; transform: none; transform-origin: top center;
     transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur) var(--ease-spring), display var(--dur) allow-discrete, overlay var(--dur) allow-discrete; }
   select:open::picker(select) { opacity: 1; transform: none; }
@@ -597,6 +612,21 @@ select:disabled { opacity: .45; cursor: not-allowed; }
   select optgroup { padding: 6px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-label-3); }
   @media (pointer: coarse) { select option { min-height: 44px; } }
 }
+/* Where the list cannot be styled (every iPad browser is WebKit), a tablet opens components/ui/
+   TouchSelect instead of the native menu — the field's own width, the list above's look. The field
+   wears the open state while it is up. */
+select[data-open] { background-color: var(--color-bg-2); border-color: rgb(76 217 100 / .6); box-shadow: 0 0 0 4px rgb(76 217 100 / .18); }
+.touch-select { border: .5px solid var(--color-separator); border-radius: 16px; background: var(--color-bg-3); color: var(--color-label);
+  padding: 6px; box-shadow: var(--shadow-pop); overflow-y: auto; overscroll-behavior: contain; animation: ts-in var(--dur) var(--ease-spring); }
+[data-theme="paper"] .touch-select { background: var(--color-bg-2); }
+.touch-select .ts-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 9px 12px; border-radius: 10px;
+  font-size: 15px; text-align: left; color: var(--color-label); background: transparent; transition: background var(--dur-fast); }
+.touch-select .ts-option:hover, .touch-select .ts-option:active { background: var(--color-fill); }
+.touch-select .ts-option[aria-selected="true"] { color: var(--color-tint); font-weight: 600; }
+.touch-select .ts-tick { font-weight: 700; flex: none; }
+.touch-select .ts-option:disabled { opacity: .4; }
+.touch-select .ts-group { padding: 8px 12px 3px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-label-3); }
+@keyframes ts-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
 input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 24px; height: 24px; border-radius: 8px; border: 1.5px solid var(--color-line-2); background: var(--color-bg-3); display: inline-grid; place-items: center; cursor: pointer; transition: all var(--dur-fast); flex: none; }
 input[type="checkbox"]:checked { background: var(--color-tint); border-color: var(--color-tint); }
 input[type="checkbox"]:checked::after { content: ""; width: 6px; height: 11px; border: solid #06120a; border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
@@ -1139,9 +1169,9 @@ input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
   margin-left: calc(-1 * var(--bx)); margin-right: calc(-1 * var(--br));
   padding-left: calc(var(--bx) + 16px); padding-right: calc(var(--br) + 16px);
   border-radius: 0; border-width: 0 0 .5px; box-shadow: 0 10px 24px -18px rgb(0 0 0 / .7);
-  /* slimmer pinned: 2px above and below instead of 8 (the buttons keep 44px); the 12px it loses is
+  /* slimmer pinned: 5px above and below instead of 8 (the buttons keep 44px); the 6px it loses is
      added to its bottom margin, so the page under it does not jump as it pins */
-  padding-top: 2px; padding-bottom: 2px; margin-bottom: calc(2rem + 12px); }
+  padding-top: 5px; padding-bottom: 5px; margin-bottom: calc(2rem + 6px); }
 .topbar[data-stuck]::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: env(safe-area-inset-top, 0px); background: inherit; }
 @media (min-width: 768px) { .topbar[data-stuck] { --bx: 32px; --br: 44px; } }
 @media (min-width: 1536px) { .topbar[data-stuck] { --bx: 48px; --br: 60px; } }

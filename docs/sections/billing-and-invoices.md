@@ -40,6 +40,19 @@ a reading pane beside the list; on a phone that pane becomes a sheet.
 
 ## Before you edit
 
+- **Scan to pay is one card, and its QR follows the payment method** (`[data-scan-pay]`, `data-mode`,
+  2026-10-13). With UPI among the rows and a UPI ID set (Settings → Payments, `restaurants.upi_vpa` /
+  `upi_payee`), the QR is a `upi://pay` request for exactly the UPI amount — the whole bill, or the
+  UPI part of a split ("UPI part of ₹…"), redrawn as the rows change (`upiUri` / `validVpa` in
+  `lib/upi.ts`, the same link format the guest's `/pay` page builds; 4 unit tests). With card or cash
+  chosen, or no UPI ID, it is the bill link (`/pay/<token>`), which opens the bill on the guest's
+  phone with UPI and card; UPI chosen without an ID says where to add one. The QR is a 216px white
+  tile with the amount in large type under it; the link's Open / Copy link / WhatsApp sit in a footer
+  strip. The Take payment card carries no QR of its own — one QR on the screen, never two (the first
+  version drew the UPI QR inside Take payment and the link card below it). Probe: `scan.mjs` (11,
+  on a real unpaid bill: the amount in the QR, a split, Full cash, back to UPI; nothing is paid).
+
+
 - **Invoices' figures come from `invoice_summary` (0089)**, not from the rows on screen: *Invoiced*,
   *GST collected*, *Stay invoices*, *Outstanding* and the six-month strip are counted by the database
   over the whole window. The list itself is the latest **300** (`SHOWN`); past that a footnote
@@ -78,6 +91,10 @@ pnpm --filter @dineflow/web test
   to `open`, and leaves a `bill.void` row in the audit trail. The invoice's bill-to fields remain the
   one direct update. The "Void bill and edit order" link opens a `ReasonDialog`. See
   [controls-and-intelligence.md](controls-and-intelligence.md).
+- **`PrinterOutput` (the machine the bill comes out of) takes `fit`** (2026-10-13, for the folio).
+  With `fit` its sides narrow from 22px to 8px to the width of the box it sits in, so a narrow column
+  keeps the paper whole. The bill does not pass it: its column is 400px. The machine body and the
+  shadow it casts on the paper are `no-print`, so a page print is the paper only.
 - **Cash settles pop the drawer** (`openDrawer()` in `usePrinter.ts`): every bill printer with the
   "kick the drawer" switch gets ESC p after the receipt. The switch had been saved since 0004 and read
   by nothing.

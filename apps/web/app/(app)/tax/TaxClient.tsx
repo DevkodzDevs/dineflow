@@ -3,8 +3,8 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { csvCell } from "@/lib/csv";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Landmark, Plus, Undo2, UserRound } from "lucide-react";
-import { Button, Card, Field, Pill, Sheet, cn } from "@/components/ui";
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Landmark, Pencil, Plus, Trash2, Undo2, UserRound, X } from "lucide-react";
+import { Button, Card, CardStrip, Field, Pill, Sheet, cn, type StripAction } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DOC_KINDS, GST_STATES, financialYear, statutoryCalendar, taxLabels, type CalendarItem } from "@dineflow/shared";
 import { saveTaxProfile, saveDoc, deleteDoc, markFiled, unmarkFiled } from "./actions";
@@ -181,10 +181,25 @@ function Returns({ r, lab, month, today, summary, error, go, monthly, status, on
 }
 
 /* ── one return: its state, and the way to mark it filed ──────────────────── */
-function FileRow({ c, st, onFile, onUndo, pending, today }: { c: CalendarItem; st: { kind: string; f?: Filing; days?: number }; onFile: (c: CalendarItem, filedOn: string, ack: string) => void; onUndo?: (c: CalendarItem) => void; pending: boolean; today?: string }) {
+/* The actions are the card's footer strip, edge to edge (CardStrip) — they were a small outline button
+   and a text link sitting in the card. Due or overdue: Mark filed on a soft green · Open portal.
+   Marking opens the date and the ARN inside the card and the strip turns into Cancel · Save as filed
+   (there was no way back out before). Filed: the ARN in the card, the strip Open portal and, where the
+   screen allows it (Calendar), Undo filing. `raised` gives the card its own surface where it sits on
+   the page (Calendar), not inside another card (Returns). */
+function FileRow({ c, st, onFile, onUndo, pending, today, raised }: { c: CalendarItem; st: { kind: string; f?: Filing; days?: number }; onFile: (c: CalendarItem, filedOn: string, ack: string) => void; onUndo?: (c: CalendarItem) => void; pending: boolean; today?: string; raised?: boolean }) {
   const [open, setOpen] = useState(false); const [filedOn, setFiledOn] = useState(today ?? new Date().toISOString().slice(0, 10)); const [ack, setAck] = useState("");
+  const portal: StripAction = { key: "portal", label: "Open portal", icon: <ExternalLink />, href: c.portal, external: true, aria: `Open the portal for ${c.title}` };
+  const undo: StripAction[] = onUndo ? [{ key: "undo", label: "Undo filing", icon: <Undo2 />, onClick: () => onUndo(c), disabled: pending, aria: `${c.title}: not filed after all` }] : [];
+  const actions: StripAction[] = st.kind === "filed" ? [portal, ...undo]
+    : open ? [{ key: "cancel", label: "Cancel", icon: <X />, onClick: () => setOpen(false) },
+      { key: "save", label: "Save as filed", icon: <Check />, tone: "go", disabled: pending || !filedOn, onClick: () => { onFile(c, filedOn, ack); setOpen(false); } }]
+    : [{ key: "file", label: "Mark filed", icon: <Check />, tone: "go", onClick: () => setOpen(true), aria: `Mark ${c.title} filed` }, portal];
   return (
-    <div className={cn("rounded-xl border p-3", st.kind === "overdue" ? "border-[var(--color-red)]/50 bg-[var(--color-red-2)]" : st.kind === "filed" ? "border-[var(--color-green)]/40" : "border-[var(--color-separator)]")}>
+    <div data-filing={c.form} data-state={st.kind} className={cn("rounded-xl border overflow-hidden flex flex-col min-w-0",
+      st.kind === "overdue" ? "border-[var(--color-red)]/50 bg-[var(--color-red-2)]" : st.kind === "filed" ? "border-[var(--color-green)]/40" : "border-[var(--color-separator)]",
+      raised && st.kind !== "overdue" && "bg-[var(--color-bg-2)]", raised && "shadow-[var(--shadow-card)]")}>
+      <div className="p-4 flex-1 min-w-0">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-sm">{c.title}{c.optional && <span className="text-[var(--color-label-3)] font-normal"> · if it applies</span>}</div>
@@ -195,17 +210,15 @@ function FileRow({ c, st, onFile, onUndo, pending, today }: { c: CalendarItem; s
           {st.kind === "filed" ? <Pill tone="ready">filed {st.f?.filed_on ? day(st.f.filed_on) : ""}</Pill> : st.kind === "overdue" ? <Pill tone="alert">{st.days}d overdue</Pill> : <Pill tone="pending">{st.days === 0 ? "today" : `in ${st.days}d`}</Pill>}
         </div>
       </div>
-      {st.kind === "filed" ? (
-        <div className="flex items-center gap-3 mt-2 text-xs text-[var(--color-label-2)]">{st.f?.ack_no && <span className="num">ARN {st.f.ack_no}</span>}{onUndo && <button className="inline-flex items-center gap-1 underline" onClick={() => onUndo(c)} disabled={pending}><Undo2 size={12} /> not filed after all</button>}</div>
-      ) : open ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 mt-3 items-end">
+      {st.kind === "filed" && st.f?.ack_no && <div className="mt-2 text-xs text-[var(--color-label-2)]" data-ack>ARN <span className="num text-[var(--color-label)] break-all">{st.f.ack_no}</span></div>}
+      {open && st.kind !== "filed" && (
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 mt-3" data-marking>
           <Field label="Filed on"><input type="date" className="num" value={filedOn} onChange={(e) => setFiledOn(e.target.value)} /></Field>
           <Field label="ARN / acknowledgement"><input className="num" value={ack} onChange={(e) => setAck(e.target.value)} placeholder="optional" /></Field>
-          <Button size="sm" disabled={pending} onClick={() => { onFile(c, filedOn, ack); setOpen(false); }}><Check size={14} /> Save</Button>
         </div>
-      ) : (
-        <div className="flex items-center gap-3 mt-2"><Button size="sm" variant="outline" onClick={() => setOpen(true)}>Mark filed</Button><a href={c.portal} target="_blank" rel="noreferrer" className="text-xs text-[var(--color-label-2)] inline-flex items-center gap-1 hover:underline">Open portal <ExternalLink size={11} /></a></div>
       )}
+      </div>
+      <CardStrip actions={actions} data-file-actions />
     </div>
   );
 }
@@ -227,7 +240,7 @@ function Calendar({ fy, go, calendar, status, today, onFile, onUndo, pending }: 
       {Object.entries(byMonth).map(([m, items]) => (
         <div key={m}>
           <div className="eyebrow mb-2">{monthLabel(m)}</div>
-          <div className="grid lg:grid-cols-2 gap-3">{items.map((c) => <FileRow key={c.form + c.period} c={c} st={status(c)} onFile={onFile} onUndo={onUndo} pending={pending} today={today} />)}</div>
+          <div className="grid lg:grid-cols-2 gap-3">{items.map((c) => <FileRow key={c.form + c.period} c={c} st={status(c)} onFile={onFile} onUndo={onUndo} pending={pending} today={today} raised />)}</div>
         </div>
       ))}
     </div>
@@ -246,8 +259,10 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
       {essentials.length > 0 && <Card><div className="card-title"><h3>Not on file yet</h3></div><div className="flex flex-wrap gap-2">{essentials.map((k) => <button key={k.key} className="chip" onClick={() => setEdit({ kind: k.key, title: k.label })}>+ {k.label}</button>)}</div></Card>}
       {docs.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">Nothing here yet. Add the number, the dates and a link to where the signed copy lives — DigiLocker, Drive, or your CA's portal — so anyone at the counter can find it when an officer asks.</p> : (
         <div className="grid md:grid-cols-2 gap-3">{docs.map((d) => { const k = kindOf(d.kind); const left = d.expires_on ? daysBetween(today, d.expires_on) : null; return (
-          <Card key={d.id}>
-            <div className="flex items-start gap-3">
+          /* the card's actions are its footer strip, edge to edge (CardStrip): Open copy on a soft
+             green when there is a link, Edit, Remove in red — they were three small text links */
+          <Card key={d.id} className="!p-0 overflow-hidden flex flex-col" data-doc={d.kind}>
+            <div className="p-4 flex items-start gap-3 flex-1 min-w-0">
               <span className="h-10 w-10 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0"><FileText size={17} /></span>
               <div className="min-w-0 flex-1">
                 <div className="font-semibold leading-snug line-clamp-2">{d.title}</div>
@@ -255,10 +270,14 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
                 <div className="text-xs text-[var(--color-label-2)] mt-0.5 break-words">{k?.label ?? d.kind}{d.number && <> · <span className="num text-[var(--color-label)] break-all">{d.number}</span></>}{d.period && ` · ${d.period}`}</div>
                 <div className="text-xs text-[var(--color-label-2)] mt-1">{d.issuer && `${d.issuer} · `}{d.issued_on && `issued ${day(d.issued_on)}`}{d.expires_on && ` · expires ${day(d.expires_on)}`}</div>
                 {d.notes && <div className="text-xs mt-1">{d.notes}</div>}
-                <div className="flex items-center gap-3 mt-2 text-xs">{d.url && <a href={d.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[var(--color-tint)] hover:underline">Open copy <ExternalLink size={11} /></a>}<button className="underline text-[var(--color-label-2)]" onClick={() => setEdit(d)}>Edit</button><button className="underline text-[var(--color-label-2)] hover:text-[var(--color-red)]" disabled={pending} onClick={() => { if (confirm(`Remove "${d.title}" from the register?`)) onDelete(d.id); }}>Remove</button></div>
               </div>
               {left !== null && <Pill tone={left < 0 ? "alert" : left <= 30 ? "preparing" : "ready"}>{left < 0 ? "expired" : left <= 60 ? `${left}d` : "valid"}</Pill>}
             </div>
+            <CardStrip data-doc-actions actions={[
+              ...(d.url ? [{ key: "open", label: "Open copy", icon: <ExternalLink />, tone: "go", href: d.url, external: true, aria: `Open the copy of ${d.title}` } satisfies StripAction] : []),
+              { key: "edit", label: "Edit", icon: <Pencil />, onClick: () => setEdit(d), aria: `Edit ${d.title}` },
+              { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", disabled: pending, onClick: () => { if (confirm(`Remove "${d.title}" from the register?`)) onDelete(d.id); }, aria: `Remove ${d.title}` },
+            ]} />
           </Card>); })}</div>
       )}
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Edit document" : "Add a document"}>

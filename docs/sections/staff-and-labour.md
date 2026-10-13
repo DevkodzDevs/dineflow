@@ -88,6 +88,19 @@ Sign in as a non-owner on a demo property and confirm the sidebar matches the ti
   was 31 thin dark-grey bars with no numbers, unreadable on a dark card. Cells use `rounded-[8px]`
   (`rounded-lg` is 22px in this theme and turned them into pills). Probe: `lab.mjs` (4 checks; marks a
   worker present and restores their attendance).
+- **The squares beside *Mark present* / *Mark absent* are the main button's height** (2026-10-13):
+  *Pay* (`[data-pay]`, banknote) and, when a phone way is on, *Punch link* (`[data-punch-link]`). They
+  are 40×40 with a mouse and 44×44 on touch, with a 20px icon on the grey `outline` fill. They were
+  14px icons on a bare `ghost` button — the owner could barely see them on an iPad. They use the
+  default size with `!h-10 !w-10 !px-0 !rounded-xl`, **not `size="sm"`**: sm's `!px-4` beats `!px-0`
+  and squeezes the icon. The touch floor (`.btn` min-height, the icon-only min-width) makes them
+  44×44. Probe: `labicons.mjs`.
+- **The month calendars can be hidden** (2026-10-13). They are shown by default. A *Month calendar*
+  switch (`[data-cal-toggle]`, a 44px `Switch` row right-aligned above the cards) hides every card's
+  `MonthDots` and leaves the header, the status line and the buttons. A 354px card becomes 178px. The
+  setting is remembered on the device (`localStorage` `df-labour-cal` = "0" or "1", read after
+  mount so the server render and the first paint agree), not on the property: one person's iPad can
+  keep the board compact while the manager's laptop shows the calendars. Probe: `fivefix.mjs`.
 
 ## Attendance — four ways, the owner chooses (0086, 2026-10-11)
 

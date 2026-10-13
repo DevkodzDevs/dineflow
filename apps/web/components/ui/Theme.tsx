@@ -56,7 +56,7 @@ export function ThemeButton() {
   useEffect(() => { setLight(document.documentElement.getAttribute("data-theme") === "paper"); }, [mode]);
   return (
     <button onClick={() => set(light ? "dark" : "paper")} aria-label={light ? "Switch to dark" : "Switch to light"} title={light ? "Switch to dark" : "Switch to light"}
-      className="h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)] text-[var(--color-label-2)]">{light ? <Moon size={17} /> : <Sun size={17} />}</button>
+      className="h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)] text-[var(--color-label-2)]">{light ? <Moon size={20} /> : <Sun size={20} />}</button>
   );
 }
 

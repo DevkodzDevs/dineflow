@@ -40,6 +40,28 @@ The property's CA can be recorded (`ca_name`, `ca_firm`, `ca_membership_no`, `ca
   `--color-fill` bar) with "CSV for your CA" full width under it; from `sm` they share one row with
   the button pushed right. The card titles' notes ("All sales · GSTR-3B…") stack under the title on a
   phone by the global `.card-title:has(> .footnote)` rule. Probe: `five.mjs`.
+- **Every filing card and every document card ends in a footer strip** (`CardStrip`, edge to edge,
+  2026-10-13 — the owner marked the old small outline button and text links on an iPad). A filing
+  card (`FileRow`: `[data-filing]` with `data-state` due / overdue / filed, strip
+  `[data-file-actions]`):
+  - **due or overdue:** *Mark filed* on a soft green, then *Open portal* (a link, new tab);
+  - **while marking:** the date and the ARN open *inside* the card (`[data-marking]`, two equal
+    fields) and the strip turns into *Cancel · Save as filed*. There was no way back out before:
+    the fields and a Save button simply replaced the actions;
+  - **filed:** the ARN is a line in the card (`[data-ack]`), and the strip is *Open portal* plus, on
+    the Calendar only (Returns passes no `onUndo`), *Undo filing* (it was "not filed after all").
+
+  A filing card is `rounded-xl border overflow-hidden flex flex-col`, its content in a `p-4 flex-1`
+  div, so in a two-up row both strips sit on the row's foot. On the Calendar it is `raised` (the card
+  surface and shadow, like the document cards); inside Returns' card it keeps no surface of its own.
+  An overdue card keeps its red wash; `CardStrip`'s green is laid over the card colour so it is not
+  olive there.
+
+  A document card (`[data-doc]`, strip `[data-doc-actions]`) is `Card` with `!p-0 overflow-hidden
+  flex flex-col`. Its strip is *Open copy* on a soft green (only when there is a link), *Edit*, and
+  *Remove* in red (it still confirms). The expiry pill stays top right.
+
+  Probe: `taxstrip.mjs`.
 - **The tab rail fades only where it scrolls** (`rail-fade` plus `sm:![mask-image:none]`). Without
   the `!` the unlayered `.rail-fade` rule wins and "Guide" looks faded on a screen where it fits.
 

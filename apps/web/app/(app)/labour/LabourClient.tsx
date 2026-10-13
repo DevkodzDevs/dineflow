@@ -1,12 +1,12 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { QR } from "@/components/QR";
 export { QR };   // the booking-page and storefront settings import it from here
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, QrCode, Printer, Check, Banknote, Pencil, Link2, Copy, MessageCircle, Fingerprint, Camera, ClipboardCheck, MapPin } from "lucide-react";
+import { Plus, QrCode, Printer, Check, Banknote, Pencil, Link2, Copy, MessageCircle, Fingerprint, Camera, ClipboardCheck, MapPin, CalendarDays } from "lucide-react";
 import { copyText } from "@/lib/clipboard";
-import { Button, Sheet, Field, Card, Pill, StatTile, cn, Empty } from "@/components/ui";
+import { Button, Sheet, Field, Card, Pill, StatTile, Switch, cn, Empty } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { LABOUR_SKILLS } from "@dineflow/shared";
 import { saveLabourer, setLabourStatus, markAttendance, payLabour, punchCode } from "./actions";
@@ -24,6 +24,11 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
   const linkUrl = (l: L) => (typeof window === "undefined" ? "" : window.location.origin) + `/attend/${l.punch_token ?? ""}`;
   const [edit, setEdit] = useState<Partial<L> | null>(openId ? labourers.find((l) => l.id === openId) ?? null : null);
   const [pay, setPay] = useState<L | null>(null); const [err, setErr] = useState<string | null>(null); const [pending, start] = useTransition(); const [code, setCode] = useState(""); const [toast, setToast] = useState<string | null>(null);
+  /* the month calendar on each card: shown unless this device was told to hide it (the switch above
+     the cards) — with many workers the calendars made the board long */
+  const [showCal, setShowCal] = useState(true);
+  useEffect(() => { try { if (localStorage.getItem("df-labour-cal") === "0") setShowCal(false); } catch { /* storage refused — keep the default */ } }, []);
+  const setCal = (v: boolean) => { setShowCal(v); try { localStorage.setItem("df-labour-cal", v ? "1" : "0"); } catch { /* storage refused */ } };
   const active = labourers.filter((l) => l.status === "active");
   const todayAtt = attendance.filter((a) => a.work_date === today);
   const byL = (id: string) => attendance.filter((a) => a.labourer_id === id);
@@ -48,6 +53,13 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
       {err && <p className="text-sm text-chili">{err}</p>}
 
       {tab === "today" && (active.length === 0 ? <Empty title="No labourers yet" hint="Add workers here, or scan their ID card on the Scan page." action={<Link href="/scan"><Button>Scan an ID</Button></Link>} /> : (
+        <div className="space-y-3">
+        <div className="flex justify-end">
+          <label className="inline-flex items-center gap-2.5 min-h-11 pl-3.5 pr-2 rounded-2xl bg-[var(--color-fill)] text-[13px] font-semibold text-[var(--color-label-2)] cursor-pointer select-none" data-cal-toggle>
+            <CalendarDays size={16} className="shrink-0" /> Month calendar
+            <Switch on={showCal} onChange={setCal} name="Show the month calendar on every card" />
+          </label>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {active.map((l, i) => { const a = todayAtt.find((x) => x.labourer_id === l.id); return (
             <motion.div key={l.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
@@ -57,9 +69,14 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
                   <button onClick={() => setEdit(l)} className="text-steel hover:text-ink"><Pencil size={14} /></button></div>
                 <div className="mt-3 flex items-center gap-2 text-xs">{a ? <><Pill tone="ready">present</Pill><span className="num text-steel min-w-0 truncate" data-times>{a.in_at ? hhmm(a.in_at) : ""}{a.out_at ? ` → ${hhmm(a.out_at)} · ${a.hours} h` : ""}{a.method_in && HOW[a.method_in] ? ` · ${HOW[a.method_in].label}` : ""}</span></> : <Pill tone="pending">absent</Pill>}
                   <span className="ml-auto num text-steel">{byL(l.id).length} day{byL(l.id).length === 1 ? "" : "s"} this month</span></div>
-                <MonthDots days={byL(l.id).map((x) => x.work_date)} today={today} />
-                <div className="mt-3 flex gap-2">{manual ? (a ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await markAttendance(l.id, today, false, 0); if ("error" in r) setErr(r.error!); })}>Mark absent</Button> : <Button size="sm" className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await markAttendance(l.id, today, true, Number(l.daily_wage)); if ("error" in r) setErr(r.error!); })}><Check size={14} /> Mark present</Button>) : <span className="flex-1 min-w-0 self-center text-[12px] text-steel truncate">Manual marking is off</span>}{phone && <Button size="sm" variant="outline" aria-label={`Punch link for ${l.full_name}`} title="Punch link" onClick={() => { setCopied(false); setLink(l); }} data-punch-link><Link2 size={14} /></Button>}<Button size="sm" variant="ghost" aria-label="Pay" onClick={() => setPay(l)}><Banknote size={14} /></Button></div>
+                {showCal && <MonthDots days={byL(l.id).map((x) => x.work_date)} today={today} />}
+                <div className="mt-3 flex gap-2">{manual ? (a ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await markAttendance(l.id, today, false, 0); if ("error" in r) setErr(r.error!); })}>Mark absent</Button> : <Button size="sm" className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await markAttendance(l.id, today, true, Number(l.daily_wage)); if ("error" in r) setErr(r.error!); })}><Check size={14} /> Mark present</Button>) : <span className="flex-1 min-w-0 self-center text-[12px] text-steel truncate">Manual marking is off</span>}{/* the squares beside it are the main button's height (40px, 44 on touch) with a 20px icon on a grey
+                    fill — they were 14px icons on a bare button, hard to see and to hit. Default size, not "sm":
+                    sm's !px-4 beats !px-0 and squeezes the icon */}
+                  {phone && <Button variant="outline" className="shrink-0 !h-10 !w-10 !px-0 !rounded-xl" aria-label={`Punch link for ${l.full_name}`} title="Punch link" onClick={() => { setCopied(false); setLink(l); }} data-punch-link><Link2 size={20} /></Button>}
+                  <Button variant="outline" className="shrink-0 !h-10 !w-10 !px-0 !rounded-xl" aria-label={`Pay ${l.full_name}`} title="Pay" onClick={() => setPay(l)} data-pay><Banknote size={20} /></Button></div>
               </Card></motion.div>); })}
+        </div>
         </div>
       ))}
       {tab === "today" && log.length > 0 && <PunchLog log={log} labourers={labourers} />}

@@ -84,8 +84,13 @@ squeezed the icon to a dot.
   inspected first.
 - **The details line truncates and the rate does not** — `truncate` on the line, `shrink-0` on the
   rate. A long guest name used to push the rate off the card.
-- **The folio page is two columns from 768px** (`md:grid-cols-[minmax(0,1fr)_344px]`, 400px from
-  xl): details on the left, the 328px receipt on the right, sticky. Below 768 the receipt follows the
+- **The folio page is two columns from 768px** (`md:grid-cols-[minmax(0,1fr)_344px]`, 372px from
+  lg, 400px from xl): details on the left, the 328px receipt on the right, sticky. **The folio comes
+  out of the printer like the bill** (`PrinterOutput` with `label="Front desk"` and `fit`,
+  2026-10-13). It was the bare paper with a torn top edge. `fit` narrows the machine's sides from
+  22px to 8px to fit the box it is in, so it is 344px wide in the 344px column of an iPad held
+  upright and full (372px) from lg; the paper never shrinks. The machine is `no-print`: *Print folio*
+  prints the paper. Below 768 the receipt follows the
   details. The left column's card pairs (Guest/Stay, Add to folio/Charge an order) use
   `repeat(auto-fit, minmax(15rem, 1fr))`, so they sit side by side when the column allows and stack
   when it doesn't. At 834 the column is ~312px; a viewport `sm:grid-cols-2` there crushed both cards.

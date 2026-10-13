@@ -71,17 +71,45 @@ small header row. The picked range is a tint wash with a 3px tint edge. The phon
 `data-suggested`, **not** `title` — the hidden desktop tiles already answer
 `[title^="Suggested:"]`, and a second set would double the b3 suite's count.
 
-**The OTAs are one list on every screen** (not cards two-up: the third sat alone and each card's
-buttons wrapped). One `Card` (`@container`) with a header — "OTA channels", the count, *Sync now* and
-*Add OTA* (an even pair on a phone) — then `ul[aria-label="OTA channels"]`, one `li[data-ota]` per
-channel: a 44px initial tile tinted by kind (`OTA_HUE`: tokens only), the name with iCal/API and
-Live/Draft pills, a status line (`[data-status]`: synced / never synced / the error, commission, their
-feed — each with its own 12px icon, so a wrap never strands a "·"), and the calendar link with a copy
-square. The actions (`[data-actions]`: Sync, Push rates, then Edit and Remove as squares on a grey and
-a red wash) trail the row from a 48rem list (1194 and up) and sit as one row under it below that.
-**The square buttons are not `size="sm"`**: sm's `!px-4` sorts after `!px-0` and wins, which left an
-8px content box and squeezed the icon to a few pixels at 1440. They are `!h-10 !w-10 !px-0` on the
-default size (40px with a mouse, 44 on touch via the `.btn` floor). Probe: `otalist.mjs`.
+**The OTAs are cards, one per channel** (2026-10-13; they were rows of one list, and before that
+cards two-up whose buttons wrapped). The owner marked each row's four loose buttons and the bare link
+input. `section[data-ota-list]` (`@container`) holds a header — "OTA channels", the count, *Sync now*
+and *Add OTA* (an even pair on a phone) — then `ul[aria-label="OTA channels"]`: **one card across
+below a 64rem list**, and from 64rem `repeat(auto-fit, minmax(20rem, 1fr))`, so three cards fill one
+row and two fill it too. A touch iPad shows the rail, not the 256px sidebar, so **1194 has a 1042px
+list and three cards across** (337px each); 834 has 682px and one across; 1080 (an older iPad on its
+side) has 928px and one across. Each `li[data-ota]` is a `feather` card read the way an Orders card
+reads:
+
+- the 44px initial tinted by kind (`OTA_HUE`, tokens only); the name on one line (`[data-name]`,
+  15px, truncates) over "iCal · 15% commission" (`[data-mode]` blue for iCal, orange for API); a
+  Live/Draft chip on the right (`[data-live]`, green with a pulsing dot when live, grey for draft);
+- `[data-status]`: the sync state (synced / never synced / the error) and their feed, each with its
+  own 12px icon so a wrap never strands a "·";
+- `[data-cal-link]`: **your calendar as one field** — a calendar icon, "Paste into Booking.com" (from
+  `OTA_NAME`; any other kind is "their site"), the link without `https://` with its end kept in view
+  (`[data-link]`: two spans, the start truncates and the last 12 characters never do), and **Copy
+  inside the field** (`[data-copy]`), "Copied" with a tick for 1.8s on that card only. The clipboard
+  gets the full `https://` link. If the clipboard is refused, a `prompt()` hands over the whole link
+  to select. The field has `mt-auto`, so the fields line up along a row of unequal cards;
+- `[data-actions]`: **the card's footer strip**, edge to edge, four equal sections split by
+  hairlines. Sync (`data-act="sync"`) is on a soft green, Push rates and Edit are quiet, and Remove
+  is red. This is the Housekeeping and Menu cards' strip, drawn by the shared `CardStrip`
+  (`components/ui`, see [design-system.md](design-system.md)). **With four sections, a card under
+  26rem puts each section's icon over its word** (56px tall: 1440's 359px cards, 1194's 337px, a
+  phone's 380px); from 26rem the icon sits beside the word (44px).
+
+On a card from 48rem (one channel across a wide list) the calendar field sits beside the name,
+24rem wide.
+
+**Sync no longer reloads the page.** It spins on the pressed section ("Syncing…"; *Sync now* spins
+too) and every Sync is disabled while one runs. It then says what happened in a toast — "Synced · 2
+new bookings", "Synced · nothing new", "Nothing to read yet — add their calendar link with Edit"
+(`syncSaid`, from the route's `report`) or the route's error — and calls `router.refresh()`. It used
+to `location.reload()` (a white flash, back to the top) and say "Sync finished" even with no feed.
+Push rates spins ("Pushing…") and answers in a toast. Without `SUPABASE_SERVICE_ROLE_KEY` (as on a
+local server) the toast is the route's "Channel sync is not available on this server." Probe:
+`otacards.mjs`.
 
 Each channel carries its own token. A token is a credential: it is never rendered into a page a
 guest can see.
