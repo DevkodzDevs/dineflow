@@ -23,8 +23,9 @@ their own thread and rates the help.
 
 ## How it works
 
-**The property side, `/help`.** It is reached from the sidebar foot (**Help & support**, every role, not a module)
-and the phone's More sheet. The page has:
+**The property side, `/help`.** It is reached from the sidebar menu's last group (**Help & support** beside
+Settings, after *Insights & control*, scrolling with the menu — every role, not a module; it was a row in the
+sidebar's foot until 2026-10-13) and the phone's More sheet. The page has:
 
 - three ways to reach DineFlow, from `lib/company.ts`;
 - the **New request** form and **Your requests**, side by side from `lg`; two tabs below that.
@@ -59,7 +60,7 @@ The thread page has:
 - Nobody writes the tables directly; every write is a definer RPC that checks the caller.
 
 **Unread.** `support_unread()` counts the caller's own requests whose latest word is DineFlow's and unseen. It puts a
-red dot on the rail icon, a count on the sidebar row, a "N new" on the More sheet row and adds to the More button's
+red dot on the menu row's icon (all the rail shows), a count beside its label, a "N new" on the More sheet row and adds to the More button's
 count. `components/support/useUnread.ts` shares one answer between the sidebar and the tab bar, both mounted at every
 width, asked once per screen. Opening the thread runs `support_seen`.
 

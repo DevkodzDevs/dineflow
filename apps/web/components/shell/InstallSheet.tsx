@@ -52,12 +52,15 @@ export function InstallSheet({ open, onClose }: { open: boolean; onClose: () => 
     </Sheet>, document.body);
 }
 
-/** The round button in the top bar that opens the sheet — shown only until the app is installed. */
+/** The round button in the top bar — at every width since the sidebar's Install row went (2026-10-13), and
+ *  shown only until the app is installed. Where the browser has offered its one-tap install, one click runs
+ *  it; otherwise it opens the sheet with the way for this device. */
 export function InstallButton({ className }: { className?: string }) {
   const show = useInstallable(); const [open, setOpen] = useState(false);
+  const { canPrompt, install } = useInstall();
   if (!show) return null;
   return (<>
-    <button type="button" onClick={() => setOpen(true)} aria-label="Install the app" title="Install the app" data-install-btn
+    <button type="button" onClick={() => (canPrompt ? void install() : setOpen(true))} aria-label="Install the app" title="Install the app" data-install-btn
       className={cn("h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)] text-[var(--color-label-2)]", className)}><Download size={17} /></button>
     <InstallSheet open={open} onClose={() => setOpen(false)} />
   </>);

@@ -35,7 +35,8 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
       )}
       {/* install, until it is installed: on a phone and an iPad there is no sidebar foot to hold it (the
           icon rail hides its label), and an iPhone has no browser install button to fall back on */}
-      <InstallButton className="min-[1280px]:hidden" />
+      {/* every width: the sidebar no longer carries an Install row (owner, 2026-10-13); gone once installed */}
+      <InstallButton />
       <ThemeButton />
       <NotificationBell lateKots={alerts} />
       {/* same rule as the sidebar: a button only when there is somewhere to go */}

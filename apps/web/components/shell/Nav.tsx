@@ -8,25 +8,29 @@ import { cn, Sheet } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
 import { barFor } from "@/lib/bar";
-import { InstallEntry } from "./InstallEntry";
 import { ITEMS, freshFor } from "./sections";
 import { useSupportUnread } from "@/components/support/useUnread";
 
+/** A menu row; `badge` is a count that wants attention (a red dot on the icon, the number beside the label). */
+type NavItem = (typeof ITEMS)[number] & { badge?: number; hint?: string };
+
 /** One titled block of the menu. Declared here, not inside Sidebar: a component created during
  *  render is a new type every time, which unmounts and rebuilds the whole menu on each pass. */
-function Group({ title, items, path }: { title?: string; items: typeof ITEMS; path: string }) {
+function Group({ title, items, path, className }: { title?: string; items: NavItem[]; path: string; className?: string }) {
   if (!items.length) return null;
   return (
     /* .nav-group: a hairline under every group but the last (globals.css, the sidebar block) */
-    <div className="nav-group">
+    <div className={cn("nav-group", className)}>
       {title && <div className="px-3 pb-2 font-display text-[12px] tracking-[.12em] uppercase text-white/35 rail-hide">{title}</div>}
-      {items.map(({ key, href, label, Icon }) => {
+      {items.map(({ key, href, label, Icon, badge, hint }) => {
         const active = path.startsWith(href);
         return (
-          <Link key={key} href={href} title={label} data-active={active ? "true" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
+          <Link key={key} href={href} title={hint ?? label} data-active={active ? "true" : undefined} data-help={key === "help" ? "" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
             {active && <span className="absolute inset-0 rounded-[10px] bg-white/[.12] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/.12)]" />}
             {active && <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-[var(--color-tint)] shadow-[0_0_14px_rgb(76_217_100/.8)]" />}
-            <Icon size={17} className="relative shrink-0" strokeWidth={active ? 2.2 : 1.8} /><span className="relative rail-hide">{label}</span>
+            <span className="relative shrink-0"><Icon size={17} strokeWidth={active ? 2.2 : 1.8} />{badge ? <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-red)] ring-2 ring-[#121216]" aria-hidden /> : null}</span>
+            <span className="relative rail-hide flex-1 min-w-0 truncate">{label}</span>
+            {badge ? <span className="relative rail-hide shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--color-red)] text-white text-[11px] font-bold grid place-items-center num">{badge}</span> : null}
           </Link>
         );
       })}
@@ -108,7 +112,14 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
   const unread = useSupportUnread(path);
   const hospitality = allowed.filter((i) => ["frontdesk", "rooms", "housekeeping", "guests", "facilities"].includes(i.key));
   const dining = allowed.filter((i) => !hospitality.includes(i) && !["dashboard", "tomorrow", "scan", "reports", "tax", "staff", "settings", "labour", "invoices", "channels", "neighbours", "proof"].includes(i.key));
-  const manage = allowed.filter((i) => ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"].includes(i.key));
+  const manage = allowed.filter((i) => ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff"].includes(i.key));
+  /* the menu's last group: Settings (when this person may open it) and Help & support, which is for everyone
+     in the property whatever their modules — a red dot while a reply from DineFlow is unread */
+  const end: NavItem[] = [
+    ...allowed.filter((i) => i.key === "settings"),
+    { key: "help", href: "/help", label: "Help & support", Icon: LifeBuoy, badge: unread,
+      hint: unread ? `Help & support · ${unread} new repl${unread === 1 ? "y" : "ies"}` : undefined },
+  ];
   const who = (
     <>
       <span className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-tint)] text-white grid place-items-center font-display text-[17px] leading-none">{name.slice(0, 1)}</span>
@@ -135,20 +146,14 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
         <Group title="Dining" items={dining} path={path} />
         <Group title="Manage" items={manage} path={path} />
         <Group title="Insights & control" items={freshFor(role)} path={path} />
+        {/* the last group: Settings and Help & support, straight after the rest and scrolling with them */}
+        <Group items={end} path={path} />
       </nav>
-      {/* the foot: who you are, and the way out. Settings keeps its own row up in Manage,
-          so the second button for it down here was only costing a row of height. */}
+      {/* the foot: who you are, and the way out — kept short (owner, 2026-10-13). Settings and Help & support
+          are the menu's last group above; installing is the top bar's download button. */}
       <div className="mt-auto pt-3">
-        {/* Help & support — for everyone in the property, whatever their modules; a red dot while a reply from DineFlow is unread */}
-        <Link href="/help" title={unread ? `Help & support · ${unread} new repl${unread === 1 ? "y" : "ies"}` : "Help & support"} data-help
-          className={cn("mb-2 flex items-center gap-3 h-[42px] px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/help") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
-          <span className="relative shrink-0"><LifeBuoy size={17} />{unread > 0 && <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-red)] ring-2 ring-[#121216]" aria-hidden />}</span>
-          <span className="rail-hide flex-1 min-w-0 truncate">Help & support</span>
-          {unread > 0 && <span className="rail-hide shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--color-red)] text-white text-[11px] font-bold grid place-items-center num">{unread}</span>}
-        </Link>
         {/* only when the owner has turned on a way to punch from one's own phone (fingerprint or selfie) */}
         {attend && <Link href="/attendance" title="My attendance" className={cn("mb-2 flex items-center gap-3 h-[42px] px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/attendance") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}><Fingerprint size={17} className="shrink-0" /><span className="rail-hide">My attendance</span></Link>}
-        <InstallEntry variant="rail" />
         {isAdmin && <Link href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
         {/* p-[7px] plus the 1px border puts the card at exactly 52px across — the width the rail
             leaves once it collapses, so the avatar alone still sits square inside it */}

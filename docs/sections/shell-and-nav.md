@@ -74,10 +74,15 @@ the row so the page underneath does not move; `.nav-scrim` takes the click that 
 closes on Escape, on picking a screen (the `path` effect), and if the window grows past 1279.
 Every link carries `title={label}`, so the rail's icons name themselves on hover.
 
-**Help & support is in the foot, for everyone** (2026-10-13). It is a row above *My attendance* in the sidebar (on
-the rail, the LifeBuoy alone) and a row in the More sheet's account block. It is not a module: no `ROUTE_MODULE`
-entry, no tick in Staff → Access. While a reply from DineFlow is unread:
-- the rail shows a red dot and the sidebar row a count;
+**Settings and Help & support are the menu's last group** (owner, 2026-10-13 — the sidebar's foot had grown
+to ~200px with Help, Install and Master control). The last `Group` holds Settings (when this person may open
+it — it left *Manage*) and Help & support. It follows *Insights & control* directly and scrolls with the rest
+of the menu (the owner asked for that over a first version that pinned it to the foot of the menu). **The sidebar's foot is now only *My attendance* (when on), *Master control* (admins, full
+menu only — the collapsed rail hides it as it always did) and the account card: 68px, 112px with Master
+control** (`navfoot.mjs`). Installing moved to the top bar's button, now at every width. Help & support is
+not a module: no `ROUTE_MODULE` entry, no tick in Staff → Access. It is also a row in the More sheet's
+account block on a phone (unchanged). While a reply from DineFlow is unread:
+- the menu row has a red dot on its icon (all the rail shows) and a count beside the label (`NavItem.badge`);
 - the More row says "N new", and the More button's count includes it.
 
 It comes from `useSupportUnread(path)` — one `support_unread()` call shared by the sidebar and the tab bar, after the
@@ -88,8 +93,8 @@ screen is up. The error screen (`components/ErrorRecovery.tsx`) has a plain-link
 `mb-5`). `.nav-group:not(:last-child)::after` is a 1px white-at-10% line with 12px above and 14px below,
 inset 12px — 200px wide in the full menu. On the rail it is 36px wide (margin 8px), centred under the
 icons. There the groups' titles are hidden, so the line is the only thing that shows where one group
-ends. An empty group renders nothing, so `:last-child` is the last group actually shown: four lines for
-a hotel or resort, three for a restaurant. The sidebar is graphite in both themes, so the line is
+ends. An empty group renders nothing, so `:last-child` is the last group actually shown. With Settings and
+Help & support as their own last group: five lines for a hotel or resort, four for a restaurant. The sidebar is graphite in both themes, so the line is
 white, not `--color-separator`. Probe: `navline.mjs`.
 
 ### Speed: where a screen change spends its time
@@ -235,10 +240,10 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
     there? Install it again*; opened as the app → "You're in the app".
   It replaced three copies that disagreed: one said only Safari can add to an iPhone's Home Screen (wrong since
   iOS 16.4), the Settings card said Firefox does not install on Android.
-  **Where it opens from:** a download button in the top bar (`InstallButton`, hidden from 1280px where the
-  sidebar's foot has *Install the app*, and hidden once installed — standalone); the sidebar's *Install the
-  app* (`InstallEntry`: **one click runs the browser's install** where it has offered it, otherwise the
-  sheet); Settings; and the sign-in page. It is **not** in the phone's More sheet — the owner had that row
+  **Where it opens from:** the download button in the top bar (`InstallButton`) — at every width since the
+  sidebar's *Install the app* row was removed (owner, 2026-10-13; `InstallEntry` is gone), and hidden once
+  installed (standalone): **one click runs the browser's install** where it has offered it, otherwise it opens
+  the sheet; Settings; and the sign-in page. It is **not** in the phone's More sheet — the owner had that row
   removed (2026-10-12). **The sheet is portalled into `<body>`**: rendered inside the sidebar it opened
   behind the page, and inside the sticky top bar the tab bar and the assistant's button covered it. Don't
   write "⋯" or "⋮" as text — the font draws them as dashes; use the `Glyph` with the Lucide icon.
