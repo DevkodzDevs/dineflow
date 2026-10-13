@@ -8,7 +8,9 @@ services:
   db:
     image: supabase/postgres:15.6.1.143
     restart: unless-stopped
-    ports: ["5432:5432"]
+    # this computer only (the launcher's backup and restore use 127.0.0.1): published on every
+    # interface, the whole guest Wi-Fi could reach the database and try its password
+    ports: ["127.0.0.1:5432:5432"]
     environment:
       POSTGRES_PASSWORD: ${BOX_DB_PASSWORD}
       POSTGRES_HOST: /var/run/postgresql

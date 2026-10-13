@@ -1,7 +1,7 @@
 {
   "name": "DineFlow",
   "short_name": "DineFlow",
-  "description": "Pantry, kitchen, orders and billing — one live control room for your restaurant.",
+  "description": "Restaurant POS and hotel front desk in one app — orders, kitchen, rooms, billing and GST invoices, live on every phone, tablet and computer.",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
@@ -35,6 +35,57 @@
     "food",
     "productivity"
   ],
+  "screenshots": [
+    {
+      "src": "/screenshots/wide-dashboard.jpg",
+      "sizes": "1440x900",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "The control room: tables, tickets and today's sales, live"
+    },
+    {
+      "src": "/screenshots/wide-till.jpg",
+      "sizes": "1440x900",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "The till: punch an order and send it to the kitchen"
+    },
+    {
+      "src": "/screenshots/wide-frontdesk.jpg",
+      "sizes": "1440x900",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "The front desk: rooms, arrivals and folios"
+    },
+    {
+      "src": "/screenshots/phone-dashboard.jpg",
+      "sizes": "824x1830",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "The control room on a phone"
+    },
+    {
+      "src": "/screenshots/phone-till.jpg",
+      "sizes": "824x1830",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Take an order at the table"
+    },
+    {
+      "src": "/screenshots/phone-kitchen.jpg",
+      "sizes": "824x1830",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "The kitchen's tickets"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "/manifest.json"
+    }
+  ],
+  "prefer_related_applications": false,
   "shortcuts": [
     {
       "name": "New order",

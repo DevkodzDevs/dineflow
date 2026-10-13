@@ -9,6 +9,7 @@ import { formatINR, fmtSince } from "@/lib/format";
 import { usePrinters } from "@/lib/print/usePrinter";
 import { acceptOnline, rejectOnline, setOnlineStatus, mapDish, suggestDishMap } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 
 type OO = { id: string; external_id: string; display_id: string | null; status: string; customer_name: string | null; customer_phone: string | null; address: string | null; items: { menu_item_id: string | null; name: string; qty: number; price: number; note: string | null }[]; unmatched: string[]; gross: number; commission: number; payout: number; is_prepaid: boolean; placed_at: string; order_id: string | null; order_channels: { kind: string; label: string; prep_minutes: number } | null };
 const LOGO: Record<string, string> = { swiggy: "bg-[#fc8019] text-white", zomato: "bg-[#e23744] text-white", website: "bg-ink text-on-label", ondc: "bg-mint text-on-tint", other: "bg-porcelain-2 text-ink" };
@@ -16,6 +17,9 @@ const LOGO: Record<string, string> = { swiggy: "bg-[#fc8019] text-white", zomato
 export function OnlineClient({ orders, channels, menu, ai = false }: { orders: OO[]; channels: { id: string; kind: string; label: string; is_live: boolean }[]; menu: { id: string; name: string; price: number }[]; ai?: boolean }) {
   const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   const [fix, setFix] = useState<{ order: OO; line: string } | null>(null);
+  const [rejecting, setRejecting] = useState<OO | null>(null);
+  // every action's answer reaches the screen; a refused write used to look exactly like a saved one
+  const run = (p: Promise<{ error?: string } | { ok: boolean }>, then?: () => void) => start(async () => { const r = await p; if ("error" in r && r.error) setErr(r.error); else { setErr(null); then?.(); } });
   const [hint, setHint] = useState<{ line: string; menu_item_id: string | null; name: string | null; confidence: number } | null>(null); const [hinting, setHinting] = useState(false);
   const { printKot } = usePrinters();
   useLive(["online_orders"], 30000);
@@ -26,7 +30,7 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
   const today = orders.filter((o) => o.status !== "rejected");
   const accept = (o: OO) => start(async () => {
     const r = await acceptOnline(o.id); if ("error" in r) return setErr(r.error!);
-    try { await printKot({ kotNo: o.display_id ?? o.external_id, when: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: `${o.order_channels?.label ?? "Online"} · ${o.customer_name ?? ""}`, items: o.items.map((i) => ({ name: i.name, qty: i.qty, note: i.note })) }); } catch { /* ignore */ }
+    try { await printKot({ kotNo: o.display_id ?? o.external_id, when: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: `${o.order_channels?.label ?? "Online"} · ${o.customer_name ?? ""}`, items: o.items.map((i) => ({ name: i.name, qty: i.qty, note: i.note })) }); } catch { setErr("Accepted — but the kitchen ticket did not print. Check the printer, then print it from the order."); }
   });
   return (
     <div className="space-y-5">
@@ -56,9 +60,9 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
                   <div className="flex justify-between font-semibold"><span>Payout</span><span className="num">{formatINR(Number(o.payout))}</span></div>
                 </div>
                 <div className="mt-3 flex gap-2">
-                  {o.status === "new" ? <><Button size="sm" className="flex-1" disabled={pending} onClick={() => accept(o)}><Check size={14} /> Accept & print</Button><Button size="sm" variant="danger" disabled={pending} onClick={() => { const r = prompt("Reason for rejecting?") ?? ""; start(() => { rejectOnline(o.id, r); }); }}><X size={14} /></Button></>
-                    : o.status === "accepted" ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => start(() => { setOnlineStatus(o.id, "ready"); })}>Mark ready for pickup</Button>
-                    : <Button size="sm" variant="ink" className="flex-1" disabled={pending} onClick={() => start(() => { setOnlineStatus(o.id, "picked_up"); })}><Bike size={14} /> Picked up</Button>}
+                  {o.status === "new" ? <><Button size="sm" className="flex-1" disabled={pending} onClick={() => accept(o)}><Check size={14} /> Accept & print</Button><Button size="sm" variant="danger" disabled={pending} aria-label="Reject this order" onClick={() => setRejecting(o)}><X size={14} /></Button></>
+                    : o.status === "accepted" ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "ready"))}>Mark ready for pickup</Button>
+                    : <Button size="sm" variant="ink" className="flex-1" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "picked_up"))}><Bike size={14} /> Picked up</Button>}
                   {o.order_id && <Link href={`/orders/${o.order_id}`}><Button size="sm" variant="ghost">Order</Button></Link>}
                 </div>
               </Card></motion.div>))}
@@ -73,11 +77,14 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
         {hint && hint.line === fix?.line && (
           <div className="mb-3 rounded-xl border border-[var(--color-tint)]/40 bg-[var(--color-green-2)] p-3 text-sm flex items-center gap-3">
             <span className="flex-1 min-w-0">{hint.menu_item_id ? <>Looks like <b>{hint.name}</b> <span className="num text-xs text-steel">· {hint.confidence}% sure</span></> : <>Nothing on the menu is this dish — add it in Menu first.</>}</span>
-            {hint.menu_item_id && <Button size="sm" disabled={pending} onClick={() => start(async () => { await mapDish(hint.menu_item_id!, fix!.order.order_channels?.kind ?? "other", fix!.line); setHint(null); setFix(null); })}>Map it</Button>}
+            {hint.menu_item_id && <Button size="sm" disabled={pending} onClick={() => run(mapDish(hint.menu_item_id!, fix!.order.order_channels?.kind ?? "other", fix!.line), () => { setHint(null); setFix(null); })}>Map it</Button>}
           </div>
         )}
-        <div className="space-y-2">{menu.map((m) => <button key={m.id} className="feather feather-lift w-full text-left p-3 flex justify-between" disabled={pending} onClick={() => start(async () => { await mapDish(m.id, fix!.order.order_channels?.kind ?? "other", fix!.line); setFix(null); })}><span>{m.name}</span><span className="num text-steel">{formatINR(Number(m.price))}</span></button>)}</div>
+        <div className="space-y-2">{menu.map((m) => <button key={m.id} className="feather feather-lift w-full text-left p-3 flex justify-between" disabled={pending} onClick={() => run(mapDish(m.id, fix!.order.order_channels?.kind ?? "other", fix!.line), () => setFix(null))}><span>{m.name}</span><span className="num text-steel">{formatINR(Number(m.price))}</span></button>)}</div>
       </Sheet>
+      <ReasonDialog open={!!rejecting} onClose={() => setRejecting(null)} title={rejecting ? `Reject ${rejecting.display_id ?? rejecting.external_id}?` : ""}
+        hint="The aggregator tells the guest. This cannot be undone here." chips={["Item unavailable", "Kitchen too busy", "Closing soon", "Too far to deliver"]} confirmLabel="Reject order"
+        onConfirm={async (reason) => { const r = await rejectOnline(rejecting!.id, reason); if ("error" in r) return { error: r.error }; }} />
     </div>
   );
 }

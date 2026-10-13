@@ -19,4 +19,4 @@ export async function saveChefNotes(date: string, notes: Record<string, number>)
   const s = await createClient(); const { error } = await s.rpc("record_chef_notes", { p_date: date, p_notes: notes });
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
-export async function gradePast() { const s = await createClient(); await s.rpc("grade_forecasts"); bump(); return { ok: true }; }
+export async function gradePast() { const s = await createClient(); const { error } = await s.rpc("grade_forecasts"); if (error) return { error: error.message }; bump(); return { ok: true }; }

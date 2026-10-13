@@ -33,6 +33,12 @@ health.
 
 ## Before you edit
 
+- **`/api/pay/[token]/verify` settles only a captured payment** (2026-10-13): an *authorized* one is
+  captured first (`POST /payments/{id}/capture` with the checked amount); still authorized → 502 with
+  "will show as paid in a minute", and the webhook settles it on `payment.captured`. An authorized
+  payment on an account that captures by hand is released back to the guest after a few days.
+- **`/api/ota/sync` resolves a feed's host** before fetching (`lib/netguard.ts`, tested): every address
+  must be public — the text-only check passed names like `10.0.0.5.nip.io`.
 - **A public endpoint is reachable by anyone on the internet.** Its only protection is the token in
   the path or the signature in the header. Verify, then validate every field, then write.
 - **Razorpay's signature check is not optional** and must happen before anything is recorded.

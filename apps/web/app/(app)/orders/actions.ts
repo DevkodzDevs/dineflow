@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 import { newOrderSchema } from "@dineflow/shared";
 import { z } from "zod/v4";
 import { askJson } from "@/lib/ai";
@@ -76,7 +77,7 @@ export async function fireKot(kotId: string) {
   if (error) return { error: error.message }; bump(); return { ok: true as const };
 }
 export async function setTableStatus(id: string, status: "free" | "reserved") {
-  const s = await createClient(); await s.from("dining_tables").update({ status }).eq("id", id); bump(); return { ok: true };
+  const s = await createClient(); const bad = wrote(await s.from("dining_tables").update({ status }).eq("id", id).select("id"), "That table could not be changed."); if (bad) return bad; bump(); return { ok: true };
 }
 
 /* ── AI: an order in plain words, turned into cart lines on this property's own menu ──────── */

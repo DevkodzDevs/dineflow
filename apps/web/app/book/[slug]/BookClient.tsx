@@ -5,6 +5,7 @@ import { BedDouble, Users, Check, Phone, MapPin, CalendarDays } from "lucide-rea
 import { Button, Field, cn } from "@/components/ui";
 import { roomGstFor } from "@dineflow/shared";
 import { formatINR } from "@/lib/format";
+import { GuestNotice } from "@/components/legal/GuestNotice";
 
 type RT = { id: string; name: string; base_rate: number; capacity: number; amenities: string[] };
 type P = { id: string; name: string; tagline: string | null; address: string | null; phone: string | null; cover_url: string | null; policies: string | null; check_in_time: string; check_out_time: string; room_gst_rate: number; room_gst_rate_high?: number; room_gst_threshold?: number; advance_pct: number; room_types: RT[] };
@@ -95,6 +96,7 @@ export function BookClient({ slug, property }: { slug: string; property: P }) {
             {property.policies && <p className="text-xs text-steel mt-2">{property.policies}</p>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
             <Button size="lg" className="w-full mt-4" disabled={busy || !g.full_name || !g.phone} onClick={book}>{busy ? "Confirming…" : "Confirm booking"}</Button>
+            <GuestNotice property={property.name} use="for this booking" className="mt-2" />
           </motion.div>
         )}
       </main>

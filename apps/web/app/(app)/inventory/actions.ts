@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 import { ingredientSchema, stockMoveSchema } from "@dineflow/shared";
 import { z } from "zod/v4";
 import { askJson, aiEnabled } from "@/lib/ai";
@@ -16,7 +17,7 @@ export async function saveIngredient(fd: FormData) {
   const { error } = await q; if (error) return { error: error.message }; return ok();
 }
 export async function archiveIngredient(id: string) {
-  const s = await createClient(); await s.from("ingredients").update({ is_active: false }).eq("id", id); return ok();
+  const s = await createClient(); const bad = wrote(await s.from("ingredients").update({ is_active: false }).eq("id", id).select("id"), "That item could not be archived."); if (bad) return bad; return ok();
 }
 /** Manual stock movement (opening balance, wastage with its reason, adjustment). Purchases use recordPurchase. */
 export async function moveStock(fd: FormData) {

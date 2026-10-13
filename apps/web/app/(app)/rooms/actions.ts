@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 const bump = () => ["/rooms", "/frontdesk", "/housekeeping"].forEach((p) => revalidatePath(p));
 export async function saveRoom(fd: FormData) {
   const s = await createClient(); const id = fd.get("id") as string | null;
@@ -17,11 +18,15 @@ export async function saveRoom(fd: FormData) {
 export async function setRoomStatus(id: string, status: "available" | "cleaning" | "maintenance") {
   const s = await createClient();
   const row = status === "available" ? { status, condition: "clean" as const, condition_at: new Date().toISOString(), inspected_by: null } : { status };
-  const { error } = await s.from("rooms").update(row).eq("id", id).neq("status", "occupied"); if (error) return { error: error.message };
-  if (status !== "available") await s.from("housekeeping_tasks").insert({ room_id: id, kind: status === "cleaning" ? "clean" : "maintenance" });
+  const bad = wrote(await s.from("rooms").update(row).eq("id", id).neq("status", "occupied").select("id"), "The room is occupied — check the guest out first."); if (bad) return bad;
+  if (status !== "available") { const { error } = await s.from("housekeeping_tasks").insert({ room_id: id, kind: status === "cleaning" ? "clean" : "maintenance" }); if (error) return { error: error.message }; }
   bump(); return { ok: true };
 }
-export async function deleteRoom(id: string) { const s = await createClient(); await s.from("rooms").delete().eq("id", id).eq("status", "available"); bump(); return { ok: true }; }
+export async function deleteRoom(id: string) {
+  const s = await createClient(); const r = await s.from("rooms").delete().eq("id", id).eq("status", "available").select("id");
+  if (r.error?.code === "23503") return { error: "This room has bookings on record, so it cannot be deleted — mark it out of service instead." };
+  const bad = wrote(r, "Only a free room can be deleted."); if (bad) return bad; bump(); return { ok: true };
+}
 export async function saveRoomType(fd: FormData) {
   const s = await createClient(); const id = fd.get("id") as string | null;
   const row = { name: String(fd.get("name")), base_rate: Number(fd.get("base_rate") || 0), capacity: Number(fd.get("capacity") || 2) };

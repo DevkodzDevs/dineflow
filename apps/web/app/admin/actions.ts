@@ -140,7 +140,8 @@ export async function installEstate() {
   const { data, error } = await s.rpc("install_sample_estate");
   if (error) return { error: error.message };
   revalidatePath("/", "layout");
-  return { ok: true, ...(data as { properties: { name: string; type: string; email: string; password: string }[] }) };
+  // each new owner's password is its own (0099), shown once; a login that already existed comes back null
+  return { ok: true, ...(data as { properties: { name: string; type: string; email: string; password: string | null }[] }) };
 }
 
 /** Master only: which modules this property's people can open. NULL = everything the type allows. */

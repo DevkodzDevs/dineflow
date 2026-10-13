@@ -72,7 +72,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
     return out;
   }, [rooms, byRoom, today]);
 
-  const act = (fn: () => Promise<{ error?: string }>) => start(async () => { const r = await fn(); if (r && r.error) toast(r.error, "err"); });
+  const act = (fn: () => Promise<unknown>) => start(async () => { const r = (await fn()) as { error?: string } | null; if (r && r.error) toast(r.error, "err"); });
   const fail = (r: Room) => { const note = window.prompt(`Room ${r.number} — what failed?`); if (note === null) return; act(() => inspectRoom(r.id, false, note)); };
   const sheet = () => start(async () => { const r = await buildSheet(); if (r.error) toast(r.error, "err"); else toast(r.added ? `${r.added} task${r.added === 1 ? "" : "s"} added to today's sheet` : "Today's sheet is already complete"); });
 
@@ -300,7 +300,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                   <div className="flex items-start gap-3"><span className="keycard h-11 w-12 shrink-0 grid place-items-center font-display text-lg">{t.rooms?.number ?? "—"}</span><div className="flex-1 min-w-0"><div className="font-semibold flex items-center gap-1.5">{t.kind === "maintenance" ? <Wrench size={14} className="text-chili shrink-0" /> : <Sparkles size={14} className="shrink-0" />}<span className="truncate">{KIND[t.kind] ?? t.kind}</span></div><div className="text-xs text-steel line-clamp-2 mt-0.5">{t.notes || "No notes"}</div><div className="num text-[11px] text-[var(--color-label-2)] mt-0.5">{fmtSince(t.created_at)} ago</div></div></div>
                   {/* "Done", never "Done · room ready": the long label ran out of its half of a narrow
                       card. What Done does to the room is in its title instead. */}
-                  <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={pending} onClick={() => start(() => { setTask(t.id, "in_progress"); })}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={pending} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Mark the task done — the room becomes ready to sell"} onClick={() => start(() => { setTask(t.id, "done"); })}><Check size={14} /> Done</Button></div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={pending} onClick={() => act(() => setTask(t.id, "in_progress"))}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={pending} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Mark the task done — the room becomes ready to sell"} onClick={() => act(() => setTask(t.id, "done"))}><Check size={14} /> Done</Button></div>
                 </motion.div>))}</AnimatePresence>{list.length === 0 && <p className="text-sm text-steel px-1 py-3">{c.key === "pending" ? "Nothing to do." : "Nothing in progress."}</p>}</div></section>); })}
           {tasks.length === 0 && <div className="sm:col-span-2"><Empty title="Nothing on the sheet" hint="Check-outs create cleaning tasks automatically. Build today's sheet for the stayovers." /></div>}
         </div>
@@ -309,7 +309,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             <Field label="Room"><select value={f.room} onChange={(e) => setF({ ...f, room: e.target.value })}><option value="">Choose</option>{rooms.map((r) => <option key={r.id} value={r.id}>{r.number} · {r.status === "maintenance" ? "out of order" : r.condition}</option>)}</select></Field>
             <Field label="Type"><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{Object.entries(KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
             <Field label="Notes"><input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="AC not cooling, extra towels…" /></Field>
-            <Button className="w-full" disabled={pending || !f.room} onClick={() => start(async () => { await addTask(f.room, f.kind, f.notes); setF({ room: "", kind: "clean", notes: "" }); })}><Plus size={15} /> Add</Button></div></Card>
+            <Button className="w-full" disabled={pending || !f.room} onClick={() => start(async () => { const r = await addTask(f.room, f.kind, f.notes); if ("error" in r) return void toast(r.error!, "err"); setF({ room: "", kind: "clean", notes: "" }); })}><Plus size={15} /> Add</Button></div></Card>
           <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Recently done</div><ul className="space-y-1.5 text-sm">{done.map((d) => <li key={d.id} className="flex justify-between"><span>Room {d.rooms?.number} · {KIND[d.kind] ?? d.kind}</span><Pill tone="ready">done</Pill></li>)}{done.length === 0 && <li className="text-steel">—</li>}</ul></Card>
         </div>
       </div>

@@ -97,7 +97,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
             <Field label="Joined on"><input name="joined_on" type="date" className="num" defaultValue={edit?.joined_on ?? today} /></Field><Field label="Emergency contact"><input name="emergency_contact" defaultValue={edit?.emergency_contact ?? ""} /></Field></div>
           <Field label="Address"><input name="address" defaultValue={edit?.address ?? ""} /></Field><Field label="Notes"><textarea name="notes" rows={2} defaultValue={edit?.notes ?? ""} /></Field>
           {err && <p className="text-sm text-chili">{err}</p>}
-          <div className="flex gap-2"><Button className="flex-1" disabled={pending}>Save</Button>{edit?.id && <Button type="button" variant="outline" onClick={() => start(async () => { await setLabourStatus(edit.id!, edit.status === "active" ? "inactive" : "active"); setEdit(null); })}>{edit.status === "active" ? "Deactivate" : "Reactivate"}</Button>}</div>
+          <div className="flex gap-2"><Button className="flex-1" disabled={pending}>Save</Button>{edit?.id && <Button type="button" variant="outline" onClick={() => start(async () => { const r = await setLabourStatus(edit.id!, edit.status === "active" ? "inactive" : "active"); if ("error" in r) return void setErr(r.error!); setEdit(null); })}>{edit.status === "active" ? "Deactivate" : "Reactivate"}</Button>}</div>
           {edit?.id && <div className="pt-3 border-t border-line"><QR value={`df:lab:${edit.code}`} label={`${edit.full_name} · ${edit.code}`} /></div>}
         </form>
       </Sheet>

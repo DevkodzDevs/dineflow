@@ -40,6 +40,32 @@ a reading pane beside the list; on a phone that pane becomes a sheet.
 
 ## Before you edit
 
+- **Generate bill, Mark paid and Void do not call `router.refresh()`** (2026-10-13). Their actions revalidate, and an action that
+  revalidates answers with the re-rendered page — the refresh rendered it a second time. Don't add one back;
+  see shell-and-nav.md (speed). `actcheck.mjs`.
+- **A dining invoice is its bill, line for line** (0100, 2026-10-13). Each dish carries `taxable` — its share
+  of the bill's value after the discount — and the service charge and the on-time fee are lines of their own;
+  the lines' tax equals the bill's CGST + SGST to the paisa (the rounding goes on the largest line). The header
+  adds up: (dishes + service charge + fee) − (discount + a waived meal) + CGST + SGST + round-off = total. It
+  used to list dishes at full price with tax on that, and leave out the service charge and fee: 19 of 36 live
+  invoices disagreed with themselves. A bill that collected no GST shows no rate. Older invoices have no
+  `taxable`; InvoiceView falls back to the amount.
+- **The GST summary on an invoice** groups by rate *and SAC* from each line's `taxable` (InvoiceView), so a
+  stay shows its room (996311), meals (996331) and extras (999721) apart.
+- **The printed bill shows what it charged** — the service charge and the on-time promise (fee, or a meal
+  waived) on the HTML print, the ESC/POS print and the screen receipt; the bill's own date (a reprint used to
+  print the reprint's time) and its number as the screen shows it (`BILL-0012`). The receipt's tax summary uses
+  the bill's tax base and amounts: with a service charge it used to print a 19.8% "rate".
+- **The number series cannot be reset**: `counters` is written only by `next_number` (no direct writes for any
+  API role), and `bills (restaurant_id, bill_no)` and `invoices (restaurant_id, invoice_no)` are unique.
+- **generate_bill refuses a negative discount** or one above 100% (a negative one was a hidden surcharge, and
+  taxed); **settle_bill refuses a voided bill** (a payment queued offline could revive it).
+- **The invoice's bill-to GSTIN is checked** (`GSTIN_RE` in `lib/wrote.ts`: 15 characters, state + PAN + entity
+  + Z + check) and upper-cased; a failed save says so instead of closing the form.
+- Not done (see the money review in the 2026-10-13 report): staff can still write `order_items` prices and
+  quantities, `orders.status`, `bookings.rate`, `booking_charges`, `customers.points` and `shift_closes`
+  directly; aggregator orders (section 9(5)) are billed with GST like any other; one GST rate for every dish
+  (no tax class for liquor); the service charge is automatic with no per-bill opt-out; no credit notes.
 - **Scan to pay is one card, and its QR follows the payment method** (`[data-scan-pay]`, `data-mode`,
   2026-10-13). With UPI among the rows and a UPI ID set (Settings → Payments, `restaurants.upi_vpa` /
   `upi_payee`), the QR is a `upi://pay` request for exactly the UPI amount — the whole bill, or the

@@ -102,6 +102,17 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **Send to kitchen is not held up by the till re-rendering** (measured 2026-10-13): `placeOrder` revalidates, so
+  its response also re-renders the till, but that streams behind the action's result — the order's screen
+  shows ~420–550 ms after the tap on a local build. A `redirect()` from the action looked faster but, without a
+  revalidate, would leave the Orders list missing the new order for up to 30 s (the client cache), so it was
+  not done.
+- **Fire, Move and Cancel a dish on an order do not call `router.refresh()`** (2026-10-13). Their actions revalidate, and an action that
+  revalidates answers with the re-rendered page — the refresh rendered it a second time. Don't add one back;
+  see shell-and-nav.md (speed). `actcheck.mjs`.
+- **`place_order` checks the table is this property's** before setting it occupied (0098), and every
+  order line's dish, variant and ticket must be the same property's (the `zz_same_property` triggers —
+  see [data-and-rls.md](data-and-rls.md)).
 - **The Orders header keeps *New order* beside the title on a phone** (`PageHeader actionsInline`). Without it a single button dropped onto its own row under the title, an empty half-line beside it. Probe `hdr.mjs` (8, with Pantry) at 375 / 412 / 834 / 1440.
 
 

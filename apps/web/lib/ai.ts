@@ -46,7 +46,7 @@ export async function askJson<S extends z.ZodTypeAny>(opts: {
   /** photos to read alongside the text — data URLs ("data:image/jpeg;base64,…"), e.g. a supplier bill or a printed menu */
   images?: string[];
 }): Promise<AskResult<z.infer<S>>> {
-  if (!aiEnabled()) return { ok: false, error: "AI is switched off on this server — add ANTHROPIC_API_KEY to turn it on." };
+  if (!aiEnabled()) return { ok: false, error: "AI help is not switched on for your account yet — DineFlow support can turn it on." };
   try {
     const res = await client().beta.messages.create({
       model: MODEL,

@@ -52,6 +52,21 @@ squeezed the icon to a dot.
 
 ## Before you edit
 
+- **Close the night audit do not call `router.refresh()`** (2026-10-13). Their actions revalidate, and an action that
+  revalidates answers with the re-rendered page — the refresh rendered it a second time. Don't add one back;
+  see shell-and-nav.md (speed). `actcheck.mjs`.
+- **The folio and the stay invoice are one calculation** (0100). A discount comes off the room before its
+  tax (and no further than the room); extras are taxed line by line at the facility rate; restaurant GST is the
+  tax charged when each order was posted; the total is whole rupees. The invoice used to tax the full room and
+  subtract the discount after — a stay paid in full showed money due — and after check-out the folio counted
+  the payments as discounts (a negative total). `dry100.cjs` shows both before and after.
+- **No GSTIN, no GST**: `post_order_to_room` adds no tax row, and the folio ignores any old one, where the
+  property does not collect GST (`gst_collectable`).
+- **Cancel a booking** answers when nothing was cancelled (it said ok); **a folio extra or discount** that
+  fails keeps the form and shows why.
+- **`post_order_to_room` takes only this property's open order** (0098) — it used to mark another
+  property's lines and tickets served and free its table, and posting a billed order charged the room
+  twice. **`create_booking`** checks the room and a chosen guest are this property's.
 - **Arrivals / Upcoming / In house use `Head`** — a tinted icon tile, a bold 17px `h2`
   (`!font-bold`: the global heading weight beats a plain utility), and a count badge in the
   section's colour (green / blue / orange).

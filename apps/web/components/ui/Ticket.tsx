@@ -12,8 +12,8 @@ export function Ticket({ no, title, meta, tone = "pending", children, footer, cl
   const bar = { pending: "bg-line-2", preparing: "bg-saffron", ready: "bg-mint", served: "bg-steel", alert: "bg-chili", warn: "bg-saffron" }[tone];
   return (
     <motion.article layout layoutId={layoutId} data-top={top}
-      initial={top === "slot" ? { y: -44 } : { opacity: 0, scale: 0.96, y: 10, filter: "blur(4px)" }}
-      animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+      initial={top === "slot" ? { y: -44 } : { opacity: 0, scale: 0.96, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: -6 }}
       transition={top === "slot" ? { duration: 0.9, ease: [0.16, 1, 0.3, 1] } : { type: "spring", stiffness: 340, damping: 32 }}
       className={cn("relative", top === "slot" ? "mt-0" : "mt-2.5", className)}>

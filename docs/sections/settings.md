@@ -46,6 +46,20 @@ never be reachable on a real one.
 
 ## Before you edit
 
+- **Room GST falls back to 5%**, not 12: a restaurant's Settings form has no room-rate field and saved 12
+  on every save (0100 also moved the column default to 5 and the last 12s to 5).
+- **Deleting a printer, an offer or a table** answers when nothing was deleted (a table or offer on record says
+  why); the demo clean-up says when it failed.
+- **Printers and offers are written by Settings only** (0098): a restrictive policy needs the Settings
+  module for any direct insert, update or delete — a waiter could add a 100% offer or point the printers
+  somewhere else through the API.
+- **The print bridge reaches only printers on this network** (`scripts/print-bridge.mjs`, 2026-10-13):
+  a private IPv4 address (or a name that resolves to one) on ports 9100–9109, only for a DineFlow page
+  (dineflow.cloud, its subdomains, localhost, addresses on this network; `PRINT_BRIDGE_ORIGINS` adds
+  more), with Private Network Access answered on the preflight, at most 2 MB, and a failure is
+  *printer unreachable* (the reason goes to the bridge window). It used to relay any bytes to any host
+  and port for any web page and answer with the socket error. `PRINT_BRIDGE_PORTS`,
+  `PRINT_BRIDGE_HOST` — see CONNECTIONS-GUIDE.md.
 - **Kitchen → "Pantry stock leaves when…"** (`[data-stock-draw]`, two radio cards, saved by
   `saveRestaurant` as `stock_draw` — `ticket` unless *Start cooking* is chosen). It decides whether a
   dish draws its recipe when the order reaches the kitchen or when the kitchen presses Start (0092).

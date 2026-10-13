@@ -13,7 +13,7 @@ You do not need to know how any of it is built. Just follow the steps in order a
 
 All the logins are listed in **`SAMPLE-LOGINS.md`**. In short:
 - **Master** — `master@dineflow.in` / `DineFlow@Master2026`. Sees every property. Has no property of its own.
-- **Six sample owners** — `owner@annapoorna.in`, `owner@marina.in`, `owner@tamizh.in`, `owner@pearl.in`, `owner@bayresort.in`, `owner@pinehill.in`, all with the password `Dine@1234`, once you load the sample estate in Part 0.
+- **Six sample owners** — `owner@annapoorna.in`, `owner@marina.in`, `owner@tamizh.in`, `owner@pearl.in`, `owner@bayresort.in`, `owner@pinehill.in`, each with its own password, shown once in Master control when you load the sample estate in Part 0 (press **Copy all logins**).
 
 ---
 
@@ -26,7 +26,7 @@ You need one property to exist. There are two ways, and both are worth testing:
 **Way A — load the whole sample estate (best for testing)**
 1. Sign in as **master@dineflow.in**.
 2. Press **Sample estate** (top right) → **Load the sample estate**. Wait about a minute.
-3. ✅ You should see: six properties listed — two restaurants, two hotels, two resorts — each with sales figures, and a table of their owner logins. All use the password `Dine@1234`. They are also in `SAMPLE-LOGINS.md`.
+3. ✅ You should see: six properties listed — two restaurants, two hotels, two resorts — each with sales figures, and a table of their owner logins. Each has its own password, shown only in that sheet — press **Copy all logins** and keep them. The logins (not the passwords) are also in `SAMPLE-LOGINS.md`.
 4. Press **Open** on any row to go inside it.
 
 This is the fastest way to test everything, because these six already have two months of history — so the Tomorrow brief predicts, Proof of business has sealed months, and Neighbours has the five contributors it needs to show real prices.

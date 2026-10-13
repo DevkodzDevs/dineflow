@@ -85,6 +85,9 @@ fourth screen: one line in `FRESH`, a role check in its page, and the same check
 
 ## Before you edit
 
+- **Record cash in / out do not call `router.refresh()`** (2026-10-13). Their actions revalidate, and an action that
+  revalidates answers with the re-rendered page — the refresh rendered it a second time. Don't add one back;
+  see shell-and-nav.md (speed). `actcheck.mjs`.
 - **Cash reasons are an even 2-column grid** (`[data-reasons]`, 44px tiles, a tick on the picked
   one, a long reason wraps to two lines inside the tile), with *Something else? Type it* below —
   that box shows only a typed reason, not a picked one. They were `.chip`s wrapping into ragged

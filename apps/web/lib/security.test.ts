@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { csvCell } from "./csv";
 import { billHtml, kotHtml } from "./print/html";
+import { privateAddr } from "./netguard";
 
 describe("csvCell — spreadsheet formulas from guest-entered text", () => {
   it("neutralises a cell that would run as a formula", () => {
@@ -38,5 +39,15 @@ describe("print HTML — values from orders are text, never markup", () => {
     const html = kotHtml({ kotNo: "K1", when: "w", tableOrType: evil, items: [{ name: evil, qty: 1, note: evil }] });
     expect(html).not.toContain("<img");
     expect(html).not.toContain("<IMG");
+  });
+});
+
+describe("privateAddr — where a feed fetch must never go", () => {
+  it("refuses loopback, private, link-local (cloud metadata), CGNAT, multicast and their IPv6 forms", () => {
+    for (const ip of ["127.0.0.1", "10.0.0.5", "172.16.0.1", "172.31.255.255", "192.168.1.50", "169.254.169.254", "100.64.0.1", "0.0.0.0", "224.0.0.1",
+                      "::", "::1", "fd00::1", "fc00::2", "fe80::1", "::ffff:10.0.0.1", "64:ff9b::a00:1"]) expect(privateAddr(ip), ip).toBe(true);
+  });
+  it("lets public addresses through, including the ones just outside the private ranges", () => {
+    for (const ip of ["8.8.8.8", "172.32.0.1", "172.15.255.255", "100.128.0.1", "192.169.0.1", "2606:4700:4700::1111"]) expect(privateAddr(ip), ip).toBe(false);
   });
 });

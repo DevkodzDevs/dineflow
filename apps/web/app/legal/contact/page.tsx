@@ -34,7 +34,7 @@ export default function Contact() {
         <P>
           {COMPANY.phone
             ? <>Ring <a href={`tel:${COMPANY.phone.replace(/\s/g, "")}`} className="num font-semibold underline">{COMPANY.phone}</a>, {COMPANY.supportHours}.</>
-            : <>A support telephone number has not been set. <Blank what="support telephone" /> Add it in <code className="num text-xs">apps/web/lib/company.ts</code> — a contact page without one will not pass a payment gateway&rsquo;s review.</>}
+            : <>Telephone support: <Blank what="support telephone" /> Until then, write to us — the addresses are above.</>}
         </P>
       </Section>
 

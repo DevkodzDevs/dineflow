@@ -4,9 +4,9 @@
 `/pay/[token]` · `/record/[token]` · `/attend/[token]` · `/get` · `/offline`
 **Files** `app/dine/**` · `app/book/[slug]` · `app/queue/[slug]` · `app/checkin/[token]` · `app/pay/[token]` ·
 `app/record/[token]` · `app/get` · `app/offline`
-**Writes** `checkin_view`, `checkin_submit`, `dine_storefront`, `dine_discover`, `dine_order`, `dine_reserve`, `dine_review`,
+**Writes** `checkin_view`, `checkin_submit`, `dine_storefront`, `dine_discover`, `dine_order`, `dine_reserve`,
 `dine_slots`, `dine_track`, `public_property`, `public_availability`, `public_book`, `queue_join`,
-`queue_status`, `queue_leave`, `pay_link`, `pay_link_claim`, `pay_link_review`, `proof_open`
+`queue_status`, `queue_leave`, `pay_link`, `pay_link_claim`, `pay_link_review`, `proof_open` (`dine_review` is closed to the API since 0098)
 
 ## What it is
 
@@ -77,6 +77,36 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
 
 ## Before you edit
 
+- **A property whose trial or membership has ended takes nothing from the public** (0100): `dine_order`,
+  `dine_reserve`, `queue_join`, `public_book`, `dine_storefront`, `dine_discover` and `public_property` test
+  `membership_state_for(id) in ('trial','active')`. They read the `membership` column, which nothing ever sets to
+  'expired', so a lapsed place kept taking orders its locked-out staff could not see.
+- **The queue page finds its property** (0101 `queue_place(slug)`). It read `restaurants` with the visitor's
+  anonymous key, got no row, and told every guest "This place isn't taking a queue right now" — on the live site
+  too. A public page never reads a table directly: add an RPC (and grant it to anon on purpose — since 0098 new
+  functions are not anon's by default).
+- **The forms say who uses the details** (`components/legal/GuestNotice.tsx`): the order sheet and the table
+  booking on the storefront, `/book`, `/queue` and `/checkin` — "<Property> uses your details for this order.
+  DineFlow runs this page for them — how your details are looked after" (→ /legal/privacy).
+- **Library dish photos are credited** on the storefront: `dine_storefront` sends `image_credit`; the photo
+  carries "Illustrative · <author> · <licence> · Wikimedia Commons" (CC BY / BY-SA require it) and the full text
+  as its title.
+- **Limits on the public writes** (0098, 2026-10-13 — see [data-and-rls.md](data-and-rls.md)). An order
+  needs a phone number with at least eight digits; ten orders an hour per number and 300 an hour per
+  place, at most 100 lines and 99 of a dish. A table booking: five a day per number, 60 an hour per
+  place. The queue: three joins an hour per number, 150 an hour per place. A room booking: a name and a
+  phone, three a day per number, twenty an hour per property, up to 30 nights starting within two
+  years, and never on dates the page shows as stop-sell or sold out. Track: ten misses an hour for a
+  number and it stops answering (reservation numbers count up from 1). Each refusal says what to do —
+  usually "please call". Text is cut to length (name 80, phone 20, note 500, address 300).
+- **`/book/[slug]` takes bookings again** (0098): `public_book` raised "no restaurant context for
+  next_number" for every guest since the counter needed a signed-in property.
+- **There is no review form on the storefront**, and `dine_review` is closed to the API (0098): it took
+  unlimited unverified reviews for any listed place. A guest reviews after paying, by the bill's link
+  (`pay_link_review`, one per order).
+- **A card payment settles the bill only once Razorpay has captured it** (`/api/pay/[token]/verify`):
+  an *authorized* payment is captured there first; if it stays authorized the guest is told it will
+  show as paid in a minute (the `payment.captured` webhook settles it).
 - **On a phone the address and phone are one contact card** (`sm:hidden`): a row with a map pin, the
   address on up to two lines and "Directions" (Google Maps search for the name and address), and a row
   with the number and a Call pill, each at least 60px tall. Side by side they both wrapped mid-line.
@@ -91,19 +121,31 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
 - **Assume the oldest phone in the restaurant.** These are the only screens in the app where that is
   the typical device rather than the edge case.
 - **Never render a tenant id, a gateway key or an internal id into these pages.**
-- **Installing needs nothing published.** Android (Chrome), Windows and Mac (Edge/Chrome) install
-  from the browser — `/get` shows the one-tap button when the browser offers it (the root layout
-  catches `beforeinstallprompt` in `<head>`), and otherwise the steps for the device in hand: Android
-  ⋮ → Install app; Windows Edge ⋯ → Apps → Install DineFlow, Chrome's address-bar icon; iPhone and
-  iPad Safari Share → Add to Home Screen. A packaged file (Windows .exe, Android .apk) is offered only
-  underneath, in "Another device", never as the headline — it used to lead on Windows, with an
-  unsigned-installer warning, and the list said "Not published yet" for devices that could install.
+- **Installing needs nothing published.** `/get` is the link to hand anybody. Its left half is
+  `InstallPanel` (see [shell-and-nav.md](shell-and-nav.md) — the same as the in-app sheet): the browser's
+  one-tap button where it has offered it, its menu's taps where it has not, **one tap to Edge** (Windows) or
+  **to Chrome** (Android, from inside Instagram or Facebook too) from a browser that cannot install, and the
+  drawn Share → Add to Home Screen steps on an iPhone or iPad. Its right half is for whoever sets up the
+  other devices: a QR for the next phone, **Share / WhatsApp / Copy link** (`SendInstallLink` — a `wa.me`
+  link with the message typed and no number), one line per kind of device, the packaged files when hosted
+  (Windows .exe, Android .apk — underneath, never the headline: the exe raises an unsigned-installer
+  warning) and the manual. The card flips with the theme like the sign-in page — it was dark-only, in fixed
+  hex colours — one column on a phone, two from `lg`.
 - **The manifest and the apple-* tags are written into `<head>` by the root layout**, not through
   `metadata`: Next 15 streams metadata into `<body>` for an ordinary browser on a dynamic page, and
   Chrome (manifest) and Safari (apple-touch-icon, apple-mobile-web-app-*) only read `<head>`. Chrome's
   installability check said `no-manifest` on `/get` itself until this moved. The manifest has an
-  `id`, `standalone`, a maskable icon and four shortcuts (New order, Kitchen, Front desk, Billing).
-  Probe: `pwa.mjs`.
+  `id`, `standalone`, a maskable icon, four shortcuts (New order, Kitchen, Front desk, Billing), a
+  description for restaurants *and* hotels, **six screenshots** (`public/screenshots/`: three wide 1440×900 —
+  control room, till, front desk — and three narrow 824×1830 — control room, till, kitchen; Chrome shows them
+  in its richer install dialog on a computer and on a phone) and `related_applications` (`webapp`, so Chrome
+  on Android can answer `getInstalledRelatedApps()`). `prefer_related_applications` is false — true would
+  stop Chrome offering the install at all. The screenshots are throwaway demo properties in the dark theme
+  (`manifest-shots.mjs`, which deletes them after); retake them when those screens change, and only ever of
+  a demo — they are public. Probes: `install-probe.mjs`, `pwa.mjs`.
+- **An installed app belongs to one address.** dineflow.cloud answers with a 308 to www.dineflow.cloud, so
+  installs happen on www. Swapping which name redirects to which later would leave every installed app
+  opening a redirect — settle the main address before customers install.
 - **The service worker never touches Next.js page data** (`?_rsc=`, the `RSC` /
   `Next-Router-State-Tree` headers), v16, 2026-10-12. Served stale-while-revalidate it showed live
   screens the previous answer and, after a deploy, handed the new build the old build's page data —

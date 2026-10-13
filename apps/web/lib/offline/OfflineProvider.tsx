@@ -40,6 +40,11 @@ export function OfflineProvider({ children, modules }: { children: React.ReactNo
    * feel like it hung on load. Now it waits for the browser to fall idle, skips screens this person
    * cannot open anyway, and walks the rest one at a time with a breath in between, so at most one
    * speculative render is ever in flight.
+   *
+   * And it runs at most every half hour per device (`df-warmed` in localStorage), not on every opening of
+   * the app: a phone opened ten times a lunch service warmed eleven screens ten times, and those renders
+   * sat in front of the person's own first taps — on a serverless host a request that arrives while
+   * another is running can land on a fresh instance that has to start cold.
    */
   const screens = (modules ?? []).length
     ? OFFLINE_SCREENS.filter((u) => modules!.includes(u.split("/")[1]))
@@ -61,8 +66,11 @@ export function OfflineProvider({ children, modules }: { children: React.ReactNo
     };
     const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+    const WARMED = "df-warmed", EVERY = 30 * 60 * 1000;
+    const due = () => { try { return Date.now() - Number(localStorage.getItem(WARMED) || 0) > EVERY; } catch { return true; } };
     const warm = async () => {
-      if (cancelled || !navigator.onLine || tooSlow()) return;
+      if (cancelled || !navigator.onLine || tooSlow() || !due()) return;
+      try { localStorage.setItem(WARMED, String(Date.now())); } catch { /* private window: warm anyway */ }
       try {
         const sb = await getClient();
         const [m, c, t, r, ing, lab] = await Promise.all([

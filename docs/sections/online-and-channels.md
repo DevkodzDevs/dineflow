@@ -114,8 +114,26 @@ local server) the toast is the route's "Channel sync is not available on this se
 Each channel carries its own token. A token is a credential: it is never rendered into a page a
 guest can see.
 
+**A partner API key never leaves the server** (0098, 2026-10-13). The Channels page selects named
+columns — not `*` — and reads `has_api_key` (a generated column) to say *Saved*; the key field is
+write-only, and on an edit a blank field keeps the saved key (`keyOf` in both actions files — it used
+to erase it on every save). Online orders reads only `id, kind, label, is_live` of its channels.
+`supabase/pending/after_deploy_secrets.sql` then takes `api_key` out of SELECT for every API role, once
+this code is live. Writing a channel needs the Channels module (a restrictive policy); `push_channel`
+and the OTA sync read the key as owner / service role. The OTA sync also resolves a feed's host and
+refuses one that resolves to a private address (`lib/netguard.ts` — `10.0.0.5.nip.io` passed the old
+text-only check).
+
 ## Before you edit
 
+- **Reject asks for a reason in a dialog** (`ReasonDialog`, chips: item unavailable, kitchen too busy,
+  closing soon, too far). The browser prompt it replaced rejected the order on Cancel, and the action wrote
+  `raw = { reason }` over the aggregator's payload (the guest's note, the fee, the discount); now the reason is
+  added to it. Status changes and dish mapping report a refusal; a kitchen ticket that fails to print says so.
+- **"Push rates" / "Push menu" say nothing was sent** (0100 `push_channel`): "Not sent — DineFlow does not
+  connect to <channel> directly yet…". With a key saved they used to say "pushed … to Booking.com" — DineFlow
+  makes no such call. The iCal copy states the real schedule: nightly at 2:30 am (the Vercel cron, which needs
+  `CRON_SECRET`) and on Sync now — it said every 15 minutes.
 - **Kitchen pace has its own phone markup** (`sm:hidden`); tablets and desktops render the original
   one-row control (`hidden sm:block`), unchanged. The phone card is tinted by the state (green normal,
   amber busy, red paused) with a live dot, "Back to normal" when not normal, the state in 34px display

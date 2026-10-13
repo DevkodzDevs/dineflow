@@ -149,7 +149,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           {editing?.id && <PriceHistoryPanel id={editing.id} unit={editing.unit ?? ""} />}
           {err && <p className="text-sm text-chili">{err}</p>}
           <div className="flex gap-2"><Button className="flex-1" disabled={pending}>Save</Button>
-            {editing?.id && <Button type="button" variant="danger" onClick={() => start(async () => { await archiveIngredient(editing.id!); setEditing(null); })}><Trash2 size={16} /></Button>}</div>
+            {editing?.id && <Button type="button" variant="danger" onClick={() => start(async () => { const r = await archiveIngredient(editing.id!); if ("error" in r) return void setErr(r.error!); setEditing(null); })}><Trash2 size={16} /></Button>}</div>
         </form>
       </Sheet>
 
@@ -241,7 +241,7 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
             {readNote.sample && <Pill tone="gold">sample</Pill>}
           </div>
           <div className="px-4 py-3 space-y-3 text-xs">
-            <p className="text-[var(--color-label-2)]">Check each item below before adding.{readNote.sample ? " Sample mode: add ANTHROPIC_API_KEY on the server to read real bills." : ""}</p>
+            <p className="text-[var(--color-label-2)]">Check each item below before adding.{readNote.sample ? " Sample mode: reading real bills is not switched on for your account yet — DineFlow support can turn it on." : ""}</p>
             {readNote.unmatched.length > 0 && (
               <div>
                 <div className="flex items-center gap-1.5 font-semibold text-[var(--color-orange)]"><AlertTriangle size={13} className="shrink-0" /> Not in your pantry yet</div>

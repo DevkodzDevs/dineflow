@@ -83,7 +83,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
                 <div className="w-[5.5rem]"><Field label="Min"><input name="min_select" type="number" min={0} className="num" defaultValue={g.min_select} /></Field></div>
                 <div className="w-[5.5rem]"><Field label="Max"><input name="max_select" type="number" min={0} className="num" defaultValue={g.max_select} /></Field></div>
                 <Button size="sm" disabled={pending}>Save</Button>
-                <Button type="button" size="sm" variant="danger" disabled={pending} aria-label="Delete group" onClick={() => { if (confirm(`Delete "${g.name}" and its add-ons?`)) start(async () => { await deleteAddonGroup(g.id); }); }}><Trash2 size={14} /></Button>
+                <Button type="button" size="sm" variant="danger" disabled={pending} aria-label="Delete group" onClick={() => { if (confirm(`Delete "${g.name}" and its add-ons?`)) start(async () => { const r = await deleteAddonGroup(g.id); if ("error" in r) toast(r.error!, "err"); }); }}><Trash2 size={14} /></Button>
                 <p className="w-full text-[11px] text-steel">Max 0 means any number.</p>
               </form>
               <div className="divide-y divide-line rounded-xl border border-line">
@@ -91,8 +91,8 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
                   <div key={a.id} className="flex items-center gap-2 px-3 py-2 text-sm">
                     <span className={cn("flex-1 min-w-0 truncate", !a.is_available && "line-through text-steel")}>{a.name}{a.ingredient_id && ingOf(a.ingredient_id) && <span className="text-[11px] text-steel"> · draws {a.ingredient_qty} {ingOf(a.ingredient_id)!.unit} {ingOf(a.ingredient_id)!.name}</span>}</span>
                     <span className="num text-steel shrink-0">{Number(a.price) > 0 ? `+${formatINR(Number(a.price))}` : "free"}</span>
-                    <label className="flex items-center gap-1 text-[11px] text-steel shrink-0" title="Untick when it has run out for the day"><input type="checkbox" checked={a.is_available} onChange={(e) => start(() => { toggleAddon(a.id, e.target.checked); })} /> today</label>
-                    <button type="button" className="icon-btn icon-btn-danger" onClick={() => start(async () => { await deleteAddon(a.id); })} aria-label="Remove"><Trash2 size={14} /></button>
+                    <label className="flex items-center gap-1 text-[11px] text-steel shrink-0" title="Untick when it has run out for the day"><input type="checkbox" checked={a.is_available} onChange={(e) => start(async () => { const r = await toggleAddon(a.id, e.target.checked); if ("error" in r) toast(r.error!, "err"); })} /> today</label>
+                    <button type="button" className="icon-btn icon-btn-danger" onClick={() => start(async () => { const r = await deleteAddon(a.id); if ("error" in r) toast(r.error!, "err"); })} aria-label="Remove"><Trash2 size={14} /></button>
                   </div>
                 ))}
                 {g.addons.length === 0 && <p className="px-3 py-2 text-xs text-steel">No add-ons in this group yet.</p>}

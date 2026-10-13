@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 import { menuItemSchema, findStandardRecipe } from "@dineflow/shared";
 import { z } from "zod/v4";
 import { askJson, aiEnabled, VOICE } from "@/lib/ai";
@@ -45,7 +46,7 @@ export async function saveMenuItem(fd: FormData) {
   const parts = String(fd.get("parts") ?? "");
   if (parsed.data.is_combo && parts) {
     const r = await saveCombo(data.id, JSON.parse(parts) as { menu_item_id: string; qty: number }[]); if ("error" in r) return r;
-  } else if (!parsed.data.is_combo) await s.from("combo_items").delete().eq("combo_id", data.id);
+  } else if (!parsed.data.is_combo) { const { error: ce } = await s.from("combo_items").delete().eq("combo_id", data.id); if (ce) return { error: ce.message }; }
   return ok();
 }
 
@@ -109,7 +110,7 @@ export async function saveAddon(fd: FormData) {
   if (error) return { error: error.message }; return ok();
 }
 export async function toggleAddon(id: string, available: boolean) {
-  const s = await createClient(); await s.from("addons").update({ is_available: available }).eq("id", id); return ok();
+  const s = await createClient(); const bad = wrote(await s.from("addons").update({ is_available: available }).eq("id", id).select("id"), "That add-on could not be changed."); if (bad) return bad; return ok();
 }
 export async function deleteAddon(id: string) {
   const s = await createClient(); const { error } = await s.from("addons").delete().eq("id", id);
@@ -124,11 +125,12 @@ export async function saveCombo(comboId: string, rows: { menu_item_id: string; q
   return ok();
 }
 export async function toggleAvailable(id: string, value: boolean) {
-  const s = await createClient(); await s.from("menu_items").update({ is_available: value }).eq("id", id); return ok();
+  const s = await createClient(); const bad = wrote(await s.from("menu_items").update({ is_available: value }).eq("id", id).select("id"), "That dish could not be changed."); if (bad) return bad; return ok();
 }
 export async function deleteMenuItem(id: string) {
-  const s = await createClient(); const { error } = await s.from("menu_items").delete().eq("id", id);
-  if (error) return { error: error.message }; return ok();
+  const s = await createClient(); const r = await s.from("menu_items").delete().eq("id", id).select("id");
+  if (r.error?.code === "23503") return { error: "This dish is on past orders, so it cannot be deleted — switch it off instead." };
+  const bad = wrote(r, "That dish could not be deleted."); if (bad) return bad; return ok();
 }
 /** Give a dish the library's standard recipe for one plate. Ingredients the pantry lacks are created on the
  *  way, so this works on a brand-new property with an empty pantry; the reply says how many were added. */
@@ -164,7 +166,7 @@ export async function autoRecipes() {
 /** Replace the whole recipe of a dish: [{ingredient_id, qty}] */
 export async function saveRecipe(menuItemId: string, rows: { ingredient_id: string; qty: number }[]) {
   const s = await createClient();
-  await s.from("recipe_items").delete().eq("menu_item_id", menuItemId);
+  { const { error } = await s.from("recipe_items").delete().eq("menu_item_id", menuItemId); if (error) return { error: error.message }; }
   const clean = rows.filter((r) => r.ingredient_id && r.qty > 0).map((r) => ({ ...r, menu_item_id: menuItemId }));
   if (clean.length) { const { error } = await s.from("recipe_items").insert(clean); if (error) return { error: error.message }; }
   return ok();

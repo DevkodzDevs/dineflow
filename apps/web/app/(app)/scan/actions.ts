@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 
 /** Looks up a scanned code: our own QR (df:room:<id>, df:ing:<id>, df:dish:<id>, df:lab:<code>) or a product barcode. */
 export async function lookupCode(code: string) {
@@ -43,7 +44,10 @@ export async function createProductFromScan(p: { name: string; unit: string; cat
   const s = await createClient(); const { data: { user } } = await s.auth.getUser();
   const { data: ing, error } = await s.from("ingredients").insert({ name: p.name, unit: p.unit, category: p.category ?? null, brand: p.brand ?? null, barcode: p.barcode || null, pack_qty: p.pack_qty ?? null, cost_per_unit: p.cost_per_unit ?? 0, reorder_level: p.reorder_level ?? 0 }).select("id").single();
   if (error) return { error: error.message.includes("duplicate") ? "A product with this barcode already exists — scan it again to add stock." : error.message };
-  if (p.qty && p.qty > 0) await s.from("stock_ledger").insert({ ingredient_id: ing.id, qty: p.qty, reason: p.reason ?? "purchase", note: p.note ?? "from scan", created_by: user?.id });
+  if (p.qty && p.qty > 0) {
+    const { error: se } = await s.from("stock_ledger").insert({ ingredient_id: ing.id, qty: p.qty, reason: p.reason ?? "purchase", note: p.note ?? "from scan", created_by: user?.id });
+    if (se) return { error: `The product is saved, but its stock was not recorded (${se.message}). Scan it again to add the stock.` };
+  }
   await s.from("scan_log").insert({ source: "photo", kind: "ingredient", action: "create_product", target_id: ing.id, created_by: user?.id });
   ["/inventory", "/scan", "/dashboard"].forEach((x) => revalidatePath(x)); return { ok: true, id: ing.id };
 }
@@ -81,8 +85,11 @@ export async function punch(code: string) {
 /** Room scanned → quick status change. */
 export async function roomQuick(roomId: string, action: "cleaning" | "available" | "maintenance") {
   const s = await createClient();
-  if (action === "available") { await s.from("housekeeping_tasks").update({ status: "done" }).eq("room_id", roomId).neq("status", "done"); await s.from("rooms").update({ status: "available" }).eq("id", roomId).neq("status", "occupied"); }
-  else { await s.from("rooms").update({ status: action }).eq("id", roomId).neq("status", "occupied"); await s.from("housekeeping_tasks").insert({ room_id: roomId, kind: action === "cleaning" ? "clean" : "maintenance" }); }
+  // as Rooms does (setRoomStatus): an occupied room is refused and says so; "ready" also marks it clean
+  const row = action === "available" ? { status: action, condition: "clean" as const, condition_at: new Date().toISOString(), inspected_by: null } : { status: action };
+  const bad = wrote(await s.from("rooms").update(row).eq("id", roomId).neq("status", "occupied").select("id"), "The room is occupied — check the guest out first."); if (bad) return bad;
+  if (action === "available") { const { error } = await s.from("housekeeping_tasks").update({ status: "done" }).eq("room_id", roomId).neq("status", "done"); if (error) return { error: error.message }; }
+  else { const { error } = await s.from("housekeeping_tasks").insert({ room_id: roomId, kind: action === "cleaning" ? "clean" : "maintenance" }); if (error) return { error: error.message }; }
   ["/rooms", "/housekeeping", "/scan"].forEach((x) => revalidatePath(x)); return { ok: true };
 }
 /** Staff badge (df:staff:<code>) scanned → punch in/out through staff_punch_code. */

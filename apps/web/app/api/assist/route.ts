@@ -106,7 +106,7 @@ export async function POST(req: Request) {
   const key = process.env.ANTHROPIC_API_KEY;
   const now = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
   if (!key) {
-    return NextResponse.json({ reply: `I can read this screen, but answering in words needs an Anthropic key on the server (ANTHROPIC_API_KEY). Here is what I can see right now:\n\n${summarise(ctx)}`, demo: true, screen });
+    return NextResponse.json({ reply: `I can read this screen, but answering in words is not switched on for your account yet — DineFlow support can turn it on. Here is what I can see right now:\n\n${summarise(ctx)}`, demo: true, screen });
   }
   const acts = `You may end a reply with at most one action the person can confirm with a tap, on its own line, in exactly this form: <action kind="…" label="…" arg="…"/>. Allowed kinds: call_walkin (arg = the walk-in's id, to page a waiting party), reorder_message (arg empty, drafts a WhatsApp message to the supplier for everything below reorder), open (arg = a path like /kitchen, to jump to a screen). Use one only when it is clearly the next step; otherwise none. Never claim an action has happened — it runs only after the tap.`;
   const system = `You are Assist inside DineFlow, a hospitality app for restaurants, hotels and resorts in India. The person is ${session.profile.full_name} (${session.profile.role}) at ${session.restaurant.name}, a ${session.restaurant.property_type}. It is ${now} IST. They are looking at the "${screen}" screen.

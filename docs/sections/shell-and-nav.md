@@ -46,6 +46,19 @@ click itself, and the previous screen stays up rather than being replaced by a g
 next one. **If one route is ever slow enough to need more, give that route its own `loading.tsx`.
 Never give one to all of them.**
 
+**The wait is taken before the click instead** (`IntentPrefetch.tsx`, mounted in `app/(app)/layout.tsx`,
+2026-10-13). With no `loading.tsx`, Next's own link prefetch fetches nothing useful for these per-request
+screens, so a first visit waited for the whole server render after the click. Now a finger touching a menu
+link (`pointerdown`) or a mouse resting on one for 70 ms calls `router.prefetch(href)` — with the app
+router's own cache that is a *full* prefetch — and the click takes the answer already in flight. Watched:
+links inside `nav`, `aside` and the More sheet (`[data-more]`), and any link marked `data-prefetch`; never
+other sites, downloads, `/api`, `/logout`, files, the page already showing, or a phone with Save-Data on.
+Content lists are left out on purpose: a thumb dragging a list of order cards would fetch a screen per card.
+Measured on one build (`perfx.mjs`, the switch is Save-Data): laptop with a 150 ms mouse rest, first visit
+click → screen median **160 ms (p90 282) against 443 ms (p90 1,540)** without it; phone (4× CPU, 4G, a
+90 ms tap) **420 against 561 ms**. A prefetched screen is reused for 30 s — `staleTimes.static` is 30 for
+that reason (it was 180) — and any action that revalidates drops it.
+
 ### The sidebar at each width
 
 | Width | Menu |
@@ -60,6 +73,24 @@ spot and 272px wide. `.nav-spacer` — the element right after the aside — kee
 the row so the page underneath does not move; `.nav-scrim` takes the click that closes it. It also
 closes on Escape, on picking a screen (the `path` effect), and if the window grows past 1279.
 Every link carries `title={label}`, so the rail's icons name themselves on hover.
+
+**Help & support is in the foot, for everyone** (2026-10-13). It is a row above *My attendance* in the sidebar (on
+the rail, the LifeBuoy alone) and a row in the More sheet's account block. It is not a module: no `ROUTE_MODULE`
+entry, no tick in Staff → Access. While a reply from DineFlow is unread:
+- the rail shows a red dot and the sidebar row a count;
+- the More row says "N new", and the More button's count includes it.
+
+It comes from `useSupportUnread(path)` — one `support_unread()` call shared by the sidebar and the tab bar, after the
+screen is up. The error screen (`components/ErrorRecovery.tsx`) has a plain-link **Report this problem** →
+`/help?kind=problem&from=<path>`. See [help-and-support.md](help-and-support.md).
+
+**A hairline under every menu group but the last** (2026-10-13). `Group` renders `div.nav-group` (it was
+`mb-5`). `.nav-group:not(:last-child)::after` is a 1px white-at-10% line with 12px above and 14px below,
+inset 12px — 200px wide in the full menu. On the rail it is 36px wide (margin 8px), centred under the
+icons. There the groups' titles are hidden, so the line is the only thing that shows where one group
+ends. An empty group renders nothing, so `:last-child` is the last group actually shown: four lines for
+a hotel or resort, three for a restaurant. The sidebar is graphite in both themes, so the line is
+white, not `--color-separator`. Probe: `navline.mjs`.
 
 ### Speed: where a screen change spends its time
 
@@ -78,6 +109,33 @@ a quarter of a second each: the 1–2 s "click and wait" people felt.
 - Measured on a production build served from India (a stand-in for `bom1`), tapping sidebar links:
   first visit median **134 ms** (103–222), revisit median **21 ms** (11–37). Probe: `navperf.mjs`.
 
+**2026-10-13 — the live site, and what was left** (`perfx.mjs`, `ttfb.mjs`, `par.mjs`, `cpuprof.mjs`; the
+numbers are in testing-and-gates.md):
+
+- **The live stalls were cold starts.** One request at a time, every live screen answered in 110–290 ms; the
+  first after a quiet spell took 0.76 s, and **six at once took 0.65–1.2 s** (one Reports load took 6.3 s) —
+  each request a browser sends while another is running started a fresh instance. Both `vercel.json` files now
+  set **`"fluid": true`** (Fluid compute: one warm instance serves many requests at once, and instances are
+  kept warm longer). It takes effect on the next deploy; check Settings → Functions shows Fluid on.
+- **The offline warm-up runs at most every 30 minutes per device** (`df-warmed` in localStorage,
+  `lib/offline/OfflineProvider.tsx`). On every opening of the app it fetched up to eleven whole screens in the
+  background, right when the person's own first taps were being sent.
+- **The sidebar no longer measures itself on a phone.** `useKeepMenuInPlace` (Nav.tsx) read the active row's
+  rectangle in a layout effect on every screen change — below 768px the sidebar is `display: none`, yet that
+  read forced a layout of the whole new screen inside the commit, before it could paint: ~50 ms of every tab
+  bar tap on a mid-range phone (CPU profile). On a phone it now returns at once (`matchMedia`, no layout); on
+  a fresh load it still restores the menu before the first paint; between screens it checks the row after the
+  new screen has painted.
+- **Screens arrive in 160 ms, not ~370** (`pageV`, design-system.md): content was on screen ~120 ms after a
+  laptop click but the page spring took it to ~450 ms before it stood still (~640 ms on a phone). Click →
+  fully on screen, first visit: laptop **456 → 204 ms**, phone **636 → 502 ms**; a revisit **391 → 116 ms** and
+  **484 → 295 ms**.
+- **After a server action that revalidates, never call `router.refresh()`.** The action's own response
+  carries the re-rendered page (Next re-renders the current route whenever an action revalidates), so the
+  refresh rendered the same page a second time — Generate bill, Mark paid, Void, Fire, Move, Cancel a dish,
+  a cash move and the night audit all did. `actcheck.mjs` shows each screen changing from the action's answer
+  with no second page request. A screen that listens to realtime (an order, a bill) may still refresh once
+  when the change arrives; that is the listener, not the button.
 ### The phone's navigation
 
 `BottomNav` shows four sections and **More**, chosen by `barFor()` in `lib/bar.ts` (unit-tested in
@@ -154,30 +212,46 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
 - **`ALWAYS_ON` bypasses the master's enabled set.** Adding to it is a product decision.
 - **`.ink-panel` deliberately sets no `position`** — an unlayered rule here would beat Tailwind's
   `.sticky` and unstick the sidebar.
-- **Installing — `InstallSheet.tsx`.** Apple gives a page no install button, so on iPhone, iPad and
-  Safari on a Mac the app is added from the browser's own menu; the sheet shows the exact taps for
-  the device and browser (`detectDevice()`: an iPad asks for the desktop site and says "Macintosh" —
-  its touch points give it away). iPhone: Share in the address bar (or More ⋯ → Share) → Add to Home
-  Screen → keep *Open as Web App* on → Add; Chrome/Edge on iOS the same; iPad: Share at the top
-  right; Mac Safari: File → Add to Dock (Sonoma+); inside WhatsApp/Instagram: "this window can't
-  install" + Copy the address. Where Chrome/Edge have offered the one-tap prompt
-  (`window.__dfInstall`) the sheet shows a single *Install DineFlow* button instead.
-  **Where it opens from:** a download button in the top bar (`InstallButton`, hidden from 1280px
-  where the sidebar's foot has *Install the app*, and hidden once installed — standalone) and the
-  sidebar's *Install the app* (`InstallEntry`), which now opens the sheet in place instead of going
-  to `/get`. It is **not** in the phone's More sheet — the owner had that row removed (2026-10-12).
-  **The sheet is portalled into `<body>`**: rendered inside the sidebar it opened behind the page,
-  and inside the sticky top bar the tab bar and the assistant's button covered it. Don't write "⋯"
-  or "⋮" as text — the font draws them as dashes; use the `Glyph` with the Lucide icon. Probe
-  `inst.mjs` (6) — clear `window.__dfInstall` first, or headless Chrome's own offer replaces the
-  Apple steps.
-  **On iPhone and iPad the steps are drawn, not listed** (`IosGuide.tsx`): four screens in the
-  app's tokens — Safari's bar with Share ringed (bottom on iPhone, top right on iPad), the share
-  sheet with *Add to Home Screen* ringed, the Add dialog with *Open as Web App* on and *Add* ringed,
-  and the Home Screen with the DineFlow icon — Next/Back, dots, and a swipe. The owner could not
-  follow three lines of text. Keep each target and its label inside the 248px drawing and the step
-  count out of it (it covered Cancel and the iPad toolbar). Probe `guide.mjs` (10). A true one-tap
-  install on iPhone is not possible for a web app — it needs an App Store app (see `apps/mobile`). See [guest-facing.md](guest-facing.md) for `/get`.
+- **Installing — one engine, four places** (2026-10-13). `lib/install.ts` works out, from the user agent
+  (and an iPad's touch points), the device, the browser and the shortest way in (`installPlan`; 10 unit
+  tests over ~30 real user agents). `useInstall` (`components/shell/useInstall.ts`) adds whether the browser
+  has offered its one-tap install (`window.__dfInstall`, caught in `<head>` by `INSTALL_CAPTURE` — which now
+  lives in `lib/install.ts`: imported from a client module, the root layout would carry the panel into every
+  page), whether this is the installed app, and `df-app` in localStorage (set when the app is installed or
+  opened as the app, cleared when the browser offers again — a browser only offers when it is not installed;
+  on Android `getInstalledRelatedApps()` can set it too). `InstallPanel` draws the plan, and it is the same in
+  the install sheet, `/get`, Settings → *Install on this device* and the sign-in page (`InstallRow`):
+  - the browser's offer → one big *Install DineFlow* button (`data-install-now`); accepted, it says where the
+    icon is;
+  - Chrome, Edge or Samsung Internet before its offer → that browser's own two or three taps (`menu`);
+  - Windows in Firefox, Opera… → **one tap to Edge** (`microsoft-edge:<url>`, `data-open-edge`; Edge comes
+    with Windows); Android in UC, Mi or Opera Mini, or inside Instagram or Facebook (`; wv)`) → **one tap to
+    Chrome** (`intent://…;package=com.android.chrome;S.browser_fallback_url=…`, `data-open-chrome`); Firefox
+    on Android → its menu, or Chrome; Firefox on a Mac or Linux → copy the address into Chrome or Edge;
+  - iPhone or iPad — Safari, and Chrome, Edge or Firefox from iOS 16.4 → the drawn steps (`IosGuide`); before
+    16.4 in another browser → Safari; inside Instagram or WhatsApp → ⋯ → Open in Safari, and Copy;
+  - Mac Safari → File → Add to Dock (Safari 16 or older → Chrome or Edge);
+  - installed from here already → "Installed on this PC — open it from your Start menu and taskbar" with *Not
+    there? Install it again*; opened as the app → "You're in the app".
+  It replaced three copies that disagreed: one said only Safari can add to an iPhone's Home Screen (wrong since
+  iOS 16.4), the Settings card said Firefox does not install on Android.
+  **Where it opens from:** a download button in the top bar (`InstallButton`, hidden from 1280px where the
+  sidebar's foot has *Install the app*, and hidden once installed — standalone); the sidebar's *Install the
+  app* (`InstallEntry`: **one click runs the browser's install** where it has offered it, otherwise the
+  sheet); Settings; and the sign-in page. It is **not** in the phone's More sheet — the owner had that row
+  removed (2026-10-12). **The sheet is portalled into `<body>`**: rendered inside the sidebar it opened
+  behind the page, and inside the sticky top bar the tab bar and the assistant's button covered it. Don't
+  write "⋯" or "⋮" as text — the font draws them as dashes; use the `Glyph` with the Lucide icon.
+  **On iPhone and iPad the steps are drawn, not listed** (`IosGuide.tsx`): four screens in the app's tokens —
+  the browser's bar with Share ringed, the share sheet with *Add to Home Screen* ringed, the Add dialog with
+  *Open as Web App* on and *Add* ringed, and the Home Screen with the DineFlow icon — Next/Back, dots, and a
+  swipe. The owner could not follow three lines of text. **The first screen follows the browser**: Safari's
+  Share in the bottom bar (iPhone) or top right (iPad); Chrome's at the right end of its address bar, at the
+  top; Edge's and Firefox's inside their menu (⋯ / ≡), bottom right. Every iOS browser then hands over to the
+  same share sheet. Keep each target and its label inside the 248px drawing — a target at the right edge uses
+  `top-end` / `bottom-end`, which anchor the label's right side — and the step count out of it. A true one-tap
+  install on iPhone is not possible for a web app — it needs an App Store app (see `apps/mobile`). Probe:
+  `install-probe.mjs`. See [guest-facing.md](guest-facing.md) for `/get` and the manifest.
 - **The rail range lives in one media query** (`768px`–`1279.98px`) and the hamburger is drawn by
   CSS (`.rail-only`), not by JavaScript — move the breakpoint there, and only there.
 - **The spacer must stay the aside's next sibling** (`aside[data-open] + .nav-spacer`). Put anything

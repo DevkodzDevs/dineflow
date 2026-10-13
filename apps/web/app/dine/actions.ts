@@ -23,7 +23,5 @@ export async function track(ref: string, phone: string) {
   const { data, error } = await anon().rpc("dine_track", { p_ref: ref, p_phone: phone });
   if (error) return { error: error.message }; return { ok: true, result: data as never };
 }
-export async function review(slug: string, guest: string, rating: number, body: string, ref: string) {
-  const { error } = await anon().rpc("dine_review", { p_slug: slug, p_guest: guest, p_rating: rating, p_body: body, p_ref: ref || null });
-  if (error) return { error: error.message }; return { ok: true };
-}
+// No review action here: dine_review took unlimited unverified reviews for any listed place and is
+// closed to the API since 0098. A guest reviews after paying, by the bill's own link (pay_link_review).

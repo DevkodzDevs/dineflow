@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { RefreshCw, AlertTriangle } from "lucide-react";
+import { RefreshCw, AlertTriangle, LifeBuoy } from "lucide-react";
 
 /**
  * What a screen shows when it fails to render.
@@ -59,6 +59,12 @@ export function ErrorRecovery({ error, reset, inline = false }: { error: Error &
           {reset && <button onClick={reset} className="btn btn-gray flex-1">Try again</button>}
           <button onClick={() => location.reload()} className="btn btn-filled flex-1">Reload the page</button>
         </div>
+        {/* straight to Help & support with the form set to a problem on this page (a plain link: it works
+            even when the page's own scripts are what failed) */}
+        <a href={`/help?kind=problem&from=${encodeURIComponent(typeof location === "undefined" ? "" : location.pathname)}`} data-report
+          className="mt-3 inline-flex items-center justify-center gap-1.5 min-h-10 px-3 rounded-xl text-[13px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] transition-colors">
+          <LifeBuoy size={15} /> Report this problem
+        </a>
       </div>
     </div>
   );

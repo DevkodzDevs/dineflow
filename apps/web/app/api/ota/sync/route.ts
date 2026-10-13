@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { timingSafeEqual } from "node:crypto";
+import { lookup } from "node:dns/promises";
+import { privateAddr } from "@/lib/netguard";
 import { createClient as sessionClient } from "@/lib/supabase/server";
 /**
  * Pulls every configured iCal feed and blocks those dates in DineFlow.
@@ -37,7 +39,16 @@ function publicHttps(raw: string): URL | null {
   if (h.includes(":") && (h === "::1" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80") || h.startsWith("::ffff:"))) return null;
   return u;
 }
+/* The name is checked as well as the text: a feed host like 10.0.0.5.nip.io reads as public and
+   resolves to a private address. Every address it resolves to must be public (lib/netguard). A host
+   that changes its answer between this lookup and the fetch is not caught here; the fetch never
+   follows redirects. */
+async function resolvesPublic(host: string) {
+  try { const all = await lookup(host, { all: true, verbatim: true }); return all.length > 0 && all.every((x) => !privateAddr(x.address)); }
+  catch { return false; }
+}
 async function readFeed(url: URL) {
+  if (!(await resolvesPublic(url.hostname.replace(/^\[|\]$/g, "")))) throw new Error("the feed's host is not a public address");
   const res = await fetch(url, { headers: { "user-agent": "DineFlow/4.1" }, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`feed returned ${res.status}`);
   const reader = res.body?.getReader(); if (!reader) return "";

@@ -3,11 +3,11 @@ import { clsx } from "clsx";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { X, Check, ChevronDown, Search } from "lucide-react";
-import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
 export const cn = clsx;
-export { snap, glide, settle, flipT, fast, listV, itemV, pageV, sheetV, flipV, press, pressCard } from "@/lib/motion";
-import { snap, glide, sheetV } from "@/lib/motion";
+export { snap, glide, settle, flipT, fast, enter, listV, itemV, pageV, sheetV, flipV, press, pressCard } from "@/lib/motion";
+import { snap, glide, sheetV, enter } from "@/lib/motion";
 export { Flip, FlipClock, Loader, PageLoader, Countdown, Waiting, reducedMotion } from "./flip";
 export { PasswordInput } from "./PasswordInput";
 import { Flip, Loader } from "./flip";
@@ -104,7 +104,13 @@ export function CardStrip({ actions, className, style, ...rest }: { actions: Str
 }
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
-  return <div className="space-y-1.5"><label>{label}</label>{children}{hint && <p className="footnote">{hint}</p>}</div>;
+  // the <label> is tied to its control — it was tied to nothing, so a screen reader announced 48 of the 50
+  // inputs on the till, billing and front desk with no name. Only a plain input, select or textarea is given
+  // an id; anything else (PasswordInput, a group of chips) keeps its own wiring.
+  const auto = useId();
+  const plain = isValidElement(children) && typeof children.type === "string" && ["input", "select", "textarea"].includes(children.type);
+  const id = plain ? ((children.props as { id?: string }).id ?? auto) : undefined;
+  return <div className="space-y-1.5"><label htmlFor={id}>{label}</label>{plain ? cloneElement(children as ReactElement<{ id?: string }>, { id }) : children}{hint && <p className="footnote">{hint}</p>}</div>;
 }
 
 export function Pill({ tone, children }: { tone: "pending" | "preparing" | "ready" | "served" | "alert" | "gold" | "sky"; children: ReactNode }) {
@@ -121,8 +127,10 @@ export function Empty({ title, hint, action }: { title: string; hint: string; ac
   );
 }
 
+/** A tile or section arriving: a quick rise, no blur (see `enter` in lib/motion.ts). A caller's stagger is
+ *  kept but capped at 80 ms, so a row of tiles is all there within a quarter of a second. */
 export function Reveal({ children, className, delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
-  return <motion.div initial={{ opacity: 0, y: 12, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ ...springSoft, delay }} className={className}>{children}</motion.div>;
+  return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...enter, delay: Math.min(delay, 0.08) }} className={className}>{children}</motion.div>;
 }
 
 /* ── Sheet: bottom sheet with grabber on phones, centred card on desktop ─────────────── */
@@ -338,7 +346,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <div className="fixed top-3 inset-x-0 z-[60] flex flex-col items-center gap-2 pointer-events-none px-4">
+      <div className="fixed top-3 inset-x-0 z-[60] flex flex-col items-center gap-2 pointer-events-none px-4" role="status" aria-live="polite">
         <AnimatePresence>{list.map((t) => (
           <motion.div key={t.id} layout initial={{ opacity: 0, y: -14, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: .96 }} transition={spring}
             className={cn("material-thick pointer-events-auto rounded-full px-4 py-2.5 text-sm font-semibold flex items-center gap-2 shadow-[var(--shadow-pop)]", t.tone === "err" && "!text-[var(--color-red)]")}>

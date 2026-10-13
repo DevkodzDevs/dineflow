@@ -34,6 +34,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/dine/**`, `app/book/**`, `app/queue/**`, `app/checkin/**`, `app/pay/**`, `app/record/**`, `app/get`, `app/offline` | [guest-facing.md](guest-facing.md) |
 | `app/(auth)/**`, `app/account/**`, `app/page.tsx`, `middleware.ts`, `lib/auth.ts` | [auth-and-session.md](auth-and-session.md) |
 | `app/admin/**`, `app/membership/**`, `app/(app)/about/**` | [admin-and-membership.md](admin-and-membership.md) |
+| `app/(app)/help/**`, `app/admin/support/**`, `lib/support.ts`, `components/support/**` — Help & support | [help-and-support.md](help-and-support.md) |
 | `app/legal/**`, `lib/company.ts` | [legal.md](legal.md) |
 | `app/api/**` | [api-routes.md](api-routes.md) |
 
@@ -41,9 +42,9 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 
 | If you are touching… | Read |
 | --- | --- |
-| `app/globals.css`, `components/ui/**` — any shared visual change | [design-system.md](design-system.md) |
-| `components/shell/**`, `app/(app)/layout.tsx`, the sidebar, module gating, **adding a `loading.tsx`** | [shell-and-nav.md](shell-and-nav.md) |
-| `supabase/migrations/**`, RLS, any new table or RPC | [data-and-rls.md](data-and-rls.md) |
+| `app/globals.css`, `components/ui/**`, `lib/motion.ts` — any shared visual change | [design-system.md](design-system.md) |
+| `components/shell/**`, `app/(app)/layout.tsx`, the sidebar, module gating, **adding a `loading.tsx`**; installing — `lib/install.ts`, `components/InstallApp.tsx`, `public/manifest.json`; speed — `lib/useLive.ts`, `lib/offline/**`, `next.config.ts`, `vercel.json` | [shell-and-nav.md](shell-and-nav.md) |
+| `supabase/migrations/**`, `supabase/pending/**`, RLS, any new table or RPC | [data-and-rls.md](data-and-rls.md) |
 | Anything, before you say it works | [testing-and-gates.md](testing-and-gates.md) |
 
 New section? Copy [`_TEMPLATE.md`](_TEMPLATE.md) and add a row above.
@@ -71,7 +72,8 @@ apps/web/components/
 
 apps/web/lib/    auth, supabase clients, format, print, offline, ai, razorpay
 packages/shared/ constants, roles, modules, billing maths, GST — used by web and mobile
-supabase/migrations/   82 numbered .sql files, applied in order
+supabase/migrations/   numbered .sql files, applied in order (0001–0099)
+supabase/pending/      a migration waiting for its deploy — see data-and-rls.md
 ```
 
 ## Five things true of every screen

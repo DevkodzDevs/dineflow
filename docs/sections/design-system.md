@@ -74,6 +74,20 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
 
+- **Things arrive quickly, and nothing animates a blur** (`enter` in `lib/motion.ts`, 2026-10-13). A screen
+  (`pageV`, `app/(app)/template.tsx`) slides in over 160 ms — opacity and 12px, no scale; a tile or section
+  (`Reveal`, so every `StatTile`) rises 8px over 160 ms with its caller's stagger capped at 80 ms; list items
+  (`itemV`) are 12 ms apart (35 before — a floor of 28 tables took a second to appear); a kitchen ticket keeps
+  its spring but not its blur. The old page spring kept a ready screen semi-transparent for ~330 ms after its
+  data had arrived, on every tap; and an animated `filter: blur()` repaints the whole blurred layer every
+  frame, the most expensive thing to ask of a budget phone. Sheets, flip tiles and press feedback are
+  unchanged. `motioncheck.mjs`: every screen reached by a tap ends at opacity 1 with no transform and nothing
+  left faded or blurred — both property kinds, both themes, five widths.
+- **`Field` ties its label to its control** (`useId` + `htmlFor`, given to a plain input, select or textarea
+  child): 48 of 50 inputs on the till, billing and front desk had no accessible name. **Toasts** sit in a
+  `role="status" aria-live="polite"` region, so a screen reader announces them.
+- **A write that must change a row** goes through `wrote(result, "what to say when nothing changed")` with
+  `.select("id")` on the write (`lib/wrote.ts`): a refused write changes no row and returns no error.
 - **`Switch` without `label` returns the bare `button role="switch"`** and takes `name` for its
   `aria-label`. Use it inside a row that is a `<label>` (Storefront, Loyalty): the row does the
   tapping. With `label`, it still wraps itself in a label as before.

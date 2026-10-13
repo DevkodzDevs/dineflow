@@ -23,7 +23,7 @@ export type Subject = { restaurant: string; labourer: string | null; profile: st
 export type Methods = { methods: string[]; lat: number | null; lng: number | null; radius: number };
 
 const db = () => {
-  if (!serviceRoleConfigured()) throw new Error("Attendance needs SUPABASE_SERVICE_ROLE_KEY on the server");
+  if (!serviceRoleConfigured()) throw new Error("Phone attendance is not switched on here yet");
   return adminClient();
 };
 

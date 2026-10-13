@@ -52,6 +52,12 @@ that. Probe: `staffrow.mjs`.
 
 ## Before you edit
 
+- **Invite codes are twelve hex characters** (48 bits, 0098; were eight — 32 bits with unlimited tries).
+  The join form takes up to 40.
+- **`staff_verify_contact` answers a wrong code** with `{ok:false, error}` instead of raising, so the
+  five-tries count sticks; `verifyStaffContact` shows `error`. Codes and temporary passwords come from
+  the cryptographic generator (`_random_digits`, `gen_temp_password`).
+- **`staff_login_domain(property)`** answers for the caller's own property only (Master control: any).
 - **Do not put the add/invite actions back in a side column.** At 1024–1279 a 340px column and a
   row of pills could not both fit: the column slid off the screen and the pills overlapped
   ("Not signed in" printed over "Owner"). Measured after the change: 0 spills and 0 overlapping

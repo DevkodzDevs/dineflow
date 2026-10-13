@@ -46,12 +46,18 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
   const composition = d.restaurant.gstScheme === "composition";
   const half = d.gstRate ? d.gstRate / 2 : null;
   const taxName = (which: "central" | "state") => lab[which] + (half !== null ? " @ " + half + "%" : "");
-  // GST summary grouped by rate, the way a compliant Indian tax invoice prints it
-  const taxable = d.subtotal - (d.discount ?? 0);
-  const groups = Object.values(d.lines.reduce((acc, l) => {
-    const r = l.gstRate ?? Math.round(((d.cgst + d.sgst) / Math.max(taxable, 1)) * 1000) / 10;
-    (acc[r] ??= { rate: r, taxable: 0 }); acc[r].taxable += l.qty * l.price; return acc;
-  }, {} as Record<string, { rate: number; taxable: number }>));
+  // GST summary grouped by rate, the way a compliant Indian tax invoice prints it. A bill has one rate: its
+  // taxable value is what the tax was charged on — the dishes after the discount, plus the service charge and
+  // the on-time fee — and the amounts are the bill's own. (It summed the dishes at full price and worked the
+  // rate out from that: a bill with a service charge printed a 19.8% "rate".)
+  const base = d.subtotal - (d.discount ?? 0) - (d.promiseWaived ?? 0) + (d.service ?? 0) + (d.promiseFee ?? 0);
+  const rates = [...new Set(d.lines.map((l) => l.gstRate).filter((x): x is number => x != null))];
+  const groups: { rate: number; taxable: number; cgst?: number; sgst?: number }[] = rates.length <= 1
+    ? [{ rate: d.gstRate ?? rates[0] ?? (base > 0 ? Math.round(((d.cgst + d.sgst) / base) * 1000) / 10 : 0), taxable: base, cgst: d.cgst, sgst: d.sgst }]
+    : Object.values(d.lines.reduce((acc, l) => {
+        const r = l.gstRate ?? 0;
+        (acc[r] ??= { rate: r, taxable: 0 }); acc[r].taxable += l.qty * l.price; return acc;
+      }, {} as Record<string, { rate: number; taxable: number }>));
 
   return (
     <div ref={ref} className={`relative ${className}`} style={{ width: PAPER_PX[w] }}>
@@ -115,7 +121,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         <div className="paper-row text-[10px] opacity-70 mt-0.5"><span>Rate</span><span>Taxable</span><span>{lab.central}</span><span>{lab.state}</span></div>
         {groups.map((g) => (
           <div key={g.rate} className="paper-row text-[10.5px]">
-            <span>{g.rate}%</span><span>{m(g.taxable)}</span><span>{m((g.taxable * g.rate) / 200)}</span><span>{m((g.taxable * g.rate) / 200)}</span>
+            <span>{g.rate}%</span><span>{m(g.taxable)}</span><span>{m(g.cgst ?? (g.taxable * g.rate) / 200)}</span><span>{m(g.sgst ?? (g.taxable * g.rate) / 200)}</span>
           </div>
         ))}
 

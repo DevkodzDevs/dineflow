@@ -1,6 +1,6 @@
 "use server";
 import { adminClient } from "@/lib/supabase/admin";
-import { sendPasswordCode } from "@/lib/email";
+import { sendPasswordCode, emailConfigured, otpEcho } from "@/lib/email";
 import { toLoginAddress } from "@dineflow/shared";
 
 /**
@@ -15,6 +15,11 @@ export async function requestReset(_: unknown, fd: FormData) {
   const loginId = toLoginAddress(String(fd.get("login_id") ?? ""));
   const same = { ok: true as const, sent: true };
   if (!loginId) return { error: "Enter your login ID." };
+  // Mail that is not set up is said up front, for every id alike. It used to be said only after a
+  // real account had been found — so the error itself told a stranger which ids exist.
+  if (!emailConfigured() && !otpEcho()) {
+    return { error: "Email is not set up on this server, so a code cannot be sent. Ask Master control to change the password for you." };
+  }
 
   let db;
   try { db = adminClient(); } catch (e) { return { error: e instanceof Error ? e.message : String(e) }; }
@@ -25,9 +30,9 @@ export async function requestReset(_: unknown, fd: FormData) {
   if (!r.found || r.throttled || !r.code) return same;
 
   const sent = await sendPasswordCode(r.sent_to!, r.code, r.property ?? "your property");
-  // A mail failure is the server's fault and worth saying; it leaks nothing about the account,
-  // because by this point a code was going to be sent regardless of who asked.
-  if (!sent.ok) return { error: sent.error };
+  // A send that fails here happened only because the account is real — saying so would answer
+  // "does this id exist?". It goes to the server log; the visitor gets the same answer as anyone.
+  if (!sent.ok) { console.error("password reset mail failed:", sent.error); return same; }
   return { ...same, echoed: sent.echoed };
 }
 
@@ -43,9 +48,12 @@ export async function resetPassword(_: unknown, fd: FormData) {
   let db;
   try { db = adminClient(); } catch (e) { return { error: e instanceof Error ? e.message : String(e) }; }
 
-  const { error } = await db.rpc("reset_password_with_code", {
+  const { data, error } = await db.rpc("reset_password_with_code", {
     p_login_id: loginId, p_code: code, p_new_password: next,
   });
   if (error) return { error: error.message };
+  // a wrong code is an answer, not an error (0098): raised, its try would have been un-counted
+  const r = data as { ok?: boolean; error?: string } | null;
+  if (r?.ok === false) return { error: r.error ?? "That code is not right." };
   return { ok: true as const, done: true };
 }

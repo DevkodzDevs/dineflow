@@ -8,10 +8,11 @@ import { formatINR } from "@/lib/format";
 import { slots as fetchSlots, reserve, placeOrder } from "../actions";
 import { OptionChooser } from "@/components/OptionChooser";
 import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
+import { GuestNotice } from "@/components/legal/GuestNotice";
 
 /** As the storefront sends it: the add-on groups are carried once on the property, and a dish
  *  names the ones it offers by id. `resolve` below puts them back together for the screen. */
-type RawItem = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; image_url?: string | null; variants?: Variant[]; addon_group_ids?: string[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
+type RawItem = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; image_url?: string | null; image_credit?: string | null; variants?: Variant[]; addon_group_ids?: string[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
 type Item = Omit<RawItem, "addon_group_ids"> & { addon_groups?: AddonGroup[] };
 /** One basket line: a dish with the size and extras it was chosen with. */
 type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
@@ -181,6 +182,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                   Confirm booking
                 </Button>
                 <p className="text-xs text-[var(--color-label-3)] mt-2 text-center">Free to book. No card needed. Cancel any time by calling the restaurant.</p>
+                <GuestNotice property={d.name} use="for this booking" className="mt-1" />
               </motion.div>
             )}</AnimatePresence>
           </motion.div>
@@ -208,7 +210,9 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                         /* with a photo: the photo on the right, the add control riding its bottom edge */
                         <div className="relative shrink-0 w-[112px] sm:w-[128px] pb-4">
                           {/* eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload */}
-                          <img src={i.image_url} alt={i.name} loading="lazy" className="h-[104px] sm:h-[116px] w-full rounded-2xl object-cover bg-[var(--color-fill)]" data-dish-photo />
+                          <img src={i.image_url} alt={i.name} title={i.image_credit ?? undefined} loading="lazy" className="h-[104px] sm:h-[116px] w-full rounded-2xl object-cover bg-[var(--color-fill)]" data-dish-photo />
+                          {/* a library photo carries its author and licence (CC BY / BY-SA): illustrative, and credited */}
+                          {i.image_credit && <span className="absolute left-1.5 right-1.5 top-1.5 rounded-md bg-black/45 px-1 py-px text-[8.5px] leading-tight text-white/90 truncate" data-photo-credit>Illustrative · {i.image_credit.replace(/^Photo: /, "")}</span>}
                           <div className="absolute inset-x-2 bottom-0 flex justify-center">
                             {i.available ? (qtyOf(i.id) ? (
                               <div className="flex items-center gap-1 bg-[var(--color-tint)] rounded-xl h-9 px-1 shadow-[var(--shadow-pop)]">
@@ -294,6 +298,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
               const r = await placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null, atTable ? tableToken : null);
               if ("error" in r) toast(r.error!, "err"); else { setCartOpen(false); setDone({ kind: "order", data: r.order as Record<string, unknown> }); }
             })}>Place order · {formatINR(total)}</Button>
+            <GuestNotice property={d.name} use="for this order" className="mt-2" />
         </div>
       </Sheet>
       {/* the question a dish asks: size, extras, how many */}

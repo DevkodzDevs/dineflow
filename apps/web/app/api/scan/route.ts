@@ -44,9 +44,9 @@ export async function POST(req: Request) {
   // tried end to end. The card is marked "sample" in the UI; add the key for real recognition.
   if (!key) {
     const samples: Record<string, Record<string, unknown>> = {
-      ingredient: { kind: "ingredient", name: "Tomato", confidence: 0.35, unit: "kg", estimated_qty: 0.25, category: "vegetable", price_estimate_inr: 40, notes: "Sample result — add ANTHROPIC_API_KEY for real photo recognition", demo: true },
-      dish: { kind: "dish", name: "Chicken biryani", confidence: 0.35, is_veg: false, price_estimate_inr: 280, description: "Rice, chicken, whole spices", notes: "Sample result — add ANTHROPIC_API_KEY for real photo recognition", demo: true },
-      room: { kind: "room", name: "Room 104", confidence: 0.35, room_number: "104", notes: "Sample result — add ANTHROPIC_API_KEY for real photo recognition", demo: true },
+      ingredient: { kind: "ingredient", name: "Tomato", confidence: 0.35, unit: "kg", estimated_qty: 0.25, category: "vegetable", price_estimate_inr: 40, notes: "Sample result — reading real photos is not switched on for your account yet — DineFlow support can turn it on", demo: true },
+      dish: { kind: "dish", name: "Chicken biryani", confidence: 0.35, is_veg: false, price_estimate_inr: 280, description: "Rice, chicken, whole spices", notes: "Sample result — reading real photos is not switched on for your account yet — DineFlow support can turn it on", demo: true },
+      room: { kind: "room", name: "Room 104", confidence: 0.35, room_number: "104", notes: "Sample result — reading real photos is not switched on for your account yet — DineFlow support can turn it on", demo: true },
       labour: { kind: "labour", name: "Murugan", confidence: 0.35, labour: { full_name: "Murugan", phone: "", id_type: "Aadhaar", id_last4: "7781", skill: "gardener" }, notes: "Sample result — only the last 4 ID digits are ever stored", demo: true },
     };
     const pick = samples[hint] ?? samples.ingredient;

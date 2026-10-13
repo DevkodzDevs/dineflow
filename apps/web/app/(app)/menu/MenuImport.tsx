@@ -52,7 +52,7 @@ export function MenuImport({ existing, onDone }: { existing: string[]; onDone: (
           <b className="text-[13px]">{rows.length} dish{rows.length === 1 ? "" : "es"} read</b>{sample && <Pill tone="gold">sample</Pill>}
           <button type="button" className="ml-auto h-9 px-2 font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)]" onClick={() => setRows(rows.map((r) => ({ ...r, keep: !rows.every((x) => x.keep) })))}>{rows.every((x) => x.keep) ? "Untick all" : "Tick all"}</button>
         </div>
-        {sample && <p className="text-xs text-[var(--color-label-2)] -mt-2">Sample mode: add ANTHROPIC_API_KEY on the server to read real menus.</p>}
+        {sample && <p className="text-xs text-[var(--color-label-2)] -mt-2">Sample mode: reading real menus is not switched on for your account yet — DineFlow support can turn it on.</p>}
         <div className="rounded-2xl border border-[var(--color-separator)] divide-y divide-[var(--color-separator)] overflow-hidden">
           {rows.map((r, i) => {
             const dup = have.has(r.name.trim().toLowerCase());

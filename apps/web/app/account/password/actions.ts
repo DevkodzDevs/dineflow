@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
 import { sendPasswordCode } from "@/lib/email";
 
 /**
@@ -10,13 +11,19 @@ import { sendPasswordCode } from "@/lib/email";
  * The database mints the code and hands back the plaintext exactly once, here, so it can be put in
  * an email. It is never returned to the browser — except under DINEFLOW_OTP_ECHO, which exists for
  * a machine with no mail account and says so on screen.
+ *
+ * It is minted through the service role for the user this session proves (0098). The session's own
+ * request_password_otp handed the plain code to whoever held the session — a till left signed in was
+ * enough to read it straight from the API and pass the "emailed code" check. 0099 closes that one.
  */
 export async function requestCode() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data, error } = await supabase.rpc("request_password_otp");
+  const { data, error } = serviceRoleConfigured()
+    ? await adminClient().rpc("request_password_otp_for", { p_user: user.id })
+    : await supabase.rpc("request_password_otp");
   if (error) return { error: error.message };
   const { code, sent_to } = data as { code: string; sent_to: string };
 
@@ -32,8 +39,11 @@ export async function requestCode() {
 /** Step two: check the code. The window it opens is held in the database, not in the browser. */
 export async function verifyCode(_: unknown, fd: FormData) {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("verify_password_otp", { p_code: String(fd.get("code") ?? "") });
+  const { data, error } = await supabase.rpc("verify_password_otp", { p_code: String(fd.get("code") ?? "") });
   if (error) return { error: error.message };
+  // a wrong code is an answer, not an error (0098): raised, its try would have been un-counted
+  const r = data as { ok?: boolean; error?: string } | null;
+  if (r?.ok === false) return { error: r.error ?? "That code is not right." };
   return { ok: true };
 }
 

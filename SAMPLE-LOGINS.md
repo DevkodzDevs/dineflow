@@ -11,11 +11,16 @@ Then sign in at `/login` as any of these, or press **Open** on their row in Mast
 | **Password** | `DineFlow@Master2026` |
 
 Sees every property. Has none of its own — that is why Master control is empty until you create one.
-**Change this password before going live:** Master control → Change master password.
+**Change this password before going live:** Master control → Change master password. Until you
+do, Master control shows a red notice at the top — this password is in the code, so anyone who has
+seen the code can sign in with it.
 
 ## The six sample properties
 
-Every owner uses the same password: **`Dine@1234`**
+Each owner gets **its own password** when the estate is loaded. Master control shows them once, in
+the sheet that made them — press **Copy all logins** and keep them. (Until migration 0099 every owner
+shared one password printed right here, so anyone who had read this file could sign in as them.) A
+login that already existed keeps its password; Master control → Reset password issues a new one.
 
 | Property | Type | Owner login | Where |
 |---|---|---|---|

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button, Field, PasswordInput, Reveal, cn } from "@/components/ui";
 import { UtensilsCrossed, Building2, Palmtree, Sparkles } from "lucide-react";
 import { DemoDialog } from "./demo/DemoDialog";
+import { InstallRow } from "@/components/shell/InstallRow";
 
 type Action = (s: unknown, fd: FormData) => Promise<{ error?: string } | void>;
 
@@ -82,6 +83,8 @@ export function AuthForm({ mode, action, pendingApproval }:
         {mode !== "signup" && <Link href="/signup" className="underline">Open a restaurant</Link>}
         {mode !== "join" && <Link href="/join" className="underline">Join with code</Link>}
       </div>
+      {/* the first screen on a new device: install here, and the app opens to this sign-in */}
+      <InstallRow className="mt-6" />
       {showDemo && <DemoDialog open={showDemo} onClose={() => setShowDemo(false)} />}
     </Reveal>
   );

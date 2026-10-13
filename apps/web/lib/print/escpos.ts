@@ -36,7 +36,7 @@ export class Escpos {
 }
 
 const money = (n: number) => Number(n).toFixed(2);
-export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null; extras?: string[] }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string; loyalty?: string };   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
+export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null; extras?: string[] }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; promiseFee?: number; promiseWaived?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string; loyalty?: string };   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
 
 export function buildBill(d: BillData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
@@ -51,6 +51,8 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   d.items.forEach((i) => { p.cols3(i.name, `${i.qty} x ${money(i.price)}`, money(i.qty * i.price)); i.extras?.forEach((x) => p.wrap("  " + x, 2)); if (i.note) p.wrap("  " + i.note, 2); });
   p.rule().row("Subtotal", money(d.subtotal));
   if (d.discount > 0) p.row("Discount", "-" + money(d.discount));
+  if (d.promiseWaived) p.row("Promise missed - meal free", "-" + money(d.promiseWaived));
+  if (d.promiseFee) p.row("On-time promise", money(d.promiseFee));
   if (d.service) p.row("Service charge", money(d.service));
   const lab = taxLabels(d.restaurant.stateCode), half = d.gstRate ? d.gstRate / 2 : null, comp = d.restaurant.gstScheme === "composition";
   const tn = (k: "central" | "state") => lab[k] + (half !== null ? " @" + half + "%" : "");

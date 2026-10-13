@@ -40,7 +40,7 @@ const shut = (e: { currentTarget: HTMLElement }) => { const d = e.currentTarget.
 
 const Icon = ({ t }: { t: PropertyType }) => (t === "hotel" ? <Building2 size={16} /> : t === "resort" ? <Palmtree size={16} /> : <UtensilsCrossed size={16} />);
 
-export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [], openError = null }: { openError?: string | null; tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; codes?: { id: string; code: string | null }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
+export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [], openError = null, defaultPassword = false }: { openError?: string | null; defaultPassword?: boolean; tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; codes?: { id: string; code: string | null }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
   const codeOf = (id: string) => codes.find((c) => c.id === id)?.code ?? null;
   const [q, setQ] = useState(""); const [filter, setFilter] = useState("all");
   const [sel, setSel] = useState<T | null>(null); const [issued, setIssued] = useState<string | null>(null); const [err, setErr] = useState<string | null>(openError);  // /admin/open sends a refusal back as ?error=
@@ -51,7 +51,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
   const [pw, setPw] = useState("");
   // off by default: a new property should open empty unless sample data is asked for
   const [np, setNp] = useState({ name: "", type: "resort" as "restaurant" | "hotel" | "resort", demo: false, email: "", owner: "", contact: "" });
-  const [estate, setEstate] = useState<{ name: string; type: string; email: string; password: string }[] | null>(null);
+  const [estate, setEstate] = useState<{ name: string; type: string; email: string; password: string | null }[] | null>(null);
   // shown once, straight after creating a property or resetting a password. Never readable again.
   const [creds, setCreds] = useState<{ title: string; email: string; password: string; code?: string | null } | null>(null);
   // the delete confirmation: what would be destroyed, and the name the operator has to type back
@@ -90,6 +90,13 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
   return (
     <div className="space-y-6">
       {openError && <p role="alert" className="rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] text-sm font-semibold px-4 py-3" data-open-error>Could not open that property: {openError}</p>}
+      {/* master_password_is_default (0098): the login still signs in with the password migration 0011 shipped with */}
+      {defaultPassword && (
+        <div role="alert" data-default-password className="rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+          <p className="text-sm font-semibold sm:flex-1 min-w-0">This master login still uses the password it was installed with. That password is written in the DineFlow code, so anyone who has seen the code can sign in here. Change it now.</p>
+          <Button className="min-h-11 w-full sm:w-auto shrink-0" onClick={() => { setErr(null); setSheet("password"); }}><KeyIcon size={15} /> Change master password</Button>
+        </div>
+      )}
       <div className="aurora"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Platform</div><h1 className="text-4xl">{tenants.length} properties <em>under control</em></h1></div>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatTile label="Active memberships" value={String(tenants.filter((t) => t.membership === "active").length)} tone="good" />
@@ -308,10 +315,10 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
             {err && <p className="text-sm text-chili">{err}</p>}
             <Button className="w-full" disabled={pending} onClick={() => start(async () => { const r = await installEstate(); if ("error" in r) setErr(r.error!); else setEstate(r.properties!); })}>{pending ? "Building six properties…" : "Load the sample estate"}</Button>
           </>) : (<>
-            <p className="text-sm text-mint font-semibold">Six properties created. These are their logins — every one uses the same password.</p>
+            <p className="text-sm text-mint font-semibold">Six properties created. These are their logins — each has its own password, shown only here, so copy them now.</p>
             <div className="feather overflow-hidden"><div className="table-wrap"><table className="w-full text-sm"><thead><tr><th className="text-left px-3 py-2">Property</th><th className="text-left px-3 py-2">Type</th><th className="text-left px-3 py-2">Email</th><th className="text-left px-3 py-2">Password</th></tr></thead>
-              <tbody>{estate.map((p) => <tr key={p.email} className="border-t border-line"><td className="px-3 py-2 font-semibold">{p.name}</td><td className="px-3 py-2 capitalize text-steel">{p.type}</td><td className="px-3 py-2 num">{p.email}</td><td className="px-3 py-2 num">{p.password}</td></tr>)}</tbody></table></div></div>
-            <Button variant="outline" className="w-full" onClick={() => { copyText(estate.map((p) => `${p.name} (${p.type}) — ${p.email} / ${p.password}`).join("\n")); }}>Copy all logins</Button>
+              <tbody>{estate.map((p) => <tr key={p.email} className="border-t border-line"><td className="px-3 py-2 font-semibold">{p.name}</td><td className="px-3 py-2 capitalize text-steel">{p.type}</td><td className="px-3 py-2 num">{p.email}</td><td className="px-3 py-2 num">{p.password ?? <span className="text-steel">unchanged</span>}</td></tr>)}</tbody></table></div></div>
+            <Button variant="outline" className="w-full" onClick={() => { copyText(estate.map((p) => `${p.name} (${p.type}) — ${p.email} / ${p.password ?? "(password unchanged)"}`).join("\n")); }}>Copy all logins</Button>
             <p className="text-xs text-steel">Sign in as any of them to see the app as a client, or press <b>Open</b> on their row here to walk in as Master. Change or delete these before you go live.</p>
             <Button className="w-full" onClick={() => { setEstate(null); setSheet(null); }}>Done</Button>
           </>)}
@@ -370,8 +377,9 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
       </Sheet>
       <Sheet open={sheet === "password"} onClose={() => setSheet(null)} title="Change the master password">
         <div className="space-y-4">
-          <p className="text-sm text-steel">The built-in master login ships as <span className="num">master@dineflow.in</span> / <span className="num">DineFlow@Master2026</span>. Change it before anyone else can reach this address.</p>
-          <input type="password" placeholder="New password (10+ characters)" value={pw} onChange={(e) => setPw(e.target.value)} />
+          {/* never print the password the login shipped with: it is in the repository, so on screen it only helps whoever is looking */}
+          <p className="text-sm text-steel">Use at least 10 characters, and not a password you use anywhere else.</p>
+          <input type="password" autoComplete="new-password" placeholder="New password (10+ characters)" value={pw} onChange={(e) => setPw(e.target.value)} />
           {err && <p className="text-sm text-chili">{err}</p>}
           <Button className="w-full" disabled={pending || pw.length < 10} onClick={() => start(async () => { const r = await setMasterPassword(pw); if ("error" in r) setErr(r.error!); else { setPw(""); setSheet(null); alert("Password changed. Use it from your next login."); } })}>Save new password</Button>
         </div>

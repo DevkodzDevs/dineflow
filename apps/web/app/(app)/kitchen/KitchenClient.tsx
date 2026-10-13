@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Flame, Check, Bell, Printer, Boxes, Timer, Tv, RotateCcw, PauseCircle } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Ticket } from "@/components/ui/Ticket";
-import { Button, cn } from "@/components/ui";
+import { Button, cn, useToast } from "@/components/ui";
 import { minsSince, fmtAge, fmtQty, fmtSince } from "@/lib/format";
 import { lineExtras } from "@dineflow/shared";
 import { Flip, listV } from "@/components/ui";
@@ -70,6 +70,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
   // Optimistic: the ticket jumps columns the moment you tap; the server catches up behind it.
   const [optimistic, setOptimistic] = useState<Record<string, Kot["status"] | "served">>({});
   const [recalled, setRecalled] = useState<Record<string, true>>({});
+  const toast = useToast();
   const { online } = useOffline();
 
   /* The station is remembered on the device: the grill's tablet stays the grill's tablet across
@@ -82,27 +83,28 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
   const move = (id: string, status: "preparing" | "ready" | "served") => {
     setOptimistic((o) => ({ ...o, [id]: status }));
     if (!online) { void enqueue("kot_status", { id, status }, `Kitchen · ticket ${status}`); return; }
-    start(async () => { await setKotStatus(id, status); });
+    start(async () => { const r = await setKotStatus(id, status); if ("error" in r) { toast(r.error!, "err"); setOptimistic((o) => { const n = { ...o }; delete n[id]; return n; }); } });
   };
   /** Station view: only this station's lines move; the ticket as a whole follows when every station is done. */
   const moveLines = (ids: string[], status: "preparing" | "ready") => {
     if (!ids.length) return;
     if (!online) { void enqueue("item_status", { ids, status }, `Kitchen · ${station} · ${status}`); return; }
-    start(async () => { await setItemsStatus(ids, status); });
+    start(async () => { const r = await setItemsStatus(ids, status); if ("error" in r) toast(r.error!, "err"); });
   };
   /* A held course fired from here leaves the strip at once; the server restarts its clock and prints it. */
   const [fired, setFired] = useState<Record<string, true>>({});
   const fire = (id: string) => {
     setFired((f) => ({ ...f, [id]: true }));
     if (!online) { void enqueue("kot_fire", { id }, "Kitchen · fire course"); return; }
-    start(async () => { await fireKot(id); });
+    // a course that did not fire comes back to the strip: hidden for good, the kitchen would never get it
+    start(async () => { const r = await fireKot(id); if ("error" in r) { toast(r.error!, "err"); setFired((f) => { const n = { ...f }; delete n[id]; return n; }); } });
   };
   const heldList = raw.filter((k) => k.held && !fired[k.id]);
   const courseOf = (k: Kot) => Math.max(1, ...k.order_items.map((i) => i.course ?? 1));
   const recall = (id: string) => {
     setRecalled((r) => ({ ...r, [id]: true }));
     setOptimistic((o) => { const n = { ...o }; delete n[id]; return n; });
-    start(async () => { await recallKot(id); });
+    start(async () => { const r = await recallKot(id); if ("error" in r) { toast(r.error!, "err"); setRecalled((x) => { const n = { ...x }; delete n[id]; return n; }); } });
   };
 
   const initial = raw.filter((k) => !k.held || fired[k.id]).map((k) => (optimistic[k.id] ? { ...k, status: optimistic[k.id] as Kot["status"] } : k)).filter((k) => optimistic[k.id] !== "served");

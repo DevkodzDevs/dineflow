@@ -162,7 +162,7 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
                 </div>
                 <div className="flex items-center gap-1 pl-4 pr-2 py-2 border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)]">
                   <label className="flex items-center gap-2.5 mr-auto cursor-pointer select-none min-h-11">
-                    <Switch on={it.is_available} onChange={(v) => start(() => { toggleAvailable(it.id, v); })} name={`${it.name} available`} />
+                    <Switch on={it.is_available} onChange={(v) => start(async () => { const r = await toggleAvailable(it.id, v); if ("error" in r) toast(r.error!, "err"); })} name={`${it.name} available`} />
                     <span className={cn("text-[13px] font-semibold", it.is_available ? "text-[var(--color-green)]" : "text-[var(--color-red)]")}>{it.is_available ? "Available" : "Sold out"}</span>
                   </label>
                   {[
@@ -216,7 +216,7 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
           {err && <p className="text-sm text-chili">{err}</p>}
           <div className="flex gap-2 pt-2">
             <Button className="flex-1" disabled={pending}>Save dish</Button>
-            {editing?.id && <Button type="button" variant="danger" onClick={() => start(async () => { await deleteMenuItem(editing.id!); setEditing(null); })}><Trash2 size={16} /></Button>}
+            {editing?.id && <Button type="button" variant="danger" onClick={() => start(async () => { const r = await deleteMenuItem(editing.id!); if ("error" in r) return void toast(r.error!, "err"); setEditing(null); })}><Trash2 size={16} /></Button>}
           </div>
         </form>
       </Sheet>
@@ -389,7 +389,7 @@ function RecipeEditor({ item, ingredients, initial, onDone, ai = false }: { item
         </div>
       ))}
       <Button variant="outline" size="sm" onClick={() => setRows([...rows, { ingredient_id: "", qty: 0 }])}><Plus size={14} /> Ingredient</Button>
-      <Button className="w-full mt-2" disabled={pending} onClick={() => start(async () => { await saveRecipe(item.id, rows); onDone(); })}>Save recipe</Button>
+      <Button className="w-full mt-2" disabled={pending} onClick={() => start(async () => { const r = await saveRecipe(item.id, rows); if ("error" in r) return void toast(r.error!, "err"); onDone(); })}>Save recipe</Button>
     </div>
   );
 }

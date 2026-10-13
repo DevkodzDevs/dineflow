@@ -43,7 +43,7 @@ applied migration.
 ```
 pnpm lint        # 0 errors (14 warnings are known)
 pnpm typecheck
-pnpm test        # 70 unit tests
+pnpm test        # 82 unit tests
 pnpm build       # note: this clobbers .next and kills a running `next dev`
 ```
 
@@ -104,14 +104,29 @@ PR descriptions end with:
 - Seven legal facts in `lib/company.ts` are still `null` — blocks launch and blocks subscription
   checkout. [legal.md](docs/sections/legal.md)
 - Razorpay subscription checkout and Sentry are agreed but not built.
-- **Set `CRON_SECRET` (and keep `SUPABASE_SERVICE_ROLE_KEY`) on Vercel** — the nightly OTA sync now
-  fails closed without it. [api-routes.md](docs/sections/api-routes.md)
-- Security follow-ups not yet done (2026-10-10 audit): per-IP limits on the public write RPCs
-  (`public_book`, `queue_join`, `dine_reserve`, reviews); a nonce-based `script-src` CSP; OTP and temp
-  passwords still use `random()` (bounded by 5 tries/code, 5 codes/hour); any staff can still write
-  `menu_items`, `ota_channels`, `order_channels`, printers and offers of their own property.
-  [data-and-rls.md](docs/sections/data-and-rls.md)
+- **Set `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` and `NEXT_PUBLIC_CLOUD_URL` on Vercel** — on
+  2026-10-13 the live site had no service-role key (forgot-password, card pay links, phone attendance, OTA
+  sync and the sign-in throttle all off) and no cloud URL. [api-routes.md](docs/sections/api-routes.md)
+- **Development and production share one Supabase project**: every local server, probe and migration
+  touches live data (that is how 0095–0101 reached the live database before their code). The live site is
+  deployed with `vercel --prod` from the working folder, not from Git. A staging project and Git deploys are
+  the fix. support@/grievance@/privacy@dineflow.cloud have no MX record (they bounce); `master@dineflow.in`
+  is on a domain that is not registered.
+- **Money still open** (the 2026-10-13 review — [billing-and-invoices.md](docs/sections/billing-and-invoices.md)):
+  staff can write `order_items` prices and quantities, `orders.status`, `bookings.rate`, `booking_charges`,
+  `customers.points` and `shift_closes` directly; aggregator orders (section 9(5)) are billed with GST; one GST
+  rate for every dish; automatic service charge; no credit notes; front-desk cash is not in the cash-up.
+- Security, after the 2026-10-13 audit (0098, 0099 — [data-and-rls.md](docs/sections/data-and-rls.md)):
+  **the live master login still signs in with the password 0011 shipped with** (Master control shows a
+  red notice until it is changed). Apply `supabase/pending/after_deploy_secrets.sql` once the commit
+  carrying it is live. Still open: a nonce-based `script-src` CSP; per-IP limits (the public writes have
+  per-phone and per-property limits — the guest's address never reaches the database); membership
+  expiry is enforced only in the layout; Supabase's *Secure password change* setting is unchecked.
   [admin-and-membership.md](docs/sections/admin-and-membership.md)
+- **Speed (2026-10-13 — [shell-and-nav.md](docs/sections/shell-and-nav.md), speed):** the live stalls were
+  cold starts; both `vercel.json` files now set `"fluid": true` — check Vercel → Settings → Functions shows
+  Fluid compute on after the next deploy. The database is Supabase **Micro** (shared CPU, spiky under load); a
+  larger compute size is the owner's call. Never add `router.refresh()` after an action that revalidates.
 - The browser suites are rewritten every session and never committed; `scripts/verify.mjs` carries
   paths from another machine and does not run.
   [testing-and-gates.md](docs/sections/testing-and-gates.md)

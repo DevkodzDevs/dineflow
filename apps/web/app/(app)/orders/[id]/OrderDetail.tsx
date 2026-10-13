@@ -91,7 +91,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
             <PrintedTicket key={k.id} status={k.held ? "HELD" : k.status.toUpperCase()}><Ticket top="slot" no={k.kot_no} title={k.held ? `Course ${course} · held` : `${fmtTime(k.created_at)} · ${fmtSince(k.created_at)} ago`} tone={k.held ? "warn" : tone(k.status)}
               footer={<div className="flex justify-between items-center">
                 {k.held ? <Pill tone="gold"><PauseCircle size={11} /> held</Pill> : <Pill tone={tone(k.status)}>{k.status}</Pill>}
-                {k.held && isOpen && <Button size="sm" disabled={pending} onClick={() => start(async () => { const r = await fireKot(k.id); if ("error" in r) fail(r.error!); else router.refresh(); })}><Flame size={14} /> Fire to kitchen</Button>}
+                {k.held && isOpen && <Button size="sm" disabled={pending} onClick={() => start(async () => { const r = await fireKot(k.id); if ("error" in r) fail(r.error!); })}><Flame size={14} /> Fire to kitchen</Button>}
                 {k.status === "ready" && isOpen && <Button size="sm" variant="ink" disabled={pending} onClick={() => start(async () => { for (const i of order.order_items.filter((x) => x.kot_id === k.id && x.status === "ready")) await setItemStatus(i.id, "served"); })}>Mark served</Button>}</div>}>
               {order.order_items.filter((i) => i.kot_id === k.id).map((i) => <Line key={i.id} i={i} />)}
             </Ticket></PrintedTicket>
@@ -126,7 +126,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
                 <p className="text-xs text-steel">The whole order goes to another table; this one is freed if nothing else is running on it.</p>
                 <div className="flex gap-2">
                   <select value={toTable} onChange={(e) => setToTable(e.target.value)} className="flex-1"><option value="">Choose a table</option>{tables.filter((t) => t.id !== order.table_id).map((t) => <option key={t.id} value={t.id}>{t.name}{t.status !== "free" ? ` · ${t.status}` : ""}</option>)}</select>
-                  <Button disabled={pending || !toTable} onClick={() => start(async () => { const r = await moveOrder(order.id, toTable); if ("error" in r) fail(r.error!); else { toast("Moved"); setMode(null); router.refresh(); } })}>Move</Button>
+                  <Button disabled={pending || !toTable} onClick={() => start(async () => { const r = await moveOrder(order.id, toTable); if ("error" in r) fail(r.error!); else { toast("Moved"); setMode(null); } })}>Move</Button>
                 </div>
               </div>
             )}
@@ -165,7 +165,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
       <ReasonDialog open={cancelling?.kind === "line"} onClose={() => setCancelling(null)} title={cancelling?.kind === "line" ? `Cancel ${cancelling.item.qty}× ${cancelling.item.name_snapshot}?` : ""}
         hint={cancelling?.kind === "line" && cancelling.item.status !== "pending" ? "The kitchen has started this one — only a manager can take it off, and the stock already used stays used." : "The dish comes off the ticket and the bill."}
         chips={["Guest changed mind", "Wrong item punched", "Out of stock", "Duplicate", "Took too long"]} confirmLabel="Cancel the dish"
-        onConfirm={async (reason) => { if (cancelling?.kind !== "line") return; const r = await cancelLine(cancelling.item.id, reason); if ("error" in r) return { error: r.error }; router.refresh(); }} />
+        onConfirm={async (reason) => { if (cancelling?.kind !== "line") return; const r = await cancelLine(cancelling.item.id, reason); if ("error" in r) return { error: r.error }; }} />
     </div>
   );
 }

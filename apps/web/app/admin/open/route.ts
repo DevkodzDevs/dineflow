@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 /**
  * Master control's "Open", as a plain form post, in the same tab. A form works the moment the list is
  * on screen (an onClick waited for hydration and a quick tap was lost), and the same tab matters:
- * which property the master is inside is one value for the account, not per tab — a second tab
- * turned the first into the same property, and on an installed iPhone app a new tab opened in Safari
+ * which property the master is inside belongs to the sign-in (0095), and the tabs of one browser
+ * share a sign-in — a second tab turned the first into the same property, and on an installed iPhone app a new tab opened in Safari
  * without the app's sign-in. admin_act_as checks that the caller is a master itself.
  */
 export async function POST(req: Request) {

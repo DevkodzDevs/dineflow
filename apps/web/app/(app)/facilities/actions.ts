@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 const bump = () => ["/facilities", "/frontdesk"].forEach((p) => revalidatePath(p, "layout"));
 export async function saveFacility(fd: FormData) {
   const s = await createClient(); const id = fd.get("id") as string | null;
@@ -11,4 +12,7 @@ export async function bookFacility(facilityId: string, startsAt: string, people:
   const s = await createClient(); const { error } = await s.from("facility_bookings").insert({ facility_id: facilityId, starts_at: startsAt, people, amount, booking_id: bookingId, guest_name: guestName });
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
-export async function cancelFacilityBooking(id: string) { const s = await createClient(); await s.from("facility_bookings").update({ status: "cancelled" }).eq("id", id); bump(); return { ok: true }; }
+export async function cancelFacilityBooking(id: string) {
+  const s = await createClient(); const bad = wrote(await s.from("facility_bookings").update({ status: "cancelled" }).eq("id", id).select("id"), "That booking could not be cancelled.");
+  if (bad) return bad; bump(); return { ok: true };
+}

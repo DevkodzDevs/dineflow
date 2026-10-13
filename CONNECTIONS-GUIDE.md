@@ -286,6 +286,12 @@ Two kinds. Both print ESC/POS — the language every 58 mm and 80 mm receipt pri
 **If nothing prints.** Ping the printer's IP from the bridge PC. Power-cycle the printer. Check the
 bridge window for the error line. `PRINT_BRIDGE_PORT` changes 9110 if something else uses it.
 
+**What the bridge will reach.** Only a printer on this network — a private address such as
+`192.168.x.x`, `10.x.x.x` or `172.16–31.x.x` — on a raw-print port, 9100 to 9109, and only for a
+DineFlow page (dineflow.cloud, the Box, or this computer). A printer on another port:
+`PRINT_BRIDGE_PORTS=9100-9109,6101`. Another web address that should print through it:
+`PRINT_BRIDGE_ORIGINS=https://your.address`. Only this computer prints: `PRINT_BRIDGE_HOST=127.0.0.1`.
+
 ---
 
 ## 11 · WhatsApp

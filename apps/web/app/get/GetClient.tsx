@@ -1,55 +1,24 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Apple, BookOpen, Check, Copy, Download, ExternalLink, Lock, Monitor, MonitorDown, MoreVertical, Share, Smartphone, SquarePlus } from "lucide-react";
-import { QR } from "@/components/QR";
-import { copyText } from "@/lib/clipboard";
+import { useEffect, useState, type ReactNode } from "react";
+import { Apple, BookOpen, Download, Laptop, Lock, Monitor, RefreshCw, Smartphone, Store, WifiOff } from "lucide-react";
+import { InstallPanel } from "@/components/shell/InstallPanel";
+import { SendInstallLink } from "@/components/shell/SendInstallLink";
+import { useInstall } from "@/components/shell/useInstall";
+import { deviceName } from "@/lib/install";
 
 /**
- * One address to hand anybody — an owner, a new waiter, a cook on their own phone — that works out
- * what they are holding and gives them the one button that installs DineFlow on it. Everything else
- * is still here, underneath, for the person setting up a floor of devices from one screen.
+ * One address to hand anybody — an owner, a new waiter, a cook on their own phone — that works out what
+ * they are holding and gives them the one thing to do on it (InstallPanel, the same as the in-app sheet,
+ * Settings and the sign-in page): the browser's one-tap install; one tap to Edge or Chrome from a browser
+ * that cannot install; the drawn Share → Add to Home Screen on an iPhone or iPad. The other half of the
+ * page is for the person setting up a floor of devices from one screen: a QR for the next phone, the link
+ * to WhatsApp to a new waiter, and the steps for each kind of device.
  *
- * The detection is deliberately shallow. Getting it wrong costs a person one extra tap on a button
- * that is right there below; being clever about it costs nothing and risks showing an Android file
- * to an iPhone, which cannot install it at all.
+ * The card flips with the theme like the sign-in page (it was dark-only, in fixed colours), so the drawn
+ * iPhone steps — which are in the app's tokens — read in both.
  */
 
-type Kind = "windows" | "android" | "ios" | "mac" | "other";
 type Links = { windows: string | null; android: string | null };
-
-function detect(): Kind {
-  if (typeof navigator === "undefined") return "other";
-  const ua = navigator.userAgent;
-  if (/Android/i.test(ua)) return "android";
-  // iPadOS reports itself as a Mac; the touch points are the only honest tell
-  if (/iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) return "ios";
-  if (/Windows/i.test(ua)) return "windows";
-  if (/Mac/i.test(ua)) return "mac";
-  return "other";
-}
-
-/**
- * Which window the page is sitting in, which decides whether installing is possible at all.
- *
- * The common way this page gets opened is the one that cannot work: somebody sends the link over
- * WhatsApp, the person taps it, and WhatsApp renders it inside itself. That window has no install
- * prompt, no Share menu that offers the Home Screen, and no address bar to escape from — so the
- * install button would simply do nothing, and the person would conclude the app is broken. There is
- * no way to leave an in-app browser from script either, so the only honest answer is to say what
- * happened and make the address trivial to carry out by hand.
- */
-type Where = "inapp" | "ios-other" | "normal";
-function where(kind: Kind): Where {
-  if (typeof navigator === "undefined") return "normal";
-  const ua = navigator.userAgent;
-  if (/FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|LinkedInApp|Snapchat|Twitter|MicroMessenger|; wv\)/i.test(ua)) return "inapp";
-  // On an iPhone only Safari has "Add to Home Screen" where people expect it; the others hide it or
-  // lack it, and sending someone hunting through the wrong menu is the struggle worth avoiding.
-  if (kind === "ios" && /CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)) return "ios-other";
-  return "normal";
-}
-
-type PromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 
 /**
  * Whether anybody *other than the person reading this* can open the address.
@@ -68,25 +37,8 @@ type PromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ 
 type Reach = "checking" | "open" | "gated";
 
 export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string }) {
-  const [kind, setKind] = useState<Kind | null>(null);
-  const [spot, setSpot] = useState<Where>("normal");
-  const [canPrompt, setCanPrompt] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const { env, plan } = useInstall();
   const [reach, setReach] = useState<Reach>("checking");
-
-  useEffect(() => {
-    const k = detect();
-    setKind(k);
-    setSpot(where(k));
-    setInstalled(matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
-    // the root layout catches this in <head> long before this page mounts
-    setCanPrompt(Boolean((window as Window & { __dfInstall?: unknown }).__dfInstall));
-    const on = () => setCanPrompt(true);
-    const off = () => { setCanPrompt(false); setInstalled(true); };
-    addEventListener("df-installable", on);
-    addEventListener("df-installed", off);
-    return () => { removeEventListener("df-installable", on); removeEventListener("df-installed", off); };
-  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -101,71 +53,71 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
     return () => { alive = false; };
   }, []);
 
-  const installPwa = async () => {
-    const e = (window as Window & { __dfInstall?: PromptEvent }).__dfInstall;
-    if (!e) return;
-    await e.prompt();
-    await e.userChoice;
-    (window as Window & { __dfInstall?: unknown }).__dfInstall = null;
-    setCanPrompt(false);
-  };
-
-  if (kind === null) return <div className="h-40" />;   // one frame, before we know what this is
+  const name = env ? deviceName(env.device) : "device";
 
   return (
-    <main className="min-h-dvh deck flex flex-col items-center justify-center px-5 py-14">
-      <div className="w-full max-w-md">
-        <div className="flex flex-col items-center text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/mark.png" alt="" width={56} height={56} className="h-14 w-14 object-contain" />
-          <h1 className="font-display text-3xl mt-4 tracking-wide text-[#f4f4f1]">Install DineFlow</h1>
-          <p className="text-[#9a9aa6] mt-2 text-[15px] leading-relaxed">
-            {installed ? "This device already has it." : "One tap. It opens on its own, without a browser around it, and keeps working when the line drops."}
+    <main className="min-h-dvh deck flex justify-center items-start lg:items-center sm:p-3">
+      <div className="deck-card w-full max-w-[1080px] px-5 py-9 sm:px-10 sm:py-12 lg:px-14" data-get>
+        <header className="flex flex-col items-center text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element -- the app's own icon, as it will look once installed */}
+          <img src="/apple-touch-icon.png" alt="" width={72} height={72} className="h-[72px] w-[72px] rounded-[20px] shadow-[0_10px_28px_-12px_rgb(0_0_0/.55)]" />
+          <h1 className="font-display text-[34px] sm:text-[40px] mt-5 tracking-wide leading-none">Install DineFlow</h1>
+          <p className="text-[15px] text-[var(--color-label-2)] mt-3 max-w-[34rem] leading-relaxed">
+            The restaurant and hotel app, on every phone, tablet and computer. It opens from its own icon, full screen — like any app.
           </p>
-        </div>
+          <ul className="mt-4 flex flex-wrap justify-center gap-2 text-[12.5px] font-semibold text-[var(--color-label-2)]">
+            <Fact icon={<Store size={13} />}>No app store</Fact>
+            <Fact icon={<RefreshCw size={13} />}>Updates itself</Fact>
+            <Fact icon={<WifiOff size={13} />}>Works when the line drops</Fact>
+          </ul>
+        </header>
 
         {reach === "gated" && <Gated url={pageUrl} />}
 
-        {!installed && (
-          <div className={reach === "gated" ? "mt-5 opacity-60" : "mt-8"}>
-            {spot === "normal"
-              ? <Primary kind={kind} canPrompt={canPrompt} onPwa={installPwa} />
-              : <WrongWindow spot={spot} url={pageUrl} />}
-          </div>
-        )}
+        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] lg:gap-12">
+          <section className="min-w-0" aria-label="This device">
+            <Label>{plan === "installed" ? "This device" : `On this ${name}`}</Label>
+            <div className={reach === "gated" ? "opacity-60" : undefined}><InstallPanel size="lg" url={pageUrl} /></div>
+          </section>
 
-        <div className="mt-8 pt-6 border-t border-white/10">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#62626e] text-center">Another device</div>
-          <div className="mt-4 grid gap-2.5">
+          <section className="min-w-0" aria-label="Another device">
+            <Label>On another phone, tablet or computer</Label>
+            <SendInstallLink url={pageUrl} />
             {/* every device installs from its own browser — no store, nothing to publish. A packaged file,
-                where one is hosted, is offered beside it; it used to say "Not published yet", which read
-                as "this device cannot install". */}
-            {kind !== "windows" && <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note="Open this page in Edge or Chrome → Install" href={null} />}
-            {kind === "windows" && links.windows && <Other icon={<Monitor size={16} />} title="Windows installer" note="DineFlow-Setup.exe · 79 MB · for a PC without Edge or Chrome" href={links.windows} />}
-            {kind !== "android" && <Other icon={<Smartphone size={16} />} title="Android phone or tablet" note="Open this page in Chrome → Install" href={null} />}
-            {kind === "android" && links.android && <Other icon={<Smartphone size={16} />} title="Android APK" note="Install straight from the file" href={links.android} />}
-            {kind !== "ios" && <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open this page in Safari → Share → Add to Home Screen" href={null} />}
-          </div>
-        </div>
+                where one is hosted, is offered underneath; it used to lead on Windows, with an
+                unsigned-installer warning. */}
+            <ul className="mt-5 grid gap-2" data-devices>
+              <Other icon={<Smartphone size={16} />} title="Android phone or tablet" note="Open the link in Chrome → Install" />
+              <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open the link in Safari → Share → Add to Home Screen" />
+              <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note="Open the link in Edge or Chrome → Install" />
+              <Other icon={<Laptop size={16} />} title="Mac" note="Safari → File → Add to Dock, or Chrome → Install" />
+              {links.windows && <Other icon={<Download size={16} />} title="Windows installer" note="DineFlow-Setup.exe · 79 MB · for a PC without Edge or Chrome" href={links.windows} />}
+              {links.android && <Other icon={<Download size={16} />} title="Android APK" note="Install straight from the file" href={links.android} />}
+            </ul>
 
-        {/* the printed manual, for whoever is setting the place up rather than using it */}
-        <a href="/DineFlow-Manual.pdf" download
-          className="mt-8 flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1f2027] p-3.5 hover:border-white/25 transition-colors">
-          <span className="h-9 w-9 rounded-xl bg-white/[.07] grid place-items-center shrink-0 text-[#9a9aa6]"><BookOpen size={16} /></span>
-          <span className="flex-1 min-w-0">
-            <span className="block text-sm font-semibold text-[#f4f4f1]">The manual</span>
-            <span className="block text-xs text-[#62626e] mt-0.5">Every screen explained, with pictures · PDF</span>
-          </span>
-          <Download size={15} className="text-[#62626e] shrink-0" />
-        </a>
-
-        <div className="mt-8 flex flex-col items-center gap-3">
-          <div className="bg-white p-2.5 rounded-xl"><QR value={pageUrl} size={116} /></div>
-          <p className="text-xs text-[#62626e] text-center">Scan to open this page on a phone.</p>
+            {/* the printed manual, for whoever is setting the place up rather than using it */}
+            <a href="/DineFlow-Manual.pdf" download
+              className="mt-5 flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3.5 hover:bg-[var(--color-fill)] transition-colors">
+              <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-[var(--color-label-2)]"><BookOpen size={16} /></span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold">The manual</span>
+                <span className="block text-xs text-[var(--color-label-2)] mt-0.5">Every screen explained, with pictures · PDF</span>
+              </span>
+              <Download size={15} className="text-[var(--color-label-2)] shrink-0" />
+            </a>
+          </section>
         </div>
       </div>
     </main>
   );
+}
+
+function Label({ children }: { children: ReactNode }) {
+  return <h2 className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[var(--color-label-2)] mb-3.5">{children}</h2>;
+}
+
+function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return <li className="h-8 px-3 rounded-full bg-[var(--color-fill)] inline-flex items-center gap-1.5">{icon}{children}</li>;
 }
 
 /**
@@ -176,18 +128,18 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
 function Gated({ url }: { url: string }) {
   const host = (() => { try { return new URL(url).host; } catch { return url; } })();
   return (
-    <div className="mt-8 rounded-2xl border border-[#e0a33a]/40 bg-[#e0a33a]/[.08] p-4">
+    <div className="mt-8 rounded-2xl border border-[color-mix(in_srgb,var(--color-orange)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-orange)_8%,transparent)] p-4" data-gated>
       <div className="flex items-start gap-3">
-        <span className="h-9 w-9 rounded-xl bg-[#e0a33a]/15 grid place-items-center shrink-0 text-[#e0a33a]"><Lock size={16} /></span>
+        <span className="h-9 w-9 rounded-xl bg-[color-mix(in_srgb,var(--color-orange)_15%,transparent)] grid place-items-center shrink-0 text-[var(--color-orange)]"><Lock size={16} /></span>
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-[#f4f4f1]">Only you can open this address</div>
-          <p className="text-[13px] leading-relaxed text-[#9a9aa6] mt-1">
-            <span className="text-[#c9c9d2]">{host}</span> is behind Vercel&apos;s Deployment Protection. It works for you because your
-            browser is signed in to Vercel — but a waiter&apos;s phone gets a <b className="text-[#c9c9d2]">Vercel sign-in screen</b>,
+          <div className="text-sm font-semibold">Only you can open this address</div>
+          <p className="text-[13px] leading-relaxed text-[var(--color-label-2)] mt-1">
+            <b className="text-[var(--color-label)]">{host}</b> is behind Vercel&apos;s Deployment Protection. It works for you because your
+            browser is signed in to Vercel — but a waiter&apos;s phone gets a <b className="text-[var(--color-label)]">Vercel sign-in screen</b>,
             not DineFlow. Install it now and that screen is what the app opens to, every time.
           </p>
-          <p className="text-[13px] leading-relaxed text-[#9a9aa6] mt-2.5">
-            Turn it off first: <b className="text-[#c9c9d2]">Vercel → your project → Settings → Deployment Protection → Vercel
+          <p className="text-[13px] leading-relaxed text-[var(--color-label-2)] mt-2.5">
+            Turn it off first: <b className="text-[var(--color-label)]">Vercel → your project → Settings → Deployment Protection → Vercel
             Authentication → Disabled</b>, then reload this page. The banner goes away when a stranger&apos;s phone could get in.
           </p>
         </div>
@@ -196,124 +148,14 @@ function Gated({ url }: { url: string }) {
   );
 }
 
-/**
- * The page is open somewhere that cannot install. Nothing here can fix that from script — an in-app
- * browser gives no way out — so it says plainly what is wrong and hands over the address in one tap.
- */
-function WrongWindow({ spot, url }: { spot: Where; url: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try { await copyText(url); setCopied(true); setTimeout(() => setCopied(false), 2500); }
-    catch { /* an old browser with no clipboard: the address is printed below to read out */ }
-  };
-  const inApp = spot === "inapp";
-  return (
-    <div className="feather p-5 !bg-[#1f2027] !border-white/10">
-      <p className="text-[15px] text-[#f4f4f1] font-semibold">
-        {inApp ? "This window can't install apps" : "Open this in Safari to install"}
-      </p>
-      <p className="text-sm text-[#9a9aa6] mt-1.5 leading-relaxed">
-        {inApp
-          ? "You've opened the link inside another app's browser — WhatsApp, Instagram or similar. Those windows have no install option at all. Open it in Chrome or Safari instead and the button appears."
-          : "On an iPhone, only Safari can add an app to the Home Screen. Copy the address below and paste it into Safari."}
-      </p>
-      <div className="mt-4 rounded-xl bg-black/30 px-3 py-2.5 text-[13px] text-[#cfcfd6] break-all num">{url}</div>
-      <button onClick={copy} className="mt-3 w-full h-11 rounded-xl bg-[var(--color-tint)] text-[#06120a] font-semibold flex items-center justify-center gap-2">
-        {copied ? <><Check size={16} /> Copied — now paste it into {inApp ? "your browser" : "Safari"}</> : <><Copy size={16} /> Copy the address</>}
-      </button>
-      {inApp && (
-        <p className="text-xs text-[#62626e] mt-3 flex items-center gap-1.5">
-          <ExternalLink size={12} className="shrink-0" /> Many of these apps also have “Open in browser” in their ⋯ menu.
-        </p>
-      )}
-    </div>
-  );
-}
-
-function Primary({ kind, canPrompt, onPwa }: { kind: Kind; canPrompt: boolean; onPwa: () => void }) {
-  /* The browser's own install comes first on every platform that offers it — Windows, Android, Mac,
-     Linux. It is one click, it raises no warning, it needs no file to be downloaded or trusted, and
-     it updates itself the moment the site does. A packaged installer can do none of those things, so
-     it belongs underneath as the answer for a browser that cannot do this, not above as the headline. */
-  if (canPrompt) return (
-    <button onClick={onPwa} className="w-full feather !bg-[var(--color-tint)] !border-transparent text-[#06120a] p-5 flex items-center gap-4 text-left transition hover:brightness-105">
-      <Download size={20} className="shrink-0" />
-      <span>
-        <span className="block font-semibold text-[17px]">Install DineFlow</span>
-        <span className="block text-[13px] opacity-75 mt-0.5">One tap · no download, no warnings, updates itself</span>
-      </span>
-    </button>
-  );
-
-  if (kind === "ios") return (
-    <div className="feather p-5 !bg-[#1f2027] !border-white/10">
-      <p className="text-sm text-[#9a9aa6]">Safari installs from its own menu — Apple gives a page no button to do it with. Three taps:</p>
-      <ol className="mt-4 space-y-3 text-[15px] text-[#f4f4f1]">
-        <Step icon={<Share size={15} />} n="1">Tap <b>Share</b>, at the bottom of the screen</Step>
-        <Step icon={<SquarePlus size={15} />} n="2">Choose <b>Add to Home Screen</b></Step>
-        <Step icon={<Check size={15} />} n="3">Tap <b>Add</b> — it lands beside your other apps</Step>
-      </ol>
-    </div>
-  );
-
-  /* Windows and Android lead with the browser's own install even where a packaged file exists: it
-     needs nothing published or downloaded and raises no "Windows protected your PC" warning. The
-     file, when one is hosted, stays offered underneath under "Another device". */
-  /* no one-tap prompt (the browser has not offered it yet, or it is not Chrome/Edge): the steps for
-     this device, from the browser's own menu — the same app, no download */
-  if (kind === "android") return (
-    <div className="feather p-5 !bg-[#1f2027] !border-white/10">
-      <p className="text-sm text-[#9a9aa6]">Install from Chrome&apos;s menu — no store, no download:</p>
-      <ol className="mt-4 space-y-3 text-[15px] text-[#f4f4f1]">
-        <Step icon={<MoreVertical size={15} />} n="1">Tap <b>⋮</b> at the top right of Chrome</Step>
-        <Step icon={<Download size={15} />} n="2">Choose <b>Install app</b> (or <b>Add to Home screen</b>)</Step>
-        <Step icon={<Check size={15} />} n="3">Tap <b>Install</b> — DineFlow joins your apps</Step>
-      </ol>
-      <p className="text-xs text-[#62626e] mt-3">In Samsung Internet: <b>☰</b> → <b>Add page to</b> → <b>Home screen</b>.</p>
-    </div>
-  );
-
-  if (kind === "windows") return (
-    <div className="feather p-5 !bg-[#1f2027] !border-white/10">
-      <p className="text-sm text-[#9a9aa6]">Install from Edge or Chrome — no download, no warning:</p>
-      <ol className="mt-4 space-y-3 text-[15px] text-[#f4f4f1]">
-        <Step icon={<MonitorDown size={15} />} n="1"><b>Edge:</b> <b>⋯</b> → <b>Apps</b> → <b>Install DineFlow</b></Step>
-        <Step icon={<MonitorDown size={15} />} n="2"><b>Chrome:</b> the install icon at the right of the address bar, or <b>⋮</b> → <b>Cast, save and share</b> → <b>Install page as app</b></Step>
-        <Step icon={<Check size={15} />} n="3">It opens in its own window, pinned to Start and the taskbar</Step>
-      </ol>
-    </div>
-  );
-
-  return (
-    <div className="feather p-5 !bg-[#1f2027] !border-white/10 text-sm text-[#9a9aa6]">
-      <p>This browser installs from its own menu:</p>
-      <ul className="mt-3 space-y-2">
-        <li><b className="text-[#f4f4f1]">Chrome or Edge</b> — the install icon at the right of the address bar.</li>
-        <li><b className="text-[#f4f4f1]">Safari on a Mac</b> — <i>File</i> → <i>Add to Dock</i>.</li>
-        <li><b className="text-[#f4f4f1]">Firefox</b> — no desktop install; on Android, <i>Add to Home screen</i>.</li>
-      </ul>
-    </div>
-  );
-}
-
-function Other({ icon, title, note, href }: { icon: React.ReactNode; title: string; note: string; href: string | null }) {
+function Other({ icon, title, note, href }: { icon: ReactNode; title: string; note: string; href?: string }) {
   const inner = (
     <>
-      <span className="h-9 w-9 rounded-xl bg-white/[.06] grid place-items-center shrink-0 text-[#9a9aa6]">{icon}</span>
-      <span className="flex-1 min-w-0"><span className="block text-sm font-semibold text-[#f4f4f1]">{title}</span><span className="block text-xs text-[#62626e] mt-0.5">{note}</span></span>
-      {href && <Download size={15} className="text-[#62626e] shrink-0" />}
+      <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-[var(--color-label-2)]">{icon}</span>
+      <span className="flex-1 min-w-0"><span className="block text-sm font-semibold">{title}</span><span className="block text-xs text-[var(--color-label-2)] mt-0.5 leading-snug">{note}</span></span>
+      {href && <Download size={15} className="text-[var(--color-label-2)] shrink-0" />}
     </>
   );
-  const cls = "flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.03] p-3";
-  return href ? <a href={href} download className={`${cls} transition hover:bg-white/[.07]`}>{inner}</a> : <div className={cls}>{inner}</div>;
-}
-
-function Step({ icon, n, children }: { icon: React.ReactNode; n: string; children: React.ReactNode }) {
-  return (
-    <li className="flex items-center gap-3">
-      <span className="h-8 w-8 rounded-xl bg-white/[.06] grid place-items-center shrink-0 text-[#9a9aa6]">{icon}</span>
-      <span className="flex-1">{children}</span>
-      <span className="num text-xs text-[#62626e]">{n}</span>
-    </li>
-  );
+  const cls = "flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3";
+  return <li>{href ? <a href={href} download className={`${cls} transition-colors hover:bg-[var(--color-fill)]`}>{inner}</a> : <div className={cls}>{inner}</div>}</li>;
 }

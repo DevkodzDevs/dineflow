@@ -192,7 +192,8 @@ Master control → **Sample estate** → **Load the sample estate**. About a min
 properties — two restaurants, two hotels, two resorts — with sixty days of orders, bills, bookings,
 stock and staff, all in one district so the Neighbours network has something to compare.
 
-Every sample owner uses the password `Dine@1234`:
+Each sample owner gets its own password, shown once in Master control when the estate is loaded
+(press **Copy all logins** and keep them):
 
 | Property | Type | Login |
 |---|---|---|

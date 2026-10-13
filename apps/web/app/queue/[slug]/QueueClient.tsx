@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { getClient } from "@/lib/supabase/lazy";
 import { Flip, Countdown } from "@/components/ui";
+import { GuestNotice } from "@/components/legal/GuestNotice";
 
 type S = { token: string; name: string; party: number; status: "waiting" | "called" | "seated" | "left"; place: number; waiting: number; minutes: number | null; table: string | null; restaurant: string };
 
@@ -28,6 +29,7 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
           <div><label>How many of you</label><div className="flex gap-2 mt-2 flex-wrap">{[1, 2, 3, 4, 5, 6, 8].map((n) => <button key={n} onClick={() => setForm({ ...form, party: n })} className={`chip min-w-11 justify-center ${form.party === n ? "on" : ""}`}>{n}</button>)}</div></div>
           {err && <p className="text-sm text-[var(--color-red)]">{err}</p>}
           <button disabled={!form.name || busy} onClick={join} className="btn btn-filled w-full !h-[52px] !text-base">Join the queue</button>
+          <GuestNotice property={name} use="to call you when your table is ready" />
         </div>
       </>) : s.status === "seated" ? (<>
         <h1 className="text-[34px] mt-1">Your table's ready</h1>

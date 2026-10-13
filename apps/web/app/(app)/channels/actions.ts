@@ -2,14 +2,24 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 const bump = () => ["/channels", "/frontdesk", "/rooms"].forEach((p) => revalidatePath(p));
+/** The partner API key is write-only from this screen: it is never sent to the browser, so a blank
+ *  field on an edit means "keep the saved one" (it used to erase it on every save). */
+const keyOf = (fd: FormData, id: string | null): { api_key?: string | null } => {
+  const k = String(fd.get("api_key") ?? "").trim();
+  return k || !id ? { api_key: k || null } : {};
+};
 export async function saveOta(fd: FormData) {
   const s = await createClient(); const id = fd.get("id") as string | null;
-  const row = { kind: String(fd.get("kind")), label: String(fd.get("label")), mode: String(fd.get("mode")), room_type_id: (fd.get("room_type_id") as string) || null, import_url: (fd.get("import_url") as string) || null, api_base: (fd.get("api_base") as string) || null, api_key: (fd.get("api_key") as string) || null, hotel_ref: (fd.get("hotel_ref") as string) || null, commission_pct: Number(fd.get("commission_pct") || 15), rate_offset_pct: Number(fd.get("rate_offset_pct") || 0), is_live: fd.get("is_live") === "on" };
+  const row = { kind: String(fd.get("kind")), label: String(fd.get("label")), mode: String(fd.get("mode")), room_type_id: (fd.get("room_type_id") as string) || null, import_url: (fd.get("import_url") as string) || null, api_base: (fd.get("api_base") as string) || null, ...keyOf(fd, id), hotel_ref: (fd.get("hotel_ref") as string) || null, commission_pct: Number(fd.get("commission_pct") || 15), rate_offset_pct: Number(fd.get("rate_offset_pct") || 0), is_live: fd.get("is_live") === "on" };
   const { error } = await (id ? s.from("ota_channels").update(row).eq("id", id) : s.from("ota_channels").insert(row));
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
-export async function deleteOta(id: string) { const s = await createClient(); await s.from("ota_channels").delete().eq("id", id); bump(); return { ok: true }; }
+export async function deleteOta(id: string) {
+  const s = await createClient(); const bad = wrote(await s.from("ota_channels").delete().eq("id", id).select("id"), "That channel could not be removed.");
+  if (bad) return bad; bump(); return { ok: true };
+}
 export async function setRates(roomTypeId: string, from: string, to: string, rate: number | null, open: number | null, stop: boolean, min: number | null) {
   const s = await createClient(); const { error } = await s.rpc("set_rate_inventory", { p_room_type_id: roomTypeId, p_from: from, p_to: to, p_rate: rate, p_open: open, p_stop: stop, p_min: min });
   if (error) return { error: error.message }; bump(); return { ok: true };

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LogOut, ShieldCheck, Menu, X, LayoutGrid, Fingerprint } from "lucide-react";
+import { LogOut, ShieldCheck, Menu, X, LayoutGrid, Fingerprint, LifeBuoy } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn, Sheet } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
@@ -10,13 +10,15 @@ import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
 import { barFor } from "@/lib/bar";
 import { InstallEntry } from "./InstallEntry";
 import { ITEMS, freshFor } from "./sections";
+import { useSupportUnread } from "@/components/support/useUnread";
 
 /** One titled block of the menu. Declared here, not inside Sidebar: a component created during
  *  render is a new type every time, which unmounts and rebuilds the whole menu on each pass. */
 function Group({ title, items, path }: { title?: string; items: typeof ITEMS; path: string }) {
   if (!items.length) return null;
   return (
-    <div className="mb-5">
+    /* .nav-group: a hairline under every group but the last (globals.css, the sidebar block) */
+    <div className="nav-group">
       {title && <div className="px-3 pb-2 font-display text-[12px] tracking-[.12em] uppercase text-white/35 rail-hide">{title}</div>}
       {items.map(({ key, href, label, Icon }) => {
         const active = path.startsWith(href);
@@ -42,23 +44,44 @@ const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffe
  *  paint, and only nudge it if the selected row is actually out of sight. */
 function useKeepMenuInPlace(path: string) {
   const ref = useRef<HTMLElement | null>(null);
+  const loaded = useRef(false);
   useBeforePaint(() => {
     const el = ref.current; if (!el) return;
-    try {
-      const saved = Number(sessionStorage.getItem("df-menu-scroll") ?? "");
-      if (Number.isFinite(saved) && saved > 0) el.scrollTop = saved;
-    } catch { /* private windows and blocked storage: the menu simply starts at the top */ }
-    const row = el.querySelector<HTMLElement>('a[data-active="true"]');
-    if (row) {
+    /* A phone has no sidebar (display: none below 768px), and measuring it there still forced a layout of
+       the whole new screen inside the commit, before its first paint — ~50 ms on a mid-range phone, on
+       every tap of the tab bar (a CPU profile of Control room → Orders, 2026-10-13). matchMedia costs no
+       layout. */
+    if (!matchMedia("(min-width: 768px)").matches) return;
+    const nudge = () => {
+      const row = el.querySelector<HTMLElement>('a[data-active="true"]');
+      if (!row) return;
       const r = row.getBoundingClientRect(), box = el.getBoundingClientRect();
       // "nearest" leaves a row that is already on screen exactly where it is, rather than
       // pulling it to the top; it only moves the menu when the row is genuinely out of sight
       if (r.top < box.top || r.bottom > box.bottom) row.scrollIntoView({ block: "nearest" });
+    };
+    if (!loaded.current) {
+      // a fresh page load: put the menu back before the first paint, so it does not flick
+      loaded.current = true;
+      try {
+        const saved = Number(sessionStorage.getItem("df-menu-scroll") ?? "");
+        if (Number.isFinite(saved) && saved > 0) el.scrollTop = saved;
+      } catch { /* private windows and blocked storage: the menu simply starts at the top */ }
+      nudge();
+      return;
     }
+    // moving between screens: the menu stayed where it was, so the new row is checked after the new
+    // screen has painted rather than holding that paint up
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const raf = requestAnimationFrame(() => { t = setTimeout(nudge, 0); });
+    return () => { cancelAnimationFrame(raf); if (t) clearTimeout(t); };
+  }, [path]);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
     const remember = () => { try { sessionStorage.setItem("df-menu-scroll", String(el.scrollTop)); } catch {} };
     el.addEventListener("scroll", remember, { passive: true });
     return () => el.removeEventListener("scroll", remember);
-  }, [path]);
+  }, []);
   return ref;
 }
 
@@ -82,6 +105,7 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
   }, [open]);
   const mods = modulesFor(type, role, enabled, personal);
   const allowed = ITEMS.filter((i) => mods.includes(i.key));
+  const unread = useSupportUnread(path);
   const hospitality = allowed.filter((i) => ["frontdesk", "rooms", "housekeeping", "guests", "facilities"].includes(i.key));
   const dining = allowed.filter((i) => !hospitality.includes(i) && !["dashboard", "tomorrow", "scan", "reports", "tax", "staff", "settings", "labour", "invoices", "channels", "neighbours", "proof"].includes(i.key));
   const manage = allowed.filter((i) => ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"].includes(i.key));
@@ -115,6 +139,13 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
       {/* the foot: who you are, and the way out. Settings keeps its own row up in Manage,
           so the second button for it down here was only costing a row of height. */}
       <div className="mt-auto pt-3">
+        {/* Help & support — for everyone in the property, whatever their modules; a red dot while a reply from DineFlow is unread */}
+        <Link href="/help" title={unread ? `Help & support · ${unread} new repl${unread === 1 ? "y" : "ies"}` : "Help & support"} data-help
+          className={cn("mb-2 flex items-center gap-3 h-[42px] px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/help") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
+          <span className="relative shrink-0"><LifeBuoy size={17} />{unread > 0 && <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-red)] ring-2 ring-[#121216]" aria-hidden />}</span>
+          <span className="rail-hide flex-1 min-w-0 truncate">Help & support</span>
+          {unread > 0 && <span className="rail-hide shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--color-red)] text-white text-[11px] font-bold grid place-items-center num">{unread}</span>}
+        </Link>
         {/* only when the owner has turned on a way to punch from one's own phone (fingerprint or selfie) */}
         {attend && <Link href="/attendance" title="My attendance" className={cn("mb-2 flex items-center gap-3 h-[42px] px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/attendance") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}><Fingerprint size={17} className="shrink-0" /><span className="rail-hide">My attendance</span></Link>}
         <InstallEntry variant="rail" />
@@ -197,7 +228,8 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
   const rest = allowed.filter((i) => !primary.includes(i));
   const fresh = freshFor(role);
   const onMore = rest.some((i) => path.startsWith(i.href)) || fresh.some((i) => path.startsWith(i.href));
-  const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0);
+  const unread = useSupportUnread(path);
+  const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0) + unread;
   const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num">{n > 99 ? "99+" : n}</span>;
   const groups = [
     { title: null as string | null, items: allowed.filter((i) => TOP.includes(i.key)) },
@@ -278,6 +310,10 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
                 ? <Link href={accountHref} className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors">{who}<span className="text-xs text-[var(--color-label-2)] shrink-0">Settings</span></Link>
                 : <div className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)]">{who}</div>;
             })()}
+            <Link href="/help" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors" data-help>
+              <LifeBuoy size={17} /> Help & support
+              {unread > 0 && <span className="ml-auto min-w-[22px] h-[22px] px-1.5 rounded-full bg-[var(--color-red)] text-white text-[11px] font-bold grid place-items-center num">{unread} new</span>}
+            </Link>
             {attend && <Link href="/attendance" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><Fingerprint size={17} /> My attendance</Link>}
             {isAdmin && <Link href="/admin" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><ShieldCheck size={17} /> Master control</Link>}
             <form action="/logout" method="post">

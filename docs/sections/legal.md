@@ -36,6 +36,8 @@ processor list in the Privacy Policy.
 
 ## Before you edit
 
+- **The public Contact page shows a gap, never a developer instruction**: a missing support telephone reads
+  "Telephone support: [not set] Until then, write to us" — it printed "Add it in apps/web/lib/company.ts".
 - **These pages are session-free.** They are in both `SESSION_FREE` and `PUBLIC_PREFIX` in
   `middleware.ts`. Keep them there — they are read by people who are not signed in, including a
   gateway's reviewer.

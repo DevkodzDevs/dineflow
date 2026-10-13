@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { cn, Empty, Button } from "@/components/ui";
+import { cn, Empty, Button, useToast } from "@/components/ui";
 import { formatINR, fmtSince } from "@/lib/format";
 import { setTableStatus } from "./actions";
 
@@ -27,7 +27,7 @@ const stOf = (s: string): St => (s === "preparing" || s === "ready" || s === "se
 type Order = { id: string; order_no: number; type: string; table_id: string | null; customer_name: string | null; created_at: string; order_items: { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string }[] };
 
 export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Order[] }) {
-  const [pending, start] = useTransition();
+  const [pending, start] = useTransition(); const toast = useToast();
   const [, tick] = useState(0);
   useLive(["orders", "order_items", "dining_tables"], 30000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
@@ -71,7 +71,7 @@ export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Orde
                     </Link>
                     {!o && (
                       <div className="px-1.5 pb-1.5">
-                        <button type="button" onClick={() => start(() => { setTableStatus(t.id, t.status === "reserved" ? "free" : "reserved"); })} disabled={pending}
+                        <button type="button" onClick={() => start(async () => { const r = await setTableStatus(t.id, t.status === "reserved" ? "free" : "reserved"); if ("error" in r) toast(r.error!, "err"); })} disabled={pending}
                           aria-label={`${t.status === "reserved" ? "Unreserve" : "Reserve"} ${t.name}`} className="room-act w-full text-[12px] font-semibold">{t.status === "reserved" ? "Unreserve" : "Reserve"}</button>
                       </div>
                     )}

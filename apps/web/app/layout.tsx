@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { THEME_BOOT, ThemeKeeper } from "@/components/ui/Theme";
-import { INSTALL_CAPTURE } from "@/components/InstallApp";
+import { INSTALL_CAPTURE } from "@/lib/install";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { FirstPaint } from "@/components/FirstPaint";
 import { NavProgress } from "@/components/ui";
@@ -26,7 +26,10 @@ const jet = localFont({ src: "../public/fonts/JetBrainsMono.ttf", variable: "--f
  */
 const siteUrl = (() => {
   const raw = process.env.NEXT_PUBLIC_CLOUD_URL?.trim();
-  try { return new URL(raw || "http://localhost:3000"); } catch { return new URL("http://localhost:3000"); }
+  // a production build with no address set falls back to the public site, not to this machine — the live share
+  // card pointed at http://localhost:3000/icon-512.png
+  const fallback = process.env.NODE_ENV === "production" ? "https://dineflow.cloud" : "http://localhost:3000";
+  try { return new URL(raw || fallback); } catch { return new URL(fallback); }
 })();
 
 export const metadata: Metadata = {

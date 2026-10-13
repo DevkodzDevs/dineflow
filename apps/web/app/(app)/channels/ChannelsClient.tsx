@@ -13,8 +13,8 @@ import { Upload, Send, Clock, Link2, Loader2 } from "lucide-react";
 import { saveChannel, deleteChannel } from "../online-orders/actions";
 import { copyText } from "@/lib/clipboard";
 
-type Ota = { id: string; kind: string; label: string; mode: string; room_type_id: string | null; import_url: string | null; export_token: string; api_base: string | null; hotel_ref: string | null; commission_pct: number; rate_offset_pct: number; is_live: boolean; last_import_at: string | null; last_error: string | null };
-type Oc = { id: string; kind: string; label: string; outlet_ref: string | null; webhook_token: string; commission_pct: number; prep_minutes: number; auto_accept: boolean; is_live: boolean; last_sync_at: string | null; api_base?: string | null };
+type Ota = { id: string; kind: string; label: string; mode: string; room_type_id: string | null; import_url: string | null; export_token: string; api_base: string | null; hotel_ref: string | null; commission_pct: number; rate_offset_pct: number; is_live: boolean; last_import_at: string | null; last_error: string | null; has_api_key?: boolean };
+type Oc = { id: string; kind: string; label: string; outlet_ref: string | null; webhook_token: string; commission_pct: number; prep_minutes: number; auto_accept: boolean; is_live: boolean; last_sync_at: string | null; api_base?: string | null; has_api_key?: boolean };
 const OTA_HUE: Record<string, string> = { booking_com: "--color-blue", airbnb: "--color-red", makemytrip: "--color-orange", agoda: "--color-green", expedia: "--color-orange", ical: "--color-tint" };
 /** who the calendar link is given to — "Paste into Booking.com"; any other calendar is "their site" */
 const OTA_NAME: Record<string, string> = { booking_com: "Booking.com", airbnb: "Airbnb", makemytrip: "MakeMyTrip", agoda: "Agoda", expedia: "Expedia" };
@@ -98,7 +98,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <div className="mt-3 flex flex-wrap gap-2">
               <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await sendTestOrder(c.webhook_token, base); setMsg("error" in r ? r.error! : "Test order sent — open Online orders"); })}><Send size={14} /> Send test order</Button>
               <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await pushChannel(c.id, "menu"); setMsg("error" in r ? r.error! : r.message!); })}><Upload size={14} /> Push menu</Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditOc(c)}>Edit</Button><Button size="sm" variant="ghost" onClick={() => { if (confirm(`Remove ${c.label}?`)) start(() => { deleteChannel(c.id); }); }}><Trash2 size={14} /></Button></div></Card>))}
+              <Button size="sm" variant="ghost" onClick={() => setEditOc(c)}>Edit</Button><Button size="sm" variant="ghost" onClick={() => { if (confirm(`Remove ${c.label}?`)) start(async () => { const r = await deleteChannel(c.id); if ("error" in r) toast(r.error!, "err"); }); }}><Trash2 size={14} /></Button></div></Card>))}
           {orderChannels.length === 0 && <p className="text-sm text-steel">No delivery channels yet.</p>}</div>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Test it right now</div>
           <p className="text-sm text-steel">Press <b>Send test order</b> on any channel above and watch it appear on the Online orders screen. From outside the app the same thing looks like this:</p>
@@ -110,7 +110,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
 
       {tab === "rooms" && (<div className="space-y-4">
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-          <b>Two ways to stop double-bookings.</b> <b>iCal</b> works today with Airbnb, Booking.com, Agoda and MakeMyTrip Connect: paste their calendar link into "their feed", and paste your DineFlow link into their site. Sync runs every 15 minutes and on demand.
+          <b>Two ways to stop double-bookings.</b> <b>iCal</b> works today with Airbnb, Booking.com, Agoda and MakeMyTrip Connect: paste their calendar link into "their feed", and paste your DineFlow link into their site. DineFlow reads their calendars every night at 2:30 am and whenever you press Sync now — check each site for its own timing.
           <b> API</b> mode (live rates and instant confirmation) needs a certified connection with each OTA or a channel-manager partner; the fields are here so you can switch over without changing anything else.</div></Card>
         {/* The OTAs as cards, one per channel (they were rows of one list, each with four loose buttons).
             The grid sizes itself from its own width (@container): one card across below a 64rem list (a
@@ -139,7 +139,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
               { key: "sync", label: syncing ? "Syncing…" : "Sync", icon: <RefreshCw className={cn(syncing && "animate-spin")} />, tone: "go", onClick: () => syncNow(c.id), disabled: !!busy, aria: `Sync · ${c.label}` },
               { key: "push", label: pushing ? "Pushing…" : "Push rates", icon: pushing ? <Loader2 className="animate-spin" /> : <Upload />, onClick: () => pushRates(c.id), disabled: !!busy, aria: `Push rates · ${c.label}` },
               { key: "edit", label: "Edit", icon: <Pencil />, onClick: () => setEditOta(c), aria: `Edit · ${c.label}` },
-              { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", onClick: () => { if (confirm(`Remove ${c.label}?`)) start(() => { deleteOta(c.id); }); }, aria: `Remove · ${c.label}` },
+              { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", onClick: () => { if (confirm(`Remove ${c.label}?`)) start(async () => { const r = await deleteOta(c.id); if ("error" in r) toast(r.error!, "err"); }); }, aria: `Remove · ${c.label}` },
             ];
             return (
             <li key={c.id} data-ota={c.kind} className="feather @container overflow-hidden flex flex-col min-w-0">
@@ -206,7 +206,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOc?.commission_pct ?? 22} /></Field>
             <Field label="Prep time (min)"><input name="prep_minutes" type="number" className="num" defaultValue={editOc?.prep_minutes ?? 20} /></Field></div>
           <Field label="Partner API base (optional)" hint="Fill once you have direct or middleware credentials"><input name="api_base" defaultValue={editOc?.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
-          <Field label="API key (optional)"><input name="api_key" type="password" placeholder="••••••" /></Field>
+          <Field label="API key (optional)" hint={editOc?.has_api_key ? "A key is saved. Leave this blank to keep it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOc?.has_api_key ? "Saved" : "••••••"} /></Field>
           <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="auto_accept" defaultChecked={editOc?.auto_accept} /> Auto-accept matched orders</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_live" defaultChecked={editOc?.is_live} /> Live</label></div>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
       </Sheet>
@@ -221,7 +221,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <Field label="Rate offset %" hint="Sell higher on OTAs to protect direct rates"><input name="rate_offset_pct" type="number" step="0.1" className="num" defaultValue={editOta?.rate_offset_pct ?? 0} /></Field></div>
           <Field label="Their calendar link (iCal import)"><input name="import_url" className="num text-xs min-w-0" defaultValue={editOta?.import_url ?? ""} placeholder="https://ical.booking.com/v1/export?t=..." /></Field>
           <Field label="API base (API mode)"><input name="api_base" defaultValue={editOta?.api_base ?? ""} /></Field>
-          <div className="grid grid-cols-2 gap-3"><Field label="Property id at the OTA"><input name="hotel_ref" className="num" defaultValue={editOta?.hotel_ref ?? ""} /></Field><Field label="API key"><input name="api_key" type="password" placeholder="••••••" /></Field></div>
+          <div className="grid grid-cols-2 gap-3"><Field label="Property id at the OTA"><input name="hotel_ref" className="num" defaultValue={editOta?.hotel_ref ?? ""} /></Field><Field label="API key" hint={editOta?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOta?.has_api_key ? "Saved" : "••••••"} /></Field></div>
           <label className="flex items-center gap-2 text-sm normal-case"><input type="checkbox" name="is_live" defaultChecked={editOta?.is_live} /> Live</label>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
       </Sheet>

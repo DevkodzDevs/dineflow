@@ -434,7 +434,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                     </div>
                     {t.qr_token && restaurant.booking_slug && <a href={`/dine/${restaurant.booking_slug}?t=${t.qr_token}`} target="_blank" rel="noreferrer" className="h-10 w-10 grid place-items-center rounded-lg text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] transition-colors text-[11px] font-semibold" title="Open what a guest sees when they scan this table's code"><QrCode size={14} /></a>}
                     <button className="h-8 w-8 grid place-items-center rounded-lg text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors"
-                      disabled={pending} onClick={() => start(() => { deleteTable(t.id); })} aria-label={`Delete ${t.name}`}>
+                      disabled={pending} onClick={() => start(async () => { const r = await deleteTable(t.id); if ("error" in r) setMsg(r.error!); })} aria-label={`Delete ${t.name}`}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -495,7 +495,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                 })}><Sparkles size={15} /> Load demo data</Button>
                 <Button variant="ghost" disabled={pending} onClick={() => {
                   if (confirm("Remove the demo channels and sample online orders?"))
-                    start(async () => { await removeDemoData(); setMsg("Demo channels removed."); });
+                    start(async () => { const r = await removeDemoData(); setMsg("error" in r ? r.error! : "Demo channels removed."); });
                 }}><Trash2 size={15} /> Remove demo channels</Button>
               </div>
             </Section>

@@ -19,8 +19,13 @@ export async function checkOut(id: string, payments: unknown) {
   const s = await createClient(); const { data, error } = await s.rpc("check_out", { p_booking_id: id, p_payments: p.data }); if (error) return { error: error.message }; bump(); revalidatePath("/invoices"); return { ok: true, invoiceId: data as string | null };
 }
 export async function cancelBooking(id: string) {
-  const s = await createClient(); const { data: b } = await s.from("bookings").update({ status: "cancelled" }).eq("id", id).eq("status", "reserved").select("room_id").single();
-  if (b) await s.from("rooms").update({ status: "available" }).eq("id", b.room_id).eq("status", "reserved"); bump(); return { ok: true };
+  const s = await createClient();
+  const { data: b, error } = await s.from("bookings").update({ status: "cancelled" }).eq("id", id).eq("status", "reserved").select("room_id").maybeSingle();
+  if (error) return { error: error.message };
+  // it used to answer ok when nothing matched — a booking already checked in looked cancelled
+  if (!b) return { error: "Only a reserved booking can be cancelled — this one has moved on." };
+  if (b.room_id) await s.from("rooms").update({ status: "available" }).eq("id", b.room_id).eq("status", "reserved");
+  bump(); return { ok: true };
 }
 export async function addCharge(bookingId: string, kind: "extra" | "discount", description: string, amount: number) {
   const s = await createClient(); const { error } = await s.from("booking_charges").insert({ booking_id: bookingId, kind, description, amount: kind === "discount" ? -Math.abs(amount) : amount });

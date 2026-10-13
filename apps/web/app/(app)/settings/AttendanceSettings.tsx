@@ -85,7 +85,7 @@ export function AttendanceSettings({ owner, phoneReady = true, initial }: { owne
         </Link>
       )}
 
-      {!phoneReady && (methods.includes("biometric") || methods.includes("selfie")) && <div className="rounded-xl px-4 py-3 text-[13px] bg-[color-mix(in_srgb,var(--color-orange)_14%,transparent)]" data-not-ready>Fingerprint and selfie punches need SUPABASE_SERVICE_ROLE_KEY on this server. Until it is set, the punch pages say so and nobody can punch that way.</div>}
+      {!phoneReady && (methods.includes("biometric") || methods.includes("selfie")) && <div className="rounded-xl px-4 py-3 text-[13px] bg-[color-mix(in_srgb,var(--color-orange)_14%,transparent)]" data-not-ready>Fingerprint and selfie punches are not switched on for your account yet — DineFlow support can turn it on. Until then, the punch pages say so and nobody can punch that way.</div>}
       {msg && <div role="status" className={cn("rounded-xl px-4 py-2.5 text-sm", msg.ok ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-red-2)] text-[var(--color-red)]")}>{msg.text}</div>}
       {owner && <Button className="w-full sm:w-auto" loading={pending} disabled={!dirty} onClick={save} data-save>Save attendance settings</Button>}
     </div>

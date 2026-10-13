@@ -22,8 +22,13 @@ const config: NextConfig = {
      * instant instead of another round trip to the server. Every server action revalidates the
      * paths it changed, which drops those from this cache at once, and the live screens re-read
      * through useLive — so this saves the wait, not the freshness.
+     *
+     * `static` is 30 too, not Next's 300 or the 180 it was: it is also how long a *full* prefetch is
+     * reused, and IntentPrefetch (components/shell) fetches the next screen in full the moment a finger
+     * touches a link or a mouse rests on one. A screen fetched on a hover must not be shown three
+     * minutes later as if it were current. The only static pages are sign-in and the legal pages.
      */
-    staleTimes: { dynamic: 30, static: 180 },
+    staleTimes: { dynamic: 30, static: 30 },
   },
   // The name aliases (/signin → /login and friends) are handled in middleware.ts, not here. The auth
   // gate in that middleware answers first for a signed-out visitor, so a redirect declared at this

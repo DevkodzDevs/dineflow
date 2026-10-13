@@ -72,7 +72,16 @@ edge. It records the run ids that existed before and removes only its own.
 **Acting as.** `admin_act_as` puts a master inside one property; the rest of the app then behaves
 exactly as that property's owner sees it, with the amber `MasterBanner` across the top saying so.
 `admin_stop_acting` steps back out. **Everything done while acting is real and is logged** to
-`admin_log` — that is what makes the feature acceptable at all.
+`admin_log` — that is what makes the feature acceptable at all. **It belongs to one sign-in**
+(0095, 2026-10-13, see [data-and-rls.md](data-and-rls.md)). The same Master account can be inside
+manoooo on the iPad and inside Tan Resort on a laptop. Open or Back on one never moves the other.
+It used to be one value per account, and a menu tap on one device bounced to Master control
+whenever another sign-in — a browser test among them — opened or left a property.
+
+**Support** (`/admin/support`, the fifth tab, between Compliance and Testing): every Help & support request from
+every property — counters, filters, the thread with replies and internal notes, status and priority, consent, and a
+way into the property. The tab carries a red count of requests whose latest word is the property's and unread
+(`admin_support_badge`, read in `app/admin/layout.tsx`). See [help-and-support.md](help-and-support.md).
 
 **Module switches.** `master_set_modules` sets a property's `enabled_modules`, the third filter in
 `modulesFor()` (see [shell-and-nav.md](shell-and-nav.md)). A property that opens a screen it is not
@@ -88,6 +97,21 @@ and only then `admin_delete_property`.
 **`install_sample_estate`** builds a whole demo estate; `sweep_expired_demos` clears sandboxes.
 
 ## Before you edit
+
+- **The overview warns while the master login still uses its shipped password** (0098,
+  2026-10-13). `master_password_is_default()` bcrypt-checks the caller's own hash against the password
+  0011 created it with (that password is in the repository); while true, a red `[data-default-password]`
+  notice above the title opens *Change the master password* (stacked under the text on a phone). The
+  sheet no longer prints the shipped password. On 2026-10-13 the live master login still used it.
+- **`page.tsx` reads in the order it names them.** `access` (restaurants: id, enabled_modules, code)
+  and `boxes` (`admin_box_status`) were destructured the other way round, so property codes never
+  showed under the names, the Access sheet opened without the property's modules, and the *On a Box*
+  filter counted nothing. Fixed 2026-10-13; `sec98.mjs` checks every code is shown.
+- **Sample estate passwords** (0099): each new owner gets its own generated password, shown once in
+  the sheet (*Copy all logins*); a login that already existed keeps its password and shows *unchanged*.
+  They used to share one password printed in the repository's guides.
+- **`sweep_expired_demos` is master-only** (0098) — it deletes sign-ins. The overview still calls it;
+  "Try a demo" no longer does (`create_demo_sandbox` sweeps itself).
 
 - **On an iPad Master control scrolls in its own frame** (2026-10-13). Its layout is not the app's,
   so the page scrolled and WebKit rubber-banded past the end of every screen: Testing showed a dark
@@ -109,9 +133,10 @@ and only then `admin_delete_property`.
   `/admin/open` (route handler → `admin_act_as` → 303 `/dashboard`; a refusal comes back as
   `/admin?error=…` and shows at the top of the list, `[data-open-error]`). The banner's *Back to
   Master control* posts to `/admin/leave` (`admin_stop_acting` → 303 `/admin`). Both redirect with a
-  **relative** `Location` so the browser never changes host. Why: acting-as is one value per account,
-  not per tab — Open used to open a new tab, which silently switched the first tab's property, and
-  Back in one tab broke the other; on an installed iPhone app a new tab opened in Safari without the
+  **relative** `Location` so the browser never changes host. Why: acting-as is per sign-in (since
+  0095; before that one value per account), and the tabs of one browser share a sign-in — Open used
+  to open a new tab, which silently switched the first tab's property, and Back in one tab broke
+  the other; on an installed iPhone app a new tab opened in Safari without the
   app's sign-in. And as onClick handlers both waited for hydration, so a tap in the first second was
   lost — "sometimes it doesn't work". Probe `mc.mjs` (6): five instant-tap round trips, same tab,
   ~0.6–1.0 s each way.
@@ -146,7 +171,9 @@ and only then `admin_delete_property`.
 - **Every admin RPC must check `is_master` inside the function.** The route being under `/admin` is
   not a permission.
 - **Acting-as must stay visible.** Never suppress `MasterBanner`, and never let a test leave a
-  session acting — every suite here ends with `admin_stop_acting` in a `finally`.
+  session acting — every suite here ends with `admin_stop_acting` in a `finally`, **called with the
+  suite's own sign-in** (since 0095 it steps out only the sign-in that calls it; a fresh token's call
+  steps out nothing), and then signs that sign-in out (`/auth/v1/logout`).
 - **A delete is irreversible.** The preview step is required, not a nicety.
 - **A master's own password reset for a property (`admin_reset_property_password`) is a serious
   capability.** It is logged; keep it that way.

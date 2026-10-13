@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { ShieldCheck, LogOut } from "lucide-react";
 import { Suspense } from "react";
 import { AdminNav } from "./AdminNav";
@@ -6,6 +7,8 @@ import { DeckScroll } from "@/components/shell/DeckScroll";
 import { TouchSelect } from "@/components/ui/TouchSelect";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const a = await requireAdmin();
+  // the Support tab's badge: requests whose latest word is the property's and is unread (0096)
+  const { data: support } = await (await createClient()).rpc("admin_support_badge");
   return (
     /* admin-frame: on an iPad-size touch screen this box scrolls, not the page (globals.css) */
     <div className="min-h-dvh admin-frame">
@@ -18,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <div className="font-display text-lg leading-tight truncate">DineFlow <em className="text-champagne">Master control</em></div>
             <div className="text-[11px] text-white/45 mt-0.5 truncate">All properties · {a.email}</div>
           </div>
-          <div className="order-last basis-full md:order-none md:basis-auto md:ml-auto"><Suspense fallback={null}><AdminNav /></Suspense></div>
+          <div className="order-last basis-full md:order-none md:basis-auto md:ml-auto"><Suspense fallback={null}><AdminNav support={typeof support === "number" ? support : 0} /></Suspense></div>
           <form action="/logout" method="post" className="shrink-0 md:ml-1">
             <button title="Sign out" aria-label="Sign out" className="h-10 w-10 rounded-xl grid place-items-center text-white/60 hover:text-white hover:bg-white/[.08] transition"><LogOut size={16} /></button>
           </form>

@@ -8,8 +8,8 @@ import type { PropertyType } from "@dineflow/shared";
  */
 export async function createDemo(type: PropertyType) {
   const supabase = await createClient();
-  // sweep expired demos opportunistically
-  try { await supabase.rpc("sweep_expired_demos"); } catch { /* best effort */ }
+  // create_demo_sandbox sweeps expired sandboxes itself (0098): the sweep deletes sign-ins, so it is
+  // no longer something a visitor's key can call
   const { data, error } = await supabase.rpc("create_demo_sandbox", { p_type: type });
   if (error) return { error: error.message };
   const d = data as { login_email: string; password: string; type: string; expires_in_hours: number };

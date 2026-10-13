@@ -55,7 +55,7 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
                   </div>
                 </Link>
                 <div className="grid gap-1 px-1.5 pb-1.5" style={{ gridTemplateColumns: `repeat(${acts.length + 1}, minmax(0, 1fr))` }}>
-                  {acts.map((a) => <button key={a.k} type="button" title={a.label} aria-label={`${a.label} · room ${r.number}`} disabled={pending} onClick={() => start(() => { a.run(); })}
+                  {acts.map((a) => <button key={a.k} type="button" title={a.label} aria-label={`${a.label} · room ${r.number}`} disabled={pending} onClick={() => start(async () => { const r = await a.run(); if ("error" in r) setErr(r.error!); })}
                     className={cn("room-act", a.k === "fix" && "hover:!text-[var(--color-red)]")}>{a.icon}</button>)}
                   <button type="button" title="Edit room" aria-label={`Edit room ${r.number}`} onClick={() => setEdit(r)} className="room-act"><Pencil size={15} /></button>
                 </div>
@@ -77,7 +77,7 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
           {types.length === 0 && <Button type="button" variant="outline" onClick={() => { setEdit(null); setErr(null); setTypeSheet(true); }}><Plus size={14} /> Add a room type</Button>}
           <Field label="Notes"><input name="notes" defaultValue={edit?.notes ?? ""} placeholder="Sea view, connecting door…" /></Field>
           {err && <p className="text-sm text-chili">{err}</p>}
-          <div className="flex gap-2"><Button className="flex-1" disabled={pending}>Save</Button>{edit?.id && edit.status === "available" && <Button type="button" variant="danger" onClick={() => start(async () => { await deleteRoom(edit.id!); setEdit(null); })}><Trash2 size={16} /></Button>}</div>
+          <div className="flex gap-2"><Button className="flex-1" disabled={pending}>Save</Button>{edit?.id && edit.status === "available" && <Button type="button" variant="danger" onClick={() => start(async () => { const r = await deleteRoom(edit.id!); if ("error" in r) return void setErr(r.error!); setEdit(null); })}><Trash2 size={16} /></Button>}</div>
         </form>
       </Sheet>
       <Sheet open={typeSheet} onClose={() => { setTypeSheet(false); setErr(null); }} title="Room types & rates">

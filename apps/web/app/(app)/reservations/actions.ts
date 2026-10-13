@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 import { z } from "zod/v4";
 import { askJson, VOICE } from "@/lib/ai";
 import { requireSession } from "@/lib/auth";
@@ -25,7 +26,11 @@ export async function saveOffer(fd: FormData) {
   const { error } = await (id ? s.from("offers").update(row).eq("id", id) : s.from("offers").insert(row));
   if (error) return { error: error.message }; revalidatePath("/reservations"); revalidatePath("/settings/storefront"); return { ok: true };
 }
-export async function deleteOffer(id: string) { const s = await createClient(); await s.from("offers").delete().eq("id", id); revalidatePath("/settings/storefront"); return { ok: true }; }
+export async function deleteOffer(id: string) {
+  const s = await createClient(); const r = await s.from("offers").delete().eq("id", id).select("id");
+  if (r.error?.code === "23503") return { error: "This offer is on past bills or bookings, so it cannot be deleted — switch it off instead." };
+  const bad = wrote(r, "That offer could not be deleted."); if (bad) return bad; revalidatePath("/settings/storefront"); return { ok: true };
+}
 export async function replyReview(id: string, reply: string) {
   const s = await createClient(); const { error } = await s.from("reviews").update({ reply, replied_at: new Date().toISOString() }).eq("id", id);
   if (error) return { error: error.message }; revalidatePath("/reservations"); return { ok: true };

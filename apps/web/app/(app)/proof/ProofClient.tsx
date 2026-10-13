@@ -131,7 +131,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
                   <div className="text-xs text-steel flex items-center gap-1.5"><Eye size={13} /> {l.views} open{l.views === 1 ? "" : "s"}{l.last_viewed && ` · last ${new Date(l.last_viewed).toLocaleDateString("en-IN")}`}</div>
                   {!dead && <>
                     <Button size="sm" variant="outline" onClick={() => { copyText(url); setMsg("Link copied"); }}><Copy size={14} /> Copy</Button>
-                    <Button size="sm" variant="ghost" disabled={pending} onClick={() => { if (confirm(`Revoke "${l.label}"? Anyone holding it loses access immediately.`)) start(async () => { await revokeLink(l.id); setMsg("Revoked"); }); }}><Ban size={14} /></Button>
+                    <Button size="sm" variant="ghost" disabled={pending} onClick={() => { if (confirm(`Revoke "${l.label}"? Anyone holding it loses access immediately.`)) start(async () => { const r = await revokeLink(l.id); if ("error" in r) setErr(r.error!); else setMsg("Revoked"); }); }}><Ban size={14} /></Button>
                   </>}
                 </div>);
             })}

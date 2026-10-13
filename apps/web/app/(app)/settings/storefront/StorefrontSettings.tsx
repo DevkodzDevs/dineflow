@@ -87,7 +87,7 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
                   <div className="text-xs text-[var(--color-label-2)]">{o.kind === "flat_pct" ? `${o.value}% off` : `${formatINR(o.value)} off`} · {o.scope}{o.min_order > 0 ? ` · above ${formatINR(o.min_order)}` : ""}{o.from_time ? ` · ${o.from_time.slice(0, 5)}–${o.to_time?.slice(0, 5)}` : ""}</div></div>
                 {!o.is_active && <Pill tone="served">off</Pill>}
                 <Button size="sm" variant="gray" onClick={() => setOffer(o)}>Edit</Button>
-                <Button size="sm" variant="plain" onClick={() => { if (confirm(`Remove “${o.title}”?`)) start(() => { deleteOffer(o.id); }); }}><Trash2 size={14} /></Button>
+                <Button size="sm" variant="plain" onClick={() => { if (confirm(`Remove “${o.title}”?`)) start(async () => { const r = await deleteOffer(o.id); if ("error" in r) toast(r.error!, "err"); }); }}><Trash2 size={14} /></Button>
               </div>))}</div>
           )}
         </Card>

@@ -44,7 +44,7 @@ export async function sendContactVerification(to: string, code: string, name: st
     `If you have no connection to ${propertyName}, ignore this message; nothing happens without the code.`,
   ].join("\n");
   return send(to, `${code} is your DineFlow confirmation code`, text, code,
-    "Email is not set up on this server, so the confirmation code could not be sent. Their account and sign-in are ready to use — only the address is unconfirmed. Set RESEND_API_KEY and EMAIL_FROM to send codes, or DINEFLOW_OTP_ECHO=1 to show them on screen while testing.");
+    "Email is not set up on this server, so the confirmation code could not be sent. Their account and sign-in are ready to use — only the address is unconfirmed. DineFlow support can switch email on.");
 }
 
 export async function sendPasswordCode(to: string, code: string, propertyName: string): Promise<SendResult> {
@@ -71,7 +71,7 @@ async function send(to: string, subject: string, text: string, code: string, unc
   if (!emailConfigured()) {
     return {
       ok: false,
-      error: unconfigured ?? "Email is not set up on this server, so the code could not be sent. Set RESEND_API_KEY and EMAIL_FROM, or ask Master control to change the password for you.",
+      error: unconfigured ?? "Email is not set up yet, so the code could not be sent. Ask Master control to change the password for you.",
     };
   }
 

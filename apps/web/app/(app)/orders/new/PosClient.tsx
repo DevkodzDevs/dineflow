@@ -239,7 +239,10 @@ export function PosClient({ categories, items, tables, initialTable, inHouse = [
         await printKot({ kotNo: "KOT", when, tableOrType: label, heading,
           items: on.map((l) => ({ name: lineName(l.item, l.variant), qty: l.qty, note: l.note || null, extras: lineExtras({ addons: l.addons, components: l.item.components }), station: l.item.station ?? l.item.categories?.station ?? null })) });
       }
-    } catch { /* never block an order because a printer is off */ }
+    } catch {
+      // never block an order because a printer is off — but say so: a kitchen with no screen would never see it
+      toast("The kitchen ticket did not print — the order is saved. Check the printer, then reprint it from the order.", "err");
+    }
 
     if (!online) {
       // Offline: keep the order on this device and send it the moment the connection returns.

@@ -66,6 +66,14 @@ Jigarthanda) — on manoooo, Mutton chukka already exists and shows as *already 
 
 ## Before you edit
 
+- **Toggles and deletes report a refusal** (`lib/wrote.ts`): availability, add-ons, deleting a dish (a dish on
+  past orders says to switch it off instead), clearing a combo or a recipe. With the role walls a refused write
+  changes nothing and returns no error — the switch used to flip anyway.
+- **The menu is written from Menu** (0098). Restrictive policies on `categories`, `menu_variants`,
+  `addon_groups`, `addons`, `menu_item_addon_groups`, `combo_items`, `recipe_items` need the Menu
+  module; `menu_items` has `guard_menu_item_write`: Menu writes anything, Scan may add a dish (every
+  role has Scan), Online orders may change only `external_refs` (mapping an aggregator's dish). A
+  housekeeping or waiter login could reprice the menu through the API before. RPCs are not affected.
 - **Recipes** (toolbar, `[data-recipes]`) opens the overview — every active dish by category with a
   state (`[data-recipe-row][data-state=mapped|ready|none]`): mapped dishes show their plate in cook's
   units (`fmtQty`: 0.18 kg → "180 g", 0.015 l → "15 ml"), dishes the library knows show the library's

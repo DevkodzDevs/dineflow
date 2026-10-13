@@ -13,8 +13,9 @@ export default async function Channels() {
   // the session travels with the page's own rows, not in front of them: one trip, not two
   const [session, { data: ota }, { data: chans }, { data: types }, { data: log }, { data: avail }] = await Promise.all([
     requireSession(),
-    s.from("ota_channels").select("*").order("created_at"),
-    s.from("order_channels").select("*").order("created_at"),
+    // every column but the partner API key, which never leaves the server: has_api_key (0098) says whether one is saved
+    s.from("ota_channels").select("id, kind, label, mode, room_type_id, room_id, import_url, export_token, api_base, hotel_ref, commission_pct, rate_offset_pct, push_rates, push_inventory, is_live, last_import_at, last_push_at, last_error, created_at, has_api_key").order("created_at"),
+    s.from("order_channels").select("id, kind, label, outlet_ref, webhook_token, api_base, auto_accept, prep_minutes, commission_pct, is_live, last_sync_at, created_at, has_api_key").order("created_at"),
     s.from("room_types").select("id, name, base_rate").eq("is_active", true),
     s.from("ota_sync_log").select("*").order("created_at", { ascending: false }).limit(20),
     // asked for unconditionally: a restaurant has no room types so this comes back empty, and

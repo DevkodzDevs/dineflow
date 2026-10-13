@@ -27,6 +27,11 @@ category with no station stays on the expo view only. The warn and target minute
 
 ## Before you edit
 
+- **A bump, fire or recall that the server refuses puts the ticket back** and says why (a toast). A fired
+  course hid itself for good even when `fire_kot` failed — the kitchen never got it.
+- **An offline bump moves the ticket's lines** (`lib/offline/sync.ts` `kot_status` → `order_items` by `kot_id`,
+  as `setKotStatus` does online). It wrote `kots.status`: no stock was drawn in cook mode and the ticket jumped
+  back when `sync_kot_status` rebuilt it from its lines.
 - **Stock moves when the ticket arrives, by default (0092)** — not when *Start cooking* is pressed. A
   kitchen that works the board can switch back (Settings → Kitchen, `stock_draw = 'cook'`). On the
   board nothing changes: a `pending` line cancelled through `cancel_line` is credited back; one

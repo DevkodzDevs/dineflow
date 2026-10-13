@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 const bump = () => revalidatePath("/", "layout");
 export async function saveRestaurant(fd: FormData) {
   const s = await createClient();
@@ -17,7 +18,7 @@ export async function saveRestaurant(fd: FormData) {
     kds_stations: stations, kds_warn_minutes: warnAt, kds_target_minutes: lateAt, stock_draw: fd.get("stock_draw") === "cook" ? "cook" : "ticket", hk_inspect_required: fd.get("hk_inspect_required") === "on",
     promise_enabled: fd.get("promise_enabled") === "on", promise_minutes: promiseMinutes, promise_pct: promisePct,
     room_gst_rate_high: Number(fd.get("room_gst_rate_high") || 18), room_gst_threshold: Number(fd.get("room_gst_threshold") || 7500),
-    facility_gst_rate: Number(fd.get("facility_gst_rate") || 18), name: String(fd.get("name")), logo_url: String(fd.get("logo_url") ?? "").trim() || null, brand_colour: (String(fd.get("brand_colour") ?? "").trim().match(/^#[0-9a-f]{6}$/i)?.[0]) ?? null, gstin: fd.get("gstin") || null, address: fd.get("address") || null, phone: fd.get("phone") || null, gst_rate: Number(fd.get("gst_rate")), service_charge_pct: Number(fd.get("service_charge_pct")), property_type: String(fd.get("property_type")), room_gst_rate: Number(fd.get("room_gst_rate") || 12), check_in_time: String(fd.get("check_in_time") || "12:00"), check_out_time: String(fd.get("check_out_time") || "11:00"), prep_buffer_pct: Number(fd.get("prep_buffer_pct") || 10), brief_whatsapp: (fd.get("brief_whatsapp") as string) || null }).eq("id", String(fd.get("id")));
+    facility_gst_rate: Number(fd.get("facility_gst_rate") || 18), name: String(fd.get("name")), logo_url: String(fd.get("logo_url") ?? "").trim() || null, brand_colour: (String(fd.get("brand_colour") ?? "").trim().match(/^#[0-9a-f]{6}$/i)?.[0]) ?? null, gstin: fd.get("gstin") || null, address: fd.get("address") || null, phone: fd.get("phone") || null, gst_rate: Number(fd.get("gst_rate")), service_charge_pct: Number(fd.get("service_charge_pct")), property_type: String(fd.get("property_type")), room_gst_rate: Number(fd.get("room_gst_rate") || 5), check_in_time: String(fd.get("check_in_time") || "12:00"), check_out_time: String(fd.get("check_out_time") || "11:00"), prep_buffer_pct: Number(fd.get("prep_buffer_pct") || 10), brief_whatsapp: (fd.get("brief_whatsapp") as string) || null }).eq("id", String(fd.get("id")));
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
 /** Pay by scanning the bill: the UPI ID sits on the property; gateway keys go to an owner-only table,
@@ -56,7 +57,11 @@ export async function saveTable(fd: FormData) {
   const { error } = await (id ? s.from("dining_tables").update(row).eq("id", id) : s.from("dining_tables").insert(row));
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
-export async function deleteTable(id: string) { const s = await createClient(); await s.from("dining_tables").delete().eq("id", id); bump(); return { ok: true }; }
+export async function deleteTable(id: string) {
+  const s = await createClient(); const r = await s.from("dining_tables").delete().eq("id", id).select("id");
+  if (r.error?.code === "23503") return { error: "This table has orders on record, so it cannot be deleted." };
+  const bad = wrote(r, "That table could not be deleted."); if (bad) return bad; bump(); return { ok: true };
+}
 
 /** Fills the property with a realistic sample menu, pantry, rooms, bookings, labour and channels. */
 export async function loadDemoData(): Promise<{ error?: string; ok?: boolean; dishes?: number; ingredients?: number; rooms?: number; bookings?: number; labourers?: number }> {

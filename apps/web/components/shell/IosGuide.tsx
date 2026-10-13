@@ -1,7 +1,7 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Share, MoreHorizontal, SquarePlus, Copy, Bookmark, RotateCw, ChevronLeft, ChevronRight, Check, Lock } from "lucide-react";
+import { Share, MoreHorizontal, Menu, SquarePlus, Copy, Bookmark, RotateCw, ChevronLeft, ChevronRight, Check, Lock } from "lucide-react";
 import { cn } from "../ui";
 
 /**
@@ -13,22 +13,35 @@ import { cn } from "../ui";
  *
  * The drawings are the shapes of Safari's screens in the app's own tokens, not screenshots: a
  * screenshot goes stale with every iOS release and is wrong in one of the two themes.
+ *
+ * Only the first screen differs by browser — every iOS browser hands over to the same system share
+ * sheet. Safari: Share in the bar at the bottom (iPhone) or the top right (iPad). Chrome: Share at the
+ * right end of its address bar, at the top. Edge and Firefox: Share is inside their menu (⋯ / ≡), at the
+ * bottom right on an iPhone. It used to draw Safari's bar for all of them.
  */
 type Props = { ipad?: boolean; browser?: string };
 
 export function IosGuide({ ipad = false, browser = "safari" }: Props) {
-  const app = browser === "chrome" ? "Chrome" : browser === "edge" ? "Edge" : browser === "firefox" ? "Firefox" : "Safari";
+  const app = browser === "chrome" ? "Chrome" : browser === "edge" ? "Edge" : browser === "firefox" ? "Firefox" : browser === "safari" ? "Safari" : "your browser";
+  const at: At = browser === "chrome" ? "chrome" : browser === "safari" ? "safari" : "menu";
+  const menu = browser === "firefox" ? <Menu size={18} /> : <MoreHorizontal size={18} />;
   const steps: { title: string; text: ReactNode; screen: ReactNode }[] = [
-    { title: "Tap the Share button",
-      text: ipad
-        ? <>In {app}&apos;s toolbar at the <b>top right</b> of the screen — the square with an arrow pointing up.</>
-        : <>In {app}&apos;s bar at the <b>bottom</b> of the screen — the square with an arrow pointing up. Don&apos;t see it? Tap <b>More</b> <MoreHorizontal size={14} className="inline align-[-2px]" /> first, then <b>Share</b>.</>,
-      screen: <ScreenBrowser ipad={ipad} /> },
+    at === "menu"
+      ? { title: "Open the menu, then Share",
+          text: <>Tap {browser === "firefox" ? <Menu size={14} className="inline align-[-2px]" /> : <MoreHorizontal size={14} className="inline align-[-2px]" />} at the <b>{ipad ? "top right" : "bottom right"}</b> of {app}, then <b>Share</b> in the menu.</>,
+          screen: <ScreenBrowser ipad={ipad} at={at} menu={menu} /> }
+      : { title: "Tap the Share button",
+          text: at === "chrome"
+            ? <>In Chrome&apos;s address bar at the <b>top</b> — the square with an arrow pointing up, at its right end.</>
+            : ipad
+              ? <>In Safari&apos;s toolbar at the <b>top right</b> of the screen — the square with an arrow pointing up.</>
+              : <>In Safari&apos;s bar at the <b>bottom</b> of the screen — the square with an arrow pointing up. Don&apos;t see it? Tap <b>More</b> <MoreHorizontal size={14} className="inline align-[-2px]" /> first, then <b>Share</b>.</>,
+          screen: <ScreenBrowser ipad={ipad} at={at} menu={menu} /> },
     { title: "Choose “Add to Home Screen”",
       text: <>A menu slides up. <b>Scroll down a little</b> past the apps — it is in the list with Copy and Add Bookmark.</>,
       screen: <ScreenShareSheet /> },
     { title: "Tap “Add”",
-      text: <>Keep <b>Open as Web App</b> switched <b>on</b> — that is what makes it open full screen, like an app. Then tap <b>Add</b> at the top right.</>,
+      text: <>If you see <b>Open as Web App</b>, keep it <b>on</b> — that is what makes it open full screen, like an app. Then tap <b>Add</b> at the top right.</>,
       screen: <ScreenAdd /> },
     { title: "Done — open it from your Home Screen",
       text: <>DineFlow is now with your other apps. Open it from that icon from now on — not from {app}.</>,
@@ -82,7 +95,7 @@ export function IosGuide({ ipad = false, browser = "safari" }: Props) {
 /* ── the pieces of the drawings ───────────────────────────────────────────────────────────── */
 
 /** the thing to tap: a ring that breathes, and a label pointing at it */
-function Target({ children, label, side = "top", className }: { children: ReactNode; label: string; side?: "top" | "bottom" | "left"; className?: string }) {
+function Target({ children, label, side = "top", className }: { children: ReactNode; label: string; side?: "top" | "bottom" | "left" | "top-end" | "bottom-end"; className?: string }) {
   return (
     <span className={cn("relative inline-grid place-items-center", className)} data-target>
       <span className="absolute -inset-1.5 rounded-full border-2 border-[var(--color-tint)] animate-ping opacity-60" />
@@ -91,10 +104,12 @@ function Target({ children, label, side = "top", className }: { children: ReactN
       <span className={cn("absolute whitespace-nowrap rounded-lg bg-[var(--color-tint)] text-[#06120a] text-[11px] font-bold px-2 py-1 shadow-lg z-10",
         side === "top" && "bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2",
         side === "bottom" && "top-[calc(100%+12px)] left-1/2 -translate-x-1/2",
-        side === "left" && "right-[calc(100%+12px)] top-1/2 -translate-y-1/2")}>
+        side === "left" && "right-[calc(100%+12px)] top-1/2 -translate-y-1/2",
+        side === "top-end" && "bottom-[calc(100%+12px)] -right-1.5", side === "bottom-end" && "top-[calc(100%+12px)] -right-1.5")}>
         {label}
         <span className={cn("absolute h-2 w-2 rotate-45 bg-[var(--color-tint)]",
-          side === "top" && "-bottom-1 left-1/2 -translate-x-1/2", side === "bottom" && "-top-1 left-1/2 -translate-x-1/2", side === "left" && "-right-1 top-1/2 -translate-y-1/2")} />
+          side === "top" && "-bottom-1 left-1/2 -translate-x-1/2", side === "bottom" && "-top-1 left-1/2 -translate-x-1/2", side === "left" && "-right-1 top-1/2 -translate-y-1/2",
+          side === "top-end" && "-bottom-1 right-3", side === "bottom-end" && "-top-1 right-3")} />
       </span>
     </span>
   );
@@ -120,15 +135,32 @@ function Address() {
   );
 }
 
-function ScreenBrowser({ ipad }: { ipad: boolean }) {
-  if (ipad) return (
+type At = "safari" | "chrome" | "menu";
+function ScreenBrowser({ ipad, at, menu }: { ipad: boolean; at: At; menu: ReactNode }) {
+  if (at === "menu") return (
     <div className="h-full flex flex-col">
-      {/* an iPad's toolbar is at the top: the address in the middle, Share at the right */}
-      <div className="h-14 shrink-0 flex items-center gap-3 px-3 bg-[var(--color-bg-3)] border-b border-[var(--color-separator)]">
-        <ChevronLeft size={17} className="text-[var(--color-label-3)]" />
+      {/* Edge and Firefox: the address at the top; Share is inside the menu — bottom right on an iPhone, top right on an iPad */}
+      <div className="h-12 shrink-0 flex items-center gap-3 px-3 bg-[var(--color-bg-3)] border-b border-[var(--color-separator)]">
         <Address />
-        <Target label="Tap Share" side="bottom"><Share size={18} /></Target>
-        <span className="text-[var(--color-label-3)] text-[18px] leading-none">+</span>
+        {ipad && <Target label="Tap here, then Share" side="bottom-end">{menu}</Target>}
+      </div>
+      <div className="flex-1 overflow-hidden"><Page /></div>
+      {!ipad && (
+        <div className="h-12 shrink-0 px-5 flex items-center justify-between bg-[var(--color-bg-3)] border-t border-[var(--color-separator)] text-[var(--color-label-3)]">
+          <ChevronLeft size={17} /><ChevronRight size={17} /><SquarePlus size={17} /><span className="h-4 w-4 rounded-[4px] border-2 border-current" />
+          <Target label="Tap here, then Share" side="top-end">{menu}</Target>
+        </div>
+      )}
+    </div>
+  );
+  if (ipad || at === "chrome") return (
+    <div className="h-full flex flex-col">
+      {/* an iPad's toolbar, and Chrome's address bar on any device, are at the top: the address in the middle, Share at its right */}
+      <div className="h-14 shrink-0 flex items-center gap-3 px-3 bg-[var(--color-bg-3)] border-b border-[var(--color-separator)]">
+        <ChevronLeft size={17} className="text-[var(--color-label-3)] shrink-0" />
+        <Address />
+        <Target label="Tap Share" side="bottom-end"><Share size={18} /></Target>
+        {ipad && <span className="text-[var(--color-label-3)] text-[18px] leading-none">+</span>}
       </div>
       <div className="flex-1 pt-6"><Page /></div>
     </div>

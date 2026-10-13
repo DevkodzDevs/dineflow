@@ -45,8 +45,11 @@ export async function sendStaffVerification(userId: string) {
 /** Check the code they were sent and mark the address proved. */
 export async function verifyStaffContact(userId: string, code: string) {
   const s = await createClient();
-  const { error } = await s.rpc("staff_verify_contact", { p_user: userId, p_code: code });
+  const { data, error } = await s.rpc("staff_verify_contact", { p_user: userId, p_code: code });
   if (error) return { error: error.message };
+  // a wrong code is an answer, not an error (0098): raised, its try would have been un-counted
+  const r = data as { ok?: boolean; error?: string } | null;
+  if (r?.ok === false) return { error: r.error ?? "That code is not right." };
   revalidatePath("/staff");
   return { ok: true as const };
 }

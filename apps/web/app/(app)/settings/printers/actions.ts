@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { wrote } from "@/lib/wrote";
 const bump = () => revalidatePath("/settings/printers");
 export async function savePrinter(fd: FormData) {
   const s = await createClient(); const id = fd.get("id") as string | null;
@@ -8,4 +9,7 @@ export async function savePrinter(fd: FormData) {
   const { error } = await (id ? s.from("printers").update(row).eq("id", id) : s.from("printers").insert(row));
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
-export async function deletePrinter(id: string) { const s = await createClient(); await s.from("printers").delete().eq("id", id); bump(); return { ok: true }; }
+export async function deletePrinter(id: string) {
+  const s = await createClient(); const bad = wrote(await s.from("printers").delete().eq("id", id).select("id"), "That printer could not be removed.");
+  if (bad) return bad; bump(); return { ok: true };
+}

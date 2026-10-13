@@ -184,7 +184,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
               ))}
             </div>
           )}
-          {dishes.length > 0 && <Button variant="outline" className="mt-4 no-print" disabled={pending} onClick={() => start(async () => { await saveForecast(date, covers); await saveChefNotes(date, made); setMsg("Saved. Tomorrow the brief compares this against what actually sold."); })}><Check size={15} /> Save tonight&apos;s brief</Button>}
+          {dishes.length > 0 && <Button variant="outline" className="mt-4 no-print" disabled={pending} onClick={() => start(async () => { const a = await saveForecast(date, covers); if ("error" in a) { setMsg(null); return setErr(a.error!); } const b = await saveChefNotes(date, made); if ("error" in b) { setMsg(null); return setErr(b.error!); } setErr(null); setMsg("Saved. Tomorrow the brief compares this against what actually sold."); })}><Check size={15} /> Save tonight&apos;s brief</Button>}
         </Card>
 
         {/* ── market list ── */}

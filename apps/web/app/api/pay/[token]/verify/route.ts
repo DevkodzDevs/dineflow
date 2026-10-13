@@ -30,7 +30,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     const p = await razorpay<{ order_id?: string; method?: string; amount?: number; status?: string }>(g.gw, `/payments/${pid}`);
     if (p.order_id !== oid) return NextResponse.json({ error: "Payment and order do not match" }, { status: 400 });
     if ((p.amount ?? 0) < paise(g.gw.total)) return NextResponse.json({ error: "The payment is short of the bill total" }, { status: 400 });
-    if (!p.status || !["captured", "authorized"].includes(p.status)) return NextResponse.json({ error: `Payment is ${p.status ?? "not complete"}` }, { status: 400 });
+    /* "authorized" is a hold on the guest's money, not the money: on an account that captures by hand
+       it is released back to the guest after a few days — with the bill already marked paid. So an
+       authorized payment is captured here first (the amount was checked above); if Razorpay answers
+       that it was captured meanwhile, ask once more. Only a captured payment settles the bill. */
+    let status = p.status;
+    if (status === "authorized") {
+      try { status = (await razorpay<{ status?: string }>(g.gw, `/payments/${pid}/capture`, { method: "POST", body: JSON.stringify({ amount: p.amount, currency: "INR" }) })).status; }
+      catch { status = (await razorpay<{ status?: string }>(g.gw, `/payments/${pid}`)).status; }
+      if (status === "authorized") return NextResponse.json({ error: "Your payment went through. The bill will show as paid in a minute — please wait, or show this screen at the counter." }, { status: 502 });
+    }
+    if (status !== "captured") return NextResponse.json({ error: `Payment is ${status ?? "not complete"}` }, { status: 400 });
     method = methodOf(p.method);
   } catch {
     return NextResponse.json({ error: "Your payment went through. The bill will show as paid in a minute — please wait, or show this screen at the counter." }, { status: 502 });

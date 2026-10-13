@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
 import { toLoginAddress } from "@dineflow/shared";
@@ -11,15 +12,27 @@ export async function login(_: unknown, fd: FormData) {
   // Typing the bare code is enough: dine-htl-mano-00001 becomes the full sign-in address, while a
   // real email typed in full is left alone. Same rule the create form shows.
   const email = toLoginAddress(String(fd.get("email") ?? ""));
-  // Enforce temp password lockout before the sign-in attempt. If the password has been live for more
-  // than 4 days without the owner changing it, the hash is scrambled and the attempt will fail with
-  // "Invalid login credentials" — which is the right answer, because the password genuinely no
-  // longer works. The owner must ask Master control for a new one.
-  if (serviceRoleConfigured()) {
-    try { await adminClient().rpc("enforce_temp_password_lockout"); } catch { /* best-effort */ }
+  // Failed sign-ins are counted (0098): ten for one account, or thirty from one address, within
+  // fifteen minutes and this form stops trying until the window passes. The count is by what was
+  // typed, so an id that does not exist is treated the same and the answer reveals nothing. On Vercel
+  // x-forwarded-for is set by the platform itself, so it is the visitor's address.
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "";
+  const db = serviceRoleConfigured() ? adminClient() : null;
+  if (db) {
+    const { data: open } = await db.rpc("login_gate", { p_login: email, p_ip: ip });
+    if (open === false) return { error: "Too many sign-in attempts. Wait 15 minutes and try again." };
+    // Enforce temp password lockout before the sign-in attempt. If the password has been live for more
+    // than 4 days without the owner changing it, the hash is scrambled and the attempt will fail with
+    // "Invalid login credentials" — which is the right answer, because the password genuinely no
+    // longer works. The owner must ask Master control for a new one.
+    try { await db.rpc("enforce_temp_password_lockout"); } catch { /* best-effort */ }
   }
   const { error } = await supabase.auth.signInWithPassword({ email, password: String(fd.get("password")) });
-  if (error) return { error: error.message };
+  if (error) {
+    if (db) await db.rpc("login_failed", { p_login: email, p_ip: ip });
+    return { error: error.message };
+  }
   // the master's credentials open Master control and nothing else; owners open their own property
   const { data: master } = await supabase.rpc("is_master");
   redirect(master ? "/admin" : "/dashboard");

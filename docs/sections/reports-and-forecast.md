@@ -52,6 +52,12 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
 
 ## Before you edit
 
+- **`table_pulse` reads the dwell history once** (0102): it called `dwell_minutes()` per table. Its medians now
+  come from `dwell_medians(rid)` and `dwell_pick()` — the same fallbacks, the same figures (`dry102.cjs`).
+  Change the dwell rule in `dwell_minutes` *and* in those two, or the pulse and the queue drift apart.
+- **`quote_wait(party)` is the screens' call** (0098) and always answers for the caller's own
+  property. `quote_wait(party, property)` is the queue's worker (`queue_join`, `queue_status`,
+  `walkin_add`) and no longer callable from the API — with it anyone could ask any property's wait.
 - **Tomorrow's buy list carries reorder-level items (0092).** `forecast_day` lists an ingredient when
   tomorrow's cooking needs more than the shelf holds *or* the shelf after tomorrow would sit at or
   under its reorder level; it buys what tomorrow needs plus, where the shelf would be at the line,

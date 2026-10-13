@@ -1,7 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CheckCircle2, AlertTriangle, LogIn, LogOut, Sparkles, Star } from "lucide-react";
 import { Button, Card, Field, Pill, StatTile, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
@@ -35,13 +34,13 @@ function People({ rows, empty }: { rows: Row[]; empty: string }) {
 }
 
 export function NightAuditClient({ today, date, audit, history, canClose }: { today: string; date: string; audit: Audit | null; history: Hist[]; canClose: boolean }) {
-  const router = useRouter(); const toast = useToast(); const [pending, start] = useTransition();
+  const toast = useToast(); const [pending, start] = useTransition();
   const [noShows, setNoShows] = useState(true); const [notes, setNotes] = useState("");
   const shift = (d: number) => { const x = new Date(date + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + d); return x.toISOString().slice(0, 10); };
   if (!audit) return <Card><p className="text-sm text-steel">The audit could not be read. Refresh the page, or check the server log.</p></Card>;
   const a = audit;
   const ready = a.not_arrived.length === 0 && a.due_out.length === 0 && a.discrepancies.length === 0;
-  const close = () => start(async () => { const r = await runNightAudit(date, noShows, notes); if ("error" in r && r.error) toast(r.error, "err"); else { toast(`${date} closed`); setNotes(""); router.refresh(); } });
+  const close = () => start(async () => { const r = await runNightAudit(date, noShows, notes); if ("error" in r && r.error) toast(r.error, "err"); else { toast(`${date} closed`); setNotes(""); } });
 
   return (
     <div className="space-y-6">

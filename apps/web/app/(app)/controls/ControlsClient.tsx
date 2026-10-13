@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowDownToLine, ArrowUpFromLine, Banknote, Check, Scissors, Wallet } from "lucide-react";
 import { Button, Card, Field, Segmented, StatTile, cn, useToast } from "@/components/ui";
 import { usePrinters } from "@/lib/print/usePrinter";
@@ -23,7 +22,7 @@ const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: 
 const day = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 
 export function ControlsClient({ expected, moves, shifts, voids, lines, names, me }: { expected: Expected | null; moves: Move[]; shifts: Shift[]; voids: Void[]; lines: Line[]; names: Record<string, string>; me: string }) {
-  const router = useRouter(); const toast = useToast(); const [pending, start] = useTransition();
+  const toast = useToast(); const [pending, start] = useTransition();
   const { openDrawer, hasDrawer } = usePrinters();
   const [kind, setKind] = useState<"in" | "out">("out");
   const [amount, setAmount] = useState(""); const [reason, setReason] = useState(""); const [note, setNote] = useState("");
@@ -42,7 +41,7 @@ export function ControlsClient({ expected, moves, shifts, voids, lines, names, m
     if ("error" in r) return setErr(r.error!);
     toast(`${kind === "in" ? "Cash in" : "Cash out"} · ${inr(n)} · ${reason.trim()}`);
     if (hasDrawer) { try { await openDrawer(); } catch { /* the record stands even if the drawer sulks */ } }
-    setAmount(""); setReason(""); setNote(""); router.refresh();
+    setAmount(""); setReason(""); setNote("");   // cashMove revalidates: its answer is the re-rendered screen
   });
 
   return (

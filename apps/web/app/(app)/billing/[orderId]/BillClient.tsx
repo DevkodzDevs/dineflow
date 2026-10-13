@@ -59,7 +59,8 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
     where: order.dining_tables?.name ? `Table ${order.dining_tables.name}` : order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery",
     cashier,
     lines: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null, extras: lineExtras(i) })),
-    subtotal: Number(totals.subtotal ?? bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0),
+    subtotal: Number(totals.subtotal ?? bill?.subtotal ?? 0), discount: Number(totals.discount ?? bill?.discount_amount ?? 0),
+    service: Number(totals.serviceCharge ?? bill?.service_charge ?? 0),
     cgst: Number(totals.cgst ?? bill?.cgst ?? 0), sgst: Number(totals.sgst ?? bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0),
     total: Number(totals.total ?? bill?.total ?? 0),
     promiseFee: Number(bill?.promise_fee ?? preview.promiseFee ?? 0),
@@ -71,7 +72,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
     loyalty: bill && Number(bill.points_earned ?? 0) > 0 ? `You earned ${Math.round(Number(bill.points_earned))} points on this visit` : undefined,
     offline: !online,
   });
-  const billData = () => ({ restaurant: printRest, gstRate: taxRate, sac: SAC.restaurant, billNo: bill ? `BILL-${bill.bill_no}` : "BILL", when: new Date().toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"), cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null, extras: lineExtras(i) })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng, loyalty: bill && Number(bill.points_earned ?? 0) > 0 ? `You earned ${Math.round(Number(bill.points_earned))} points on this visit` : undefined });
+  const billData = () => ({ restaurant: printRest, gstRate: taxRate, sac: SAC.restaurant, billNo: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL", when: new Date(bill?.created_at ?? Date.now()).toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"), cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null, extras: lineExtras(i) })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), service: Number(bill?.service_charge ?? 0), promiseFee: Number(bill?.promise_fee ?? 0), promiseWaived: Number(bill?.promise_waived ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng, loyalty: bill && Number(bill.points_earned ?? 0) > 0 ? `You earned ${Math.round(Number(bill.points_earned))} points on this visit` : undefined });
   const router = useRouter(); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   /* A composition dealer or an unregistered business may not collect tax, so the preview must not
      show any — the bill the server raises will not have it either. */
@@ -196,7 +197,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
             <p className="text-xs text-steel mt-3">GST {restaurant.gst_rate}% split as CGST + SGST{Number(restaurant.service_charge_pct) > 0 && <>, service charge {restaurant.service_charge_pct}%</>}. Change these in Settings.</p>
             {live.some((i) => i.status === "pending" || i.status === "preparing") && <p className="text-xs text-chili mt-2">Some items are still in the kitchen.</p>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
-            <Button size="lg" className="w-full mt-5" disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt, kept, { phone: guest.phone, name: guest.name, redeem, coupon: coupon?.code }); if ("error" in r) setErr(r.error!); else { setPays([{ method: "upi", amount: 0, ref: "" }]); router.refresh(); } })}>Generate bill</Button>
+            <Button size="lg" className="w-full mt-5" disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt, kept, { phone: guest.phone, name: guest.name, redeem, coupon: coupon?.code }); if ("error" in r) setErr(r.error!); else setPays([{ method: "upi", amount: 0, ref: "" }]); })}>Generate bill</Button>
             {inHouse.length > 0 && order.status === "open" && (
               <div className="mt-4 pt-4 border-t border-dashed border-line"><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1"><BedDouble size={12} /> Or charge to a room</div>
                 <div className="flex gap-2"><select value={roomFor} onChange={(e) => setRoomFor(e.target.value)}><option value="">In-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
@@ -240,12 +241,12 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
               // cash changes hands: the drawer pops on any bill printer set up to kick it (0087 — the setting was saved but never fired)
               if (settled.some((p) => p.method === "cash" && p.amount > 0)) { try { await openDrawer(); } catch { /* a drawer that will not open is not a payment problem */ } }
               if (!online) { await enqueue("settle_bill", { bill_id: bill.id, payments: settled, client_id: crypto.randomUUID() }, `Payment · ${bill.bill_no}`); router.push("/billing?queued=1"); return; }
-              const r = await settleBill(bill.id, settled); if ("error" in r) setErr(r.error!); else router.refresh();
+              const r = await settleBill(bill.id, settled); if ("error" in r) setErr(r.error!);   // the action's answer is the re-rendered bill — no second render
             })}>Mark paid{!online && " (offline)"}</Button>
             <button type="button" className="mt-3 text-xs text-steel hover:text-chili w-full" disabled={pending} onClick={() => setVoiding(true)} data-void-bill>Void bill and edit order</button>
             <ReasonDialog open={voiding} onClose={() => setVoiding(false)} title={`Void bill ${bill.bill_no}?`} hint="The bill is cancelled and the order goes back to the floor to be edited and billed again. The reason and your name stay on it."
               chips={["Wrong table", "Item missed", "Discount missed", "Guest changed order", "Billed twice"]} confirmLabel="Void the bill"
-              onConfirm={async (reason) => { const r = await voidBill(bill.id, reason); if ("error" in r) return { error: r.error }; router.refresh(); }} />
+              onConfirm={async (reason) => { const r = await voidBill(bill.id, reason); if ("error" in r) return { error: r.error }; }} />
           </Card>
           {/* Scan to pay — the QR is the card. With UPI among the methods (and a UPI ID in Settings →
               Payments) it is a UPI request for exactly the UPI amount: the whole bill, or the UPI part of

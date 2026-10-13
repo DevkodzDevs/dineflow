@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { getClient } from "@/lib/supabase/lazy";
 import { waDate } from "@/lib/wa";
+import { GuestNotice } from "@/components/legal/GuestNotice";
 
 export type View = {
   property: string; address: string | null; phone: string | null; booking_no: number; status: string;
@@ -96,6 +97,7 @@ export function CheckinClient({ token, initial, kiosk }: { token: string; initia
           </label>
           {err && <p className="text-sm text-[var(--color-red)]" role="alert">{err.charAt(0).toUpperCase() + err.slice(1)}.</p>}
           <div className="pt-1"><button type="submit" disabled={busy || !f.agree || !f.full_name || !f.address || f.id_last4.length !== 4} className="btn btn-filled w-full !h-[52px] !text-base">{busy ? "Saving…" : "Check in"}</button></div>
+          <GuestNotice property={initial?.property} use="for your stay and the guest register the law requires" />
         </form>
       )}
     </main>
