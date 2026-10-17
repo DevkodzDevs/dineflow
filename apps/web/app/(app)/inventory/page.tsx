@@ -1,8 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
-import { PageHeader } from "@/components/shell/PageHeader";
-import Link from "next/link";
-import { Droplets } from "lucide-react";
 import { InventoryClient } from "./InventoryClient";
 
 export const metadata = { title: "Pantry" };
@@ -23,7 +20,6 @@ export default async function InventoryPage() {
   ]);
   return (
     <>
-      <PageHeader eyebrow="What's on the shelves" title="Pantry" actionsInline actions={<Link href="/inventory/leaks" className="btn btn-gray"><Droplets size={16} /> Leak finder</Link>} />
       <InventoryClient ingredients={ingredients ?? []} ledger={ledger ?? []} purchases={purchases ?? []} suppliers={suppliers ?? []} orders={(orders ?? []) as never} wastage={(wastage ?? null) as never} restaurant={session.restaurant.name} />
     </>
   );

@@ -40,6 +40,14 @@ a reading pane beside the list; on a phone that pane becomes a sheet.
 
 ## Before you edit
 
+- **Billing keeps its own design** (owner, 2026-10-15): when the other Dining screens moved to Simple Service
+  (see [design-system.md](design-system.md)), Billing was built that way too and then put back exactly as it
+  was, at the owner's request — the list with Ready to bill and Today's bills, and the bill page with Discount /
+  Guest, Generate bill, Take payment and the counter printer beside it. Do not move it to the `.svc-*` pieces
+  without asking. One change since, also asked for: **the coupon field** (`data-coupon`) has the ticket inside the
+  box like a search field's glass and Apply at the box's own height; an applied coupon is a green card with the
+  code, what it takes off and a cross (`data-coupon-applied`) — it was a loose 14px icon beside a bare box. Generate bill and Mark paid carry `data-kbd-primary` (Ctrl Enter, `Keys.tsx`).
+
 - **Generate bill, Mark paid and Void do not call `router.refresh()`** (2026-10-13). Their actions revalidate, and an action that
   revalidates answers with the re-rendered page — the refresh rendered it a second time. Don't add one back;
   see shell-and-nav.md (speed). `actcheck.mjs`.

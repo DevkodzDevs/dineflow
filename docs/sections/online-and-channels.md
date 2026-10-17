@@ -126,6 +126,14 @@ text-only check).
 
 ## Before you edit
 
+- **Online orders is Simple Service (2026-10-15).** `SvcHead`, Kitchen pace (unchanged), then three tabs —
+  **New** (a red count; a new order brings this tab forward with the sound), **Cooking**, **Ready** — and one card
+  per order (`[data-online]`): a 60px band in the channel's own colour (`BAND`) with its label, number and how long
+  it has waited; the customer with *Paid online* (green) or *Collect cash* (amber); the dishes with their counts in
+  discs (unmatched ones in red, Map now); **Total** big with "payout ₹x after ₹y" under it; and one big button —
+  **Accept** + **No** (the reject reasons) → **Food ready** → **Picked up**, with the kitchen order's link beside
+  it. Today's online money is one line under the cards; the four stat tiles are gone.
+
 - **Reject asks for a reason in a dialog** (`ReasonDialog`, chips: item unavailable, kitchen too busy,
   closing soon, too far). The browser prompt it replaced rejected the order on Cancel, and the action wrote
   `raw = { reason }` over the aggregator's payload (the guest's note, the fee, the discount); now the reason is

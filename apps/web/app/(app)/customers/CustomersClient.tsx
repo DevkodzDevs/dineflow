@@ -3,8 +3,10 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { csvCell } from "@/lib/csv";
 import { motion } from "framer-motion";
-import { Plus, Search, MessageCircle, Download, Gift, Coins, Pencil, Cake, Heart } from "lucide-react";
-import { Button, Card, Field, Sheet, Empty, Pill, StatTile, cn, useToast } from "@/components/ui";
+import { Plus, Search, MessageCircle, Download, Gift, Coins, Cake, Heart, Users, Sparkles, Moon, Star, Phone } from "lucide-react";
+import { Button, Card, Field, Sheet, Empty, StatTile, cn, useToast } from "@/components/ui";
+import { Say } from "@/components/ui/Say";
+import { SvcHead } from "@/components/ui/Service";
 import { formatINR, fmtDate } from "@/lib/format";
 import { saveCustomer, adjustPoints, customerHistory, type HistoryRow } from "./actions";
 import { MarketingIdeas } from "./MarketingIdeas";
@@ -16,6 +18,8 @@ type Loyalty = { enabled: boolean; earnPct: number; pointValue: number; minRedee
 /** A WhatsApp link to a guest with a message already typed. No API, no cost: it opens the app on this phone. */
 export const waLink = (phone: string, text: string) => `https://wa.me/${phone.length === 10 ? "91" + phone : phone}?text=${encodeURIComponent(text)}`;
 const first = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "there";
+/** a guest's initial sits on one of the board's hues, picked by their name so it never changes */
+const HUES = ["--color-green", "--color-blue", "--color-orange", "--color-violet", "--color-red"];
 const since = (iso: string | null) => (iso ? Math.round((Date.now() - new Date(iso).getTime()) / 86400000) : null);
 
 export function CustomersClient({ overview: ov, customers, loyalty, restaurant }: { overview: Overview; customers: Customer[]; loyalty: Loyalty; restaurant: string }) {
@@ -39,21 +43,24 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant }
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
   };
 
+  const [more, setMore] = useState(60);
+  const counts = useMemo(() => ({
+    all: customers.length, regulars: customers.filter((c) => c.visits >= 3).length, new: customers.filter((c) => since(c.first_visit_at)! <= 30).length,
+    lapsed: customers.filter((c) => { const d = since(c.last_visit_at); return c.visits >= 2 && d !== null && d >= 60; }).length, points: customers.filter((c) => Number(c.points) >= loyalty.minRedeem).length,
+  }), [customers, loyalty.minRedeem]);
+  const FILTERS = ([["all", "All", Users], ["regulars", "Regulars", Heart], ["new", "New", Sparkles], ["lapsed", "Not seen", Moon], ["points", "Can redeem", Coins]] as const).filter(([k]) => k !== "points" || loyalty.enabled);
+
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
-        <StatTile label="Customers" value={String(ov.total ?? customers.length)} sub={`${ov.new_30d ?? 0} new in 30 days`} />
-        <StatTile label="Came back" value={String(ov.returning ?? 0)} sub={`${ov.lapsed_60d ?? 0} not seen in 60 days`} tone={(ov.lapsed_60d ?? 0) > 0 ? "alert" : "good"} delay={0.05} />
-        <StatTile label="Spent · 30 days" value={formatINR(Number(ov.spend_30d ?? 0))} sub="by known guests" delay={0.1} />
-        <StatTile label="Points outstanding" value={String(Math.round(Number(ov.points_out ?? 0)))} sub={loyalty.enabled ? `worth ${formatINR(Number(ov.points_out ?? 0) * loyalty.pointValue)}` : "loyalty is off · Settings → Payments"} delay={0.15} />
-      </div>
+      <SvcHead icon="customers" title="Customers" sub="People who come back — call or WhatsApp them in one tap"
+        actions={<button type="button" className="svc-btn go sm !px-5" onClick={() => setAdding(true)} data-add-customer><Plus size={19} aria-hidden /><Say w="add_customer" /></button>} />
 
       {(ov.soon?.length ?? 0) > 0 && (
         <Card>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-steel mb-2"><Cake size={13} /> Occasions in the next two weeks</div>
           <div className="flex flex-wrap gap-2">
             {ov.soon!.map((s, i) => (
-              <a key={i} target="_blank" rel="noreferrer" className="rounded-xl border border-line px-3 py-2 text-sm flex items-center gap-2 hover:bg-porcelain"
+              <a key={i} target="_blank" rel="noreferrer" className="rounded-xl border border-line px-3 min-h-11 text-sm flex items-center gap-2 hover:bg-[var(--color-fill)]"
                 href={waLink(s.phone, `Hi ${first(s.name)}! Everyone at ${restaurant} wishes you a very happy ${s.what}${s.what === "birthday" ? " 🎂" : " 💐"}. Come and celebrate with us — dessert is on the house.`)}>
                 <span className="font-medium">{s.name ?? s.phone}</span><span className="text-steel">· {s.what} · {s.on}</span><MessageCircle size={13} className="text-mint" />
               </a>
@@ -62,51 +69,65 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant }
         </Card>
       )}
 
-      <MarketingIdeas customers={customers} minRedeem={loyalty.enabled ? loyalty.minRedeem : Infinity} />
-
-      <div className="toolbar"><div className="toolbar-group">
-        {([["all", "All"], ["regulars", "Regulars"], ["new", "New"], ["lapsed", "Not seen lately"], ["points", "Can redeem"]] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setFilter(k)} className={cn("rounded-full px-4 h-9 text-sm font-semibold transition", filter === k ? "bg-ink text-on-label" : "bg-card border border-line hover:bg-porcelain")}>{label}</button>
-        ))}
-        </div><div className="toolbar-group toolbar-end">
-          <div className="relative"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel" /><input className="!pl-9 !w-52" placeholder="Name or phone" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-          <Button variant="outline" onClick={exportCsv} disabled={!list.length} title="Download what is listed as a CSV"><Download size={16} /> CSV</Button>
-          <Button onClick={() => setAdding(true)}><Plus size={16} /> Customer</Button>
+      {/* the search, wide, and who to show — with how many in each */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+        <div className="relative lg:flex-1 min-w-0"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
+          <input className="!h-14 !rounded-[18px] !pl-12 !text-[16px]" placeholder="Name or phone" aria-label="Find a customer by name or phone" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+        <div className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 [scrollbar-width:none]" role="group" aria-label="Show">
+          {FILTERS.map(([k, label, I]) => (
+            <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} className={cn("shrink-0 !min-h-12 rounded-full pl-3.5 pr-2 inline-flex items-center gap-2 text-[14px] font-extrabold transition-colors", filter === k ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
+              <I size={16} aria-hidden />{label}<b className={cn("num min-w-6 h-6 px-1.5 rounded-full grid place-items-center text-[12.5px]", filter === k ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")}>{counts[k]}</b>
+            </button>
+          ))}
+          <button type="button" onClick={exportCsv} disabled={!list.length} title="Download what is listed as a CSV" className="shrink-0 !min-h-12 rounded-full px-3.5 inline-flex items-center gap-1.5 text-[13px] font-bold text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><Download size={15} /> CSV</button>
         </div>
       </div>
 
       {customers.length === 0 ? (
         <Empty title="No customers yet" hint="A phone number on an order or a bill becomes a customer here — visits, spend and points build up on their own." action={<Button onClick={() => setAdding(true)}>Add one by hand</Button>} />
-      ) : list.length === 0 ? <Empty title="Nobody matches" hint="Try another name, or clear the filter." /> : (
-        <div className="feather overflow-x-auto table-wrap">
-          <table className="w-full text-sm">
-            <thead className="bg-porcelain text-xs uppercase tracking-wide text-steel"><tr><th className="text-left px-4 py-3">Guest</th><th className="text-right px-4 py-3">Visits</th><th className="text-right px-4 py-3 hidden sm:table-cell">Spent</th><th className="text-right px-4 py-3">Points</th><th className="text-left px-4 py-3 hidden md:table-cell">Last visit</th><th className="px-4 py-3"></th></tr></thead>
-            <tbody>
-              {list.map((c, i) => {
-                const d = since(c.last_visit_at);
-                return (
-                  <motion.tr key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i, 20) * 0.02 }} className="border-t border-line hover:bg-porcelain/60 cursor-pointer" onClick={() => setOpen(c)}>
-                    <td className="px-4 py-3">
-                      <div className="font-semibold flex items-center gap-2 flex-wrap">{c.name ?? <span className="text-steel">No name</span>}
-                        {c.visits >= 3 && <Pill tone="gold"><Heart size={10} /> regular</Pill>}
-                        {c.tags.map((t) => <span key={t} className="text-[10px] rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-steel">{t}</span>)}</div>
-                      <div className="num text-xs text-steel">{c.phone}</div>
-                    </td>
-                    <td className="px-4 py-3 text-right num font-semibold">{c.visits}</td>
-                    <td className="px-4 py-3 text-right num hidden sm:table-cell">{formatINR(Number(c.total_spend))}</td>
-                    <td className={cn("px-4 py-3 text-right num", Number(c.points) >= loyalty.minRedeem ? "font-semibold text-mint" : "text-steel")}>{Math.round(Number(c.points))}</td>
-                    <td className={cn("px-4 py-3 hidden md:table-cell", d !== null && d >= 60 && "text-chili")}>{c.last_visit_at ? `${fmtDate(c.last_visit_at)} · ${d} day${d === 1 ? "" : "s"} ago` : "—"}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      <a href={waLink(c.phone, `Hi ${first(c.name)}, ${restaurant} here.`)} target="_blank" rel="noreferrer" className="inline-grid h-8 w-8 place-items-center rounded-lg text-steel hover:text-mint" aria-label="WhatsApp"><MessageCircle size={15} /></a>
-                      <button onClick={() => setOpen(c)} className="inline-grid h-8 w-8 place-items-center rounded-lg text-steel hover:text-ink" aria-label="Open"><Pencil size={15} /></button>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </tbody>
-          </table>
+      ) : list.length === 0 ? <Empty title="Nobody matches" hint="Try another name, or clear the filter." /> : (<>
+        {/* One card per guest: a coloured initial, the name (Regular when they have come three times) and
+            the phone; visits, spend and the last visit in three boxes; Call and WhatsApp, big. A tap on the
+            name opens their record: details, bills, points. */}
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[100rem]:grid-cols-4" data-customers>
+          {list.slice(0, more).map((c, i) => {
+            const d = since(c.last_visit_at); const ago = d === null ? "—" : d === 0 ? "Today" : d === 1 ? "Yesterday" : d < 7 ? `${d} days ago` : d < 30 ? `${Math.round(d / 7)} wk${Math.round(d / 7) === 1 ? "" : "s"} ago` : d < 365 ? `${Math.round(d / 30)} mth${Math.round(d / 30) === 1 ? "" : "s"} ago` : `${Math.round(d / 365)} yr ago`;
+            const hue = HUES[(c.name ?? c.phone).charCodeAt(0) % HUES.length];
+            return (
+              <motion.div key={c.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.015 }} className="feather !rounded-[22px] p-4 flex flex-col gap-3 min-w-0" data-customer={c.id}>
+                <button type="button" onClick={() => setOpen(c)} className="!min-h-0 flex items-center gap-3 min-w-0 text-left" data-open-customer aria-label={`Open ${c.name ?? c.phone}`}>
+                  <span className="h-14 w-14 shrink-0 rounded-full grid place-items-center font-display text-[26px] text-[var(--color-bezel)]" style={{ background: `var(${hue})` }} aria-hidden>{(c.name ?? "#").trim().slice(0, 1).toUpperCase()}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2 min-w-0"><span className="font-extrabold text-[17px] truncate">{c.name ?? "No name"}</span>{c.visits >= 3 && <span className="svc-chip lone st-cook !min-h-6 !text-[11.5px] !px-2 !gap-1 shrink-0"><Star size={11} aria-hidden /> Regular</span>}</span>
+                    <span className="block num text-[14px] text-steel mt-0.5">{c.phone.length === 10 ? `${c.phone.slice(0, 5)} ${c.phone.slice(5)}` : c.phone}</span>
+                    {c.tags.length > 0 && <span className="flex flex-wrap gap-1 mt-1">{c.tags.map((t) => <span key={t} className="text-[10.5px] rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-steel">{t}</span>)}</span>}
+                  </span>
+                </button>
+                <div className="grid grid-cols-3 gap-2">
+                  {[["Visits", String(c.visits), ""], ["Spent", formatINR(Number(c.total_spend), { whole: true }), ""], ["Last", ago, d !== null && d >= 60 ? "text-chili" : ""]].map(([k, v, cls]) => (
+                    <div key={k} className="rounded-[14px] bg-[var(--color-fill)] px-2.5 py-2 min-w-0"><div className="text-[11.5px] font-bold text-steel">{k}</div><div className={cn("font-display num text-[18px] leading-tight truncate", cls)}>{v}</div></div>
+                  ))}
+                </div>
+                {loyalty.enabled && Number(c.points) > 0 && <div className={cn("-mt-1 text-[12.5px] num", Number(c.points) >= loyalty.minRedeem ? "font-bold text-mint" : "text-steel")}><Coins size={12} className="inline -mt-0.5 mr-1" />{Math.round(Number(c.points))} points{Number(c.points) >= loyalty.minRedeem ? " · can redeem" : ""}</div>}
+                <div className="mt-auto grid grid-cols-2 gap-2">
+                  <a href={`tel:${c.phone}`} className="svc-btn quiet sm" aria-label={`Call ${c.name ?? c.phone}`}><Phone size={17} aria-hidden /><Say w="call" /></a>
+                  <a href={waLink(c.phone, `Hi ${first(c.name)}, ${restaurant} here.`)} target="_blank" rel="noreferrer" className="svc-btn go sm" aria-label={`WhatsApp ${c.name ?? c.phone}`}><MessageCircle size={17} aria-hidden /> WhatsApp</a>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
-      )}
+        {list.length > more && <button type="button" className="svc-btn quiet sm w-full" onClick={() => setMore((m) => m + 60)}>Show {Math.min(60, list.length - more)} more · {list.length - more} left</button>}
+      </>)}
+
+      {/* the owner's view: how many, who came back, what they spent; and ideas from the sales */}
+      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 pt-2" data-customer-stats>
+        <StatTile label="Customers" value={String(ov.total ?? customers.length)} sub={`${ov.new_30d ?? 0} new in 30 days`} />
+        <StatTile label="Came back" value={String(ov.returning ?? 0)} sub={`${ov.lapsed_60d ?? 0} not seen in 60 days`} tone={(ov.lapsed_60d ?? 0) > 0 ? "alert" : "good"} delay={0.05} />
+        <StatTile label="Spent · 30 days" value={formatINR(Number(ov.spend_30d ?? 0))} sub="by known guests" delay={0.1} />
+        <StatTile label="Points outstanding" value={String(Math.round(Number(ov.points_out ?? 0)))} sub={loyalty.enabled ? `worth ${formatINR(Number(ov.points_out ?? 0) * loyalty.pointValue)}` : "loyalty is off · Settings → Payments"} delay={0.15} />
+      </div>
+      <MarketingIdeas customers={customers} minRedeem={loyalty.enabled ? loyalty.minRedeem : Infinity} />
 
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.name ?? open?.phone ?? ""} wide>
         {open && <CustomerSheet key={open.id} c={open} loyalty={loyalty} restaurant={restaurant} onDone={() => setOpen(null)} />}

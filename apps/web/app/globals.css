@@ -24,7 +24,10 @@
   --color-green: #4cd964; --color-green-2: rgb(76 217 100 / .16);
   --color-red: #ff453a;  --color-red-2: rgb(255 69 58 / .16);
   --color-blue: #64a9ff; --color-blue-2: rgb(100 169 255 / .16);
-  --color-orange: #ffb340;
+  --color-orange: #ffb340; --color-orange-2: rgb(255 179 64 / .16);
+  /* the Dining screens' "Bill" state (bill printed, not paid) — the one hue the board had no use for */
+  --color-violet: #c084fc; --color-violet-2: rgb(192 132 252 / .16);
+  --color-paper-ink: #1c1b18;        /* the ink on a kitchen ticket, paper in both themes */
   --color-ink: #f4f4f1;              /* "ink" is the text colour everywhere */
   --color-on-label: #0a0a0d;         /* text that sits on a label-coloured surface (avatars, ink buttons, the active chip) */
   --color-on-tint: #06120a;          /* text that sits on the green tint — dark enough for both the bright dark-theme green and the deeper paper one */
@@ -66,7 +69,8 @@
   --color-porcelain: var(--color-bg); --color-porcelain-2: var(--color-bg-3); --color-card: var(--color-bg-2); --color-line: var(--color-separator); --color-line-2: rgb(23 23 28 / .16);
   --color-champagne: #6d6d78; --color-champagne-2: rgb(23 23 28 / .06);
   --color-tint: #1fa84a; --color-tint-2: #2fc45c; --color-green: #1fa84a; --color-green-2: rgb(31 168 74 / .12);
-  --color-red: #d9302a; --color-red-2: rgb(217 48 42 / .10); --color-blue: #1f6fd6; --color-blue-2: rgb(31 111 214 / .10); --color-orange: #c77d0a;
+  --color-red: #d9302a; --color-red-2: rgb(217 48 42 / .10); --color-blue: #1f6fd6; --color-blue-2: rgb(31 111 214 / .10); --color-orange: #c77d0a; --color-orange-2: rgb(199 125 10 / .12);
+  --color-violet: #8b3fd9; --color-violet-2: rgb(139 63 217 / .10);
   --color-mint: #1fa84a; --color-mint-2: rgb(31 168 74 / .12); --color-chili: #d9302a; --color-chili-2: rgb(217 48 42 / .10); --color-sky: #1f6fd6; --color-sky-2: rgb(31 111 214 / .10);
   --color-saffron: #1fa84a; --color-saffron-2: #2fc45c;
   --shadow-card: 0 1px 2px rgb(23 23 28 / .04), 0 8px 24px -16px rgb(23 23 28 / .18);
@@ -1164,6 +1168,9 @@ input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
 @media (min-width: 768px) and (max-width: 1023.98px) {
   body:has([data-cart-bar] button) [data-assist] { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 68px); }
 }
+/* From lg the till's ticket rail runs to the foot of the screen with Send to kitchen at the bottom, where
+   the assistant's round button sat on it: there it moves left of the rail, over the dish column. */
+@media (min-width: 1024px) { body:has(aside [data-cart]) [data-assist] { right: calc(min(380px, 31vw) + 56px); } }
 
 /* The top bar, pinned (TopBar sets data-stuck when it reaches the top). It runs from the sidebar's
    edge to the right of the screen: the main column's padding (--bx) on the left, that padding plus
@@ -1181,3 +1188,129 @@ input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
 .topbar[data-stuck]::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: env(safe-area-inset-top, 0px); background: inherit; }
 @media (min-width: 768px) { .topbar[data-stuck] { --bx: 32px; --br: 44px; } }
 @media (min-width: 1536px) { .topbar[data-stuck] { --bx: 48px; --br: 60px; } }
+
+/* the keyboard (components/shell/Keys.tsx): a key cap, and the item a list highlight is on */
+.kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.45rem; padding: 0 .4rem; border-radius: 7px;
+  font: 600 11px/1 var(--font-sans); color: var(--color-label-2); background: var(--color-fill); border: 1px solid var(--color-separator);
+  box-shadow: inset 0 -1px 0 var(--color-separator); white-space: nowrap; }
+[data-kbd-on] { outline: 2px solid var(--color-tint); outline-offset: 2px; border-radius: 14px; }
+tr[data-kbd-on] { outline-offset: -2px; }
+
+/* ═══ SIMPLE SERVICE — the Dining screens (2026-10-15) ═════════════════
+   One colour = one meaning on every Dining screen, so a new waiter reads a table the way they read a
+   traffic light: free (dashed), ordered (blue), cooking (amber), food ready (green, ringed), eating
+   (neutral), bill (violet), late (red); reserved is amber and dashed. A state class sets --st (the hue),
+   --st-2 (its wash) and --st-ink (the hue as text: the hue itself on graphite, darkened toward the ink
+   on paper, where a tinted pill in its own hue measured ~3:1). Big buttons, a picture on everything,
+   and the words in English with Tamil or Hindi under them when the device asks (lib/say.ts). */
+.st-free  { --st: var(--color-label-2); --st-2: var(--color-fill); }
+.st-new   { --st: var(--color-blue);    --st-2: var(--color-blue-2); }
+.st-cook  { --st: var(--color-orange);  --st-2: var(--color-orange-2); }
+.st-ready { --st: var(--color-green);   --st-2: var(--color-green-2); }
+.st-eat   { --st: var(--color-label);   --st-2: var(--color-fill-2); }
+.st-bill  { --st: var(--color-violet);  --st-2: var(--color-violet-2); }
+.st-late  { --st: var(--color-red);     --st-2: var(--color-red-2); }
+.st-hold  { --st: var(--color-orange);  --st-2: var(--color-orange-2); }
+.st-free, .st-new, .st-cook, .st-ready, .st-eat, .st-bill, .st-late, .st-hold { --st-ink: var(--st); --st-on: var(--color-bezel); }
+[data-theme="paper"] :is(.st-free, .st-new, .st-cook, .st-ready, .st-eat, .st-bill, .st-late, .st-hold) { --st-ink: color-mix(in srgb, var(--st) 62%, var(--color-label)); --st-on: var(--color-bg-2); }
+[data-theme="paper"] .st-eat { --st-ink: var(--color-label); }
+
+/* the English and, under it, the device's second language */
+.say { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.12; min-width: 0; max-width: 100%; }
+.say.start { align-items: flex-start; }
+.say > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.say > .say-alt { font-size: .74em; font-weight: 600; opacity: .82; margin-top: 2px; letter-spacing: 0; }
+
+/* a state chip: icon, word, count */
+.svc-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 4px 8px 4px 14px; border-radius: 999px; background: var(--st-2, var(--color-fill)); color: var(--st-ink, var(--color-label)); font-weight: 800; font-size: 14px; white-space: nowrap; }
+.svc-chip > b { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 7px; border-radius: 999px; background: var(--st, var(--color-label)); color: var(--st-on, var(--color-on-label)); font-size: 13px; font-weight: 800; }
+.svc-chip.lone { padding-right: 14px; }
+button.svc-chip { transition: filter var(--dur-fast); } button.svc-chip:hover { filter: brightness(1.1); }
+button.svc-chip[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--st-ink, var(--color-label)); }
+
+/* the big buttons: 56px, 64 for the one that matters most on the screen */
+.svc-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 6px 20px; border-radius: 18px; font-weight: 800; font-size: 17px; line-height: 1.1; text-align: center; user-select: none; min-width: 0;
+  transition: transform var(--dur-fast) var(--ease-out), filter var(--dur-fast), background var(--dur-fast); }
+.svc-btn:active { transform: scale(.97); }
+.svc-btn.xl { min-height: 64px; font-size: 19px; border-radius: 20px; }
+.svc-btn.sm { min-height: 44px; font-size: 15px; border-radius: 14px; padding: 4px 14px; gap: 7px; }
+.svc-btn.go { background: var(--color-tint); color: var(--color-on-tint); box-shadow: 0 12px 28px -14px var(--color-tint); }
+.svc-btn.go:hover { filter: brightness(1.05); }
+.svc-btn.quiet { background: var(--color-fill); color: var(--color-label); }
+.svc-btn.quiet:hover { background: var(--color-fill-2); }
+.svc-btn.ink { background: var(--color-label); color: var(--color-on-label); }
+.svc-btn.st { background: var(--st); color: var(--st-on); }
+.svc-btn.no { background: var(--color-red-2); color: var(--color-red); }
+.svc-btn[disabled], .svc-btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+.svc-btn > span:not(.say), .svc-btn .say > span:first-child { white-space: nowrap; }
+
+/* a page's title block on the Dining screens: an icon in a square, the title, one plain sentence */
+.svc-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.svc-head > .ico { height: 56px; width: 56px; border-radius: 18px; background: var(--color-fill); display: grid; place-items: center; flex: none; color: var(--color-label); }
+.svc-head h1 { font-size: 34px; line-height: 1.12; margin: 0; padding-bottom: 1px; }
+@media (min-width: 768px) { .svc-head h1 { font-size: 44px; } }
+.svc-head p { margin: 6px 0 0; font-size: 15px; color: var(--color-label-2); }
+
+/* a table on the floor: one card, the state is its colour */
+.svc-table { position: relative; display: flex; flex-direction: column; min-height: 150px; padding: 14px; border-radius: 22px; background: var(--st-2); border: 2px solid var(--st); color: var(--color-label); min-width: 0;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+.svc-table.st-free { background: transparent; border-style: dashed; border-color: var(--color-line-2); }
+.svc-table.st-hold { border-style: dashed; }
+.svc-table.st-ready { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-green) 16%, transparent); }
+a.svc-table:hover { transform: translateY(-2px); }
+.svc-table .tname { font-family: var(--font-display); font-size: 34px; line-height: 1; letter-spacing: .005em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svc-table .tstate { margin-top: 8px; display: flex; align-items: center; gap: 6px; color: var(--st-ink); font-weight: 800; font-size: 16px; min-width: 0; }
+.svc-table .late-tag { position: absolute; top: -12px; right: 10px; height: 26px; padding: 0 9px; border-radius: 999px; background: var(--color-red); color: #fff; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; letter-spacing: .04em; }
+.svc-take { margin-top: auto; min-height: 50px; border-radius: 15px; background: var(--color-fill); color: var(--color-tint); font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 4px 8px; }
+[data-theme="paper"] .svc-take { color: color-mix(in srgb, var(--color-tint) 70%, var(--color-label)); }
+a.svc-table:hover .svc-take, .svc-take:hover { background: var(--color-fill-2); }
+
+/* the till's steps: 1 Table → 2 Dishes → 3 Send */
+.svc-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.svc-step { min-height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 3px 6px; font-weight: 800; font-size: 14px; background: var(--color-fill); color: var(--color-label-2); min-width: 0; }
+.svc-step.done { background: var(--color-green-2); color: var(--color-green); }
+[data-theme="paper"] .svc-step.done { color: color-mix(in srgb, var(--color-green) 62%, var(--color-label)); }
+.svc-step.now { background: var(--color-label); color: var(--color-on-label); }
+
+/* the till's categories: a row of tabs across the top, a picture and a word */
+.svc-cat { flex: none; min-height: 48px; border-radius: 16px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px 0 13px; font-weight: 800; font-size: 14px; line-height: 1.1; white-space: nowrap; background: var(--color-fill); color: var(--color-label); transition: background var(--dur-fast); }
+.svc-cat:hover { background: var(--color-fill-2); }
+.svc-cat[aria-pressed="true"] { background: var(--color-label); color: var(--color-on-label); }
+
+/* a dish on the till: its photo, the veg mark and name, the price big, one Add */
+.svc-dish { position: relative; display: flex; flex-direction: column; border-radius: 20px; overflow: hidden; background: var(--color-bg-2); border: .5px solid var(--color-separator); box-shadow: var(--shadow-card); min-width: 0; }
+.svc-dish[data-on] { outline: 2px solid var(--color-tint); outline-offset: -2px; }
+.svc-dish .pic { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; background: var(--color-fill); overflow: hidden; }
+.svc-dish .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.svc-dish .pic[data-nophoto] { background: linear-gradient(160deg, var(--color-bg-3), var(--color-fill)); }
+.svc-dish .qty { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: 34px; height: 34px; padding: 0 8px; border-radius: 999px; background: var(--color-tint); color: var(--color-on-tint); display: grid; place-items: center; font-weight: 900; font-size: 17px; box-shadow: 0 4px 12px -4px rgb(0 0 0 / .5); }
+.svc-dish .flag { position: absolute; left: 8px; bottom: 8px; z-index: 1; max-width: calc(100% - 16px); height: 24px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; background: rgb(10 10 13 / .72); color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.svc-dish .flag.short { background: var(--color-orange); color: var(--color-bezel); }
+.svc-dish .stepper > .more { background: var(--color-tint); color: var(--color-on-tint); }
+.svc-add { height: 42px; padding: 0 14px; border-radius: 13px; background: var(--color-fill-2); color: var(--color-label); display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; flex: none; transition: background var(--dur-fast), color var(--dur-fast); }
+.svc-add:hover { background: var(--color-tint); color: var(--color-on-tint); }
+@media (pointer: coarse) { .svc-add { height: 44px; } }
+
+/* the kitchen's ticket: paper in both themes, read from across the pass */
+.kt { border-radius: 20px; background: var(--color-paper); color: var(--color-paper-ink); overflow: hidden; box-shadow: 0 14px 30px -18px rgb(0 0 0 / .85);
+  /* the paper is light in both themes, so the kit's greys and hues inside it are the paper's own: a
+     graphite-theme grey (#9a9aa6) on this paper measured 2.7:1 */
+  --color-steel: color-mix(in srgb, var(--color-paper-ink) 62%, var(--color-paper)); --color-label-2: var(--color-steel); --color-label: var(--color-paper-ink);
+  --color-line: color-mix(in srgb, var(--color-paper-ink) 18%, transparent); --color-fill: color-mix(in srgb, var(--color-paper-ink) 7%, transparent); --color-fill-2: color-mix(in srgb, var(--color-paper-ink) 12%, transparent);
+  --color-chili: color-mix(in srgb, var(--color-red) 80%, var(--color-paper-ink)); --color-mint: color-mix(in srgb, var(--color-green) 62%, var(--color-paper-ink)); }
+.kt.late { box-shadow: 0 0 0 3px var(--color-red), 0 14px 30px -18px rgb(0 0 0 / .85); }
+.kt.warn { box-shadow: 0 0 0 3px var(--color-orange), 0 14px 30px -18px rgb(0 0 0 / .85); }
+.kt-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: color-mix(in srgb, var(--st) 18%, var(--color-paper)); }
+.kt-head .where { font-family: var(--font-display); font-size: 32px; line-height: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kt-mins { margin-left: auto; height: 36px; padding: 0 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; font-weight: 900; font-size: 17px; background: var(--age, var(--color-green)); color: var(--color-bezel); white-space: nowrap; flex: none; }
+[data-theme="paper"] .kt-mins { color: #fff; }
+.kt-line { width: 100%; display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; border-bottom: 1px dashed color-mix(in srgb, var(--color-paper-ink) 18%, transparent); text-align: left; }
+.kt-line:last-child { border-bottom: 0; }
+.kt-q { width: 38px; height: 38px; border-radius: 999px; background: var(--color-paper-ink); color: var(--color-paper); display: grid; place-items: center; font-weight: 900; font-size: 18px; flex: none; font-family: var(--font-display); }
+.kt-name { font-weight: 800; font-size: 18px; line-height: 1.25; }
+.kt-note { display: flex; align-items: center; gap: 4px; margin-top: 2px; color: color-mix(in srgb, var(--color-red) 82%, var(--color-paper-ink)); font-weight: 800; font-size: 14px; }
+.kt-sub { color: color-mix(in srgb, var(--color-paper-ink) 62%, transparent); font-size: 13px; font-weight: 600; }
+.kcol { border-radius: 24px; background: var(--st-2); padding: 12px; min-width: 0; }
+.kcol-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 12px; color: var(--st-ink); font-weight: 900; font-size: 18px; }
+.kcol-head > b { margin-left: auto; min-width: 32px; height: 32px; padding: 0 8px; border-radius: 999px; background: var(--st); color: var(--st-on); display: grid; place-items: center; font-size: 15px; }
+

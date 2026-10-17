@@ -4,8 +4,8 @@
 > screen in the app; a tweak here lands on fourteen pages at once, which is usually the point and
 > occasionally the disaster.
 
-**Files** `app/globals.css` (733 lines) · `components/ui/index.tsx` · `components/ui/flip.tsx` ·
-`components/ui/{DataTable,Theme,Ticket,AiButton,PasswordInput,Rail,AnalogClock}.tsx`
+**Files** `app/globals.css` · `components/ui/index.tsx` · `components/ui/flip.tsx` ·
+`components/ui/{DataTable,Theme,Ticket,AiButton,PasswordInput,Rail,AnalogClock,Say,Service}.tsx` · `lib/say.ts` · `lib/service.ts`
 
 ## What it is
 
@@ -73,6 +73,37 @@ not cover. An inline text
 link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
 
 ## Before you edit
+
+- **Simple Service — the Dining screens' language (2026-10-15, the owner's "easy for every employee").** The
+  SIMPLE SERVICE block at the end of `globals.css`, used by Orders, the till, Kitchen, Reservations, Pulse,
+  Online orders, Menu, Pantry and Customers (Billing was put back to its own design at the owner's request):
+  - **One colour = one meaning.** `.st-free` (dashed), `.st-new` ordered (blue), `.st-cook` cooking (amber),
+    `.st-ready` food ready (green, ringed on the floor), `.st-eat` eating (neutral), `.st-bill` bill printed
+    (violet — new tokens `--color-violet`/`-2`), `.st-late` (red), `.st-hold` reserved (amber, dashed). Each sets
+    `--st` (hue), `--st-2` (wash), `--st-ink` (the hue as text — darkened toward the ink in paper, where a hue on
+    its own wash measured ~3:1) and `--st-on` (text on a solid `--st`). `--color-orange-2` is new too. Where a
+    table stands is `orderState()` / `isLate()` in `lib/service.ts` (3 tests): a printed unpaid bill, then food
+    at the pass, then the fire, then a new ticket; LATE is a dish still waiting or cooking past
+    `kds_target_minutes`.
+  - **Pieces:** `.svc-btn` (56px; `.xl` 64, `.sm` 44; `.go` green, `.quiet`, `.ink`, `.st` in the state's hue,
+    `.no` red) · `.svc-chip` (state chip with a count `<b>`) · `.svc-head` (the screen's icon square, title,
+    one sentence — `SvcHead` in `components/ui/Service.tsx`, which also has `StateChip` and `SVC_ICON`) ·
+    `.svc-table` (a floor table) · `.svc-steps`/`.svc-step` (1 · 2 · 3) · `.svc-cat` (a category tab — picture and word, 48px) ·
+    `.svc-dish` (a picture card: `.pic` 16:10, `.qty` badge, `.flag`) · `.svc-add` · `.kt*`/`.kcol*` (the
+    kitchen's paper ticket — it overrides `--color-steel`, `--color-label`, `--color-chili`… inside itself, because
+    the paper is light in both themes and a graphite grey on it measured 2.7:1).
+  - **Words in English with Tamil or Hindi under them** (`lib/say.ts` `WORDS`, 4 tests; `components/ui/Say.tsx`).
+    The device's choice is the `df-lang` cookie (like `df-theme`), read by the app layout into `SayProvider`;
+    `<Say w="take_order" />` renders English with a `.say-alt` line under it; `LangButton` in the top bar and
+    `LangPicker` in Settings → Appearance set it. Only the Dining screens' button words are translated — the
+    translations are short floor words and should be read by someone on the floor. `catIcon(name)` guesses a
+    category's picture from its name for the till and the Menu chips (`CatIcon` resolves it on the client).
+  - **Three traps met building it.** `.svc-steps` sets `display` unlayered, so a plain `lg:hidden` loses — write
+    `lg:!hidden`. `:where(button) { min-height: 40px }` is unlayered too: a `min-h-12` on a button comes out 40px;
+    write `!min-h-12` (a `.svc-*` class wins on its own). And `cn` from `components/ui` is a client export — a
+    server component that calls it crashes ("Attempted to call cn() from the server"); use `clsx` there.
+  - **A big button's label never wraps** (`.svc-btn > span`, the English line of `.say`); give the row room
+    instead, or let the second-language line ellipsize.
 
 - **Things arrive quickly, and nothing animates a blur** (`enter` in `lib/motion.ts`, 2026-10-13). A screen
   (`pageV`, `app/(app)/template.tsx`) slides in over 160 ms — opacity and 12px, no scale; a tile or section

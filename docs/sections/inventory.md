@@ -42,6 +42,22 @@ it is cooked, and the leak report cannot see it. See [menu.md](menu.md).
 
 ## Before you edit
 
+- **The Stock tab is Simple Service (2026-10-15).** `SvcHead` ("What is on the shelf. Red and orange need
+  buying.") with Leak finder and **Goods arrived** (the Record purchase sheet) — the page head moved from
+  `page.tsx` into the client. The tabs and **+ Ingredient** follow. On Stock: three big tiles — **Finished**
+  (nothing left, red), **Running low** (at or under the reorder level, amber), **Enough** (green), each a filter
+  (`data-level`, `!min-h-[84px]` because `:where(button)` would hold them at 40) · the low-stock strip (Tomorrow's
+  list, Draft a purchase order) · a 56px search by name or barcode with a link to Scan · the stock value line · the items
+  (`[data-ing]`, `data-level`), finished first, then low. **On a phone a list** (`[data-pantry-list]`): the
+  category's picture in its state's colour, the name (a button, `aria-label="Edit"` — the keyboard opens it), the
+  amount big with the state, a thin bar, and two 48px squares — **+** (Add stock: the adjust sheet, *Add or correct
+  stock*) and the bin (Waste: the same sheet on *Wastage*). **From `sm` a card** (`[data-pantry-grid]`): the
+  picture in a tinted square, the name (one line, whole in its title — a two-line name pushed
+  its card's amount out of line), the state as a pill, the amount in 34px with "reorder at n",
+  a bar against three times the reorder level, **Add stock** — solid green only on an item that needs buying, a
+  soft green on the rest, so a full shelf is not a wall of bright buttons — and **Waste**, with the pencil
+  top right. The table and its `[data-stock-inline]` phone line are gone.
+
 - **When stock leaves (0092).** `restaurants.stock_draw`: **`ticket`** (default) — a line draws its recipe
   the moment it is inserted, which is the moment the order reaches the kitchen (`place_order` /
   `add_items` insert lines as `pending`); a line cancelled while still pending is credited straight back
@@ -57,7 +73,8 @@ it is cooked, and the leak report cannot see it. See [menu.md](menu.md).
   every such ingredient, topped up to twice the level — see [reports-and-forecast.md](reports-and-forecast.md).
 
 
-- **Pantry's header keeps *Leak finder* beside the title on a phone** (`PageHeader actionsInline`). The Leak finder page itself does not — "Leak finder" and "Count stock now" do not fit one 375px row.
+- **Pantry's head** is `SvcHead` in `InventoryClient` (Leak finder, Goods arrived — full width under the title on
+  a phone). The Leak finder page keeps its own `PageHeader`.
 
 
 - **Never write a stock level directly.** Append to `stock_ledger`; the level is derived. A direct
@@ -88,7 +105,5 @@ Then receive a small PO on a demo property and confirm the ledger and the level 
 ## See also
 
 [menu.md](menu.md) · [reports-and-forecast.md](reports-and-forecast.md) · [scan.md](scan.md)
-- **The pantry list on a phone shows the stock under the name** (`[data-stock-inline]`, `sm:hidden`:
-  "168 pcs · reorder at 3", red when at or below reorder) and hides the *In stock* column until `sm`.
-  The table scrolls sideways inside `.table-wrap`, and on a 412 screen the one number a store keeper
-  opens the page for was off the right edge behind the name and its bar (2026-10-12 review).
+- **The pantry is a list on a phone and cards from `sm`** (2026-10-15): the amount a store keeper opens the page
+  for is the biggest thing on each row and card. (It was a table whose *In stock* column ran off a 412 screen.)

@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Plus, ArrowDownToLine, Trash2, Pencil, PackagePlus, AlertTriangle, History, ScanText, Loader2, Camera, CheckCircle2 } from "lucide-react";
-import { motion } from "framer-motion";
-import { Button, Card, Field, Sheet, Empty, Pill, StatTile, cn } from "@/components/ui";
+import { Plus, Trash2, Pencil, PackagePlus, AlertTriangle, History, ScanText, Loader2, Camera, CheckCircle2, Droplets, Truck, Search, ScanBarcode, Milk, Drumstick, Fish, Carrot, Apple, Wheat, CupSoda, Package, SprayCan, CircleCheck, CircleAlert, type LucideIcon } from "lucide-react";
+import { Button, Card, Field, Sheet, Empty, Pill, cn } from "@/components/ui";
+import { Say } from "@/components/ui/Say";
+import { SvcHead } from "@/components/ui/Service";
+import type { Word } from "@/lib/say";
 import { formatINR, fmtTime, fmtDate } from "@/lib/format";
 import { UNITS, INGREDIENT_CATEGORIES, WASTE_REASONS } from "@dineflow/shared";
 import { saveIngredient, archiveIngredient, moveStock, recordPurchase, ingredientPrices, readSupplierBill, type PriceHistory, type BillLine } from "./actions";
@@ -14,6 +16,13 @@ type Led = { id: string; ingredient_id: string; qty: number; reason: string; sub
 type Pur = { id: string; supplier: string | null; invoice_no: string | null; total: number; purchased_at: string; po_id?: string | null };
 type IngRow = Ing & { barcode?: string | null; category?: string | null; brand?: string | null };
 type Tab = "stock" | "purchases" | "orders" | "suppliers" | "wastage" | "ledger";
+type Lvl = "out" | "low" | "ok";
+/* the pantry's three colours (globals.css SIMPLE SERVICE): finished red, running low amber, enough green */
+const LVL: Record<Lvl, { w: Word; cls: string; Icon: LucideIcon; order: number }> = {
+  out: { w: "finished", cls: "st-late", Icon: AlertTriangle, order: 0 }, low: { w: "running_low", cls: "st-cook", Icon: CircleAlert, order: 1 }, ok: { w: "enough", cls: "st-ready", Icon: CircleCheck, order: 2 },
+};
+/** an ingredient's picture by its category */
+const ING_ICON: Record<string, LucideIcon> = { vegetable: Carrot, fruit: Apple, grocery: Wheat, dairy: Milk, meat: Drumstick, seafood: Fish, beverage: CupSoda, packaged: Package, cleaning: SprayCan, other: Package };
 
 export function InventoryClient({ ingredients, ledger, purchases, suppliers = [], orders = [], wastage = null, restaurant = "" }: { ingredients: IngRow[]; ledger: Led[]; purchases: Pur[]; suppliers?: Supplier[]; orders?: Po[]; wastage?: Wastage; restaurant?: string }) {
   const [tab, setTab] = useState<Tab>("stock");
@@ -32,42 +41,52 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
     { key: "suppliers", label: "Suppliers" }, { key: "wastage", label: "Wastage" }, { key: "ledger", label: "Ledger" },
   ];
 
+  /* finished (nothing left), running low (at or under its reorder level), enough — the three colours */
+  const levelOf = (i: IngRow): Lvl => (Number(i.current_stock) <= 0 ? "out" : Number(i.current_stock) <= Number(i.reorder_level) ? "low" : "ok");
+  const [only, setOnly] = useState<Lvl | null>(null); const [q, setQ] = useState("");
+  const shownIngs = ingredients.filter((i) => (!only || levelOf(i) === only) && (!q.trim() || i.name.toLowerCase().includes(q.trim().toLowerCase()) || (i.barcode ?? "").includes(q.trim())))
+    .sort((a, b) => LVL[levelOf(a)].order - LVL[levelOf(b)].order || a.name.localeCompare(b.name));
+  const n = (l: Lvl) => ingredients.filter((i) => levelOf(i) === l).length;
+  /** the bar: the stock against three times its reorder level (full when no level is set and some is in) */
+  const barOf = (i: IngRow, l: Lvl) => Math.max(l === "out" ? 3 : 6, Math.min(100, Number(i.reorder_level) > 0 ? (Number(i.current_stock) / (Number(i.reorder_level) * 3)) * 100 : Number(i.current_stock) > 0 ? 100 : 0));
+  const fmtStock = (i: IngRow) => { const v = Number(i.current_stock); return i.unit === "pcs" ? String(Math.round(v)) : Number.isInteger(v) ? String(v) : v.toFixed(v < 10 ? 2 : 1).replace(/0$/, ""); };
+
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
-        <StatTile label="Items tracked" value={String(ingredients.length)} />
-        <StatTile label="Below reorder level" value={String(low.length)} tone={low.length ? "alert" : "good"} sub={low.length ? (onOrder ? `${onOrder} order${onOrder === 1 ? "" : "s"} on the way` : "Order soon") : "All stocked"} delay={0.05} />
-        <StatTile label="Stock value" value={formatINR(value)} sub="at last purchase cost" delay={0.1} />
-        <StatTile label="Movements today" value={String(ledger.filter((l) => l.created_at.slice(0, 10) === new Date().toISOString().slice(0, 10)).length)} delay={0.15} />
-      </div>
-
+      <SvcHead icon="pantry" title="Pantry" sub="What is on the shelf. Red and orange need buying."
+        actions={<>
+          <Link href="/inventory/leaks" className="svc-btn quiet sm"><Droplets size={17} aria-hidden /> Leak finder</Link>
+          <button type="button" className="svc-btn go sm !px-5" onClick={() => setPurchase(true)} data-goods-arrived><Truck size={19} aria-hidden /><Say w="goods_arrived" /></button>
+        </>} />
       <div className="toolbar"><div className="toolbar-group">
         {TABS.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={cn("rounded-full px-4 h-9 text-sm font-semibold transition flex items-center gap-1.5", tab === t.key ? "bg-ink text-on-label" : "bg-card border border-line hover:bg-porcelain")}>{t.label}{t.badge ? <span className={cn("num text-[11px] rounded-full px-1.5", tab === t.key ? "bg-white/20" : "bg-saffron/20 text-saffron")}>{t.badge}</span> : null}</button>
+          <button key={t.key} onClick={() => setTab(t.key)} className={cn("rounded-full px-4 h-10 text-[14px] font-bold transition flex items-center gap-1.5", tab === t.key ? "bg-ink text-on-label" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>{t.label}{t.badge ? <span className={cn("num text-[11px] rounded-full px-1.5", tab === t.key ? "bg-white/20" : "bg-saffron/20 text-saffron")}>{t.badge}</span> : null}</button>
         ))}
         </div><div className="toolbar-group toolbar-end">
-          <Button variant="outline" onClick={() => setPurchase(true)}><PackagePlus size={16} /> Record purchase</Button>
-          <Button onClick={() => setEditing({ unit: "kg", reorder_level: 0, cost_per_unit: 0 })}><Plus size={16} /> Ingredient</Button>
+          <Button variant="outline" onClick={() => setEditing({ unit: "kg", reorder_level: 0, cost_per_unit: 0 })}><Plus size={16} /> Ingredient</Button>
         </div>
       </div>
 
       {tab === "stock" && (ingredients.length === 0 ? (
         <Empty title="Pantry is empty" hint="Add ingredients like rice, oil, chicken, paneer. Then record a purchase or an opening balance." />
       ) : (<>
+        {/* three big tiles: how many are finished, running low, enough — tap one to see only those */}
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3" data-levels>
+          {(["out", "low", "ok"] as Lvl[]).map((l) => { const m = LVL[l]; return (
+            <button key={l} type="button" onClick={() => setOnly((x) => (x === l ? null : l))} aria-pressed={only === l} className={cn("!min-h-[84px] sm:!min-h-[88px] rounded-[20px] px-3 sm:px-5 flex flex-col sm:flex-row items-start sm:items-center justify-center sm:justify-between gap-1 text-left transition", m.cls, only === l && "ring-2 ring-[var(--st)]")} style={{ background: "var(--st-2)" }} data-level={l}>
+              <span className="flex items-center gap-2 text-[14px] sm:text-[16px] font-extrabold min-w-0" style={{ color: "var(--st-ink)" }}><m.Icon size={18} aria-hidden className="shrink-0 max-sm:hidden" /><Say w={m.w} start /></span>
+              <span className="font-display num text-[30px] sm:text-[40px] leading-none" style={{ color: "var(--st-ink)" }}>{n(l)}</span>
+            </button>); })}
+        </div>
         {/* what has slipped to its reorder level is already on Tomorrow's buy list (0092); say so here,
             where the store keeper is looking, and offer the purchase order a press away */}
         {low.length > 0 && (() => {
-          /* an ingredient with no reorder level (the library creates them at 0) is "low" at 0 in stock, but
-             Tomorrow's list only tops up a level that is set — say which is which */
           const listed = low.filter((i) => Number(i.reorder_level) > 0), unset = low.filter((i) => !(Number(i.reorder_level) > 0));
           return (
-          <div className="mb-3 rounded-2xl border border-[var(--color-orange)]/35 bg-[color-mix(in_srgb,var(--color-orange)_10%,var(--color-bg-2))] px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2" data-low-strip data-listed={listed.length} data-unset={unset.length}>
-            <div className="flex-1 min-w-[12rem]">
-              <div className="text-[14px] font-semibold">{listed.length > 0 ? `${listed.length} ingredient${listed.length === 1 ? " is" : "s are"} at or below reorder level` : `${unset.length} ingredient${unset.length === 1 ? " has" : "s have"} nothing in stock and no reorder level`}</div>
-              <div className="text-xs text-[var(--color-label-2)] mt-0.5">
-                {listed.length > 0 && <>{listed.slice(0, 4).map((i) => i.name).join(", ")}{listed.length > 4 ? ` +${listed.length - 4}` : ""} — already on Tomorrow&apos;s buy list, topped up to twice the level.</>}
-                {unset.length > 0 && <> {listed.length > 0 ? `${unset.length} more` : unset.slice(0, 4).map((i) => i.name).join(", ") + (unset.length > 4 ? ` +${unset.length - 4}` : "")} {unset.length === 1 && listed.length === 0 ? "has" : "have"} no reorder level yet — set one (the pencil) and {unset.length === 1 ? "it joins" : "they join"} the list.</>}
-              </div>
+          <div className="rounded-2xl border border-[var(--color-orange)]/35 bg-[color-mix(in_srgb,var(--color-orange)_8%,var(--color-bg-2))] px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2" data-low-strip data-listed={listed.length} data-unset={unset.length}>
+            <div className="flex-1 min-w-[12rem] text-[13px] text-[var(--color-label-2)]">
+              {listed.length > 0 && <><b className="text-[var(--color-label)]">{listed.length} on Tomorrow&apos;s buy list</b>, topped up to twice the level.</>}
+              {unset.length > 0 && <> {unset.length} {unset.length === 1 ? "has" : "have"} no reorder level yet — set one (the pencil) and {unset.length === 1 ? "it joins" : "they join"} the list.</>}
             </div>
             <div className="flex gap-2 shrink-0">
               <Link href="/tomorrow" className="btn btn-gray !h-10 !px-3.5 !text-[13px]">Tomorrow&apos;s list</Link>
@@ -75,33 +94,68 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
             </div>
           </div>
         ); })()}
-        <div className="feather overflow-x-auto table-wrap">
-          <table className="w-full text-sm">
-            <thead className="bg-porcelain text-xs uppercase tracking-wide text-steel"><tr><th className="text-left px-4 py-3">Ingredient</th><th className="text-right px-4 py-3 hidden sm:table-cell">In stock</th><th className="text-right px-4 py-3 hidden sm:table-cell">Reorder at</th><th className="text-right px-4 py-3 hidden md:table-cell">Cost/unit</th><th className="px-4 py-3"></th></tr></thead>
-            <tbody>
-              {ingredients.map((i, idx) => {
-                const isLow = Number(i.current_stock) <= Number(i.reorder_level);
-                const pct = Math.min(100, Number(i.reorder_level) > 0 ? (Number(i.current_stock) / (Number(i.reorder_level) * 3)) * 100 : 100);
-                return (
-                  <motion.tr key={i.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.02 }} className="border-t border-line">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold flex items-center gap-2">{i.name}{i.category && <span className="text-[10px] text-steel font-normal">{i.category}</span>}{i.barcode && <span className="text-[10px] num text-steel">▮▯▮ {i.barcode.slice(-4)}</span>}{isLow && <Pill tone="alert"><AlertTriangle size={11} /> low</Pill>}</div>
-                      {/* on a phone the In stock column is off the right edge of a sideways-scrolling table, so the figure sits here */}
-                      <div className={cn("sm:hidden mt-0.5 num text-[13px] font-semibold", isLow && "text-[var(--color-red)]")} data-stock-inline>{Number(i.current_stock).toFixed(i.unit === "pcs" ? 0 : 2)} <span className="text-xs font-normal text-steel">{i.unit} · reorder at {Number(i.reorder_level)}</span></div>
-                      <div className="mt-1.5 h-1.5 w-32 rounded-full bg-line overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.7, delay: 0.1 + idx * 0.02 }} className={cn("h-full rounded-full", isLow ? "bg-chili" : "bg-mint")} /></div>
-                    </td>
-                    <td className="px-4 py-3 text-right num font-semibold hidden sm:table-cell">{Number(i.current_stock).toFixed(i.unit === "pcs" ? 0 : 2)} <span className="text-xs text-steel">{i.unit}</span></td>
-                    <td className="px-4 py-3 text-right num text-steel hidden sm:table-cell">{Number(i.reorder_level)} {i.unit}</td>
-                    <td className="px-4 py-3 text-right num text-steel hidden md:table-cell">{formatINR(Number(i.cost_per_unit))}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <Button size="sm" variant="ghost" onClick={() => { setReason("adjustment"); setMove(i); }} aria-label="Adjust stock"><ArrowDownToLine size={15} /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditing(i)} aria-label="Edit"><Pencil size={15} /></Button>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="relative" data-pantry-search><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find an item — or type its barcode" aria-label="Find an item" className="!h-14 !rounded-[18px] !pl-12 !pr-14 !text-[16px]" />
+          <Link href="/scan" aria-label="Scan a barcode" title="Scan a barcode" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><ScanBarcode size={19} /></Link>
+        </div>
+        <div className="text-[12.5px] text-steel -mt-2">Stock value <b className="num text-[var(--color-label)]">{formatINR(value)}</b> at last purchase cost · {ingredients.length} items</div>
+        {/* A phone: a list, one row per item — its picture in its state's colour, the name, the amount big with
+            how it stands, a thin bar against three times the reorder level, and two square buttons: + (Add
+            stock) and the bin (Waste). A tap on the name opens the item. Low ones first. */}
+        <div className="sm:hidden space-y-2" data-pantry-list>
+          {shownIngs.map((i) => {
+            const l = levelOf(i); const m = LVL[l]; const I = ING_ICON[i.category ?? "other"] ?? Package; const pct = barOf(i, l);
+            return (
+              <div key={i.id} className={cn("feather !rounded-[18px] p-3 flex items-center gap-3 min-w-0", m.cls, l !== "ok" && "!border-[color-mix(in_srgb,var(--st)_55%,transparent)]")} data-ing={i.id} data-level={l}>
+                <span className="h-12 w-12 shrink-0 rounded-[14px] grid place-items-center" style={{ background: "var(--st-2)", color: "var(--st-ink)" }}><I size={21} aria-hidden /></span>
+                <button type="button" onClick={() => setEditing(i)} aria-label="Edit" title={`Edit ${i.name}`} className="flex-1 min-w-0 text-left !min-h-0">
+                  <span className="block font-bold text-[15px] leading-tight truncate">{i.name}</span>
+                  <span className="mt-1 flex items-baseline gap-1 min-w-0">
+                    <span className="font-display num text-[22px] leading-none">{fmtStock(i)}</span><span className="text-[13px] font-bold text-steel">{i.unit}</span>
+                    <span className="ml-2 text-[12px] font-bold truncate" style={{ color: "var(--st-ink)" }}><Say w={m.w} start /></span>
+                  </span>
+                  <span className="mt-2 block h-1.5 rounded-full bg-[var(--color-fill-2)] overflow-hidden"><span className="block h-full rounded-full" style={{ width: `${pct}%`, background: "var(--st)" }} /></span>
+                </button>
+                <button type="button" onClick={() => { setReason("adjustment"); setMove(i); }} aria-label={`Add stock — ${i.name}`} title="Add stock" data-add-stock
+                  className="h-12 w-12 shrink-0 rounded-[14px] grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] active:scale-95 transition-transform"><Plus size={22} /></button>
+                <button type="button" onClick={() => { setReason("wastage"); setMove(i); }} aria-label={`Waste — ${i.name}`} title="Waste" data-waste
+                  className="h-12 w-12 shrink-0 rounded-[14px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)] active:scale-95 transition-transform"><Trash2 size={19} /></button>
+              </div>
+            );
+          })}
+          {shownIngs.length === 0 && <p className="text-[15px] text-steel py-6">{q ? `Nothing matches “${q}”.` : "Nothing in this group."}</p>}
+        </div>
+
+        {/* A tablet and up: one calm card per item — the picture in a tinted square, the name, how it stands as
+            a pill, the amount big with its reorder level, a bar, then Add stock and Waste. Add stock is solid
+            green only on an item that needs buying; on the rest it is a soft green, so a full shelf is not a
+            wall of bright buttons. */}
+        <div className="hidden sm:grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" data-pantry-grid>
+          {shownIngs.map((i) => {
+            const l = levelOf(i); const m = LVL[l]; const I = ING_ICON[i.category ?? "other"] ?? Package; const pct = barOf(i, l);
+            return (
+              <div key={i.id} className={cn("feather !rounded-[22px] p-4 flex flex-col gap-3.5 min-w-0 transition-shadow hover:shadow-[var(--shadow-pop)]", m.cls, l !== "ok" && "!border-[color-mix(in_srgb,var(--st)_55%,transparent)]")} data-ing={i.id} data-level={l}>
+                <div className="flex items-start gap-3 min-w-0">
+                  <span className="h-12 w-12 shrink-0 rounded-[15px] grid place-items-center" style={{ background: "var(--st-2)", color: "var(--st-ink)" }}><I size={22} aria-hidden /></span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-[16px] leading-snug truncate" title={i.name}>{i.name}</div>
+                    <span className="mt-1 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[12px] font-bold" style={{ background: "var(--st-2)", color: "var(--st-ink)" }}><m.Icon size={12} aria-hidden /><Say w={m.w} start /></span>
+                  </div>
+                  <button type="button" onClick={() => setEditing(i)} aria-label="Edit" title={`Edit ${i.name}`} className="h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 -mr-1.5 -mt-1 shrink-0 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><Pencil size={16} /></button>
+                </div>
+                <div className="flex items-baseline gap-1.5 min-w-0">
+                  <span className="font-display num text-[34px] leading-none">{fmtStock(i)}</span><span className="text-[14px] font-bold text-steel">{i.unit}</span>
+                  <span className="ml-auto text-[12px] text-steel num truncate">reorder at {Number(i.reorder_level)} {i.unit}</span>
+                </div>
+                <div className="h-2 rounded-full bg-[var(--color-fill-2)] overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--st)" }} /></div>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 mt-auto">
+                  <button type="button" className={cn("svc-btn sm !gap-1.5 !px-3", l === "ok" ? "st-ready" : "go")} style={l === "ok" ? { background: "var(--st-2)", color: "var(--st-ink)" } : undefined} onClick={() => { setReason("adjustment"); setMove(i); }} data-add-stock><Plus size={17} aria-hidden /><Say w="add_stock" /></button>
+                  <button type="button" className="svc-btn quiet sm !px-3.5 !gap-1.5" onClick={() => { setReason("wastage"); setMove(i); }} aria-label={`Waste — ${i.name}`} data-waste><Trash2 size={16} aria-hidden /><Say w="waste" /></button>
+                </div>
+              </div>
+            );
+          })}
+          {shownIngs.length === 0 && <p className="col-span-full text-[15px] text-steel py-6">{q ? `Nothing matches “${q}”.` : "Nothing in this group."}</p>}
         </div>
       </>))}
 
@@ -153,7 +207,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
         </form>
       </Sheet>
 
-      <Sheet open={!!move} onClose={() => setMove(null)} title={`Adjust · ${move?.name ?? ""}`}>
+      <Sheet open={!!move} onClose={() => setMove(null)} title={`${reason === "wastage" ? "Waste" : "Add or correct stock"} · ${move?.name ?? ""}`}>
         <form className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await moveStock(fd); if (r && "error" in r) setErr(r.error!); else setMove(null); })}>
           <input type="hidden" name="ingredient_id" value={move?.id} />
           <p className="text-sm text-steel">Currently <b className="num">{Number(move?.current_stock).toFixed(2)} {move?.unit}</b></p>

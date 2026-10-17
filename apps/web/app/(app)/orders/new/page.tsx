@@ -6,8 +6,8 @@ import { PosClient } from "./PosClient";
 
 export const metadata = { title: "New order" };
 
-export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ table?: string }> }) {
-  const { table } = await searchParams;
+export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ table?: string; type?: string }> }) {
+  const { table, type } = await searchParams;
   const s = await createClient();
   // the session travels with the page's own rows, not in front of them: one trip, not two
   const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, { data: variants }, { data: groups }, { data: links }, { data: combos }, { data: pairings }, { data: sold }] = await Promise.all([
@@ -20,7 +20,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
     // waiter promises it to a table rather than after the kitchen has picked the ticket up
     s.rpc("menu_stock"),
     // the orders already running on a table, so tapping an occupied one can offer the open ticket
-    s.from("orders").select("id, order_no, table_id, created_at, order_items(qty, status), dining_tables(name)").eq("status", "open").not("table_id", "is", null).order("created_at", { ascending: false }),
+    s.from("orders").select("id, order_no, table_id, created_at, order_items(qty, status), dining_tables(name), bills(status)").eq("status", "open").not("table_id", "is", null).order("created_at", { ascending: false }),
     // sizes, add-on groups and combo parts: what a dish asks before it goes on a ticket
     s.from("menu_variants").select(OPTION_SELECTS.variants).eq("is_active", true),
     s.from("addon_groups").select(OPTION_SELECTS.groups).eq("is_active", true),
@@ -36,7 +36,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const pairs: Record<string, { id: string; n: number }[]> = {};
   for (const p of (pairings ?? []) as { item: string; pair: string; together: number }[]) (pairs[p.item] ??= []).push({ id: p.pair, n: p.together });
   const menu = withOptions(items ?? [], (variants ?? []) as never, (groups ?? []) as never, links ?? [], combos ?? []);
-  return <PosClient categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={table ?? null}
+  return <PosClient categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={table ?? null} initialType={type === "takeaway" || type === "delivery" ? type : null}
     inHouse={(inHouse ?? []) as never} stock={(stock ?? {}) as never} running={(running ?? []) as never} ai={aiEnabled()}
     promise={session.restaurant.promise_enabled ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} pairs={pairs} popular={popular} />;
 }

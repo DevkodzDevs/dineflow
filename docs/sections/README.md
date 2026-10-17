@@ -42,7 +42,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 
 | If you are touching… | Read |
 | --- | --- |
-| `app/globals.css`, `components/ui/**`, `lib/motion.ts` — any shared visual change | [design-system.md](design-system.md) |
+| `app/globals.css`, `components/ui/**`, `lib/motion.ts`, `lib/say.ts`, `lib/service.ts` — any shared visual change, the Dining screens' colours and words | [design-system.md](design-system.md) |
 | `components/shell/**`, `app/(app)/layout.tsx`, the sidebar, module gating, **adding a `loading.tsx`**; installing — `lib/install.ts`, `components/InstallApp.tsx`, `public/manifest.json`; speed — `lib/useLive.ts`, `lib/offline/**`, `next.config.ts`, `vercel.json` | [shell-and-nav.md](shell-and-nav.md) |
 | `supabase/migrations/**`, `supabase/pending/**`, RLS, any new table or RPC | [data-and-rls.md](data-and-rls.md) |
 | Anything, before you say it works | [testing-and-gates.md](testing-and-gates.md) |

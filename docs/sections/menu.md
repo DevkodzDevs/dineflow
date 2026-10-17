@@ -14,39 +14,30 @@ plus the recipe that makes the pantry move when the dish is cooked.
 
 ## How it works
 
-**The toolbar** is a filter rail plus an action group:
-
-```
-[ All ][ Starters ][ Mains ][ … ]        [ + Categories ][ Add-ons ][ + New dish ]
-└── .toolbar-group: scrolls, fades      └── .toolbar-end: never scrolls
-```
-
-Category chips use the shared `.chip` / `.chip.on` classes so they match every other rail in the
-app. *Manage categories* lives in the action group, not at the end of the rail — it is not a filter,
-and at the end of a scrolling rail it was the first thing to disappear.
-
-Five actions (*Categories*, *Add-ons*, *From photo*, *Find photos*, *New dish*) come to ~690px, and
-the content column at 834 is 682px — so this toolbar stacks (a
-`.toolbar:has(> .toolbar-end > .btn:nth-child(4))` rule in `globals.css`): the rail on top, the
-actions wrapping into full rows under it, *New dish* on a line of its own. The stack holds from
-721 to 1183px, and again from 1280 to 1363px where the full sidebar narrows the column; a 1194
-iPad and a 1366 laptop keep the single row with ~300px of rail beside the actions. Before, the
-chips collapsed to nothing and *New dish* ran off the right edge of an iPad, and at 1024 one chip
-was in view. On a phone the general toolbar rules apply.
+**The head and the chips** (Simple Service, 2026-10-15): `SvcHead` ("Switch a dish off when it runs out —
+waiters see it at once") with **More tools** and **New dish**; More tools unfolds Categories, Add-ons, From
+photo, Recipes and Find photos (`data-tools`) — the owner's weekly tools, kept off the service screen. Under it
+the categories as a `Rail` of chips with their picture (`catIcon`) and dish count, and **Sold out** last in red
+when any dish is off (`data-cat="soldout"`, a filter).
 
 **Options** (`Options.tsx`) holds three editors: `OptionsEditor` (a dish's sizes and which add-on
 groups it offers), `GroupsManager` (the groups themselves, shared across dishes) and `ComboParts`.
 A dish card shows what it has as small pills — `combo · 3`, `Half / Full`, `2 add-ons`.
 
-**The dish card** (`MenuClient.tsx`, `data-dish`): as many across as fit
-(`repeat(auto-fill,minmax(17rem,1fr))` — 1 on a phone, 2 at 834, 3 at 1194–1440, 5 at 1920). On top,
-the square-and-dot veg mark (green veg, red non-veg), the name (two lines at most) and the price in
-whole rupees (`formatINR(…, { whole: true })` — "₹160", `from` above it when sizes exist); the
-description; then chips for prep minutes, combo, sizes, add-ons and the recipe — green "N ingredients"
-or red "No recipe" (· standard ready when `findStandardRecipe` knows the dish). A footer strip holds
-the sold-out `Switch` (its row is the 44px target) with Available/Sold out in green/red, and three
-round 40px (44 on touch) buttons: sizes and add-ons, recipe, edit. A sold-out dish dims its body,
-not its switch. Probe: `menu.mjs` (6 checks; flips the switch and restores it).
+**The dishes** (`MenuClient.tsx`, `data-dish`; 2026-10-15, after the owner marked the first cards "not looking
+good"). **On a phone a list** (`[data-dish-list]`, `sm:hidden`): one row per dish — a 64px photo (tap to change it)
+with the veg chip on its corner, the name, the price with *Available* / *Sold out*, "15 min · N ingredients" (or
+*No recipe* in amber), and the `Switch` at the end of the row; a tap on the name opens the dish. **From `sm` a card** (`[data-dish-grid]`, `repeat(auto-fill, minmax(15rem, 1fr))`; the third pass — the owner
+marked the first two "not looking good"): an inset photo, 4:3 with rounded corners inside the card's 8px padding
+(a camera disc on hover, always on touch); with no photo a soft neutral plate — the dish's drawing (`glyphFor`) in a
+glass circle and "Add a photo" — instead of `DishGlyph`'s green or red block; `VegBadge` — the printed square on a
+white chip — top left; when off, the photo darkens under a red **SOLD OUT** label. Under it the name (one line,
+whole in its title; a `div role=heading`, since an `h3` takes the display font from the global heading rule) and
+the price in whole rupees on the same line, "Starters · 15 min", an amber **No recipe** chip only when the dish
+moves no stock (opens the recipe), and one footer: the **Available / Sold out** pill — a dot, the word, the
+toggle, the whole pill a `<label>` (`data-available`), red when off — and a square pencil for Edit. Sizes,
+add-ons and the recipe open from Edit. The dish editor now opens with **Sizes & add-ons** and **Recipe** (`data-dish-more`), the way
+in from a phone. Probe: `svcflow2.mjs` flips a dish off and back.
 
 **Recipes** map a dish to ingredients per plate. `findStandardRecipe` in `@dineflow/shared` offers a
 known plate for common Indian dishes; `applyStandardRecipe` maps it and creates any missing pantry

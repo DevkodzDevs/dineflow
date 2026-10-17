@@ -2,165 +2,211 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike } from "lucide-react";
+import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { cn, Empty, Button, useToast } from "@/components/ui";
+import { cn, Empty, Segmented, useToast } from "@/components/ui";
+import { Say } from "@/components/ui/Say";
+import { StateChip, SVC_ICON, stClass } from "@/components/ui/Service";
+import { Rail } from "@/components/ui/Rail";
 import { formatINR, fmtSince } from "@/lib/format";
+import { orderState, isLate, SVC_WORD, type Svc } from "@/lib/service";
 import { setTableStatus } from "./actions";
 
 type Table = { id: string; name: string; capacity: number; zone: string; status: "free" | "occupied" | "reserved" };
-type St = "pending" | "preparing" | "ready" | "served";
-/* the kitchen's own words (New · On the fire · Ready to serve), as the floor reads them */
-const ST: Record<St, { label: string; short: string; color: string }> = {
-  pending: { label: "Waiting", short: "waiting", color: "var(--color-label-3)" },
-  preparing: { label: "On the fire", short: "on the fire", color: "var(--color-orange)" },
-  ready: { label: "Ready to serve", short: "ready", color: "var(--color-green)" },
-  served: { label: "Served", short: "served", color: "var(--color-blue)" },
-};
-const KIND: Record<string, { label: string; Icon: typeof Armchair }> = {
-  dine_in: { label: "Dine-in", Icon: Armchair }, takeaway: { label: "Takeaway", Icon: ShoppingBag },
-  room_service: { label: "Room service", Icon: BedDouble }, delivery: { label: "Delivery", Icon: Bike },
+type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; created_at?: string | null };
+type Order = { id: string; order_no: number; type: string; table_id: string | null; customer_name: string | null; created_at: string; order_items: Item[]; bills?: { status: string }[] | null };
+const KIND: Record<string, { word: "parcel" | "delivery" | "room" | "dine_in"; Icon: typeof Armchair }> = {
+  dine_in: { word: "dine_in", Icon: Armchair }, takeaway: { word: "parcel", Icon: ShoppingBag },
+  room_service: { word: "room", Icon: BedDouble }, delivery: { word: "delivery", Icon: Bike },
 };
 /** an order open longer than a service is a table someone forgot to bill or close (Pulse's STALE) */
 const STALE_MS = 12 * 3600e3;
-const stOf = (s: string): St => (s === "preparing" || s === "ready" || s === "served" ? s : "pending");
-type Order = { id: string; order_no: number; type: string; table_id: string | null; customer_name: string | null; created_at: string; order_items: { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string }[] };
+const live = (o: Order) => o.order_items.filter((x) => x.status !== "cancelled");
+const totalOf = (o: Order) => live(o).reduce((s, x) => s + Number(x.price_snapshot) * x.qty, 0);
+const stateOf = (o: Order): Svc => orderState(o.order_items, (o.bills ?? []).some((b) => b.status === "unpaid"));
+/* the plate-by-plate colours of the list view: the same hues as the floor */
+const PLATE: Record<string, { word: "ordered" | "cooking" | "food_ready" | "eating"; cls: string }> = {
+  pending: { word: "ordered", cls: "st-new" }, preparing: { word: "cooking", cls: "st-cook" }, ready: { word: "food_ready", cls: "st-ready" }, served: { word: "eating", cls: "st-eat" },
+};
 
-export function OrdersClient({ tables, orders }: { tables: Table[]; orders: Order[] }) {
+/**
+ * The floor, read by colour (globals.css SIMPLE SERVICE): a free table is a dashed card with Take order;
+ * a table with a ticket is filled in its state's colour — ordered, cooking, food ready (ringed), eating,
+ * bill — with how long and how much; LATE when a dish is past the kitchen's target. The chips on top
+ * count each state and, tapped, show only those tables. "List" is every open order as a card with its
+ * dishes, for whoever wants the detail.
+ */
+export function OrdersClient({ tables, orders, lateAt = 15 }: { tables: Table[]; orders: Order[]; lateAt?: number }) {
   const [pending, start] = useTransition(); const toast = useToast();
   const [, tick] = useState(0);
-  useLive(["orders", "order_items", "dining_tables"], 30000);
+  useLive(["orders", "order_items", "dining_tables", "bills"], 30000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
+  const [view, setView] = useState<"tables" | "list">("tables");
+  useEffect(() => { try { if (localStorage.getItem("df-orders-view") === "list") setView("list"); } catch { /* storage blocked: tables */ } }, []);
+  const pickView = (v: "tables" | "list") => { setView(v); try { localStorage.setItem("df-orders-view", v); } catch { /* fine */ } };
+  const [only, setOnly] = useState<Svc | "late" | null>(null);
 
-  const byTable = Object.fromEntries(orders.filter((o) => o.table_id).map((o) => [o.table_id!, o]));
+  const byTable = new Map<string, Order>(); orders.forEach((o) => { if (o.table_id && !byTable.has(o.table_id)) byTable.set(o.table_id, o); });
+  const tableState = (t: Table): Svc => { const o = byTable.get(t.id); return o ? stateOf(o) : t.status === "reserved" ? "hold" : t.status === "occupied" ? "eat" : "free"; };
+  const lateOf = (o: Order | undefined) => !!o && isLate(live(o), lateAt, o.created_at);
   const zones = [...new Set(tables.map((t) => t.zone))];
-  const stateOf = (o: Order): St => { const live = o.order_items.filter((x) => x.status !== "cancelled");
-    return live.some((x) => x.status === "pending") ? "pending" : live.some((x) => x.status === "preparing") ? "preparing" : live.length && live.every((x) => x.status === "served") ? "served" : "ready"; };
-  const tally = (["ready", "preparing", "pending"] as St[]).map((k) => ({ k, n: orders.filter((o) => stateOf(o) === k).length })).filter((x) => x.n);
+  const loose = orders.filter((o) => !o.table_id);
+  // the count on each chip: tables by state, and the parcels and deliveries in theirs
+  const counts = new Map<Svc | "late", number>();
+  tables.forEach((t) => { const s = tableState(t); counts.set(s, (counts.get(s) ?? 0) + 1); if (lateOf(byTable.get(t.id))) counts.set("late", (counts.get("late") ?? 0) + 1); });
+  loose.forEach((o) => { const s = stateOf(o); counts.set(s, (counts.get(s) ?? 0) + 1); if (lateOf(o)) counts.set("late", (counts.get("late") ?? 0) + 1); });
+  const chips = (["free", "hold", "new", "cook", "ready", "eat", "bill", "late"] as const).filter((s) => (counts.get(s) ?? 0) > 0 || s === "free");
+  const shows = (s: Svc, late: boolean) => !only || only === s || (only === "late" && late);
 
-  return (
-    /* The floor, then the open orders under it at every width — the orders as a grid of cards: one
-       across on a phone, two on an iPad or tablet, three on a laptop, four on a desktop. They were a
-       380px column beside the floor from 1280 up and a full-width list below it, one card stretched
-       across the whole screen per order. */
-    <div className="space-y-8">
-      <section className="min-w-0">
-        {zones.map((z) => (
-          <div key={z} className="mb-6">
-            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel mb-3">{z}</div>
-            <div className="grid grid-cols-2 min-[520px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3">
-              {tables.filter((t) => t.zone === z).map((t, i) => {
-                const o = byTable[t.id];
-                const total = o?.order_items.filter((x) => x.status !== "cancelled").reduce((s, x) => s + Number(x.price_snapshot) * x.qty, 0) ?? 0;
-                const anyReady = o?.order_items.some((x) => x.status === "ready");
-                return (
-                  /* One card per table, whatever its state: the tap target on top, and — for a table
-                     with no ticket — a Reserve button inside the card. Reserve used to be a line of
-                     11px text floating under the card, which made free cards look shorter than the
-                     occupied ones beside them and was a 16px target. Reserved is amber, never
-                     --color-saffron: that aliases to the green tint in the dark theme. */
-                  <motion.div key={t.id} className={cn("feather feather-lift flex flex-col relative overflow-hidden",
-                      t.status === "occupied" && "filled", t.status === "reserved" && "!border-[var(--color-orange)] border-dashed")}
-                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
-                    <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`} className="flex-1 min-h-[5.75rem] p-3 flex flex-col">
-                      <div className="flex justify-between items-start gap-1.5"><span className="font-display text-2xl leading-none">{t.name}</span><span className="flex items-center gap-1.5 shrink-0">{anyReady && <span className="ready-flag">Ready</span>}<span className="text-[11px] flex items-center gap-1 text-[var(--card-muted)]"><Users size={11} />{t.capacity}</span></span></div>
-                      <div className="mt-auto">
-                        {o ? (<><div className="num text-xs text-[var(--card-muted)] truncate">#{o.order_no} · {fmtSince(o.created_at)}</div><div className="num font-semibold">{formatINR(total)}</div></>)
-                          : <div className={cn("text-xs font-semibold flex items-center gap-1.5", t.status === "reserved" ? "text-[var(--color-orange)]" : "text-steel")}><span className={cn("h-1.5 w-1.5 rounded-full", t.status === "reserved" ? "bg-[var(--color-orange)]" : "bg-[var(--color-green)]")} />{t.status === "reserved" ? "Reserved" : "Free"}</div>}
-                      </div>
-                    </Link>
-                    {!o && (
-                      <div className="px-1.5 pb-1.5">
-                        <button type="button" onClick={() => start(async () => { const r = await setTableStatus(t.id, t.status === "reserved" ? "free" : "reserved"); if ("error" in r) toast(r.error!, "err"); })} disabled={pending}
-                          aria-label={`${t.status === "reserved" ? "Unreserve" : "Reserve"} ${t.name}`} className="room-act w-full text-[12px] font-semibold">{t.status === "reserved" ? "Unreserve" : "Reserve"}</button>
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
+  const reserve = (t: Table) => start(async () => { const r = await setTableStatus(t.id, t.status === "reserved" ? "free" : "reserved"); if ("error" in r) toast(r.error!, "err"); });
+
+  /** One table: a link to its ticket, or — free — a card whose Take order covers it, with Reserve on top. */
+  const tableCard = (t: Table, i: number) => {
+    const o = byTable.get(t.id); const s = tableState(t); const late = lateOf(o); const I = SVC_ICON[s];
+    const seats = <span className="ml-auto flex items-center gap-1 text-[14px] font-bold text-[var(--color-label-2)] shrink-0"><Users size={16} aria-hidden />{t.capacity}</span>;
+    const motionProps = { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { delay: Math.min(i, 12) * 0.012 } };
+    if (!o && (s === "free" || s === "hold")) {
+      return (
+        <motion.div key={t.id} {...motionProps} className={cn("svc-table", stClass(s))} data-table-card={t.name} data-state={s}>
+          <div className="flex items-center gap-2 min-w-0 -my-1">
+            <span className="tname">{t.name}</span>{seats}
+            {/* Reserve sits over the card's tap area: the whole card takes the order, this button holds the table */}
+            <button type="button" onClick={() => reserve(t)} disabled={pending} aria-label={`${s === "hold" ? "Unreserve" : "Reserve"} ${t.name}`} title={s === "hold" ? "Unreserve" : "Reserve for a booking"}
+              className="relative z-[1] -mr-1.5 h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 shrink-0 rounded-xl grid place-items-center text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]">
+              {s === "hold" ? <CalendarX size={18} /> : <CalendarClock size={18} />}</button>
           </div>
-        ))}
-        {tables.length === 0 && <Empty title="No tables set up" hint="Add tables in Settings, or take a takeaway order right away." action={<Link href="/orders/new"><Button>New takeaway order</Button></Link>} />}
-      </section>
+          {s === "hold" && <div className="tstate"><CalendarClock size={18} aria-hidden /><Say w="reserved" start /></div>}
+          <Link href={`/orders/new?table=${t.id}`} className="svc-take mt-auto after:absolute after:inset-0 after:rounded-[20px]" aria-label={`Take order at ${t.name}`}><Plus size={20} aria-hidden /><Say w="take_order" /></Link>
+        </motion.div>
+      );
+    }
+    return (
+      <motion.div key={t.id} {...motionProps} className="min-w-0 flex">
+        <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`} className={cn("svc-table flex-1", stClass(s))} data-table-card={t.name} data-state={s} data-late={late || undefined}>
+          <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span>{seats}</div>
+          <div className="tstate"><I size={19} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={o ? SVC_WORD[s] : "at_table"} start /></div>
+          <div className="mt-auto pt-2 flex items-end gap-2 font-bold min-w-0">
+            {o ? <><span className={cn("flex items-center gap-1 text-[14px] shrink-0", Date.now() - new Date(o.created_at).getTime() > STALE_MS ? "text-[var(--color-orange)]" : "text-[var(--color-label-2)]")}><Clock size={15} aria-hidden />{fmtSince(o.created_at)}</span>
+              <span className="ml-auto font-display num text-[21px] leading-none truncate">{formatINR(totalOf(o), { whole: true })}</span></>
+              : <span className="text-[13px] text-[var(--color-label-2)]">No ticket yet — tap to order</span>}
+          </div>
+          {late && <span className="late-tag"><SVC_ICON.late size={13} aria-hidden /> LATE</span>}
+        </Link>
+      </motion.div>
+    );
+  };
 
-      <section data-open-orders>
-        <div className="flex items-center gap-2 mb-3">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-steel">Open orders</h2>
-          <span className="h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold num grid place-items-center" data-count>{orders.length}</span>
-          {tally.length > 0 && <span className="ml-auto hidden sm:flex items-center gap-3 text-[11.5px] text-steel">{tally.map(({ k, n }) => <span key={k} className="inline-flex items-center gap-1.5 whitespace-nowrap"><span className="h-2 w-2 rounded-full" style={{ background: ST[k].color }} /><b className="num text-[var(--color-label)]">{n}</b> {ST[k].short}</span>)}</span>}
-        </div>
-        {orders.length === 0
-          ? <div className="rounded-[22px] border border-dashed border-[var(--color-separator)] p-8 text-center text-sm text-steel">Nothing open. Quiet before the rush.</div>
-          : <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 min-[100rem]:grid-cols-4 gap-3 lg:gap-4" data-order-grid>
-          {orders.map((o, i) => {
-            const live = o.order_items.filter((x) => x.status !== "cancelled");
-            const total = live.reduce((s, x) => s + Number(x.price_snapshot) * x.qty, 0);
-            const items = live.reduce((s, x) => s + x.qty, 0);
-            const st = stateOf(o);
-            const tbl = tables.find((t) => t.id === o.table_id);
-            const kind = KIND[o.type] ?? KIND.dine_in;
-            const stale = Date.now() - new Date(o.created_at).getTime() > STALE_MS;
-            /* how far the kitchen has got, by plates: served, ready, on the fire, waiting */
-            const by = (k: St) => live.filter((x) => stOf(x.status) === k).reduce((s, x) => s + x.qty, 0);
-            const parts = (["served", "ready", "preparing", "pending"] as St[]).map((k) => ({ k, n: by(k) })).filter((p) => p.n);
-            return (
-              /* one card per order: what and where on top with its state, the kitchen's progress as a bar,
-                 the first dishes with their own state, and the total in a footer strip edge to edge */
-              <motion.div key={o.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.03 }} className="min-w-0">
-              <Link href={`/orders/${o.id}`} data-order={o.order_no} data-state={st}
-                className="feather feather-lift group relative overflow-hidden h-full flex flex-col"
-                style={st === "ready" ? { background: "color-mix(in srgb, var(--color-green) 7%, var(--color-bg-2))", borderColor: "color-mix(in srgb, var(--color-green) 35%, transparent)" } : undefined}>
-                <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: ST[st].color }} />
-                <div className="p-4 pl-5 flex flex-col gap-3 flex-1 min-w-0">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <span className="h-11 w-11 rounded-[14px] bg-[var(--color-fill)] grid place-items-center shrink-0 text-[var(--color-label-2)]" aria-hidden>
-                      {tbl ? <span className="font-display text-[17px] leading-none text-[var(--color-label)] num">{tbl.name}</span> : <kind.Icon size={19} />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[15px] font-semibold truncate" data-title>{tbl ? `Table ${tbl.name}` : kind.label}</div>
-                      <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-steel num min-w-0">
-                        <span className="shrink-0">#{o.order_no}</span><span aria-hidden>·</span><span className="shrink-0">{items} item{items === 1 ? "" : "s"}</span><span aria-hidden>·</span>
-                        <span className={cn("inline-flex items-center gap-1 shrink-0", stale && "text-[var(--color-orange)] font-semibold")} title={stale ? "Open longer than a service — bill it or close it" : undefined} data-age><Clock size={11} />{fmtSince(o.created_at)}</span>
+  /** A parcel, a delivery or room service: no table, so the card says what it is instead. */
+  const looseCard = (o: Order, i: number) => {
+    const s = stateOf(o); const late = lateOf(o); const k = KIND[o.type] ?? KIND.takeaway; const I = SVC_ICON[s];
+    return (
+      <motion.div key={o.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.012 }} className="min-w-0 flex">
+        <Link href={`/orders/${o.id}`} className={cn("svc-table flex-1", stClass(s))} data-table-card={`#${o.order_no}`} data-state={s} data-late={late || undefined}>
+          <div className="flex items-center gap-2 min-w-0"><k.Icon size={22} aria-hidden className="shrink-0" /><span className="tname !text-[28px]">#{o.order_no}</span></div>
+          <div className="mt-1 text-[13px] font-semibold text-[var(--color-label-2)] truncate"><Say w={k.word} start />{o.customer_name ? ` · ${o.customer_name}` : ""}</div>
+          <div className="tstate"><I size={19} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={SVC_WORD[s]} start /></div>
+          <div className="mt-auto pt-2 flex items-end gap-2 font-bold"><span className="flex items-center gap-1 text-[14px] text-[var(--color-label-2)] shrink-0"><Clock size={15} aria-hidden />{fmtSince(o.created_at)}</span>
+            <span className="ml-auto font-display num text-[21px] leading-none truncate">{formatINR(totalOf(o), { whole: true })}</span></div>
+          {late && <span className="late-tag"><SVC_ICON.late size={13} aria-hidden /> LATE</span>}
+        </Link>
+      </motion.div>
+    );
+  };
+
+  const GRID = "grid grid-cols-2 min-[35rem]:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 min-[87.5rem]:grid-cols-6 gap-3 md:gap-4";
+  return (
+    <div className="space-y-6">
+      {/* what each colour means, with how many tables are in it — tap one to see only those */}
+      {/* On a phone the chips are one compact row that slides sideways (they wrapped into three uneven rows);
+          from sm they wrap beside Tables · List. .rail-fade's mask is unlayered: only an !important utility
+          takes it off. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2" data-legend>
+        <Rail wrapClassName="min-w-0 sm:flex-1" arrowClassName="!bottom-0" label="Tables by state"
+          className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible sm:![mask-image:none] sm:![-webkit-mask-image:none] [scrollbar-width:none]">
+          {chips.map((s) => <StateChip key={s} s={s} n={counts.get(s) ?? 0} on={only === s} onClick={() => setOnly((x) => (x === s ? null : s))} className="shrink-0 max-sm:!pl-3 max-sm:!pr-1.5 max-sm:!gap-1.5 max-sm:!text-[13px]" />)}
+        </Rail>
+        <Segmented value={view} onChange={pickView} className="sm:ml-auto shrink-0 max-sm:w-full max-sm:[&>button]:flex-1"
+          options={[{ value: "tables", label: <span className="inline-flex items-center gap-1.5"><LayoutGrid size={15} /> Tables</span> }, { value: "list", label: <span className="inline-flex items-center gap-1.5"><List size={15} /> List</span> }]} />
+      </div>
+
+      {view === "tables" ? (<>
+        {zones.map((z) => {
+          const here = tables.filter((t) => t.zone === z && shows(tableState(t), lateOf(byTable.get(t.id))));
+          if (!here.length) return null;
+          return (
+            <section key={z} className="min-w-0" data-zone={z}>
+              <h2 className="eyebrow !text-[12px] !font-semibold uppercase !tracking-[0.14em] mb-3">{z}</h2>
+              <div className={GRID}>{here.map((t, i) => tableCard(t, i))}</div>
+            </section>
+          );
+        })}
+        {loose.filter((o) => shows(stateOf(o), lateOf(o))).length > 0 && (
+          <section className="min-w-0" data-zone="parcel">
+            <h2 className="eyebrow !text-[12px] !font-semibold uppercase !tracking-[0.14em] mb-3">Parcel · delivery · room</h2>
+            <div className={GRID}>{loose.filter((o) => shows(stateOf(o), lateOf(o))).map((o, i) => looseCard(o, i))}</div>
+          </section>
+        )}
+        {only && <button type="button" onClick={() => setOnly(null)} className="svc-btn quiet sm w-full sm:w-auto">Show every table</button>}
+        {tables.length === 0 && <Empty title="No tables set up" hint="Add tables in Settings, or take a parcel order right away." action={<Link href="/orders/new?type=takeaway" className="svc-btn go sm"><ShoppingBag size={18} /> Parcel / Takeaway</Link>} />}
+      </>) : (
+        <section data-open-orders>
+          {orders.length === 0
+            ? <div className="rounded-[22px] border border-dashed border-[var(--color-separator)] p-8 text-center text-sm text-steel">Nothing open. Quiet before the rush.</div>
+            : <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 min-[100rem]:grid-cols-4 gap-3 lg:gap-4" data-order-grid>
+            {orders.filter((o) => shows(stateOf(o), lateOf(o))).map((o, i) => {
+              const items = live(o); const plates = items.reduce((s, x) => s + x.qty, 0); const s = stateOf(o); const I = SVC_ICON[s];
+              const tbl = tables.find((t) => t.id === o.table_id); const k = KIND[o.type] ?? KIND.dine_in; const late = lateOf(o);
+              const by = (st: string) => items.filter((x) => (x.status === "pending" || x.status === "preparing" || x.status === "ready" ? x.status : "served") === st).reduce((t, x) => t + x.qty, 0);
+              const parts = (["served", "ready", "preparing", "pending"] as const).map((st) => ({ st, n: by(st) })).filter((p) => p.n);
+              return (
+                /* one card per order: where and its state on top, the kitchen's progress plate by plate,
+                   the first dishes, and the total in a footer strip edge to edge */
+                <motion.div key={o.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.02 }} className="min-w-0">
+                  <Link href={`/orders/${o.id}`} data-order={o.order_no} data-state={s} className={cn("feather feather-lift group relative overflow-hidden h-full flex flex-col", stClass(s))}
+                    style={{ borderColor: s === "ready" || late ? `color-mix(in srgb, var(${late ? "--color-red" : "--color-green"}) 45%, transparent)` : undefined }}>
+                    <span aria-hidden className="absolute inset-y-0 left-0 w-[4px]" style={{ background: late ? "var(--color-red)" : "var(--st)" }} />
+                    <div className="p-4 pl-5 flex flex-col gap-3 flex-1 min-w-0">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <span className="h-12 w-12 rounded-[14px] bg-[var(--color-fill)] grid place-items-center shrink-0" aria-hidden>
+                          {tbl ? <span className="font-display text-[18px] leading-none num">{tbl.name}</span> : <k.Icon size={20} />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[16px] font-bold truncate" data-title>{tbl ? `Table ${tbl.name}` : <Say w={k.word} start />}</div>
+                          <div className="mt-0.5 flex items-center gap-1.5 text-[13px] text-steel num min-w-0">
+                            <span className="shrink-0">#{o.order_no}</span><span aria-hidden>·</span><span className="shrink-0">{plates} item{plates === 1 ? "" : "s"}</span><span aria-hidden>·</span>
+                            <span className={cn("inline-flex items-center gap-1 shrink-0", Date.now() - new Date(o.created_at).getTime() > STALE_MS && "text-[var(--color-orange)] font-semibold")} data-age><Clock size={12} />{fmtSince(o.created_at)}</span>
+                          </div>
+                          {o.customer_name && <div className="mt-0.5 text-[13px] truncate">{o.customer_name}</div>}
+                        </div>
+                        <span className={cn("svc-chip lone !min-h-8 !text-[13px] !px-2.5 shrink-0", late ? "st-late" : stClass(s))} data-status><I size={14} aria-hidden /><Say w={late ? "late" : SVC_WORD[s]} start /></span>
                       </div>
-                      {o.customer_name && <div className="mt-0.5 text-[12.5px] truncate">{o.customer_name}</div>}
+                      <div data-progress>
+                        <div className="h-2 rounded-full bg-[var(--color-fill)] overflow-hidden flex gap-px">
+                          {parts.map((p) => <span key={p.st} className={cn("h-full", PLATE[p.st].cls)} style={{ width: `${(p.n / Math.max(1, plates)) * 100}%`, background: "var(--st)" }} />)}
+                        </div>
+                        <div className="mt-1.5 text-[12px] text-steel flex flex-wrap gap-x-3">{parts.slice().reverse().map((p) => <span key={p.st} className={cn("num whitespace-nowrap inline-flex items-center gap-1", PLATE[p.st].cls)}><span className="h-2 w-2 rounded-full" style={{ background: "var(--st)" }} />{p.n} <Say w={PLATE[p.st].word} /></span>)}</div>
+                      </div>
+                      <ul className="space-y-1 min-w-0" data-dishes>
+                        {items.slice(0, 3).map((x) => (
+                          <li key={x.id} className="flex items-center gap-2 text-[14px] min-w-0">
+                            <span className={cn("h-2 w-2 rounded-full shrink-0", (PLATE[x.status] ?? PLATE.served).cls)} style={{ background: "var(--st)" }} />
+                            <span className="num text-steel shrink-0">{x.qty}×</span><span className="truncate">{x.name_snapshot}</span>
+                          </li>
+                        ))}
+                        {items.length > 3 && <li className="text-[12px] text-steel pl-4">+{items.length - 3} more</li>}
+                      </ul>
                     </div>
-                    <span className="shrink-0 inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11.5px] font-semibold whitespace-nowrap" data-status
-                      style={{ background: `color-mix(in srgb, ${st === "pending" ? "var(--color-label-2)" : ST[st].color} ${st === "pending" ? 14 : 16}%, transparent)`, color: st === "pending" ? "var(--color-label-2)" : ST[st].color }}>
-                      <span className={cn("h-1.5 w-1.5 rounded-full", st === "ready" && "animate-pulse")} style={{ background: st === "pending" ? "var(--color-label-2)" : ST[st].color }} />{ST[st].label}
-                    </span>
-                  </div>
-
-                  {/* the kitchen's progress, plate by plate */}
-                  <div data-progress>
-                    <div className="h-1.5 rounded-full bg-[var(--color-fill)] overflow-hidden flex gap-px">
-                      {parts.map((p) => <span key={p.k} className="h-full" style={{ width: `${(p.n / Math.max(1, items)) * 100}%`, background: ST[p.k].color }} />)}
+                    <div className="mt-auto flex items-center justify-between gap-3 px-4 pl-5 h-12 border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)]">
+                      <span className="font-display num text-[20px] leading-none" data-total>{formatINR(totalOf(o))}</span>
+                      <span className="inline-flex items-center gap-0.5 text-[13px] font-semibold text-steel group-hover:text-[var(--color-label)] transition-colors">View order<ChevronRight size={15} className="transition-transform group-hover:translate-x-0.5" /></span>
                     </div>
-                    <div className="mt-1.5 text-[11.5px] text-steel flex flex-wrap gap-x-2.5">{parts.slice().reverse().map((p) => <span key={p.k} className="num whitespace-nowrap inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full" style={{ background: ST[p.k].color }} />{p.n} {ST[p.k].short}</span>)}</div>
-                  </div>
-
-                  {/* the first dishes, each with its own state */}
-                  <ul className="space-y-1 min-w-0" data-dishes>
-                    {live.slice(0, 3).map((x) => (
-                      <li key={x.id} className="flex items-center gap-2 text-[13px] min-w-0">
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: ST[stOf(x.status)].color }} title={ST[stOf(x.status)].label} />
-                        <span className="num text-steel shrink-0">{x.qty}×</span><span className="truncate">{x.name_snapshot}</span>
-                      </li>
-                    ))}
-                    {live.length > 3 && <li className="text-[12px] text-steel pl-3.5">+{live.length - 3} more</li>}
-                  </ul>
-                </div>
-                {/* the total, in a footer strip from edge to edge */}
-                <div className="mt-auto flex items-center justify-between gap-3 px-4 pl-5 h-12 border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)]">
-                  <span className="font-display num text-[19px] leading-none" data-total>{formatINR(total)}</span>
-                  <span className="inline-flex items-center gap-0.5 text-[12.5px] font-semibold text-steel group-hover:text-[var(--color-label)] transition-colors">View order<ChevronRight size={15} className="transition-transform group-hover:translate-x-0.5" /></span>
-                </div>
-              </Link>
-              </motion.div>
-            );
-          })}
-        </div>}
-      </section>
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </div>}
+        </section>
+      )}
     </div>
   );
 }

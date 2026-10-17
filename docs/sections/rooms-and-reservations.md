@@ -50,6 +50,18 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
 
 ## Before you edit
 
+- **Reservations is Simple Service (2026-10-15).** `SvcHead` with **New booking** (the phone-booking sheet) · a
+  strip of seven days (`[data-days]`: today, or from the chosen day when it is further out — `page.tsx` reads
+  their counts) with a 44px arrow either side from `sm` (`aria-label` Previous day / Next day — the `[` `]` keys
+  press them); the chosen day's tile also says how many guests are expected · chips **Coming** (blue), **Late**
+  (red: not seated 15 min after its time, in IST) and **At table** (green), each filtering — on a phone one row
+  of equal parts (`grid-flow-col auto-cols-fr`; they wrapped onto two lines with the guest count) · tabs **Day · Month · Reviews**: the month grid
+  (`Calendar.tsx`, unchanged) is the Month tab and a tap on a day comes back to Day. A booking is one card
+  (`[data-res]`, `data-kind`): the time big with AM/PM, the name (two lines), party, occasion, offer, the state
+  pill, then **Seat now** (the table sheet), Call, the WhatsApp confirmation and ⋯ (*Did not come*, *Cancel
+  booking*); a seated one has **Take order** at its table and **Done**. Late first, then by time; two across from
+  `md`, three from `min-[100rem]`.
+
 - **The state chips (Ready · Occupied · Arriving · Cleaning · Maintenance) are a `Rail`** labelled
   "Rooms by state", wrapped `flex flex-1` so it still shares the toolbar with Room types & rates and
   + Room. On a phone and an iPad in portrait the chips run past the edge; the round arrow on the right

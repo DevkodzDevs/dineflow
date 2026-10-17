@@ -190,6 +190,23 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
 
 ## Before you edit
 
+- **The language button** (2026-10-15): the top bar has `LangButton` before the theme button — a small menu of
+  English / English + தமிழ் / English + हिन्दी for whoever uses the device; it shows அ or अ when one is on. The app
+  layout reads the `df-lang` cookie into `SayProvider` (`components/ui/Say.tsx`) so the first paint already has the
+  second line. See design-system.md (Simple Service).
+- **The keyboard** (owner, 2026-10-15: every Dining section by keyboard). `components/shell/Keys.tsx` (mounted in
+  the app layout) is the one listener; `keymap.ts` is the table it reads and its `?` sheet prints. Everywhere:
+  **Ctrl/⌘ K** opens *Go to* (type a few letters of any section this person may open, ↑ ↓, Enter — the top bar's
+  "Go to a section" opens it too; it used to show ⌘K and do nothing), **G + letter** goes to a section (D O N R P
+  L C K B M I T S H), **N** a new order, **?** the list for this screen. On a list (`items` per screen: Orders'
+  tables and tickets, Billing, Reservations `data-res`, Pulse `data-table`, Online orders `data-online`,
+  Customers `data-customer`, Menu `data-dish`, Pantry `data-ing`, Billing, the till's dishes) **↑ ↓ ← →** (and J K) move a tint outline
+  (`[data-kbd-on]`) by where things sit on screen, **Enter** opens it (`open` selector, else the item or its
+  first button), **Esc** lets go; the till adds one with Enter and takes one off with Backspace. **/** focuses a
+  screen's search (`search`; the till keeps its own), **Ctrl Enter** presses `data-kbd-primary` (the bill's
+  Generate / Mark paid; the till keeps its own Ctrl Enter), **[ ]** change the Reservations day; the kitchen
+  keeps 1–9 and R. Nothing fires while typing in a field, with a dialog open, or with Alt. Adding a list:
+  give it an entry in `SCREENS`, not a new listener. Probe: `keyscheck.mjs` (17).
 - **`app/(app)/error.tsx` keeps the shell up when one screen fails** (`ErrorRecovery inline`): the
   sidebar, tab bar and top bar stay, with *Try again*. Before, only the root boundary caught it and
   one failing screen replaced the whole app with a bare card. (Still **no** `loading.tsx` — see

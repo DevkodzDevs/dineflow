@@ -2,7 +2,6 @@ import { aiEnabled } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { OPTION_SELECTS } from "@/lib/menuOptions";
-import { PageHeader } from "@/components/shell/PageHeader";
 import { MenuClient } from "./MenuClient";
 
 export const metadata = { title: "Menu" };
@@ -24,7 +23,6 @@ export default async function MenuPage() {
   ]);
   return (
     <>
-      <PageHeader eyebrow="What you serve" title="Menu & recipes" />
       <MenuClient categories={categories ?? []} items={items ?? []} ingredients={ingredients ?? []} recipes={recipes ?? []} ai={aiEnabled()} stations={session.restaurant.kds_stations ?? []}
         variants={(variants ?? []) as never} groups={(groups ?? []) as never} links={links ?? []} combos={combos ?? []} />
     </>

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink } from "lucide-react";
+import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink, X } from "lucide-react";
 import { Button, Field, Card, cn, Pill } from "@/components/ui";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod } from "@dineflow/shared";
@@ -159,16 +159,27 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
                 </div>
               )}
               {redeem > 0 && redeem < minRedeem && <p className="text-xs text-chili">At least {minRedeem} points at a time.</p>}
-              {/* stretch, not centre: the button then matches the box beside it instead of
-                  sitting a few pixels short of it */}
-              <div className="flex items-stretch gap-2">
-                <TicketIcon size={14} className="text-steel shrink-0 self-center" />
-                {coupon ? (
-                  <><span className="text-xs flex-1 min-w-0 truncate"><b>{coupon.code}</b> · {coupon.title} · {Number(coupon.pct) > 0 ? `${coupon.pct}% off` : `${formatINR(Number(coupon.amount))} off`}</span><button type="button" className="text-xs underline text-steel" onClick={() => { setCoupon(null); setCode(""); }}>remove</button></>
-                ) : (
-                  <><input placeholder="Coupon code" className="num uppercase flex-1 min-w-[8rem]" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }} /><Button size="sm" variant="outline" type="button" className="!h-auto self-stretch" disabled={!code.trim() || pending} onClick={applyCoupon}>Apply</Button></>
-                )}
-              </div>
+              {/* The coupon: the ticket sits inside the box like a search field's glass, and Apply is the box's
+                  own height (items-stretch, !h-auto). Once applied it is a green card — the code, what it
+                  takes off, and a cross to take it back. It was a loose 14px icon beside a bare box. */}
+              {coupon ? (
+                <div className="flex items-center gap-3 rounded-xl bg-[var(--color-green-2)] pl-2.5 pr-1.5 py-2" data-coupon-applied>
+                  <span className="h-9 w-9 rounded-lg grid place-items-center shrink-0 bg-[var(--color-tint)] text-[var(--color-on-tint)]"><TicketIcon size={16} /></span>
+                  <span className="flex-1 min-w-0 leading-tight">
+                    <span className="block text-sm font-semibold num uppercase truncate">{coupon.code}</span>
+                    <span className="block text-xs text-steel truncate">{coupon.title} · {Number(coupon.pct) > 0 ? `${coupon.pct}% off` : `${formatINR(Number(coupon.amount))} off`}</span>
+                  </span>
+                  <button type="button" aria-label="Remove the coupon" title="Remove the coupon" className="h-10 w-10 shrink-0 rounded-lg grid place-items-center text-steel hover:text-chili hover:bg-[var(--color-fill)]" onClick={() => { setCoupon(null); setCode(""); }}><X size={16} /></button>
+                </div>
+              ) : (
+                <div className="flex items-stretch gap-2" data-coupon>
+                  <div className="relative flex-1 min-w-0">
+                    <TicketIcon size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
+                    <input placeholder="Coupon code" aria-label="Coupon code" className="num uppercase !pl-11 w-full" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }} />
+                  </div>
+                  <Button variant="gray" type="button" className="!h-auto shrink-0 !px-5" disabled={!code.trim() || pending} onClick={applyCoupon}>Apply</Button>
+                </div>
+              )}
               {couponErr && <p className="text-xs text-chili">{couponErr}</p>}
             </div>
             {promisedAt && (
@@ -197,7 +208,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
             <p className="text-xs text-steel mt-3">GST {restaurant.gst_rate}% split as CGST + SGST{Number(restaurant.service_charge_pct) > 0 && <>, service charge {restaurant.service_charge_pct}%</>}. Change these in Settings.</p>
             {live.some((i) => i.status === "pending" || i.status === "preparing") && <p className="text-xs text-chili mt-2">Some items are still in the kitchen.</p>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
-            <Button size="lg" className="w-full mt-5" disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt, kept, { phone: guest.phone, name: guest.name, redeem, coupon: coupon?.code }); if ("error" in r) setErr(r.error!); else setPays([{ method: "upi", amount: 0, ref: "" }]); })}>Generate bill</Button>
+            <Button size="lg" className="w-full mt-5" data-kbd-primary disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt, kept, { phone: guest.phone, name: guest.name, redeem, coupon: coupon?.code }); if ("error" in r) setErr(r.error!); else setPays([{ method: "upi", amount: 0, ref: "" }]); })}>Generate bill</Button>
             {inHouse.length > 0 && order.status === "open" && (
               <div className="mt-4 pt-4 border-t border-dashed border-line"><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1"><BedDouble size={12} /> Or charge to a room</div>
                 <div className="flex gap-2"><select value={roomFor} onChange={(e) => setRoomFor(e.target.value)}><option value="">In-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
@@ -234,7 +245,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
             <div className={cn("mt-4 flex justify-between text-sm", paid + 0.01 < totals.total ? "text-chili" : "text-ink")}><span>Received</span><span className="num font-semibold">{formatINR(paid)} / {formatINR(totals.total)}</span></div>
             {paid > totals.total + 0.01 && <div className="flex justify-between text-sm text-steel"><span>Change to return</span><span className="num">{formatINR(paid - totals.total)}</span></div>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
-            <Button size="lg" className="w-full mt-4" disabled={pending || paid + 0.01 < totals.total} onClick={() => start(async () => {
+            <Button data-kbd-primary size="lg" className="w-full mt-4" disabled={pending || paid + 0.01 < totals.total} onClick={() => start(async () => {
               const settled = pays.map((p) => ({ ...p, amount: p.method === "cash" && paid > totals.total ? p.amount - (paid - totals.total) : p.amount }));
               setJustPrinted(true);
               try { await printBill(billData()); } catch { /* printer trouble must not stop the payment */ }

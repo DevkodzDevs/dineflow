@@ -2,9 +2,10 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, X, Bike, Clock, Link2, AlertTriangle } from "lucide-react";
+import { Check, X, Bike, Clock, Link2, AlertTriangle, Bell, Flame, PackageCheck, BadgeCheck, Banknote, ExternalLink, MapPin } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { Button, Card, Pill, StatTile, Sheet, cn, Empty } from "@/components/ui";
+import { Button, Card, Sheet, cn, Empty } from "@/components/ui";
+import { Say } from "@/components/ui/Say";
 import { formatINR, fmtSince } from "@/lib/format";
 import { usePrinters } from "@/lib/print/usePrinter";
 import { acceptOnline, rejectOnline, setOnlineStatus, mapDish, suggestDishMap } from "./actions";
@@ -12,8 +13,16 @@ import { AiButton } from "@/components/ui/AiButton";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 
 type OO = { id: string; external_id: string; display_id: string | null; status: string; customer_name: string | null; customer_phone: string | null; address: string | null; items: { menu_item_id: string | null; name: string; qty: number; price: number; note: string | null }[]; unmatched: string[]; gross: number; commission: number; payout: number; is_prepaid: boolean; placed_at: string; order_id: string | null; order_channels: { kind: string; label: string; prep_minutes: number } | null };
-const LOGO: Record<string, string> = { swiggy: "bg-[#fc8019] text-white", zomato: "bg-[#e23744] text-white", website: "bg-ink text-on-label", ondc: "bg-mint text-on-tint", other: "bg-porcelain-2 text-ink" };
+/* each channel's own colour on its card's head band — what a packer recognises across the counter */
+const BAND: Record<string, string> = { swiggy: "bg-[#fc8019] text-white", zomato: "bg-[#e23744] text-white", website: "bg-ink text-on-label", ondc: "bg-mint text-on-tint", other: "bg-porcelain-2 text-ink" };
+type Tab = "new" | "cook" | "ready";
+const TAB_OF = (s: string): Tab => (s === "new" ? "new" : s === "ready" ? "ready" : "cook");
 
+/**
+ * Online orders as the packer works them (globals.css SIMPLE SERVICE): three tabs — New (accept them
+ * before the aggregator gives up), Cooking, Ready — and one card per order with the channel's colour
+ * on top, the dishes with their counts, the total big, and one big button: Accept, Food ready, Picked up.
+ */
 export function OnlineClient({ orders, channels, menu, ai = false }: { orders: OO[]; channels: { id: string; kind: string; label: string; is_live: boolean }[]; menu: { id: string; name: string; price: number }[]; ai?: boolean }) {
   const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   const [fix, setFix] = useState<{ order: OO; line: string } | null>(null);
@@ -23,52 +32,90 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
   const [hint, setHint] = useState<{ line: string; menu_item_id: string | null; name: string | null; confidence: number } | null>(null); const [hinting, setHinting] = useState(false);
   const { printKot } = usePrinters();
   useLive(["online_orders"], 30000);
-  const newCount = orders.filter((o) => o.status === "new").length; const prev = useRef(newCount);
-  useEffect(() => { if (newCount > prev.current) { try { new Audio("data:audio/wav;base64,UklGRl9vAAA=").play(); } catch { /* muted */ } } prev.current = newCount; }, [newCount]);
   const live = orders.filter((o) => ["new", "accepted", "preparing", "ready"].includes(o.status));
-  const news = live.filter((o) => o.status === "new");
+  const n = (t: Tab) => live.filter((o) => TAB_OF(o.status) === t).length;
+  // New when anything is waiting; otherwise whatever has orders in it
+  const [tab, setTab] = useState<Tab>(() => (n("new") ? "new" : n("cook") ? "cook" : n("ready") ? "ready" : "new"));
+  const newCount = orders.filter((o) => o.status === "new").length; const prev = useRef(newCount);
+  // a new order: a sound, and the New tab comes forward
+  useEffect(() => { if (newCount > prev.current) { try { new Audio("data:audio/wav;base64,UklGRl9vAAA=").play(); } catch { /* muted */ } setTab("new"); } prev.current = newCount; }, [newCount]);
+  const [, tick] = useState(0); useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
   const today = orders.filter((o) => o.status !== "rejected");
+  const shown = live.filter((o) => TAB_OF(o.status) === tab);
   const accept = (o: OO) => start(async () => {
     const r = await acceptOnline(o.id); if ("error" in r) return setErr(r.error!);
     try { await printKot({ kotNo: o.display_id ?? o.external_id, when: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: `${o.order_channels?.label ?? "Online"} · ${o.customer_name ?? ""}`, items: o.items.map((i) => ({ name: i.name, qty: i.qty, note: i.note })) }); } catch { setErr("Accepted — but the kitchen ticket did not print. Check the printer, then print it from the order."); }
   });
+  const TABS: { k: Tab; w: "new" | "cooking" | "ready"; Icon: typeof Bell }[] = [{ k: "new", w: "new", Icon: Bell }, { k: "cook", w: "cooking", Icon: Flame }, { k: "ready", w: "ready", Icon: PackageCheck }];
   return (
     <div className="space-y-5">
       {channels.length === 0 && <Card className="!bg-champagne-2 flex items-start gap-3"><Link2 size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>No channels connected yet.</b> Add one on the <Link href="/channels" className="underline font-semibold">Channels</Link> page and give the aggregator your webhook URL. Until Swiggy/Zomato approve your integration you can point your own website or an UrbanPiper-style middleware at the same URL.</div></Card>}
-      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
-        <StatTile label="Waiting to accept" value={String(news.length)} tone={news.length ? "alert" : "good"} />
-        <StatTile label="In the kitchen" value={String(live.length - news.length)} delay={0.05} />
-        <StatTile label="Today's online sales" value={formatINR(today.reduce((t, o) => t + Number(o.gross), 0))} delay={0.1} />
-        <StatTile label="Commission" value={formatINR(today.reduce((t, o) => t + Number(o.commission), 0))} sub={`payout ${formatINR(today.reduce((t, o) => t + Number(o.payout), 0))}`} delay={0.15} />
+      <div className="grid grid-cols-3 gap-2 sm:max-w-xl" role="tablist" aria-label="Online orders" data-online-tabs>
+        {TABS.map(({ k, w, Icon }) => {
+          const c = n(k); const on = tab === k;
+          return (
+            <button key={k} type="button" role="tab" aria-selected={on} onClick={() => setTab(k)}
+              className={cn("!min-h-12 rounded-full px-2 flex items-center justify-center gap-1.5 text-[14px] font-extrabold transition-colors min-w-0", on ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
+              <Icon size={16} aria-hidden className="shrink-0" /><Say w={w} />
+              <b className={cn("num shrink-0 min-w-6 h-6 px-1.5 rounded-full grid place-items-center text-[13px]", k === "new" && c ? "bg-[var(--color-red)] text-white" : on ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")}>{c}</b>
+            </button>
+          );
+        })}
       </div>
-      {live.length === 0 ? <Empty title="No live online orders" hint="New orders pop up here the second the aggregator sends them." /> : (
+      {shown.length === 0 ? <Empty title={tab === "new" ? "No new online orders" : tab === "cook" ? "Nothing cooking for delivery" : "Nothing waiting for a rider"} hint="New orders pop up here — with a sound — the second the aggregator sends them." /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"><AnimatePresence>
-          {live.map((o) => (
-            <motion.div key={o.id} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
-              <Card className={cn("h-full", o.status === "new" && "border-saffron shadow-glow")}>
-                <div className="flex items-center gap-2"><span className={cn("px-2 py-0.5 rounded-lg text-[11px] font-bold capitalize", LOGO[o.order_channels?.kind ?? "other"])}>{o.order_channels?.label ?? "Online"}</span>
-                  <span className="num text-xs text-steel">#{o.display_id ?? o.external_id}</span><span className="ml-auto num text-xs text-steel flex items-center gap-1"><Clock size={11} /> {fmtSince(o.placed_at)}</span></div>
-                <div className="mt-2 font-semibold">{o.customer_name || "Customer"} {o.is_prepaid ? <Pill tone="ready">prepaid</Pill> : <Pill tone="alert">collect cash</Pill>}</div>
-                {o.address && <div className="text-xs text-steel truncate">{o.address}</div>}
-                <ul className="mt-2 text-sm space-y-0.5">{o.items.map((i, n) => <li key={n} className={cn("flex gap-2", !i.menu_item_id && "text-chili")}><span className="num w-6">{i.qty}×</span><span className="flex-1">{i.name}{i.note ? <span className="text-xs text-steel"> · {i.note}</span> : null}</span><span className="num">{formatINR(i.qty * Number(i.price))}</span></li>)}</ul>
-                {o.unmatched.length > 0 && <div className="mt-2 text-xs text-chili flex items-start gap-1"><AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{o.unmatched.length} item(s) not on your menu. <button onClick={() => setFix({ order: o, line: o.unmatched[0] })} className="underline font-semibold">Map now</button> so stock deducts correctly.</span></div>}
-                {/* what the guest paid, what the aggregator kept, what actually arrives — the payout
-                    on its own never said which of the three it was */}
-                <div className="mt-2 border-t border-line pt-2 text-sm space-y-0.5">
-                  <div className="flex justify-between text-steel"><span>Guest paid</span><span className="num">{formatINR(Number(o.gross))}</span></div>
-                  {Number(o.commission) > 0 && <div className="flex justify-between text-steel"><span>{o.order_channels?.label ?? "Channel"} commission</span><span className="num">−{formatINR(Number(o.commission))}</span></div>}
-                  <div className="flex justify-between font-semibold"><span>Payout</span><span className="num">{formatINR(Number(o.payout))}</span></div>
+          {shown.map((o) => {
+            const kind = o.order_channels?.kind ?? "other"; const total = Number(o.gross);
+            return (
+              <motion.div key={o.id} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} data-online={o.id}
+                className={cn("feather !rounded-[22px] overflow-hidden flex flex-col min-w-0", o.status === "new" && "ring-2 ring-[var(--color-red)]/50")}>
+                {/* the channel's band: who sent it, its number, how long it has waited */}
+                <div className={cn("flex items-center gap-2 px-4 min-h-[60px]", BAND[kind] ?? BAND.other)}>
+                  <span className="font-display text-[24px] leading-none truncate">{o.order_channels?.label ?? "Online"}</span>
+                  <span className="num text-[15px] font-bold opacity-85 truncate">#{o.display_id ?? o.external_id}</span>
+                  <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-black/20 text-[15px] font-extrabold num"><Clock size={15} aria-hidden />{fmtSince(o.placed_at)}</span>
                 </div>
-                <div className="mt-3 flex gap-2">
-                  {o.status === "new" ? <><Button size="sm" className="flex-1" disabled={pending} onClick={() => accept(o)}><Check size={14} /> Accept & print</Button><Button size="sm" variant="danger" disabled={pending} aria-label="Reject this order" onClick={() => setRejecting(o)}><X size={14} /></Button></>
-                    : o.status === "accepted" ? <Button size="sm" variant="outline" className="flex-1" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "ready"))}>Mark ready for pickup</Button>
-                    : <Button size="sm" variant="ink" className="flex-1" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "picked_up"))}><Bike size={14} /> Picked up</Button>}
-                  {o.order_id && <Link href={`/orders/${o.order_id}`}><Button size="sm" variant="ghost">Order</Button></Link>}
+                <div className="p-4 flex flex-col gap-3 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-extrabold text-[17px] truncate">{o.customer_name || "Customer"}</span>
+                    {o.is_prepaid ? <span className="svc-chip lone st-ready !min-h-7 !text-[12.5px] !px-2.5 ml-auto shrink-0"><BadgeCheck size={14} aria-hidden /> Paid online</span>
+                      : <span className="svc-chip lone st-cook !min-h-7 !text-[12.5px] !px-2.5 ml-auto shrink-0"><Banknote size={14} aria-hidden /> Collect cash</span>}
+                  </div>
+                  {o.address && <div className="-mt-2 text-[13px] text-steel truncate flex items-center gap-1"><MapPin size={13} className="shrink-0" aria-hidden />{o.address}</div>}
+                  <ul className="space-y-2">{o.items.map((i, k) => (
+                    <li key={k} className={cn("flex items-center gap-3 text-[15px] font-semibold min-w-0", !i.menu_item_id && "text-chili")}>
+                      <span className="h-8 min-w-8 px-1.5 rounded-full bg-[var(--color-fill-2)] grid place-items-center font-display num text-[16px] shrink-0">{i.qty}</span>
+                      <span className="flex-1 min-w-0 truncate">{i.name}{i.note ? <span className="text-[12px] font-normal text-steel"> · {i.note}</span> : null}</span>
+                    </li>))}</ul>
+                  {o.unmatched.length > 0 && <div className="text-xs text-chili flex items-start gap-1"><AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{o.unmatched.length} item(s) not on your menu. <button onClick={() => setFix({ order: o, line: o.unmatched[0] })} className="underline font-semibold">Map now</button> so stock deducts correctly.</span></div>}
+                  {/* what the guest paid big; what the aggregator kept and what arrives under it */}
+                  <div className="mt-auto pt-3 border-t border-line flex items-end gap-3">
+                    <div className="min-w-0"><div className="text-[13px] font-semibold text-steel">Total</div>
+                      <div className="text-[11.5px] text-steel num truncate">{Number(o.commission) > 0 ? `payout ${formatINR(Number(o.payout))} after ${formatINR(Number(o.commission))}` : `payout ${formatINR(Number(o.payout))}`}</div></div>
+                    <span className="ml-auto font-display num text-[30px] leading-none shrink-0">{formatINR(total, { whole: Number.isInteger(total) })}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {o.status === "new" ? <>
+                      <button type="button" className="svc-btn go flex-1" disabled={pending} onClick={() => accept(o)} data-accept><Check size={20} aria-hidden /><Say w="accept" /></button>
+                      <button type="button" className="svc-btn no !px-5" disabled={pending} aria-label="Reject this order" onClick={() => setRejecting(o)}><X size={20} aria-hidden /><Say w="reject" /></button>
+                    </> : o.status === "ready"
+                      ? <button type="button" className="svc-btn ink flex-1" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "picked_up"))}><Bike size={20} aria-hidden /> Picked up</button>
+                      : <button type="button" className="svc-btn go flex-1" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "ready"))}><PackageCheck size={20} aria-hidden /><Say w="food_ready" /></button>}
+                    {o.order_id && <Link href={`/orders/${o.order_id}`} aria-label="Open the kitchen order" title="Open the kitchen order" className="h-14 w-14 shrink-0 rounded-[18px] grid place-items-center bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"><ExternalLink size={18} /></Link>}
+                  </div>
                 </div>
-              </Card></motion.div>))}
+              </motion.div>
+            );
+          })}
         </AnimatePresence></div>
       )}
       {err && <p className="text-sm text-chili">{err}</p>}
+      {/* today's money from the apps, in one line */}
+      <div className="flex flex-wrap gap-x-6 gap-y-1 text-[14px] text-steel" data-online-today>
+        <span>Today <b className="num text-[var(--color-label)]">{formatINR(today.reduce((t, o) => t + Number(o.gross), 0))}</b></span>
+        <span>Commission <b className="num text-[var(--color-label)]">{formatINR(today.reduce((t, o) => t + Number(o.commission), 0))}</b></span>
+        <span>Payout <b className="num text-[var(--color-label)]">{formatINR(today.reduce((t, o) => t + Number(o.payout), 0))}</b></span>
+      </div>
       <Sheet open={!!fix} onClose={() => setFix(null)} title={`Map "${fix?.line ?? ""}"`}>
         <div className="flex items-start gap-3 mb-3">
           <p className="text-sm text-steel flex-1">Pick the dish on your menu that this aggregator line means. Future orders match automatically and deduct stock.</p>

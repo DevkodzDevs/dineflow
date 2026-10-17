@@ -24,21 +24,15 @@ right.
   <aside className="feather p-4 sticky …"> … the ticket (CartPanel) … </aside>
 ```
 
-**Dishes are rows, not cards** (2026-10-12): one across on a phone, then `repeat(auto-fill,
-minmax(250px, 1fr))` — 2 beside the rail at 1194, 2–3 at 1440, 4 at 1920. A row is 64px: the photo
-(`Thumb size="sm"`, 40px) or a tinted square with the veg mark, the name (two lines at most) over
-"₹price · category" (the pantry warning takes the category's place when there is one), and the
-`.stepper` on the right. **At zero the row shows one plus and nothing else.** Once the dish is on the
-ticket, the minus and the count slide in to the left of the plus — the plus itself never moves. The
-row has the whole dish as one tap target and the stepper as its sibling. `takeOne` removes one;
-clearing a dish outright is the cross on its ticket line. It was a 145px card (286px with a photo)
-with the name on top, an empty middle and the plus far down-right: three dishes on a 1440 screen
-where ten fit now.
-
-**A dish with a photo shows it as a 40px square** on its row and on its ticket line; a dish without
-one shows the veg mark on a tinted square, never a big letter. Until 2026-10-12 the grid went
-"photo-first" once half the menu had photos — a full-width 4:3 picture on every tile — which made a
-tile 286px tall. `photoFirst` is gone.
+**Dishes are picture cards** (2026-10-15, the Simple Service redesign the owner approved from mockups; it
+replaces the 64px rows of 2026-10-12). `.svc-dish`: the photo at 16:10 (or, with none, the category's picture
+from `catIcon` on a quiet gradient — never a block of red or green), the veg mark (square with a dot, or a
+triangle for non-veg) and the name (two lines), the price big and one **Add** (`.svc-add`, "Choose" with the
+sliders icon when the dish asks a question). Once on the ticket its count sits on the photo (`.qty`) and Add
+becomes **− +** (`.stepper` without the count — it is on the photo). Two across on a phone, three from `sm`,
+then `repeat(auto-fill, minmax(176px, 1fr))` beside the categories and the ticket from `lg`. The pantry's
+word sits on the photo as a `.flag` (*Pantry short* in amber, *N left*, *Combo*). `data-tile` and `.more` /
+`.less` are what the keyboard map uses.
 
 **Search** (`lib/tillSearch.ts`, `dishMatch`, 4 unit tests) covers the whole menu whatever chip is on,
 best first: the whole name, the start of it, the starts of words in order ("chi bir"), any word's
@@ -48,30 +42,27 @@ clears the box**; Escape clears; a ✕ clears on touch; a line under the box say
 what Enter will add. **"/" jumps to the search** from anywhere on the till (a `kbd` hint shows from
 `lg`), and **Ctrl/⌘ + Enter sends the ticket** (`submitRef`, a window listener).
 
-**Popular** — a ★ chip after All, when at least four dishes sold here in the last 30 days: the 12
+**Popular** — a ★ square after All, when at least four dishes sold here in the last 30 days: the 12
 most-ordered, most first (`popular` from `page.tsx`, summed from `order_items`, cancelled excluded,
 first 5,000 rows).
 
-**A ticket line** is two rows: the name with its price on the right (the photo beside them when
-there is one; sizes, add-ons, "₹x each", the pantry note and the request in green under the name),
-then the controls — the stepper, the course chip, a **Request** pill (filled green and reading *Edit*
-once set) and the cross at the far end. **Request opens a sheet** (`noteFor`, one for the whole
-ticket): the floor's usual asks as chips (`LINE_NOTES`: Less spicy, Extra spicy, No onion, No garlic,
-Jain, Parcel, Well done, No ice — a tap adds, a second tap takes back, joined " · "), a box for the
-rest, Clear and Done. It is the per-item special request Toast and Petpooja's captain app put on a
-line; the ticket-wide one is still the Cooking request sheet. Chips inside the line itself (tried for
-an hour) wrapped to three rows and ate the ticket's space; a box under every line before that did
-the same on a phone keyboard.
+**A ticket line** is a card: the veg mark, the name with its extras, "₹x each", the pantry note, then the
+price; under it the stepper, the course chip (when Courses is on), the **Note** pill — amber with the request's
+words once set — and the cross. **Note opens a sheet** (`noteFor`, one for the whole ticket): the floor's usual
+asks as chips (`LINE_NOTES`: Less spicy, Extra spicy, No onion, No garlic, Jain, Parcel, Well done, No ice — a
+tap adds, a second tap takes back, joined " · "), a box for the rest, Clear and Done. The ticket-wide one is
+still the Cooking request sheet.
 
-**The ticket rail** (`CartPanel`, used in the desktop `<aside>` and the phone sheet alike) reads top
-to bottom: "Order details" + Clear · `Segmented` type (Dine in / Takeaway / Delivery / Room when
-guests are in) · for dine-in, **Table and Guest side by side**, each a button that opens below it —
-Table into a 5-across grid that closes on pick (occupied dimmed, the "already has order #n running"
-notice under it), Guest into Name + Phone (phone drives `lookupCustomer`); takeaway and delivery
-show Name + Phone directly · "Ticket · n items" + Courses toggle · the line cards (name and ×, then
-`.stepper`, a note icon and the price; the note field appears below only when opened) · then a fixed
-summary block: the cooking-request chip and the total on one row, the on-time promise, errors and
-pantry warnings, and a full-width `Button variant="ink"` Send to kitchen.
+**The ticket rail** (`CartPanel`, `[data-cart]`, used in the desktop `<aside>` and the phone sheet alike) reads
+top to bottom: where it is going, big (*Table T2*, or *Parcel* / *Delivery* / *Room*) with **Change** (or a green
+**Table** when none is picked) that opens a 5-across table grid — occupied dimmed, the "already has order #n
+running" notice under it · the order type as three or four picture tiles (Dine in / Parcel / Delivery / Room
+when guests are in; icon over word when there are four) · for dine-in the guest folded into one row (*Guest name
+or phone (optional)*, opening Name + Phone — the phone drives `lookupCustomer`); parcel and delivery show Name +
+Phone directly · "Ticket · n items", Courses, Clear · the line cards · then a fixed foot: the on-time promise,
+errors and pantry warnings, the cooking-request chip beside "n dishes" and the total in 32px display type, and a
+64px green **Send to kitchen** (`.svc-btn.go.xl`, `data-send`). Ctrl/⌘ + Enter still sends (`submitRef`); the
+Send button carries no `data-kbd-primary`, or the shell's Ctrl Enter would press it a second time.
 
 **The rail always fits the screen; only the ticket lines scroll.** Every child of the panel is
 `shrink-0` except the line list (`flex-1 min-h-0 overflow-y-auto`). The desktop `<aside>`'s height
@@ -83,7 +74,7 @@ under the master banner and search bar, not at the top of the viewport. Measured
 nine dishes: 1920×1080 465px · 1440×900 283 · 1366×768 151 · 1194×834 217 · 1024×768 130 ·
 834 sheet 609 · 412 sheet 372.
 
-**Goes well with** is a one-line strip between the category chips and the dish grid, shown only
+**Goes well with** is a one-line strip at the top of the dish column, above the grid, shown only
 once the ticket has a dish with known partners. `page.tsx` reads `menu_pairings()` (migration 0080:
 for each dish, the three most often on the same ticket in the last 90 days, seen together at least
 twice, still on sale) and passes `pairs`; `goesWith` scores them across everything on the ticket,
@@ -113,18 +104,21 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 - **`place_order` checks the table is this property's** before setting it occupied (0098), and every
   order line's dish, variant and ticket must be the same property's (the `zz_same_property` triggers —
   see [data-and-rls.md](data-and-rls.md)).
-- **The Orders header keeps *New order* beside the title on a phone** (`PageHeader actionsInline`). Without it a single button dropped onto its own row under the title, an empty half-line beside it. Probe `hdr.mjs` (8, with Pantry) at 375 / 412 / 834 / 1440.
+- **The Orders header** is `SvcHead` ("Orders — Tap a table to take or see its order") with one green button,
+  **Parcel** (`/orders/new?type=takeaway`, `data-new-parcel`): dine-in starts from a table on the floor, so the
+  header's button is for an order with no table. `new/page.tsx` passes `?type=takeaway|delivery` to the till as
+  `initialType`. On a phone the button takes the full width under the title.
 
-
-- **The phone/tablet cart bar** (`[data-cart-bar]`, below lg) sits at
-  `max(10px, safe-area) + 78px` on a phone — above the bottom tab bar — and 16px off the edge on a
-  tablet (no tab bar). It is absent on an empty ticket (it used to park 80px down, half under the tab
-  bar), and is a tint bar: count badge, "N items" over the total, *Review ›*. It sat at a fixed 72px
-  and the tab bar covered it on an iPhone (2026-10-12). While it shows, a `body:has([data-cart-bar]
-  button) [data-assist]` rule in `globals.css` lifts the assistant's round button above it — they
-  were at the same height, the button over *Review*. The dish list has `max-lg:pb-20` so its last
-  row scrolls clear of the bar.
-
+- **The phone/tablet cart bar** (`[data-cart-bar]`, below lg) sits at `max(10px, safe-area) + 78px` on a phone —
+  above the bottom tab bar — and 16px off the edge on a tablet; it is absent on an empty ticket. It is a green
+  strip: the count in a square and "n dishes" over the total on the left (a tap opens the ticket sheet), and a
+  dark **Send to kitchen** on the right (`data-bar-send`) that sends straight away — unless something is missing
+  (no table, a dish owing a choice, the pantry warning, no room), when it opens the sheet with the reason on it
+  (and the table grid open). The count and the total never shrink (`shrink-0`, nowrap); the button's second
+  language line ellipsizes instead — in Tamil the total was cut to "₹410…". The
+  `body:has([data-cart-bar] button) [data-assist]` rule still lifts the assistant's button above it; from `lg`
+  `body:has(aside [data-cart]) [data-assist]` moves it left of the ticket rail, where it sat on Send to kitchen.
+  The dish grid has `max-lg:pb-24` so its last row scrolls clear of the bar.
 
 - **The cooking request (one note for the whole ticket) opens in a `Sheet`**, not inline: inline at
   the foot of the rail, an iPad keyboard squeezed the field to a sliver and pushed Send to kitchen
@@ -136,26 +130,28 @@ one), `split_order` (one into two) — all RPCs, all atomic.
   top-4) covered the rail's head — Dine in / Takeaway / Delivery / Room and the table — as soon as
   the page scrolled. The `railRef` effect measures the bar (16 + its height + 12 → `--till-top`,
   ~90px), sets the rail's `top` and measures its height from that line. From `lg` the dish column's
-  title-and-search row (`[data-till-head]`, `--till-head`) and the category chips stick on the same
+  title-and-search row (`[data-till-head]`, `--till-head`) and the category column stick on the same
   line, on the page colour, with a `-14px` shadow of it painting the gap under the bar so cards do
   not show through. Below `lg` nothing is pinned. Probe: `till.mjs`.
-- **The Order line, the category chips and Goes well with are `Rail`s** ("Order line", "Categories",
-  "Goes well with" — `role="group"`), each with the round arrow on the right while anything is past
-  the edge (phone and iPad; at 1920 they fit and show none). They keep their `-mx-4 px-4` bleed on a
-  phone; the arrow sits in the wrapper, so it lines up with the page gutter. See
-  [design-system.md](design-system.md).
-- **An Order line card** (`[data-line]` = the `lineState` tone, `w-52`) is: the table in display type
-  with its state as a chip on the right (a dot and an 18% wash of the state's hue — green ready,
-  orange in the kitchen, blue served, grey waiting — with the text in `--color-label`), then
-  "#no · N items · ⏱ age" on one line, then a three-segment bar (`data-steps`: 1 waiting, 2 in the
-  kitchen, 3 ready or served) in that hue. A ready ticket has a green wash and edge (inline style —
-  `.feather` sets its own background) and a pulsing dot: the one thing the strip is for is which
-  table's food is up. All cards are one height (92px).
+- **The till's head and steps** (`[data-till-head]`): Back (48px), "New order" over the title, and — below
+  `lg` — **Change**, then the steps **1 Table · 2 Dishes · 3 Send** (`.svc-steps`, `data-steps`; step 1 opens the
+  table grid) and the 56px search on full-width lines of their own. From `lg` the steps are hidden (the rail
+  beside the dishes shows the same thing) — with `lg:!hidden`, because `.svc-steps` sets `display` unlayered —
+  and the search sits beside the title.
+- **The categories are a row of tabs across the top at every width** (`.svc-cat`: the category's picture from
+  `catIcon` and its name, 48px; `data-cat`), a `Rail` labelled "Categories" under the steps and the search. From
+  `lg` the row sticks under the till's head (`--till-top` + `--till-head`). A 96px column of squares beside the
+  dishes was tried first (2026-10-15) and the owner asked for the row instead. The Order line and Goes well with
+  are `Rail`s too.
+- **An Order line card** (`[data-line]` = `orderState()`, `w-52`) wears the floor's colours (`.st-*`): the table
+  in display type with its state as a chip (Ordered, Cooking, Food ready, Eating, Bill), "#no · N items · ⏱ age",
+  and a three-segment bar in the state's hue. A food-ready ticket has a green wash and edge. The running orders
+  query now carries `bills(status)` so a printed bill reads Bill.
 - **"All orders →" over the Order line is a 44px target** (`min-h-11 pl-2 -my-3`): the height is
   taken back by negative margin, so the row does not grow. It was 67×16. Do not add `-mr-*` — it
   pushed the link 8px past the section on the right.
-- **The till's Back link is 44 on touch** (`[@media(pointer:coarse)]:h-11 w-11`). The control floor
-  only lifts buttons; a `Link` stays at its 40px unless it says otherwise.
+- **The till's Back is a 48px square** (`h-12 w-12`, every width) — over the 44px touch floor without a
+  coarse-pointer rule.
 
 - **The floor is two tables across on a phone** (`grid-cols-2 min-[520px]:grid-cols-3`). At three, a
   108px card could not hold "T3 · READY · 4 seats". In the open-orders list the dish names truncate
@@ -164,31 +160,31 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 - **The control floor is unlayered CSS** (`:where(button) { min-height: 40px }`, 44 under a coarse
   pointer). A plain `h-8` utility loses to it; only an `!important` utility wins. Size tile and rail
   controls at 40 (`h-10`) and let the floor lift them on touch — do not fight it with `!h-8`.
-- **A 250px row with a picked dish leaves ~95px for the name** beside a 40px photo and a 102px
-  stepper, which is why names clamp to two lines and the price shares a line with the category.
-  There is no cross on a row; the ticket line has it.
+- **A picture card at two across on a 412 phone is ~184px**: the price and Add (or − +) share its foot, which is
+  why the stepper on a card has no count (it is on the photo) and the price truncates before the buttons do.
 - **`minmax(0,1fr)`, never `1fr`, for the dish track.** A `1fr` grid item will not shrink below its
   content and pushes the ticket rail off the screen. Pair with `min-w-0` on the section.
-- **A floor table is one card** (`feather`, `filled` when occupied): the `Link` on top, and for a
-  table with no ticket a Reserve button inside the card (`.room-act`, 40/44px). Grid rows stretch,
-  so every card in a row is the same height without a placeholder. Reserve was 11px text floating
-  under the card — a 16px target that made free cards look shorter than occupied ones.
+- **A floor table is one card in its state's colour** (`.svc-table`, `[data-table-card]`, `data-state`):
+  the table in 34px display type with its seats; a free one is dashed with **Take order** (a link whose
+  `::after` covers the card) and a 40/44px **Reserve** icon in the name row (over the link, `z-[1]`); a reserved
+  one is amber and dashed (Unreserve); one with a ticket shows its state with its picture, the time since the
+  order and the total, and a red **LATE** tag on its corner when a dish is past `kds_target_minutes`
+  (`isLate`). A table marked occupied with no ticket reads *At table*. Above the floor, chips count each state —
+  a tap shows only those tables (`data-state-chip`); on a phone they are one compact row that slides sideways (a
+  `Rail`, "Tables by state" — they had wrapped into three uneven rows), from `sm` they wrap, and a parcel / delivery / room-service order with no table
+  gets a card of its own in *Parcel · delivery · room*. `page.tsx` reads `bills(status)` and each line's
+  `created_at` for that.
 - **Reserved is `--color-orange` with a dashed border**, never `--color-saffron`, which is green in
   the dark theme. Free carries a green dot.
-- **Open orders are a grid of cards under the floor, at every width** (2026-10-13): one across on a
-  phone, two from `md` (iPad, tablet), three from `xl` (laptop), four from `min-[100rem]` (1600px,
-  desktop). Write that breakpoint in rem: Tailwind v4 sorts an arbitrary `min-[1600px]` ahead of its
-  own rem breakpoints, so `xl:grid-cols-3` beat it and a 1920 screen showed three. Before, the orders
-  were a 380px column beside the floor from 1280 and one full-width card per row below it. The floor
-  now spans the page at every width; its tiles at 1280+ are the size they already were on an iPad.
-- **An order card** (`[data-order]`, `data-state`): a 3px strip and a status chip in the kitchen's
-  words — Waiting · On the fire · Ready to serve · Served (ready pulses, and its card takes a green
-  wash and edge); the table name in a square (or the kind's icon for takeaway / room service /
-  delivery), `#no · N items · age` — the age amber past 12 h, Pulse's STALE; the customer; the
-  kitchen's progress as a bar by plates (served · ready · on the fire · waiting) with counts; the
-  first three dishes, each with its own state dot, then "+N more"; and the total in a footer strip
-  edge to edge, like the Menu and Housekeeping cards. Rows stretch, so a row's cards are one height.
-  The header counts the open orders and how many are ready / on the fire / waiting.
+- **Every open order as a card is the List view** (Tables · List, a `Segmented` beside the chips, remembered on
+  the device as `df-orders-view`): one across on a phone, two from `md`, three from `xl`, four from
+  `min-[100rem]`. Write that breakpoint in rem: Tailwind v4 sorts an arbitrary `min-[1600px]` ahead of its own rem
+  breakpoints. The floor's grid is 2 · 3 (`min-[35rem]`) · 4 (`md`) · 5 (`xl`) · 6 (`min-[87.5rem]`) across — six
+  at 1440, where five left one table alone on a row.
+- **An order card** (`[data-order]`, `data-state`): a 4px strip and a status chip in the floor's colours
+  (red when late); the table in a square (or the kind's icon), `#no · N items · age` — the age amber past 12 h;
+  the customer; the kitchen's progress as a bar by plates with counts; the first three dishes, each with its own
+  state dot; and the total in a footer strip edge to edge.
 - **Stock is not `is_available`.** `is_available` is the dish-level sold-out switch the menu owns;
   `menu_stock` is the live count derived from recipes and the pantry. Both can hide a dish.
 - **Never write `order_items` directly.** `place_order` recomputes the ticket, applies variants and

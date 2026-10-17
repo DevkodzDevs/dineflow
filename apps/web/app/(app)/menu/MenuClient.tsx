@@ -1,11 +1,15 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Layers, Camera, Clock, AlertTriangle, Images, ImagePlus, ChevronDown } from "lucide-react";
+import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, AlertTriangle, Images, ImagePlus, ChevronDown, Wrench, Ban } from "lucide-react";
 import { DishPhotoPicker, type DishPhoto } from "@/components/menu/DishPhotoPicker";
-import { DishGlyph } from "@/components/menu/DishGlyph";
+import { DishGlyph, glyphFor } from "@/components/menu/DishGlyph";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Field, Sheet, Empty, Switch, cn, useToast } from "@/components/ui";
+import { Rail } from "@/components/ui/Rail";
+import { Say, CatIcon } from "@/components/ui/Say";
+import { SvcHead } from "@/components/ui/Service";
+import { catIcon } from "@/lib/say";
 import { formatINR } from "@/lib/format";
 import { findStandardRecipe, fmtQty } from "@dineflow/shared";
 import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation, setDishPhoto, autoPhotos, autoRecipes } from "./actions";
@@ -76,24 +80,25 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
   const openEditor = (it: Partial<Item>) => { setPhoto(it.image_url ? { url: it.image_url, credit: it.image_credit, source: it.image_source } : null); setDishName(it.name ?? ""); setDishCat(it.category_id ?? null); setEditing(it); setCombo(!!it.is_combo); setParts(it.id ? combos.filter((c) => c.combo_id === it.id).map((c) => ({ menu_item_id: c.menu_item_id, qty: c.qty })) : []); };
   const variantsOf = (id: string) => variants.filter((v) => v.menu_item_id === id);
   const groupsOf = (id: string) => links.filter((l) => l.menu_item_id === id).map((l) => l.group_id);
-  const partsOf = (id: string) => combos.filter((c) => c.combo_id === id);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  const visible = useMemo(() => items.filter((i) => cat === "all" || i.category_id === cat), [items, cat]);
+  const visible = useMemo(() => items.filter((i) => (cat === "soldout" ? !i.is_available : cat === "all" || i.category_id === cat)), [items, cat]);
   const recipeMap = useMemo(() => { const m: Record<string, Rec[]> = {}; recipes.forEach((r) => (m[r.menu_item_id] ??= []).push(r)); return m; }, [recipes]);
+  const soldOut = items.filter((i) => !i.is_available).length;
+  const [tools, setTools] = useState(false);
+  const toggle = (it: Item, v: boolean) => start(async () => { const r = await toggleAvailable(it.id, v); if ("error" in r) toast(r.error!, "err"); });
 
   return (
     <div className="space-y-5">
-      {/* The rail holds filters and nothing else. "Manage categories" used to ride at the end of it,
-          which meant the one control that is not a filter was also the first thing to scroll out of
-          sight — on a laptop it sat clipped behind the actions, half a dashed circle. It belongs
-          with the other things you can do to the menu, where it is always reachable. */}
-      <div className="toolbar"><div className="toolbar-group">
-        {[{ id: "all", name: "All" }, ...categories].map((c) => (
-          <button key={c.id} onClick={() => setCat(c.id)} className={cn("chip", cat === c.id && "on")}>{c.name}</button>
-        ))}
-        </div><div className="toolbar-group toolbar-end">
+      <SvcHead icon="menu" title="Menu" sub="Switch a dish off when it runs out — waiters see it at once"
+        actions={<>
+          <button type="button" className="svc-btn quiet sm" onClick={() => setTools((v) => !v)} aria-expanded={tools} data-menu-tools><Wrench size={17} aria-hidden /> More tools<ChevronDown size={16} aria-hidden className={cn("transition-transform", tools && "rotate-180")} /></button>
+          <button type="button" className="svc-btn go sm !px-5" onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15, category_id: cat === "all" || cat === "soldout" ? null : cat })} data-new-dish><Plus size={19} aria-hidden /><Say w="new_dish" /></button>
+        </>} />
+      {/* the owner's tools, folded: they are used once a week, the switch on each dish every service */}
+      {tools && (
+        <div className="-mt-2 flex flex-wrap gap-2" data-tools>
           <Button variant="outline" onClick={() => setCatSheet(true)} title="Add, rename or remove categories"><Plus size={16} /> Categories</Button>
           <Button variant="outline" onClick={() => setGroupsSheet(true)}><SlidersHorizontal size={16} /> Add-ons</Button>
           <Button variant="outline" onClick={() => setImporting(true)} title="Photograph a printed menu and add its dishes"><Camera size={16} /> From photo</Button>
@@ -103,82 +108,116 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
             try { const r = await autoPhotos(); if ("error" in r) toast(r.error!, "err"); else toast(r.found ? `Photos added to ${r.found} dish${r.found === 1 ? "" : "es"}${r.left ? ` · ${r.left} to choose by hand` : ""}` : r.left ? `No sure match for ${r.left} — open a dish to choose` : "Every dish has a photo"); }
             finally { setFinding(false); }
           }}><Images size={16} /> Find photos</Button>
-          <Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15, category_id: cat === "all" ? null : cat })}><Plus size={16} /> New dish</Button></div>
-      </div>
+        </div>
+      )}
+      {/* the categories as chips with their picture and how many dishes; Sold out last, in red */}
+      <Rail className="rail-fade flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]" arrowClassName="!bottom-1" label="Categories">
+        {[{ id: "all", name: "All", icon: "LayoutGrid", n: items.length }, ...categories.map((c) => ({ id: c.id, name: c.name, icon: catIcon(c.name), n: items.filter((i) => i.category_id === c.id).length }))].map((c) => (
+          <button key={c.id} type="button" onClick={() => setCat(c.id)} aria-pressed={cat === c.id} className={cn("shrink-0 !min-h-11 rounded-full pl-3.5 pr-2 inline-flex items-center gap-2 text-[14px] font-extrabold transition-colors", cat === c.id ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-cat={c.id}>
+            <CatIcon name={c.icon} size={16} />{c.name}<b className={cn("num min-w-6 h-6 px-1.5 rounded-full grid place-items-center text-[12.5px]", cat === c.id ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")}>{c.n}</b>
+          </button>
+        ))}
+        {soldOut > 0 && <button type="button" onClick={() => setCat("soldout")} aria-pressed={cat === "soldout"} className={cn("svc-chip st-late shrink-0", cat === "soldout" && "ring-2 ring-[var(--color-red)]")} data-cat="soldout"><Ban size={16} aria-hidden /><Say w="sold_out" start /><b className="num">{soldOut}</b></button>}
+      </Rail>
 
       {visible.length === 0 ? (
+        cat === "soldout" ? <Empty title="Nothing is sold out" hint="Every dish is on — switch one off from its card when the kitchen runs out." /> :
         <Empty title="No dishes yet" hint="Add your first dish, then map its ingredients so stock drops automatically." action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
-      ) : (
-        /* One card per dish, as many across as fit (about 17rem each): the veg mark, the name and the
-           price on top, what it is in a line, what it carries as chips — prep, sizes, add-ons, recipe —
-           and a footer strip with the sold-out switch and the three editors as round buttons. */
-        <motion.div layout className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(17rem,1fr))]">
-          <AnimatePresence>
+      ) : (<>
+        {/* A phone: a list, one row per dish — the photo, the name, the price and its state, and the switch at
+            the end of the row. A tap on the name opens the dish (its sizes, add-ons and recipe are in there). */}
+        <div className="sm:hidden space-y-2" data-dish-list>
+          {visible.map((it) => {
+            const vs = variantsOf(it.id); const mapped = recipeMap[it.id]?.length ?? 0;
+            const lo = vs.length ? Math.min(...vs.map((v) => Number(v.price))) : Number(it.price);
+            return (
+              <div key={it.id} data-dish={it.id} data-off={!it.is_available || undefined} className="feather !rounded-[18px] p-2.5 pr-3 flex items-center gap-3 min-w-0">
+                <button type="button" onClick={() => setPhotoFor(it)} aria-label={`${it.image_url ? "Change" : "Add"} the photo — ${it.name}`} data-photo
+                  className="relative h-16 w-16 shrink-0 !min-h-0 rounded-[14px] overflow-hidden bg-[linear-gradient(160deg,var(--color-bg-3),var(--color-fill))] grid place-items-center">
+                  {it.image_url
+                    // eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload
+                    ? <img src={it.image_url} alt="" loading="lazy" className={cn("h-full w-full object-cover", !it.is_available && "grayscale opacity-60")} />
+                    : <DishGlyph name={it.name} category={catName(it.category_id)} veg={it.is_veg} size={26} />}
+                  <span className="absolute left-1 top-1"><VegBadge veg={it.is_veg} /></span>
+                </button>
+                <button type="button" onClick={() => openEditor(it)} aria-label={`Edit — ${it.name}`} className="flex-1 min-w-0 text-left !min-h-0 py-0.5">
+                  <span className="block font-bold text-[15.5px] leading-snug truncate">{it.name}</span>
+                  <span className="mt-0.5 flex items-baseline gap-2 min-w-0">
+                    <span className="font-display num text-[20px] leading-none shrink-0">{vs.length > 0 && <span className="font-sans text-[11px] text-steel">from </span>}{formatINR(lo, { whole: true })}</span>
+                    <span className={cn("text-[12.5px] font-bold truncate", it.is_available ? "text-[var(--color-green)]" : "text-[var(--color-red)]")}><Say w={it.is_available ? "available" : "sold_out"} start /></span>
+                  </span>
+                  <span className="mt-1 flex items-center gap-1.5 text-[12px] text-steel min-w-0"><Clock size={11} className="shrink-0" />{it.prep_minutes} min<span aria-hidden>·</span>
+                    {mapped > 0 ? <span className="text-[var(--color-green)] truncate">{mapped} ingredient{mapped === 1 ? "" : "s"}</span> : <span className="text-[var(--color-orange)] truncate">No recipe</span>}</span>
+                </button>
+                <Switch on={it.is_available} onChange={(v) => toggle(it, v)} name={`${it.name} available`} />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* A tablet and up: one card per dish (2026-10-15, the third pass — the owner marked the last two "not
+            looking good"). An inset photo with rounded corners (the card's own 8px padding round it); with no
+            photo, a soft neutral plate with the dish's drawing in a glass circle and "Add a photo" — not a block
+            of green or red. Under it the name and the price on one line, then "Starters · 15 min" (and, only
+            when the dish has none, an amber "No recipe"), then one footer: the Available / Sold out switch as a
+            pill, and Edit. Sizes, add-ons and the recipe open from Edit. Sold out darkens the photo under a
+            SOLD OUT label and turns the pill red. */}
+        <div className="hidden sm:grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" data-dish-grid>
+          <AnimatePresence initial={false}>
             {visible.map((it) => {
-              const vs = variantsOf(it.id); const gs = groupsOf(it.id); const mapped = recipeMap[it.id]?.length ?? 0;
+              const vs = variantsOf(it.id); const mapped = recipeMap[it.id]?.length ?? 0;
               const lo = vs.length ? Math.min(...vs.map((v) => Number(v.price))) : Number(it.price);
-              const chip = "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11.5px] font-semibold";
+              const Glyph = glyphFor(it.name, catName(it.category_id)); const cat = catName(it.category_id);
               return (
-              <motion.div key={it.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} data-dish={it.id}
-                className="min-w-0 rounded-[22px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] overflow-hidden flex flex-col">
-                <div className={cn("p-4 flex-1 flex flex-col gap-3 transition-opacity", !it.is_available && "opacity-55")}>
-                  {/* the photo is a small square beside the name — a tap changes it; with none, a dashed square that offers one */}
-                  <div className="flex items-start gap-3 min-w-0">
-                    <button type="button" onClick={() => setPhotoFor(it)} aria-label={`${it.image_url ? "Change" : "Add"} the photo — ${it.name}`} title={it.image_url ? (it.image_credit ?? "Change the photo") : "Add a photo"} data-photo
-                      className={cn("relative shrink-0 h-16 w-16 sm:h-[72px] sm:w-[72px] !min-h-0 rounded-2xl overflow-hidden group", "bg-[var(--color-fill)]")}>
-                      {it.image_url
-                        // eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload
-                        ? <><img src={it.image_url} alt={it.name} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                            <span className="absolute inset-0 grid place-items-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition"><Pencil size={15} /></span></>
-                        /* no photo yet: an outline drawing of the kind of dish, with a small + to add one */
-                        : <><DishGlyph name={it.name} category={catName(it.category_id)} veg={it.is_veg} size={28} className="transition duration-300 group-hover:scale-105" />
-                            <span className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-[var(--color-bg-2)] text-[var(--color-label-2)] grid place-items-center shadow-sm group-hover:text-[var(--color-label)]"><ImagePlus size={11} /></span></>}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start gap-2">
-                        {/* the mark every Indian menu uses: a square with a dot, green for veg, red for not */}
-                        <span title={it.is_veg ? "Veg" : "Non-veg"} aria-label={it.is_veg ? "Veg" : "Non-veg"}
-                          className={cn("mt-1 h-[14px] w-[14px] shrink-0 rounded-[3px] border-[1.5px] grid place-items-center", it.is_veg ? "border-[var(--color-green)]" : "border-[var(--color-red)]")}>
-                          <span className={cn("h-[6px] w-[6px] rounded-full", it.is_veg ? "bg-[var(--color-green)]" : "bg-[var(--color-red)]")} />
-                        </span>
-                        <h3 className="flex-1 min-w-0 font-sans font-semibold text-[15.5px] leading-snug line-clamp-2">{it.name}</h3>
-                        <div className="shrink-0 text-right leading-none">
-                          {vs.length > 0 && <div className="text-[10.5px] text-steel mb-0.5">from</div>}
-                          <div className="num font-display text-[19px]">{formatINR(lo, { whole: true })}</div>
-                        </div>
-                      </div>
-                      <p className="mt-1 text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2">{it.description || "No description yet"}</p>
+              <motion.div key={it.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} data-dish={it.id} data-off={!it.is_available || undefined}
+                className="group/dish relative flex flex-col min-w-0 rounded-[26px] p-2 bg-[var(--color-bg-2)] border border-[var(--color-separator)] shadow-[var(--shadow-card)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
+                <button type="button" onClick={() => setPhotoFor(it)} aria-label={`${it.image_url ? "Change" : "Add"} the photo — ${it.name}`} title={it.image_url ? (it.image_credit ?? "Change the photo") : "Add a photo"} data-photo
+                  className="relative block w-full aspect-[4/3] !min-h-0 rounded-[19px] overflow-hidden isolate">
+                  {it.image_url
+                    // eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload
+                    ? <img src={it.image_url} alt={it.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/dish:scale-[1.04]" />
+                    : <span className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-[radial-gradient(120%_90%_at_50%_30%,color-mix(in_srgb,var(--color-label)_7%,var(--color-bg-3)),var(--color-bg-3)_70%)]">
+                        <span className="h-16 w-16 rounded-full grid place-items-center bg-[color-mix(in_srgb,var(--color-label)_7%,transparent)] ring-1 ring-[var(--color-separator)] text-[var(--color-label-2)] transition-transform duration-300 group-hover/dish:scale-105"><Glyph size={30} strokeWidth={1.5} aria-hidden /></span>
+                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-label-3)] group-hover/dish:text-[var(--color-label-2)]"><ImagePlus size={13} aria-hidden /> Add a photo</span>
+                      </span>}
+                  <span className="absolute left-2.5 top-2.5 z-[1]"><VegBadge veg={it.is_veg} /></span>
+                  {it.image_url && <span className="absolute right-2.5 top-2.5 z-[1] h-9 w-9 rounded-full grid place-items-center bg-[rgb(10_10_13/.5)] text-white backdrop-blur-sm opacity-0 group-hover/dish:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity" aria-hidden><Camera size={16} /></span>}
+                  {!it.is_available && <span className="absolute inset-0 z-[2] grid place-items-center bg-[rgb(10_10_13/.55)]"><span className="h-9 px-4 rounded-full bg-[var(--color-red)] text-white text-[13px] font-extrabold tracking-[.08em] inline-flex items-center gap-1.5"><Ban size={15} aria-hidden /> SOLD OUT</span></span>}
+                </button>
+                <div className="px-2 pt-3 flex items-start gap-3 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-[16.5px] leading-snug truncate" role="heading" aria-level={3} title={it.name}>{it.name}</div>
+                    <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-steel min-w-0">
+                      {cat && <><span className="truncate">{cat}</span><span aria-hidden>·</span></>}
+                      <span className="inline-flex items-center gap-1 shrink-0"><Clock size={12} aria-hidden />{it.prep_minutes} min</span>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><Clock size={11} />{it.prep_minutes} min</span>
-                    {it.is_combo && <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><Layers size={11} />combo · {partsOf(it.id).length}</span>}
-                    {vs.length > 0 && <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)] max-w-full")}><span className="truncate">{vs.map((v) => v.name).join(" / ")}</span></span>}
-                    {gs.length > 0 && <span className={cn(chip, "bg-[var(--color-fill)] text-[var(--color-label-2)]")}>{gs.length} add-on{gs.length === 1 ? "" : "s"}</span>}
-                    {mapped > 0
-                      ? <span className={cn(chip, "bg-[var(--color-green-2)] text-[var(--color-green)]")}><FlaskConical size={11} />{mapped} ingredient{mapped === 1 ? "" : "s"}</span>
-                      : <span className={cn(chip, "bg-[var(--color-red-2)] text-[var(--color-red)]")} title={findStandardRecipe(it.name) ? "A standard recipe is available — open Recipe" : undefined}><AlertTriangle size={11} />No recipe{findStandardRecipe(it.name) ? " · standard ready" : ""}</span>}
+                  <div className="shrink-0 text-right leading-none pt-0.5">
+                    {vs.length > 0 && <div className="text-[10.5px] font-semibold text-steel mb-0.5">from</div>}
+                    <div className="font-display num text-[24px]">{formatINR(lo, { whole: true })}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 pl-4 pr-2 py-2 border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)]">
-                  <label className="flex items-center gap-2.5 mr-auto cursor-pointer select-none min-h-11">
-                    <Switch on={it.is_available} onChange={(v) => start(async () => { const r = await toggleAvailable(it.id, v); if ("error" in r) toast(r.error!, "err"); })} name={`${it.name} available`} />
-                    <span className={cn("text-[13px] font-semibold", it.is_available ? "text-[var(--color-green)]" : "text-[var(--color-red)]")}>{it.is_available ? "Available" : "Sold out"}</span>
+                {/* the one thing an owner must not miss: a dish that moves no stock */}
+                {!mapped && (
+                  <button type="button" onClick={() => setRecipeFor(it)} aria-label={`Recipe — ${it.name}`} title={findStandardRecipe(it.name) ? "A standard recipe is ready — tap to add it" : "Map what this dish takes from the pantry"}
+                    className="mx-2 mt-2 self-start !min-h-0 h-7 px-2.5 rounded-full inline-flex items-center gap-1.5 text-[12px] font-bold bg-[var(--color-orange-2)] text-[var(--color-orange)] hover:brightness-110">
+                    <AlertTriangle size={12} aria-hidden />No recipe{findStandardRecipe(it.name) ? " · add in one tap" : ""}</button>
+                )}
+                <div className="mt-auto pt-3 flex items-center gap-2">
+                  {/* on or off: the whole pill is the switch — a dot, the word, the toggle */}
+                  <label className={cn("flex-1 min-w-0 h-12 rounded-[17px] pl-3.5 pr-2 flex items-center gap-2.5 cursor-pointer select-none transition-colors", it.is_available ? "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" : "bg-[var(--color-red-2)]")} data-available={it.is_available}>
+                    <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", it.is_available ? "bg-[var(--color-green)] shadow-[0_0_0_4px_var(--color-green-2)]" : "bg-[var(--color-red)] shadow-[0_0_0_4px_var(--color-red-2)]")} aria-hidden />
+                    <span className={cn("flex-1 min-w-0 text-[14px] font-extrabold truncate", it.is_available ? "text-[var(--color-green)]" : "text-[var(--color-red)]")}><Say w={it.is_available ? "available" : "sold_out"} start /></span>
+                    <Switch on={it.is_available} onChange={(v) => toggle(it, v)} name={`${it.name} available`} />
                   </label>
-                  {[
-                    { label: "Sizes and add-ons", icon: <SlidersHorizontal size={16} />, on: () => setOptionsFor(it) },
-                    { label: "Recipe", icon: <FlaskConical size={16} />, on: () => setRecipeFor(it) },
-                    { label: "Edit", icon: <Pencil size={16} />, on: () => openEditor(it) },
-                  ].map((b) => (
-                    <button key={b.label} type="button" onClick={b.on} aria-label={`${b.label} — ${it.name}`} title={b.label}
-                      className="h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 shrink-0 rounded-full grid place-items-center text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)] transition-colors">{b.icon}</button>
-                  ))}
+                  <button type="button" onClick={() => openEditor(it)} aria-label={`Edit — ${it.name}`} title="Edit — name, price, sizes, add-ons, recipe"
+                    className="h-12 w-12 shrink-0 rounded-[17px] grid place-items-center bg-[var(--color-fill)] hover:bg-[var(--color-label)] hover:text-[var(--color-on-label)] transition-colors"><Pencil size={18} /></button>
                 </div>
               </motion.div>
             ); })}
           </AnimatePresence>
-        </motion.div>
-      )}
+        </div>
+      </>)}
 
       {/* dish editor */}
       <Sheet open={importing} onClose={() => setImporting(false)} title="Add dishes from a photo" wide>
@@ -187,6 +226,11 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? "Edit dish" : "New dish"}>
         <form ref={formRef} className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveMenuItem(fd); if (r && "error" in r) setErr(r.error!); else setEditing(null); })}>
           {editing?.id && <input type="hidden" name="id" value={editing.id} />}
+          {editing?.id && (() => { const it = items.find((x) => x.id === editing.id); return it && (
+            <div className="grid grid-cols-2 gap-2" data-dish-more>
+              <Button type="button" variant="outline" onClick={() => { setEditing(null); setOptionsFor(it); }}><SlidersHorizontal size={16} /> Sizes &amp; add-ons</Button>
+              <Button type="button" variant="outline" onClick={() => { setEditing(null); setRecipeFor(it); }}><FlaskConical size={16} /> Recipe</Button>
+            </div>); })()}
           <Field label="Dish name"><div className="flex gap-2 items-center"><input name="name" defaultValue={editing?.name} required autoFocus className="flex-1 min-w-0" onInput={(e) => setDishName((e.target as HTMLInputElement).value)} />
             {ai && <AiButton label="Fill the rest" busy={filling} onClick={() => { void fillDish(); }} />}</div></Field>
           <div className="grid grid-cols-2 gap-3">
@@ -391,5 +435,17 @@ function RecipeEditor({ item, ingredients, initial, onDone, ai = false }: { item
       <Button variant="outline" size="sm" onClick={() => setRows([...rows, { ingredient_id: "", qty: 0 }])}><Plus size={14} /> Ingredient</Button>
       <Button className="w-full mt-2" disabled={pending} onClick={() => start(async () => { const r = await saveRecipe(item.id, rows); if ("error" in r) return void toast(r.error!, "err"); onDone(); })}>Save recipe</Button>
     </div>
+  );
+}
+
+/** The veg mark on a photo's corner: the square every Indian menu prints — a dot for veg, a triangle for
+ *  non-veg — on a white chip, so it reads on any picture and in either theme. */
+function VegBadge({ veg }: { veg: boolean }) {
+  return (
+    <span className="h-[22px] w-[22px] rounded-md bg-white grid place-items-center shadow-[0_2px_6px_rgb(0_0_0/.25)]" role="img" aria-label={veg ? "Veg" : "Non-veg"} title={veg ? "Veg" : "Non-veg"}>
+      <span className={cn("h-[14px] w-[14px] rounded-[3px] border-2 grid place-items-center", veg ? "border-[var(--color-green)]" : "border-[var(--color-red)]")}>
+        {veg ? <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-green)]" /> : <span className="h-0 w-0 border-x-[3.5px] border-x-transparent border-b-[6px] border-b-[var(--color-red)]" />}
+      </span>
+    </span>
   );
 }

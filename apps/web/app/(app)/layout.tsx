@@ -1,5 +1,5 @@
 import { requireSession, daysLeft } from "@/lib/auth";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { modulesFor } from "@dineflow/shared";
 import { createClient } from "@/lib/supabase/server";
@@ -8,12 +8,15 @@ import { TopBar } from "@/components/shell/TopBar";
 import { Gestures } from "@/components/shell/Gestures";
 import { DeckScroll } from "@/components/shell/DeckScroll";
 import { IntentPrefetch } from "@/components/shell/IntentPrefetch";
+import { Keys } from "@/components/shell/Keys";
 import { TouchSelect } from "@/components/ui/TouchSelect";
 import { NotifierProvider } from "@/components/shell/Notifier";
 import { OfflineProvider } from "@/lib/offline/OfflineProvider";
 import { MasterBanner } from "@/components/shell/MasterBanner";
 import { ToastProvider } from "@/components/ui";
 import { ThemeSync } from "@/components/ui/Theme";
+import { SayProvider } from "@/components/ui/Say";
+import { readLang, LANG_COOKIE } from "@/lib/say";
 import { AssistLazy as Assist } from "@/components/assist/AssistLazy";
 
 /**
@@ -74,6 +77,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // the late-ticket badge rides along with the session now; it used to cost a query of its own here
   const count = s.lateKots;
   const dl = s.membership === "trial" ? daysLeft(s.restaurant.trial_ends_at) : daysLeft(s.restaurant.membership_ends_at);
+  const lang = readLang((await cookies()).get(LANG_COOKIE)?.value);
   const boxSync = process.env.DINEFLOW_BOX ? (await (await createClient()).from("sync_state").select("cursor, note").eq("key", "pull").maybeSingle()).data : null;
   // mods is passed to OfflineProvider so it only warms screens this person can open — a waiter has
   // no use for the rooms board, and warming it costs a whole server render
@@ -83,6 +87,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
    <ToastProvider>
    {/* new orders, bookings and tickets: a tone, a toast and the bell's list, on every screen */}
    <NotifierProvider modules={mods} propertyType={s.restaurant.property_type}>
+   <SayProvider initial={lang}>
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
@@ -104,7 +109,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <TouchSelect />
       {/* the next screen is fetched when a finger touches a menu link or a mouse rests on one, not on the click */}
       <IntentPrefetch />
+      {/* the keyboard: Ctrl K go to, G + letter, N new order, ↑ ↓ Enter on lists, ? for the list (keymap.ts) */}
+      <Keys modules={mods} role={s.profile.role} />
     </div>
+   </SayProvider>
    </NotifierProvider>
    </ToastProvider>
    </OfflineProvider>

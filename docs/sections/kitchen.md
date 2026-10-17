@@ -27,6 +27,16 @@ category with no station stays on the expo view only. The warn and target minute
 
 ## Before you edit
 
+- **Simple Service (2026-10-15).** Three columns in the floor's colours — **New** (blue), **Cooking** (amber),
+  **Ready — take it out** (green) — each a `.kcol` with its icon, word and count. A ticket is `.kt`: paper in
+  both themes, the table big with a minutes pill (green, amber past `kds_warn_minutes`, red past
+  `kds_target_minutes`, with a red ring on the ticket), "KOT # · order # · key n", the dishes as `.kt-line`s — the
+  count in a dark disc, the name in 18px, a request in red with a warning sign — and **one big button, always in
+  the same place**: Start cooking (amber, `.svc-btn.st.st-cook`) → Food ready (green) → Served (dark), with
+  Reprint beside it (`data-kot-go`). A dish tapped ready shows a green tick in its disc and is struck through.
+  The head is `SvcHead` with the clock and Order board; "All day" is chips with "to cook in all". The shared
+  `Ticket` component is no longer used here (the order page still uses it). Keys 1–9 and R are unchanged.
+
 - **A bump, fire or recall that the server refuses puts the ticket back** and says why (a toast). A fired
   course hid itself for good even when `fire_kot` failed — the kitchen never got it.
 - **An offline bump moves the ticket's lines** (`lib/offline/sync.ts` `kot_status` → `order_items` by `kot_id`,
@@ -38,11 +48,10 @@ category with no station stays on the expo view only. The warn and target minute
   cancelled after *Start cooking* keeps its consumption. See [inventory.md](inventory.md).
 
 
-- **"All day" is a labelled rail of compact chips** (count badge + dish, `max-w-[15rem]` truncating,
-  whole name in the title), with `rail-fade` and no scrollbar, and a "n portions" total beside the
-  label. It was tall pills with the browser scrollbar under them, the last dish cut mid-word.
-- **On a phone the header's second line is clock + stale warning left, Order board right**
-  (`order-first` on the clock block); from `sm` they sit right of the title as before.
+- **"All day" is a rail of chips** (count disc + dish, `max-w-[16rem]` truncating, whole name in the title),
+  `rail-fade`, no scrollbar, and "to cook in all · n" beside it from `sm`.
+- **The head's clock and Order board are `SvcHead` actions** — on a phone they take the full width under the
+  title, two equal pills; the stale-ticket warning is a red line under the head.
 
 - **On a phone the order board is two stacked panels** (`sm:hidden` in `BoardClient.tsx`): a
   two-line header (Order board, the property name under it, a clock, a 44px close), then **Ready to

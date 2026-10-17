@@ -46,6 +46,10 @@ never be reachable on a real one.
 
 ## Before you edit
 
+- **Appearance has *Words on the buttons*** (2026-10-15, `LangPicker` from `components/ui/Say.tsx`): English,
+  English + தமிழ், English + हिन्दी — the device's `df-lang` cookie, the same choice as the top bar's language
+  button. See [design-system.md](design-system.md) (Simple Service).
+
 - **Room GST falls back to 5%**, not 12: a restaurant's Settings form has no room-rate field and saved 12
   on every save (0100 also moved the column default to 5 and the last 12s to 5).
 - **Deleting a printer, an offer or a table** answers when nothing was deleted (a table or offer on record says

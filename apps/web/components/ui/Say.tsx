@@ -1,0 +1,78 @@
+"use client";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Languages, Check, LayoutGrid, Star, Soup, Drumstick, CookingPot, Wheat, Coffee, CupSoda, IceCreamCone, Salad, Fish, Pizza, Layers, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { cn, tap } from "./index";
+import { LANGS, LANG_COOKIE, say, type Lang, type Word } from "@/lib/say";
+
+/* The device's language for the Dining screens (lib/say.ts). The server reads the cookie, so the
+   first paint already carries the second line; a change here re-renders without a reload. */
+const Ctx = createContext<{ lang: Lang; set: (l: Lang) => void }>({ lang: "en", set: () => {} });
+export function SayProvider({ initial, children }: { initial: Lang; children: ReactNode }) {
+  const [lang, setLang] = useState<Lang>(initial);
+  const set = (l: Lang) => { setLang(l); tap(); document.cookie = `${LANG_COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`; };
+  return <Ctx.Provider value={{ lang, set }}>{children}</Ctx.Provider>;
+}
+export const useLang = () => useContext(Ctx);
+
+/** A word in English with the device's second language under it. `start` aligns both lines left. */
+export function Say({ w, className, start }: { w: Word; className?: string; start?: boolean }) {
+  const { lang } = useLang(); const { en, alt } = say(w, lang);
+  if (!alt) return <span className={className}>{en}</span>;
+  return <span className={cn("say", start && "start", className)}><span>{en}</span><span className="say-alt" lang={lang}>{alt}</span></span>;
+}
+/** The words as plain strings, for an aria-label or a title. */
+export function useSay() { const { lang } = useLang(); return (w: Word) => say(w, lang); }
+
+/** The top bar's language button: three choices in a small menu, for every member of staff. */
+export function LangButton() {
+  const { lang, set } = useLang(); const [open, setOpen] = useState(false); const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const off = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", off); document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", off); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const cur = LANGS.find((l) => l.v === lang) ?? LANGS[0];
+  return (
+    <div ref={box} className="relative" data-lang-menu>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} aria-label={`Language: ${cur.label}`} title={`Language: ${cur.label}`}
+        className="h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)] text-[var(--color-label-2)]">
+        {lang === "en" ? <Languages size={20} /> : <span className="text-[19px] font-bold leading-none" lang={lang}>{cur.short}</span>}
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full mt-2 z-50 w-64 rounded-2xl bg-[var(--color-bg-2)] border border-[var(--color-separator)] shadow-[var(--shadow-pop)] p-1.5">
+          <div className="px-3 pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-[.12em] text-[var(--color-label-2)]">Words on the buttons</div>
+          {LANGS.map((l) => (
+            <button key={l.v} type="button" role="menuitemradio" aria-checked={lang === l.v} onClick={() => { set(l.v); setOpen(false); }}
+              className={cn("w-full !min-h-12 rounded-xl px-3 flex items-center gap-3 text-left text-[15px] font-semibold hover:bg-[var(--color-fill)]", lang === l.v && "bg-[var(--color-fill)]")}>
+              <span className="h-8 w-8 rounded-lg grid place-items-center bg-[var(--color-fill)] text-[16px] shrink-0" lang={l.v}>{l.short}</span>
+              <span className="flex-1">{l.label}</span>{lang === l.v && <Check size={16} className="text-[var(--color-tint)]" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Settings: the same three choices as cards, beside the theme. */
+export function LangPicker() {
+  const { lang, set } = useLang();
+  return (
+    <div className="grid sm:grid-cols-3 gap-3" data-lang-picker>
+      {LANGS.map((l) => (
+        <button key={l.v} type="button" onClick={() => set(l.v)} aria-pressed={lang === l.v} className={cn("feather text-left p-4 flex gap-3 items-start transition", lang === l.v ? "ring-2 ring-[var(--color-tint)]" : "hover:bg-[var(--color-fill)]")}>
+          <span className={cn("h-10 w-10 rounded-xl grid place-items-center shrink-0 text-[18px] font-bold", lang === l.v ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill)]")} lang={l.v}>{l.short}</span>
+          <span><span className="block font-semibold text-[15px]">{l.label}</span><span className="block text-[13px] text-[var(--color-label-2)] mt-0.5">{l.hint}</span></span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A category's picture by the name `catIcon` gave it — names cross the server boundary, icons do not. */
+const ICONS: Record<string, LucideIcon> = { LayoutGrid, Star, Soup, Drumstick, CookingPot, Wheat, Coffee, CupSoda, IceCreamCone, Salad, Fish, Pizza, Layers, UtensilsCrossed };
+export function CatIcon({ name, size = 24, className }: { name: string; size?: number; className?: string }) {
+  const I = ICONS[name] ?? UtensilsCrossed; return <I size={size} className={className} aria-hidden />;
+}

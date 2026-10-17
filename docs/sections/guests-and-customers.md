@@ -49,6 +49,15 @@ Coupons are checked at the till by `coupon_check` (see
 
 ## Before you edit
 
+- **Customers is Simple Service (2026-10-15).** `SvcHead` ("People who come back — call or WhatsApp them in one
+  tap") with **Add customer** · the occasions card · a 56px search (`placeholder="Name or phone"`, the `/` key) and
+  chips with counts — All, Regulars, New, Not seen, Can redeem (when loyalty is on) — and CSV · one card per guest
+  (`[data-customer]`): a coloured initial (one of the board's hues, by name), the name (a button,
+  `data-open-customer`, opens their record) with *Regular* from three visits, the phone as "98401 22334", three
+  boxes — Visits, Spent, Last ("2 days ago", "3 wks ago", red past 60 days) — points when loyalty is on, then
+  **Call** and **WhatsApp**. Sixty at a time with *Show more* (up to 1,000 are fetched). The four stat tiles and
+  Ideas from your sales sit under the cards now.
+
 - **The loyalty ledger is append-only.** A balance is the sum of the ledger, never a stored number
   somebody can edit.
 - **Guests and customers are separate tables on purpose.** Do not merge them; the hotel side needs

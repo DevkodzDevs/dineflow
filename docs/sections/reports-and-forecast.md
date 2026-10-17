@@ -52,6 +52,17 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
 
 ## Before you edit
 
+- **Pulse is the waiting list first (Simple Service, 2026-10-15).** `SvcHead` ("Guests at the door, and when a
+  table frees up"). Left, `[data-quote]`: **How many people?** as eight 64px buttons, the wait in display type in
+  a blue wash (green "Seat now · A table that fits is free" when it is 0), Name and Phone, and **Add to waiting
+  list** (`data-add-walkin`). Right, `[data-queue]`: **Waiting now** — the party size in a square, the name, how
+  long, then **Table ready** (marks them called, `data-table-ready`) → **Seat now** (the free tables that fit),
+  Call, the WhatsApp "your table is ready" and ✕ left; the separate seat icon hides on a phone so Table ready
+  keeps one line. Under them **Tables freeing soon** (four, in the floor's colours by stage) and **Every table**
+  (the All · Free · Reserved · In use tabs and tiles, now in the same colours; reserved amber and dashed), then
+  the Join by QR card. The "Right now" card with its three flip tiles is gone — the counts are in the line above
+  the party buttons and in the tabs.
+
 - **`table_pulse` reads the dwell history once** (0102): it called `dwell_minutes()` per table. Its medians now
   come from `dwell_medians(rid)` and `dwell_pick()` — the same fallbacks, the same figures (`dry102.cjs`).
   Change the dwell rule in `dwell_minutes` *and* in those two, or the pulse and the queue drift apart.

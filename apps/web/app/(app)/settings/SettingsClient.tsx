@@ -8,6 +8,7 @@ import { AttendanceSettings } from "./AttendanceSettings";
 import { Button, Card, Field, Switch, cn } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
+import { LangPicker } from "@/components/ui/Say";
 import { InstallApp } from "@/components/InstallApp";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments, saveLoyalty } from "./actions";
 import { copyText } from "@/lib/clipboard";
@@ -103,6 +104,9 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           <Card>
             <Section icon={<Palette size={16} />} title="Appearance" description="Applies to this device. Guest pages are always bright.">
               <ThemePicker />
+              {/* the second line under the Dining screens' buttons — Tamil or Hindi (lib/say.ts) */}
+              <div className="mt-5 mb-2 text-[13px] font-semibold text-[var(--color-label-2)]">Words on the buttons</div>
+              <LangPicker />
             </Section>
           </Card>
 
