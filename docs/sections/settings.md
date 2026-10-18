@@ -1,10 +1,10 @@
 # Settings
 
 **Routes** `/settings` · `/settings/storefront` · `/settings/booking-page` · `/settings/printers` ·
-`/settings/table-qr`
+`/settings/table-qr` · `/settings/screens`
 **Files** `app/(app)/settings/page.tsx` · `SettingsClient.tsx` · `actions.ts` ·
 `storefront/StorefrontSettings.tsx` · `booking-page/BookingPageClient.tsx` ·
-`printers/PrintersClient.tsx` · `table-qr/TableQrSheet.tsx` (+ their own `actions.ts`)
+`printers/PrintersClient.tsx` · `table-qr/TableQrSheet.tsx` · `screens/ScreensClient.tsx` (+ their own `actions.ts`)
 **Reads** `restaurants`, `profiles`, `dining_tables`, `menu_items`, `offers`, `printers`,
 `payment_gateways`
 **Writes** `admin_acting_as`, `box_issue_token`, `seed_demo_data`, `clear_demo_data`, plus the
@@ -45,6 +45,12 @@ position, not an implementation detail; see [legal.md](legal.md).
 never be reachable on a real one.
 
 ## Before you edit
+
+- **Screens & feedback** (`/settings/screens`, a quick link under General, 0103/0104): the TV link with *Menu +
+  tokens · Menu only · Tokens only*, Copy, Open and **New link** (`screenKey(true)` — every old screen stops; it
+  asks first); *Open kiosk on this device*; the feedback QR with Copy, Open and *Print card* (a window of its own,
+  like Pulse's poster). Links are built on `NEXT_PUBLIC_CLOUD_URL`, so on a local server they point at the live
+  site. Staff other than owner and manager see "Only the owner or a manager can see the screen link".
 
 - **Appearance has *Words on the buttons*** (2026-10-15, `LangPicker` from `components/ui/Say.tsx`): English,
   English + தமிழ், English + हिन्दी — the device's `df-lang` cookie, the same choice as the top bar's language

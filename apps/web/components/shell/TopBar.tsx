@@ -8,8 +8,10 @@ import { ThemeButton } from "../ui/Theme";
 import { LangButton } from "../ui/Say";
 import { NotificationBell } from "./Notifier";
 import { InstallButton } from "./InstallSheet";
+import { OutletSwitcher } from "./OutletSwitcher";
+import type { Outlet } from "@/lib/auth";
 
-export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHref }: { membership: string; daysLeft: number; alerts: number; name: string; boxSync?: { cursor: string | null; note: string | null } | null; accountHref?: string | null }) {
+export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHref, outlets = [] }: { membership: string; daysLeft: number; alerts: number; name: string; boxSync?: { cursor: string | null; note: string | null } | null; accountHref?: string | null; outlets?: Outlet[] }) {
   const stale = boxSync?.cursor ? Date.now() - new Date(boxSync.cursor).getTime() > 10 * 60 * 1000 : true;
   const trialSoon = membership === "trial" && daysLeft <= 3;
   /* Pinned, the bar runs edge to edge — from the sidebar to the right of the screen, square, a
@@ -30,7 +32,10 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
       {/* Go to (components/shell/Keys.tsx): the hint said ⌘K for months and nothing answered it */}
       <button type="button" onClick={() => dispatchEvent(new Event("df-palette"))} data-goto-open className="hidden sm:flex items-center gap-2 text-steel text-sm flex-1 min-w-0 h-10 -my-1 px-1 rounded-xl text-left hover:text-[var(--color-label)] transition-colors"><Search size={18} className="shrink-0" /><span className="text-xs truncate">Go to a section — orders, kitchen, billing…</span><kbd className="kbd ml-auto">{mac ? "⌘" : "Ctrl"} K</kbd></button>
       {/* the wordmark goes home, like the sidebar's: /dashboard, or the first section this person holds */}
-      <div className="sm:hidden flex-1 min-w-0"><Link href="/dashboard" aria-label="DineFlow — home" className="inline-flex items-center !min-h-11 font-display text-xl tracking-wide">DineFlow</Link></div>
+      {/* with several outlets the phone's top bar shows the outlet instead: there is no room for both (0106) */}
+      <div className={cn("sm:hidden flex-1 min-w-0", outlets.length > 1 && "hidden")}><Link href="/dashboard" aria-label="DineFlow — home" className="inline-flex items-center !min-h-11 font-display text-xl tracking-wide">DineFlow</Link></div>
+      {/* which outlet this device is working in, when there is more than one (0106) */}
+      <OutletSwitcher outlets={outlets} className="max-sm:flex-1" />
       {boxSync !== null && boxSync !== undefined && (
         <span title={boxSync.cursor ? `Cloud last reached ${new Date(boxSync.cursor).toLocaleString("en-IN")}` : "Cloud not reached yet"} className={cn("hidden md:flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold", stale ? "bg-porcelain-2 text-steel" : "bg-mint-2 text-ink")}><Server size={11} /> Box · {stale ? "cloud out of reach" : "in step with cloud"}</span>
       )}

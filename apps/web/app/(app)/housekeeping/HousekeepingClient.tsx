@@ -5,14 +5,17 @@ import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, Shield
 import { useLive } from "@/lib/useLive";
 import { Button, Card, Field, Pill, Segmented, cn, Empty, useToast } from "@/components/ui";
 import { fmtSince } from "@/lib/format";
-import { setTask, addTask, setCondition, inspectRoom, buildSheet } from "./actions";
+import { addTask, setCondition, inspectRoom, buildSheet } from "./actions";
 import { setRoomStatus } from "../rooms/actions";
+import { takeJob, finishJob, assignJob } from "../cleaning/actions";
 
-type Task = { id: string; kind: string; status: string; notes: string | null; created_at: string; rooms: { number: string; floor: number } | null };
+type Task = { id: string; kind: string; status: string; notes: string | null; created_at: string; rooms: { number: string; floor: number } | null;
+  assigned_to?: string | null; assigned_by?: string | null; assigned_at?: string | null; taken_by?: string | null; taken_at?: string | null };   // 0111
+type Person = { id: string; full_name: string; role: string; position_title: string | null };
 type Condition = "dirty" | "clean" | "inspected" | "pickup";
 type Room = { id: string; number: string; floor: number; status: string; condition: Condition; condition_at: string };
 type Stay = { room_id: string; check_out: string; guests: { full_name: string; vip: boolean } | null };
-type Done = { id: string; kind: string; done_at: string; rooms: { number: string } | null };
+type Done = { id: string; kind: string; done_at: string; done_by?: string | null; taken_at?: string | null; rooms: { number: string } | null };
 
 /* the wide room card's actions: small pills sized to their words, left-aligned — not a bar across the
    card, which read as one big button. The main move (Pass / Cleaned / Touched up) is the green wash;
@@ -43,8 +46,11 @@ const KIND: Record<string, string> = { clean: "Clean", stayover: "Stayover servi
  * word (dirty → clean → inspected), the supervisor's sign-off, the day's task sheet in one press,
  * and the discrepancy report that used to wait for the night audit.
  */
-export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspect, inspectRule }:
-  { today: string; tasks: Task[]; rooms: Room[]; stays: Stay[]; done: Done[]; canInspect: boolean; inspectRule: boolean }) {
+export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspect, inspectRule, people = [], me = "" }:
+  { today: string; tasks: Task[]; rooms: Room[]; stays: Stay[]; done: Done[]; canInspect: boolean; inspectRule: boolean; people?: Person[]; me?: string }) {
+  // whose a task is (0111): the names on the card, and the people a supervisor gives tasks to — housekeeping first
+  const nameOf = (id: string | null | undefined) => (id ? (id === me ? "You" : people.find((p) => p.id === id)?.full_name ?? "Someone") : null);
+  const crew = [...people].sort((a, b) => Number(b.role === "housekeeping") - Number(a.role === "housekeeping") || a.full_name.localeCompare(b.full_name));
   const [pending, start] = useTransition(); const toast = useToast();
   const [f, setF] = useState({ room: "", kind: "clean", notes: "" });
   /* On a phone the board and the task sheet are two tabs, not one page five screens long: a
@@ -297,10 +303,19 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             <section key={c.key} className={cn("rounded-[20px] p-3", c.key === "pending" ? "bg-sky-2" : "bg-champagne-2")}><div className="text-sm font-semibold px-1 pb-3">{c.title} <span className="num text-steel">{list.length}</span></div>
               <div className="space-y-3"><AnimatePresence>{list.map((t) => (
                 <motion.div key={t.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-4">
-                  <div className="flex items-start gap-3"><span className="keycard h-11 w-12 shrink-0 grid place-items-center font-display text-lg">{t.rooms?.number ?? "—"}</span><div className="flex-1 min-w-0"><div className="font-semibold flex items-center gap-1.5">{t.kind === "maintenance" ? <Wrench size={14} className="text-chili shrink-0" /> : <Sparkles size={14} className="shrink-0" />}<span className="truncate">{KIND[t.kind] ?? t.kind}</span></div><div className="text-xs text-steel line-clamp-2 mt-0.5">{t.notes || "No notes"}</div><div className="num text-[11px] text-[var(--color-label-2)] mt-0.5">{fmtSince(t.created_at)} ago</div></div></div>
+                  <div className="flex items-start gap-3"><span className="keycard h-11 w-12 shrink-0 grid place-items-center font-display text-lg">{t.rooms?.number ?? "—"}</span><div className="flex-1 min-w-0"><div className="font-semibold flex items-center gap-1.5">{t.kind === "maintenance" ? <Wrench size={14} className="text-chili shrink-0" /> : <Sparkles size={14} className="shrink-0" />}<span className="truncate">{KIND[t.kind] ?? t.kind}</span></div><div className="text-xs text-steel line-clamp-2 mt-0.5">{t.notes || "No notes"}</div><div className="num text-[11px] text-[var(--color-label-2)] mt-0.5">{fmtSince(t.created_at)} ago</div>
+                    {t.status === "in_progress" && t.taken_by && <div className="text-[12.5px] font-semibold text-[var(--color-cyan)] mt-1 truncate" data-task-who>{nameOf(t.taken_by)} · since {fmtSince(t.taken_at ?? t.created_at)}</div>}
+                    {t.status === "pending" && t.assigned_to && <div className="text-[12.5px] font-semibold mt-1 truncate" data-task-who>Given to {nameOf(t.assigned_to)}{t.assigned_by && <span className="font-normal text-steel"> by {nameOf(t.assigned_by)}</span>}</div>}</div></div>
                   {/* "Done", never "Done · room ready": the long label ran out of its half of a narrow
                       card. What Done does to the room is in its title instead. */}
-                  <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={pending} onClick={() => act(() => setTask(t.id, "in_progress"))}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={pending} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Mark the task done — the room becomes ready to sell"} onClick={() => act(() => setTask(t.id, "done"))}><Check size={14} /> Done</Button></div>
+                  {/* a task given to someone else, or someone else on it, is theirs: no buttons for anyone but them and a supervisor */}
+                  {!canInspect && ((t.status === "pending" && t.assigned_to && t.assigned_to !== me) || (t.status === "in_progress" && t.taken_by && t.taken_by !== me && t.assigned_to !== me))
+                    ? <p className="mt-3 text-[12.5px] text-steel" data-task-theirs>{t.status === "in_progress" ? `${nameOf(t.taken_by)}'s task` : `${nameOf(t.assigned_to)}'s task`} — ask a supervisor to give it to you</p>
+                    : <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={pending} onClick={() => act(() => takeJob("room", t.id))}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={pending} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Mark the task done — the room becomes ready to sell"} onClick={() => act(() => finishJob("room", t.id))}><Check size={14} /> Done</Button></div>}
+                  {canInspect && <select className="mt-2 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={pending} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign
+                    onChange={(e) => act(() => assignJob("room", t.id, e.target.value || null))}>
+                    <option value="">{t.assigned_to ? "Nobody — anyone can take it" : "Give to…"}</option>
+                    {crew.map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.position_title ? ` — ${p.position_title}` : ""}</option>)}</select>}
                 </motion.div>))}</AnimatePresence>{list.length === 0 && <p className="text-sm text-steel px-1 py-3">{c.key === "pending" ? "Nothing to do." : "Nothing in progress."}</p>}</div></section>); })}
           {tasks.length === 0 && <div className="sm:col-span-2"><Empty title="Nothing on the sheet" hint="Check-outs create cleaning tasks automatically. Build today's sheet for the stayovers." /></div>}
         </div>
@@ -310,7 +325,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             <Field label="Type"><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{Object.entries(KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
             <Field label="Notes"><input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="AC not cooling, extra towels…" /></Field>
             <Button className="w-full" disabled={pending || !f.room} onClick={() => start(async () => { const r = await addTask(f.room, f.kind, f.notes); if ("error" in r) return void toast(r.error!, "err"); setF({ room: "", kind: "clean", notes: "" }); })}><Plus size={15} /> Add</Button></div></Card>
-          <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Recently done</div><ul className="space-y-1.5 text-sm">{done.map((d) => <li key={d.id} className="flex justify-between"><span>Room {d.rooms?.number} · {KIND[d.kind] ?? d.kind}</span><Pill tone="ready">done</Pill></li>)}{done.length === 0 && <li className="text-steel">—</li>}</ul></Card>
+          <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Recently done</div><ul className="space-y-1.5 text-sm">{done.map((d) => <li key={d.id} className="flex justify-between gap-2"><span className="min-w-0">Room {d.rooms?.number} · {KIND[d.kind] ?? d.kind}{d.done_by && <span className="block text-[12px] text-steel">by {nameOf(d.done_by)}{d.taken_at ? ` · took ${Math.max(1, Math.round((new Date(d.done_at).getTime() - new Date(d.taken_at).getTime()) / 60000))} min` : ""}</span>}</span><Pill tone="ready">done</Pill></li>)}{done.length === 0 && <li className="text-steel">—</li>}</ul></Card>
         </div>
       </div>
     </div>

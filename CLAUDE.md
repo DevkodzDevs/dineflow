@@ -43,7 +43,7 @@ applied migration.
 ```
 pnpm lint        # 0 errors (14 warnings are known)
 pnpm typecheck
-pnpm test        # 89 unit tests
+pnpm test        # 126 unit tests
 pnpm build       # note: this clobbers .next and kills a running `next dev`
 ```
 
@@ -106,7 +106,7 @@ PR descriptions end with:
 - Razorpay subscription checkout and Sentry are agreed but not built.
 - **Set `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` and `NEXT_PUBLIC_CLOUD_URL` on Vercel** — on
   2026-10-13 the live site had no service-role key (forgot-password, card pay links, phone attendance, OTA
-  sync and the sign-in throttle all off) and no cloud URL. [api-routes.md](docs/sections/api-routes.md)
+  sync, the sign-in throttle and the per-visitor feedback limit all off) and no cloud URL. [api-routes.md](docs/sections/api-routes.md)
 - **Development and production share one Supabase project**: every local server, probe and migration
   touches live data (that is how 0095–0101 reached the live database before their code). The live site is
   deployed with `vercel --prod` from the working folder, not from Git. A staging project and Git deploys are
@@ -118,9 +118,11 @@ PR descriptions end with:
   rate for every dish; automatic service charge; no credit notes; front-desk cash is not in the cash-up.
 - Security, after the 2026-10-13 audit (0098, 0099 — [data-and-rls.md](docs/sections/data-and-rls.md)):
   **the live master login still signs in with the password 0011 shipped with** (Master control shows a
-  red notice until it is changed). Apply `supabase/pending/after_deploy_secrets.sql` once the commit
-  carrying it is live. Still open: a nonce-based `script-src` CSP; per-IP limits (the public writes have
-  per-phone and per-property limits — the guest's address never reaches the database); membership
+  red notice until it is changed). Apply `supabase/pending/after_deploy_secrets.sql` and
+  `supabase/pending/after_deploy_control_room.sql` once the commit carrying them is live. Still open: a nonce-based `script-src` CSP; per-IP limits (the public writes have
+  per-phone and per-property limits — the guest's address never reaches the database; guest feedback alone
+  has a per-visitor limit since 0109, on a keyed daily hash of the address, needing `RATE_LIMIT_SECRET` or the
+  service-role key on Vercel — [guest-facing.md](docs/sections/guest-facing.md)); membership
   expiry is enforced only in the layout; Supabase's *Secure password change* setting is unchecked.
   [admin-and-membership.md](docs/sections/admin-and-membership.md)
 - **Speed (2026-10-13 — [shell-and-nav.md](docs/sections/shell-and-nav.md), speed):** the live stalls were

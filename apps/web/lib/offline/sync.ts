@@ -30,8 +30,12 @@ export async function retryJob(id: string) {
 export async function discardJob(id: string) { await delJob(id); await pushQueue(); }
 
 /** Queue a write. Returns at once — the person keeps working whether or not there is a connection. */
+/** The outlet this device is working in (set by OfflineProvider from the session). A queued write carries it, and is
+ *  sent only while the device is in that outlet again — never into the outlet it happens to be in when the line returns. */
+let currentOutlet: string | null = null;
+export const setOfflineOutlet = (id: string | null) => { currentOutlet = id; };
 export async function enqueue(kind: JobKind, args: Record<string, unknown>, label: string) {
-  const job: Job = { id: crypto.randomUUID(), kind, args, at: Date.now(), tries: 0, label };
+  const job: Job = { id: crypto.randomUUID(), kind, args, at: Date.now(), tries: 0, label, outlet: currentOutlet ?? undefined };
   await putJob(job); await pushQueue(); void flush();
   return job.id;
 }
@@ -41,7 +45,15 @@ async function run(job: Job) {
   const s = await getClient();
   const fail = (e: { message?: string } | null) => { if (e) throw e; };
   switch (job.kind) {
-    case "place_order": { const a = job.args as Record<string, never>; fail((await s.rpc("place_order", { p_table_id: a.table_id, p_type: a.type, p_items: a.items, p_customer: a.customer, p_note: a.note, p_client_id: a.client_id, p_placed_at: a.placed_at, p_promise: a.promise ?? false })).error); break; }
+    case "place_order": {
+      // the till queues the order as it would send it online: customer_name / customer_phone, and a delivery address
+      const a = job.args as Record<string, never>;
+      const { data: id, error } = await s.rpc("place_order", { p_table_id: a.table_id, p_type: a.type, p_items: a.items, p_customer: a.customer ?? { name: a.customer_name ?? null, phone: a.customer_phone ?? null }, p_note: a.note, p_client_id: a.client_id, p_placed_at: a.placed_at, p_promise: a.promise ?? false });
+      fail(error);
+      // the order is in; an address that does not save must not send the order a second time (client_id would refuse it anyway)
+      if (a.delivery_address && id) await s.rpc("order_delivery", { p_order: id, p_address: a.delivery_address });
+      break;
+    }
     case "generate_bill": { const a = job.args as Record<string, never>; fail((await s.rpc("generate_bill", { p_order_id: a.order_id, p_discount_pct: a.disc_pct, p_discount_amount: a.disc_amt })).error); break; }
     case "settle_bill": { const a = job.args as Record<string, never>; fail((await s.rpc("settle_bill", { p_bill_id: a.bill_id, p_payments: a.payments, p_client_id: a.client_id })).error); break; }
     case "item_status": { const a = job.args as { ids: string[]; status: string }; fail((await s.from("order_items").update({ status: a.status }).in("id", a.ids)).error); break; }
@@ -78,6 +90,9 @@ export async function flush(): Promise<number> {
     const jobs = (await allJobs()).sort((a, b) => a.at - b.at);
     for (const j of jobs) {
       if (j.held) continue;                                              // waiting on a person, not on us
+      if (j.outlet && currentOutlet && j.outlet !== currentOutlet) {     // taken in another outlet: wait for it
+        set({ lastError: `"${j.label}" waits until this device is back in the outlet it was taken in` }); continue;
+      }
       if (j.nextTry && Date.now() < j.nextTry) continue;                 // still backing off
       try { await run(j); await delJob(j.id); sent++; set({ lastError: null }); await pushQueue(); }
       catch (e) {

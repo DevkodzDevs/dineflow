@@ -5,7 +5,7 @@ import { Building2, Palmtree, UtensilsCrossed, KeyRound, Copy, Pause, Play, Cloc
 import { Button, Sheet, Field, StatTile, cn, Pill, Waiting } from "@/components/ui";
 import { formatINR, PROPERTY_LABEL, type PropertyType } from "@dineflow/shared";
 import { daysLeft } from "@/lib/format";
-import { issueKey, setMembership, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type PropertyDetail } from "./actions";
+import { issueKey, setMembership, matchChain, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type PropertyDetail } from "./actions";
 import { Trash2 } from "lucide-react";
 import { PropertyDetailView } from "./PropertyDetail";
 import { RowActions } from "./RowActions";
@@ -40,7 +40,7 @@ const shut = (e: { currentTarget: HTMLElement }) => { const d = e.currentTarget.
 
 const Icon = ({ t }: { t: PropertyType }) => (t === "hotel" ? <Building2 size={16} /> : t === "resort" ? <Palmtree size={16} /> : <UtensilsCrossed size={16} />);
 
-export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [], openError = null, defaultPassword = false }: { openError?: string | null; defaultPassword?: boolean; tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; codes?: { id: string; code: string | null }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
+export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [], chains = [], openError = null, defaultPassword = false }: { openError?: string | null; defaultPassword?: boolean; tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; codes?: { id: string; code: string | null }[]; chains?: { id: string; head: string }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
   const codeOf = (id: string) => codes.find((c) => c.id === id)?.code ?? null;
   const [q, setQ] = useState(""); const [filter, setFilter] = useState("all");
   const [sel, setSel] = useState<T | null>(null); const [issued, setIssued] = useState<string | null>(null); const [err, setErr] = useState<string | null>(openError);  // /admin/open sends a refusal back as ?error=
@@ -209,6 +209,15 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
                 {sel.membership === "suspended" ? <Button variant="outline" disabled={pending} onClick={() => start(async () => { await setMembership(sel.id, "active", null); })}>Unsuspend</Button>
                   : <Button variant="danger" disabled={pending} onClick={() => { if (confirm(`Suspend ${sel.name}? Their team will be locked out immediately.`)) start(async () => { await setMembership(sel.id, "suspended", null); }); }}><Pause size={15} /> Suspend</Button>}
               </div>
+              {(() => {
+                // an outlet opened from another (0106): one tap gives it the same membership and end date as its chain's first outlet
+                const head = chains.find((c) => c.id === sel.id)?.head; if (!head) return null;
+                const first = tenants.find((t) => t.id === head);
+                return <div className="feather p-3 flex flex-wrap items-center gap-x-3 gap-y-2" data-match-chain>
+                  <div className="min-w-0 flex-1 text-sm">An outlet of <b>{first?.name ?? "another property"}</b>{first && <> — that one is <Pill tone={tone(first.membership)}>{first.membership}</Pill></>}</div>
+                  <Button variant="outline" disabled={pending} onClick={() => start(async () => { const r = await matchChain(sel.id); if ("error" in r) setErr(r.error!); else { setErr(null); setSel({ ...sel, membership: r.result.membership as T["membership"] }); } })}>Match its chain</Button>
+                </div>;
+              })()}
             </div>
             <div className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-steel">Issue a key for this property</div>

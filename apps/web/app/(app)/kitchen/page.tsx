@@ -20,7 +20,7 @@ export default async function KitchenPage() {
   const [session, { data }, { data: needs }, { data: stale }, { data: bumped }] = await Promise.all([
     requireSession(),
     // each line carries the station that makes it — the dish's own, else its category's
-    s.from("kots").select("id, kot_no, status, created_at, held, orders(order_no, type, customer_name, promised_at, dining_tables(name)), order_items(id, name_snapshot, qty, status, notes, addons, components, course, menu_items(station, categories(station)))")
+    s.from("kots").select("id, kot_no, status, created_at, held, started_by, orders(order_no, type, customer_name, token_no, promised_at, dining_tables(name)), order_items(id, name_snapshot, qty, status, notes, addons, components, course, menu_items(station, categories(station)))")
       .in("status", ["pending", "preparing", "ready"]).gte("created_at", since).order("created_at").limit(200),
     s.rpc("kots_needs_live"),
     s.rpc("stale_kot_count", { p_hours: 24 }),
@@ -28,9 +28,12 @@ export default async function KitchenPage() {
     s.from("kots").select("id, kot_no, served_at, orders(order_no, type, customer_name, dining_tables(name))")
       .eq("status", "served").gte("served_at", recent).order("served_at", { ascending: false }).limit(6),
   ]);
+  // who is cooking each ticket (0113): the name beside the KOT number
+  const cooks = new Map(((await s.from("profiles").select("id, full_name").eq("restaurant_id", session.restaurant.id)).data ?? []).map((p: { id: string; full_name: string }) => [p.id, p.full_name]));
+  const withCook = ((data ?? []) as { started_by?: string | null }[]).map((k) => ({ ...k, cook: k.started_by ? cooks.get(k.started_by) ?? null : null }));
   const r = session.restaurant;
   return (
-    <KitchenClient initial={(data ?? []) as never} needs={(needs ?? {}) as Needs} stale={(stale as number) ?? 0} bumped={(bumped ?? []) as never as Bumped[]}
+    <KitchenClient initial={withCook as never} needs={(needs ?? {}) as Needs} stale={(stale as number) ?? 0} bumped={(bumped ?? []) as never as Bumped[]}
       stations={r.kds_stations ?? []} warnAt={r.kds_warn_minutes ?? 10} lateAt={r.kds_target_minutes ?? 15} />
   );
 }

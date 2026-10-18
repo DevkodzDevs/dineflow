@@ -155,11 +155,17 @@ export const MODULE_GROUPS: { title: string; keys: { key: string; label: string;
  */
 export const modulesFor = (type: PropertyType, role: Role, enabled?: string[] | null, allowed?: string[] | null) => {
   const granted = allowed ?? ROLE_DEFAULT[role];
-  return MODULES_BY_TYPE[type].filter((m) =>
+  return MODULES_BY_TYPE[type].filter((m) => m === "dashboard" ? controlRoomFor(role, allowed) :
     ROLE_ACCESS[role].includes(m)
     && (!enabled || enabled.includes(m) || (ALWAYS_ON as readonly string[]).includes(m))          // the master's set for the property
-    && (role === "owner" || granted.includes(m) || m === "dashboard"));                           // the ticks left for this person
+    && (role === "owner" || granted.includes(m)));                                                // the ticks left for this person
 };
+/**
+ * The control room (the day's sales, the money, every department at once) is the owner's; a manager's only when the owner
+ * ticked it for them in Staff → Access; nobody else's, whatever their ticks (2026-10-18). The database's
+ * effective_modules() says the same once supabase/pending/after_deploy_control_room.sql is applied.
+ */
+export const controlRoomFor = (role: Role, allowed?: string[] | null) => role === "owner" || (role === "manager" && !!allowed?.includes("dashboard"));
 
 export const INGREDIENT_CATEGORIES = ["vegetable", "fruit", "grocery", "dairy", "meat", "seafood", "beverage", "packaged", "cleaning", "other"] as const;
 export const LABOUR_SKILLS = ["cook helper", "cleaner", "housekeeping", "gardener", "security", "driver", "porter", "electrician", "plumber", "other"] as const;

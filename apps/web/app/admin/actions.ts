@@ -12,6 +12,12 @@ export async function setMembership(restaurantId: string, status: "trial" | "act
   const { error } = await s.rpc("admin_set_membership", { p_restaurant_id: restaurantId, p_status: status, p_days: days });
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
+/** An outlet takes the membership and end date of the outlet its chain started from (0109). */
+export async function matchChain(restaurantId: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("admin_match_chain_membership", { p_restaurant: restaurantId });
+  if (error) return { error: error.message }; bump(); return { ok: true as const, result: data as { membership: string; ends: string | null } };
+}
 
 export async function actAs(restaurantId: string) {
   const s = await createClient(); const { error } = await s.rpc("admin_act_as", { p_restaurant: restaurantId });

@@ -9,6 +9,7 @@ import { slots as fetchSlots, reserve, placeOrder } from "../actions";
 import { OptionChooser } from "@/components/OptionChooser";
 import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
 import { GuestNotice } from "@/components/legal/GuestNotice";
+import { TableCalls } from "./TableCalls";
 
 /** As the storefront sends it: the add-on groups are carried once on the property, and a dish
  *  names the ones it offers by id. `resolve` below puts them back together for the screen. */
@@ -192,6 +193,8 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
         {mode === "order" && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             {/* the kitchen's pace, said before a basket is filled — a guest at a table is never paused */}
+            {/* at a table: call a waiter, ask for the bill or water, rate the meal (0103) */}
+            {atTable && <TableCalls slug={slug} token={tableToken!} table={d.table!.name} />}
             {!tableToken && busy?.paused_until && <div className="mb-5 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 text-sm"><b>Not taking online orders right now.</b> Back at {new Date(busy.paused_until).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })} — the menu is here to look at.</div>}
             {!tableToken && !busy?.paused_until && (busy?.extra_min ?? 0) > 0 && <div className="mb-5 rounded-2xl bg-[rgb(255_179_64/.14)] text-[var(--color-orange)] px-4 py-3 text-sm"><b>The kitchen is busy.</b> Orders are taking about {busy!.extra_min} minutes longer than usual.</div>}
             {menu.map((c) => c.items.length > 0 && (

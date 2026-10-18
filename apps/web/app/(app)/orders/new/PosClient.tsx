@@ -11,7 +11,7 @@ import { catIcon } from "@/lib/say";
 import { orderState, SVC_WORD } from "@/lib/service";
 import { formatINR, fmtSince } from "@/lib/format";
 import { Rail } from "@/components/ui/Rail";
-import { placeOrder, parseOrder } from "../actions";
+import { placeOrder, parseOrder, phoneCard, setDelivery } from "../actions";
 import { lookupCustomer } from "../../billing/actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
@@ -51,6 +51,15 @@ export function PosClient({ categories, items, tables, initialTable, initialType
      for — a voice-added dish that still owes a choice — and goes away when the answer lands. */
   const [chooser, setChooser] = useState<{ item: Item; replace?: string; qty?: number; note?: string } | null>(null);
   const [customer, setCustomer] = useState({ name: "", phone: "" });
+  /* a delivery's address (0105): typed, or filled from the customer's last one when the phone is known */
+  const [address, setAddress] = useState("");
+  useEffect(() => {
+    if (type !== "delivery" || address || customer.phone.replace(/\D/g, "").length < 10) return;
+    let on = true;
+    phoneCard(customer.phone).then((r) => { if (!on || !("card" in r) || !r.card) return; const a = r.card.customer?.address || r.card.last_address; if (a) setAddress((x) => x || a); });
+    return () => { on = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the number or the order type changes
+  }, [customer.phone, type]);
   /* A phone makes the guest a customer: the name fills itself in, and the ticket says who is back. */
   const [known, setKnown] = useState<{ name: string | null; visits: number; points: number; notes: string | null } | null>(null);
   useEffect(() => {
@@ -104,6 +113,20 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   const courses = [...new Set(lines.map((l) => (coursing ? l.course : 1)))].sort();
   /** Tapping a tile: a dish that asks a question opens it; the rest go straight on the ticket. */
   const tap = (it: Item) => (hasOptions(it) ? setChooser({ item: it }) : putLine(it, null, [], 1));
+  /* From the call screen (/orders/phone, ?from=phone): the caller, their address and, for "Same again", the dishes
+     of an earlier order in their sizes — add-ons are asked again. Read once and cleared, so a reload starts clean. */
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("from") !== "phone") return;
+    let h: { type: "delivery" | "takeaway"; name: string; phone: string; address: string; items: { menu_item_id: string | null; variant_id: string | null; qty: number }[] } | null = null;
+    try { h = JSON.parse(sessionStorage.getItem("df-phone-order") ?? "null"); sessionStorage.removeItem("df-phone-order"); } catch {}
+    if (!h) return;
+    setType(h.type); setCustomer({ name: h.name ?? "", phone: h.phone ?? "" }); setAddress(h.address ?? "");
+    for (const x of h.items ?? []) {
+      const it = items.find((i) => i.id === x.menu_item_id); if (!it || !it.is_available) continue;
+      putLine(it, it.variants?.find((v) => v.id === x.variant_id) ?? null, [], Math.max(1, Number(x.qty) || 1));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival
+  }, []);
   /** The minus under a tile takes one off the most recent line of that dish. With sizes on the
    *  ticket the tile cannot know which one is meant, and the one just added is the one in hand. */
   const takeOne = (it: Item) => {
@@ -239,13 +262,15 @@ export function PosClient({ categories, items, tables, initialTable, initialType
 
     if (!online) {
       // Offline: keep the order on this device and send it the moment the connection returns.
-      await enqueue("place_order", { ...payload, client_id: crypto.randomUUID(), placed_at: new Date().toISOString() }, `Order · ${label} · ${count} items`);
+      // the delivery address goes with it, and is written onto the order as soon as the order lands (0109)
+      await enqueue("place_order", { ...payload, client_id: crypto.randomUUID(), placed_at: new Date().toISOString(), delivery_address: type === "delivery" ? address.trim() || null : null }, `Order · ${label} · ${count} items`);
       setLines([]);
       router.push("/orders?queued=1");
       return;
     }
     const r = await placeOrder(payload);
     if ("error" in r) return setErr(r.error!);
+    if (type === "delivery" && address.trim()) { const d = await setDelivery(r.orderId!, address.trim()); if ("error" in d) toast(`Order sent — but the address was not saved: ${d.error}. Add it on the order.`, "err"); }
     router.push(`/orders/${r.orderId}`);
   });
 
@@ -387,6 +412,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         <div className="mt-3 grid grid-cols-2 gap-2">
           <input placeholder="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
           <input placeholder="Phone" inputMode="tel" className="num" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
+          {type === "delivery" && <textarea placeholder="Delivery address — house, street, landmark" rows={2} className="col-span-2" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} data-delivery-address />}
         </div>
       )}
       {known && type !== "room_service" && <div className="mt-1.5 text-[12px] text-steel">Welcome back{known.name ? `, ${known.name.split(" ")[0]}` : ""} · {known.visits} visit{known.visits === 1 ? "" : "s"}{known.notes ? ` · ${known.notes}` : ""}</div>}

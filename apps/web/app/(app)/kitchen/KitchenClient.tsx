@@ -17,8 +17,8 @@ import { useOffline } from "@/lib/offline/OfflineProvider";
 import { usePrinters } from "@/lib/print/usePrinter";
 
 type Line = { id: string; name_snapshot: string; qty: number; status: string; notes: string | null; course?: number; addons?: { name: string }[] | null; components?: { name: string; qty: number }[] | null; menu_items?: { station: string | null; categories: { station: string | null } | null } | null };
-type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string; held?: boolean;
-  orders: { order_no: number; type: string; customer_name: string | null; promised_at: string | null; dining_tables: { name: string } | null } | null;
+type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string; held?: boolean; cook?: string | null;
+  orders: { order_no: number; type: string; customer_name: string | null; token_no?: number | null; promised_at: string | null; dining_tables: { name: string } | null } | null;
   order_items: Line[] };
 export type Bumped = { id: string; kot_no: number; served_at: string; orders: { order_no: number; type: string; customer_name: string | null; dining_tables: { name: string } | null } | null };
 /** Per ticket: what its dishes draw from the pantry, whether the shelf covers it, whether it has drawn already. */
@@ -27,8 +27,9 @@ export type Needs = Record<string, { started: boolean; unmapped: string[]; needs
 /** A line prints at its dish's station, else its category's, else nowhere in particular — the expo view only. */
 const stationOf = (i: Line) => i.menu_items?.station || i.menu_items?.categories?.station || null;
 const live = (i: Line) => i.status !== "cancelled";
-const where = (k: { orders: { type: string; customer_name: string | null; dining_tables: { name: string } | null } | null }) =>
-  k.orders?.dining_tables?.name ?? (k.orders?.type === "takeaway" ? "Takeaway" : k.orders?.type === "room_service" ? `Room · ${k.orders?.customer_name ?? ""}` : "Delivery");
+/** a parcel's daily token (0103) rides with it — the number the counter calls and the TV shows */
+const where = (k: { orders: { type: string; customer_name: string | null; token_no?: number | null; dining_tables: { name: string } | null } | null }) =>
+  k.orders?.dining_tables?.name ?? (k.orders?.type === "room_service" ? `Room · ${k.orders?.customer_name ?? ""}` : `${k.orders?.type === "takeaway" ? "Takeaway" : "Delivery"}${k.orders?.token_no ? ` · Token ${k.orders.token_no}` : ""}`);
 
 /** The pantry lines under a ticket. Before the fire: what starting it will draw, with anything the shelf
  *  cannot cover in red. After: a note that the pantry has moved. Dishes with no recipe are named, so the
@@ -231,7 +232,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                           <span className="where">{where(k)}</span>
                           <span className="kt-mins num" style={{ ["--age" as string]: late || overdue ? "var(--color-red)" : warn ? "var(--color-orange)" : "var(--color-green)" }} title={`${age} minutes since it was sent`}><Clock size={16} aria-hidden />{fmtAge(k.created_at).value} {fmtAge(k.created_at).label}</span>
                         </div>
-                        <div className="px-3.5 pt-2 kt-sub num">KOT #{k.kot_no} · order #{k.orders?.order_no}{hotkey ? ` · key ${hotkey}` : ""}</div>
+                        <div className="px-3.5 pt-2 kt-sub num">KOT #{k.kot_no} · order #{k.orders?.order_no}{hotkey ? ` · key ${hotkey}` : ""}{k.cook && <span className="font-sans" data-cook> · {k.cook}</span>}</div>
                         <div className="px-3.5">
                           {leftMin !== null && (
                             <div className={cn("mt-2 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[13px] font-bold",

@@ -9,8 +9,9 @@ import { formatINR } from "@/lib/format";
 import { DOC_KINDS, GST_STATES, financialYear, statutoryCalendar, taxLabels, type CalendarItem } from "@dineflow/shared";
 import { saveTaxProfile, saveDoc, deleteDoc, markFiled, unmarkFiled } from "./actions";
 import { Guide } from "./Guide";
+import { TallyTab } from "./TallyTab";
 
-export type Tab = "overview" | "returns" | "calendar" | "documents" | "profile" | "guide";
+export type Tab = "overview" | "returns" | "calendar" | "documents" | "tally" | "profile" | "guide";
 type Rest = { id: string; name: string; property_type: string; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; gstin: string | null; legal_name?: string | null; pan?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; gst_monthly?: boolean | null; fssai_no?: string | null; gst_rate: number; room_gst_rate?: number; ca_name?: string | null; ca_firm?: string | null; ca_membership_no?: string | null; ca_email?: string | null; ca_phone?: string | null };
 type Filing = { id: string; form: string; period: string; due_on: string; filed_on: string | null; ack_no: string | null };
 type Doc = { id: string; kind: string; title: string; number: string | null; issuer: string | null; issued_on: string | null; expires_on: string | null; period: string | null; url: string | null; notes: string | null };
@@ -18,7 +19,7 @@ type Row = { sac: string; kind: string; rate: number; count: number; taxable: nu
 type Totals = { count: number; taxable: number; cgst: number; sgst: number; total: number };
 type Summary = { from: string; to: string; dining: Row[]; stay: Row[]; b2b: { gstin: string; name: string | null; count: number; taxable: number; cgst: number; sgst: number; total: number }[]; dining_totals: Totals; stay_totals: Totals } | null;
 
-const TABS: { key: Tab; label: string }[] = [{ key: "overview", label: "Overview" }, { key: "returns", label: "Returns" }, { key: "calendar", label: "Calendar" }, { key: "documents", label: "Documents" }, { key: "profile", label: "Profile & CA" }, { key: "guide", label: "Guide" }];
+const TABS: { key: Tab; label: string }[] = [{ key: "overview", label: "Overview" }, { key: "returns", label: "Returns" }, { key: "calendar", label: "Calendar" }, { key: "documents", label: "Documents" }, { key: "tally", label: "Tally" }, { key: "profile", label: "Profile & CA" }, { key: "guide", label: "Guide" }];
 const day = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 const monthLabel = (ym: string) => new Date(ym + "-01T00:00:00").toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 const shiftMonth = (ym: string, by: number) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + by, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
@@ -62,6 +63,7 @@ export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings,
         onUndo={(c) => start(async () => { const x = await unmarkFiled(c.form, c.period); setMsg("error" in x ? x.error! : `${c.form} for ${c.period} is open again.`); })} />}
       {tab === "documents" && <Documents docs={docs} today={today} pending={pending} onSave={(fd) => start(async () => { const x = await saveDoc(fd); setMsg("error" in x ? x.error! : "Document saved."); })} onDelete={(id) => start(async () => { const x = await deleteDoc(id); setMsg("error" in x ? x.error! : "Document removed."); })} />}
       {tab === "profile" && <Profile r={r} role={role} pending={pending} onSave={(fd) => start(async () => { const x = await saveTaxProfile(fd); setMsg("error" in x ? x.error! : "Profile saved."); })} />}
+      {tab === "tally" && <TallyTab month={month} company={(r as { tally_company?: string | null }).tally_company ?? ""} ledgers={((r as { tally_ledgers?: Record<string, string> }).tally_ledgers ?? {}) as never} canEdit={role === "owner" || role === "manager"} />}
       {tab === "guide" && <Guide propertyType={r.property_type} />}
     </div>
   );

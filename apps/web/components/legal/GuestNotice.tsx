@@ -9,7 +9,7 @@ export function GuestNotice({ property, use, className = "" }: { property?: stri
   return (
     <p className={`text-[11px] leading-snug text-[var(--color-label-3)] text-center ${className}`} data-guest-notice>
       {property || "The property"} uses your details {use}. DineFlow runs this page for them —{" "}
-      <Link href="/legal/privacy" className="underline">how your details are looked after</Link>.
+      <Link href="/legal/privacy" className="underline inline-block py-[15px] -my-[15px]">how your details are looked after</Link>.
     </p>
   );
 }

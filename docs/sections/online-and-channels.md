@@ -1,6 +1,6 @@
 # Online orders and OTA channels
 
-**Routes** `/online-orders` · `/channels`
+**Routes** `/online-orders` · `/online-orders/payouts` · `/channels`
 **Files** `app/(app)/online-orders/OnlineClient.tsx` · `app/(app)/channels/ChannelsClient.tsx` ·
 both `actions.ts`
 **Reads** `online_orders`, `order_channels`, `ota_channels`, `ota_sync_log`, `menu_items`,
@@ -125,6 +125,14 @@ refuses one that resolves to a private address (`lib/netguard.ts` — `10.0.0.5.
 text-only check).
 
 ## Before you edit
+
+- **Payouts (`/online-orders/payouts`, 0105; owner or manager — a *Payouts* button in the header).** Pick the
+  channel (website channels are left out: they are paid directly) and the period — last Monday to Sunday by
+  default, how Swiggy and Zomato settle. `settlement_expected` adds up that channel's orders (not new, rejected or
+  cancelled — 0108 left out never-accepted ones) by IST placed date: count, value, commission, *should pay*. Type what reached the bank plus any TDS /
+  TCS and other cuts on the statement; the gap shows before saving (green within ₹1, red short, amber over).
+  `settlement_add` stores the expected figures as they were, so a later edit to an order does not move an old gap.
+  The payout per order is only as good as what the channel sent; the gap is the question to ask them.
 
 - **Online orders is Simple Service (2026-10-15).** `SvcHead`, Kitchen pace (unchanged), then three tabs —
   **New** (a red count; a new order brings this tab forward with the sound), **Cooking**, **Ready** — and one card

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
-import { toLoginAddress } from "@dineflow/shared";
+import { toLoginAddress, modulesFor, positionHome, type PropertyType, type Role } from "@dineflow/shared";
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40) + "-" + Math.random().toString(36).slice(2, 6);
 
@@ -28,14 +28,36 @@ export async function login(_: unknown, fd: FormData) {
     // longer works. The owner must ask Master control for a new one.
     try { await db.rpc("enforce_temp_password_lockout"); } catch { /* best-effort */ }
   }
-  const { error } = await supabase.auth.signInWithPassword({ email, password: String(fd.get("password")) });
+  const { data: signed, error } = await supabase.auth.signInWithPassword({ email, password: String(fd.get("password")) });
   if (error) {
     if (db) await db.rpc("login_failed", { p_login: email, p_ip: ip });
     return { error: error.message };
   }
   // the master's credentials open Master control and nothing else; owners open their own property
   const { data: master } = await supabase.rpc("is_master");
-  redirect(master ? "/admin" : "/dashboard");
+  if (master) redirect("/admin");
+  redirect(await startScreen(supabase, signed.user?.id ?? null));
+}
+
+/**
+ * Where someone lands after signing in: their position's own screen — Kitchen for a commis, Billing for a cashier,
+ * Front desk for a receptionist (packages/shared/src/positionAccess.ts) — when they hold it, else the control room.
+ * Any failure here is not a reason to keep someone out: it falls back to the control room.
+ */
+async function startScreen(supabase: Awaited<ReturnType<typeof createClient>>, userId: string | null) {
+  if (!userId) return "/dashboard";
+  try {
+    const [{ data: b }, { data: me }] = await Promise.all([
+      supabase.rpc("session_bundle"),
+      // their own row only: an owner can read the whole team's
+      supabase.from("profiles").select("position").eq("id", userId).maybeSingle(),
+    ]);
+    const bundle = b as { profile?: { role: Role; allowed_modules?: string[] | null } | null; restaurant?: { property_type: PropertyType; enabled_modules?: string[] | null } | null } | null;
+    const position = (me as { position?: string | null } | null)?.position;
+    if (!position || !bundle?.profile || !bundle.restaurant) return "/dashboard";
+    const held = modulesFor(bundle.restaurant.property_type, bundle.profile.role, bundle.restaurant.enabled_modules ?? null, bundle.profile.allowed_modules ?? null);
+    return `/${positionHome(position, held)}`;
+  } catch { return "/dashboard"; }
 }
 
 export async function signup(_: unknown, fd: FormData) {

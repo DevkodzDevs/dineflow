@@ -86,3 +86,12 @@ export async function markStaff(profileId: string, date: string, present: boolea
   if (error) return { error: error.message };
   revalidatePath("/staff"); return { error: null };
 }
+
+/** Position, own title, department, manager and joining date (0107 staff_set_position — the same who-may-change-whom
+ *  rule as access; an owner may also set their own). */
+export async function setPosition(userId: string, p: { position: string | null; department: string | null; title: string; reportsTo: string | null; joinedOn: string | null }) {
+  const s = await createClient();
+  const { error } = await s.rpc("staff_set_position", { p_user: userId, p_position: p.position, p_department: p.department, p_title: p.title || null, p_reports_to: p.reportsTo, p_joined_on: p.joinedOn || null });
+  if (error) return { error: error.message };
+  revalidatePath("/staff"); return { ok: true as const };
+}

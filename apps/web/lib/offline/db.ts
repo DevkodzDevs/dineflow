@@ -12,7 +12,8 @@ export type JobKind = "place_order" | "settle_bill" | "generate_bill" | "stock" 
  * never removed without either succeeding or somebody deciding — an order taken from a guest is
  * not something software should discard quietly.
  */
-export type Job = { id: string; kind: JobKind; args: Record<string, unknown>; at: number; tries: number; error?: string; label: string; nextTry?: number; held?: boolean; heldAt?: number };
+/** `outlet`: the outlet the write was made in (0106) — it is only ever sent while this device is in that outlet. */
+export type Job = { id: string; kind: JobKind; args: Record<string, unknown>; at: number; tries: number; error?: string; label: string; nextTry?: number; held?: boolean; heldAt?: number; outlet?: string };
 export type Cached<T> = { v: T; at: number };
 
 let dbp: Promise<IDBDatabase> | null = null;

@@ -7,7 +7,7 @@ import { TaxClient, type Tab } from "./TaxClient";
 export const metadata = { title: "Tax & GST" };
 export const dynamic = "force-dynamic";
 
-const TABS: Tab[] = ["overview", "returns", "calendar", "documents", "profile", "guide"];
+const TABS: Tab[] = ["overview", "returns", "calendar", "documents", "tally", "profile", "guide"];
 const lastDay = (ym: string) => { const [y, m] = ym.split("-").map(Number); return `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`; };
 
 export default async function TaxPage({ searchParams }: { searchParams: Promise<{ tab?: string; month?: string; fy?: string }> }) {

@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { wrote } from "@/lib/wrote";
-const bump = () => ["/housekeeping", "/rooms", "/frontdesk", "/dashboard"].forEach((p) => revalidatePath(p));
+const bump = () => ["/housekeeping", "/rooms", "/frontdesk", "/dashboard", "/cleaning"].forEach((p) => revalidatePath(p));
 
 export async function setTask(id: string, status: "pending" | "in_progress" | "done") {
   const s = await createClient(); const bad = wrote(await s.from("housekeeping_tasks").update({ status }).eq("id", id).select("id"), "That task could not be changed.");

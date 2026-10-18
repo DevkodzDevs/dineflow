@@ -62,7 +62,47 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0101_queue_page_name          — queue_place(slug): the public queue page could never find its property
 0102_pulse_reads_history_once — table_pulse / table_pulse_for read the 90-day dwell history once
                                 (dwell_medians + dwell_pick), not once per dining table; same figures
+0103_calls_tokens_screen_feedback — Batch 1 of the Petpooja gap list: service_calls (a table's QR calls a waiter,
+                                the bill or water), daily takeaway tokens (orders.token_no, order_tokens,
+                                trigger orders_token), restaurants.screen_key + screen_feed (the TV), guest_feedback
+                                (private ratings); service_calls and guest_feedback in the realtime publication
+0104_screen_key_rotate        — my_screen_key(true) works: gen_random_bytes is extensions.gen_random_bytes
+0105_expenses_checklists_payouts_phone_tally — Batch 2: expenses (+ cash_movements link), checklists +
+                                checklist_runs, channel_settlements, orders.delivery_address + customers.address,
+                                phone_order_card / order_delivery, report_extra, tally_company / tally_ledgers + tally_days
+0116_work_by_department       — _my_dept, _work_dept_ok, _work_board_sees; jobs and table_cleanings RLS by department;
+                                _clean_job refuses another department's job; clean_board / work_board filtered; work_log
+0115_session_department       — session_bundle's profile carries department and position
+0114_work_board_key           — work_board: the new jobs under 'work', the cleaning jobs keep 'jobs'
+0113_work_jobs                — jobs (every department's work: category → department, priority → due, repeat, a labourer,
+                                a note) + _job_who / _job_repeat; job_add / job_assign_labour / job_cancel; the clean_*
+                                functions take kind 'job', clean_done an optional note; kots.started_by / ready_by /
+                                served_by + _kot_who; work_board
+0112_cleaning_inspection      — housekeeping_tasks inspected_by / inspected_at / inspection; inspect_room stamps the clean
+                                and gives a failed room back to whoever cleaned it; clean_board adds To inspect, arrival, VIP
+0111_cleaning_jobs            — table_cleanings (+ a trigger on dining_tables occupied → free), restaurants.table_cleaning,
+                                housekeeping_tasks place / assigned_by / assigned_at / taken_by / taken_at / done_by
+                                (+ _hk_who), clean_board / clean_take / clean_done / clean_release / clean_assign /
+                                clean_skip / clean_settings_save
+0110_tally_stay_ledgers       — tally_settings_save takes room_sales / guest_services / discount / debtors
+0109_close_known_limits       — feedback_ip_hits + feedback_submit(…, p_ip_hash) (five an hour per visitor);
+                                staff_pay.pf_basic_pct, restaurants.payroll_wage_rule, payroll_runs.wage_rule,
+                                payroll_lines.pf_wage, _payroll_pf_wage / _payroll_figures_v2; tally_days returns
+                                stays; _copy_menu copies add-ons, their links and combos; chain_overview end dates;
+                                admin_match_chain_membership
+0108_review_fixes             — the review of 0103–0107: outlets never extend a trial; no screen_key in the
+                                session; a separate allowance for anonymous feedback; prototype names refused as
+                                positions; checklists count only remaining duties; payouts skip never-accepted
+                                orders; payroll — net never below zero, no advance taken twice, the whole cost
+                                expensed on pay, nobody but the owner sets their own pay
+0107_staff_positions          — profiles.position / position_title / department / reports_to / joined_on +
+                                staff_set_position; acting_profile() answers the outlet being worked in
+0106_outlets_and_payroll      — Batch 3: restaurants.chain_id, outlet_access, outlet_session; auth_restaurant_id() and
+                                session_bundle() answer the outlet this sign-in chose; outlet_* / chain_* RPCs;
+                                staff_pay, staff_advances, payroll_runs, payroll_lines + payroll RPCs
 pending/after_deploy_secrets  — NOT a migration yet: applied after the deploy that carries it (see below)
+pending/after_deploy_control_room — NOT a migration yet: effective_modules() gives 'dashboard' to the owner and a manager
+                                it was ticked for only; apply right after the deploy (dashboard.md)
 ```
 
 **Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`
@@ -79,6 +119,62 @@ made in between is silently undone.
 4. Re-run the gates.
 
 ## Before you edit
+
+- **pgcrypto lives in `extensions`, not `public` (0104, 2026-10-17).** A function with `set search_path = public`
+  cannot see `gen_random_bytes` — 0103's `my_screen_key(true)` failed on every call ("function
+  gen_random_bytes(integer) does not exist") and the owner could never switch an old TV link off. Write
+  `extensions.gen_random_bytes(...)` (or `gen_random_uuid()`, which is core). A column default is safe: it is
+  resolved when the migration runs. The 0103 dry run did not try the rotation — test every branch of a new RPC.
+- **0116 — work by department (2026-10-18).** The `jobs_read` and `table_cleanings_read` policies now also call
+  `_work_dept_ok` (stable, security definer, one `profiles` read). A supervisor with no department passes, so live
+  properties — none of whose people have a department yet — lose nothing. `work_log` is owner / manager only.
+  Dry run `dry116.cjs` (22).
+- **0113 / 0114 / 0115 — Work (2026-10-18).** `jobs`: RLS on, one select policy, no writes for anyone but the functions
+  and triggers; in the realtime publication. `job_add` is any signed-in person's, but giving the job to someone is checked
+  there too; `job_assign_labour` and `clean_assign` are supervisors'; `job_cancel` is the raiser's, the taker's or a
+  supervisor's — its check coalesces nulls (`not (null or false)` is null, which does not raise: a stranger dropped a
+  job in the rehearsal before the fix). `clean_done(text, uuid)` was dropped and recreated with `p_note default null`.
+  `_kot_who` is a trigger on `kots`, stamped from `auth.uid()` inside the cook's session. `session_bundle` adds two
+  fields (0115) and keeps its grants; a definition read back with `pg_get_functiondef` ends without `;` — add one before
+  anything that follows. Dry runs: `dry113.cjs` (34), `dry114.cjs` (34), `dry115.cjs` (2).
+- **0112 — the inspection loop (2026-10-18).** `inspect_room` keeps its checks and grant (owner, manager, supervisors);
+  the re-clean it creates on a fail is given to the last cleaner only while that profile is active. `clean_board`
+  returns `inspect` only to whoever may assign, and only where `hk_inspect_required`. Dry run `dry112.cjs` (14).
+- **0111 — cleaning jobs (2026-10-18).** `table_cleanings`: RLS on, one select policy (`auth_restaurant_id()`), no
+  insert / update / delete for anyone — the trigger and the `clean_*` functions write it; in the realtime publication.
+  The trigger is `security definer` and only inserts or closes jobs. `clean_assign` is owner / manager / supervisor /
+  supervisor 2 only; `clean_settings_save` owner / manager. Every function is revoked from anon. Dry run: `dry111.cjs`
+  (36) — including a waiter refused, a direct insert and update refused, anon reads and calls nothing, another
+  property sees nothing. [cleaning.md](cleaning.md)
+- **0109 / 0110 — the known limits closed (2026-10-18).** `feedback_ip_hits` has RLS on, no policy and no grants:
+  only `feedback_submit` (8 arguments, anon) reads and writes it; the hash is cleaned to hex, the 7-argument
+  version still runs every other rule. `admin_match_chain_membership` is platform admin only. `staff_pay_set` takes
+  `p_basic_pct` (1–100) and still goes through `_payroll_may`. `tally_days` adds `stays`: issued stay and facility
+  invoices of the period with their lines' SAC and taxable value and the folio's payments (as the invoice page reads
+  them). Dry runs: `dry109.cjs` (17), `dry110.cjs` (1).
+- **0108 — the review of 0103–0107 (2026-10-17).** `session_bundle` now drops `screen_key` as well as `box_token` (the
+  TV link is owner / manager only through `my_screen_key`; it reached every role's page payload). `outlet_create`
+  refuses an outlet whose membership has lapsed and gives a new outlet made from a trial the same end date, so
+  opening outlets cannot extend a trial. `feedback_submit` counts table-less, phone-less notes in their own 15-an-hour
+  allowance. `staff_pay_set` / `advance_add` go through `_payroll_may`: only the owner sets their own pay or anyone's
+  at or above them. Dry run: `dry108.cjs` (18).
+- **0106 changed `auth_restaurant_id()` (2026-10-17).** It now answers `coalesce(_outlet_current(), profiles.restaurant_id)`
+  for an active profile — the outlet this sign-in switched to, while `outlet_access` still allows it — and the master
+  branches are unchanged. Every policy depends on it; the dry run (`dry106.cjs`, 47) and the four suites were run
+  after it. See [chain-and-payroll.md](chain-and-payroll.md).
+- **0105 (2026-10-17) — who may do what.** `expenses` is read by owner, manager, supervisor, cashier (the RLS policy
+  itself checks the role, not only the property); `expense_void` is owner or manager. `channel_settlements` is read
+  and written by owner or manager only. `checklists` / `checklist_runs` are read by the whole property; lists are
+  written by owner, manager, supervisor, and anyone may tick. `report_extra` is owner, manager, supervisor (and the
+  platform admin); `tally_days` and `tally_settings_save` owner or manager. None of the 0105 functions are anon's.
+  **Do not read `restaurants` directly as a signed-in user** — since 0098 that is refused; the session bundle
+  (`to_jsonb(r)`) carries `tally_company` / `tally_ledgers` to the page.
+- **0103's public writes and their limits.** `dine_call(slug, table_qr, kind)`: anon, idempotent (an open call of the
+  same kind is returned with `again:true`), 12 an hour per table, 400 an hour per place; `dine_call_status` shows
+  that table's last 30 minutes. `service_call_done(p_id | p_table)`: staff only. `feedback_submit`: anon, rating
+  1–5, up to eight tags of 30 characters, 60 an hour per place, 6 an hour per table, 3 a day per phone; the
+  phone is stored as digits. `feedback_seen`: staff. `screen_feed(key)` answers only a key of 16+ characters for
+  a property in trial or active; `my_screen_key` is owner or manager. Anon reads neither table (no anon policy).
 
 - **0102 (2026-10-13): the pulse reads its history once.** `table_pulse()` and `table_pulse_for(p_rid)` called
   `dwell_minutes()` per dining table — free ones too — each a scan of 90 days of paid dine-in orders; Pulse is

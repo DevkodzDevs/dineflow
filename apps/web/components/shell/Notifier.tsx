@@ -3,12 +3,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import { Bell, BellOff, BellRing, Bike, CalendarCheck, BedDouble, ChefHat, UtensilsCrossed, Sparkles, Play, Volume2, Monitor, Smartphone, ConciergeBell, Flame, CheckCheck, Settings2, Clock } from "lucide-react";
+import { Bell, BellOff, BellRing, Bike, CalendarCheck, BedDouble, ChefHat, UtensilsCrossed, Sparkles, Play, Volume2, Monitor, Smartphone, ConciergeBell, Flame, CheckCheck, Settings2, Clock, HandPlatter, Star, SprayCan, UserCheck, CircleCheck, ListTodo, ClipboardCheck } from "lucide-react";
+import { DEPARTMENTS } from "@dineflow/shared";
 import { getClient } from "@/lib/supabase/lazy";
 import { formatINR, todayIST } from "@/lib/format";
 import { waDate } from "@/lib/wa";
 import { cn, Sheet, Switch, useToast } from "@/components/ui";
-import { KINDS, STATIONS, TONES, loadPrefs, savePrefs, playTone, unlockAudio, stationPrefs, type NotifyKind, type NotifyPrefs, type StationId, type ToneId } from "@/lib/notify";
+import { KINDS, STATIONS, TONES, kindsFor, deptSees, loadPrefs, savePrefs, playTone, unlockAudio, stationPrefs, type NotifyKind, type NotifyPrefs, type StationId, type ToneId } from "@/lib/notify";
 
 type Item = { id: string; kind: NotifyKind; title: string; sub: string; href: string; at: number; read: boolean };
 type Ctx = {
@@ -18,7 +19,7 @@ type Ctx = {
 const NotifyCtx = createContext<Ctx | null>(null);
 export const useNotify = () => useContext(NotifyCtx);
 
-const KIND_ICON: Record<NotifyKind, typeof Bell> = { online: Bike, reservation: CalendarCheck, booking: BedDouble, kot: ChefHat, ready: UtensilsCrossed, housekeeping: Sparkles };
+const KIND_ICON: Record<NotifyKind, typeof Bell> = { online: Bike, reservation: CalendarCheck, booking: BedDouble, kot: ChefHat, ready: UtensilsCrossed, housekeeping: Sparkles, call: HandPlatter, feedback: Star, clean: SprayCan, assigned: UserCheck, roomdone: CircleCheck, job: ListTodo, jobdone: ClipboardCheck, taken: UserCheck };
 const KIND_TONE: Record<NotifyKind, string> = {
   online: "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]",
   reservation: "bg-[var(--color-blue-2)] text-[var(--color-blue)]",
@@ -26,7 +27,19 @@ const KIND_TONE: Record<NotifyKind, string> = {
   kot: "bg-[var(--color-red-2)] text-[var(--color-red)]",
   ready: "bg-[var(--color-green-2)] text-[var(--color-green)]",
   housekeeping: "bg-[var(--color-fill)] text-[var(--color-label-2)]",
+  call: "bg-[var(--color-orange-2)] text-[var(--color-orange)]",
+  feedback: "bg-[var(--color-violet-2)] text-[var(--color-violet)]",
+  clean: "bg-[var(--color-cyan-2)] text-[var(--color-cyan)]",
+  assigned: "bg-[var(--color-cyan-2)] text-[var(--color-cyan)]",
+  roomdone: "bg-[var(--color-green-2)] text-[var(--color-green)]",
+  job: "bg-[var(--color-orange-2)] text-[var(--color-orange)]",
+  jobdone: "bg-[var(--color-green-2)] text-[var(--color-green)]",
+  taken: "bg-[var(--color-cyan-2)] text-[var(--color-cyan)]",
 };
+const hm = (v: unknown) => (v ? new Date(str(v)).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "");
+const mins = (a: unknown, b: unknown) => (a && b ? Math.max(1, Math.round((new Date(str(b)).getTime() - new Date(str(a)).getTime()) / 60000)) : null);
+const PRI: Record<string, string> = { "1": "Urgent · ", "2": "High · ", "4": "Low · " };
+const deptName = (k: unknown) => (k ? DEPARTMENTS.find((d) => d.key === k)?.label ?? str(k) : "anyone");
 const FEED_KEY = "df-notify-feed";
 type Row = Record<string, unknown>;
 const str = (v: unknown) => (v == null ? "" : String(v));
@@ -42,7 +55,15 @@ function describe(kind: NotifyKind, r: Row): { title: string; sub: string } {
     case "booking": return { title: `New room booking${r.booking_no ? ` #${str(r.booking_no)}` : ""}`, sub: [`${Number(r.adults ?? 0) + Number(r.children ?? 0) || 1} guests`, r.check_in ? `arrives ${waDate(str(r.check_in))}` : "", str(r.source).replace("_", " ")].filter(Boolean).join(" · ") };
     case "kot": return { title: `New kitchen ticket${r.kot_no ? ` · KOT ${str(r.kot_no)}` : ""}`, sub: "Fired just now" };
     case "ready": return { title: `Food ready${r.kot_no ? ` · KOT ${str(r.kot_no)}` : ""}`, sub: "Ready to serve" };
-    case "housekeeping": return { title: "Room to clean", sub: str(r.kind).replace(/_/g, " ") || "A new housekeeping task" };
+    case "housekeeping": return { title: r.place ? `Room ${str(r.place)} to clean` : "Room to clean", sub: str(r.kind).replace(/_/g, " ") || "A new housekeeping task" };
+    case "clean": return { title: `${str(r.place) || "A table"} to clean`, sub: "Paid and left — take it on Cleaning" };
+    case "roomdone": return { title: `Room ${str(r.place)} is clean`, sub: "Finished just now — inspect it, or sell it" };
+    case "job": return { title: `${PRI[str(r.priority)] ?? ""}${str(r.title)}`, sub: [str(r.place), `for ${deptName(r.department)}`, r.guest_impact ? "a guest is waiting" : ""].filter(Boolean).join(" · ") };
+    case "jobdone": { const m = mins(r.taken_at, r.done_at); return { title: `Done · ${str(r.label ?? r.title)}`, sub: [r.title ? str(r.place) : "", r.who ? `${str(r.who)}${m ? ` · ${m} min` : ""}` : "", str(r.note ?? "")].filter(Boolean).join(" — ") || "Finished just now" }; }
+    case "taken": return { title: `${str(r.who ?? "Someone")} took ${str(r.label ?? r.title)}`, sub: `Started ${hm(r.taken_at)}${r.title && r.place ? ` · ${str(r.place)}` : ""}` };
+    case "assigned": return { title: `Given to you · ${r.title ? str(r.title) : r.room_id ? `Room ${str(r.place)}` : str(r.place) || "a job"}`, sub: r.title ? [str(r.place), str(r.details)].filter(Boolean).join(" — ") || "A job for you" : str(r.notes).startsWith("Failed inspection") ? str(r.notes) : r.room_id ? "A room to clean" : "A table to clean" };
+    case "call": return { title: r.kind === "bill" ? "A table wants the bill" : r.kind === "water" ? "A table wants water" : "A table is calling a waiter", sub: "See which on Orders" };
+    case "feedback": return { title: `Low rating · ${str(r.rating)}★`, sub: [str(r.comment).slice(0, 80), (r.tags as string[] | null)?.join(", ")].filter(Boolean).join(" — ") || "Read it under Customers → Feedback" };
   }
 }
 
@@ -52,7 +73,7 @@ function describe(kind: NotifyKind, r: Row): { title: string; sub: string } {
  * a line in the bell's list, and — while the app is in the background, if allowed — a system
  * notification. Mounted once in the (app) layout, so it hears events on every screen.
  */
-export function NotifierProvider({ modules, propertyType, children }: { modules: string[]; propertyType: string; children: ReactNode }) {
+export function NotifierProvider({ modules, propertyType, me, role = "", dept = null, children }: { modules: string[]; propertyType: string; me?: string; role?: string; dept?: string | null; children: ReactNode }) {
   const toast = useToast();
   /* Rendered from the start with fixed defaults, replaced by this device's saved choice right after
      mount: the settings panel then has its full height in the server HTML, instead of appearing a
@@ -60,13 +81,17 @@ export function NotifierProvider({ modules, propertyType, children }: { modules:
   const [prefs, setPrefsState] = useState<NotifyPrefs | null>(() => stationPrefs("phone"));
   const [feed, setFeed] = useState<Item[]>([]);
   const [settings, setSettings] = useState(false);
-  const kinds = useMemo(() => KINDS.filter((k) => modules.includes(k.module)).map((k) => k.kind), [modules]);
+  /* Keyed by what the list holds, not by the array: every refresh renders the layout again and hands over a new
+     `modules` array, which re-made `kinds`, which tore the channel down and joined it again — an event arriving in
+     that gap (a burst: a table paid, then the next one) was never announced. */
+  const modKey = modules.join(",");
+  const kinds = useMemo(() => kindsFor(modKey ? modKey.split(",") : [], role), [modKey, role]);
   const live = useRef({ prefs, toast });
   live.current = { prefs, toast };
   const seen = useRef(new Set<string>());
 
   useEffect(() => {
-    setPrefsState(loadPrefs(propertyType));
+    setPrefsState(loadPrefs(propertyType, role));
     try { const f = JSON.parse(sessionStorage.getItem(FEED_KEY) ?? "[]") as Item[]; if (Array.isArray(f)) setFeed(f.slice(0, 40)); } catch { /* none */ }
     const onPrefs = (e: Event) => setPrefsState((e as CustomEvent<NotifyPrefs>).detail);
     window.addEventListener("df-notify-prefs", onPrefs);
@@ -74,11 +99,18 @@ export function NotifierProvider({ modules, propertyType, children }: { modules:
     const unlock = () => unlockAudio();
     window.addEventListener("pointerdown", unlock, { passive: true }); window.addEventListener("keydown", unlock);
     return () => { window.removeEventListener("df-notify-prefs", onPrefs); window.removeEventListener("pointerdown", unlock); window.removeEventListener("keydown", unlock); };
-  }, [propertyType]);
+  }, [propertyType, role]);
   useEffect(() => { try { sessionStorage.setItem(FEED_KEY, JSON.stringify(feed.slice(0, 40))); } catch { /* full */ } }, [feed]);
 
   const setPrefs = useCallback((p: NotifyPrefs) => { setPrefsState(p); savePrefs(p); }, []);
 
+  /** A job someone else took or finished: its alerts leave this person's bell (a supervisor's stay — they hear who). */
+  const drop = useCallback((id: string) => { setFeed((f) => f.filter((i) => !i.id.includes(id))); }, []);
+  const names = useRef(new Map<string, string>());
+  const nameOf = useCallback(async (id: unknown) => {
+    const k = str(id); if (!k) return null; if (names.current.has(k)) return names.current.get(k)!;
+    try { const c = await getClient(); const { data } = await c.from("profiles").select("full_name").eq("id", k).maybeSingle(); const n = (data as { full_name?: string } | null)?.full_name ?? null; if (n) names.current.set(k, n); return n; } catch { return null; }
+  }, []);
   const announce = useCallback((kind: NotifyKind, row: Row) => {
     const p = live.current.prefs; if (!p || !p.kinds[kind]) return;
     const key = `${kind}:${str(row.id)}`; if (seen.current.has(key)) return; seen.current.add(key);
@@ -101,22 +133,65 @@ export function NotifierProvider({ modules, propertyType, children }: { modules:
     const t = setTimeout(() => void (async () => {
       const c = await getClient(); if (gone) return;
       sb = c; ch = c.channel("df-notify");
+      /* One binding per table and event, however many alerts listen to it: two identical postgres_changes bindings
+         on one channel left the server's list and the client's out of step, and the whole channel went quiet —
+         a supervisor's "Room 104 is clean" and a cleaner's "T4 to clean" never arrived (0112). */
+      const listeners = new Map<string, ((r: Row) => void)[]>();
+      const on = (table: string, event: "INSERT" | "UPDATE", fn: (r: Row) => void) => { const k = `${table}|${event}`; listeners.set(k, [...(listeners.get(k) ?? []), fn]); };
       const ins = (table: string, kind: NotifyKind, ok: (r: Row) => boolean = () => true) => {
-        if (kinds.includes(kind)) ch!.on("postgres_changes", { event: "INSERT", schema: "public", table }, (e) => { const r = e.new as Row; if (ok(r)) announce(kind, r); });
+        if (kinds.includes(kind)) on(table, "INSERT", (r) => { if (ok(r)) announce(kind, r); });
       };
       ins("online_orders", "online");
       ins("reservations", "reservation");
       ins("bookings", "booking", (r) => !r.is_block);
       ins("kots", "kot");
-      ins("housekeeping_tasks", "housekeeping");
-      if (kinds.includes("ready")) ch.on("postgres_changes", { event: "UPDATE", schema: "public", table: "kots" }, (e) => {
-        const r = e.new as Row; const at = r.ready_at ? new Date(str(r.ready_at)).getTime() : 0;
+      // room tasks are not filtered by RLS: only Housekeeping (and the owner, managers, a supervisor with no department) hears them (0116)
+      ins("housekeeping_tasks", "housekeeping", (r) => r.kind !== "maintenance" && deptSees(role, dept, "room", null) && !(me && r.assigned_to === me && kinds.includes("assigned")));
+      ins("service_calls", "call");
+      ins("guest_feedback", "feedback", (r) => Number(r.rating) <= 3);
+      ins("table_cleanings", "clean");
+      // a job given to this person (0111): a table or a room, just now, still waiting — keyed by when, so a second
+      // hand-over rings too; a task created already given to them (a failed inspection going back) as well (0112)
+      if (kinds.includes("assigned") && me) for (const table of ["table_cleanings", "housekeeping_tasks", "jobs"]) for (const event of ["UPDATE", "INSERT"] as const) on(table, event, (r) => {
+        const at = r.assigned_at ? new Date(str(r.assigned_at)).getTime() : 0;
+        if (r.assigned_to === me && r.assigned_by !== me && r.status === "pending" && r.source !== "repeat" && Date.now() - at < 60_000) announce("assigned", { ...r, id: `${str(r.id)}:${str(r.assigned_at)}` });
+      });
+      // a job raised for my department (0113) — a supervisor hears every department's; the raiser and the one it was given to already know
+      const boss = ["owner", "manager", "supervisor", "supervisor_2"].includes(role);
+      if (kinds.includes("job")) on("jobs", "INSERT", (r) => {
+        if (r.created_by === me || r.assigned_to === me || r.source === "repeat") return;
+        if (deptSees(role, dept, "job", (r.department as string) ?? null)) announce("job", r);
+      });
+      /* Taken and finished, in every department (0116): when someone else takes a job or finishes it, the other staff's
+         alerts for it go; the department's supervisors (and the owner, managers) hear who took it and from when, then
+         who finished it and how long it took. Whoever raised a job hears it is done. */
+      const kindOf = (table: string, r: Row): ["table" | "room" | "job", string | null] => table === "jobs" ? ["job", (r.department as string) ?? null] : table === "table_cleanings" ? ["table", null] : r.kind === "maintenance" ? ["job", "engineering"] : ["room", null];
+      const labelOf = (table: string, r: Row) => table === "jobs" ? str(r.title) : table === "table_cleanings" ? str(r.place) || "a table" : `${r.kind === "maintenance" ? "Repair · " : ""}Room ${str(r.place)}`;
+      for (const table of ["jobs", "table_cleanings", "housekeeping_tasks"]) on(table, "UPDATE", (r) => {
+        const [kind, jd] = kindOf(table, r); const mine = deptSees(role, dept, kind, jd);
+        const fresh = (v: unknown) => !!v && Date.now() - new Date(str(v)).getTime() < 60_000;
+        if (r.status === "in_progress" && r.taken_by !== me && fresh(r.taken_at)) {
+          if (!boss) { drop(str(r.id)); return; }
+          if (kinds.includes("taken") && mine) void nameOf(r.taken_by).then((who) => announce("taken", { ...r, id: `${str(r.id)}:taken`, who, label: labelOf(table, r) }));
+        } else if ((r.status === "done" || r.status === "skipped") && r.done_by !== me && fresh(r.done_at)) {
+          if (!boss && r.created_by !== me) { drop(str(r.id)); return; }
+          if (r.status !== "done") return;
+          if (table === "housekeeping_tasks" && r.kind !== "maintenance") { if (kinds.includes("roomdone") && mine) announce("roomdone", r); return; }
+          if (kinds.includes("jobdone") && (r.created_by === me || (boss && mine))) void nameOf(r.done_by).then((who) => announce("jobdone", { ...r, id: `${str(r.id)}:done`, who, label: labelOf(table, r) }));
+        }
+      });
+      if (kinds.includes("ready")) on("kots", "UPDATE", (r) => {
+        const at = r.ready_at ? new Date(str(r.ready_at)).getTime() : 0;
         if (r.status === "ready" && Date.now() - at < 60_000) announce("ready", r);
       });
+      for (const [k, fns] of listeners) {
+        const [table, event] = k.split("|") as [string, "INSERT" | "UPDATE"];
+        ch.on("postgres_changes", { event, schema: "public", table }, (e) => { const r = e.new as Row; for (const f of fns) f(r); });
+      }
       ch.subscribe();
     })(), 1500); // after the screen paints, like useLive
     return () => { gone = true; clearTimeout(t); if (sb && ch) void sb.removeChannel(ch); };
-  }, [kinds, announce]);
+  }, [kinds, announce, drop, nameOf, me, role, dept]);
 
   const markAllRead = useCallback(() => setFeed((f) => f.map((i) => ({ ...i, read: true }))), []);
   const value: Ctx = { feed, unread: feed.filter((i) => !i.read).length, markAllRead, prefs, setPrefs, kinds, propertyType, openSettings: () => setSettings(true) };
@@ -196,7 +271,7 @@ export function NotificationBell({ lateKots }: { lateKots: number }) {
   );
 }
 
-const STATION_ICON: Record<StationId, typeof Bell> = { front: ConciergeBell, kitchen: ChefHat, till: Monitor, phone: Smartphone, custom: Settings2 };
+const STATION_ICON: Record<StationId, typeof Bell> = { front: ConciergeBell, kitchen: ChefHat, till: Monitor, phone: Smartphone, cleaning: SprayCan, custom: Settings2 };
 
 /** Per-device settings: which machine this is, the tone, volume, which alerts, and system notifications. */
 export function NotificationSettings() {

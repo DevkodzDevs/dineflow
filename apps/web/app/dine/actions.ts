@@ -25,3 +25,13 @@ export async function track(ref: string, phone: string) {
 }
 // No review action here: dine_review took unlimited unverified reviews for any listed place and is
 // closed to the API since 0098. A guest reviews after paying, by the bill's own link (pay_link_review).
+/** The table's QR asks for a waiter, the bill or water (0103 `dine_call`); a second tap answers with the open call. */
+export async function callTable(slug: string, table: string, kind: "waiter" | "bill" | "water") {
+  const { data, error } = await anon().rpc("dine_call", { p_slug: slug, p_table: table, p_kind: kind });
+  if (error) return { error: error.message }; return { ok: true, call: data as { kind: string; status: string; again?: boolean } };
+}
+/** What this table asked for in the last half hour, and whether someone has gone to it. */
+export async function tableCalls(slug: string, table: string) {
+  const { data, error } = await anon().rpc("dine_call_status", { p_slug: slug, p_table: table });
+  if (error) return { error: error.message }; return { ok: true, calls: (data ?? []) as { kind: string; status: string; at: string; done_at: string | null }[] };
+}

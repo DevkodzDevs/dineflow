@@ -49,6 +49,12 @@ Coupons are checked at the till by `coupon_check` (see
 
 ## Before you edit
 
+- **Feedback is a chip on Customers** (`?tab=feedback`, 0103): the last chip, its count the unread notes. It
+  swaps the cards for `FeedbackBoard.tsx` — the 30-day average and a 5→1★ spread, *All · Unread · 3★ or less*,
+  then one card per note (red edge at 3★ or less, green above), tags, the note, Call / WhatsApp when there is a
+  phone and **Mark read** (`feedback_seen`). The search box searches the notes; CSV hides. From `xl` the chip rail
+  does not shrink or fade (`xl:shrink-0 xl:![mask-image:none]`) — with six chips the last one was clipped at 1440.
+
 - **Customers is Simple Service (2026-10-15).** `SvcHead` ("People who come back — call or WhatsApp them in one
   tap") with **Add customer** · the occasions card · a 56px search (`placeholder="Name or phone"`, the `/` key) and
   chips with counts — All, Regulars, New, Not seen, Can redeem (when loyalty is on) — and CSV · one card per guest

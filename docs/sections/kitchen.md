@@ -27,6 +27,13 @@ category with no station stays on the expo view only. The warn and target minute
 
 ## Before you edit
 
+- **A ticket says who is cooking it (0113).** `kots.started_by / ready_by / served_by` are stamped by `_kot_who` on the
+  status `sync_kot_status` sets — inside the cook's own session, so the name is theirs. `page.tsx` reads `started_by`
+  and maps it to a name from `profiles`; the KOT line shows *· Arun Commis* (`data-cook`). The Work board counts tickets
+  cooked per person. [work.md](work.md)
+- **A parcel's ticket says its token** (0103): `where()` reads "Takeaway · Token 7" / "Delivery · Token 3" when
+  the order has one; the reprint uses the same words. `page.tsx` selects `orders(token_no)`.
+
 - **Simple Service (2026-10-15).** Three columns in the floor's colours — **New** (blue), **Cooking** (amber),
   **Ready — take it out** (green) — each a `.kcol` with its icon, word and count. A ticket is `.kt`: paper in
   both themes, the table big with a minutes pill (green, amber past `kds_warn_minutes`, red past

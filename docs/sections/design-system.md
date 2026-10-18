@@ -79,7 +79,8 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   Online orders, Menu, Pantry and Customers (Billing was put back to its own design at the owner's request):
   - **One colour = one meaning.** `.st-free` (dashed), `.st-new` ordered (blue), `.st-cook` cooking (amber),
     `.st-ready` food ready (green, ringed on the floor), `.st-eat` eating (neutral), `.st-bill` bill printed
-    (violet — new tokens `--color-violet`/`-2`), `.st-late` (red), `.st-hold` reserved (amber, dashed). Each sets
+    (violet — new tokens `--color-violet`/`-2`), `.st-late` (red), `.st-hold` reserved (amber, dashed), `.st-clean`
+    paid and left, being cleaned (cyan, dashed — `--color-cyan`/`-2`, 0111; `--color-sky` is Ordered's blue). Each sets
     `--st` (hue), `--st-2` (wash), `--st-ink` (the hue as text — darkened toward the ink in paper, where a hue on
     its own wash measured ~3:1) and `--st-on` (text on a solid `--st`). `--color-orange-2` is new too. Where a
     table stands is `orderState()` / `isLate()` in `lib/service.ts` (3 tests): a printed unpaid bill, then food
@@ -92,7 +93,11 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
     `.svc-dish` (a picture card: `.pic` 16:10, `.qty` badge, `.flag`) · `.svc-add` · `.kt*`/`.kcol*` (the
     kitchen's paper ticket — it overrides `--color-steel`, `--color-label`, `--color-chili`… inside itself, because
     the paper is light in both themes and a graphite grey on it measured 2.7:1).
-  - **Words in English with Tamil or Hindi under them** (`lib/say.ts` `WORDS`, 4 tests; `components/ui/Say.tsx`).
+  - **Words in English with Tamil or Hindi under them** (`lib/say.ts` `WORDS`, 4 tests; `components/ui/Say.tsx`) — the
+    Dining screens, since 0109 the main buttons and tabs of Expenses, Checklists, Payroll, Outlets and Staff, and since
+    0111 / 0113 the Cleaning and Work boards. A
+    second line ellipsizes rather than overflow, so pick the short floor word ("ஆள் சேர்", not "பணியாளர் சேர்", for *Add
+    staff* in a half-width button at 412) and check it with `limits.mjs`, which measures every second line.
     The device's choice is the `df-lang` cookie (like `df-theme`), read by the app layout into `SayProvider`;
     `<Say w="take_order" />` renders English with a `.say-alt` line under it; `LangButton` in the top bar and
     `LangPicker` in Settings → Appearance set it. Only the Dining screens' button words are translated — the

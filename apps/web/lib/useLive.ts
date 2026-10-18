@@ -33,6 +33,9 @@ export function useLive(tables: string[], every = 60000) {
     let sb: SupabaseClient | null = null, ch: RealtimeChannel | null = null, gone = false;
     void (async () => {
       const c = await getClient();
+      // the socket must carry the signed-in token before it joins: joined first, it joined as anon, the server answered
+      // every change with "401 Unauthorized" or not at all, and the screen only caught up on its timer (0116)
+      try { const { data } = await c.auth.getSession(); if (data.session) c.realtime.setAuth(data.session.access_token); } catch { /* the timer still covers it */ }
       if (gone) return;
       sb = c; ch = c.channel(`live-${tables.join("-")}`);
       tables.forEach((table) => ch!.on("postgres_changes", { event: "*", schema: "public", table }, bump));

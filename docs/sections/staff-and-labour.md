@@ -2,13 +2,13 @@
 
 **Routes** `/staff` · `/labour` · `/attendance` (staff self-punch) · `/attend/[token]` (a labourer's own link, no sign-in)
 **Files** `app/(app)/staff/page.tsx` · `StaffClient.tsx` · `app/(app)/labour/LabourClient.tsx` ·
-both `actions.ts` · `staff/StaffAttendance.tsx` · `app/attend/actions.ts` · `lib/attendance.ts` ·
+both `actions.ts` · `staff/StaffPositions.tsx` · `packages/shared/src/positions.ts` · `staff/StaffAttendance.tsx` · `app/attend/actions.ts` · `lib/attendance.ts` ·
 `components/attendance/PunchPanel.tsx`
 **Reads** `profiles`, `invites`, `labourers`, `labour_attendance`, `labour_payments`, `staff_attendance`,
 `attendance_punches`, the private `attendance` bucket (selfies, signed URLs)
 **Writes** `create_invite`, `owner_set_access`, `staff_create_login`, `staff_login_details`,
 `staff_login_domain`, `staff_request_contact_otp`, `staff_verify_contact`, `staff_reset_password`,
-`labour_punch`, `labour_mark`, `staff_mark`, `staff_punch_code`, `next_labour_code`; service role only:
+`staff_set_position` (0107), `labour_punch`, `labour_mark`, `staff_mark`, `staff_punch_code`, `next_labour_code`; service role only:
 `_attend`, `attendance_passkeys`, `attendance_challenges`
 
 ## What it is
@@ -25,7 +25,8 @@ actually left for one person (`profiles.allowed_modules`). The owner sees everyt
 has enabled.
 
 Final visibility is `modulesFor(type, role, enabled, allowed)` — property type ∩ role access ∩ the
-master's enabled set ∩ this person's ticks, with `dashboard` always granted. See
+master's enabled set ∩ this person's ticks — the control room only for the owner, and for a manager the owner ticks it
+for (the *Control room* switch in Access, owner only; [dashboard.md](dashboard.md)). See
 [shell-and-nav.md](shell-and-nav.md).
 
 **Two ways in.** `create_invite` sends a join code (`/join`). `staff_create_login` makes a login
@@ -51,6 +52,55 @@ invites and "Two ways in" sit beside the list from `xl` (1280) and in two cards 
 that. Probe: `staffrow.mjs`.
 
 ## Before you edit
+
+- **A day labourer can be given a job (0113).** `jobs.labourer_id` — a supervisor gives it from the Work board's *Give
+  to…* (labourers after the people), anyone takes and finishes it *for* them, and the done row says so. Labourers have no
+  sign-in, so nothing rings for them. New positions: Plumber, Electrician, AC / Refrigeration Technician (Engineering,
+  `employee`); the fixers, guards and the gardener start on `/work`. [work.md](work.md)
+- **Positions are not roles (0107, 2026-10-17).** A *role* opens screens; a *position* says what someone is — department,
+  title, level 1–7 (Leadership · Head of department · Assistant head · Supervisor · Senior staff · Staff · Trainee &
+  helper). The catalogue is `packages/shared/src/positions.ts` (5 tests): 15 departments and ~100 titles tagged by
+  property type — the Indian hotel ladder (GM → heads → assistants → supervisors), the kitchen brigade (Executive Chef →
+  Head Chef → Sous → Junior Sous → CDP → DCDP → Commis I/II/III → helper/trainee) and the service brigade (F&B Manager →
+  Restaurant Manager → Senior Captain → Captain → Senior Steward → Steward → busser/trainee); a resort adds recreation
+  and spa, a restaurant has no front office and its Restaurant Manager heads service (`levelFor`). A resort gets 98
+  positions in 14 departments. `profiles` keeps `position` (the key), `position_title` (their own), `department`,
+  `reports_to`, `joined_on`; `staff_set_position` applies the access rule (rank above them, or the owner — who may set
+  their own) and refuses a manager on another outlet and a reporting loop.
+- **Each position opens its own sections (2026-10-17)** — job-based defaults, as Toast ("each job carries a default
+  permission set … individual overrides"), Cloudbeds (suggested privileges by role) and Petpooja (a biller takes orders
+  and settles bills; the manager cancels and discounts) do it. `packages/shared/src/positionAccess.ts` lists, for every
+  position, the sections it opens (`null` = everything its role allows: owners, GM, managers) and its start screen —
+  a Commis opens Kitchen + Scan and starts on Kitchen, a Cashier Billing/Orders/Invoices/Online/Customers and starts on
+  Billing, a Steward Orders/Pulse, a Front Office Associate the front desk, a Room Attendant Housekeeping/Rooms, a
+  Security Guard Scan. Every list sits inside its suggested role's ceiling (a test checks all of them), and is trimmed
+  to the property kind and to what the property has switched on. **Add staff** ticks them when a position is chosen
+  (`[data-position-preset]` shows them); **Access** shows what the position usually opens — green *Matches*, or amber
+  with **Use these** (`[data-use-position-access]`) when the person's sections differ; a card's role chip says
+  *position access*, *n sections · custom* or *default*; the **Positions guide** opens a position to its sections
+  (`[data-guide-detail]`, the start screen marked with a house). **Signing in** goes to the position's start screen
+  when the person holds it (`startScreen` in `app/(auth)/actions.ts`), else the control room. The "Insights &
+  control" links stay role-based. Probe: `posaccess.mjs` (15).
+- **The Staff page design (2026-10-17, the owner's "ultra modern").** No PageHeader: the client draws a header card
+  (`[data-staff-hero]`, a soft tint glow) with *Invite* / *Add staff* and four figures (`[data-stat]`: Team, On duty
+  today — `page.tsx` counts punched-in-not-out, Departments, Needs a hand = not signed in + email + no position); a
+  segmented switch (People · Team chart · Positions) and a round search (name, title, code, department; 3+ digits
+  search phones). **People are cards** (`[data-person]`, 1 → 2 → 3 → 4 columns at sm/xl/1700px): a 4px department
+  colour strip, initials on the department's colour (`Avatar`, a dot: green active, orange not signed in, red off),
+  title, department with its icon (`DeptIcon`), a level badge `L3`, the role and warnings as chips, code · phone ·
+  since · → manager, and *Sign-in* / *Access* (or the owner's *Your position*) across the foot. The **chart** opens on
+  *Reporting lines* (a tree from `reports_to`, connector lines) when anyone has a manager, else *By level* (a rail with
+  a node per level). The **positions guide** has a search and level chips; each department is a card with its icon on
+  its colour, "n filled here", and a ladder whose node is filled in the department's colour where someone holds it,
+  with their initials beside it. Checked with no sideways scroll at 1920, 1440, 1194, 834 and 412.
+- **The Staff page has three views** (`[data-staff-view]`): *People* (department chips with counts, rows sorted by
+  department then level, the title line `[data-position-line]` in the department's colour), *Team chart* (one band per
+  level, cards with "reports to"; people with no position under *Not placed yet*) and *Positions guide* (the whole
+  ladder for this kind of property, indented by level, with "n here" and the access each suggests). Add staff asks
+  the position first and suggests its access (`suggestedRole`, never above what the appointer may give); Access holds
+  the same fields; the owner's own row has *Position*. Probe: `staffpos.mjs` (21).
+- **Staff functions follow the outlet** (0107 `acting_profile()` reports the outlet this sign-in is working in). Before,
+  an owner in a second outlet would have invited into, or added logins at, their home outlet.
 
 - **Invite codes are twelve hex characters** (48 bits, 0098; were eight — 32 bits with unlimited tries).
   The join form takes up to 40.

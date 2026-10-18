@@ -71,3 +71,18 @@ export async function unmarkFiled(form: string, period: string) {
   const s = await createClient(); const { error } = await s.from("compliance_filings").delete().eq("form", form).eq("period", period);
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
+
+/** A period's paid dining bills a day and its expenses, for the Tally file (0105 tally_days; owner or manager). */
+export async function tallyDays(from: string, to: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("tally_days", { p_from: from, p_to: to });
+  if (error) return { error: error.message };
+  return { ok: true as const, data: data as { sales: import("@/lib/tally").SaleDay[]; expenses: import("@/lib/tally").Expense[]; stays: import("@/lib/tally").StayInvoice[] } };
+}
+/** The company and ledger names the Tally file uses (0105 tally_settings_save; owner or manager). */
+export async function saveTallyNames(company: string, ledgers: Record<string, string>) {
+  const s = await createClient();
+  const { error } = await s.rpc("tally_settings_save", { p_company: company, p_ledgers: ledgers });
+  if (error) return { error: error.message };
+  revalidatePath("/tax"); return { ok: true as const };
+}

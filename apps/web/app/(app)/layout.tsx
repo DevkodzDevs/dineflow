@@ -1,7 +1,7 @@
 import { requireSession, daysLeft } from "@/lib/auth";
 import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { modulesFor } from "@dineflow/shared";
+import { modulesFor, homeFor } from "@dineflow/shared";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar, BottomNav } from "@/components/shell/Nav";
 import { TopBar } from "@/components/shell/TopBar";
@@ -58,17 +58,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
    * rather than bouncing them between two closed doors.
    */
   if (key && !mods.includes(key)) {
-    const home = mods.find((m) => m !== key && ROUTE_MODULE[m]);
-    if (home) redirect(`/${home}?locked=${key}`);
-    return (
-      <div className="min-h-dvh grid place-items-center p-6 text-center">
-        <div className="feather p-8 max-w-md">
-          <h1 className="text-2xl mb-2">Nothing is switched on yet</h1>
-          <p className="text-sm text-steel">Your account is active, but no sections have been opened for it. Ask whoever added you to set your access in Staff.</p>
-          <form action="/logout" method="post" className="mt-6"><button className="btn btn-outline">Sign out</button></form>
-        </div>
-      </div>
-    );
+    /* The control room is the owner's (and a manager's the owner ticks): everyone else who reaches /dashboard — after
+       signing in, from the logo, from the forty links that end there — goes to their own screen, quietly. Any other
+       section they cannot open sends them home with a note. homeFor always has an answer: Work is open to everyone. */
+    const home = homeFor(mods, s.profile.position ?? null);
+    redirect(key === "dashboard" ? `/${home}` : `/${home}?locked=${key}`);
   }
   // the profile avatar becomes a button only for people whose role can open settings
   const accountHref = mods.includes("settings") ? "/settings" : null;
@@ -83,10 +77,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // no use for the rooms board, and warming it costs a whole server render
 
   return (
-   <OfflineProvider modules={mods}>
+   <OfflineProvider modules={mods} outlet={s.restaurant.id}>
    <ToastProvider>
    {/* new orders, bookings and tickets: a tone, a toast and the bell's list, on every screen */}
-   <NotifierProvider modules={mods} propertyType={s.restaurant.property_type}>
+   <NotifierProvider modules={mods} propertyType={s.restaurant.property_type} me={s.profile.id} role={s.profile.role} dept={s.profile.department ?? null}>
    <SayProvider initial={lang}>
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />
@@ -96,10 +90,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
         {s.isAdmin && s.actingAs && <MasterBanner property={s.restaurant.name} />}
-        <TopBar membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} />
+        <TopBar membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} outlets={s.outlets} />
         {children}
       </div></main>
-      <BottomNav role={s.profile.role} type={s.restaurant.property_type} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
+      <BottomNav role={s.profile.role} type={s.restaurant.property_type} dept={s.profile.department ?? null} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
         name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} />
       <Assist />
       {/* pull to refresh everywhere on touch; edge swipe back/forward in the installed app */}

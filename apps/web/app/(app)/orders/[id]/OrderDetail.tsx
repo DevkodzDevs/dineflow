@@ -14,7 +14,7 @@ import { setItemStatus, cancelOrder, cancelLine, moveOrder, mergeOrders, splitOr
 
 type Item = { id: string; kot_id: string | null; name_snapshot: string; qty: number; price_snapshot: number; status: string; notes: string | null; course?: number; addons?: { name: string; price: number }[] | null; components?: { name: string; qty: number }[] | null };
 type Kot = { id: string; kot_no: number; status: string; held?: boolean; created_at: string };
-type Order = { id: string; order_no: number; status: string; table_id: string | null; created_at: string; split_from?: string | null; kots: Kot[]; order_items: Item[] };
+type Order = { id: string; order_no: number; status: string; table_id: string | null; created_at: string; split_from?: string | null; type?: string; token_no?: number | null; customer_name?: string | null; customer_phone?: string | null; delivery_address?: string | null; kots: Kot[]; order_items: Item[] };
 type Table = { id: string; name: string; status: string };
 type Open = { id: string; order_no: number; table_id: string | null; dining_tables: { name: string } | null };
 
@@ -108,6 +108,13 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
         <div className="text-xs font-semibold uppercase tracking-wide text-steel">Running total</div>
         <div className="num text-3xl font-display mt-1">{formatINR(total)}</div>
         <div className="text-xs text-steel mt-1">{live.reduce((s, i) => s + i.qty, 0)} items · taxes added at billing</div>
+        {/* a parcel's token and a delivery's address (0103, 0105): what the counter calls and where the rider goes */}
+        {(order.token_no || order.delivery_address) && (
+          <div className="mt-3 rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[13.5px] space-y-1" data-deliver-to>
+            {order.token_no ? <div className="font-extrabold">Token {order.token_no}{order.customer_name ? ` · ${order.customer_name}` : ""}</div> : null}
+            {order.delivery_address && <div><span className="font-bold">Deliver to:</span> {order.delivery_address}{order.customer_phone ? <> · <a className="underline num" href={`tel:${order.customer_phone}`}>{order.customer_phone}</a></> : null}</div>}
+          </div>
+        )}
         <ul className="mt-4 space-y-1.5 text-sm">{live.map((i) => <li key={i.id} className="flex justify-between"><span className="truncate">{i.qty}× {i.name_snapshot}</span><span className="num">{formatINR(Number(i.price_snapshot) * i.qty)}</span></li>)}</ul>
 
         {isOpen && (

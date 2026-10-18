@@ -3,7 +3,7 @@
 **Route** `/tax`
 **Files** `app/(app)/tax/page.tsx` · `TaxClient.tsx` · `Guide.tsx` · `actions.ts`
 **Reads** `restaurants`, `profiles`, `compliance_filings`, `compliance_docs`
-**Writes** `gst_summary`
+**Writes** `gst_summary`, `tally_days`, `tally_settings_save` (0105)
 **Shared** `packages/shared/src/tax.ts`
 
 ## What it is
@@ -27,6 +27,20 @@ The property's CA can be recorded (`ca_name`, `ca_firm`, `ca_membership_no`, `ca
 `ca_phone`) so the screen can hand them a pack.
 
 ## Before you edit
+
+- **Tally (tab `?tab=tally`, 0105).** No connector: `TallyTab.tsx` asks `tally_days(from, to)` (≤ 92 days, owner
+  or manager) and writes Tally import XML in the browser with `lib/tally.ts` (6 tests): one **Sales** voucher a
+  business day (DF-S-yyyymmdd) — each payment method debited, sales (taxable), service, CGST, SGST, round-off
+  credited, anything else (a promise fee, an over-payment) to *Other income* so every voucher balances to the paisa
+  — and one **Payment** voucher an expense (DF-E-…; net + input GST debited, Cash or Bank credited). Tally's sign
+  rule: debit = `ISDEEMEDPOSITIVE Yes` and a negative `AMOUNT`. A **Ledgers** file (masters, under their usual
+  groups) is imported once; a Day book .xlsx checks it. Ledger and company names are saved on the property
+  (`tally_ledgers`, only known keys kept).
+  **Stays and facilities (0109/0110):** each stay or facility invoice is a Sales voucher of its own (DF-R-n / DF-F-n, on
+  its issue date): room lines (SAC 996311) to *Room revenue*, food served to a room (9963 3x) to *Food sales*, the rest
+  to *Guest services*; CGST, SGST, round-off credited; each payment debited by how it was paid (read from its words —
+  UPI, card, cash, else Other), what is still owed to *Sundry debtors*, a discount to *Discount allowed*. Dining invoices
+  are their bills and stay in the daily voucher. The day book has a *Stays* sheet.
 
 - **Overview → Registration is a `dl` with an `auto` label column and short labels** ("GST rates",
   "CA"). The rates are a wrapping row of chips. As one line in the display face they could not

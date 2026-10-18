@@ -23,6 +23,20 @@ describe("the phone bar", () => {
     expect(barFor("waiter", "restaurant", allowedFor("waiter", "restaurant"), null)[0]).toBe("orders");
     expect(barFor("chef", "restaurant", allowedFor("chef", "restaurant"), null)[0]).toBe("kitchen");
   });
+  it("puts the Cleaning board first for the people who clean, when it is offered (0111)", () => {
+    expect(barFor("housekeeping", "hotel", [...allowedFor("housekeeping", "hotel"), "cleaning"], null)[0]).toBe("cleaning");
+    expect(barFor("employee", "restaurant", ["dashboard", "scan", "cleaning"], null)).toEqual(["cleaning", "dashboard", "scan"]);
+    // a busser (a waiter who only opens Orders) still starts on the floor, with Cleaning beside it
+    expect(barFor("waiter", "restaurant", ["dashboard", "orders", "cleaning"], null)).toEqual(["orders", "dashboard", "cleaning"]);
+  });
+  it("the generic roles follow their department (0113): a plumber starts on Work, a cleaner on Cleaning", () => {
+    expect(barFor("employee", "hotel", ["dashboard", "scan", "cleaning", "work"], null, "engineering")).toEqual(["work", "scan", "dashboard", "cleaning"]);
+    expect(barFor("employee", "restaurant", ["dashboard", "scan", "cleaning", "work"], null, "housekeeping")).toEqual(["cleaning", "work", "dashboard", "scan"]);
+    expect(barFor("supervisor_2", "hotel", ["dashboard", "scan", "staff", "cleaning", "work"], null, "security")[0]).toBe("work");
+    // a department the bar knows nothing about, or none: the role's own day
+    expect(barFor("employee", "hotel", ["dashboard", "scan", "cleaning", "work"], null, "spa")[0]).toBe("work");
+    expect(barFor("chef", "restaurant", [...allowedFor("chef", "restaurant"), "work"], null, "kitchen")[0]).toBe("kitchen");
+  });
   it("uses the person's pins, drops pins they cannot open, and falls back when none are usable", () => {
     const allowed = allowedFor("owner", "hotel");
     expect(barFor("owner", "hotel", allowed, ["reports", "housekeeping"])).toEqual(["reports", "housekeeping", "dashboard", "tomorrow"]);

@@ -1,4 +1,4 @@
-import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText } from "lucide-react";
+import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck } from "lucide-react";
 import type { Role } from "@dineflow/shared";
 
 /**
@@ -44,5 +44,17 @@ const FRESH = [
   { key: "intelligence", href: "/intelligence", label: "Intelligence", Icon: BrainCircuit, roles: ["owner", "manager", "supervisor"] },
   { key: "controls", href: "/controls", label: "Cash & controls", Icon: Wallet, roles: ["owner", "manager", "supervisor", "cashier"] },
   { key: "audit", href: "/audit", label: "Audit trail", Icon: ScrollText, roles: ["owner", "manager", "supervisor"] },
+  // 0106: every outlet at once (opening a second one starts here), and the month's pay
+  { key: "chain", href: "/chain", label: "Outlets", Icon: Store, roles: ["owner", "manager", "supervisor"] },
+  { key: "payroll", href: "/payroll", label: "Payroll", Icon: HandCoins, roles: ["owner", "manager"] },
+  // 0105: what the business spends (the drawer roles), and the day's duty lists (everyone)
+  { key: "expenses", href: "/expenses", label: "Expenses", Icon: IndianRupee, roles: ["owner", "manager", "supervisor", "cashier"] },
+  { key: "tasks", href: "/tasks", label: "Checklists", Icon: ListChecks, roles: ["owner", "manager", "supervisor", "supervisor_2", "employee", "cashier", "waiter", "chef", "store", "frontdesk", "housekeeping"] },
+  // 0111: tables paid and left, rooms checked out — whoever cleans them, and whoever gives the jobs out
+  { key: "cleaning", href: "/cleaning", label: "Cleaning", Icon: SprayCan, roles: ["owner", "manager", "supervisor", "supervisor_2", "employee", "cashier", "waiter", "frontdesk", "housekeeping"] },
+  // 0113: every job on the property — a repair, a request, the grounds, a setup — routed to its department; everyone
+  { key: "work", href: "/work", label: "Work", Icon: ListTodo, roles: ["owner", "manager", "supervisor", "supervisor_2", "employee", "cashier", "waiter", "chef", "store", "frontdesk", "housekeeping"] },
+  // 0116: the whole property's record of the work — who took what, from when to when — the owner's and managers' own menu
+  { key: "work-records", href: "/work-records", label: "Work records", Icon: ClipboardCheck, roles: ["owner", "manager"] },
 ];
 export const freshFor = (role: Role) => FRESH.filter((i) => i.roles.includes(role));

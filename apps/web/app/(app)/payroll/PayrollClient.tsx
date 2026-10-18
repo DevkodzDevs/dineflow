@@ -1,0 +1,155 @@
+"use client";
+import { useState, useTransition } from "react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Calculator, Lock, FileText, FileSpreadsheet, HandCoins, Check, Settings2, Wallet } from "lucide-react";
+import { Card, Empty, cn, useToast } from "@/components/ui";
+import { formatINR } from "@/lib/format";
+import { saveSettings, setPay, giveAdvance, buildMonth, setLine, finalise, payLine } from "./actions";
+import { Say } from "@/components/ui/Say";
+
+export type Person = { id: string; full_name: string; role: string; pay: { profile_id: string; basis: "monthly" | "daily"; amount: number; pf_on: boolean; esi_on: boolean; pf_basic_pct?: number } | null };
+export type Advance = { id: string; profile_id: string; amount: number; given_on: string; method: string; note: string | null };
+export type Run = { id: string; month: string; status: "draft" | "final"; pf: boolean; esi: boolean; paid_offs: number; wage_rule?: boolean; finalised_at: string | null };
+export type Line = { id: string; profile_id: string; name: string; role: string | null; basis: string; rate: number; days_in_month: number; days_present: number; paid_days: number; gross: number; bonus: number; pf_wage?: number; pf_employee: number; esi_employee: number; advances: number; other_deduction: number; net: number; pf_employer: number; esi_employer: number; note: string | null; paid_at: string | null; paid_method: string | null };
+
+const inr = (n: number) => formatINR(Number(n));
+const monthName = (m: string) => new Date(m + "-01T00:00:00").toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+const shift = (m: string, by: number) => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1 + by, 1)).toISOString().slice(0, 7);
+const cap = (s: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1).replace("_", " ") : "");
+
+/**
+ * Four parts, in the order a month goes: the switches (PF, ESI, paid weekly offs), each person's rate, advances
+ * given, and the month's sheet — Work out → adjust bonus / other deductions on the draft → Finalise → Pay each line
+ * (a Salaries expense) and print the payslip. Excel downloads the sheet with the employer's PF and ESI.
+ */
+export function PayrollClient({ month, today, property, settings, people, advances, run, lines }: { month: string; today: string; property: string; settings: { pf: boolean; esi: boolean; offs: number; rule: boolean }; people: Person[]; advances: Advance[]; run: Run | null; lines: Line[] }) {
+  const toast = useToast(); const [pending, start] = useTransition();
+  const [cfg, setCfg] = useState(settings);
+  const [rates, setRates] = useState<Record<string, { basis: "monthly" | "daily"; amount: string; pf: boolean; esi: boolean; basic: string }>>(() =>
+    Object.fromEntries(people.map((p) => [p.id, { basis: p.pay?.basis ?? "monthly", amount: p.pay ? String(Number(p.pay.amount)) : "", pf: p.pay?.pf_on ?? true, esi: p.pay?.esi_on ?? true, basic: String(Number(p.pay?.pf_basic_pct ?? 100)) }])));
+  const [adv, setAdv] = useState({ who: people[0]?.id ?? "", amount: "", method: "cash", note: "" });
+  const [edits, setEdits] = useState<Record<string, { bonus: string; other: string }>>({});
+  const final = run?.status === "final";
+  const t = lines.reduce((a, l) => ({ gross: a.gross + Number(l.gross) + Number(l.bonus), base: a.base + Number(l.gross), bonus: a.bonus + Number(l.bonus), pf: a.pf + Number(l.pf_employee), esi: a.esi + Number(l.esi_employee), adv: a.adv + Number(l.advances), other: a.other + Number(l.other_deduction), net: a.net + Number(l.net), pfr: a.pfr + Number(l.pf_employer), esir: a.esir + Number(l.esi_employer) }), { gross: 0, base: 0, bonus: 0, pf: 0, esi: 0, adv: 0, other: 0, net: 0, pfr: 0, esir: 0 });
+  const owedAdv = (id: string) => advances.filter((a) => a.profile_id === id).reduce((s, a) => s + Number(a.amount), 0);
+  const act = (p: Promise<{ error?: string } | { ok: true }>, ok: string) => start(async () => { const r = await p; if ("error" in r && r.error) toast(r.error, "err"); else toast(ok); });
+
+  const payslip = async (l: Line) => {
+    const { tablesPdf } = await import("@/lib/tablePdf"); const { download } = await import("@/lib/xlsx");
+    const rows = (xs: [string, number][]) => xs.filter(([, v]) => Number(v) !== 0).map(([k, v]) => [k, Number(v)] as [string, number]);
+    const bytes = await tablesPdf(`Payslip · ${l.name}`, `${property} · ${monthName(month)} · ${cap(l.role)}`, [
+      { title: "Attendance", head: ["", ""], rows: [["Days in the month", l.days_in_month], ["Days present", l.days_present], ["Paid days", Number(l.paid_days)], ["Rate", `${inr(l.rate)} ${l.basis === "monthly" ? "a month" : "a day"}`]] },
+      { title: "Earnings", head: ["", "Amount"], rows: rows([["Pay for paid days", l.gross], ["Bonus", l.bonus]]) },
+      { title: "Deductions", note: Number(l.pf_wage ?? 0) ? `PF worked on Rs ${Number(l.pf_wage).toLocaleString("en-IN")} (basic + DA${run?.wage_rule ? ", at least half of pay" : ""}, up to Rs 15,000)` : undefined, head: ["", "Amount"], rows: rows([["PF (employee 12%)", l.pf_employee], ["ESI (employee 0.75%)", l.esi_employee], ["Advance recovered", l.advances], ["Other", l.other_deduction]]) },
+      { title: "Net pay", head: ["", "Amount"], rows: [["Paid to you", Number(l.net)], ...(l.paid_at ? [["Paid on", `${new Date(l.paid_at).toLocaleDateString("en-IN")} · ${(l.paid_method ?? "").toUpperCase()}`] as [string, string]] : [])] },
+      ...(Number(l.pf_employer) || Number(l.esi_employer) ? [{ title: "Paid by the employer for you", head: ["", "Amount"], rows: rows([["PF (employer 12%)", l.pf_employer], ["ESI (employer 3.25%)", l.esi_employer]]) }] : []),
+    ]);
+    download(`payslip-${l.name.replace(/[^\w]+/g, "-").toLowerCase()}-${month}.pdf`, new Uint8Array(bytes), "application/pdf");
+  };
+  const excel = async () => {
+    const { xlsx, download, XLSX_TYPE } = await import("@/lib/xlsx");
+    const head = ["Name", "Role", "Basis", "Rate", "Days present", "Paid days", "Gross", "Bonus", "PF wage", "PF (employee)", "ESI (employee)", "Advance", "Other", "Net", "PF (employer)", "ESI (employer)", "Paid"];
+    download(`payroll-${property.replace(/[^\w]+/g, "-").toLowerCase()}-${month}.xlsx`, xlsx([{ name: `Payroll ${month}`, rows: [head, ...lines.map((l) => [l.name, cap(l.role), l.basis, Number(l.rate), l.days_present, Number(l.paid_days), Number(l.gross), Number(l.bonus), Number(l.pf_wage ?? 0), Number(l.pf_employee), Number(l.esi_employee), Number(l.advances), Number(l.other_deduction), Number(l.net), Number(l.pf_employer), Number(l.esi_employer), l.paid_at ? `${(l.paid_method ?? "").toUpperCase()} ${l.paid_at.slice(0, 10)}` : ""]), ["Total", "", "", "", "", "", t.base, t.bonus, "", t.pf, t.esi, t.adv, t.other, t.net, t.pfr, t.esir, ""]] }]), XLSX_TYPE);
+  };
+
+  return (
+    <div className="space-y-5" data-payroll>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+        <div className="space-y-4 min-w-0">
+          {/* ── the switches ── */}
+          <Card data-payroll-settings>
+            <div className="flex items-center gap-2 text-[17px] font-extrabold mb-3"><Settings2 size={18} aria-hidden /> How pay is worked out</div>
+            {([["pf", "PF", "12% from the person and 12% from you, on pay up to ₹15,000. Required from 20 staff."], ["esi", "ESI", "0.75% from the person and 3.25% from you, for pay up to ₹21,000 a month. Required from 10 staff."]] as const).map(([k, label, hint]) => (
+              <label key={k} className="flex items-start gap-3 py-2 !min-h-11 cursor-pointer"><input type="checkbox" className="h-5 w-5 mt-0.5" checked={cfg[k]} onChange={(e) => setCfg((c) => ({ ...c, [k]: e.target.checked }))} data-switch={k} />
+                <span><span className="block text-[15px] font-bold">Include {label}</span><span className="block text-[12.5px] text-steel">{hint}</span></span></label>))}
+            <label className="flex items-center justify-between gap-3 py-2"><span><span className="block text-[15px] font-bold">Paid weekly offs a month</span><span className="block text-[12.5px] text-steel">Added to days present for people paid by the month</span></span>
+              <input type="number" min={0} max={8} className="!w-20 num text-center" value={cfg.offs} onChange={(e) => setCfg((c) => ({ ...c, offs: Math.max(0, Math.min(8, Number(e.target.value) || 0)) }))} /></label>
+            {cfg.pf && <label className="flex items-start gap-3 py-2 !min-h-11 cursor-pointer"><input type="checkbox" className="h-5 w-5 mt-0.5" checked={cfg.rule} onChange={(e) => setCfg((c) => ({ ...c, rule: e.target.checked }))} data-switch="rule" />
+              <span><span className="block text-[15px] font-bold">The 50% wage rule</span><span className="block text-[12.5px] text-steel">Labour codes, from 21 Nov 2025: PF is worked on at least half of each person&apos;s pay, even when their basic + DA is less. Confirm with your CA how it applies to you.</span></span></label>}
+            <button type="button" disabled={pending} className="svc-btn quiet sm w-full mt-2" data-save-payroll-settings onClick={() => act(saveSettings(cfg.pf, cfg.esi, cfg.offs, cfg.rule), "Saved — work the month out again to use it")}><Check size={16} aria-hidden /><Say w="save" /></button>
+          </Card>
+
+          {/* ── advances ── */}
+          <Card data-advances>
+            <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Wallet size={18} aria-hidden /> Advances</div>
+            <p className="text-[12.5px] text-steel mb-3">Money given ahead of pay; it comes off the next month worked out. Cash leaves the drawer now.</p>
+            <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-2">
+              <select value={adv.who} onChange={(e) => setAdv((a) => ({ ...a, who: e.target.value }))} aria-label="Who">{people.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}</select>
+              <input inputMode="decimal" className="num" placeholder="₹" value={adv.amount} onChange={(e) => setAdv((a) => ({ ...a, amount: e.target.value.replace(/[^\d.]/g, "") }))} data-advance-amount />
+              <select value={adv.method} onChange={(e) => setAdv((a) => ({ ...a, method: e.target.value }))} aria-label="Paid by"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option></select>
+              <input placeholder="Note" value={adv.note} maxLength={200} onChange={(e) => setAdv((a) => ({ ...a, note: e.target.value }))} />
+            </div>
+            <button type="button" disabled={pending || !adv.who || !(Number(adv.amount) > 0)} className="svc-btn quiet sm w-full mt-2" data-give-advance
+              onClick={() => start(async () => { const r = await giveAdvance(adv.who, Number(adv.amount), adv.method, adv.note); if ("error" in r && r.error) toast(r.error, "err"); else { toast("Advance written down"); setAdv((a) => ({ ...a, amount: "", note: "" })); } })}><HandCoins size={16} aria-hidden /><Say w="give_advance" /></button>
+            {advances.length > 0 && <ul className="mt-3 divide-y divide-[var(--color-separator)] text-[13.5px]">{advances.map((a) => <li key={a.id} className="py-2 flex justify-between gap-2"><span className="truncate">{people.find((p) => p.id === a.profile_id)?.full_name ?? "—"} · {a.given_on}{a.note ? ` · ${a.note}` : ""}</span><span className="num font-bold shrink-0">{inr(a.amount)}</span></li>)}</ul>}
+          </Card>
+        </div>
+
+        {/* ── rates ── */}
+        <Card className="min-w-0" data-rates>
+          <div className="text-[17px] font-extrabold mb-1">Pay rates</div>
+          <p className="text-[12.5px] text-steel mb-3">Everyone with a rate is on the month&apos;s sheet. Days present come from attendance (Staff → attendance, or punching in).</p>
+          {people.length === 0 ? <Empty title="No staff yet" hint="Add people under Staff first." /> : <div className="divide-y divide-[var(--color-separator)]">
+            {people.map((p) => { const r = rates[p.id]; const set = (x: Partial<typeof r>) => setRates((all) => ({ ...all, [p.id]: { ...all[p.id], ...x } })); return (
+              <div key={p.id} className="py-3 grid gap-2 sm:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,0.9fr)_auto] sm:items-center" data-rate={p.full_name}>
+                <div className="min-w-0"><div className="font-bold truncate">{p.full_name}</div><div className="text-[12px] text-steel">{cap(p.role)}{owedAdv(p.id) ? ` · advance ${inr(owedAdv(p.id))}` : ""}</div></div>
+                <div className="inline-flex rounded-xl bg-[var(--color-fill)] p-1" role="group" aria-label={`${p.full_name}: paid by`}>
+                  {(["monthly", "daily"] as const).map((b) => <button key={b} type="button" aria-pressed={r.basis === b} onClick={() => set({ basis: b })} className={cn("!min-h-10 px-3 rounded-lg text-[13px] font-bold", r.basis === b ? "bg-[var(--color-bg-2)] shadow-feather" : "text-steel")}>{b === "monthly" ? "Month" : "Day"}</button>)}
+                </div>
+                <input inputMode="decimal" className="num" placeholder={r.basis === "monthly" ? "₹ a month" : "₹ a day"} value={r.amount} onChange={(e) => set({ amount: e.target.value.replace(/[^\d.]/g, "") })} aria-label={`${p.full_name}: rate`} />
+                <div className="flex items-center gap-2">
+                  {cfg.pf && <label className="inline-flex items-center gap-1 text-[12.5px] font-semibold !min-h-10"><input type="checkbox" checked={r.pf} onChange={(e) => set({ pf: e.target.checked })} className="h-4 w-4" />PF</label>}
+                  {cfg.pf && r.pf && <label className="inline-flex items-center gap-1 text-[12.5px] font-semibold" title="The share of pay that is basic + DA — PF is worked on it"><span className="text-steel">Basic</span><input inputMode="numeric" className="!w-16 !h-10 num text-center" value={r.basic} onChange={(e) => set({ basic: e.target.value.replace(/[^\d.]/g, "").slice(0, 5) })} aria-label={`${p.full_name}: basic + DA percent`} data-basic-pct />%</label>}
+                  {cfg.esi && <label className="inline-flex items-center gap-1 text-[12.5px] font-semibold !min-h-10"><input type="checkbox" checked={r.esi} onChange={(e) => set({ esi: e.target.checked })} className="h-4 w-4" />ESI</label>}
+                  <button type="button" disabled={pending || r.amount === ""} className="svc-btn quiet sm !px-3" data-save-rate onClick={() => act(setPay(p.id, r.basis, Number(r.amount), r.pf, r.esi, Math.min(100, Math.max(1, Number(r.basic) || 100))), `${p.full_name}: rate saved`)}>Save</button>
+                </div>
+              </div>); })}
+          </div>}
+        </Card>
+      </div>
+
+      {/* ── the month ── */}
+      <Card className="min-w-0 !p-0 overflow-hidden" data-payroll-month>
+        <div className="p-4 flex flex-wrap items-center gap-2 border-b border-[var(--color-separator)]">
+          <Link href={`/payroll?m=${shift(month, -1)}`} className="h-11 w-11 grid place-items-center rounded-xl bg-[var(--color-fill)]" aria-label="Previous month"><ChevronLeft size={18} /></Link>
+          <div className="text-[18px] font-extrabold min-w-[10rem] text-center" data-payroll-month-name>{monthName(month)}</div>
+          <Link href={`/payroll?m=${shift(month, 1)}`} className={cn("h-11 w-11 grid place-items-center rounded-xl bg-[var(--color-fill)]", month >= today.slice(0, 7) && "pointer-events-none opacity-40")} aria-label="Next month"><ChevronRight size={18} /></Link>
+          {run && <span className={cn("rounded-full px-3 py-1 text-[12.5px] font-extrabold", final ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")} data-run-status>{final ? "Final" : "Draft"}</span>}
+          <span className="flex-1" />
+          {!final && <button type="button" disabled={pending} className="svc-btn go sm !px-4" data-build onClick={() => act(buildMonth(month), run ? "Worked out again" : "Worked out")}><Calculator size={17} aria-hidden /><Say w={run ? "work_out_again" : "work_out_pay"} /></button>}
+          {run && !final && lines.length > 0 && <button type="button" disabled={pending} className="svc-btn quiet sm !px-4" data-finalise onClick={() => { if (confirm(`Finalise ${monthName(month)}? Lines stop changing and advances are marked recovered.`)) act(finalise(run.id), "Finalised"); }}><Lock size={16} aria-hidden /><Say w="finalise" /></button>}
+          {lines.length > 0 && <button type="button" className="svc-btn quiet sm !px-4" onClick={() => void excel()} data-payroll-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>}
+        </div>
+        {!run ? <div className="p-6 text-[14px] text-steel">Not worked out yet. Set the rates above, then <b>Work out pay</b>.</div> : lines.length === 0 ? <div className="p-6 text-[14px] text-steel">Nobody has a pay rate yet.</div> : (<>
+          <div className="overflow-x-auto"><table className="w-full text-[13.5px] min-w-[900px]">
+            <thead><tr className="text-left text-steel text-[12px] border-b border-[var(--color-separator)]">{["Name", "Days", "Gross", "Bonus", "PF", "ESI", "Advance", "Other", "Net", ""].map((h, i) => <th key={i} className={cn("py-2 font-semibold", i === 0 ? "pl-4" : "text-right pr-3", i === 9 && "pr-4")}>{h}</th>)}</tr></thead>
+            <tbody>{lines.map((l) => { const e = edits[l.id] ?? { bonus: String(Number(l.bonus) || ""), other: String(Number(l.other_deduction) || "") }; const dirty = Number(e.bonus || 0) !== Number(l.bonus) || Number(e.other || 0) !== Number(l.other_deduction); return (
+              <tr key={l.id} className="border-b border-[var(--color-separator)] last:border-b-0" data-line={l.name}>
+                <td className="py-2.5 pl-4"><div className="font-bold">{l.name}</div><div className="text-[12px] text-steel">{l.basis === "monthly" ? `${inr(l.rate)}/month` : `${inr(l.rate)}/day`}</div></td>
+                <td className="text-right pr-3 num">{l.days_present}{l.basis === "monthly" && <span className="text-steel"> → {Number(l.paid_days)}</span>}</td>
+                <td className="text-right pr-3 num">{inr(l.gross)}</td>
+                <td className="text-right pr-3">{final ? <span className="num">{Number(l.bonus) ? inr(l.bonus) : "—"}</span> : <input inputMode="decimal" className="!w-24 !h-10 num text-right" value={e.bonus} placeholder="0" onChange={(x) => setEdits((all) => ({ ...all, [l.id]: { ...e, bonus: x.target.value.replace(/[^\d.]/g, "") } }))} aria-label={`${l.name}: bonus`} />}</td>
+                <td className="text-right pr-3 num">{Number(l.pf_employee) ? <>{inr(l.pf_employee)}{Number(l.pf_wage ?? 0) > 0 && <span className="block text-[11.5px] font-normal text-steel whitespace-nowrap" data-pf-wage>on {formatINR(Number(l.pf_wage), { whole: true })}</span>}</> : "—"}</td>
+                <td className="text-right pr-3 num">{Number(l.esi_employee) ? inr(l.esi_employee) : "—"}</td>
+                <td className="text-right pr-3 num">{Number(l.advances) ? inr(l.advances) : "—"}</td>
+                <td className="text-right pr-3">{final ? <span className="num">{Number(l.other_deduction) ? inr(l.other_deduction) : "—"}</span> : <input inputMode="decimal" className="!w-24 !h-10 num text-right" value={e.other} placeholder="0" onChange={(x) => setEdits((all) => ({ ...all, [l.id]: { ...e, other: x.target.value.replace(/[^\d.]/g, "") } }))} aria-label={`${l.name}: other deductions`} />}</td>
+                <td className="text-right pr-3 num font-extrabold text-[15px]" data-net>{inr(l.net)}</td>
+                <td className="pr-4 py-2"><div className="flex justify-end gap-1.5">
+                  {!final && dirty && <button type="button" disabled={pending} className="svc-btn go sm !px-3" onClick={() => act(setLine(l.id, Number(e.bonus || 0), Number(e.other || 0), l.note ?? ""), `${l.name} updated`)} data-save-line>Save</button>}
+                  {final && !l.paid_at && <select disabled={pending} defaultValue="" onChange={(x) => { const m = x.target.value; if (m) act(payLine(l.id, m), `${l.name} paid — written down as a Salaries expense`); }} className="!w-auto !h-10 !min-h-10 text-[13px] font-bold" aria-label={`Pay ${l.name}`} data-pay><option value="" disabled>Pay…</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option></select>}
+                  {l.paid_at && <span className="self-center rounded-full px-2.5 py-1 text-[12px] font-extrabold bg-[var(--color-green-2)] text-[var(--color-green)]" data-paid>Paid · {(l.paid_method ?? "").toUpperCase()}</span>}
+                  {final && <button type="button" className="h-10 w-10 grid place-items-center rounded-xl bg-[var(--color-fill)]" onClick={() => void payslip(l)} aria-label={`Payslip for ${l.name}`} title="Payslip (PDF)" data-payslip><FileText size={16} /></button>}
+                </div></td>
+              </tr>); })}</tbody>
+            <tfoot><tr className="border-t-2 border-[var(--color-separator)] font-extrabold"><td className="py-3 pl-4">Total · {lines.length}</td><td /><td className="text-right pr-3 num">{inr(t.gross)}</td><td /><td className="text-right pr-3 num">{inr(t.pf)}</td><td className="text-right pr-3 num">{inr(t.esi)}</td><td className="text-right pr-3 num">{inr(t.adv)}</td><td className="text-right pr-3 num">{inr(t.other)}</td><td className="text-right pr-3 num text-[16px]" data-net-total>{inr(t.net)}</td><td /></tr></tfoot>
+          </table></div>
+          {(run.pf || run.esi) && <div className="p-4 border-t border-[var(--color-separator)] grid sm:grid-cols-2 gap-2 text-[13.5px]" data-statutory>
+            {run.pf && <div className="rounded-2xl bg-[var(--color-fill)] px-4 py-3"><div className="font-bold">PF to deposit (EPFO)</div><div className="text-steel">{inr(t.pf)} from staff + {inr(t.pfr)} from you = <b className="text-[var(--color-label)] num">{inr(t.pf + t.pfr)}</b> · by the 15th</div></div>}
+            {run.esi && <div className="rounded-2xl bg-[var(--color-fill)] px-4 py-3"><div className="font-bold">ESI to deposit (ESIC)</div><div className="text-steel">{inr(t.esi)} from staff + {inr(t.esir)} from you = <b className="text-[var(--color-label)] num">{inr(t.esi + t.esir)}</b> · by the 15th</div></div>}
+          </div>}
+        </>)}
+      </Card>
+      <p className="text-[12.5px] text-steel">PF is 12% + 12% of each person&apos;s basic + DA (the Basic % beside their rate){cfg.rule ? ", never under half their pay (the 50% wage rule)," : ""} up to ₹15,000 a month. Labourers paid by the day are under Labour.</p>
+    </div>
+  );
+}

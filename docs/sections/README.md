@@ -14,24 +14,28 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | If you are editing… | Read |
 | --- | --- |
 | `app/(app)/dashboard/**` | [dashboard.md](dashboard.md) |
-| `app/(app)/orders/**` (incl. `orders/new`, the till) | [orders-and-till.md](orders-and-till.md) |
+| `app/(app)/orders/**` (incl. `orders/new`, the till), `app/kiosk/**` | [orders-and-till.md](orders-and-till.md) |
 | `app/(app)/kitchen/**` | [kitchen.md](kitchen.md) |
 | `app/(app)/menu/**`, `components/menu/**`, `lib/dishPhotos.ts` | [menu.md](menu.md) |
 | `app/(app)/billing/**`, `app/(app)/invoices/**` | [billing-and-invoices.md](billing-and-invoices.md) |
 | `app/(app)/frontdesk/**` | [front-desk.md](front-desk.md) |
 | `app/(app)/rooms/**`, `app/(app)/reservations/**`, `app/(app)/facilities/**` | [rooms-and-reservations.md](rooms-and-reservations.md) |
 | `app/(app)/housekeeping/**` | [housekeeping.md](housekeeping.md) |
+| `app/(app)/cleaning/**` — tables and rooms after every guest, who took them | [cleaning.md](cleaning.md) |
+| `app/(app)/work/**` — every job on the property, routed to its department; `cleaning/JobCard.tsx`; `app/(app)/work-records/**` — the owner's and managers' record | [work.md](work.md) |
 | `app/(app)/guests/**`, `app/(app)/customers/**` | [guests-and-customers.md](guests-and-customers.md) |
 | `app/(app)/inventory/**` | [inventory.md](inventory.md) |
 | `app/(app)/staff/**`, `app/(app)/labour/**`, `app/(app)/attendance/**`, `app/attend/**`, `lib/attendance.ts`, `components/attendance/**` | [staff-and-labour.md](staff-and-labour.md) |
 | `app/(app)/online-orders/**`, `app/(app)/channels/**` | [online-and-channels.md](online-and-channels.md) |
 | `app/(app)/reports/**`, `app/(app)/pulse/**`, `app/(app)/tomorrow/**`, `app/(app)/proof/**` | [reports-and-forecast.md](reports-and-forecast.md) |
 | `app/(app)/settings/**` | [settings.md](settings.md) |
+| `app/(app)/expenses/**`, `app/(app)/tasks/**` | [expenses-and-checklists.md](expenses-and-checklists.md) |
+| `app/(app)/chain/**`, `app/(app)/payroll/**`, `components/shell/OutletSwitcher.tsx` | [chain-and-payroll.md](chain-and-payroll.md) |
 | `app/(app)/controls/**`, `app/(app)/audit/**`, `app/(app)/intelligence/**`, `components/ui/ReasonDialog.tsx` — the "Insights & control" | [controls-and-intelligence.md](controls-and-intelligence.md) |
 | `app/(app)/tax/**` | [tax-and-compliance.md](tax-and-compliance.md) |
 | `app/(app)/scan/**` | [scan.md](scan.md) |
 | `app/(app)/neighbours/**` | [neighbours.md](neighbours.md) |
-| `app/dine/**`, `app/book/**`, `app/queue/**`, `app/checkin/**`, `app/pay/**`, `app/record/**`, `app/get`, `app/offline` | [guest-facing.md](guest-facing.md) |
+| `app/dine/**`, `app/book/**`, `app/queue/**`, `app/checkin/**`, `app/pay/**`, `app/record/**`, `app/feedback/**`, `app/screen/**`, `app/get`, `app/offline` | [guest-facing.md](guest-facing.md) |
 | `app/(auth)/**`, `app/account/**`, `app/page.tsx`, `middleware.ts`, `lib/auth.ts` | [auth-and-session.md](auth-and-session.md) |
 | `app/admin/**`, `app/membership/**`, `app/(app)/about/**` | [admin-and-membership.md](admin-and-membership.md) |
 | `app/(app)/help/**`, `app/admin/support/**`, `lib/support.ts`, `components/support/**` — Help & support | [help-and-support.md](help-and-support.md) |

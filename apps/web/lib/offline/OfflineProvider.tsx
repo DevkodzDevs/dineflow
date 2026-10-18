@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CloudOff, RefreshCw, Check, AlertTriangle, RotateCcw, Trash2, ChevronUp } from "lucide-react";
 import { onQueue } from "./sync";
-import { startSync, subscribe, flush, retryJob, discardJob } from "./sync";
+import { startSync, subscribe, flush, retryJob, discardJob, setOfflineOutlet } from "./sync";
 import type { Job } from "./db";
 import { cacheSet } from "./db";
 import { getClient } from "@/lib/supabase/lazy";
@@ -15,7 +15,9 @@ export const useOffline = () => useContext(Ctx);
 /** Screens worth having on the device when the line drops, in the order they matter to a service. */
 const OFFLINE_SCREENS = ["/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/inventory", "/tomorrow", "/scan"];
 
-export function OfflineProvider({ children, modules }: { children: React.ReactNode; modules?: string[] }) {
+export function OfflineProvider({ children, modules, outlet = null }: { children: React.ReactNode; modules?: string[]; outlet?: string | null }) {
+  // queued writes remember the outlet they were made in (0106)
+  useEffect(() => { setOfflineOutlet(outlet); }, [outlet]);
   const [s, setS] = useState<S>({ online: true, pending: 0, held: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 });
   useEffect(() => { const stop = startSync(); const un = subscribe(setS); return () => { stop?.(); un(); }; }, []);
   useEffect(() => {

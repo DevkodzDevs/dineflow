@@ -1,12 +1,13 @@
 # Guest-facing pages (no sign-in)
 
 **Routes** `/dine` · `/dine/[slug]` · `/dine/track` · `/book/[slug]` · `/queue/[slug]` · `/checkin/[token]` ·
-`/pay/[token]` · `/record/[token]` · `/attend/[token]` · `/get` · `/offline`
+`/pay/[token]` · `/record/[token]` · `/attend/[token]` · `/feedback/[slug]` · `/screen/[key]` · `/get` · `/offline`
 **Files** `app/dine/**` · `app/book/[slug]` · `app/queue/[slug]` · `app/checkin/[token]` · `app/pay/[token]` ·
-`app/record/[token]` · `app/get` · `app/offline`
+`app/record/[token]` · `app/feedback/**` · `app/screen/**` · `app/get` · `app/offline`
 **Writes** `checkin_view`, `checkin_submit`, `dine_storefront`, `dine_discover`, `dine_order`, `dine_reserve`,
 `dine_slots`, `dine_track`, `public_property`, `public_availability`, `public_book`, `queue_join`,
-`queue_status`, `queue_leave`, `pay_link`, `pay_link_claim`, `pay_link_review`, `proof_open` (`dine_review` is closed to the API since 0098)
+`queue_status`, `queue_leave`, `pay_link`, `pay_link_claim`, `pay_link_review`, `proof_open`, `dine_call`,
+`dine_call_status`, `feedback_place`, `feedback_submit`, `screen_feed` (0103) (`dine_review` is closed to the API since 0098)
 
 ## What it is
 
@@ -24,6 +25,8 @@ owner installs the app.
 | `/pay/[token]` | a customer | pay one bill by link |
 | `/record/[token]` | a bank, a landlord | a sealed business record (see [reports](reports-and-forecast.md)) |
 | `/attend/[token]` | a labourer, on their own phone | punch in/out by fingerprint or selfie — see [staff-and-labour.md](staff-and-labour.md) |
+| `/feedback/[slug]` | a diner (`?t=` from the table card, or the printed feedback QR) | a private 1–5 rating, tags, a note, an optional phone |
+| `/screen/[key]` | the TV by the counter | the menu and the parcel tokens (`?show=menu` / `tokens`); dark, no sign-in |
 | `/get` | a new owner | install the app |
 | `/offline` | anyone | the service-worker fallback |
 
@@ -77,6 +80,28 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
 
 ## Before you edit
 
+- **Batch 1 (0103, 2026-10-17).** On a table-QR visit (`atTable`) the Order tab opens with *Need something at T1?* —
+  `TableCalls.tsx`: **Call waiter · Bill please · Water** (84px tiles), each turning orange "… asked for" and then
+  green **On the way** once a waiter taps the badge on their floor; it asks `dine_call_status` every 15 s. Its
+  messages are inline (`data-call-msg`): **public pages have no `ToastProvider`, so `useToast()` is a silent no-op
+  here.** Under it, *How was your meal? Rate us* → `/feedback/[slug]?t=…`. The plain storefront has none of this.
+- **`/feedback/[slug]`** (paper): five 64px stars first — one tap is an answer — then tags that follow the score
+  (good ones from 4★, problems below), a note, name and phone (optional) and `GuestNotice`. Only the property reads
+  it; 3★ or less raises the floor alert. **One visitor, five notes an hour (0109):** the server action
+  (`app/feedback/actions.ts`) sends an HMAC-SHA256 of the visitor's address and today's IST date, keyed with
+  `RATE_LIMIT_SECRET` (else `SUPABASE_SERVICE_ROLE_KEY`) — the database never holds the address and the hash changes
+  daily; `feedback_ip_hits` keeps two days. With neither secret set there is no hash and only the per-place,
+  per-table and per-phone limits apply. A script calling the API directly skips the action, so those limits stay. Title is a `div role=heading` (an `h1` takes the display font).
+- **The TV polls `GET /api/screen/[key]`** (a route handler, session-free, in both route lists) — it polled a server
+  action, whose id changes with every build, so a TV left on across a deploy froze on *Reconnecting…*. Twelve hours
+  after loading it reloads itself, only when the server answers, to pick up a new build.
+- **`/screen/[key]`** (dark, `h-dvh`, no scroll): menu pages turn every 12 s, tokens refresh every 8 s; a token
+  that just became ready glows for 30 s (`.screen-fresh`, still under reduced motion). `lib/screen.ts` packs pages
+  by rows — short categories share a page, a long one is cut "1/3" — so a dish is the same size on every page.
+  The `main` grid needs `grid-rows-[minmax(0,1fr)]` or a full page runs off the bottom of the TV. A wrong or
+  rotated key is a 404; while the page is up and its key stops working it says *Reconnecting…*. The key is a
+  secret: it is shown only in Settings → Screens & feedback, never on a guest page.
+
 - **A property whose trial or membership has ended takes nothing from the public** (0100): `dine_order`,
   `dine_reserve`, `queue_join`, `public_book`, `dine_storefront`, `dine_discover` and `public_property` test
   `membership_state_for(id) in ('trial','active')`. They read the `membership` column, which nothing ever sets to
@@ -85,7 +110,7 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
   anonymous key, got no row, and told every guest "This place isn't taking a queue right now" — on the live site
   too. A public page never reads a table directly: add an RPC (and grant it to anon on purpose — since 0098 new
   functions are not anon's by default).
-- **The forms say who uses the details** (`components/legal/GuestNotice.tsx`): the order sheet and the table
+- **The forms say who uses the details** (`components/legal/GuestNotice.tsx`; its privacy link is a 44px target by vertical padding with the same negative margin, so the line does not move): the order sheet and the table
   booking on the storefront, `/book`, `/queue` and `/checkin` — "<Property> uses your details for this order.
   DineFlow runs this page for them — how your details are looked after" (→ /legal/privacy).
 - **Library dish photos are credited** on the storefront: `dine_storefront` sends `image_credit`; the photo

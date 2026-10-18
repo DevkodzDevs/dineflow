@@ -24,10 +24,11 @@ export function StaffAttendance({ today, staff, att, methods, canMark, property 
   const inNow = people.filter((p) => by.get(p.id)?.in_at).length;
   const manual = methods.includes("manual") && canMark;
   return (
-    <section className="feather p-4 sm:p-5 mt-6" data-staff-attendance>
+    <section className="rounded-[26px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4 sm:p-5 mt-5" data-staff-attendance>
       <div className="flex items-center gap-3 mb-3 min-w-0">
-        <h3 className="text-base font-semibold">Attendance today</h3>
-        <span className="text-xs text-steel num">{inNow} of {people.length} in</span>
+        <span className="h-10 w-10 shrink-0 rounded-[13px] grid place-items-center bg-[color-mix(in_srgb,var(--color-green)_20%,transparent)] text-[var(--color-green)]"><ClipboardCheck size={19} aria-hidden /></span>
+        <div className="min-w-0 flex-1"><div role="heading" aria-level={2} className="text-[17px] font-extrabold">Attendance today</div><div className="text-[12.5px] text-steel num">{inNow} of {people.length} in</div></div>
+        <div className="hidden sm:block h-2 w-40 rounded-full bg-[var(--color-fill)] overflow-hidden" aria-hidden><div className="h-full rounded-full bg-[var(--color-green)]" style={{ width: `${people.length ? (inNow / people.length) * 100 : 0}%` }} /></div>
       </div>
       {err && <p className="text-sm text-chili mb-2">{err}</p>}
       <ul className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-3">

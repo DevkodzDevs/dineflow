@@ -352,6 +352,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             <QuickLink href="/channels" icon={<Wifi size={16} />} label="Online orders & OTA" hint="Swiggy, Zomato, Booking.com" />
             <QuickLink href="/settings/booking-page" icon={<ExternalLink size={16} />} label="Direct booking page" hint="Your own booking link" />
             <QuickLink href="/tax" icon={<Building2 size={16} />} label="Tax & GST" hint="Returns, filings, documents" />
+            <QuickLink href="/settings/screens" icon={<MonitorSmartphone size={16} />} label="Screens & feedback" hint="TV menu and tokens, kiosk, feedback QR" />
           </div>
         </div>
       )}

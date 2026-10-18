@@ -61,6 +61,16 @@ code and `join_restaurant`; a staff member uses a login the owner created and is
 
 ## Before you edit
 
+- **Sign-in starts on the position's screen (2026-10-17).** After `signInWithPassword`, `startScreen()` reads the
+  person's own `profiles.position` (filtered by their id — an owner can read the whole team) and the session bundle,
+  works out the sections they hold (`modulesFor`), and redirects to the position's start screen (`positionHome`) — a
+  commis to `/kitchen`, a cashier to `/billing` — else `/dashboard`, which the layout turns into the person's own screen
+  (`homeFor`) unless they hold the control room (owner, or a manager it was given to). Any error falls back to `/dashboard`, the same way.
+- **Outlets (0106).** `session_bundle` answers the outlet this sign-in chose (`outlet_session` + `outlet_access`):
+  `restaurant` is that outlet, `profile.restaurant_id` is that outlet and `profile.home_restaurant_id` the person's own,
+  and `outlets` lists them for the switcher (empty for a one-outlet person). `requireSession` passes `outlets` on as
+  `Session.outlets`. The membership lock is per outlet; `/membership` shows the switcher. See
+  [chain-and-payroll.md](chain-and-payroll.md).
 - **`session_bundle` also carries `theme`** (0078) — the caller's saved light/dark choice from
   `user_prefs`, or null. It is per login, so it works for masters, who have no profiles row.
 

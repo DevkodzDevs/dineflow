@@ -134,3 +134,9 @@ export async function saveAttendanceSettings(methods: string[], lat: number | nu
   if (error) return { error: error.message };
   bump(); return { ok: true as const, error: null };
 }
+
+/** The TV screen's key (0103 `my_screen_key`, owner or manager); `rotate` makes every old screen link stop working. */
+export async function screenKey(rotate = false) {
+  const s = await createClient(); const { data, error } = await s.rpc("my_screen_key", { p_rotate: rotate });
+  if (error) return { error: error.message }; return { ok: true, key: data as string };
+}

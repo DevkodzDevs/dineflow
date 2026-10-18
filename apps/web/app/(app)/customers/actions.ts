@@ -85,3 +85,9 @@ export async function marketingIdeas(): Promise<{ ok: true; ideas: Idea[]; facts
   if (!ask.ok) return { ok: true, ideas: readyIdeas(facts, r.name), facts, ai: false };
   return { ok: true, ideas: ask.data.ideas.filter((i) => i.audience !== "points" || r.loyalty_enabled), facts, ai: true };
 }
+
+/** A guest's feedback has been read (0103 `feedback_seen`); the low-score alert stops counting it as new. */
+export async function markFeedbackSeen(id: string) {
+  const s = await createClient(); const { error } = await s.rpc("feedback_seen", { p_id: id });
+  if (error) return { error: error.message }; return ok();
+}

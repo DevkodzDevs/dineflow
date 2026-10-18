@@ -7,6 +7,10 @@ const TopChart = dynamic(() => import("./Charts").then((m) => m.TopChart), { ssr
 import { Card, StatTile, cn } from "@/components/ui";
 import { BreakdownView, type Breakdown } from "./Breakdown";
 import { formatINR } from "@/lib/format";
+import { useState } from "react";
+import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
+import { MoreReports } from "./MoreReports";
+import { reportTables, toSheet, type Extra } from "./tables";
 
 /** Already added up by report_summary() in the database, so the size of the window stops mattering. */
 export type Summary = {
@@ -26,11 +30,28 @@ export type HotelKpis = { rooms: number; sellable?: number; ooo?: number; days: 
   by_day: { day: string; occupied: number; total: number; occ_pct: number; revenue: number; adr: number; revpar: number }[] };
 export type AuditRow = { business_date: string; occupancy_pct: number; adr: number; revpar: number; room_revenue: number; no_shows: number; discrepancies: number };
 
-export function ReportsClient({ days, summary, closes, kitchen = null, hotel = null, audits = [], breakdown = null }: { days: number; summary: Summary; closes: Close[]; kitchen?: KitchenSpeed | null; hotel?: HotelKpis | null; audits?: AuditRow[]; breakdown?: Breakdown | null }) {
+export function ReportsClient({ days, summary, closes, kitchen = null, hotel = null, audits = [], breakdown = null, extra = null, property = "" }: { days: number; summary: Summary; closes: Close[]; kitchen?: KitchenSpeed | null; hotel?: HotelKpis | null; audits?: AuditRow[]; breakdown?: Breakdown | null; extra?: Extra | null; property?: string }) {
+  const [busy, setBusy] = useState<"xlsx" | "pdf" | null>(null);
+  const period = extra ? `${extra.from} to ${extra.to}` : days === 1 ? "today" : `last ${days} days`;
+  const fileBase = `${(property || "report").replace(/[^\w]+/g, "-").toLowerCase()}-${days === 1 ? "today" : `${days}d`}`;
+  /** Excel and PDF are drawn from the same tables (tables.ts), and the libraries load only when pressed. */
+  const exportAs = async (kind: "xlsx" | "pdf") => {
+    setBusy(kind);
+    try {
+      const tables = reportTables(summary, breakdown, extra);
+      const { download, xlsx, XLSX_TYPE } = await import("@/lib/xlsx");
+      if (kind === "xlsx") download(`${fileBase}.xlsx`, xlsx(tables.map(toSheet)), XLSX_TYPE);
+      else { const { tablesPdf } = await import("@/lib/tablePdf"); download(`${fileBase}.pdf`, new Uint8Array(await tablesPdf(`${property} · Reports`, `${period} (IST) · made ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`, tables)), "application/pdf"); }
+    } finally { setBusy(null); }
+  };
   const { sales, bills: billCount, by_day: byDay, top, consumption, cogs, waste_cost: wasteCost } = summary;
   return (
     <div className="space-y-6">
-      <div className="flex gap-2">{[1, 7, 30, 90].map((d) => <Link key={d} href={`/reports?days=${d}`} className={cn("rounded-full px-4 h-9 [@media(pointer:coarse)]:h-11 grid place-items-center text-sm font-semibold", days === d ? "bg-ink text-on-label" : "bg-card border border-line")}>{d === 1 ? "Today" : `${d} days`}</Link>)}</div>
+      <div className="flex flex-wrap items-center gap-2">{[1, 7, 30, 90].map((d) => <Link key={d} href={`/reports?days=${d}`} className={cn("rounded-full px-4 h-9 [@media(pointer:coarse)]:h-11 grid place-items-center text-sm font-semibold", days === d ? "bg-ink text-on-label" : "bg-card border border-line")}>{d === 1 ? "Today" : `${d} days`}</Link>)}
+        <span className="flex-1" />
+        <button type="button" disabled={!!busy} onClick={() => void exportAs("xlsx")} className="svc-btn quiet sm !px-4" data-export-xlsx>{busy === "xlsx" ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <FileSpreadsheet size={16} aria-hidden />} Excel</button>
+        <button type="button" disabled={!!busy} onClick={() => void exportAs("pdf")} className="svc-btn quiet sm !px-4" data-export-pdf>{busy === "pdf" ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <FileText size={16} aria-hidden />} PDF</button>
+      </div>
       {/* four money figures, never a flap, so the row is .stat-flat: no band to line up with a
           flap tile, the number sits under its label and the tile is as tall as its words */}
       <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 stat-flat" data-kpis>
@@ -48,6 +69,9 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
 
       {/* the breakdown: where, when and how the money came in */}
       <BreakdownView d={breakdown} />
+
+      {/* payments, staff, every dish, the bill lines, cancellations and voids, sales less expenses (0105) */}
+      <MoreReports x={extra} />
 
       {/* what the chains manage the kitchen by, and what every hotel opens its morning meeting with */}
       <div className={cn("grid gap-4", hotel && "lg:grid-cols-2")}>

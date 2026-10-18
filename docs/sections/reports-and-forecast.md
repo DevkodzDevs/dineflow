@@ -5,7 +5,7 @@
 `app/(app)/pulse/PulseClient.tsx` · `app/(app)/tomorrow/TomorrowClient.tsx` ·
 `app/(app)/proof/ProofClient.tsx` · each `actions.ts`
 **Reads** `day_closes`, `night_audits`, `walkins`, `forecast_runs`
-**Writes** `report_summary`, `sales_breakdown`, `hotel_kpis`, `kitchen_speed`, `table_pulse`,
+**Writes** `report_extra` (0105), `report_summary`, `sales_breakdown`, `hotel_kpis`, `kitchen_speed`, `table_pulse`,
 `quote_wait`, `walkin_add`, `walkin_set`, `forecast_day`, `save_forecast`, `grade_forecasts`,
 `forecast_scorecard`, `buy_purchase_list`, `record_chef_notes`, `business_record`, `proof_create`,
 `proof_links_list`, `proof_revoke`, `seal_all_periods`
@@ -51,6 +51,15 @@ message is calling them. `waHref` in `lib/wa.ts` builds the link (ten digits get
 so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "8:30 pm".
 
 ## Before you edit
+
+- **More reports and export (0105, 2026-10-17).** `page.tsx` also asks `report_extra(from, to)` for the same window
+  as IST dates; `MoreReports.tsx` draws *Sales less expenses*, *How guests paid*, *Sales by staff* (who took the
+  order), *Every dish sold* (12, then Show all), *The bill lines* and *Cancelled & voided*. For a role below
+  supervisor the function refuses and the panels do not show. **Excel and PDF** (buttons by the period chips) are
+  built from one description, `tables.ts` → `reportTables()`, so they cannot disagree: Excel by `lib/xlsx.ts` (a
+  real .xlsx, no library — a stored zip of SpreadsheetML; text cells are inline strings, never formulas), PDF by
+  `lib/tablePdf.ts` (jsPDF, Latin-1: ₹ prints as "Rs"). Both load only when pressed. A zero discount shows ₹0,
+  not −₹0.
 
 - **Pulse is the waiting list first (Simple Service, 2026-10-15).** `SvcHead` ("Guests at the door, and when a
   table frees up"). Left, `[data-quote]`: **How many people?** as eight 64px buttons, the wait in display type in

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List } from "lucide-react";
+import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { cn, Empty, Segmented, useToast } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
@@ -10,11 +10,16 @@ import { StateChip, SVC_ICON, stClass } from "@/components/ui/Service";
 import { Rail } from "@/components/ui/Rail";
 import { formatINR, fmtSince } from "@/lib/format";
 import { orderState, isLate, SVC_WORD, type Svc } from "@/lib/service";
-import { setTableStatus } from "./actions";
+import { setTableStatus, answerCall } from "./actions";
+import { takeJob, finishJob } from "../cleaning/actions";
 
 type Table = { id: string; name: string; capacity: number; zone: string; status: "free" | "occupied" | "reserved" };
 type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; created_at?: string | null };
-type Order = { id: string; order_no: number; type: string; table_id: string | null; customer_name: string | null; created_at: string; order_items: Item[]; bills?: { status: string }[] | null };
+type Order = { id: string; order_no: number; type: string; table_id: string | null; customer_name: string | null; created_at: string; token_no?: number | null; order_items: Item[]; bills?: { status: string }[] | null };
+type Call = { id: string; table_id: string; kind: "waiter" | "bill" | "water"; created_at: string };
+/** A table paid and left, not yet cleaned (0111), with whoever has it. */
+export type Clean = { id: string; table_id: string; status: "pending" | "in_progress"; created_at: string; assigned_to: string | null; assigned_name: string | null; taken_by: string | null; taken_name: string | null; taken_at: string | null };
+const CALL_WORD: Record<Call["kind"], string> = { waiter: "Calling", bill: "Wants bill", water: "Water" };
 const KIND: Record<string, { word: "parcel" | "delivery" | "room" | "dine_in"; Icon: typeof Armchair }> = {
   dine_in: { word: "dine_in", Icon: Armchair }, takeaway: { word: "parcel", Icon: ShoppingBag },
   room_service: { word: "room", Icon: BedDouble }, delivery: { word: "delivery", Icon: Bike },
@@ -36,10 +41,10 @@ const PLATE: Record<string, { word: "ordered" | "cooking" | "food_ready" | "eati
  * count each state and, tapped, show only those tables. "List" is every open order as a card with its
  * dishes, for whoever wants the detail.
  */
-export function OrdersClient({ tables, orders, lateAt = 15 }: { tables: Table[]; orders: Order[]; lateAt?: number }) {
+export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning = [], me = "", boss = false }: { tables: Table[]; orders: Order[]; calls?: Call[]; lateAt?: number; cleaning?: Clean[]; me?: string; boss?: boolean }) {
   const [pending, start] = useTransition(); const toast = useToast();
   const [, tick] = useState(0);
-  useLive(["orders", "order_items", "dining_tables", "bills"], 30000);
+  useLive(["orders", "order_items", "dining_tables", "bills", "service_calls", "table_cleanings"], 30000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
   const [view, setView] = useState<"tables" | "list">("tables");
   useEffect(() => { try { if (localStorage.getItem("df-orders-view") === "list") setView("list"); } catch { /* storage blocked: tables */ } }, []);
@@ -47,7 +52,8 @@ export function OrdersClient({ tables, orders, lateAt = 15 }: { tables: Table[];
   const [only, setOnly] = useState<Svc | "late" | null>(null);
 
   const byTable = new Map<string, Order>(); orders.forEach((o) => { if (o.table_id && !byTable.has(o.table_id)) byTable.set(o.table_id, o); });
-  const tableState = (t: Table): Svc => { const o = byTable.get(t.id); return o ? stateOf(o) : t.status === "reserved" ? "hold" : t.status === "occupied" ? "eat" : "free"; };
+  const cleanOf = new Map(cleaning.map((c) => [c.table_id, c]));
+  const tableState = (t: Table): Svc => { const o = byTable.get(t.id); return o ? stateOf(o) : t.status === "reserved" ? "hold" : t.status === "occupied" ? "eat" : cleanOf.has(t.id) ? "clean" : "free"; };
   const lateOf = (o: Order | undefined) => !!o && isLate(live(o), lateAt, o.created_at);
   const zones = [...new Set(tables.map((t) => t.zone))];
   const loose = orders.filter((o) => !o.table_id);
@@ -55,9 +61,29 @@ export function OrdersClient({ tables, orders, lateAt = 15 }: { tables: Table[];
   const counts = new Map<Svc | "late", number>();
   tables.forEach((t) => { const s = tableState(t); counts.set(s, (counts.get(s) ?? 0) + 1); if (lateOf(byTable.get(t.id))) counts.set("late", (counts.get("late") ?? 0) + 1); });
   loose.forEach((o) => { const s = stateOf(o); counts.set(s, (counts.get(s) ?? 0) + 1); if (lateOf(o)) counts.set("late", (counts.get("late") ?? 0) + 1); });
-  const chips = (["free", "hold", "new", "cook", "ready", "eat", "bill", "late"] as const).filter((s) => (counts.get(s) ?? 0) > 0 || s === "free");
+  const chips = (["free", "clean", "hold", "new", "cook", "ready", "eat", "bill", "late"] as const).filter((s) => (counts.get(s) ?? 0) > 0 || s === "free");
   const shows = (s: Svc, late: boolean) => !only || only === s || (only === "late" && late);
 
+  /* A table calling from its QR (0103): an orange pill on the card's top edge — Calling, Wants bill, Water — that
+     pulses until a waiter taps it. A tap answers every open call of that table. It sits over the card's link, a
+     sibling of it, not inside it. */
+  // answered calls, by call id: a later call from the same table shows again (it has a new id)
+  const [answered, setAnswered] = useState<Record<string, true>>({});
+  const callsOf = (tableId: string) => calls.filter((c) => c.table_id === tableId && !answered[c.id]);
+  const callBadge = (t: Table) => {
+    const cs = callsOf(t.id); if (!cs.length) return null;
+    const kinds = [...new Set(cs.map((c) => c.kind))]; const word = kinds.includes("bill") ? CALL_WORD.bill : kinds.includes("waiter") ? CALL_WORD.waiter : CALL_WORD.water;
+    return (
+      <button type="button" disabled={pending} data-call={t.name} title={`${t.name}: ${kinds.map((k) => CALL_WORD[k]).join(", ")} — tap when you have gone`} aria-label={`${t.name} ${word} — mark answered`}
+        onClick={() => { const ids = cs.map((c) => c.id); setAnswered((a) => ({ ...a, ...Object.fromEntries(ids.map((i) => [i, true as const])) })); start(async () => { const r = await answerCall(t.id); if ("error" in r) { toast(r.error!, "err"); setAnswered((a) => { const n = { ...a }; ids.forEach((i) => delete n[i]); return n; }); } else toast(`${t.name} — answered`); }); }}
+        className="group absolute z-[2] -top-6 left-1 !min-h-11 px-1.5 inline-flex items-center rounded-full">
+        {/* the pill stays 28px; the button around it is the 44px a finger needs */}
+        <span className="h-7 pl-2 pr-2.5 rounded-full bg-[var(--color-orange)] text-[var(--color-bezel)] text-[12px] font-extrabold inline-flex items-center gap-1 shadow-[0_0_0_4px_var(--color-orange-2)] animate-pulse group-hover:animate-none">
+          <HandPlatter size={14} aria-hidden />{word}<Check size={13} aria-hidden className="ml-0.5 opacity-70" />
+        </span>
+      </button>
+    );
+  };
   const reserve = (t: Table) => start(async () => { const r = await setTableStatus(t.id, t.status === "reserved" ? "free" : "reserved"); if ("error" in r) toast(r.error!, "err"); });
 
   /** One table: a link to its ticket, or — free — a card whose Take order covers it, with Reserve on top. */
@@ -65,9 +91,34 @@ export function OrdersClient({ tables, orders, lateAt = 15 }: { tables: Table[];
     const o = byTable.get(t.id); const s = tableState(t); const late = lateOf(o); const I = SVC_ICON[s];
     const seats = <span className="ml-auto flex items-center gap-1 text-[14px] font-bold text-[var(--color-label-2)] shrink-0"><Users size={16} aria-hidden />{t.capacity}</span>;
     const motionProps = { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { delay: Math.min(i, 12) * 0.012 } };
+    /* Paid and left (0111): cyan and dashed — who has it and since when, the one move this person can make (take it,
+       or Done), and + to seat the next party anyway (which closes the job as "seated again before it was cleaned"). */
+    const c = !o && s === "clean" ? cleanOf.get(t.id) : undefined;
+    if (c) {
+      const theirs = !!c.assigned_to && c.assigned_to !== me;
+      const canTake = c.status === "pending" && (!theirs || boss);
+      const canDone = c.status === "in_progress" && (c.taken_by === me || c.assigned_to === me || boss || !c.taken_by);
+      const who = c.status === "in_progress" ? `${c.taken_by === me ? "You" : c.taken_name ?? "Someone"} · ${fmtSince(c.taken_at ?? c.created_at)}`
+        : c.assigned_to ? `Given to ${c.assigned_to === me ? "you" : c.assigned_name}` : `Waiting · ${fmtSince(c.created_at)}`;
+      return (
+        <motion.div key={t.id} {...motionProps} className={cn("svc-table", stClass("clean"))} data-table-card={t.name} data-state="clean" data-clean={c.status}>
+          {callBadge(t)}
+          <div className="flex items-center gap-2 min-w-0 -my-1"><span className="tname">{t.name}</span>{seats}</div>
+          <div className="tstate"><I size={19} aria-hidden /><Say w="cleaning" start /></div>
+          <div className="mt-1 text-[13px] font-semibold text-[var(--color-label-2)] truncate" data-clean-who>{who}</div>
+          <div className="mt-auto pt-2 flex items-center gap-2 min-w-0">
+            {canTake ? <button type="button" disabled={pending} className="svc-btn st sm flex-1 min-w-0 !px-2" data-clean-take onClick={() => start(async () => { const r = await takeJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is yours`); })}><Say w="take_it" /></button>
+              : canDone ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0 !px-2" data-clean-done onClick={() => start(async () => { const r = await finishJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is clean`); })}><Check size={17} aria-hidden /><Say w="clean_done" /></button>
+              : <Link href="/cleaning" className="svc-btn quiet sm flex-1 min-w-0 !px-2 text-[13px]">See who</Link>}
+            <Link href={`/orders/new?table=${t.id}`} className="svc-btn quiet sm !w-11 !px-0 shrink-0" aria-label={`Take order at ${t.name} anyway`} title="Seat the next party now"><Plus size={19} aria-hidden /></Link>
+          </div>
+        </motion.div>
+      );
+    }
     if (!o && (s === "free" || s === "hold")) {
       return (
         <motion.div key={t.id} {...motionProps} className={cn("svc-table", stClass(s))} data-table-card={t.name} data-state={s}>
+          {callBadge(t)}
           <div className="flex items-center gap-2 min-w-0 -my-1">
             <span className="tname">{t.name}</span>{seats}
             {/* Reserve sits over the card's tap area: the whole card takes the order, this button holds the table */}
@@ -81,7 +132,8 @@ export function OrdersClient({ tables, orders, lateAt = 15 }: { tables: Table[];
       );
     }
     return (
-      <motion.div key={t.id} {...motionProps} className="min-w-0 flex">
+      <motion.div key={t.id} {...motionProps} className="min-w-0 flex relative">
+        {callBadge(t)}
         <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`} className={cn("svc-table flex-1", stClass(s))} data-table-card={t.name} data-state={s} data-late={late || undefined}>
           <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span>{seats}</div>
           <div className="tstate"><I size={19} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={o ? SVC_WORD[s] : "at_table"} start /></div>
@@ -102,7 +154,7 @@ export function OrdersClient({ tables, orders, lateAt = 15 }: { tables: Table[];
     return (
       <motion.div key={o.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.012 }} className="min-w-0 flex">
         <Link href={`/orders/${o.id}`} className={cn("svc-table flex-1", stClass(s))} data-table-card={`#${o.order_no}`} data-state={s} data-late={late || undefined}>
-          <div className="flex items-center gap-2 min-w-0"><k.Icon size={22} aria-hidden className="shrink-0" /><span className="tname !text-[28px]">#{o.order_no}</span></div>
+          <div className="flex items-center gap-2 min-w-0"><k.Icon size={22} aria-hidden className="shrink-0" /><span className="tname !text-[28px]">{o.token_no ? <>Token {o.token_no}</> : <>#{o.order_no}</>}</span></div>
           <div className="mt-1 text-[13px] font-semibold text-[var(--color-label-2)] truncate"><Say w={k.word} start />{o.customer_name ? ` · ${o.customer_name}` : ""}</div>
           <div className="tstate"><I size={19} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={SVC_WORD[s]} start /></div>
           <div className="mt-auto pt-2 flex items-end gap-2 font-bold"><span className="flex items-center gap-1 text-[14px] text-[var(--color-label-2)] shrink-0"><Clock size={15} aria-hidden />{fmtSince(o.created_at)}</span>

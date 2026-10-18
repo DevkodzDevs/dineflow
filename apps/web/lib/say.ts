@@ -1,5 +1,6 @@
 /**
- * The Dining screens' words, in English and — when a device asks for it — Tamil or Hindi under them.
+ * The floor's words, in English and — when a device asks for it — Tamil or Hindi under them: the Dining screens, and
+ * (0109) the main buttons of Expenses, Checklists, Payroll, Outlets and Staff.
  *
  * A second line, never a replacement: English stays on every button so a manager, a probe and a
  * support call all read the same screen. The choice is the device's (the `df-lang` cookie, like
@@ -10,8 +11,8 @@ export type Lang = "en" | "ta" | "hi";
 export const LANG_COOKIE = "df-lang";
 export const LANGS: { v: Lang; label: string; short: string; hint: string }[] = [
   { v: "en", label: "English", short: "A", hint: "Buttons in English only." },
-  { v: "ta", label: "English + தமிழ்", short: "அ", hint: "Tamil under the English on the Dining screens." },
-  { v: "hi", label: "English + हिन्दी", short: "अ", hint: "Hindi under the English on the Dining screens." },
+  { v: "ta", label: "English + தமிழ்", short: "அ", hint: "Tamil under the English on the floor's buttons." },
+  { v: "hi", label: "English + हिन्दी", short: "अ", hint: "Hindi under the English on the floor's buttons." },
 ];
 export const readLang = (v: string | null | undefined): Lang => (v === "ta" || v === "hi" ? v : "en");
 
@@ -82,6 +83,49 @@ export const WORDS = {
   edit: { en: "Edit", ta: "திருத்து", hi: "बदलें" },
   add_customer: { en: "Add customer", ta: "வாடிக்கையாளர் சேர்", hi: "ग्राहक जोड़ें" },
   whatsapp: { en: "WhatsApp", ta: "WhatsApp", hi: "WhatsApp" },
+  /* expenses and checklists (0104) */
+  save_expense: { en: "Save expense", ta: "செலவைச் சேமி", hi: "खर्च सेव करें" },
+  new_list: { en: "New list", ta: "புதிய பட்டியல்", hi: "नई सूची" },
+  save_list: { en: "Save list", ta: "பட்டியலைச் சேமி", hi: "सूची सेव करें" },
+  opening: { en: "Opening", ta: "திறக்கும்போது", hi: "खुलते समय" },
+  closing: { en: "Closing", ta: "மூடும்போது", hi: "बंद करते समय" },
+  any_time: { en: "Any time", ta: "எப்போதும்", hi: "कभी भी" },
+  /* payroll (0106) */
+  work_out_pay: { en: "Work out pay", ta: "சம்பளம் கணக்கிடு", hi: "वेतन निकालें" },
+  work_out_again: { en: "Work out again", ta: "மீண்டும் கணக்கிடு", hi: "फिर से निकालें" },
+  finalise: { en: "Finalise", ta: "இறுதி செய்", hi: "पक्का करें" },
+  give_advance: { en: "Give advance", ta: "முன்பணம் கொடு", hi: "एडवांस दें" },
+  save: { en: "Save", ta: "சேமி", hi: "सेव करें" },
+  /* outlets (0106) */
+  work_here: { en: "Work here", ta: "இங்கே வேலை", hi: "यहाँ काम करें" },
+  open_outlet: { en: "Open outlet", ta: "புதிய கிளை திற", hi: "नई शाखा खोलें" },
+  send_menu: { en: "Send menu", ta: "மெனு அனுப்பு", hi: "मेनू भेजें" },
+  switch_on: { en: "Switch it on", ta: "இயக்கு", hi: "चालू करें" },
+  /* staff (0107) */
+  add_staff: { en: "Add staff", ta: "ஆள் சேர்", hi: "स्टाफ जोड़ें" },
+  people: { en: "People", ta: "நபர்கள்", hi: "लोग" },
+  team_chart: { en: "Team chart", ta: "வரைபடம்", hi: "टीम चार्ट" },
+  positions: { en: "Positions", ta: "பதவிகள்", hi: "पद" },
+  /* cleaning after every guest (0111) */
+  cleaning: { en: "Cleaning", ta: "சுத்தம்", hi: "सफ़ाई" },
+  take_it: { en: "I'll take it", ta: "எடுக்கிறேன்", hi: "मैं लूँगा" },
+  clean_done: { en: "Done", ta: "முடிந்தது", hi: "हो गया" },
+  give_back: { en: "Give back", ta: "திருப்பு", hi: "वापस दें" },
+  not_needed: { en: "Not needed", ta: "தேவையில்லை", hi: "ज़रूरत नहीं" },
+  assign: { en: "Give to", ta: "ஒப்படை", hi: "सौंपें" },
+  waiting: { en: "Waiting", ta: "காத்திருக்கிறது", hi: "इंतज़ार" },
+  on_it: { en: "On it", ta: "நடக்கிறது", hi: "चल रहा है" },
+  done_today: { en: "Done today", ta: "இன்று முடிந்தவை", hi: "आज हुए" },
+  to_inspect: { en: "To inspect", ta: "சரிபார்க்க", hi: "जाँचना है" },
+  pass_it: { en: "Pass", ta: "சரி", hi: "पास" },
+  fail_it: { en: "Fail", ta: "தவறு", hi: "फ़ेल" },
+  /* work: every job on the property (0113) */
+  work: { en: "Work", ta: "வேலை", hi: "काम" },
+  new_job: { en: "New job", ta: "புதிய வேலை", hi: "नया काम" },
+  raise_it: { en: "Raise it", ta: "பதிவு செய்", hi: "दर्ज करें" },
+  drop_it: { en: "Drop", ta: "விடு", hi: "हटाएँ" },
+  with_note: { en: "Done, with the note", ta: "குறிப்புடன் முடிந்தது", hi: "नोट के साथ हो गया" },
+  coming_up: { en: "Coming up", ta: "வரவிருப்பவை", hi: "आगे" },
 } satisfies Record<string, W>;
 export type Word = keyof typeof WORDS;
 

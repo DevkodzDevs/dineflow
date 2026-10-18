@@ -27,6 +27,8 @@
   --color-orange: #ffb340; --color-orange-2: rgb(255 179 64 / .16);
   /* the Dining screens' "Bill" state (bill printed, not paid) — the one hue the board had no use for */
   --color-violet: #c084fc; --color-violet-2: rgb(192 132 252 / .16);
+  /* 0111: a table being cleaned — cyan, clear of Ordered's blue and Ready's green */
+  --color-cyan: #33cfe8; --color-cyan-2: rgb(51 207 232 / .16);
   --color-paper-ink: #1c1b18;        /* the ink on a kitchen ticket, paper in both themes */
   --color-ink: #f4f4f1;              /* "ink" is the text colour everywhere */
   --color-on-label: #0a0a0d;         /* text that sits on a label-coloured surface (avatars, ink buttons, the active chip) */
@@ -71,6 +73,7 @@
   --color-tint: #1fa84a; --color-tint-2: #2fc45c; --color-green: #1fa84a; --color-green-2: rgb(31 168 74 / .12);
   --color-red: #d9302a; --color-red-2: rgb(217 48 42 / .10); --color-blue: #1f6fd6; --color-blue-2: rgb(31 111 214 / .10); --color-orange: #c77d0a; --color-orange-2: rgb(199 125 10 / .12);
   --color-violet: #8b3fd9; --color-violet-2: rgb(139 63 217 / .10);
+  --color-cyan: #0a7f96; --color-cyan-2: rgb(10 127 150 / .10);
   --color-mint: #1fa84a; --color-mint-2: rgb(31 168 74 / .12); --color-chili: #d9302a; --color-chili-2: rgb(217 48 42 / .10); --color-sky: #1f6fd6; --color-sky-2: rgb(31 111 214 / .10);
   --color-saffron: #1fa84a; --color-saffron-2: #2fc45c;
   --shadow-card: 0 1px 2px rgb(23 23 28 / .04), 0 8px 24px -16px rgb(23 23 28 / .18);
@@ -1211,8 +1214,9 @@ tr[data-kbd-on] { outline-offset: -2px; }
 .st-bill  { --st: var(--color-violet);  --st-2: var(--color-violet-2); }
 .st-late  { --st: var(--color-red);     --st-2: var(--color-red-2); }
 .st-hold  { --st: var(--color-orange);  --st-2: var(--color-orange-2); }
-.st-free, .st-new, .st-cook, .st-ready, .st-eat, .st-bill, .st-late, .st-hold { --st-ink: var(--st); --st-on: var(--color-bezel); }
-[data-theme="paper"] :is(.st-free, .st-new, .st-cook, .st-ready, .st-eat, .st-bill, .st-late, .st-hold) { --st-ink: color-mix(in srgb, var(--st) 62%, var(--color-label)); --st-on: var(--color-bg-2); }
+.st-clean { --st: var(--color-cyan);    --st-2: var(--color-cyan-2); }
+.st-free, .st-new, .st-cook, .st-ready, .st-eat, .st-bill, .st-late, .st-hold, .st-clean { --st-ink: var(--st); --st-on: var(--color-bezel); }
+[data-theme="paper"] :is(.st-free, .st-new, .st-cook, .st-ready, .st-eat, .st-bill, .st-late, .st-hold, .st-clean) { --st-ink: color-mix(in srgb, var(--st) 62%, var(--color-label)); --st-on: var(--color-bg-2); }
 [data-theme="paper"] .st-eat { --st-ink: var(--color-label); }
 
 /* the English and, under it, the device's second language */
@@ -1256,6 +1260,7 @@ button.svc-chip[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--st-ink,
   transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
 .svc-table.st-free { background: transparent; border-style: dashed; border-color: var(--color-line-2); }
 .svc-table.st-hold { border-style: dashed; }
+.svc-table.st-clean { border-style: dashed; }
 .svc-table.st-ready { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-green) 16%, transparent); }
 a.svc-table:hover { transform: translateY(-2px); }
 .svc-table .tname { font-family: var(--font-display); font-size: 34px; line-height: 1; letter-spacing: .005em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1314,3 +1319,8 @@ a.svc-table:hover .svc-take, .svc-take:hover { background: var(--color-fill-2); 
 .kcol-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 12px; color: var(--st-ink); font-weight: 900; font-size: 18px; }
 .kcol-head > b { margin-left: auto; min-width: 32px; height: 32px; padding: 0 8px; border-radius: 999px; background: var(--st); color: var(--st-on); display: grid; place-items: center; font-size: 15px; }
 
+
+/* ── The TV screen (/screen/[key], 0103): a token that has just become ready glows for half a minute ── */
+@keyframes screen-fresh { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 70%, transparent); } 50% { box-shadow: 0 0 0 .9vw color-mix(in srgb, var(--color-green) 0%, transparent); } }
+.screen-fresh { animation: screen-fresh 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .screen-fresh { animation: none; outline: .3vw solid var(--color-label); } }

@@ -3,7 +3,8 @@
 **Route** `/housekeeping`
 **Files** `app/(app)/housekeeping/page.tsx` · `HousekeepingClient.tsx` · `actions.ts`
 **Reads** `rooms`, `bookings`, `housekeeping_tasks`
-**Writes** `set_room_condition`, `inspect_room`, `hk_build_sheet`
+**Writes** `set_room_condition`, `inspect_room`, `hk_build_sheet`; a task's Start / Done / Give to through
+`clean_take` / `clean_done` / `clean_assign` (0111 — [cleaning.md](cleaning.md))
 
 ## What it is
 
@@ -106,6 +107,13 @@ dirty room without a ticket.
 - **`mt-auto` belongs on the footer, not on the since-line.** Put it on the since-line and the slack
   a stretched grid row leaves opens up *between* "Vacant" and the timestamp, which reads as a bug.
 - **Check-out creates a cleaning task automatically.** Do not add a second one.
+- **A task says whose it is (0111).** Start and Done go through `clean_take` / `clean_done` (they refuse a task given
+  to someone else, and name who is on it); the card shows *Given to … by …* or *… · since …*; an owner, manager or
+  supervisor has a *Give to…* select under the buttons; *Recently done* says *by … · took n min*. `page.tsx` reads
+  `profiles` for the names. `setTask` (a direct update) is no longer called here; the `_hk_who` trigger would still
+  put the name on it. The same tasks are on the Cleaning board. Someone else's task shows whose it is instead of Start
+  and Done (0112). `inspect_room` (0112) also writes the inspection on the clean it inspects and gives a failed
+  room's re-clean back to whoever cleaned it; `bump()` revalidates `/cleaning` too.
 - **A green "Dirty" button reads as approval**, which is the opposite of what it does.
 
 ## Verify

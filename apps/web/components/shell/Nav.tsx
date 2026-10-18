@@ -181,7 +181,7 @@ const HOSPITALITY = ["frontdesk", "rooms", "housekeeping", "guests", "facilities
 const MANAGE = ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"];
 const TOP = ["dashboard", "tomorrow", "scan"];
 
-type MoreProps = { role: Role; type: PropertyType; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number; attend?: boolean };
+type MoreProps = { role: Role; type: PropertyType; dept?: string | null; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number; attend?: boolean };
 
 /**
  * The phone's navigation: four sections and More. It used to be one sideways-scrolling strip of
@@ -189,7 +189,7 @@ type MoreProps = { role: Role; type: PropertyType; enabled?: string[] | null; al
  * phone had no way to sign out at all. More opens every section this person can use, grouped the
  * way the sidebar groups them, with the account, Master control and Sign out at the foot.
  */
-export function BottomNav({ role, type, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0, attend }: MoreProps) {
+export function BottomNav({ role, type, dept = null, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0, attend }: MoreProps) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [path]);
@@ -219,7 +219,10 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
     return () => clearTimeout(t);
   }, [open]);
   const savePins = (v: string[] | null) => { setPins(v); try { if (v) localStorage.setItem(PIN_KEY, JSON.stringify(v)); else localStorage.removeItem(PIN_KEY); } catch { /* fine */ } };
-  const primary = barFor(role, type, allowed.map((i) => i.key), pins).map((k) => allowed.find((i) => i.key === k)!);
+  const fresh = freshFor(role);
+  // the Cleaning and Work boards are no modules, but they are the day of the people who clean and fix: the bar may carry them (lib/bar.ts)
+  const onBar = [...allowed, ...fresh.filter((i) => i.key === "cleaning" || i.key === "work")];
+  const primary = barFor(role, type, onBar.map((i) => i.key), pins, dept).map((k) => onBar.find((i) => i.key === k)!);
   /* What the person chose — not what the bar shows. When fewer than four are pinned the bar fills the
      gaps from the menu; counting those fillers as pins made a newly pinned section push itself out. */
   const pinned = pins ? pins.filter((k) => mods.includes(k)) : primary.map((i) => i.key);
@@ -231,7 +234,6 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
   /* what needs attention, as a count on its section: tickets over 15 minutes in the kitchen */
   const badge = (key: string) => (key === "kitchen" && lateKots > 0 ? lateKots : 0);
   const rest = allowed.filter((i) => !primary.includes(i));
-  const fresh = freshFor(role);
   const onMore = rest.some((i) => path.startsWith(i.href)) || fresh.some((i) => path.startsWith(i.href));
   const unread = useSupportUnread(path);
   const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0) + unread;
@@ -241,7 +243,7 @@ export function BottomNav({ role, type, enabled, allowed: personal, name, member
     { title: type === "resort" ? "Resort" : "Hotel", items: allowed.filter((i) => HOSPITALITY.includes(i.key)) },
     { title: "Dining", items: allowed.filter((i) => !HOSPITALITY.includes(i.key) && !MANAGE.includes(i.key) && !TOP.includes(i.key)) },
     { title: "Manage", items: allowed.filter((i) => MANAGE.includes(i.key)) },
-    { title: "Insights & control", items: fresh },
+    { title: "Insights & control", items: fresh.filter((i) => !primary.some((p) => p.key === i.key)) },
   ].filter((g) => g.items.length);
   const tab = (active: boolean) => cn("flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 text-[11px] font-display tracking-wide transition-colors", active ? "text-[var(--color-tint)]" : "text-[var(--color-label-2)]");
   const pip = (active: boolean) => cn("h-8 w-12 grid place-items-center rounded-full transition", active && "bg-[rgb(76_217_100/.16)]");

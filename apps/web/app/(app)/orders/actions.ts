@@ -76,6 +76,11 @@ export async function fireKot(kotId: string) {
   const s = await createClient(); const { error } = await s.rpc("fire_kot", { p_kot_id: kotId });
   if (error) return { error: error.message }; bump(); return { ok: true as const };
 }
+/** A waiter answers a table's call (the table's QR: waiter, bill, water) — one call, or all of a table's open ones (0103). */
+export async function answerCall(tableId: string) {
+  const s = await createClient(); const { data, error } = await s.rpc("service_call_done", { p_id: null, p_table: tableId });
+  if (error) return { error: error.message }; revalidatePath("/orders"); return { ok: true, answered: Number(data ?? 0) };
+}
 export async function setTableStatus(id: string, status: "free" | "reserved") {
   const s = await createClient(); const bad = wrote(await s.from("dining_tables").update({ status }).eq("id", id).select("id"), "That table could not be changed."); if (bad) return bad; bump(); return { ok: true };
 }
@@ -122,4 +127,20 @@ export async function parseOrder(text: string) {
   const table = r.data.table ? (tables ?? []).find((t) => t.name.toLowerCase() === r.data.table!.toLowerCase()) ?? null : null;
   if (!lines.length && !r.data.unresolved.length) return { error: "Could not make out any dish in that. Try again." };
   return { ok: true as const, lines, table_id: table?.id ?? null, table_name: table?.name ?? null, order_type: r.data.order_type, customer_name: r.data.customer_name, unresolved: r.data.unresolved };
+}
+
+export type PhoneCard = {
+  customer: { name: string | null; address: string | null; visits: number; spend: number; notes: string | null; last: string | null } | null;
+  last_address: string | null;
+  orders: { id: string; no: number; type: string; at: string; items: { menu_item_id: string | null; variant_id: string | null; name: string; variant: string | null; qty: number; price: number }[] }[];
+} | null;
+/** The call screen's card for a number (0105 phone_order_card): who they are, where they live, what they had. */
+export async function phoneCard(phone: string) {
+  const s = await createClient(); const { data, error } = await s.rpc("phone_order_card", { p_phone: phone });
+  if (error) return { error: error.message }; return { ok: true as const, card: data as PhoneCard };
+}
+/** Where a delivery goes — on the order, and kept on the customer for the next call (0105 order_delivery). */
+export async function setDelivery(orderId: string, address: string) {
+  const s = await createClient(); const { error } = await s.rpc("order_delivery", { p_order: orderId, p_address: address });
+  if (error) return { error: error.message }; return { ok: true as const };
 }

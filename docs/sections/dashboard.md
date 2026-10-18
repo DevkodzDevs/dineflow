@@ -1,6 +1,6 @@
 # Control room (dashboard)
 
-**Route** `/dashboard` — the landing page for every signed-in role
+**Route** `/dashboard` — the owner's (and a manager's the owner ticks); everyone else who reaches it is sent to their own screen
 **Files** `app/(app)/dashboard/page.tsx` · `Overview.tsx` · `Live.tsx`
 **Reads** `bills`, `orders`, `order_items`, `kots`, `dining_tables`, `rooms`, `bookings`,
 `housekeeping_tasks`, `online_orders`, `profiles`, `v_low_stock`
@@ -37,6 +37,19 @@ content happened to be, so at 1440 six panels sat at six different tops — 443,
 
 `Gauge` and `Week` are **hand-drawn SVG**, not a chart library. `ICON` maps a tile's icon *name* to a
 component on the client.
+
+## Who opens it (2026-10-18)
+
+The owner, always; a manager only when the owner turns on **Control room** for them in Staff → Access (the switch
+shows only to the owner, only on a manager — it puts `dashboard` in the manager's `allowed_modules`); nobody else,
+whatever their ticks. `controlRoomFor` in `packages/shared/src/constants.ts` decides it for `modulesFor`. Everyone else
+who reaches `/dashboard` — after signing in, from the logo, from the many links and redirects that end there — is sent
+by the layout to `homeFor(mods, position)` (`positionAccess.ts`): their position's screen, else the first of Orders,
+Front desk, Kitchen, Billing, Housekeeping, Rooms, Pantry… they hold, else Work (open to everyone), so nobody is left
+with nowhere. Any other locked section sends them home with `?locked=`. The database's `effective_modules()` says the
+same once `supabase/pending/after_deploy_control_room.sql` is applied — **after** the deploy: applied before it, the
+live site (which still lands everyone here) would show every non-owner an error on signing in. Until then a non-owner
+could still call `dashboard_figures` through the API. Probe `ctl.mjs` (26), dry run `dry117.cjs` (11).
 
 ## Before you edit
 

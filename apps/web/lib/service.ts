@@ -4,10 +4,10 @@
  * first (they are waiting to pay), then food waiting at the pass, then food on the fire, then a ticket
  * the kitchen has not started; everything served is a table eating.
  */
-export type Svc = "free" | "hold" | "new" | "cook" | "ready" | "eat" | "bill";
+export type Svc = "free" | "hold" | "new" | "cook" | "ready" | "eat" | "bill" | "clean";   // clean: paid and left, not yet wiped (0111)
 export type SvcLine = { status: string; created_at?: string | null };
 
-export function orderState(items: SvcLine[], billPrinted = false): Exclude<Svc, "free" | "hold"> {
+export function orderState(items: SvcLine[], billPrinted = false): Exclude<Svc, "free" | "hold" | "clean"> {
   if (billPrinted) return "bill";
   const live = items.filter((i) => i.status !== "cancelled");
   if (live.some((i) => i.status === "ready")) return "ready";
@@ -23,4 +23,4 @@ export function isLate(items: SvcLine[], lateAtMin: number, fallbackFrom: string
 }
 
 /** The word each state is said with (lib/say.ts). */
-export const SVC_WORD = { free: "free", hold: "reserved", new: "ordered", cook: "cooking", ready: "food_ready", eat: "eating", bill: "bill" } as const;
+export const SVC_WORD = { free: "free", hold: "reserved", new: "ordered", cook: "cooking", ready: "food_ready", eat: "eating", bill: "bill", clean: "cleaning" } as const;

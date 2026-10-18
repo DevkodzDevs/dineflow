@@ -1,11 +1,13 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Copy, UserPlus, KeyRound, Check, Clock, MailWarning, Ban } from "lucide-react";
+import { Copy, UserPlus, KeyRound, Check, Clock, MailWarning, Ban, Users, Network, BookOpen, Briefcase, Search, Ticket, ShieldCheck, UserCheck, Building2, AlertCircle, Phone, CalendarDays, X } from "lucide-react";
 import { SlidersHorizontal as AccessIcon } from "lucide-react";
-import { Button, Field, Sheet, Pill, cn, useToast } from "@/components/ui";
-import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, rolesIMayAssign, canManage, type Role, type PropertyType } from "@dineflow/shared";
-import { createInvite, setAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact } from "./actions";
+import { Button, Field, Sheet, cn, useToast } from "@/components/ui";
+import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
+import { createInvite, setAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition } from "./actions";
+import { PositionFields, TeamChart, PositionsGuide, Avatar, DeptIcon, ModuleChips, titleOf, deptOf, levelFor, DEPT_ORDER, deptHue } from "./StaffPositions";
 import { copyText } from "@/lib/clipboard";
+import { Say } from "@/components/ui/Say";
 
 /** The slip you hand over: a login ID and a temporary password, which they must change on first use. */
 function Credentials({ title, loginId, password, staffCode, note }: { title: string; loginId: string; password: string | null; staffCode?: string | null; note?: string }) {
@@ -29,14 +31,31 @@ function Credentials({ title, loginId, password, staffCode, note }: { title: str
   );
 }
 
-type Staff = { id: string; full_name: string; email: string | null; phone: string | null; contact_email: string | null; contact_verified_at: string | null; staff_code: string | null; role: Role; is_active: boolean; allowed_modules: string[] | null; must_change_password: boolean };
+type Staff = { id: string; full_name: string; email: string | null; phone: string | null; contact_email: string | null; contact_verified_at: string | null; staff_code: string | null; role: Role; is_active: boolean; allowed_modules: string[] | null; must_change_password: boolean;
+  position: string | null; position_title: string | null; department: string | null; reports_to: string | null; joined_on: string | null };
+type Pos = { department: string; position: string; title: string; reportsTo: string; joinedOn: string };
+const posOf = (p?: Staff | null): Pos => ({ department: p ? deptOf(p) ?? "" : "", position: p?.position ?? "", title: p?.position_title ?? "", reportsTo: p?.reports_to ?? "", joinedOn: p?.joined_on ?? "" });
+const samePos = (a: Pos, b: Pos) => a.department === b.department && a.position === b.position && a.title.trim() === b.title.trim() && a.reportsTo === b.reportsTo && a.joinedOn === b.joinedOn;
+const savePos = (id: string, v: Pos) => setPosition(id, { position: v.position || null, department: v.department || null, title: v.title, reportsTo: v.reportsTo || null, joinedOn: v.joinedOn || null });
 type Invite = { code: string; role: Role; expires_at: string };
 
-export function StaffClient({ me, myRole, myModules, type, enabled, staff, invites, loginDomain }: { me: string; myRole: Role; myModules: string[]; type: PropertyType; enabled: string[] | null; staff: Staff[]; invites: Invite[]; loginDomain: string }) {
+export function StaffClient({ me, myRole, myModules, type, enabled, staff, invites, loginDomain, onDuty = 0 }: { me: string; myRole: Role; myModules: string[]; type: PropertyType; enabled: string[] | null; staff: Staff[]; invites: Invite[]; loginDomain: string; onDuty?: number }) {
   // the ranks below mine — the only ones I may appoint anyone to
   const assignable = rolesIMayAssign(myRole);
   const [acc, setAcc] = useState<Staff | null>(null); const [role, setRole] = useState<Role>(assignable[assignable.length - 1] ?? "employee"); const [ticks, setTicks] = useState<string[] | null>(null); const [active, setActive] = useState(true); const [err, setErr] = useState<string | null>(null);
-  const openAccess = (p: Staff) => { setAcc(p); setRole(p.role); setTicks(p.allowed_modules); setActive(p.is_active); setErr(null); };
+  const openAccess = (p: Staff) => { setAcc(p); setRole(p.role); setTicks(p.allowed_modules); setActive(p.is_active); setErr(null); setAccPos(posOf(p)); };
+  /* positions (0107): what each person is — department, title, level — as against the role that opens screens */
+  const [accPos, setAccPos] = useState<Pos>(posOf(null));
+  const [view, setView] = useState<"people" | "chart" | "guide">("people");
+  const [dept, setDept] = useState<string | null>(null);
+  const [selfEdit, setSelfEdit] = useState<Staff | null>(null); const [selfPos, setSelfPos] = useState<Pos>(posOf(null)); const [selfErr, setSelfErr] = useState<string | null>(null);
+  const depts = hierarchyFor(type).map((d) => ({ ...d, n: staff.filter((p) => deptOf(p) === d.key).length })).filter((d) => d.n > 0);
+  const unplaced = staff.filter((p) => !deptOf(p)).length;
+  const [q, setQ] = useState("");
+  const needle = q.trim().toLowerCase(); const digits = needle.replace(/\D/g, "");
+  const shown = staff.filter((p) => dept === null || (dept === "none" ? !deptOf(p) : deptOf(p) === dept))
+    .filter((p) => !needle || [p.full_name, titleOf(p), p.staff_code ?? "", p.email ?? "", departmentByKey(deptOf(p))?.label ?? ""].some((x) => x.toLowerCase().includes(needle)) || (digits.length >= 3 && (p.phone ?? "").includes(digits)))
+    .sort((a, b) => DEPT_ORDER(deptOf(a)) - DEPT_ORDER(deptOf(b)) || (levelFor(a, type) ?? 9) - (levelFor(b, type) ?? 9) || a.full_name.localeCompare(b.full_name));
   /**
    * What I may tick for them: the property type ∩ their role's ceiling ∩ the master's set — and then
    * only the sections I hold myself. That last clause is the delegation rule: a supervisor who runs
@@ -47,19 +66,36 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
     ROLE_ACCESS[r].includes(m)
     && (!enabled || enabled.includes(m) || (ALWAYS_ON as readonly string[]).includes(m))
     && (myRole === "owner" || myModules.includes(m)));
+  /** a position's sections (job-based defaults, as Toast and Petpooja set staff up), trimmed to the role's ceiling and to
+   *  what I hold myself — or null (the role's own default) for a position that opens everything its role allows */
+  const posTicks = (key: string | null | undefined, r: Role): string[] | null => { const m = positionModules(key, type, MODULES_BY_TYPE); return m === null ? null : m.filter((x) => ceiling(r).includes(x)); };
+  const posOpens = (p: Staff) => posTicks(p.position, p.role);
   const isOn = (k: string) => ticks === null ? true : ticks.includes(k);
   const toggle = (k: string) => { const base = ticks === null ? ceiling(role).filter((x) => x !== "dashboard") : ticks; setTicks(base.includes(k) ? base.filter((x) => x !== k) : [...base, k]); };
+  /** The control room is the owner's to give, and only to a manager (constants.ts controlRoomFor). */
+  const controlRoomSwitch = (list: string[] | null, r: Role, onToggle: () => void) => myRole === "owner" && r === "manager" ? (
+    <div className="group mb-4" data-control-room-switch><label className="row cursor-pointer"><div className="flex-1"><div className="text-[15px] font-semibold">Control room</div>
+      <div className="text-[13px] text-steel">The day&apos;s sales, the money and every department at once. Only you have it unless you give it to a manager here.</div></div>
+      <span className="switch" data-on={list?.includes("dashboard") ? "true" : "false"} onClick={onToggle} data-control-room /></label></div>) : null;
   const [open, setOpen] = useState(false); const [code, setCode] = useState<string | null>(null); const [pending, start] = useTransition();
   // adding someone outright, and the slip that comes back
   const [add, setAdd] = useState(false);
   const [addRole, setAddRole] = useState<Role>(assignable[assignable.length - 1] ?? "employee");
   const [addTicks, setAddTicks] = useState<string[] | null>(null);
+  const [addPos, setAddPos] = useState<Pos>(posOf(null));
+  /** choosing a position suggests its access — brought down to one I may give — and the owner can still change it */
+  const pickAddPos = (v: Pos) => {
+    setAddPos(v);
+    if (v.position === addPos.position) return;
+    const r = suggestedRole(positionByKey(v.position), assignable.filter((x) => x !== "owner")) ?? addRole;
+    setAddRole(r); setAddTicks(posTicks(v.position, r));
+  };
   const [made, setMade] = useState<{ title: string; staff_code?: string | null; login_id: string; temp_password: string | null; verify?: { userId: string; email: string; mailed: boolean; mailError?: string | null; echoed?: string } } | null>(null);
   const [addErr, setAddErr] = useState<string | null>(null);
   const [otp, setOtp] = useState(""); const [otpDone, setOtpDone] = useState(false); const [otpErr, setOtpErr] = useState<string | null>(null);
   const addOn = (k: string) => addTicks === null ? true : addTicks.includes(k);
   const addToggle = (k: string) => { const base = addTicks === null ? ceiling(addRole).filter((x) => x !== "dashboard") : addTicks; setAddTicks(base.includes(k) ? base.filter((x) => x !== k) : [...base, k]); };
-  const openAdd = () => { setAdd(true); setMade(null); setAddErr(null); setAddRole(assignable[assignable.length - 1] ?? "employee"); setAddTicks(null); };
+  const openAdd = () => { setAdd(true); setMade(null); setAddErr(null); setAddRole(assignable[assignable.length - 1] ?? "employee"); setAddTicks(null); setAddPos(posOf(null)); };
   // the slip for someone already on the list
   const showLogin = (p: Staff) => start(async () => {
     const r = await staffLogin(p.id);
@@ -79,66 +115,128 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
      "Owner"). Now: the actions in a bar on top, each person one row — who they are on the left, what
      state they are in on a line under their name, the two buttons on the right — and the invites and
      the how-to beside the list only where there is room for them (xl), under it everywhere else. */
+  const active_ = staff.filter((p) => p.is_active).length;
+  const noPos = staff.filter((p) => p.is_active && !p.position && p.role !== "owner").length;
+  const attention = waiting + unconfirmed + noPos;
+  const deptCount = new Set(staff.filter((p) => p.is_active).map(deptOf).filter(Boolean)).size;
+  /* The page, top down: a header with the two ways to add someone and four figures (team, on duty, departments,
+     what needs a hand); a segmented switch for People · Team chart · Positions; then the view. People are cards —
+     initials on the department's colour with a dot for their state, the title, department and level, the role and
+     any warnings as chips, the two actions along the foot — in a grid that is one column on a phone and four on a
+     wide screen. Invites and the how-to sit under the cards. */
   return (
-    <div>
-      <div className="toolbar">
-        <div className="toolbar-group min-w-0">
-          <span className="text-sm font-semibold num">{staff.length} {staff.length === 1 ? "person" : "people"}</span>
-          {waiting > 0 && <Pill tone="pending">{waiting} not signed in</Pill>}
-          {unconfirmed > 0 && <Pill tone="alert">{unconfirmed} email unconfirmed</Pill>}
+    <div className="space-y-5" data-staff>
+      {/* ── header ── */}
+      <section className="relative overflow-hidden rounded-[28px] border border-[var(--color-separator)] p-5 sm:p-7" data-staff-hero
+        style={{ background: "radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--color-tint) 16%, transparent) 0%, transparent 55%), var(--color-bg-2)" }}>
+        <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
+          <div className="min-w-0 flex-1">
+            <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-steel">Your team</div>
+            <div role="heading" aria-level={1} className="font-display text-[40px] sm:text-[52px] leading-[1.02] mt-1">Staff</div>
+            <p className="text-[14.5px] text-[var(--color-label-2)] mt-2 max-w-xl">Who does what, who they report to, and what each person can open — from the General Manager to the newest trainee.</p>
+          </div>
+          <div className="grid grid-cols-2 md:flex gap-2 shrink-0">
+            <button type="button" className="svc-btn quiet sm !px-4" onClick={() => { setCode(null); setOpen(true); }} data-invite-open><Ticket size={17} aria-hidden /> <span className="sm:hidden">Invite</span><span className="hidden sm:inline">Invite with a code</span></button>
+            <button type="button" className="svc-btn go sm !px-5" onClick={openAdd} data-add-staff><UserPlus size={18} aria-hidden /><Say w="add_staff" /></button>
+          </div>
         </div>
-        <div className="toolbar-group toolbar-end">
-          <Button variant="outline" onClick={() => { setCode(null); setOpen(true); }}>Invite with a code</Button>
-          <Button onClick={openAdd}><UserPlus size={16} /> Add staff</Button>
+        <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-2.5" data-staff-stats>
+          {([
+            [Users, "Team", String(active_), staff.length > active_ ? `${staff.length - active_} switched off` : `${staff.length === 1 ? "person" : "people"} active`, "var(--color-blue)"],
+            [UserCheck, "On duty today", String(onDuty), `of ${active_} in`, "var(--color-green)"],
+            [Building2, "Departments", String(deptCount), `of ${hierarchyFor(type).length} for a ${type}`, "var(--color-violet)"],
+            [AlertCircle, "Needs a hand", String(attention), attention ? [waiting && `${waiting} not signed in`, unconfirmed && `${unconfirmed} email`, noPos && `${noPos} no position`].filter(Boolean).join(" · ") : "all set", attention ? "var(--color-orange)" : "var(--color-green)"],
+          ] as const).map(([I, k, v, sub, hue]) => (
+            <div key={k} className="min-w-0 rounded-[20px] bg-[color-mix(in_srgb,var(--color-fill)_70%,transparent)] px-4 py-3 flex items-center gap-3" data-stat={k}>
+              <span className="h-10 w-10 shrink-0 rounded-[13px] grid place-items-center" style={{ background: `color-mix(in srgb, ${hue} 20%, transparent)`, color: hue }}><I size={19} aria-hidden /></span>
+              <div className="min-w-0"><div className="text-[12px] font-bold text-steel truncate">{k}</div><div className="font-display num text-[26px] leading-none mt-0.5">{v}</div><div className="text-[11.5px] text-steel leading-snug mt-1 line-clamp-2">{sub}</div></div>
+            </div>))}
         </div>
+      </section>
+
+      {/* ── People · Team chart · Positions (0107) ── */}
+      <div className="flex flex-col md:flex-row md:items-center gap-3">
+        <div className="grid grid-cols-3 rounded-full bg-[var(--color-fill)] p-1 md:w-auto w-full" role="tablist" aria-label="Staff view">
+          {([["people", "people", Users], ["chart", "team_chart", Network], ["guide", "positions", BookOpen]] as const).map(([k, w, I]) => (
+            <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setView(k)} data-staff-view={k}
+              className={cn("!min-h-11 rounded-full px-3 sm:px-5 inline-flex items-center justify-center gap-2 text-[13.5px] sm:text-[14px] font-extrabold transition-colors whitespace-nowrap", view === k ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_4px_rgb(0_0_0/0.22)]" : "text-steel hover:text-[var(--color-label)]")}><I size={16} aria-hidden /><Say w={w} /></button>))}
+        </div>
+        {view === "people" && <div className="relative md:flex-1 md:max-w-md min-w-0"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
+          <input className="!h-12 !rounded-full !pl-11 !pr-11" placeholder="Name, title, phone or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find someone" data-staff-search />
+          {q && <button type="button" onClick={() => setQ("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 !min-h-9 rounded-full grid place-items-center text-steel hover:bg-[var(--color-fill)]" aria-label="Clear"><X size={16} /></button>}</div>}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px] items-start">
-        <div className="feather divide-y divide-line overflow-hidden min-w-0">
-          {staff.map((p) => {
-            const mine = p.id !== me && canManage(myRole, p.role);
+      {view === "people" && depts.length > 0 && (
+        <div className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:![mask-image:none] [scrollbar-width:none]" role="group" aria-label="Department" data-dept-chips>
+          {[{ key: null as string | null, label: "All", n: staff.length }, ...depts.map((d) => ({ key: d.key as string | null, label: d.label, n: d.n })), ...(unplaced ? [{ key: "none" as string | null, label: "No position", n: unplaced }] : [])].map((d) => (
+            <button key={d.key ?? "all"} type="button" aria-pressed={dept === d.key} onClick={() => setDept(d.key)} className={cn("shrink-0 !min-h-11 rounded-full pl-2 pr-2 inline-flex items-center gap-2 text-[13.5px] font-bold border transition-colors", dept === d.key ? "bg-[var(--color-label)] text-[var(--color-on-label)] border-transparent" : "bg-[var(--color-bg-2)] border-[var(--color-separator)] hover:bg-[var(--color-fill)]")}>
+              <span className="h-7 w-7 rounded-full grid place-items-center" style={d.key && d.key !== "none" ? { background: `color-mix(in srgb, ${deptHue(d.key)} 22%, transparent)`, color: deptHue(d.key) } : { background: "var(--color-fill)" }}>{d.key === null ? <Users size={14} aria-hidden /> : <DeptIcon dept={d.key === "none" ? null : d.key} size={14} />}</span>
+              {d.label}<b className="num min-w-6 h-6 px-1.5 rounded-full grid place-items-center text-[12px] bg-[color-mix(in_srgb,currentColor_12%,transparent)]">{d.n}</b></button>))}
+        </div>)}
+      {view === "chart" && <TeamChart type={type} people={staff} />}
+      {view === "guide" && <PositionsGuide type={type} people={staff} />}
+
+      <div className={cn("space-y-5", view !== "people" && "hidden")}>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4" data-people>
+          {shown.map((p) => {
+            const mine = p.id !== me && canManage(myRole, p.role); const d = deptOf(p); const lv = levelFor(p, type); const hue = deptHue(d);
+            const dot = !p.is_active ? "var(--color-red)" : p.must_change_password ? "var(--color-orange)" : "var(--color-green)";
             return (
-              /* one person: avatar, who they are and the two buttons on one line, centred together; their
-                 state as a line of small chips under the name. The role and its access are one chip
-                 ("Housekeeping · default access"), each warning carries its own icon, and the text stays in
-                 the ink colour (the hue is the icon and the wash) so it reads in both themes. On a phone
-                 the pills broke into three ragged lines and the buttons floated halfway down the row. */
-              <div key={p.id} data-person={p.id} className="grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-2.5 px-4 py-4 sm:px-5">
-                <span aria-hidden className={cn("h-11 w-11 rounded-full grid place-items-center font-display text-lg shrink-0", p.is_active ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel")}>{p.full_name.slice(0, 1).toUpperCase()}</span>
-                <div className="min-w-0">
-                  <div className={cn("font-semibold truncate", !p.is_active && "text-steel line-through")}>{p.full_name}{p.id === me && <span className="text-xs text-steel font-normal"> (you)</span>}</div>
-                  <div className="text-xs text-steel truncate mt-0.5">{p.staff_code && <span className="num font-semibold text-[var(--color-label-2)]">{p.staff_code}</span>}{p.staff_code && " · "}{p.email}{p.phone && <> · {p.phone}</>}</div>
+              /* one person: a card with their department's colour along the top */
+              <article key={p.id} data-person={p.id} className={cn("relative min-w-0 rounded-[24px] bg-[var(--color-bg-2)] border border-[var(--color-separator)] overflow-hidden flex flex-col transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-18px_rgb(0_0_0/0.5)]", !p.is_active && "opacity-70")}>
+                <span className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${hue}, color-mix(in srgb, ${hue} 25%, transparent))` }} aria-hidden />
+                <div className="p-4 pb-3 flex items-start gap-3.5 min-w-0">
+                  <Avatar name={p.full_name} dept={d} size={52} dot={dot} />
+                  <div className="min-w-0 flex-1">
+                    <div className={cn("text-[16.5px] font-extrabold leading-tight truncate", !p.is_active && "line-through text-steel")}>{p.full_name}{p.id === me && <span className="text-[12px] text-steel font-semibold"> · you</span>}</div>
+                    {/* their position (0107): the title, the department in its colour */}
+                    <div className="text-[14px] font-semibold truncate mt-0.5" data-position-line>{titleOf(p)}{departmentByKey(d) && <span className="sr-only"> · {departmentByKey(d)!.label}</span>}</div>
+                    <div className="mt-1 flex items-center gap-1.5 text-[12.5px] min-w-0">
+                      {departmentByKey(d) ? <span className="inline-flex items-center gap-1 min-w-0 font-semibold" style={{ color: hue }}><DeptIcon dept={d} size={13} /><span className="truncate">{departmentByKey(d)!.label}</span></span> : <span className="text-steel">No position yet</span>}
+                    </div>
+                  </div>
+                  {lv && <span className="shrink-0 rounded-full px-2 h-7 grid place-items-center text-[12px] font-black num bg-[var(--color-fill)]" title={`Level ${lv} · ${LEVELS[lv - 1].label}`} data-level-badge>L{lv}</span>}
+                </div>
+                <div className="px-4 flex flex-wrap items-center gap-1.5" data-state>
+                  <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-semibold whitespace-nowrap bg-[var(--color-fill)] text-[var(--color-label)]"><ShieldCheck size={13} className="text-steel" aria-hidden />{ROLE_LABEL[p.role]}{p.role !== "owner" && <span className="font-normal text-[var(--color-label-2)]">· {p.position && sameModules(p.allowed_modules, posOpens(p)) ? "position access" : p.allowed_modules ? `${p.allowed_modules.length} sections${p.position ? " · custom" : ""}` : "default"}</span>}</span>
+                  {p.must_change_password && <span title="Has not signed in and set their own password yet" className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-semibold whitespace-nowrap text-[var(--color-label)] bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)]"><Clock size={13} className="text-[var(--color-orange)]" /> Not signed in</span>}
+                  {p.contact_email && !p.contact_verified_at && <span title="Their email is unconfirmed, so they cannot reset their own password yet" className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-semibold whitespace-nowrap text-[var(--color-label)] bg-[var(--color-red-2)]"><MailWarning size={13} className="text-[var(--color-red)]" /> Email</span>}
+                  {!p.is_active && <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-semibold whitespace-nowrap text-[var(--color-label)] bg-[var(--color-red-2)]"><Ban size={13} className="text-[var(--color-red)]" /> Off</span>}
+                </div>
+                <div className="px-4 pt-2 pb-3 text-[12.5px] text-steel flex flex-wrap gap-x-3 gap-y-0.5 min-w-0">
+                  {p.staff_code && <span className="num font-semibold text-[var(--color-label-2)]">{p.staff_code}</span>}
+                  {p.phone && <span className="inline-flex items-center gap-1 num"><Phone size={12} aria-hidden />{p.phone}</span>}
+                  {p.joined_on && <span className="inline-flex items-center gap-1"><CalendarDays size={12} aria-hidden />since {new Date(p.joined_on + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span>}
+                  {p.reports_to && staff.find((x) => x.id === p.reports_to) && <span className="truncate">→ {staff.find((x) => x.id === p.reports_to)!.full_name}</span>}
                 </div>
                 {mine ? (
-                  <div className="flex items-center gap-2 shrink-0" data-actions>
+                  <div className="mt-auto grid grid-cols-2 border-t border-[var(--color-separator)]" data-actions>
                     <button type="button" disabled={pending} onClick={() => showLogin(p)} title="Sign-in details" aria-label={`Sign-in details for ${p.full_name}`}
-                      className="h-10 w-10 rounded-xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)] disabled:opacity-40"><KeyRound size={16} /></button>
-                    <Button variant="outline" className="!h-10 !rounded-xl max-sm:!w-10 max-sm:!px-0 sm:!px-4 !text-[13px] [&>svg]:shrink-0" aria-label={`Access for ${p.full_name}`} title="Access" onClick={() => openAccess(p)}><AccessIcon size={15} /> <span className="hidden sm:inline">Access</span></Button>
+                      className="!min-h-12 inline-flex items-center justify-center gap-2 text-[13.5px] font-bold text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] border-r border-[var(--color-separator)] disabled:opacity-40"><KeyRound size={16} aria-hidden /> Sign-in</button>
+                    <button type="button" onClick={() => openAccess(p)} aria-label={`Access for ${p.full_name}`} title="Access and position"
+                      className="!min-h-12 inline-flex items-center justify-center gap-2 text-[13.5px] font-bold hover:bg-[var(--color-fill)]"><AccessIcon size={16} aria-hidden /> Access</button>
                   </div>
-                ) : <span />}
-                {/* their state, on its own line under the name: it wraps here rather than printing over the buttons */}
-                <div className="col-start-2 col-span-2 flex flex-wrap items-center gap-1.5" data-state>
-                  <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap bg-[var(--color-fill)] text-[var(--color-label)]">{ROLE_LABEL[p.role]}{p.role !== "owner" && <span className="font-normal text-[var(--color-label-2)]">· {p.allowed_modules ? `${p.allowed_modules.length} sections` : "default access"}</span>}</span>
-                  {/* still on the slip they were handed — they have not chosen their own password yet */}
-                  {p.must_change_password && <span title="Has not signed in and set their own password yet" className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap text-[var(--color-label)] bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)]"><Clock size={13} className="text-[var(--color-orange)]" /> Not signed in</span>}
-                  {p.contact_email && !p.contact_verified_at && <span title="Their email is unconfirmed, so they cannot reset their own password yet" className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap text-[var(--color-label)] bg-[var(--color-red-2)]"><MailWarning size={13} className="text-[var(--color-red)]" /> Email unconfirmed</span>}
-                  {!p.is_active && <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap text-[var(--color-label)] bg-[var(--color-red-2)]"><Ban size={13} className="text-[var(--color-red)]" /> Off</span>}
-                </div>
-              </div>
+                ) : p.id === me && myRole === "owner" ? (
+                  <div className="mt-auto border-t border-[var(--color-separator)]" data-actions>
+                    <button type="button" className="w-full !min-h-12 inline-flex items-center justify-center gap-2 text-[13.5px] font-bold hover:bg-[var(--color-fill)]" aria-label="Your position" title="Your position" data-own-position onClick={() => { setSelfEdit(p); setSelfPos(posOf(p)); setSelfErr(null); }}><Briefcase size={16} aria-hidden /> Your position</button>
+                  </div>
+                ) : <div className="mt-auto" />}
+              </article>
             );
           })}
           {staff.length === 0 && <p className="p-6 text-sm text-steel">Nobody yet. Add staff, or send someone an invite code.</p>}
+          {staff.length > 0 && shown.length === 0 && <p className="p-6 text-sm text-steel sm:col-span-2">Nobody matches. Try another name, or clear the search.</p>}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 min-w-0">
-          <div className="feather p-4">
-            <div className="flex items-center justify-between mb-2"><span className="text-xs font-semibold uppercase tracking-wide text-steel">Open invites</span>{invites.length > 0 && <span className="num text-xs text-steel">{invites.length}</span>}</div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-[22px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4">
+            <div className="flex items-center gap-2 mb-2"><Ticket size={16} className="text-steel" aria-hidden /><span className="text-[13px] font-bold uppercase tracking-wide text-steel flex-1">Open invites</span>{invites.length > 0 && <span className="num text-xs text-steel">{invites.length}</span>}</div>
             {invites.length === 0 && <p className="text-sm text-steel">None. Invite codes last 7 days.</p>}
-            <ul className="space-y-2">{invites.map((i) => <li key={i.code} className="flex items-center justify-between gap-2 text-sm"><span className="num font-semibold tracking-wider">{i.code}</span><Pill tone="pending">{ROLE_LABEL[i.role]}</Pill></li>)}</ul>
+            <ul className="space-y-2">{invites.map((i) => <li key={i.code} className="flex items-center justify-between gap-2 text-sm rounded-xl bg-[var(--color-fill)] px-3 py-2"><span className="num font-semibold tracking-wider">{i.code}</span><span className="text-[12px] font-semibold text-steel">{ROLE_LABEL[i.role]}</span></li>)}</ul>
           </div>
-          <div className="feather p-4 text-xs text-steel space-y-2 leading-relaxed">
-            <div className="text-xs font-semibold uppercase tracking-wide">Two ways in</div>
-            <p><b className="text-[var(--color-label)]">Add staff</b> when you hand someone their sign-in yourself.</p>
+          <div className="rounded-[22px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4 text-[13px] text-steel space-y-2 leading-relaxed">
+            <div className="text-[13px] font-bold uppercase tracking-wide">Two ways in</div>
+            <p><b className="text-[var(--color-label)]">Add staff</b> when you hand someone their sign-in yourself — choose their position and the access follows.</p>
             <p><b className="text-[var(--color-label)]">Invite with a code</b> when they have their own email: they open <b>/join</b> in the web or mobile app, enter the code and their details, and land straight in their screens.</p>
           </div>
         </div>
@@ -146,18 +244,36 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
       <Sheet open={!!acc} onClose={() => setAcc(null)} title={acc ? `Access · ${acc.full_name}` : ""} wide>
         {acc && (
           <div className="space-y-5">
+            <div><div className="eyebrow mb-2">Position</div>
+              <PositionFields type={type} people={staff} self={acc.id} value={accPos} onChange={setAccPos} />
+              {accPos.position && (() => {
+                const want = suggestedRole(positionByKey(accPos.position), assignable.filter((x) => x !== "owner")) ?? role;
+                const opens = posTicks(accPos.position, want);
+                const matches = role === want && (opens === null ? ticks === null : sameModules(ticks ?? ceiling(role).filter((x) => x !== "dashboard"), opens));
+                return (
+                  <div className={cn("mt-3 rounded-2xl p-3 border", matches ? "bg-[color-mix(in_srgb,var(--color-green)_9%,transparent)] border-[color-mix(in_srgb,var(--color-green)_28%,transparent)]" : "bg-[color-mix(in_srgb,var(--color-orange)_9%,transparent)] border-[color-mix(in_srgb,var(--color-orange)_28%,transparent)]")} data-position-access={matches ? "match" : "custom"}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[13px] flex-1 min-w-[12rem]">A <b>{positionByKey(accPos.position)?.title}</b> usually has <b>{ROLE_LABEL[want]}</b>{opens ? ", opening:" : " with everything the role allows."}</p>
+                      {matches ? <span className="inline-flex items-center gap-1 text-[12.5px] font-bold text-[var(--color-green)]"><Check size={14} aria-hidden /> Matches</span>
+                        : acc.id !== me && <button type="button" className="svc-btn go sm !px-4" data-use-position-access onClick={() => { setRole(want); setTicks(opens); }}>Use these</button>}
+                    </div>
+                    {opens && <ModuleChips modules={opens} className="mt-2" />}
+                    {!matches && <p className="text-[12px] text-steel mt-2">Their sections differ from the position&apos;s — that is fine when they cover more or less. <b>Use these</b> sets them to the position&apos;s.</p>}
+                  </div>);
+              })()}</div>
             <Field label="Role" hint={ROLE_HINT[role]}>
               <select value={role} onChange={(e) => { setRole(e.target.value as Role); setTicks(null); }} disabled={acc.id === me}>{assignable.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
             </Field>
             {myRole !== "owner" && <p className="text-xs text-steel -mt-2">You can only give someone a level below your own, and only the sections you hold yourself.</p>}
-            {role === "owner" ? <p className="text-sm text-steel">An owner has everything the master allowed this property. Nothing to tick.</p> : (
+            {role === "owner" ? <p className="text-sm text-steel">An owner has everything the master allowed this property. Nothing to tick.</p> : (<>
+              {controlRoomSwitch(ticks, role, () => toggle("dashboard"))}
               <div className="grid sm:grid-cols-2 gap-x-6">
                 {MODULE_GROUPS.map((g) => { const keys = g.keys.filter((k) => ceiling(role).includes(k.key)); if (!keys.length) return null; return (
                   <div key={g.title} className="mb-4"><div className="eyebrow mb-2">{g.title}</div><div className="group">{keys.map((k) => <label key={k.key} className="row cursor-pointer"><div className="flex-1"><div className="text-[15px]">{k.label}</div><div className="text-[13px] text-steel">{k.hint}</div></div><span className="switch" data-on={isOn(k.key) ? "true" : "false"} onClick={() => toggle(k.key)} /></label>)}</div></div>); })}
-              </div>)}
+              </div></>)}
             {acc.id !== me && <div className="group"><label className="row cursor-pointer"><div className="flex-1"><div className="text-[15px]">Active</div><div className="text-[13px] text-steel">Off means they can't sign in until you turn it back on.</div></div><span className="switch" data-on={active ? "true" : "false"} onClick={() => setActive(!active)} /></label></div>}
             {err && <p className="text-sm text-chili">{err}</p>}
-            <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setAccess(acc.id, role, role === "owner" ? null : ticks, active); if ("error" in r) setErr(r.error!); else setAcc(null); })}>Save</Button><Button variant="gray" onClick={() => setAcc(null)}>Cancel</Button></div>
+            <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setAccess(acc.id, role, role === "owner" ? null : ticks, active); if ("error" in r) { setErr(r.error!); return; } if (!samePos(accPos, posOf(acc))) { const x = await savePos(acc.id, accPos); if ("error" in x) { setErr(x.error!); return; } } setAcc(null); })} data-save-access>Save</Button><Button variant="gray" onClick={() => setAcc(null)}>Cancel</Button></div>
             <div className="pt-1 border-t border-line">
               <Button variant="ghost" size="sm" disabled={pending} onClick={() => { const p = acc; setAcc(null); resetPw(p); }}><KeyRound size={14} /> Reset their password</Button>
               <p className="text-xs text-steel mt-1">Gives them a new temporary password to sign in with once, then set their own. Use it when someone is locked out.</p>
@@ -209,11 +325,20 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               login_id: String(fd.get("login_id") ?? ""), contact_email: String(fd.get("contact_email") ?? ""), phone: String(fd.get("phone") ?? ""),
             });
             if ("error" in r) { setAddErr(r.error!); return; }
+            // their position goes on once the person exists; a failure here leaves the sign-in made and says so
+            if (addPos.department || addPos.position || addPos.title || addPos.reportsTo || addPos.joinedOn) { const x = await savePos(r.user_id, addPos); if ("error" in x) setAddErr(`Added — but the position was not saved: ${x.error}`); }
             setOtp(""); setOtpDone(false); setOtpErr(null);
             setMade({ title: `${r.full_name} · ${ROLE_LABEL[r.role as Role]}`, staff_code: r.staff_code, login_id: r.login_id, temp_password: r.temp_password,
                       verify: { userId: r.user_id, email: r.contact_email, mailed: r.mailed, mailError: r.mailError, echoed: r.echoed } });
           })}>
             <Field label="Full name"><input name="full_name" required autoFocus placeholder="Ravi Kumar" /></Field>
+            <div><div className="eyebrow mb-2">Position</div>
+              <PositionFields type={type} people={staff} value={addPos} onChange={pickAddPos} />
+              {addPos.position && <div className="mt-3 rounded-2xl bg-[color-mix(in_srgb,var(--color-tint)_9%,transparent)] border border-[color-mix(in_srgb,var(--color-tint)_25%,transparent)] p-3" data-position-preset>
+                <p className="text-[13px]">Suggested access for a <b>{positionByKey(addPos.position)?.title}</b>: <b>{ROLE_LABEL[addRole]}</b>{posTicks(addPos.position, addRole) ? ", opening:" : " — everything the role allows."}</p>
+                {posTicks(addPos.position, addRole) && <ModuleChips modules={posTicks(addPos.position, addRole)!} className="mt-2" />}
+                <p className="text-[12px] text-steel mt-2">Already ticked below. Change any section for this one person — the position stays the same.</p>
+              </div>}</div>
             <Field label="Role" hint={ROLE_HINT[addRole]}>
               <select value={addRole} onChange={(e) => { setAddRole(e.target.value as Role); setAddTicks(null); }}>{assignable.filter((r) => r !== "owner").map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
             </Field>
@@ -229,6 +354,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             </Field>
             <div>
               <div className="eyebrow mb-2">Sections they can open</div>
+              {controlRoomSwitch(addTicks, addRole, () => addToggle("dashboard"))}
               <div className="grid sm:grid-cols-2 gap-x-6">
                 {MODULE_GROUPS.map((g) => { const keys = g.keys.filter((k) => ceiling(addRole).includes(k.key)); if (!keys.length) return null; return (
                   <div key={g.title} className="mb-4"><div className="text-[11px] uppercase tracking-wide text-steel mb-1">{g.title}</div><div className="group">{keys.map((k) => <label key={k.key} className="row cursor-pointer"><div className="flex-1"><div className="text-[15px]">{k.label}</div><div className="text-[13px] text-steel">{k.hint}</div></div><span className="switch" data-on={addOn(k.key) ? "true" : "false"} onClick={() => addToggle(k.key)} /></label>)}</div></div>); })}
@@ -240,6 +366,13 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
         )}
       </Sheet>
 
+      <Sheet open={!!selfEdit} onClose={() => setSelfEdit(null)} title="Your position">
+        {selfEdit && <div className="space-y-4" data-own-position-sheet>
+          <PositionFields type={type} people={staff} self={selfEdit.id} value={selfPos} onChange={setSelfPos} />
+          {selfErr && <p className="text-sm text-chili">{selfErr}</p>}
+          <Button className="w-full" disabled={pending} onClick={() => start(async () => { const x = await savePos(selfEdit.id, selfPos); if ("error" in x) setSelfErr(x.error!); else setSelfEdit(null); })} data-save-own-position><Check size={16} /> Save</Button>
+        </div>}
+      </Sheet>
       <Sheet open={open} onClose={() => setOpen(false)} title="Invite with a code">
         {!code ? (
           <form className="space-y-4" action={(fd) => start(async () => { const r = await createInvite(String(fd.get("role"))); if ("code" in r) setCode(r.code!); })}>

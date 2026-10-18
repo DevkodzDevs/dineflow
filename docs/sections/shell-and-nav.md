@@ -347,13 +347,34 @@ Sign in as a non-owner on a demo property and confirm the sidebar matches the ti
 [design-system.md](design-system.md) · [auth-and-session.md](auth-and-session.md) ·
 [staff-and-labour.md](staff-and-labour.md)
 
+## The outlet switcher (0106)
+
+`components/shell/OutletSwitcher.tsx` sits in the top bar after Go to, only when `session.outlets` has two or more:
+the current outlet's name, a list of the others (own first, then city and membership), and *All outlets, live*
+(→ `/chain`). Choosing one calls `switchOutlet` and reloads on `/dashboard`. On a phone it takes the DineFlow
+wordmark's place (`max-sm:flex-1`; the wordmark hides) — both did not fit at 412 and overlapped. "Insights & control"
+also lists **Outlets** (owner, manager, supervisor), **Payroll** (owner, manager), **Expenses** and **Checklists**
+(0105), **Cleaning** (0111, every role but the kitchen and the store) **Work** (0113, everyone) and **Work records** (0116, owner and managers) — `FRESH` in
+`sections.ts`. The phone bar may carry Cleaning and Work (`Nav.tsx` offers them beside the modules); `lib/bar.ts`
+`DEPT_PRIMARY` puts a generic role's department first (an `employee` in Engineering starts on Work, one in Housekeeping
+on Cleaning), with `dept` from the session (0115).
+
 ## Notifications (the bell)
 
 - **`NotifierProvider`** (`components/shell/Notifier.tsx`, inside `ToastProvider` in the `(app)`
   layout, given `mods` and the property type) opens one realtime channel, `df-notify`, 1.5s after
   paint, and listens only for the sections this person holds: `online_orders`, `reservations`,
   `bookings` (not `is_block`), `kots` and `housekeeping_tasks` INSERTs, plus a `kots` UPDATE to
-  `ready` within the last minute ("Food ready"). These are the tables already in the
+  `ready` within the last minute ("Food ready"), and since 0103 `service_calls` ("A table wants the bill" ·
+  water · calling a waiter) and `guest_feedback` rated 3★ or less ("Low rating · 2★"); since 0111 `table_cleanings`
+  ("T4 to clean") and, for this person only (`me`, the profile id from the layout), a table or room task given to
+  them in the last minute ("Given to you · T4" — kind `assigned`, which needs no module), and since 0112 a room
+  finished by someone else ("Room 104 is clean", kind `roomdone`), and since 0113 a job raised for this person's
+  department ("High · Tap leaking", kind `job` — supervisors hear every department's; the person's `dept` comes from the
+  layout, so `session_bundle` had to carry `department`, 0115) and a job finished ("Done · Tap leaking — Room 104 —
+  Washer replaced", kind `jobdone`: the raiser and the department's supervisors). `kindsFor(modules, role)` decides which kinds a
+  person can have; listeners are bound **once per table and event**, and `kinds` is keyed by the modules' contents so
+  a refresh does not re-join the channel ([cleaning.md](cleaning.md)). These are the tables in the
   `supabase_realtime` publication; RLS decides which rows arrive. Each event the device has switched
   on gets its tone, a toast, and a line in the bell's list (kept in `sessionStorage`, 40 at most);
   with permission and while the tab is hidden, also a system notification through the service

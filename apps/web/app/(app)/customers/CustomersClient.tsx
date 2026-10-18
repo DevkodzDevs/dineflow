@@ -10,6 +10,7 @@ import { SvcHead } from "@/components/ui/Service";
 import { formatINR, fmtDate } from "@/lib/format";
 import { saveCustomer, adjustPoints, customerHistory, type HistoryRow } from "./actions";
 import { MarketingIdeas } from "./MarketingIdeas";
+import { FeedbackBoard, type Feedback } from "./FeedbackBoard";
 
 export type Overview = { total?: number; new_30d?: number; returning?: number; lapsed_60d?: number; points_out?: number; spend_30d?: number; soon?: { id: string; name: string | null; phone: string; what: string; on: string }[] };
 type Customer = { id: string; phone: string; name: string | null; email: string | null; birthday: string | null; anniversary: string | null; tags: string[]; notes: string | null; visits: number; total_spend: number; points: number; first_visit_at: string; last_visit_at: string | null };
@@ -22,9 +23,9 @@ const first = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "there";
 const HUES = ["--color-green", "--color-blue", "--color-orange", "--color-violet", "--color-red"];
 const since = (iso: string | null) => (iso ? Math.round((Date.now() - new Date(iso).getTime()) / 86400000) : null);
 
-export function CustomersClient({ overview: ov, customers, loyalty, restaurant }: { overview: Overview; customers: Customer[]; loyalty: Loyalty; restaurant: string }) {
+export function CustomersClient({ overview: ov, customers, loyalty, restaurant, feedback = [], initialTab = "all" }: { overview: Overview; customers: Customer[]; loyalty: Loyalty; restaurant: string; feedback?: Feedback[]; initialTab?: "all" | "feedback" }) {
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "regulars" | "lapsed" | "new" | "points">("all");
+  const [filter, setFilter] = useState<"all" | "regulars" | "lapsed" | "new" | "points" | "feedback">(initialTab);
   const [open, setOpen] = useState<Customer | null>(null);
   const [adding, setAdding] = useState(false);
   const digits = q.replace(/\D/g, "");
@@ -47,8 +48,9 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant }
   const counts = useMemo(() => ({
     all: customers.length, regulars: customers.filter((c) => c.visits >= 3).length, new: customers.filter((c) => since(c.first_visit_at)! <= 30).length,
     lapsed: customers.filter((c) => { const d = since(c.last_visit_at); return c.visits >= 2 && d !== null && d >= 60; }).length, points: customers.filter((c) => Number(c.points) >= loyalty.minRedeem).length,
-  }), [customers, loyalty.minRedeem]);
-  const FILTERS = ([["all", "All", Users], ["regulars", "Regulars", Heart], ["new", "New", Sparkles], ["lapsed", "Not seen", Moon], ["points", "Can redeem", Coins]] as const).filter(([k]) => k !== "points" || loyalty.enabled);
+    feedback: feedback.filter((f) => f.status === "new").length,
+  }), [customers, loyalty.minRedeem, feedback]);
+  const FILTERS = ([["all", "All", Users], ["regulars", "Regulars", Heart], ["new", "New", Sparkles], ["lapsed", "Not seen", Moon], ["points", "Can redeem", Coins], ["feedback", "Feedback", Star]] as const).filter(([k]) => k !== "points" || loyalty.enabled);
 
   return (
     <div className="space-y-5">
@@ -71,18 +73,20 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant }
 
       {/* the search, wide, and who to show — with how many in each */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-        <div className="relative lg:flex-1 min-w-0"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
-          <input className="!h-14 !rounded-[18px] !pl-12 !text-[16px]" placeholder="Name or phone" aria-label="Find a customer by name or phone" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-        <div className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 [scrollbar-width:none]" role="group" aria-label="Show">
+        <div className="relative lg:flex-1 min-w-0 xl:min-w-[240px]"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
+          <input className="!h-14 !rounded-[18px] !pl-12 !text-[16px]" placeholder={filter === "feedback" ? "Search feedback" : "Name or phone"} aria-label={filter === "feedback" ? "Search the feedback" : "Find a customer by name or phone"} value={q} onChange={(e) => setQ(e.target.value)} /></div>
+        <div className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 xl:shrink-0 xl:![mask-image:none] [scrollbar-width:none]" role="group" aria-label="Show">
           {FILTERS.map(([k, label, I]) => (
             <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} className={cn("shrink-0 !min-h-12 rounded-full pl-3.5 pr-2 inline-flex items-center gap-2 text-[14px] font-extrabold transition-colors", filter === k ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
               <I size={16} aria-hidden />{label}<b className={cn("num min-w-6 h-6 px-1.5 rounded-full grid place-items-center text-[12.5px]", filter === k ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")}>{counts[k]}</b>
             </button>
           ))}
-          <button type="button" onClick={exportCsv} disabled={!list.length} title="Download what is listed as a CSV" className="shrink-0 !min-h-12 rounded-full px-3.5 inline-flex items-center gap-1.5 text-[13px] font-bold text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><Download size={15} /> CSV</button>
+          {filter !== "feedback" && <button type="button" onClick={exportCsv} disabled={!list.length} title="Download what is listed as a CSV" className="shrink-0 !min-h-12 rounded-full px-3.5 inline-flex items-center gap-1.5 text-[13px] font-bold text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><Download size={15} /> CSV</button>}
         </div>
       </div>
 
+      {/* guests' private ratings from the feedback QR (0103) — chosen like a filter, shown in place of the cards */}
+      {filter === "feedback" ? <FeedbackBoard items={feedback} q={q} restaurant={restaurant} /> : <>
       {customers.length === 0 ? (
         <Empty title="No customers yet" hint="A phone number on an order or a bill becomes a customer here — visits, spend and points build up on their own." action={<Button onClick={() => setAdding(true)}>Add one by hand</Button>} />
       ) : list.length === 0 ? <Empty title="Nobody matches" hint="Try another name, or clear the filter." /> : (<>
@@ -128,6 +132,7 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant }
         <StatTile label="Points outstanding" value={String(Math.round(Number(ov.points_out ?? 0)))} sub={loyalty.enabled ? `worth ${formatINR(Number(ov.points_out ?? 0) * loyalty.pointValue)}` : "loyalty is off · Settings → Payments"} delay={0.15} />
       </div>
       <MarketingIdeas customers={customers} minRedeem={loyalty.enabled ? loyalty.minRedeem : Infinity} />
+      </>}
 
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.name ?? open?.phone ?? ""} wide>
         {open && <CustomerSheet key={open.id} c={open} loyalty={loyalty} restaurant={restaurant} onDone={() => setOpen(null)} />}

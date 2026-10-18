@@ -1,8 +1,8 @@
 # Orders and the till
 
-**Routes** `/orders` (the floor) · `/orders/new` (the till) · `/orders/[id]` (one ticket)
+**Routes** `/orders` (the floor) · `/orders/new` (the till) · `/orders/[id]` (one ticket) · `/orders/phone` (a call) · `/kiosk` (self-order)
 **Files** `app/(app)/orders/page.tsx` · `OrdersClient.tsx` · `new/PosClient.tsx` ·
-`[id]/OrderDetail.tsx` · `actions.ts`
+`[id]/OrderDetail.tsx` · `actions.ts` · `app/kiosk/**`
 **Reads** `orders`, `order_items`, `dining_tables`, `menu_items`, `menu_variants`, `addon_groups`,
 `menu_item_addon_groups`, `combo_items`, `categories`, `bookings`
 **Writes** `place_order`, `fire_kot`, `recall_kot`, `move_order`, `merge_orders`, `split_order`,
@@ -93,6 +93,35 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **Phone orders (0105).** *Phone* on the Orders header → `/orders/phone`: the number first (a keypad on touch
+  screens), and at ten digits `phone_order_card` brings the customer (name, visits, spend, notes), the address
+  they gave last (customer's, else their last delivery's) and their last five orders. *Delivery* / *Parcel* /
+  *Same again* put `{type, name, phone, address, items}` in `sessionStorage["df-phone-order"]` and open
+  `/orders/new?type=…&from=phone`, which reads it once and clears it; *Same again* brings dishes in their sizes,
+  add-ons are asked again. The till has a **Delivery address** box for delivery (filled from the phone when known);
+  after `placeOrder`, `order_delivery` puts it on the order and the customer. The order page shows *Deliver to* and
+  the token; the printed bill carries the address. **Offline (0109):** the queued `place_order` job carries
+  `delivery_address`, and `lib/offline/sync.ts` calls `order_delivery` with the id the order lands with. The replay
+  also sends the customer's name and phone — it read `a.customer`, which the till never queued, so every order sent
+  from the queue had arrived without them.
+- **Table calls on the floor (0103).** `page.tsx` reads open `service_calls` from the last 30 minutes; a calling
+  table carries an orange pulsing pill above its card (`data-call`: *Wants bill* · *Calling* · *Water*, bill
+  winning). Tapping it is "I have gone" — `answerCall(tableId)` → `service_call_done(p_table)` closes every open
+  call on that table and the guest's card turns *On the way*. The pill is 28px inside a 44px button (`-top-6`) so a finger
+  can hit it and it clears the table name; answered calls are remembered by call id, so the same table's next call
+  shows again; `service_calls` is in `useLive`.
+- **Parcel tokens (0103).** A takeaway or delivery order gets `token_no` from the trigger — 1, 2, 3… per property
+  per IST day. It shows on the floor's no-table card ("Token 7"), the kitchen ticket ("Takeaway · Token 7"), the
+  printed bill and the TV. The till's own KOT print goes out before the order exists, so it carries no token.
+- **`/kiosk`** is outside `(app)` — no sidebar — but `requireSession()` still applies the membership lock, and the
+  page refuses a login without the Orders module. Flow: Tap to start → category tabs, 4:3 photo tiles → a dish
+  with sizes or add-ons opens the chooser (`optionProblem`, the till's rules) → basket with an optional name →
+  `kioskOrder` (`place_order` as takeaway, note "Kiosk", which lands on the KOT) → the token in 200px and *Pay ₹X
+  at the counter*. It resets after 90 s untouched, 25 s after the token. Staff leave by holding the top-left corner
+  for two seconds **and entering the tablet's sign-in password** (`kioskLeave`: checked on a throwaway sign-in that is
+  then ended, so the tablet's own session and outlet are untouched; failed tries count like failed sign-ins). A kiosk
+  left on across a deploy says it is updating and reloads once the server answers.
+
 - **Send to kitchen is not held up by the till re-rendering** (measured 2026-10-13): `placeOrder` revalidates, so
   its response also re-renders the till, but that streams behind the action's result — the order's screen
   shows ~420–550 ms after the tap on a local build. A `redirect()` from the action looked faster but, without a
@@ -176,6 +205,9 @@ one), `split_order` (one into two) — all RPCs, all atomic.
   `created_at` for that.
 - **Reserved is `--color-orange` with a dashed border**, never `--color-saffron`, which is green in
   the dark theme. Free carries a green dot.
+- **Paid and left is Cleaning (0111)** — a free table with an open `table_cleanings` job: cyan, dashed, who has it,
+  *I'll take it* or *Done*, and a 44px + to seat the next party anyway (which closes the job). `page.tsx` reads the
+  open jobs and `profiles` for names. [cleaning.md](cleaning.md)
 - **Every open order as a card is the List view** (Tables · List, a `Segmented` beside the chips, remembered on
   the device as `df-orders-view`): one across on a phone, two from `md`, three from `xl`, four from
   `min-[100rem]`. Write that breakpoint in rem: Tailwind v4 sorts an arbitrary `min-[1600px]` ahead of its own rem
