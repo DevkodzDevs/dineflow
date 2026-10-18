@@ -1,4 +1,4 @@
--- (next number) · The two things 0098 left open for the screens that were still running.
+-- 0121 · (applied by hand in the SQL Editor on 2026-10-19, after the deploy) The two things 0098 left open for the screens that were still running.
 --
 -- APPLY ONLY AFTER THE APP FROM THE SAME COMMIT IS LIVE. Until then the deployed Channels and Online
 -- orders pages select * from ota_channels / order_channels, and the deployed "change password"

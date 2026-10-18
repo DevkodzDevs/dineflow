@@ -128,7 +128,8 @@ pnpm --filter @dineflow/web build
 - **The password-change code is minted by the server** — `request_password_otp_for(user.id)` with the
   service role, for the user the session proves (falls back to the session's own
   `request_password_otp` where there is no service role). The session's RPC handed the plain code to
-  whoever held the session; `supabase/pending/after_deploy_secrets.sql` closes it once this is deployed.
+  whoever held the session; 0121 (2026-10-19) closed it, so the fallback is gone — **the code needs
+  `SUPABASE_SERVICE_ROLE_KEY` on Vercel**.
   Still true: Supabase's *Secure password change* (Auth settings) decides whether a session can change
   its password through the Auth API without signing in again — turn it on.
 - **Forgot password says "mail is not set up" up front, for every id alike.** It used to say so only

@@ -103,9 +103,10 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0106_outlets_and_payroll      — Batch 3: restaurants.chain_id, outlet_access, outlet_session; auth_restaurant_id() and
                                 session_bundle() answer the outlet this sign-in chose; outlet_* / chain_* RPCs;
                                 staff_pay, staff_advances, payroll_runs, payroll_lines + payroll RPCs
-pending/after_deploy_secrets  — NOT a migration yet: applied after the deploy that carries it (see below)
-pending/after_deploy_control_room — NOT a migration yet: effective_modules() gives 'dashboard' to the owner and a manager
-                                it was ticked for only; apply right after the deploy (dashboard.md)
+0121_after_deploy_secrets     — api_key out of SELECT on both channel tables; request_password_otp closed to API roles
+                                (was pending/; applied by hand in the SQL Editor after the deploy, 2026-10-19)
+0120_control_room_owner       — effective_modules() gives 'dashboard' to the owner and a manager it was ticked for only
+                                (was pending/; applied by hand after the deploy, 2026-10-19 — dashboard.md)
 ```
 
 **Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`
@@ -414,11 +415,14 @@ A full audit of the live database and the app. Each item was shown open on the l
 - **0099** — `install_sample_estate` gives each new sample owner its own `gen_temp_password()`, shown
   once (an existing login keeps its password and comes back null); any account still on the old
   shared password got a random one. Dry run `dry99s.cjs` (8): the estate still builds with the triggers.
-- **Waiting for the deploy: `supabase/pending/after_deploy_secrets.sql`.** It takes `api_key` out of
-  SELECT on both channel tables and closes `request_password_otp` to the session. The deployed screens
-  still `select *` and still call it, so it is applied only after the commit carrying the new screens
-  is live: move it to `supabase/migrations/NNNN_after_deploy_secrets.sql` (the next free number) and
-  run the migrator. `migrate.mjs` does not look in `pending/`. Dry run `dry99.cjs` (10).
+- **0121 (was `pending/after_deploy_secrets.sql`), applied 2026-10-19 after the deploy.** It takes `api_key` out of
+  SELECT on both channel tables and closes `request_password_otp` to the session. It waited in `pending/` (which
+  `migrate.mjs` does not read) because the screens deployed before it still `select *` and still called it. The owner
+  ran it and 0120 by hand in the SQL Editor; both were then moved into `migrations/` and recorded in
+  `_dineflow_migrations` without running again. Checked after: no API role can read either `api_key`, channel names
+  still read, `request_password_otp` not executable by `authenticated`, effective_modules carries the control-room
+  rule. Dry run `dry99.cjs` (10). **The password-change code now needs `SUPABASE_SERVICE_ROLE_KEY` on Vercel**
+  (`request_password_otp_for`); without it there is no fallback any more.
 - Not done here, still open: a nonce-based `script-src` CSP; membership expiry enforced in the
   database rather than only in the layout.
 

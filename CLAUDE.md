@@ -118,8 +118,8 @@ PR descriptions end with:
   rate for every dish; automatic service charge; no credit notes; front-desk cash is not in the cash-up.
 - Security, after the 2026-10-13 audit (0098, 0099 — [data-and-rls.md](docs/sections/data-and-rls.md)):
   **the live master login still signs in with the password 0011 shipped with** (Master control shows a
-  red notice until it is changed). Apply `supabase/pending/after_deploy_secrets.sql` and
-  `supabase/pending/after_deploy_control_room.sql` once the commit carrying them is live. Still open: a nonce-based `script-src` CSP; per-IP limits (the public writes have
+  red notice until it is changed). The two after-deploy files were applied on
+  2026-10-19 as migrations 0120 (control room is the owner's) and 0121 (partner API keys and the old password-code call). Still open: a nonce-based `script-src` CSP; per-IP limits (the public writes have
   per-phone and per-property limits — the guest's address never reaches the database; guest feedback alone
   has a per-visitor limit since 0109, on a keyed daily hash of the address, needing `RATE_LIMIT_SECRET` or the
   service-role key on Vercel — [guest-facing.md](docs/sections/guest-facing.md)); membership

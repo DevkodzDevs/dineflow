@@ -118,8 +118,7 @@ guest can see.
 columns — not `*` — and reads `has_api_key` (a generated column) to say *Saved*; the key field is
 write-only, and on an edit a blank field keeps the saved key (`keyOf` in both actions files — it used
 to erase it on every save). Online orders reads only `id, kind, label, is_live` of its channels.
-`supabase/pending/after_deploy_secrets.sql` then takes `api_key` out of SELECT for every API role, once
-this code is live. Writing a channel needs the Channels module (a restrictive policy); `push_channel`
+Migration 0121 (2026-10-19) takes `api_key` out of SELECT for every API role. Writing a channel needs the Channels module (a restrictive policy); `push_channel`
 and the OTA sync read the key as owner / service role. The OTA sync also resolves a feed's host and
 refuses one that resolves to a private address (`lib/netguard.ts` — `10.0.0.5.nip.io` passed the old
 text-only check).

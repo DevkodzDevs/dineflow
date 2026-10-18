@@ -47,9 +47,9 @@ who reaches `/dashboard` — after signing in, from the logo, from the many link
 by the layout to `homeFor(mods, position)` (`positionAccess.ts`): their position's screen, else the first of Orders,
 Front desk, Kitchen, Billing, Housekeeping, Rooms, Pantry… they hold, else Work (open to everyone), so nobody is left
 with nowhere. Any other locked section sends them home with `?locked=`. The database's `effective_modules()` says the
-same once `supabase/pending/after_deploy_control_room.sql` is applied — **after** the deploy: applied before it, the
-live site (which still lands everyone here) would show every non-owner an error on signing in. Until then a non-owner
-could still call `dashboard_figures` through the API. Probe `ctl.mjs` (26), dry run `dry117.cjs` (11).
+same since **0120** (applied 2026-10-19, after the deploy — applied before it, the old live site, which landed everyone
+here, would have shown every non-owner an error on signing in), so a non-owner calling `dashboard_figures` through the
+API is refused too. Probe `ctl.mjs` (26), dry run `dry117.cjs` (11).
 
 ## Before you edit
 

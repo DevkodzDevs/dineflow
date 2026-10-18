@@ -1,4 +1,4 @@
--- 0117 · The control room is the owner's (2026-10-18)
+-- 0120 · The control room is the owner's (2026-10-18; applied by hand in the SQL Editor on 2026-10-19, after the deploy)
 -- The control room (the dashboard — the day's sales, the money, every department at once) was open to every role: it
 -- was where the app landed everyone. Now it is the owner's, a manager's only when the owner ticks it for them in Staff →
 -- Access, and nobody else's — whatever their ticks say. effective_modules() keeps its shape; only 'dashboard' is
