@@ -27,8 +27,11 @@ function standing(o: OutletLive): { text: string; warn: boolean } {
  */
 export function ChainClient({ initial, people, role, current, currentName, isDemo }: { initial: OutletLive[]; people: Person[]; role: string; current: string; currentName: string; isDemo: boolean }) {
   const toast = useToast(); const [pending, start] = useTransition();
-  const [list, setList] = useState(initial); const [at, setAt] = useState(() => new Date());
+  // the clock starts in the browser: read on the server it was a second older by the time the page woke up, and the
+  // two texts disagreed (React #418, some loads — 2026-10-18)
+  const [list, setList] = useState(initial); const [at, setAt] = useState<Date | null>(null);
   useEffect(() => {
+    setAt(new Date());
     const t = setInterval(() => { void chainOverview().then((r) => { if ("list" in r && r.list) { setList(r.list); setAt(new Date()); } }); }, POLL);
     return () => clearInterval(t);
   }, []);
@@ -49,7 +52,7 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
           <div key={k} className={cn("feather !rounded-[18px] px-4 py-3 min-w-0", k === "Late tickets" && Number(v) > 0 && "!border-[var(--color-red)]")}>
             <div className="text-[12px] font-bold text-steel">{k}</div><div className={cn("font-display num text-[24px] leading-tight truncate", k === "Late tickets" && Number(v) > 0 && "text-chili")}>{v}</div></div>))}
       </div>
-      <div className="text-[12px] text-steel -mt-2" aria-live="polite">Live · updated {at.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kolkata" })}</div>
+      <div className="text-[12px] text-steel -mt-2" aria-live="polite">Live{at && <> · updated {at.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kolkata" })}</>}</div>
 
       {list.length <= 1 && <Empty title="One outlet so far" hint={owner ? "Open your next outlet below — its own tables, staff and bills, with this menu if you like. Switch between them from the top bar." : "Ask the owner to open the other outlets, or to let you switch to them."} />}
 

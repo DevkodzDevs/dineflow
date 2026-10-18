@@ -78,8 +78,17 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
     return out;
   }, [rooms, byRoom, today]);
 
-  const act = (fn: () => Promise<unknown>) => start(async () => { const r = (await fn()) as { error?: string } | null; if (r && r.error) toast(r.error, "err"); });
-  const fail = (r: Room) => { const note = window.prompt(`Room ${r.number} — what failed?`); if (note === null) return; act(() => inspectRoom(r.id, false, note)); };
+  /* Each room and each task waits on its own answer only (2026-10-18): one shared `pending` greyed every room's
+     buttons while any one tap was answering, so marking room 101 clean froze the whole floor for the round trip. */
+  const [busy, setBusy] = useState<Record<string, true>>({});
+  const act = (fn: () => Promise<unknown>, key?: string) => {
+    if (key) setBusy((b) => ({ ...b, [key]: true }));
+    start(async () => {
+      try { const r = (await fn()) as { error?: string } | null; if (r && r.error) toast(r.error, "err"); }
+      finally { if (key) setBusy((b) => { const n = { ...b }; delete n[key]; return n; }); }
+    });
+  };
+  const fail = (r: Room) => { const note = window.prompt(`Room ${r.number} — what failed?`); if (note === null) return; act(() => inspectRoom(r.id, false, note), r.id); };
   const sheet = () => start(async () => { const r = await buildSheet(); if (r.error) toast(r.error, "err"); else toast(r.added ? `${r.added} task${r.added === 1 ? "" : "s"} added to today's sheet` : "Today's sheet is already complete"); });
 
   const cols = [{ key: "pending", title: "To do" }, { key: "in_progress", title: "In progress" }];
@@ -175,14 +184,14 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                  first tile. Same shape on every card, a laptop or a phone. */
               type Tile = { key: string; label: string; icon: ReactNode; tone: "go" | "red" | "blue" | "quiet"; run: () => void };
               const tiles: Tile[] = out ? [] : [
-                ...(r.condition === "dirty" ? [{ key: "clean", label: "Cleaned", icon: <Sparkles size={17} />, tone: "go" as const, run: () => act(() => setCondition(r.id, "clean")) }] : []),
-                ...(r.condition === "pickup" ? [{ key: "touch", label: "Touched up", icon: <Sparkles size={17} />, tone: "go" as const, run: () => act(() => setCondition(r.id, "clean")) }] : []),
+                ...(r.condition === "dirty" ? [{ key: "clean", label: "Cleaned", icon: <Sparkles size={17} />, tone: "go" as const, run: () => act(() => setCondition(r.id, "clean"), r.id) }] : []),
+                ...(r.condition === "pickup" ? [{ key: "touch", label: "Touched up", icon: <Sparkles size={17} />, tone: "go" as const, run: () => act(() => setCondition(r.id, "clean"), r.id) }] : []),
                 ...(r.condition === "clean" && canInspect ? [
-                  { key: "pass", label: "Pass", icon: <ShieldCheck size={17} />, tone: "go" as const, run: () => act(() => inspectRoom(r.id, true)) },
+                  { key: "pass", label: "Pass", icon: <ShieldCheck size={17} />, tone: "go" as const, run: () => act(() => inspectRoom(r.id, true), r.id) },
                   { key: "fail", label: "Fail", icon: <ShieldX size={17} />, tone: "red" as const, run: () => fail(r) },
                 ] : []),
-                ...(sellable && s ? [{ key: "pickup", label: "Pickup", icon: <Brush size={17} />, tone: "blue" as const, run: () => act(() => setCondition(r.id, "pickup")) }] : []),
-                ...(r.condition !== "dirty" ? [{ key: "dirty", label: "Dirty", icon: <RotateCcw size={17} />, tone: "quiet" as const, run: () => act(() => setCondition(r.id, "dirty")) }] : []),
+                ...(sellable && s ? [{ key: "pickup", label: "Pickup", icon: <Brush size={17} />, tone: "blue" as const, run: () => act(() => setCondition(r.id, "pickup"), r.id) }] : []),
+                ...(r.condition !== "dirty" ? [{ key: "dirty", label: "Dirty", icon: <RotateCcw size={17} />, tone: "quiet" as const, run: () => act(() => setCondition(r.id, "dirty"), r.id) }] : []),
               ];
               const hasMain = tiles.some((t) => t.tone === "go");
               const status = out || hasMain ? null : sellable ? (s ? "Occupied" : "Ready") : waiting ? "Sign-off" : null;
@@ -192,7 +201,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                  service (where its repair stands is on the second line) */
               type Seg = { key: string; label: string; icon: ReactNode; tone: keyof typeof FOOT; run: () => void };
               const segs: Seg[] = out
-                ? [{ key: "service", label: "Back in service", icon: <Check size={14} />, tone: "quiet", run: () => act(() => setRoomStatus(r.id, "available")) }]
+                ? [{ key: "service", label: "Back in service", icon: <Check size={14} />, tone: "quiet", run: () => act(() => setRoomStatus(r.id, "available"), r.id) }]
                 : tiles.map((t) => ({ key: t.key, label: t.label, icon: t.icon, tone: t.tone, run: t.run }));
               const detail = out ? (fix ? (fix.status === "in_progress" ? "Being fixed" : "In repair") : "No repair task")
                 : dueOut ? "Due out" : waiting ? "Awaiting sign-off" : s ? `Out ${dayMonth(s.check_out)}` : fmtSince(r.condition_at);
@@ -220,7 +229,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                   {segs.length > 0 && (
                     <div className="-mx-3 -mb-3 mt-auto grid border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)] divide-x divide-[var(--color-separator)]" style={{ gridTemplateColumns: `repeat(${segs.length}, minmax(0, 1fr))` }} data-dock>
                       {segs.map((t) => (
-                        <button key={t.key} type="button" disabled={pending} onClick={t.run} aria-label={`${t.label} · room ${r.number}`}
+                        <button key={t.key} type="button" disabled={!!busy[r.id]} onClick={t.run} aria-label={`${t.label} · room ${r.number}`}
                           className={cn("w-full min-w-0 inline-flex items-center justify-center gap-1.5 h-11 max-xl:h-10 !min-h-0 !rounded-none px-1.5 text-[12.5px] @max-[15rem]:text-[11.5px] font-semibold whitespace-nowrap transition-colors disabled:opacity-50 [&_svg]:w-[15px] [&_svg]:h-[15px] [&_svg]:shrink-0", FOOT[t.tone])}>
                           <span className="hidden @[15rem]:contents">{t.icon}</span><span className="truncate">{t.label}</span>
                         </button>
@@ -262,7 +271,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                         <div className="dock-tile flex-1 bg-[var(--color-red-2)] text-[var(--color-red)]" title={fix ? `${fix.notes || "Maintenance"} · ${fmtSince(fix.created_at)} ago` : "No repair task open — add one in Tasks"}>
                           <Wrench size={17} /><span>{what}</span>
                         </div>
-                        <button type="button" disabled={pending} onClick={() => act(() => setRoomStatus(r.id, "available"))} aria-label={`Back in service · room ${r.number}`} className="dock-tile dock-btn flex-1 dock-quiet">
+                        <button type="button" disabled={!!busy[r.id]} onClick={() => act(() => setRoomStatus(r.id, "available"), r.id)} aria-label={`Back in service · room ${r.number}`} className="dock-tile dock-btn flex-1 dock-quiet">
                           <Check size={17} /><span>In service</span>
                         </button>
                       </div>
@@ -277,7 +286,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                         </div>
                       )}
                       {tiles.map((t) => (
-                        <button key={t.key} type="button" disabled={pending} onClick={t.run} aria-label={`${t.label} · room ${r.number}`}
+                        <button key={t.key} type="button" disabled={!!busy[r.id]} onClick={t.run} aria-label={`${t.label} · room ${r.number}`}
                           className={cn("dock-tile dock-btn flex-1", t.tone === "go" && "dock-go", t.tone === "red" && "dock-red", t.tone === "blue" && "dock-blue", t.tone === "quiet" && "dock-quiet")}>
                           {t.icon}<span>{t.label}</span>
                         </button>
@@ -311,9 +320,9 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                   {/* a task given to someone else, or someone else on it, is theirs: no buttons for anyone but them and a supervisor */}
                   {!canInspect && ((t.status === "pending" && t.assigned_to && t.assigned_to !== me) || (t.status === "in_progress" && t.taken_by && t.taken_by !== me && t.assigned_to !== me))
                     ? <p className="mt-3 text-[12.5px] text-steel" data-task-theirs>{t.status === "in_progress" ? `${nameOf(t.taken_by)}'s task` : `${nameOf(t.assigned_to)}'s task`} — ask a supervisor to give it to you</p>
-                    : <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={pending} onClick={() => act(() => takeJob("room", t.id))}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={pending} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Mark the task done — the room becomes ready to sell"} onClick={() => act(() => finishJob("room", t.id))}><Check size={14} /> Done</Button></div>}
-                  {canInspect && <select className="mt-2 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={pending} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign
-                    onChange={(e) => act(() => assignJob("room", t.id, e.target.value || null))}>
+                    : <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={!!busy[t.id]} onClick={() => act(() => takeJob("room", t.id), t.id)}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={!!busy[t.id]} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Mark the task done — the room becomes ready to sell"} onClick={() => act(() => finishJob("room", t.id), t.id)}><Check size={14} /> Done</Button></div>}
+                  {canInspect && <select className="mt-2 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={!!busy[t.id]} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign
+                    onChange={(e) => act(() => assignJob("room", t.id, e.target.value || null), t.id)}>
                     <option value="">{t.assigned_to ? "Nobody — anyone can take it" : "Give to…"}</option>
                     {crew.map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.position_title ? ` — ${p.position_title}` : ""}</option>)}</select>}
                 </motion.div>))}</AnimatePresence>{list.length === 0 && <p className="text-sm text-steel px-1 py-3">{c.key === "pending" ? "Nothing to do." : "Nothing in progress."}</p>}</div></section>); })}

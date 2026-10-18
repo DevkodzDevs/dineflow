@@ -98,3 +98,11 @@ node batch3.mjs     # 25 checks on a throwaway demo — see testing-and-gates.md
 
 [auth-and-session.md](auth-and-session.md) · [data-and-rls.md](data-and-rls.md) ·
 [expenses-and-checklists.md](expenses-and-checklists.md) · [staff-and-labour.md](staff-and-labour.md)
+- **Phones and tablets (2026-10-18):** below `lg` the month sheet is a card per person (labels from `data-label`, the
+  header and footer hidden, a total card under it) instead of a 900px table that scrolled sideways; the same `<table>`
+  markup, so `data-line`, `data-net`, `data-save-line`, `data-pay` and `data-payslip` are unchanged. In Pay rates on a
+  phone, with PF or ESI on, the amount and the PF/Basic/ESI/Save row each take a full line (they had crushed the name to
+  two letters). batch3 checks the sheet has no inner sideways scroll at 412 and none at 834.
+- **The "Live · updated" clock starts in the browser** (2026-10-18): it read the time to the second on the server and
+  again on waking, and when the second had turned the two disagreed — React #418 on some loads. It shows *Live* until
+  the screen is up, then the time.

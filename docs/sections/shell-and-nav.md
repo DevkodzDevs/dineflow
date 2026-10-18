@@ -141,6 +141,35 @@ numbers are in testing-and-gates.md):
   a cash move and the night audit all did. `actcheck.mjs` shows each screen changing from the action's answer
   with no second page request. A screen that listens to realtime (an order, a bill) may still refresh once
   when the change arrives; that is the listener, not the button.
+### Speed pass — 2026-10-18 (the owner: "no lag, no hang, every click in a fraction of a second")
+
+Measured first (`perfx.mjs`, `ttfb.mjs`, the build's chunk manifest, `restlat.mjs`, `cookchk.mjs`), then fixed:
+
+- **Supabase was back in every screen's first load.** `lib/supabase/lazy.ts` exists so the browser client (~235 kB)
+  never sits in the signed-in shell — but the Help & support unread badge (`components/support/useUnread.ts`, in the
+  menu on every screen) and `shots.ts` imported `lib/supabase/client` directly, and that put it back. Both go through
+  `getClient()` now. **Shell JavaScript 944 → 692 kB.** Nothing imports `lib/supabase/client` except `lazy.ts` — keep
+  it so (`grep -rn 'supabase/client"'` should find only lazy.ts).
+- **Menu shipped the 220 kB recipe library** to show "a standard recipe is ready" — page.tsx now finds the plates for
+  this property's dishes and sends only those (menu.md). **Menu's own JavaScript 234 → 76 kB.**
+- **A live screen no longer refreshes over its own tap's answer** (`lib/liveRefresh.ts`, 3 tests). A write came back
+  over realtime and the listener started a second whole render 400 ms later while the action's answer — which already
+  carries the change — was still arriving. `calmRefresher` holds a refresh while one of the page's own server actions
+  is in flight and for 1.2 s after (it counts them by the `next-action` header on `fetch`), coalesces bursts, and keeps
+  refreshes `minGap` apart. `useLive` and the order screen's channel both use it; the order screen also signs its socket
+  in before joining (it refreshed on every single event and joined unsigned).
+- **One tap no longer freezes a board.** Kitchen, Cleaning, Work and Housekeeping each had one `useTransition` whose
+  `pending` disabled every button on the screen while any one tap was answering (0.4–1.8 s measured on the kitchen).
+  The kitchen's moves are optimistic and hold nothing; Cleaning and Work cards and Housekeeping rooms/tasks each wait on
+  their own key (`busy[id]`). Rule: **a board's buttons never share one `pending`.**
+- **Four screens ask for the session and their data together** (Outlets, Cash & controls, Intelligence, Online
+  orders): they waited for `requireSession()` before starting queries that RLS and the RPCs check anyway; the role gate
+  runs when both are back. One round trip instead of two.
+- Not the app: the database answers a trivial request in a median 75 ms but sometimes 350–500 ms (Supabase **Micro**,
+  shared CPU) — the rare 1–2 s first visit is that. A larger compute size is the owner's call (CLAUDE.md, open items).
+- After, local production build: repeat visits median **61–67 ms** laptop (was 121), **214 ms** phone (was 295); taps on
+  buttons median **48 ms** (worst 80); idle screens no long tasks; the kitchen board's buttons free 60 ms after a tap.
+
 ### The phone's navigation
 
 `BottomNav` shows four sections and **More**, chosen by `barFor()` in `lib/bar.ts` (unit-tested in
@@ -177,13 +206,18 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
 - **`MasterBanner`** — the amber "viewing X as its owner" strip when a master is acting as a
   property. Everything done under it is real and logged.
 - **`PageHeader`** — the title block each screen passes its own copy into.
-- **`Theme`** — `dark` | `paper` | `system`. Until a person chooses, the app follows the device
+- **`Theme`** — `dark` | `paper` | `colour` (0117) | `bright` (0118) | `royal` (0119) — the last two worn as `data-theme="paper"` +
+  `data-palette="bright" | "royal"` (`lib/themeLook.ts`) | `system`. `THEME_BOOT` and `ThemeKeeper` set and hold both attributes. Until a person chooses, the app follows the device
   (`system` is the default when there is no cookie). A choice (top-bar switch or Settings) is applied
   at once, written to the `df-theme` cookie, and saved to their login through `set_my_theme`
   (`user_prefs`, migration 0078). `session_bundle` returns it as `theme`; `ThemeSync` in the app
   layout adopts it, so a device that has never seen the person opens in their theme. `THEME_BOOT` in
   `<head>` sets it before paint; `ThemeKeeper` in the root layout restores it whenever React re-applies
-  the server's `data-theme="dark"` (the old "one page dark, the rest light" bug). Probe: `theme.mjs`.
+  the server's `data-theme="dark"` (the old "one page dark, the rest light" bug). Probe: `theme.mjs`;
+  `langtheme.mjs` for the colourful theme. `system` resolves to dark or paper only — colourful is always a choice.
+- **`FullLanguage`** (root layout, 2026-10-18) — the whole app in Tamil or Hindi; `LANG_BOOT` in `<head>` beside
+  `THEME_BOOT`. See design-system.md, *The whole app in Tamil or Hindi*. `sw.js` caches `/i18n/` (the dictionaries,
+  content-hashed) cache-first like `/_next/static/`.
 - **`Assist`** — the AI panel, lazy-loaded (`AssistLazy`). Talks to `api/assist`.
 - **`FlipRow` was deleted (2026-10-10).** It was imported by nothing — `StatTile` covers the screens
   that needed split-flap tiles. Do not bring back a third way to do the same thing.

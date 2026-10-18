@@ -42,7 +42,8 @@ self.addEventListener("fetch", (e) => {
   if (url.searchParams.has("_rsc") || e.request.headers.get("RSC") === "1" || e.request.headers.has("Next-Router-State-Tree")) return;
 
   // build output is content-hashed: cache first, forever
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/fonts/")) {
+  // /i18n/: the Tamil and Hindi dictionaries — their names carry a content hash, so a cached one is never stale
+  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/fonts/") || url.pathname.startsWith("/i18n/")) {
     e.respondWith(caches.match(e.request).catch(() => undefined).then((m) => m || fetch(e.request).then((r) => put(e.request, r)).catch(() => new Response("", { status: 504 }))));
     return;
   }

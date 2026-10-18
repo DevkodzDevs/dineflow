@@ -130,3 +130,6 @@ are the whole point and they are theme-dependent.
 
 [front-desk.md](front-desk.md) · [rooms-and-reservations.md](rooms-and-reservations.md) ·
 [design-system.md](design-system.md)
+- **Each room and each task waits on its own answer** (2026-10-18): `act(fn, key)` with the room's or task's id; one
+  shared `pending` used to grey the whole floor while any one tap was answering. Build today's sheet and Add task still
+  hold the screen.

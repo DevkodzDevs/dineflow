@@ -10,17 +10,18 @@ export const dynamic = "force-dynamic";
 const CAN = ["owner", "manager", "supervisor", "cashier"];
 
 export default async function ControlsPage() {
-  const session = await requireSession();
-  if (!CAN.includes(session.profile.role)) redirect("/dashboard?locked=controls");
+  // the session and this screen's queries in one round trip, not two — the queries are checked by RLS and the RPCs
+  // themselves, so nothing is shown before the role gate below; it only stops waiting on the session first (2026-10-18)
   const s = await createClient();
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-  const [{ data: expected }, { data: moves }, { data: shifts }, { data: voids }, { data: lines }] = await Promise.all([
+  const [session, [{ data: expected }, { data: moves }, { data: shifts }, { data: voids }, { data: lines }]] = await Promise.all([requireSession(), Promise.all([
     s.rpc("shift_expected"),
     s.from("cash_movements").select("id, kind, amount, reason, note, created_by, created_at").gte("created_at", weekAgo).order("created_at", { ascending: false }).limit(100),
     s.from("shift_closes").select("id, business_date, opened_at, closed_at, expected, counted_cash, float_cash, variance, note, closed_by").order("closed_at", { ascending: false }).limit(30),
     s.from("bills").select("id, bill_no, total, void_reason, voided_at, voided_by, created_at").eq("status", "void").gte("created_at", weekAgo).order("created_at", { ascending: false }).limit(50),
     s.from("order_items").select("id, name_snapshot, qty, price_snapshot, cancel_reason, cancelled_by, cancelled_at, created_at, orders(order_no, status)").eq("status", "cancelled").gte("created_at", weekAgo).order("created_at", { ascending: false }).limit(100),
-  ]);
+  ])]);
+  if (!CAN.includes(session.profile.role)) redirect("/dashboard?locked=controls");
   // the names behind the ids, one query; a platform admin acting as the owner is not in profiles
   const ids = new Set<string>();
   for (const r of [...(moves ?? []), ...(shifts ?? []), ...(voids ?? []), ...(lines ?? [])] as { created_by?: string | null; closed_by?: string | null; voided_by?: string | null; cancelled_by?: string | null }[]) {

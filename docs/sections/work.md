@@ -47,7 +47,9 @@ the raiser told when it is done, recurring rounds.
   the target, Guest waiting, Guest arriving today, VIP, Every day), *Given to … by … · time* (a labourer says so),
   *… is on it · since · n min*, then the one move — *I'll take it*, *Done*, *Done with a note* (jobs), *Give back*,
   *Not needed* (tables), *Drop* (jobs) — and the supervisor's *Give to…* (people on duty first, then whose work it is,
-  then day labourers). Late: past `due_at` (a cleaning job without one keeps the 15 / 45-minute rule of thumb) — the time
+  then day labourers). The footer is one wide primary button (take / done / the status) plus two 44px icon buttons:
+  ⋯ (`data-more`) opens *Done with a note*, *Give back*, *Not needed*, *Drop*; the person-plus (`data-give-open`) opens
+  the *Give to…* select. Both panels stay in the DOM, hidden, so probes can reach `data-assign` and the rest. Late: past `due_at` (a cleaning job without one keeps the 15 / 45-minute rule of thumb) — the time
   turns red, the tile red, the card's edge red.
 - **Alerts** (`Notifier.tsx`; who can have each is `kindsFor`): `jobs` INSERT → *High · Tap leaking* (kind `job`) for the
   people of that department, every supervisor, and everyone when it is for anyone — not the raiser, not the one it was
@@ -117,3 +119,5 @@ node cleaning.mjs    # 43  ·  node cleaner.mjs  # 43 — the Cleaning board sti
 
 [cleaning.md](cleaning.md) · [housekeeping.md](housekeeping.md) · [kitchen.md](kitchen.md) ·
 [staff-and-labour.md](staff-and-labour.md) · [shell-and-nav.md](shell-and-nav.md) · [data-and-rls.md](data-and-rls.md)
+- **Each card waits on its own answer** (2026-10-18): the board's one `pending` greyed every card while any one tap was
+  answering. `actOn(id)` keeps a `busy` set; a card is held only while its own take / done / give / drop is answering.

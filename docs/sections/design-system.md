@@ -10,8 +10,12 @@
 ## What it is
 
 One language: a split-flap clock on a graphite wall. Dark by default (`data-theme="dark"`), with a
-light "paper" theme that is a full re-skin, not an inversion. Both themes are real and **both must
-be checked** — a colour that reads on graphite can vanish on paper.
+light "paper" theme that is a full re-skin, not an inversion, and since 2026-10-18 three more:
+**Colourful dark** (`data-theme="colour"`, 0117) — bright hues on deep indigo — **Colourful light**
+(`data-theme="paper"` + `data-palette="bright"`, 0118) — bright hues on a light page — and **Royal classic**
+(`data-theme="paper"` + `data-palette="royal"`, 0119) — navy, burgundy and gold on ivory, no gradients. All five are
+real and **all must be checked** — a colour that reads on graphite can vanish on paper, and a graphite hex left in a rule shows as a
+grey patch on indigo.
 
 `globals.css` is written in labelled blocks. Find yours before you add anything:
 
@@ -30,6 +34,132 @@ be checked** — a colour that reads on graphite can vanish on paper.
 | 602 | TABLES | `.dt-*` for `DataTable` |
 | 662 | LOADERS | `.flip.loader`, `.nav-progress` |
 | 703 | MOTION | keyframes, reduce-motion |
+
+## The colourful theme (2026-10-18)
+
+The owner's "one more theme — colourful". **Built on dark, not on paper**: its text is light on dark surfaces, so
+every rule written for the dark theme (fills of `rgb(255 255 255 / .07)`, light-on-dark pills, the Assist panel)
+stays right without a single override. What it changes:
+
+- **Tokens** (`[data-theme="colour"]` beside paper's at the top of `globals.css`): `--color-bg` #160f33, `-bg-2`
+  #211650 (cards), `-bg-3` #2d2069, bezel #0c0624; label #fbf8ff / label-2 #c9bdf2 / label-3 #9387c9; **tint
+  magenta #ff5ca8** (on-tint #2a0019); every hue a step brighter (green #2ee6a0, red #ff5d73, blue #5cb4ff, orange
+  #ffb547, violet #c79bff, cyan #2fe1f5). The aliases (saffron, mint, chili, sky) are set explicitly — saffron is the
+  magenta tint here, as it is the green tint in dark. Contrast on a card: label 15.6, label-2 9.4, label-3 4.9.
+- **The COLOURFUL block at the end of the file**: the frame (`.deck`, `body:has(.deck-card)`) is three soft lights —
+  violet, magenta, cyan — on indigo; the screen's card carries the same lights, quieter; the side menu
+  (`aside.ink-panel`) is a solid violet-to-plum band (solid, because at tablet width it opens over the page); cards
+  get a faint top sheen; **`.btn-filled` and `.svc-btn.go` are a magenta-to-orange gradient** with dark ink (6.4:1 on
+  the magenta end); a figure's icon square with no state to show takes violet, cyan, magenta, orange in turn; the flip
+  tiles are violet plates; focus ring and selection follow the tint.
+- **Every surface rule skips `[data-theme="paper"] *`** — a guest page forces paper on its own box, and a staff
+  phone on the colourful theme must not repaint a guest's booking page.
+- **`system` never resolves to it** — Follow device is dark or paper; colourful is always a choice. The top-bar
+  theme button is now a menu of four (`ThemeButton`, `data-theme-menu`, `data-theme-option`) and Settings shows four
+  cards with a swatch each (`ThemePicker`, `data-theme-picker`). The phone's bar colour is #0c0624.
+- Measured by `langtheme.mjs`: every section, both property kinds, 1440 / 834 / 412 — no sideways scroll, no text
+  under 3:1. Check it when you add a rule with a raw colour: a graphite hex (#1c1d24, #0a0a0d…) is the usual culprit.
+
+## Colourful light (2026-10-18, 0118)
+
+The owner's "one more colourful theme, light-background based". **Worn as paper plus a palette** —
+`<html data-theme="paper" data-palette="bright">` — so all of paper's ~75 light-surface rules apply untouched and
+nothing is duplicated; `lookFor()` in `lib/themeLook.ts` (3 tests) maps a choice to the two attributes, and
+`ThemeKeeper` holds both (React re-applies the server's `<html>` attributes when it rebuilds a page).
+
+- **Tokens** (`html[data-palette="bright"]`, beside the others at the top of `globals.css` — more specific than
+  paper's, so they win wherever both apply): page #f6f3ff, cards white, `-bg-3` #efe9fc; ink #1d1537, label-2 #5a5078,
+  label-3 #8a80a8; **tint pink #db2777 with white on it (4.6)**; hues deepened for light ground — green #0e9f5e, red
+  #e11d48, blue #2563eb, **orange #b45309** (#d97706 measured 2.9:1 on the lavender page), violet #7c3aed, cyan #0891b2.
+- **The BRIGHT block at the end of the file**: the frame and the side menu are a jewel-toned band (violet #4c1d95 →
+  plum #831843, warm glows) with the menu's white text unchanged; the screen's card is lavender with pink, cyan and
+  sunshine lights; cards get a violet hairline; **`.btn-filled` / `.svc-btn.go` are pink → rose → burnt orange with
+  white ink** (4.6 / 5.2); every figure tile has a 3px top edge and icon square in its own colour (violet, cyan, pink,
+  orange in turn, or its state's); flip tiles are violet plates with white figures; fields, chips and table heads take
+  a faint violet.
+- **Trap met:** the chip rule outranked `.chip.on` (the chosen chip — label colour, white ink), leaving white text on
+  near-white on eight screens; it is `.chip:not(.on)` now. Any rule here that repaints a control must leave its
+  chosen/active state alone.
+- Surface rules skip `div[data-theme] *` (not `[data-theme="paper"] *` as the dark colourful block does — here
+  `<html>` itself is paper): a guest page's own paper box stays plain paper.
+- The top-bar menu and Settings have five choices (Dark, Light, Colourful dark, Colourful light, Follow device); the
+  menu's icon for this one is Sparkles; the phone's bar colour is #4c1d95.
+
+## Royal classic (2026-10-18, 0119)
+
+The owner's "rich royal colour base with classic feel … don't use multi-gradient … light background based". Worn
+like Colourful light — `<html data-theme="paper" data-palette="royal">`, `lookFor()` maps it — so paper's rules apply.
+
+- **Tokens** (`html[data-palette="royal"]`): page ivory #faf6ee, cards #fffdf8, `-bg-3` #f2ebdc; ink navy #1a2340,
+  label-2 #4b5069, label-3 #847f70; **tint royal navy #1e3a8a with ivory on it (10.3)**; green emerald #15803d, red
+  burgundy #9f1239, blue #1d4ed8, orange #a16207, violet royal purple #6b21a8, cyan #0e7490; **saffron is antique gold
+  #9a7417** here.
+- **The ROYAL block at the end of the file — every surface one solid colour**: the frame and side menu solid navy
+  #14213d (a gold hairline where the menu meets the page, a gold marker on the current section); the screen's card
+  ivory ringed in gold; cards with gold hairlines; **`.btn-filled` / `.svc-btn.go` solid navy, ivory ink, a gold inner
+  line**; flip tiles solid navy plates with gold pins; a figure tile's solid top edge in navy, burgundy, emerald, gold
+  in turn.
+- **Classic type without a download**: `h1`–`h3` and `.large-title` in Georgia (then Iowan Old Style, Palatino, Book
+  Antiqua, Noto Serif, Times — every platform has one; Tamil and Devanagari serifs follow), the PageHeader accent word
+  in gold italic, `.eyebrow` in serif small caps. Numbers and flip tiles keep Oswald: their flaps are measured for it.
+- **No gradient anywhere**: the block's last rules lay a solid colour over every gradient the app itself draws — the
+  flip plates, the spotlight hover, `.hairline-gold`, the loading shimmer, the top progress bar, the wait bars, a dish
+  with no photo, Tailwind `bg-gradient-to-*` (the control room's and Tomorrow's brief cards and their gold icon squares),
+  arbitrary `bg-[linear-gradient…]` / `bg-[radial-gradient…]`, inline radial glows, the logo well's checkerboard; and
+  the inline single-colour fades in Staff (a department's stripe and header) are tiled at 2 px so they read as one
+  even colour without touching that screen's code. The printer-slot shadow on a ticket preview is a printed material
+  and keeps its shading. `langtheme.mjs` checks every section: no surface blends two colours.
+- The phone bar's chosen-section pill, written as the dark theme's green, takes each colourful theme's own tint.
+
+## The whole app in Tamil or Hindi (2026-10-18)
+
+Two more choices beside English and the second-line languages: **தமிழ் — முழுவதும்** and **हिन्दी — पूरा ऐप**
+(`df-lang` = `ta-all` / `hi-all`, `LANGS` in `lib/say.ts`, grouped *Words on the buttons* / *The whole app* in the
+top-bar menu and in Settings). Every screen is written in English and **stays that way** — nothing in the sections
+changed. Instead:
+
+- **`components/ui/FullLanguage.tsx`** (root layout) walks the page and puts the language over every piece of
+  English the dictionary knows — text nodes, and `placeholder` / `title` / `aria-label` / `alt` — then keeps a
+  MutationObserver on the body, so whatever React draws next (a new screen, a toast, a live count) is translated
+  before it paints. One observer for the whole visit; a navigation only asks whether the page is one that stays
+  English. Switching back puts the exact English back (every change is recorded; `revert()`).
+- **`lib/i18n/engine.ts`** decides what a piece becomes (8 tests): an exact match (whitespace collapsed); the same
+  with a trailing `:`/`.` set aside; a **template** (`"{0} min ago"`, `"Room {0} · {1}"`) whose values are kept, or
+  translated when they are known words, and may move where the grammar needs them; month and day names in a date.
+  Names, dishes, rooms, zones, amounts are not in the dictionary and stay as written — that is right.
+- **The dictionaries** are `public/i18n/{ta,hi}.<content-hash>.json` (~5,200 entries each), fetched only on a
+  device set to a whole-app language; `LANG_BOOT` (`lib/i18n/scope.ts`) starts the fetch in `<head>` before the
+  app's scripts, sets `<html lang>` and holds the page invisible (`data-lang-pending`) until the first pass, so the
+  English never flashes — after 2.5 s it shows regardless. `sw.js` caches `/i18n/` for offline.
+- **Left in English on purpose** (`ENGLISH_ONLY` in `scope.ts`, and `[translate=no]`): the guest-facing pages (a
+  guest reads them on their own phone), the legal pages (the English is binding), Master control, the landing page,
+  printed receipts, and the language menus themselves — each choice is shown in its own script so whoever picked the
+  wrong one can read their way back. PDFs and the receipt printer stay English: their fonts have no Tamil or
+  Devanagari letters.
+- **Fonts and spacing** (`THE WHOLE APP IN TAMIL OR HINDI` at the end of `globals.css`): the app's fonts have no
+  Tamil or Devanagari, so the stacks name the device's (Noto, Tamil Sangam / Kohinoor, Nirmala, Latha, Mangal) —
+  nothing extra is downloaded. `letter-spacing` is forced to normal (it breaks the joined letters; the Devanagari
+  headline bar fell apart) and headings get 1.32 line-height (vowel signs were clipped at 1.05).
+- **Adding a screen or a string**: `node scripts/i18n-check.mjs` reports coverage (100% on 2026-10-18: 4,529
+  strings + 617 templates); `--missing f.json` lists what is new; translate it by `docs/i18n-brief.md` (rules +
+  glossary — the same words everywhere: மேசை, அறை, ஆர்டர், பில் / टेबल, कमरा, ऑर्डर, बिल); `--merge f.json` writes
+  new hashed files and repoints `lib/i18n/files.ts`. Text the database sends (Tomorrow's labels, an RPC's message)
+  is not in the code — walk the screen in Tamil (`langtheme.mjs` writes what is left in Latin letters per section)
+  and add it the same way.
+
+**Traps met building it — read before touching `FullLanguage`:**
+- **Hydration (React #418).** On a full load React adopts the server's HTML piece by piece; a piece whose text has
+  already changed under it is thrown away and drawn again. So text is changed only once React has adopted its
+  element (it carries React's `__reactFiber$…` key); the rest waits in `later` and is picked up every 120 ms, for at
+  most 8 s. The first run without this logged #418 on two sections.
+- **A template is not a sentence.** `"{0} to {1}"` swallowed *"11 dishes have no recipe … in Menu to place them."*
+  and came out half-translated. A template's values must look like values — no sentence punctuation, few words,
+  fewer still when the template has little text of its own (`fits()` in the engine).
+- **English endings glued on in code.** `arrival{n === 1 ? "" : "s"}` leaves a lone "s" text node after the
+  translated word — blanked; `"{0} dish{1}"` — a value right after a letter is an ending and is dropped.
+- **Headings drawn in two pieces.** `PageHeader` renders *title* + `<em>`*accent* ("Front" + "desk", "Neigh" +
+  "bours"): a heading with an `<em>` is translated as one phrase into its first piece (`doWhole`).
+- **A short template can match anything** — one with fewer than two letters of its own ("{0} · {1}") is never used.
 
 ## How it works
 
@@ -254,8 +384,8 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   green ring never rendered for that reason. Add a state class next to the kit rule instead
   (`.feather.picked`, `.feather.filled`) or use an `!important` utility, which does win.
 
-- **Check both themes.** Set the `df-theme` cookie to `paper` and look. Half the colour bugs in this
-  app's history only existed in one theme.
+- **Check all five themes.** Set the `df-theme` cookie to `paper`, then `colour`, `bright` and `royal`, and look. Half the colour bugs
+  in this app's history only existed in one theme.
 - **A grid track must be `minmax(0,1fr)`, not `1fr`.** A grid item defaults to `min-width:auto` and
   refuses to shrink below its content — this pushed the till rail off a phone and overflowed the
   calendar by 258px. Pair it with `min-w-0` on the item.

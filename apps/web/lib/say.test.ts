@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WORDS, say, readLang, catIcon, type Word } from "./say";
+import { WORDS, say, readLang, catIcon, scriptOf, allOf, type Word } from "./say";
 
 describe("the Dining screens' words", () => {
   it("has English, Tamil and Hindi for every word, none blank", () => {
@@ -16,8 +16,16 @@ describe("the Dining screens' words", () => {
   it("reads the device's cookie, and anything else is English", () => {
     expect(readLang("ta")).toBe("ta");
     expect(readLang("hi")).toBe("hi");
+    expect(readLang("ta-all")).toBe("ta-all");
+    expect(readLang("hi-all")).toBe("hi-all");
     expect(readLang("fr")).toBe("en");
     expect(readLang(undefined)).toBe("en");
+  });
+  it("in a whole-app language gives the word alone, with no English and no second line", () => {
+    expect(say("take_order", "ta-all")).toEqual({ en: "ஆர்டர் எடு", alt: null });
+    expect(say("paid", "hi-all")).toEqual({ en: "भुगतान हुआ", alt: null });
+    expect(scriptOf("ta-all")).toBe("ta"); expect(scriptOf("hi")).toBe("hi");
+    expect(allOf("hi-all")).toBe("hi"); expect(allOf("ta")).toBeNull(); expect(allOf("en")).toBeNull();
   });
   it("guesses a category's picture from its name", () => {
     expect(catIcon("Breads & Rice")).toBe("Wheat");

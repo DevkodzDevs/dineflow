@@ -270,3 +270,6 @@ node fit.mjs             # nine dishes on the ticket at 7 real screen sizes (not
   request chips and keyboard sending. Probe: `tillnew.mjs` (13 — places no order; restores photos).
 - **The order page's per-line "cancel" is 44px to the thumb** (`h-10`, 44 on touch, `-my-2.5` so the
   line does not grow) while staying small text. It was 16px tall after the reason dialog landed.
+- **The order screen's live channel refreshes calmly and signed in** (2026-10-18): it called `router.refresh()` on every
+  `order_items` event — three dishes, three renders, each able to cancel the action's own answer — and joined without the
+  signed-in token. It goes through `calmRefresher` (lib/liveRefresh.ts) and sets the token before joining.

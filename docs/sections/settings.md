@@ -54,7 +54,13 @@ never be reachable on a real one.
 
 - **Appearance has *Words on the buttons*** (2026-10-15, `LangPicker` from `components/ui/Say.tsx`): English,
   English + தமிழ், English + हिन्दी — the device's `df-lang` cookie, the same choice as the top bar's language
-  button. See [design-system.md](design-system.md) (Simple Service).
+  button. See [design-system.md](design-system.md) (Simple Service). Since 2026-10-18 a second group, *The whole
+  app*: தமிழ் and हिन्दी — every screen in that language (`ta-all` / `hi-all`; design-system.md, *The whole app in
+  Tamil or Hindi*). The picker and the top-bar menu are `translate="no"`: each choice shows in its own script.
+- **Appearance has six themes** (2026-10-18, `ThemePicker`): Dark, Light, **Colourful dark** (0117), **Colourful
+  light** (0118), **Royal classic** (0119) and Follow device, each card with a swatch of the theme, three to a row
+  from `xl`. The top bar's theme button is a menu of the same six (it was a dark/light toggle). The label above the language picker reads *Language*; the picker names its
+  own two groups.
 
 - **Room GST falls back to 5%**, not 12: a restaurant's Settings form has no room-rate field and saved 12
   on every save (0100 also moved the column default to 5 and the last 12s to 5).

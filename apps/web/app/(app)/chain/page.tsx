@@ -9,10 +9,11 @@ export const dynamic = "force-dynamic";
 
 /** Every outlet at once, live (0106) — and, for the owner, opening one, sending the menu, and who may switch. */
 export default async function ChainPage() {
-  const session = await requireSession();
-  if (!["owner", "manager", "supervisor"].includes(session.profile.role)) redirect("/dashboard?locked=chain");
+  // the session and this screen's queries in one round trip, not two — the queries are checked by RLS and the RPCs
+  // themselves, so nothing is shown before the role gate below; it only stops waiting on the session first (2026-10-18)
   const s = await createClient();
-  const [{ data: list }, { data: people }] = await Promise.all([s.rpc("chain_overview"), s.rpc("chain_people")]);
+  const [session, [{ data: list }, { data: people }]] = await Promise.all([requireSession(), Promise.all([s.rpc("chain_overview"), s.rpc("chain_people")])]);
+  if (!["owner", "manager", "supervisor"].includes(session.profile.role)) redirect("/dashboard?locked=chain");
   return (
     <>
       <PageHeader eyebrow="Your chain" title="Outlets" sub="Every outlet's day as it happens — orders, tables, the kitchen, sales — and one tap to work in any of them. The menu can go from this outlet to the others." />

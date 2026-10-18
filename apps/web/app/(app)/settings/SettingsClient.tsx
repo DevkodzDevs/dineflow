@@ -104,8 +104,9 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           <Card>
             <Section icon={<Palette size={16} />} title="Appearance" description="Applies to this device. Guest pages are always bright.">
               <ThemePicker />
-              {/* the second line under the Dining screens' buttons — Tamil or Hindi (lib/say.ts) */}
-              <div className="mt-5 mb-2 text-[13px] font-semibold text-[var(--color-label-2)]">Words on the buttons</div>
+              {/* the device's language: a second line under the Dining screens' buttons, or the whole app (lib/say.ts) —
+                  the picker names its own two groups */}
+              <div className="mt-5 mb-2 text-[13px] font-semibold text-[var(--color-label-2)]">Language</div>
               <LangPicker />
             </Section>
           </Card>

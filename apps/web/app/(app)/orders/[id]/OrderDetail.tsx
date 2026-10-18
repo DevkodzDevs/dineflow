@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { ArrowRightLeft, Merge, Scissors, Flame, PauseCircle } from "lucide-react";
 import { getClient } from "@/lib/supabase/lazy";
+import { calmRefresher } from "@/lib/liveRefresh";
 import { Ticket } from "@/components/ui/Ticket";
 import { PrinterHead } from "@/components/receipt/PrinterHead";
 import { Button, Pill, Card, cn, useToast } from "@/components/ui";
@@ -32,14 +33,20 @@ function PrintedTicket({ status, children }: { status: string; children: React.R
 export function OrderDetail({ order, tables = [], open = [] }: { order: Order; tables?: Table[]; open?: Open[] }) {
   const router = useRouter(); const [pending, start] = useTransition(); const toast = useToast();
   useEffect(() => {
-    // the socket arrives just after the screen does, so the ticket paints without waiting for it
+    // the socket arrives just after the screen does, so the ticket paints without waiting for it. A change refreshes
+    // through lib/liveRefresh.ts: one refresh for a burst (three dishes added are three events), and never over the
+    // answer of an action this screen just sent — it used to refresh on every event and cancel that answer
+    const r = calmRefresher(() => router.refresh(), 800);
     let sb: SupabaseClient | null = null, ch: RealtimeChannel | null = null, gone = false;
     void (async () => {
       const c = await getClient(); if (gone) return;
+      // signed in before joining, as useLive does: joined as anon the channel hears nothing behind RLS
+      try { const { data } = await c.auth.getSession(); if (data.session) c.realtime.setAuth(data.session.access_token); } catch { /* the action answers still update the screen */ }
+      if (gone) return;
       sb = c;
-      ch = c.channel(`order-${order.id}`).on("postgres_changes", { event: "*", schema: "public", table: "order_items", filter: `order_id=eq.${order.id}` }, () => router.refresh()).subscribe();
+      ch = c.channel(`order-${order.id}`).on("postgres_changes", { event: "*", schema: "public", table: "order_items", filter: `order_id=eq.${order.id}` }, r.bump).subscribe();
     })();
-    return () => { gone = true; if (sb && ch) sb.removeChannel(ch); };
+    return () => { gone = true; r.stop(); if (sb && ch) sb.removeChannel(ch); };
   }, [order.id, router]);
   const live = order.order_items.filter((i) => i.status !== "cancelled");
   const total = live.reduce((s, i) => s + Number(i.price_snapshot) * i.qty, 0);

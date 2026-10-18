@@ -14,7 +14,7 @@ import { ReasonDialog } from "@/components/ui/ReasonDialog";
 
 type OO = { id: string; external_id: string; display_id: string | null; status: string; customer_name: string | null; customer_phone: string | null; address: string | null; items: { menu_item_id: string | null; name: string; qty: number; price: number; note: string | null }[]; unmatched: string[]; gross: number; commission: number; payout: number; is_prepaid: boolean; placed_at: string; order_id: string | null; order_channels: { kind: string; label: string; prep_minutes: number } | null };
 /* each channel's own colour on its card's head band — what a packer recognises across the counter */
-const BAND: Record<string, string> = { swiggy: "bg-[#fc8019] text-white", zomato: "bg-[#e23744] text-white", website: "bg-ink text-on-label", ondc: "bg-mint text-on-tint", other: "bg-porcelain-2 text-ink" };
+const BAND: Record<string, string> = { swiggy: "bg-[#fc8019] text-[#1f0f00]", zomato: "bg-[#e23744] text-white", website: "bg-ink text-on-label", ondc: "bg-mint text-on-tint", other: "bg-porcelain-2 text-ink" };
 type Tab = "new" | "cook" | "ready";
 const TAB_OF = (s: string): Tab => (s === "new" ? "new" : s === "ready" ? "ready" : "cook");
 

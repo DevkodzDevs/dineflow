@@ -35,7 +35,8 @@ waiting, who is on what, and today's finished jobs with their times.
   person puts it back to waiting. *Not needed* (tables only) closes it by name.
 - **The board** (`clean_board`, one call): Waiting · On it · Done today, filtered All / Tables / Rooms / Mine
   (housekeeping starts on Rooms, a waiter on Tables, in a resort). A card: the place, how long it has waited, *Given
-  to … by … · time*, *… is on it · since … · n min*, the one move this person has, and for a supervisor a *Give to…*
+  to … by … · time*, *… is on it · since … · n min*, the one move this person has as a wide button, a ⋯ button for the rarer moves and,
+  for a supervisor, a person-plus button that opens the *Give to…*
   select — on-duty people first, then the ones whose work it is (housekeeping for rooms, service for tables). Done
   today: who, *took* (taken → done), *waited* (opened → taken), *given by*. Tiles: Waiting, On it, Cleaned today,
   Average clean. Live through `useLive`.
@@ -97,3 +98,5 @@ node cleaner.mjs     # 42 checks: a restaurant Cleaner's phone and a resort's at
 
 [housekeeping.md](housekeeping.md) · [orders-and-till.md](orders-and-till.md) · [shell-and-nav.md](shell-and-nav.md) ·
 [data-and-rls.md](data-and-rls.md)
+- **Each card waits on its own answer** (2026-10-18): the board's one `pending` greyed every card while any one tap was
+  answering. `actOn(id)` keeps a `busy` set; a card is held only while its own take / done / give / drop is answering.

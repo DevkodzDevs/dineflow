@@ -11,7 +11,7 @@ export type Session = {
   lateKots: number;
   membership: Membership | "none";
   /** the person's saved light/dark choice (user_prefs, 0078), or null if they have not chosen */
-  theme?: "dark" | "paper" | "system" | null;
+  theme?: "dark" | "paper" | "colour" | "bright" | "royal" | "system" | null;
   /** the outlets this person may stand in (0106) — empty unless they have more than their own */
   outlets: Outlet[];
   /** `restaurant_id` is the outlet this sign-in is working in; `home_restaurant_id` the person's own (0106) */
@@ -27,7 +27,7 @@ export type Outlet = { id: string; name: string; type: PropertyType; home: boole
 type Bundle = {
   user_id: string | null; user_name: string | null; is_admin: boolean; acting_as: string | null;
   profile: Session["profile"] | null; restaurant: Session["restaurant"] | null;
-  membership: Membership | "none"; late_kots: number; theme?: "dark" | "paper" | "system" | null; outlets?: Outlet[];
+  membership: Membership | "none"; late_kots: number; theme?: "dark" | "paper" | "colour" | "bright" | "royal" | "system" | null; outlets?: Outlet[];
 };
 
 /**

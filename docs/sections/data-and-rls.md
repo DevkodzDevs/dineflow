@@ -70,6 +70,9 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0105_expenses_checklists_payouts_phone_tally — Batch 2: expenses (+ cash_movements link), checklists +
                                 checklist_runs, channel_settlements, orders.delivery_address + customers.address,
                                 phone_order_card / order_delivery, report_extra, tally_company / tally_ledgers + tally_days
+0119_theme_royal              — user_prefs.theme and set_my_theme accept 'royal' (royal classic); nothing else
+0118_theme_bright             — user_prefs.theme and set_my_theme accept 'bright' (colourful light); nothing else
+0117_theme_colour             — user_prefs.theme and set_my_theme accept 'colour' (the colourful theme); nothing else
 0116_work_by_department       — _my_dept, _work_dept_ok, _work_board_sees; jobs and table_cleanings RLS by department;
                                 _clean_job refuses another department's job; clean_board / work_board filtered; work_log
 0115_session_department       — session_bundle's profile carries department and position
@@ -125,6 +128,13 @@ made in between is silently undone.
   gen_random_bytes(integer) does not exist") and the owner could never switch an old TV link off. Write
   `extensions.gen_random_bytes(...)` (or `gen_random_uuid()`, which is core). A column default is safe: it is
   resolved when the migration runs. The 0103 dry run did not try the rotation — test every branch of a new RPC.
+- **0119 — royal classic (2026-10-18).** The same widening for `'royal'`; dry-run `dry119.cjs` (6, the same checks).
+- **0118 — colourful light (2026-10-18).** The same widening as 0117 for `'bright'`; dry-run `dry118.cjs` (6, the
+  same checks). Applied before its code, safely — old code never sends it.
+- **0117 — the colourful theme (2026-10-18).** Widens `user_prefs_theme_check` and `set_my_theme`'s guard to
+  `('dark', 'paper', 'colour', 'system')`; the policy and grants are 0078's. Dry-run `dry117t.cjs` (6: saves colour,
+  the old three still save, an unknown name is refused by the function and by the column check, session_bundle
+  carries it, anon cannot call it). Safe to apply before the code that sends it — the old code never sends 'colour'.
 - **0116 — work by department (2026-10-18).** The `jobs_read` and `table_cleanings_read` policies now also call
   `_work_dept_ok` (stable, security definer, one `profiles` read). A supervisor with no department passes, so live
   properties — none of whose people have a department yet — lose nothing. `work_log` is owner / manager only.

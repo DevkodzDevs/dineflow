@@ -43,7 +43,7 @@ applied migration.
 ```
 pnpm lint        # 0 errors (14 warnings are known)
 pnpm typecheck
-pnpm test        # 126 unit tests
+pnpm test        # 140 unit tests
 pnpm build       # note: this clobbers .next and kills a running `next dev`
 ```
 
@@ -60,8 +60,8 @@ a substitute for the four gates and the session probes. [admin-and-membership.md
 **Tests restore what they touch.** `guests-test.mjs` prints
 `put back: "…" restored to how it was found`. Match that.
 
-**Check both property kinds and both themes.** A resort and a restaurant get different modules,
-different tile counts and different flip tiles. Dark and paper are both real themes.
+**Check both property kinds and all five themes.** A resort and a restaurant get different modules,
+different tile counts and different flip tiles. Dark, paper, colourful dark, colourful light and royal classic are all real themes.
 
 **Check five widths**: 1920, 1440, 1194, 834, 412 — and 44px touch targets on the touch ones.
 

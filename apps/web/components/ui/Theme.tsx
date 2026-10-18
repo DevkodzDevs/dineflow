@@ -1,26 +1,37 @@
 "use client";
-import { Moon, Sun, MonitorSmartphone } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Moon, Sun, MonitorSmartphone, Palette, Sparkles, Crown, Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { cn, tap } from "./index";
 import { saveTheme } from "@/lib/themeAction";
+import { lookFor, readThemeCookie, type ThemeChoice } from "@/lib/themeLook";
 
-/** "dark" (the board), "paper" (a bright room) or "system" (follow the device). The choice is kept
- *  in a cookie on the device and on the person's login (user_prefs, 0078); until someone chooses,
- *  the app follows the device. */
-export type ThemeMode = "dark" | "paper" | "system";
+/** "dark" (the board), "paper" (a bright room), "colour" (bright colours on deep indigo, 0117), "bright"
+ *  (bright colours on a light page, 0118), "royal" (navy, burgundy and gold on ivory, solid colours, 0119) or "system" (follow the device — dark or paper, whichever it asks
+ *  for). The choice is kept in a cookie on the device and on the person's login (user_prefs, 0078); until
+ *  someone chooses, the app follows the device.
+ *
+ *  "bright" is drawn as the paper theme with a palette on top — <html data-theme="paper" data-palette="bright">
+ *  — so every rule written for dark text on a light surface stays right without being repeated. */
+export type ThemeMode = ThemeChoice;
+/** The bar colour a phone draws above the page, per theme. */
+const BAR: Record<string, string> = { dark: "#0a0a0d", paper: "#17171c", colour: "#0c0624", bright: "#4c1d95", royal: "#14213d" };
 const KEY = "df-theme";
+/** What <html> wears for a choice: its data-theme, and its data-palette (or none) — lib/themeLook.ts, tested. */
+const look = (mode: ThemeMode) => lookFor(mode, matchMedia("(prefers-color-scheme: light)").matches);
+const wear = (html: HTMLElement, l: { theme: string; palette: string | null }) => {
+  if (html.getAttribute("data-theme") !== l.theme) html.setAttribute("data-theme", l.theme);
+  if (l.palette) { if (html.getAttribute("data-palette") !== l.palette) html.setAttribute("data-palette", l.palette); }
+  else if (html.hasAttribute("data-palette")) html.removeAttribute("data-palette");
+};
 
 export function applyTheme(mode: ThemeMode) {
-  const resolved = mode === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "paper" : "dark") : mode;
-  document.documentElement.setAttribute("data-theme", resolved);
+  wear(document.documentElement, look(mode));
   document.cookie = `${KEY}=${mode}; path=/; max-age=31536000; samesite=lax`;
-  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute("content", resolved === "paper" ? "#17171c" : "#0a0a0d");
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute("content", BAR[mode === "system" ? look(mode).theme : mode] ?? BAR.dark);
 }
-export function readTheme(): ThemeMode {
-  const m = document.cookie.match(/(?:^|; )df-theme=(dark|paper|system)/); return (m?.[1] as ThemeMode) ?? "system";
-}
+export function readTheme(): ThemeMode { return readThemeCookie(document.cookie); }
 /** Runs before paint so a light-mode user never sees a dark flash (and vice versa). */
-export const THEME_BOOT = `(function(){try{var m=(document.cookie.match(/(?:^|; )df-theme=(dark|paper|system)/)||[])[1]||"system";var r=m==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"paper":"dark"):m;document.documentElement.setAttribute("data-theme",r);}catch(e){}})();`;
+export const THEME_BOOT = `(function(){try{var m=(document.cookie.match(/(?:^|; )df-theme=(dark|paper|colour|bright|royal|system)/)||[])[1]||"system";var h=document.documentElement;var p=m==="bright"||m==="royal";var r=m==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"paper":"dark"):p?"paper":m;h.setAttribute("data-theme",r);if(p)h.setAttribute("data-palette",m);}catch(e){}})();`;
 
 export function useTheme() {
   const [mode, setMode] = useState<ThemeMode>("system");
@@ -29,39 +40,76 @@ export function useTheme() {
   return { mode, set: (m: ThemeMode) => { setMode(m); applyTheme(m); tap(); void saveTheme(m); } };
 }
 
-/** Three-way segmented control for the Settings screen. */
+const OPTIONS: { v: ThemeMode; label: string; Icon: typeof Moon; hint: string }[] = [
+  { v: "dark", label: "Dark", Icon: Moon, hint: "The board. Best in a kitchen or at night." },
+  { v: "paper", label: "Light", Icon: Sun, hint: "A bright room. Best at a daylight counter." },
+  { v: "colour", label: "Colourful dark", Icon: Palette, hint: "Bright colours on deep indigo. Lively, and easy on the eyes." },
+  { v: "bright", label: "Colourful light", Icon: Sparkles, hint: "Bright colours on a light, airy page. Cheerful in daylight." },
+  { v: "royal", label: "Royal classic", Icon: Crown, hint: "Navy, burgundy and gold on ivory. Rich, calm and classic." },
+  { v: "system", label: "Follow device", Icon: MonitorSmartphone, hint: "Dark or light, switching with your phone or computer." },
+];
+/** A small swatch of each theme, so the choice is seen before it is made. */
+const SWATCH: Record<ThemeMode, string> = {
+  dark: "linear-gradient(135deg, #17171c 0 55%, #4cd964 55% 70%, #1f2027 70%)",
+  paper: "linear-gradient(135deg, #ecece7 0 55%, #1fa84a 55% 70%, #ffffff 70%)",
+  colour: "linear-gradient(135deg, #2a1166 0 30%, #ff5ca8 30% 50%, #ffb547 50% 62%, #2fe1f5 62% 76%, #2ee6a0 76%)",
+  bright: "linear-gradient(135deg, #f6f1ff 0 34%, #ec4899 34% 50%, #f97316 50% 62%, #06b6d4 62% 76%, #8b5cf6 76%)",
+  royal: "linear-gradient(135deg, #faf6ee 0 40%, #1e3a8a 40% 62%, #8b1d3b 62% 80%, #b8913a 80%)",
+  system: "linear-gradient(135deg, #17171c 0 50%, #ecece7 50%)",
+};
+
+/** The Settings screen's six choices, as cards. */
 export function ThemePicker() {
   const { mode, set } = useTheme();
-  const opts: { v: ThemeMode; label: string; Icon: typeof Moon; hint: string }[] = [
-    { v: "dark", label: "Dark", Icon: Moon, hint: "The board. Best in a kitchen or at night." },
-    { v: "paper", label: "Light", Icon: Sun, hint: "A bright room. Best at a daylight counter." },
-    { v: "system", label: "Follow device", Icon: MonitorSmartphone, hint: "Switches with your phone or computer." },
-  ];
   return (
-    <div className="grid sm:grid-cols-3 gap-3">
-      {opts.map(({ v, label, Icon, hint }) => (
-        <button key={v} onClick={() => set(v)} aria-pressed={mode === v} className={cn("feather text-left p-4 flex gap-3 items-start transition", mode === v ? "ring-2 ring-[var(--color-tint)]" : "hover:bg-[var(--color-fill)]")}>
-          <span className={cn("h-10 w-10 rounded-xl grid place-items-center shrink-0", mode === v ? "bg-[var(--color-tint)] text-[#06120a]" : "bg-[var(--color-fill)]")}><Icon size={18} /></span>
-          <span><span className="block font-semibold text-[15px]">{label}</span><span className="block text-[13px] text-[var(--color-label-2)] mt-0.5">{hint}</span></span>
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" data-theme-picker>
+      {OPTIONS.map(({ v, label, Icon, hint }) => (
+        <button key={v} type="button" onClick={() => set(v)} aria-pressed={mode === v} data-theme-option={v} className={cn("feather text-left p-4 flex gap-3 items-start transition min-w-0", mode === v ? "ring-2 ring-[var(--color-tint)]" : "hover:bg-[var(--color-fill)]")}>
+          <span className={cn("h-11 w-11 rounded-xl grid place-items-center shrink-0 ring-1 ring-[var(--color-separator)]", mode === v ? "text-white" : "text-white/90")} style={{ background: SWATCH[v] }}><Icon size={18} className="drop-shadow-[0_1px_2px_rgb(0_0_0/.6)]" /></span>
+          <span className="min-w-0"><span className="block font-semibold text-[15px]">{label}</span><span className="block text-[13px] text-[var(--color-label-2)] mt-0.5">{hint}</span></span>
         </button>
       ))}
     </div>
   );
 }
 
-/** One-tap toggle for the top bar: flips between dark and light, and shows which one you're on. */
+/** The top bar's theme button: a small menu of the six choices, showing the one in use. */
 export function ThemeButton() {
   const { mode, set } = useTheme();
-  const [light, setLight] = useState(false);
-  useEffect(() => { setLight(document.documentElement.getAttribute("data-theme") === "paper"); }, [mode]);
+  const [open, setOpen] = useState(false); const box = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState<string>("dark");
+  useEffect(() => { const h = document.documentElement; setNow(h.getAttribute("data-palette") ?? h.getAttribute("data-theme") ?? "dark"); }, [mode]);
+  useEffect(() => {
+    if (!open) return;
+    const off = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", off); document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", off); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const Cur = now === "royal" ? Crown : now === "bright" ? Sparkles : now === "paper" ? Sun : now === "colour" ? Palette : Moon;
+  const cur = OPTIONS.find((o) => o.v === mode) ?? OPTIONS[OPTIONS.length - 1];
   return (
-    <button onClick={() => set(light ? "dark" : "paper")} aria-label={light ? "Switch to dark" : "Switch to light"} title={light ? "Switch to dark" : "Switch to light"}
-      className="h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)] text-[var(--color-label-2)]">{light ? <Moon size={20} /> : <Sun size={20} />}</button>
+    <div ref={box} className="relative" data-theme-menu>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} aria-label={`Theme: ${cur.label}`} title={`Theme: ${cur.label}`}
+        className="h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)] text-[var(--color-label-2)]"><Cur size={20} /></button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full mt-2 z-50 w-64 max-w-[calc(100vw-24px)] rounded-2xl bg-[var(--color-bg-2)] border border-[var(--color-separator)] shadow-[var(--shadow-pop)] p-1.5">
+          <div className="px-3 pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-[.12em] text-[var(--color-label-2)]">Theme</div>
+          {OPTIONS.map(({ v, label, Icon }) => (
+            <button key={v} type="button" role="menuitemradio" aria-checked={mode === v} data-theme-option={v} onClick={() => { set(v); setOpen(false); }}
+              className={cn("w-full !min-h-12 rounded-xl px-3 flex items-center gap-3 text-left text-[15px] font-semibold hover:bg-[var(--color-fill)]", mode === v && "bg-[var(--color-fill)]")}>
+              <span className="h-8 w-8 rounded-lg grid place-items-center shrink-0 text-white ring-1 ring-[var(--color-separator)]" style={{ background: SWATCH[v] }}><Icon size={15} className="drop-shadow-[0_1px_2px_rgb(0_0_0/.6)]" /></span>
+              <span className="flex-1">{label}</span>{mode === v && <Check size={16} className="text-[var(--color-tint)]" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
 /** What the page should be wearing right now for this device's cookie (or the device, if none). */
-const resolved = () => { const m = readTheme(); return m === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "paper" : "dark") : m; };
+const resolved = () => look(readTheme());
 
 /**
  * Holds the page to the chosen theme. The server always sends <html data-theme="dark"> (it cannot see
@@ -73,9 +121,9 @@ const resolved = () => { const m = readTheme(); return m === "system" ? (matchMe
 export function ThemeKeeper() {
   useEffect(() => {
     const html = document.documentElement;
-    const fix = () => { const want = resolved(); if (html.getAttribute("data-theme") !== want) html.setAttribute("data-theme", want); };
+    const fix = () => wear(html, resolved());
     fix();
-    const mo = new MutationObserver(fix); mo.observe(html, { attributes: true, attributeFilter: ["data-theme"] });
+    const mo = new MutationObserver(fix); mo.observe(html, { attributes: true, attributeFilter: ["data-theme", "data-palette"] });
     const mq = matchMedia("(prefers-color-scheme: light)"); const sys = () => { if (readTheme() === "system") fix(); };
     mq.addEventListener("change", sys);
     return () => { mo.disconnect(); mq.removeEventListener("change", sys); };

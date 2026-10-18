@@ -94,3 +94,8 @@ Then open `/kitchen/board` at 1920 and stand back from it.
   this no screen passed a station, so a station-bound printer never received a ticket. The till's
   menu query now selects `station, categories(station)` and each printed line carries it; the kitchen
   Reprint passes `stationOf(i)`. Online orders carry no station and still go to station-less printers.
+- **The board is never held while an answer is on its way** (2026-10-18). Every button disabled itself on the screen's
+  one `pending`, so one tap greyed the whole board for the 0.4–1.8 s the server took. Start cooking, Food ready, Served,
+  Fire and Recall show at once (optimistic) and hold nothing; only the station view's two buttons, which wait for the
+  server to move a line, still do. A ticket's old copy fades in 140 ms. The realtime refresh waits for the action's own
+  answer (`lib/liveRefresh.ts`). Probe: `cookchk.mjs` — the board's buttons free 60 ms after a tap, the database moved.

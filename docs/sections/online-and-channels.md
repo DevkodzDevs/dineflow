@@ -186,3 +186,5 @@ and reaches the kitchen.
   any URL), and the token must be one of the caller's own channels.
 - **Sync now (OTA)** needs a signed-in user and runs only that property's feeds; see api-routes.md
   for the cron secret and the feed-URL rules.
+- **The Swiggy band's ink is dark** (2026-10-18): white on Swiggy's orange (#fc8019) measured 2.55:1 in every theme;
+  `#1f0f00` on it reads 7.5:1 and the band is still Swiggy's colour. Zomato's white on #e23744 is 4.3:1 and stays.

@@ -126,3 +126,6 @@ Also run it at 412, 834, 1194 and 1440.
 
 [admin-and-membership.md](admin-and-membership.md) · [shell-and-nav.md](shell-and-nav.md) ·
 [data-and-rls.md](data-and-rls.md) · [legal.md](legal.md)
+- **The unread badge and the screenshot upload use `getClient()` from `lib/supabase/lazy.ts`** (2026-10-18). Imported
+  directly, `lib/supabase/client` put Supabase's ~235 kB back into every signed-in screen's first load — this hook is in
+  the menu on every screen.

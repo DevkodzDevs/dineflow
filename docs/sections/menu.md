@@ -156,3 +156,7 @@ per person per 10 minutes.
 
 **The till** already showed `image_url` (photo-first tiles once half the menu has photos); the guest
 storefront now does too — see guest-facing.md.
+- **The recipe library stays on the server** (2026-10-18). `findStandardRecipe` and its 220 kB library were imported by
+  `MenuClient` — most of the screen's JavaScript, ~0.9 s on a first visit. `page.tsx` now finds the plate for each of
+  this property's dishes and passes `std: Record<itemId, StandardRecipe>`; the list, the recipes overview and the recipe
+  editor read it. Do not import `findStandardRecipe` (or anything from `recipes.ts`) in a client component.

@@ -12,14 +12,15 @@ const SEES = ["owner", "manager", "supervisor"];
 export default async function IntelligencePage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   const { days: d } = await searchParams;
   const days = [7, 28, 90].includes(Number(d)) ? Number(d) : 28;
-  const session = await requireSession();
-  if (!SEES.includes(session.profile.role)) redirect("/dashboard?locked=intelligence");
+  // the session and this screen's queries in one round trip, not two — the queries are checked by RLS and the RPCs
+  // themselves, so nothing is shown before the role gate below; it only stops waiting on the session first (2026-10-18)
   const s = await createClient();
-  const [{ data: eng, error: e1 }, { data: ex, error: e2 }, { data: cmp, error: e3 }] = await Promise.all([
+  const [session, [{ data: eng, error: e1 }, { data: ex, error: e2 }, { data: cmp, error: e3 }]] = await Promise.all([requireSession(), Promise.all([
     s.rpc("menu_engineering", { p_days: days }),
     s.rpc("exceptions_summary", { p_days: days }),
     s.rpc("day_compare"),
-  ]);
+  ])]);
+  if (!SEES.includes(session.profile.role)) redirect("/dashboard?locked=intelligence");
   const error = e1?.message ?? e2?.message ?? e3?.message ?? null;
   return (
     <>

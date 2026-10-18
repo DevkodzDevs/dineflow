@@ -1,5 +1,5 @@
 "use client";
-import { createClient } from "@/lib/supabase/client";
+import { getClient } from "@/lib/supabase/lazy";
 
 /** A screenshot shrunk in the browser to a JPEG no wider or taller than 1600px — a phone photo of a
  *  screen is 3–6 MB, which is slow on a counter's Wi-Fi and over the bucket's 3 MB limit. */
@@ -15,7 +15,7 @@ export async function shrinkShot(file: File): Promise<Blob> {
 /** Up to three pictures into the request's own folder (<property>/<request>/…). Storage's rules allow
  *  it only for a request the person can see; the paths that made it go back to support_attach. */
 export async function uploadShots(restaurantId: string, ticketId: string, files: File[]): Promise<{ paths: string[]; failed: number }> {
-  const sb = createClient(); const paths: string[] = []; let failed = 0;
+  const sb = await getClient(); const paths: string[] = []; let failed = 0;
   for (const [i, f] of files.slice(0, 3).entries()) {
     const blob = await shrinkShot(f);
     const path = `${restaurantId}/${ticketId}/${Date.now()}-${i + 1}.jpg`;

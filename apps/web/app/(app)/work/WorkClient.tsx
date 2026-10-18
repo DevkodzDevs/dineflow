@@ -9,7 +9,7 @@ import { Rail } from "@/components/ui/Rail";
 import { useLive } from "@/lib/useLive";
 import { addJob, type NewJob } from "./actions";
 import type { Board } from "../cleaning/CleaningClient";
-import { JobCard, DoneRow, Column, Badge, CATEGORY, PRIORITY, deptLabel, deptOf, isLate, isUpcoming, isOpen, titleOf, ms, brief, avg, PILL, type Job, type Labourer } from "../cleaning/JobCard";
+import { JobCard, DoneRow, Column, Badge, CATEGORY, PRIORITY, deptLabel, deptOf, isLate, isUpcoming, isOpen, titleOf, ms, brief, avg, PILL, type Job, type Labourer, type Act } from "../cleaning/JobCard";
 
 export type WorkBoard = Board & { work: Job[]; me_dept: string | null; labourers: Labourer[]; cooks: { id: string; name: string; cooked: number; ready: number }[]; rooms: { id: string; number: string }[]; tables: { id: string; name: string }[] };
 const DEPT_ORDER = DEPARTMENTS.map((d) => d.key);
@@ -45,8 +45,17 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
   const finished = jobs.filter((j) => j.status === "done" || j.status === "skipped").sort((a, b) => ms(a.done_at ?? a.created_at) - ms(b.done_at ?? b.created_at));
   const late = all.filter(isLate).length;
 
-  const act = (p: Promise<object>, said: string) => start(async () => { const r = (await p) as { error?: string }; if (r.error) toast(r.error, "err"); else toast(said); });
-  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} boss={boss} pending={pending} people={board.people} labourers={board.labourers} act={act} showDept={filter === "all" || filter === "mine" || filter === "late"} />;
+  /* Each card waits on its own answer only (2026-10-18): the board's one `pending` used to grey every card while any
+     one card's tap was answering, so taking a table froze the rest of the queue for the server's round trip. */
+  const [busy, setBusy] = useState<Record<string, true>>({});
+  const actOn = (id: string): Act => (p, said) => {
+    setBusy((b) => ({ ...b, [id]: true }));
+    start(async () => {
+      try { const r = (await p) as { error?: string }; if (r.error) toast(r.error, "err"); else toast(said); }
+      finally { setBusy((b) => { const n = { ...b }; delete n[id]; return n; }); }
+    });
+  };
+  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} boss={boss} pending={!!busy[j.id]} people={board.people} labourers={board.labourers} act={actOn(j.id)} showDept={filter === "all" || filter === "mine" || filter === "late"} />;
 
   // who did what today, across every department — and the kitchen's cooks
   const byPerson = useMemo(() => {
@@ -91,7 +100,7 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
       {/* on a phone: New job on a row of its own, the departments sliding sideways under it (the floor's chip rail) */}
       <div className="flex flex-col-reverse sm:flex-row sm:items-start gap-3 min-w-0">
         <Rail wrapClassName="min-w-0 sm:flex-1" arrowClassName="!bottom-0" label="Departments"
-          className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible sm:![mask-image:none] sm:![-webkit-mask-image:none] [scrollbar-width:none]">
+          className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 2xl:flex-wrap 2xl:overflow-visible 2xl:![mask-image:none] 2xl:![-webkit-mask-image:none] [scrollbar-width:none]">
           {chip("all", "All", all.filter(isOpen).length)}
           {chip("mine", "Mine")}
           {late > 0 && chip("late", "Late", late)}

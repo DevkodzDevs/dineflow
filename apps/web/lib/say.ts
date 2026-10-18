@@ -7,14 +7,23 @@
  * `df-theme`): the till tablet is set once for the people who use it. The translations are short
  * floor words, the way staff say them — have someone on the floor read them before relying on them.
  */
-export type Lang = "en" | "ta" | "hi";
+export type Lang = "en" | "ta" | "hi" | "ta-all" | "hi-all";
 export const LANG_COOKIE = "df-lang";
-export const LANGS: { v: Lang; label: string; short: string; hint: string }[] = [
-  { v: "en", label: "English", short: "A", hint: "Buttons in English only." },
-  { v: "ta", label: "English + தமிழ்", short: "அ", hint: "Tamil under the English on the floor's buttons." },
-  { v: "hi", label: "English + हिन्दी", short: "अ", hint: "Hindi under the English on the floor's buttons." },
+/** "ta-all" / "hi-all" (2026-10-18): the whole app in Tamil or Hindi, not a second line —
+ *  components/ui/FullLanguage.tsx does the screens, and `say` gives the word alone. */
+export const LANGS: { v: Lang; label: string; short: string; hint: string; group: "line" | "all" }[] = [
+  { v: "en", label: "English", short: "A", hint: "The whole app in English.", group: "line" },
+  { v: "ta", label: "English + தமிழ்", short: "அ", hint: "Tamil under the English on the floor's buttons.", group: "line" },
+  { v: "hi", label: "English + हिन्दी", short: "अ", hint: "Hindi under the English on the floor's buttons.", group: "line" },
+  // each whole-app choice describes itself in its own script — the menu is never translated, so it can always be read
+  { v: "ta-all", label: "தமிழ் — முழுவதும்", short: "த", hint: "ஒவ்வொரு திரை, மெனு, பட்டன் — எல்லாம் தமிழில்.", group: "all" },
+  { v: "hi-all", label: "हिन्दी — पूरा ऐप", short: "हि", hint: "हर स्क्रीन, मेनू और बटन — सब हिन्दी में।", group: "all" },
 ];
-export const readLang = (v: string | null | undefined): Lang => (v === "ta" || v === "hi" ? v : "en");
+export const readLang = (v: string | null | undefined): Lang => (v === "ta" || v === "hi" || v === "ta-all" || v === "hi-all" ? v : "en");
+/** The script a choice is written in: "ta" for both Tamil choices, "hi" for both Hindi ones. */
+export const scriptOf = (l: Lang): "en" | "ta" | "hi" => (l === "ta-all" ? "ta" : l === "hi-all" ? "hi" : l);
+/** The whole-app language, or null when the app is in English (with or without a second line). */
+export const allOf = (l: Lang): "ta" | "hi" | null => (l === "ta-all" ? "ta" : l === "hi-all" ? "hi" : null);
 
 type W = { en: string; ta: string; hi: string };
 export const WORDS = {
@@ -129,9 +138,12 @@ export const WORDS = {
 } satisfies Record<string, W>;
 export type Word = keyof typeof WORDS;
 
-/** The English and, when the device asked for one, the second line. */
-export const say = (w: Word, lang: Lang): { en: string; alt: string | null } =>
-  ({ en: WORDS[w].en, alt: lang === "en" || WORDS[w][lang] === WORDS[w].en ? null : WORDS[w][lang] });
+/** The English and, when the device asked for one, the second line. In a whole-app language the
+ *  word is that language alone (`en` carries it), with no second line. */
+export const say = (w: Word, lang: Lang): { en: string; alt: string | null } => {
+  const all = allOf(lang); if (all) return { en: WORDS[w][all], alt: null };
+  return { en: WORDS[w].en, alt: lang === "en" || WORDS[w][lang as "ta" | "hi"] === WORDS[w].en ? null : WORDS[w][lang as "ta" | "hi"] };
+};
 
 /**
  * The picture for a menu category, from its own name — owners name them freely ("Breads & Rice",

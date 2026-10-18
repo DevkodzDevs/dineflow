@@ -82,7 +82,11 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
   useEffect(() => { try { const s = localStorage.getItem("df-kds-station"); if (s) setStationState(s); } catch { /* storage blocked: the board starts on everything */ } }, []);
   const setStation = (s: string) => { setStationState(s); try { localStorage.setItem("df-kds-station", s); } catch { /* fine */ } };
 
-  /** The ticket moves on screen at once; with no line the write waits in the outbox and lands in order. */
+  /** The ticket moves on screen at once; with no line the write waits in the outbox and lands in order. Its buttons are
+   *  never held while an answer is on its way (2026-10-18): every one of them disabled itself on `pending`, so one tap
+   *  greyed the whole board for the 0.4–1.8 s the server took, and the cook could not start the next ticket. A move,
+   *  a fire and a recall show at once and need no hold; only the station view, which waits for the server to move a
+   *  line, still holds its own two buttons. */
   const move = (id: string, status: "preparing" | "ready" | "served") => {
     setOptimistic((o) => ({ ...o, [id]: status }));
     if (!online) { void enqueue("kot_status", { id, status }, `Kitchen · ticket ${status}`); return; }
@@ -183,7 +187,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
             {heldList.map((k) => (
               <div key={k.id} className="rounded-2xl bg-card border border-line pl-3.5 pr-1.5 py-1.5 text-[15px] flex items-center gap-3">
                 <span><b>{where(k)}</b> · course {courseOf(k)} · {k.order_items.filter(live).map((i) => `${i.qty} ${i.name_snapshot}`).join(", ")}</span>
-                <button type="button" className="svc-btn st st-cook sm" disabled={pending} onClick={() => fire(k.id)}><Flame size={16} aria-hidden /> Fire</button>
+                <button type="button" className="svc-btn st st-cook sm" onClick={() => fire(k.id)}><Flame size={16} aria-hidden /> Fire</button>
               </div>
             ))}
           </div>
@@ -226,7 +230,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                     const lines = linesOf(k); const others = k.order_items.filter(live).length - lines.length; const hotkey = keyOf(k.id);
                     const stationDone = view !== "all" && key !== "ready" && lines.every((i) => i.status === "ready");
                     return (
-                      <motion.article key={k.id} layout layoutId={k.id} initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                      <motion.article key={k.id} layout layoutId={k.id} initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.14, ease: "easeOut" } }}
                         transition={{ type: "spring", stiffness: 340, damping: 32 }} className={cn("kt", cls, (late || overdue) && "late", warn && !overdue && "warn")} data-kot={k.kot_no} data-late={late || overdue || undefined}>
                         <div className="kt-head">
                           <span className="where">{where(k)}</span>
@@ -259,9 +263,9 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                         </div>
                         {/* one big button, always in the same place: start → ready → served */}
                         <div className="p-3.5 pt-3 flex gap-2">
-                          {key === "pending" ? <button type="button" className="svc-btn st st-cook flex-1" disabled={pending} onClick={() => advance(k)} data-kot-go><Flame size={21} aria-hidden />{view === "all" ? <Say w="start_cooking" /> : `Start ${view}`}</button>
-                            : key === "preparing" ? <button type="button" className="svc-btn go flex-1" disabled={pending || stationDone} onClick={() => advance(k)} data-kot-go><BellRing size={21} aria-hidden />{view === "all" ? <Say w="food_ready" /> : stationDone ? `${view} done` : `${view} ready`}</button>
-                            : <button type="button" className="svc-btn flex-1 bg-[var(--color-paper-ink)] text-[var(--color-paper)]" disabled={pending} onClick={() => move(k.id, "served")} data-kot-go><CheckCheck size={21} aria-hidden /><Say w="served" /></button>}
+                          {key === "pending" ? <button type="button" className="svc-btn st st-cook flex-1" disabled={view !== "all" && pending} onClick={() => advance(k)} data-kot-go><Flame size={21} aria-hidden />{view === "all" ? <Say w="start_cooking" /> : `Start ${view}`}</button>
+                            : key === "preparing" ? <button type="button" className="svc-btn go flex-1" disabled={(view !== "all" && pending) || stationDone} onClick={() => advance(k)} data-kot-go><BellRing size={21} aria-hidden />{view === "all" ? <Say w="food_ready" /> : stationDone ? `${view} done` : `${view} ready`}</button>
+                            : <button type="button" className="svc-btn flex-1 bg-[var(--color-paper-ink)] text-[var(--color-paper)]" onClick={() => move(k.id, "served")} data-kot-go><CheckCheck size={21} aria-hidden /><Say w="served" /></button>}
                           <button type="button" title="Reprint this ticket" aria-label="Reprint this ticket" className="h-14 w-14 shrink-0 rounded-[18px] grid place-items-center bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"
                             onClick={() => { void printKot({ kotNo: `KOT ${k.kot_no}`, when: new Date(k.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: where(k), reprint: true, items: k.order_items.filter(live).map((i) => ({ name: i.name_snapshot, qty: i.qty, note: i.notes, extras: lineExtras(i), station: stationOf(i) })) }); }}><Printer size={19} /></button>
                         </div>
@@ -279,7 +283,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                         <li key={b.id} className="flex items-center gap-2 text-[14px]">
                           <span className="num text-steel">#{b.kot_no}</span><span className="flex-1 truncate font-semibold">{where(b)}</span>
                           <span className="text-[12px] text-steel num">{fmtSince(b.served_at)} ago</span>
-                          <button type="button" disabled={pending} onClick={() => recall(b.id)} className="h-10 px-3 rounded-full text-[13px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]">Recall</button>
+                          <button type="button" onClick={() => recall(b.id)} className="h-10 px-3 rounded-full text-[13px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]">Recall</button>
                         </li>
                       ))}
                     </ul>

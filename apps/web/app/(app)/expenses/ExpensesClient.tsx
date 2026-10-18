@@ -102,7 +102,7 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
           </div>
           <div className="grid grid-cols-3 gap-2">
             {[["This month", total], ["Today", month === today.slice(0, 7) ? todayTotal : 0], ["GST in it", gst]].map(([k, v]) => (
-              <div key={k as string} className="feather !rounded-[18px] px-3.5 py-3 min-w-0"><div className="text-[12px] font-bold text-steel">{k}</div><div className="font-display num text-[22px] leading-tight truncate" data-expense-total={k}>{inr(v as number)}</div></div>))}
+              <div key={k as string} className="feather !rounded-[18px] px-3.5 py-3 min-w-0"><div className="text-[12px] font-bold text-steel">{k}</div><div className="font-display num text-[22px] leading-tight truncate" title={inr(v as number)} data-expense-total={k}>{formatINR(Number(v), { whole: true })}</div></div>))}
           </div>
           <Card>
             <div className="text-[15px] font-extrabold mb-2.5">Where it went</div>

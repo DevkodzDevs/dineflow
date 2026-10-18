@@ -6,7 +6,7 @@ import { Say } from "@/components/ui/Say";
 import { useLive } from "@/lib/useLive";
 import { saveCleanSettings } from "./actions";
 import { inspectRoom } from "../housekeeping/actions";
-import { JobCard, DoneRow, Column, Badge, ms, span, brief, ago, clock, avg, placeOf, PILL, type Job, type Person } from "./JobCard";
+import { JobCard, DoneRow, Column, Badge, ms, span, brief, ago, clock, avg, placeOf, PILL, type Job, type Person, type Act } from "./JobCard";
 
 export type { Job, Person } from "./JobCard";
 /** A room cleaned and not yet signed off (only for whoever may sign off, where the property inspects). */
@@ -41,6 +41,16 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
   const waited = avg(jobs.filter((j) => j.taken_at).map((j) => ms(j.created_at, j.taken_at)));
 
   const act = (p: Promise<object>, said: string) => start(async () => { const r = (await p) as { error?: string }; if (r.error) toast(r.error, "err"); else toast(said); });
+  /* Each card waits on its own answer only (2026-10-18): the board's one `pending` used to grey every card while any
+     one card's tap was answering, so taking a table froze the rest of the queue for the server's round trip. */
+  const [busy, setBusy] = useState<Record<string, true>>({});
+  const actOn = (id: string): Act => (p, said) => {
+    setBusy((b) => ({ ...b, [id]: true }));
+    start(async () => {
+      try { const r = (await p) as { error?: string }; if (r.error) toast(r.error, "err"); else toast(said); }
+      finally { setBusy((b) => { const n = { ...b }; delete n[id]; return n; }); }
+    });
+  };
   // a room with a guest arriving today first, then the one cleaned longest ago
   const inspect = boss && board.inspect_required ? [...(board.inspect ?? [])].sort((a, b) => Number(b.arrival) - Number(a.arrival) || (a.cleaned_at ?? a.since).localeCompare(b.cleaned_at ?? b.since)) : [];
   const [failing, setFailing] = useState<string | null>(null); const [why, setWhy] = useState("");
@@ -55,7 +65,7 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
     return [...m.entries()].sort((a, b) => b[1].done - a[1].done || a[1].name.localeCompare(b[1].name));
   }, [board.jobs]);
 
-  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} boss={boss} pending={pending} people={board.people} act={act} />;
+  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} boss={boss} pending={!!busy[j.id]} people={board.people} act={actOn(j.id)} />;
   const row = (j: Job) => <DoneRow key={j.id} j={j} me={me} inspectRequired={board.inspect_required} />;
 
   /** A cleaned room the supervisor signs off: Pass puts it on sale, Fail (with what is wrong) sends it back to whoever cleaned it. */

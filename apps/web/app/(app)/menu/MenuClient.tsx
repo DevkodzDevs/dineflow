@@ -11,7 +11,7 @@ import { Say, CatIcon } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import { catIcon } from "@/lib/say";
 import { formatINR } from "@/lib/format";
-import { findStandardRecipe, fmtQty } from "@dineflow/shared";
+import { fmtQty, type StandardRecipe } from "@dineflow/shared";
 import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation, setDishPhoto, autoPhotos, autoRecipes } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
 import { OptionsEditor, GroupsManager, ComboParts } from "./Options";
@@ -23,8 +23,8 @@ type Item = { id: string; name: string; category_id: string | null; price: numbe
 type Ing = { id: string; name: string; unit: string };
 type Rec = { menu_item_id: string; ingredient_id: string; qty: number };
 
-export function MenuClient({ categories, items, ingredients, recipes, ai = false, stations = [], variants = [], groups = [], links = [], combos = [] }:
-  { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; ai?: boolean; stations?: string[]; variants?: VariantRow[]; groups?: GroupRow[]; links?: LinkRow[]; combos?: ComboRow[] }) {
+export function MenuClient({ categories, items, ingredients, recipes, std = {}, ai = false, stations = [], variants = [], groups = [], links = [], combos = [] }:
+  { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; std?: Record<string, StandardRecipe>; ai?: boolean; stations?: string[]; variants?: VariantRow[]; groups?: GroupRow[]; links?: LinkRow[]; combos?: ComboRow[] }) {
   const [cat, setCat] = useState<string>("all");
   const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<Partial<Item> | null>(null);
@@ -199,9 +199,9 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
                 </div>
                 {/* the one thing an owner must not miss: a dish that moves no stock */}
                 {!mapped && (
-                  <button type="button" onClick={() => setRecipeFor(it)} aria-label={`Recipe — ${it.name}`} title={findStandardRecipe(it.name) ? "A standard recipe is ready — tap to add it" : "Map what this dish takes from the pantry"}
+                  <button type="button" onClick={() => setRecipeFor(it)} aria-label={`Recipe — ${it.name}`} title={std[it.id] ? "A standard recipe is ready — tap to add it" : "Map what this dish takes from the pantry"}
                     className="mx-2 mt-2 self-start !min-h-0 h-7 px-2.5 rounded-full inline-flex items-center gap-1.5 text-[12px] font-bold bg-[var(--color-orange-2)] text-[var(--color-orange)] hover:brightness-110">
-                    <AlertTriangle size={12} aria-hidden />No recipe{findStandardRecipe(it.name) ? " · add in one tap" : ""}</button>
+                    <AlertTriangle size={12} aria-hidden />No recipe{std[it.id] ? " · add in one tap" : ""}</button>
                 )}
                 <div className="mt-auto pt-3 flex items-center gap-2">
                   {/* on or off: the whole pill is the switch — a dot, the word, the toggle */}
@@ -284,10 +284,10 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
 
       {/* recipe editor */}
       <Sheet open={recipesOpen} onClose={() => setRecipesOpen(false)} title="Recipes · what each dish takes" wide>
-        {recipesOpen && <RecipesOverview items={items} categories={categories} recipeMap={recipeMap} ingredients={ingredients} onEdit={(it) => { setRecipesOpen(false); setRecipeFor(it); }} />}
+        {recipesOpen && <RecipesOverview items={items} categories={categories} recipeMap={recipeMap} ingredients={ingredients} std={std} onEdit={(it) => { setRecipesOpen(false); setRecipeFor(it); }} />}
       </Sheet>
       <Sheet open={!!recipeFor} onClose={() => setRecipeFor(null)} title={`Recipe · ${recipeFor?.name ?? ""}`}>
-        {recipeFor && <RecipeEditor item={recipeFor} ingredients={ingredients} initial={recipeMap[recipeFor.id] ?? []} onDone={() => setRecipeFor(null)} ai={ai} />}
+        {recipeFor && <RecipeEditor item={recipeFor} ingredients={ingredients} initial={recipeMap[recipeFor.id] ?? []} std={std[recipeFor.id] ?? null} onDone={() => setRecipeFor(null)} ai={ai} />}
       </Sheet>
 
       {/* categories */}
@@ -315,11 +315,11 @@ export function MenuClient({ categories, items, ingredients, recipes, ai = false
  * take how much oil and flour, and the answer was spread over 28 recipe sheets. A dish with no recipe
  * that the library knows can be set up here, one or all at once; the rest say "map by hand".
  */
-function RecipesOverview({ items, categories, recipeMap, ingredients, onEdit }: { items: Item[]; categories: Cat[]; recipeMap: Record<string, Rec[]>; ingredients: Ing[]; onEdit: (it: Item) => void }) {
+function RecipesOverview({ items, categories, recipeMap, ingredients, std, onEdit }: { items: Item[]; categories: Cat[]; recipeMap: Record<string, Rec[]>; ingredients: Ing[]; std: Record<string, StandardRecipe>; onEdit: (it: Item) => void }) {
   const router = useRouter(); const toast = useToast();
   const [busy, setBusy] = useState(false); const [open, setOpen] = useState<string | null>(null);
   const ingOf = (id: string) => ingredients.find((i) => i.id === id);
-  const rows = useMemo(() => items.map((it) => ({ it, lines: recipeMap[it.id] ?? [], std: findStandardRecipe(it.name) })), [items, recipeMap]);
+  const rows = useMemo(() => items.map((it) => ({ it, lines: recipeMap[it.id] ?? [], std: std[it.id] ?? null })), [items, recipeMap, std]);
   const withRecipe = rows.filter((r) => r.lines.length).length;
   const ready = rows.filter((r) => !r.lines.length && r.std).length;
   const byHand = rows.length - withRecipe - ready;
@@ -382,13 +382,12 @@ function RecipesOverview({ items, categories, recipeMap, ingredients, onEdit }: 
   );
 }
 
-function RecipeEditor({ item, ingredients, initial, onDone, ai = false }: { item: Item; ingredients: Ing[]; initial: Rec[]; onDone: () => void; ai?: boolean }) {
+function RecipeEditor({ item, ingredients, initial, std, onDone, ai = false }: { item: Item; ingredients: Ing[]; initial: Rec[]; std: StandardRecipe | null; onDone: () => void; ai?: boolean }) {
   const [rows, setRows] = useState<{ ingredient_id: string; qty: number }[]>(initial.length ? initial.map((r) => ({ ingredient_id: r.ingredient_id, qty: Number(r.qty) })) : [{ ingredient_id: "", qty: 0 }]);
   const [pending, start] = useTransition();
   const toast = useToast();
   const unit = (id: string) => ingredients.find((i) => i.id === id)?.unit ?? "";
-  // the library's plate for this dish, if it knows one — offered before any hand-mapping
-  const std = useMemo(() => findStandardRecipe(item.name), [item.name]);
+  // the library's plate for this dish, if it knows one — offered before any hand-mapping (found by the server: page.tsx)
   const [proposing, setProposing] = useState(false);
   /* The model proposes lines from this property's own pantry; the server has already thrown away any
      id it invented. The person still reads the amounts and presses Save. */
