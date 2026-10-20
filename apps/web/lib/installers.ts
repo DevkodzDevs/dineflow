@@ -12,7 +12,8 @@ import { join } from "node:path";
  * `apps/android-app/app/build/outputs/apk/release/` and served the same way.
  *
  * Since 0128 the first answer is the file uploaded on Master control → App files (a public Storage bucket, no
- * deploy needed). On a hosted deployment neither disk file is in the bundle, `resolveFile` returns null, and the
+ * deploy needed) — or, since 0129, the link pasted there for a file kept elsewhere (Cloudflare R2: the ~78 MB
+ * Windows installer is over Supabase Free's 50 MB upload cap). On a hosted deployment neither disk file is in the bundle, `resolveFile` returns null, and the
  * install screens otherwise fall back to the address of a real release: NEXT_PUBLIC_EXE_URL (or the older
  * NEXT_PUBLIC_DOWNLOAD_WINDOWS) and NEXT_PUBLIC_APK_URL (or NEXT_PUBLIC_DOWNLOAD_ANDROID). A hosted
  * address wins over a file on disk. Both are correct.
@@ -58,7 +59,7 @@ export function resolveFile(key: string) {
 export type Download = { url: string; size: number | null; version: string | null; file: string };
 export type Downloads = { android: Download | null; windows: Download | null };
 
-type Release = { platform: "android" | "windows"; version: string; file_path: string; file_name: string; size_bytes: number };
+type Release = { platform: "android" | "windows"; version: string; file_path: string | null; external_url?: string | null; file_name: string; size_bytes: number | null };
 let releases: { at: number; rows: Release[] } | null = null;
 /** The files Master control has uploaded (0128 — Master control → App files): the current row per platform, read
  *  as anyone (the install screens are public) and kept for 60 s, so a new upload is offered within a minute. Any
@@ -69,7 +70,7 @@ async function uploaded(): Promise<Release[]> {
   let rows: Release[] = [];
   if (sb && key) {
     try {
-      const r = await fetch(`${sb}/rest/v1/app_releases?select=platform,version,file_path,file_name,size_bytes&is_current=eq.true`,
+      const r = await fetch(`${sb}/rest/v1/app_releases?select=*&is_current=eq.true`,
         { headers: { apikey: key, authorization: `Bearer ${key}` }, cache: "no-store", signal: AbortSignal.timeout(4000) });
       if (r.ok) rows = (await r.json()) as Release[];
     } catch { /* offered from env or disk instead */ }
@@ -86,7 +87,9 @@ export async function availableDownloads(): Promise<Downloads> {
   const up = await uploaded();
   const pick = (key: "android" | "windows", hosted: string | undefined, hostedVersion: string | undefined, fallbackName: string): Download | null => {
     const r = up.find((x) => x.platform === key);
-    if (r && sb) return { url: `${sb}/storage/v1/object/public/app-files/${r.file_path.split("/").map(encodeURIComponent).join("/")}`, size: Number(r.size_bytes) || null, version: r.version, file: r.file_name };
+    // 0129: a release may be a link (Cloudflare R2 and the like) instead of an upload in the bucket
+    if (r?.external_url) return { url: r.external_url, size: Number(r.size_bytes) || null, version: r.version, file: r.file_name };
+    if (r?.file_path && sb) return { url: `${sb}/storage/v1/object/public/app-files/${r.file_path.split("/").map(encodeURIComponent).join("/")}`, size: Number(r.size_bytes) || null, version: r.version, file: r.file_name };
     if (hosted) return { url: hosted, size: null, version: hostedVersion || null, file: decodeURIComponent(hosted.split("?")[0].split("/").pop() || fallbackName) };
     const f = resolveFile(key);
     return f ? { url: `/api/download/${key}`, size: f.size, version: f.version, file: f.as } : null;

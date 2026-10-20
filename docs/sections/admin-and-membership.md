@@ -96,6 +96,14 @@ and only then `admin_delete_property`.
 
 **`install_sample_estate`** builds a whole demo estate; `sweep_expired_demos` clears sandboxes.
 
+**App files by link (0129, 2026-10-20).** Supabase Free caps an upload at 50 MB and the Windows installer is ~78 MB, so
+each card also has **or paste a download link** (`[data-app-file-link]`, `[data-app-file-link-open]`, `-url`, `-version`,
+`-size`, `-publish`): a public https link ending in the platform's extension (the owner keeps the .exe on Cloudflare R2 —
+docs/install-builds.md), the version read from the link's file name, an optional size in MB. `app_release_publish_link`
+checks Master control, https and the extension; the row has `external_url` instead of `file_path`. The history says
+Link or Uploaded; **Make current** works for both. The install screens hand a link out as it is
+(`lib/installers.ts`, which reads `select=*` so it works before and after 0129).
+
 **App files (`/admin/app-files`, 0128, 2026-10-20 — the owner: "simple and easy options to update").** The Android
 `.apk` and Windows `.exe` every install screen offers. One card each: the current file (version, size, date, Test
 download), a drop zone (`[data-app-file-drop]`, `[data-app-file-input]` accepts only that extension, ≤ 100 MB),

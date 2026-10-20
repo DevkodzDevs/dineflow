@@ -22,10 +22,32 @@ sign-in page) offers both as one-click downloads (`components/shell/DownloadFile
    one handed out. Every install screen offers it within a minute. **Make current** on an earlier upload rolls
    back.
 
-**One-time Supabase setting.** Supabase caps every upload at 50 MB until you raise it, and the Windows installer is
-~78 MB: Supabase dashboard → **Storage → Settings → Upload file size limit → 100 MB → Save**. (On the Free plan the
-cap cannot go above 50 MB; this project is on a paid plan.) Without it the Android file (under 1 MB) still uploads and
-the Windows one is refused with a message that says exactly this.
+**The 50 MB limit.** Supabase caps every upload at 50 MB, and on the **Free plan that cannot be raised**; the Windows
+installer is ~78 MB. So the Windows file lives on **Cloudflare R2** and its link is pasted on App files (next section,
+0129). The Android file (under 1 MB) uploads straight on App files. On a paid Supabase plan you could instead raise
+Storage → Settings → Upload file size limit to 100 MB and upload the .exe too.
+
+## Hosting the Windows file on Cloudflare R2 (free) — step by step
+
+Cloudflare R2 keeps 10 GB free and never charges for downloads, so one 78 MB installer costs nothing.
+
+1. **Make an account.** Go to **dash.cloudflare.com** → **Sign up** (email and password, then confirm the email).
+2. **Turn on R2.** In the left menu click **R2 Object Storage** (it may sit under "Storage & Databases"). Cloudflare
+   may ask you to add a card to switch R2 on — the free 10 GB is not charged.
+3. **Create a bucket.** **Create bucket** → name it `dineflow-apps` → location **Automatic** → **Create bucket**.
+4. **Make it public.** Open the bucket → **Settings** → **Public access** → **R2.dev subdomain** → **Allow Access** →
+   type `allow` → **Allow**. Note the address it shows, like `https://pub-1a2b3c….r2.dev`.
+   (Later you can use **Custom Domains → Connect Domain** with e.g. `downloads.dineflow.cloud` instead.)
+5. **Upload the file.** Bucket → **Objects** → **Upload** → choose `DineFlow-Setup-1.1.0.exe` (in `D:\DineFlow app files`)
+   → wait for it to finish.
+6. **Copy its link.** Click the file in the list; copy its **Public URL** — it looks like
+   `https://pub-1a2b3c….r2.dev/DineFlow-Setup-1.1.0.exe`. (Or build it: the r2.dev address + `/` + the file name.)
+7. **Paste it in DineFlow.** www.dineflow.cloud → Master control → **App files** → Windows card →
+   **or paste a download link** → paste the link → the version fills in from the name (check it) → Size in MB (optional,
+   `78`) → **Publish link**. Every install screen offers it within a minute.
+
+**Next time** a new Windows build comes out: upload the new `.exe` to the same bucket (steps 5–6) and paste its link
+(step 7). **Make current** on App files rolls back to an earlier link or upload.
 
 The env addresses (`NEXT_PUBLIC_APK_URL`, `NEXT_PUBLIC_EXE_URL`) still work, for a file hosted elsewhere, and are
 used only when nothing is uploaded. Never put the files in `apps/web/public/` — an 80 MB installer would ride

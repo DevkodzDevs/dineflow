@@ -131,6 +131,10 @@ Numbered, additive, applied in order. Recent ones give the flavour:
                                 write, in android/ or windows/), app_releases (one is_current per platform; anon reads
                                 current rows only), app_release_publish / app_release_make_current (Master control
                                 only). applied 2026-10-20 — dry128.cjs 19/19 (admin-and-membership.md, docs/install-builds.md)
+0129_app_release_links        — app_releases.external_url (https, ≤ 500); file_path and size_bytes nullable, exactly one of
+                                file_path / external_url (app_releases_file_or_link); app_release_publish_link (Master
+                                control only, https, .apk/.exe by platform, new version) — a file kept on Cloudflare R2.
+                                dry129.cjs 17/17, applied 2026-10-20 (admin-and-membership.md, docs/install-builds.md)
 ```
 
 **Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`

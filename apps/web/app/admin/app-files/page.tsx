@@ -13,9 +13,10 @@ export const dynamic = "force-dynamic";
 export default async function AppFilesPage() {
   await requireAdmin(); const s = await createClient();
   const { data, error } = await s.from("app_releases")
-    .select("id, platform, version, file_path, file_name, size_bytes, notes, created_at, is_current, uploaded_by").order("created_at", { ascending: false }).limit(40);
+    .select("*").order("created_at", { ascending: false }).limit(40);
   const base = `${(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, "")}/storage/v1/object/public/app-files/`;
-  const rows = ((data ?? []) as Omit<Release, "url">[]).map((r) => ({ ...r, url: base + r.file_path.split("/").map(encodeURIComponent).join("/") }));
+  // an upload is served from the bucket; a link (0129) is handed out as it is
+  const rows = ((data ?? []) as Omit<Release, "url">[]).map((r) => ({ ...r, url: r.external_url || base + (r.file_path ?? "").split("/").map(encodeURIComponent).join("/") }));
   return (
     <div>
       <div className="eyebrow">Platform</div>
