@@ -1684,3 +1684,17 @@ html[data-palette="royal"] nav.tabbar { border-top-color: rgb(184 145 58 / .35);
 @media (prefers-reduced-motion: reduce) { .flap-breathe.on .flip { animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--glow) 55%, transparent); } }
 /* the till's count on a dish photo: the mini tile itself is the badge (it was a tint circle with the number) */
 .svc-dish .qty.qty-flap { min-width: 0; height: auto; padding: 0; background: none; box-shadow: none; }
+
+/* ═══ CSS ENTRANCES (2026-10-20) ══════════════════════════════════════════════════════════════════════════════
+   The page slide-in (template.tsx), a tile's rise (Reveal / StatTile) and a segmented control's thumb, as plain CSS
+   animations instead of animation-library components — the same distances and timing (lib/motion.ts enter), but the
+   browser runs them on its own: a CPU profile of a phone tap showed the library measuring the page for every one.
+   `both` ends on the final frame (opacity 1, no transform), which motioncheck.mjs checks. */
+@keyframes df-page { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@keyframes df-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes df-thumb { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.df-page { animation: df-page .16s cubic-bezier(.16, 1, .3, 1) both; }
+.df-rise { animation: df-rise .16s cubic-bezier(.16, 1, .3, 1) var(--d, 0ms) both; }
+.df-thumb { animation: df-thumb .14s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .df-page, .df-rise, .df-thumb { animation: none; } }
+

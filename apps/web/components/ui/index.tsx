@@ -1,13 +1,13 @@
 "use client";
 import { clsx } from "clsx";
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { X, Check, ChevronDown, Search } from "lucide-react";
 import { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
 export const cn = clsx;
 export { snap, glide, settle, flipT, fast, enter, listV, itemV, pageV, sheetV, flipV, press, pressCard } from "@/lib/motion";
-import { snap, glide, sheetV, enter } from "@/lib/motion";
+import { snap, glide, sheetV } from "@/lib/motion";
 export { Flip, FlipClock, Loader, PageLoader, Countdown, Waiting, reducedMotion } from "./flip";
 export { FlapShuffle, FlapSpell, FlapPercent, FlapClock, FlapMini, FlapBreathe, useNow } from "./Flap";
 export { PasswordInput } from "./PasswordInput";
@@ -132,7 +132,9 @@ export function Empty({ title, hint, action }: { title: string; hint: string; ac
 /** A tile or section arriving: a quick rise, no blur (see `enter` in lib/motion.ts). A caller's stagger is
  *  kept but capped at 80 ms, so a row of tiles is all there within a quarter of a second. */
 export function Reveal({ children, className, delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
-  return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...enter, delay: Math.min(delay, 0.08) }} className={className}>{children}</motion.div>;
+  // a CSS animation (df-rise in globals.css), not a motion component (2026-10-20): the same 8px / 160 ms rise, but the
+  // browser runs it on its own — a screen of twelve tiles no longer mounts twelve animation controllers on every tap
+  return <div className={cn("df-rise", className)} style={{ "--d": `${Math.round(Math.min(delay, 0.08) * 1000)}ms` } as React.CSSProperties}>{children}</div>;
 }
 
 /* ── Sheet: bottom sheet with grabber on phones, centred card on desktop ─────────────── */
@@ -256,16 +258,16 @@ export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string
 export function Segmented<T extends string>({ value, onChange, options, className }: { value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode }[]; className?: string }) {
   const id = useId();
   return (
-    <LayoutGroup id={id}>
-      <div className={cn("segmented", className)} role="tablist">
-        {options.map((o) => (
-          <button key={o.value} role="tab" data-on={o.value === value} onClick={() => { tap(); onChange(o.value); }}>
-            {o.value === value && <motion.span layoutId={`thumb-${id}`} className="thumb -z-[1] absolute inset-0" style={{ position: "absolute", left: 0, right: 0 }} transition={spring} />}
-            <span className="relative">{o.label}</span>
-          </button>
-        ))}
-      </div>
-    </LayoutGroup>
+    // the chosen thumb fades in where it is (df-thumb) instead of a shared-layout slide: layoutId made the animation
+    // library measure the whole page on every screen with a switch on it (2026-10-20, a CPU profile of a tap)
+    <div className={cn("segmented", className)} role="tablist" data-seg={id}>
+      {options.map((o) => (
+        <button key={o.value} role="tab" data-on={o.value === value} onClick={() => { tap(); onChange(o.value); }}>
+          {o.value === value && <span className="thumb df-thumb -z-[1] absolute inset-0" style={{ position: "absolute", left: 0, right: 0 }} />}
+          <span className="relative">{o.label}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 

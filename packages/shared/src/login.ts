@@ -1,7 +1,8 @@
 /**
  * Sign-in identifiers for a property.
  *
- * A property signs in with a DineFlow id rather than a mailbox: dine-htl-zeph-00007@dineflow.local.
+ * A property signs in with a DineFlow id rather than a mailbox: dine-htl-zeph-00007@dineflow.cloud (ids issued
+ * before 2026-10-20 end in @dineflow.local and keep working — see loginCandidates).
  * Supabase authenticates by email, so the id has to be shaped like one, but nothing is ever posted
  * to it — the owner's real address is held separately and is where password codes go.
  *
@@ -11,7 +12,9 @@
  */
 import type { PropertyType } from "./constants";
 
-export const DINEFLOW_DOMAIN = "dineflow.local";
+export const DINEFLOW_DOMAIN = "dineflow.cloud";
+/** The house domain before 2026-10-20 (0130). Ids already issued on it are never moved. */
+export const LEGACY_DINEFLOW_DOMAIN = "dineflow.local";
 
 /** res restaurant · htl hotel · rst resort — the segment inside a DineFlow code. */
 export const TYPE_CODE: Record<PropertyType, string> = { restaurant: "res", hotel: "htl", resort: "rst" };
@@ -55,7 +58,7 @@ export const suggestLoginId = (name: string, _type: PropertyType, ownerName?: st
  *
  * An entry that already carries an @ is treated as a complete address and left alone — that is how
  * an operator gives a property a real mailbox to sign in with, and appending the house domain to it
- * would produce nonsense like owner@gmail.com@dineflow.local. Anything else is a local part and
+ * would produce nonsense like owner@gmail.com@dineflow.cloud. Anything else is a local part and
  * gets the house domain.
  *
  * Returns an empty string for empty input, which the caller should read as "let the database
@@ -83,4 +86,19 @@ export const loginAddressProblem = (raw: string): string | null => {
   if (local.length < 3) return "Use at least three characters before the @.";
   if (!/^[^@\s]+\.[a-z]{2,}$/.test(domain ?? "")) return "That domain does not look right.";
   return null;
+};
+
+/**
+ * The addresses to try for what someone typed at the sign-in or forgot-password box (0130, 2026-10-20). A full
+ * address is tried as it is. A bare id is tried on the house domain first and then on the old one, so a person
+ * whose id was issued as name@dineflow.local still signs in by typing just "name". 0130 refuses a new id whose
+ * name already exists on the old domain, so the two can never mean different accounts.
+ */
+export const loginCandidates = (raw: string): string[] => {
+  const v = (raw ?? "").trim().toLowerCase();
+  if (!v) return [];
+  const first = toLoginAddress(v);
+  if (v.includes("@") && !v.endsWith("@")) return [first];
+  const house = `@${DINEFLOW_DOMAIN}`;
+  return first.endsWith(house) ? [first, first.slice(0, -house.length) + `@${LEGACY_DINEFLOW_DOMAIN}`] : [first];
 };

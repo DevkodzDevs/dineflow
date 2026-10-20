@@ -45,7 +45,7 @@ export function LoginIdField({ value, onChange, name, type, ownerName }:
     ? "Leave this blank and a numbered DineFlow code is assigned automatically."
     : typedOwnDomain
       ? "You typed a full address, so it is used as it is."
-      : "@dineflow.local is added for you.";
+      : "@dineflow.cloud is added for you.";
 
   return (
     <Field label="Sign-in ID" hint={hint}>
@@ -62,7 +62,7 @@ export function LoginIdField({ value, onChange, name, type, ownerName }:
         {!typedOwnDomain && (
           <span className="shrink-0 grid place-items-center px-3 text-sm text-steel num
                            border border-l-0 border-line rounded-r-[12px] bg-[var(--color-fill)]">
-            @dineflow.local
+            @dineflow.cloud
           </span>
         )}
       </div>

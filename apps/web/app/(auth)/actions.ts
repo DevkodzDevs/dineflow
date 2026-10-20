@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
-import { toLoginAddress, modulesFor, positionHome, landsOnMyDay, type PropertyType, type Role } from "@dineflow/shared";
+import { loginCandidates, modulesFor, positionHome, landsOnMyDay, type PropertyType, type Role } from "@dineflow/shared";
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40) + "-" + Math.random().toString(36).slice(2, 6);
 
@@ -11,7 +11,8 @@ export async function login(_: unknown, fd: FormData) {
   const supabase = await createClient();
   // Typing the bare code is enough: dine-htl-mano-00001 becomes the full sign-in address, while a
   // real email typed in full is left alone. Same rule the create form shows.
-  const email = toLoginAddress(String(fd.get("email") ?? ""));
+  // Since 0130 a bare id is tried on @dineflow.cloud first, then on the old @dineflow.local (loginCandidates).
+  const tries = loginCandidates(String(fd.get("email") ?? "")); const email = tries[0] ?? "";
   // Failed sign-ins are counted (0098): ten for one account, or thirty from one address, within
   // fifteen minutes and this form stops trying until the window passes. The count is by what was
   // typed, so an id that does not exist is treated the same and the answer reveals nothing. On Vercel
@@ -28,7 +29,8 @@ export async function login(_: unknown, fd: FormData) {
     // longer works. The owner must ask Master control for a new one.
     try { await db.rpc("enforce_temp_password_lockout"); } catch { /* best-effort */ }
   }
-  const { data: signed, error } = await supabase.auth.signInWithPassword({ email, password: String(fd.get("password")) });
+  let { data: signed, error } = await supabase.auth.signInWithPassword({ email, password: String(fd.get("password")) });
+  for (const other of tries.slice(1)) { if (!error) break; ({ data: signed, error } = await supabase.auth.signInWithPassword({ email: other, password: String(fd.get("password")) })); }
   if (error) {
     if (db) await db.rpc("login_failed", { p_login: email, p_ip: ip });
     return { error: error.message };

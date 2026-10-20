@@ -135,6 +135,11 @@ Numbered, additive, applied in order. Recent ones give the flavour:
                                 file_path / external_url (app_releases_file_or_link); app_release_publish_link (Master
                                 control only, https, .apk/.exe by platform, new version) — a file kept on Cloudflare R2.
                                 dry129.cjs 17/17, applied 2026-10-20 (admin-and-membership.md, docs/install-builds.md)
+0130_login_domain_cloud       — new DineFlow sign-in ids end in @dineflow.cloud (to_login_address, admin_create_property,
+                                admin_realign_login_to_code, the two backfills, create_demo_sandbox → @demo.dineflow.cloud),
+                                re-created from their live bodies; an id whose name exists on @dineflow.local is refused.
+                                Existing .local logins are not moved; sign-in and forgot-password try a bare id on .cloud
+                                then .local (login.ts loginCandidates). dry130.cjs 8/8, applied 2026-10-20 (auth-and-session.md)
 ```
 
 **Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`

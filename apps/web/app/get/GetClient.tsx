@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
-import { Apple, BookOpen, Download, Laptop, Lock, Monitor, RefreshCw, Smartphone, Store, WifiOff } from "lucide-react";
+import { Apple, BookOpen, ChevronDown, Download, Laptop, Lock, Monitor, RefreshCw, Smartphone, Store, WifiOff } from "lucide-react";
 import { InstallPanel } from "@/components/shell/InstallPanel";
 import { SendInstallLink } from "@/components/shell/SendInstallLink";
-import { useInstall } from "@/components/shell/useInstall";
-import { deviceName } from "@/lib/install";
+import { useInstallOffer } from "@/components/shell/useInstall";
+import { deviceName, type InstallKind } from "@/lib/install";
+import type { Downloads } from "@/lib/installers";
 
 /**
  * One address to hand anybody — an owner, a new waiter, a cook on their own phone — that works out what
@@ -35,7 +36,7 @@ import { deviceName } from "@/lib/install";
 type Reach = "checking" | "open" | "gated";
 
 export function GetClient({ pageUrl }: { pageUrl: string }) {
-  const { env, plan } = useInstall();
+  const { env, plan, offer, files } = useInstallOffer();
   const [reach, setReach] = useState<Reach>("checking");
 
   useEffect(() => {
@@ -75,21 +76,15 @@ export function GetClient({ pageUrl }: { pageUrl: string }) {
         <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] lg:gap-12">
           <section className="min-w-0" aria-label="This device">
             <Label>{plan === "installed" ? "This device" : `On this ${name}`}</Label>
-            <div className={reach === "gated" ? "opacity-60" : undefined}><InstallPanel size="lg" url={pageUrl} /></div>
+            <div className={reach === "gated" ? "opacity-60" : undefined}><InstallPanel size="lg" url={pageUrl} others="none" /></div>
           </section>
 
           <section className="min-w-0" aria-label="Another device">
             <Label>On another phone, tablet or computer</Label>
             <SendInstallLink url={pageUrl} />
-            {/* every device installs from its own browser — no store, nothing to publish — or, on an Android
-                phone or a Windows PC, from the app file in one click (InstallPanel's DownloadFiles, on the left;
-                2026-10-20). */}
-            <ul className="mt-5 grid gap-2" data-devices>
-              <Other icon={<Smartphone size={16} />} title="Android phone or tablet" note="Download the .apk on it, or open the link in Chrome → Install" />
-              <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open the link in Safari → Share → Add to Home Screen" />
-              <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note="Download the .exe on it, or open the link in Edge or Chrome → Install" />
-              <Other icon={<Laptop size={16} />} title="Mac" note="Safari → File → Add to Dock, or Chrome → Install" />
-            </ul>
+            {/* every other kind of device, one way each, collapsed (2026-10-20 — one install option per device); this
+                device's own way is on the left and is not repeated here */}
+            <OtherDevices skip={offer && offer.primary !== "installed" && offer.primary !== "installed-here" ? offer.kind : null} files={files} />
 
             {/* the printed manual, for whoever is setting the place up rather than using it */}
             <a href="/DineFlow-Manual.pdf" download
@@ -144,7 +139,32 @@ function Gated({ url }: { url: string }) {
   );
 }
 
-function Other({ icon, title, note, href }: { icon: ReactNode; title: string; note: string; href?: string }) {
+/** One row per other kind of device, each with only its own way: the .apk or .exe when it exists (else its browser's
+ *  install), Safari's Add to Home Screen for an iPhone or iPad, the browser's install on a Mac or other computer. */
+function OtherDevices({ skip, files }: { skip: InstallKind | null; files: Downloads | null }) {
+  const mb = (n: number | null | undefined) => (n ? ` · ${(n / 1048576).toFixed(n > 10485760 ? 0 : 1)} MB` : "");
+  const rows: { kind: InstallKind; el: ReactNode }[] = [
+    { kind: "android", el: files?.android
+      ? <Other icon={<Smartphone size={16} />} title="Android phone or tablet" note={`Download the .apk on it${files.android.version ? ` · v${files.android.version}` : ""}${mb(files.android.size)}`} href={files.android.url} file={files.android.file} />
+      : <Other icon={<Smartphone size={16} />} title="Android phone or tablet" note="Open the link in Chrome → Install" /> },
+    { kind: "windows", el: files?.windows
+      ? <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note={`Download the .exe on it${files.windows.version ? ` · v${files.windows.version}` : ""}${mb(files.windows.size)}`} href={files.windows.url} file={files.windows.file} />
+      : <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note="Open the link in Edge → App available → Install" /> },
+    { kind: "ios", el: <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open the link in Safari → Share → Add to Home Screen" /> },
+    { kind: "desktop", el: <Other icon={<Laptop size={16} />} title="Mac, Chromebook or other computer" note="Chrome or Edge: the install icon in the address bar · Safari on a Mac: File → Add to Dock" /> },
+  ];
+  return (
+    <details className="mt-5 group rounded-2xl border border-[var(--color-separator)]" data-devices>
+      <summary className="list-none cursor-pointer min-h-12 px-3.5 flex items-center gap-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+        Other devices<span className="text-xs font-normal text-[var(--color-label-2)]">— one way for each</span>
+        <ChevronDown size={16} className="ml-auto text-[var(--color-label-2)] transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <ul className="grid gap-2 p-2 pt-0">{rows.filter((r) => r.kind !== skip).map((r) => <li key={r.kind}>{r.el}</li>)}</ul>
+    </details>
+  );
+}
+
+function Other({ icon, title, note, href, file }: { icon: ReactNode; title: string; note: string; href?: string; file?: string }) {
   const inner = (
     <>
       <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-[var(--color-label-2)]">{icon}</span>
@@ -153,5 +173,5 @@ function Other({ icon, title, note, href }: { icon: ReactNode; title: string; no
     </>
   );
   const cls = "flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3";
-  return <li>{href ? <a href={href} download className={`${cls} transition-colors hover:bg-[var(--color-fill)]`}>{inner}</a> : <div className={cls}>{inner}</div>}</li>;
+  return href ? <a href={href} download={file} rel="noopener" data-download={file?.endsWith(".exe") ? "windows" : "android"} className={`${cls} transition-colors hover:bg-[var(--color-fill)]`}>{inner}</a> : <div className={cls}>{inner}</div>;
 }

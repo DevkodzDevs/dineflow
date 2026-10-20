@@ -617,3 +617,10 @@ Then look at it, in both themes, at 1440 and 412.
   `sm:p-6`) and scrolls inside. A 0% basis in a column with no set height left that to the engine. Nothing else about the
   frame, the keyboard handling or the phone bottom sheet changed. If a dialog fills the screen, the fix is usually its
   content (Menu's Photo dialog: a full-width 4:3 photo — see menu.md).
+
+- **Entrances are CSS, not motion components (2026-10-20).** `Reveal` (so every `StatTile`) renders a plain `div.df-rise`
+  with `--d` for its stagger, the screen template a `div.df-page`, and `Segmented`'s chosen thumb a `span.df-thumb`
+  that fades in place (no `LayoutGroup` / `layoutId`). Same distances and timing as `lib/motion.ts` `enter`; reduced
+  motion turns them off. Sheets, toasts, flap tiles and the kitchen's tickets keep framer-motion. Probe:
+  `motioncheck.mjs` (every screen ends at opacity 1 with no transform).
+

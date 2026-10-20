@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppWindow, Check, ChevronRight, Compass, Copy, Download, Globe, Menu, MonitorDown, MoreHorizontal, MoreVertical, Share, Smartphone, SquarePlus } from "lucide-react";
+import Link from "next/link";
 import { Loader, cn } from "../ui";
 import { copyText } from "@/lib/clipboard";
 import { browserName, chromeHref, deviceName, edgeHref, iconHome, stepsPlan, type Env, type Plan } from "@/lib/install";
 import { IosGuide } from "./IosGuide";
-import { DownloadFiles, FileButton, useDownloads } from "./DownloadFiles";
-import { useInstall } from "./useInstall";
+import { FileButton } from "./DownloadFiles";
+import { useInstallOffer } from "./useInstall";
 
 /**
  * The one thing to do on the device in hand — the same everywhere it appears: /get, the install sheet,
@@ -19,20 +20,21 @@ import { useInstall } from "./useInstall";
  * - an iPhone or iPad → Share → Add to Home Screen → Add, drawn (IosGuide); Safari on a Mac → Add to Dock;
  * - installed from here already → where its icon is.
  *
- * Under it, the app as a file, one click (DownloadFiles — 2026-10-20): an Android phone or a Windows PC gets its own
- * file (.apk / .exe) as the big button first, "or install from the browser" after it; the other file, or both on an
- * iPhone, iPad or Mac, sit under it for the property's other devices. A file not built yet keeps its slot, greyed.
+ * ONE way per device (installPlanFor, 2026-10-20 — the owner: "don't show unwanted install options"): an Android
+ * phone with the .apk available gets only "Download for Android (.apk)", a Windows PC with the .exe only "Download for
+ * Windows (.exe)" — no browser install beside them; an iPhone, iPad, Mac, Linux PC or Chromebook only its browser's
+ * way, never a file. Other devices are one compact row to /get (`others="row"`), or nothing where the screen already
+ * has its own (`others="none"`: /get, the install sheet). Running as the app: nothing but "You're in the app".
  *
  * `url` is where "open in Edge / Chrome" and "copy" send the person: the install page, so they land on
  * the button.
  */
-export function InstallPanel({ size = "md", url }: { size?: "md" | "lg"; url?: string }) {
-  const { env, plan, busy, install } = useInstall();
+export function InstallPanel({ size = "md", url, others = "row" }: { size?: "md" | "lg"; url?: string; others?: "row" | "none" }) {
+  const { env, plan, busy, install, files, offer } = useInstallOffer();
   const [again, setAgain] = useState(false);
   const [origin, setOrigin] = useState("");
   useEffect(() => setOrigin(location.origin), []);
-  const files = useDownloads();
-  if (!env || !plan) return <div className="h-24" aria-hidden />;   // one frame, before the device is known
+  if (!env || !plan || !offer) return <div className="h-24" aria-hidden />;   // a frame, before the device and its files are known
   const address = url ?? `${origin}/get`;
   const shown: Plan = plan === "installed-here" && again ? stepsPlan(env) : plan;
   const { device: d, browser: b } = env;
@@ -131,17 +133,19 @@ export function InstallPanel({ size = "md", url }: { size?: "md" | "lg"; url?: s
       </Card>;
   }
 
-  // the device's own file leads when it exists: an Android phone gets the .apk, a Windows PC the .exe
-  const own = d === "android" ? "android" : d === "windows" ? "windows" : null;
-  const lead = own && files?.[own] && shown !== "installed" ? own : null;
+  // one way only: the device's own file when it exists, else the browser's way — never both, never another
+  // platform's file (installPlanFor). "Install it again" on an installed-here device follows the same rule.
+  const primary = offer.primary === "installed-here" && again ? (offer.kind === "android" && files?.android ? "apk" : offer.kind === "windows" && files?.windows ? "exe" : "browser") : offer.primary;
+  const testPlan = primary === "installed" || primary === "installed-here" ? "installed" : offer.kind;
   return (
-    <div className="space-y-3" data-install-panel data-install-plan={shown} data-device={d} data-browser={b}>
-      {lead && <>
-        <FileButton kind={lead} file={files![lead]} big />
-        <div className="flex items-center gap-3 text-[12px] font-semibold text-[var(--color-label-2)]" aria-hidden><span className="h-px flex-1 bg-[var(--color-separator)]" />or install from the browser<span className="h-px flex-1 bg-[var(--color-separator)]" /></div>
-      </>}
-      {body}
-      {shown !== "installed" && <DownloadFiles device={d} files={files} skip={lead} />}
+    <div className="space-y-3" data-install-panel data-install-plan={testPlan} data-install-primary={primary} data-steps={shown} data-device={d} data-browser={b}>
+      {primary === "apk" ? <FileButton kind="android" file={files!.android} big />
+        : primary === "exe" ? <FileButton kind="windows" file={files!.windows} big />
+        : body}
+      {others === "row" && primary !== "installed" && <Link href="/get" data-install-other
+        className="flex items-center gap-2.5 rounded-2xl bg-[var(--color-fill)] px-3.5 min-h-12 text-[13px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors">
+        <Smartphone size={16} className="text-[var(--color-label-2)] shrink-0" aria-hidden /> Install on another device<span className="ml-auto text-[var(--color-label-2)] font-normal">QR & link →</span>
+      </Link>}
     </div>
   );
 }

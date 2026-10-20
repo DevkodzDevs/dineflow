@@ -28,7 +28,9 @@ const config: NextConfig = {
      * touches a link or a mouse rests on one. A screen fetched on a hover must not be shown three
      * minutes later as if it were current. The only static pages are sign-in and the legal pages.
      */
-    staleTimes: { dynamic: 30, static: 30 },
+    // 2026-10-20: 120 s, with IntentPrefetch's warm-up and its "show, then freshen" re-read on arrival — a screen
+    // from this cache is shown at once and re-read in the background 250 ms later, so it is never shown stale.
+    staleTimes: { dynamic: 120, static: 120 },
   },
   // The name aliases (/signin → /login and friends) are handled in middleware.ts, not here. The auth
   // gate in that middleware answers first for a signed-out visitor, so a redirect declared at this

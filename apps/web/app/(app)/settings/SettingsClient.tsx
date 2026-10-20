@@ -126,12 +126,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           <Card>
             <Section icon={<MonitorSmartphone size={16} />} title="Install on this device" description="Applies to this device. Every phone and till installs itself.">
               <InstallApp />
-              {/* the address to hand staff: it works out what they are holding and gives them the one file for it */}
-              <Link href="/get" className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3.5 hover:border-[var(--color-label-3)] hover:bg-[var(--color-fill)] transition-colors">
-                <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Download size={16} /></span>
-                <span className="flex-1 min-w-0"><span className="block text-sm font-semibold">Installers for everyone else</span><span className="block text-xs text-steel mt-0.5">A page to send staff — Windows, Android or iPhone, it gives them the right one</span></span>
-                <ChevronRight size={16} className="text-steel shrink-0" />
-              </Link>
+              {/* one row to /get for the staff's devices is part of InstallApp now (installPlanFor, 2026-10-20) */}
             </Section>
           </Card>
 

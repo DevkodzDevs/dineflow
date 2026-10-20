@@ -1,7 +1,7 @@
 "use server";
 import { adminClient } from "@/lib/supabase/admin";
 import { sendPasswordCode, emailConfigured, otpEcho } from "@/lib/email";
-import { toLoginAddress } from "@dineflow/shared";
+import { loginCandidates } from "@dineflow/shared";
 
 /**
  * Ask for a reset code.
@@ -12,7 +12,7 @@ import { toLoginAddress } from "@dineflow/shared";
  * not being configured, because that is not about the account.
  */
 export async function requestReset(_: unknown, fd: FormData) {
-  const loginId = toLoginAddress(String(fd.get("login_id") ?? ""));
+  const tries = loginCandidates(String(fd.get("login_id") ?? "")); const loginId = tries[0] ?? "";
   const same = { ok: true as const, sent: true };
   if (!loginId) return { error: "Enter your login ID." };
   // Mail that is not set up is said up front, for every id alike. It used to be said only after a
@@ -24,9 +24,13 @@ export async function requestReset(_: unknown, fd: FormData) {
   let db;
   try { db = adminClient(); } catch (e) { return { error: e instanceof Error ? e.message : String(e) }; }
 
-  const { data, error } = await db.rpc("request_password_reset", { p_login_id: loginId });
-  if (error) return { error: error.message };
-  const r = data as { found: boolean; throttled?: boolean; code?: string; sent_to?: string; property?: string };
+  // a bare id: the house domain first, then the old one (0130) — the first account found gets the code
+  let r = { found: false } as { found: boolean; throttled?: boolean; code?: string; sent_to?: string; property?: string };
+  for (const id of tries) {
+    const { data, error } = await db.rpc("request_password_reset", { p_login_id: id });
+    if (error) return { error: error.message };
+    r = data as typeof r; if (r.found) break;
+  }
   if (!r.found || r.throttled || !r.code) return same;
 
   const sent = await sendPasswordCode(r.sent_to!, r.code, r.property ?? "your property");
@@ -38,8 +42,9 @@ export async function requestReset(_: unknown, fd: FormData) {
 
 /** Check the code and set the new password in one call, so there is no half-finished state. */
 export async function resetPassword(_: unknown, fd: FormData) {
-  const loginId = toLoginAddress(String(fd.get("login_id") ?? ""));
+  const tries = loginCandidates(String(fd.get("login_id") ?? ""));
   const code = String(fd.get("code") ?? "").trim();
+  if (!tries.length) return { error: "Enter your login ID." };
   const next = String(fd.get("password") ?? "");
   const again = String(fd.get("confirm") ?? "");
   if (next.length < 8) return { error: "Use at least 8 characters." };
@@ -48,12 +53,15 @@ export async function resetPassword(_: unknown, fd: FormData) {
   let db;
   try { db = adminClient(); } catch (e) { return { error: e instanceof Error ? e.message : String(e) }; }
 
-  const { data, error } = await db.rpc("reset_password_with_code", {
-    p_login_id: loginId, p_code: code, p_new_password: next,
-  });
-  if (error) return { error: error.message };
-  // a wrong code is an answer, not an error (0098): raised, its try would have been un-counted
-  const r = data as { ok?: boolean; error?: string } | null;
+  // the code belongs to whichever of the candidates the request found (0130): try them in the same order
+  let r: { ok?: boolean; error?: string } | null = null;
+  for (const id of tries) {
+    const { data, error } = await db.rpc("reset_password_with_code", { p_login_id: id, p_code: code, p_new_password: next });
+    if (error) return { error: error.message };
+    // a wrong code is an answer, not an error (0098): raised, its try would have been un-counted
+    r = data as { ok?: boolean; error?: string } | null; if (r?.ok !== false) break;
+  }
+  if (!r) return { error: "That code is not right." };
   if (r?.ok === false) return { error: r.error ?? "That code is not right." };
   return { ok: true as const, done: true };
 }

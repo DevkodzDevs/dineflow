@@ -143,3 +143,11 @@ pnpm --filter @dineflow/web build
   see [shell-and-nav.md](shell-and-nav.md)): one tap where the browser has offered its install, otherwise the
   install sheet for the device. It is the first screen on a new device, and installing before signing in is
   the right order — on an iPhone the Home Screen app keeps its own sign-in. Hidden once installed.
+
+- **New sign-in ids end in `@dineflow.cloud` (0130, 2026-10-20 — the owner: "don't add @dineflow.local").** The house
+  domain is `DINEFLOW_DOMAIN` in `packages/shared/src/login.ts` and the database's `to_login_address` /
+  `admin_create_property` agree. The six logins issued before on `@dineflow.local` are untouched and still sign in:
+  `loginCandidates(raw)` turns a bare id into `[id@dineflow.cloud, id@dineflow.local]`, and the sign-in action and both
+  forgot-password steps try them in that order (a full address is tried once, as typed). 0130 refuses a new id whose name
+  already exists on the old domain, so a bare id never means two accounts. Tests: `lib/login.test.ts`.
+

@@ -92,6 +92,9 @@ function createWindow() {
     });
   });
 
+  // Say who is asking (2026-10-20): the site hides every install button inside its own Windows app. Electron's own
+  // `Electron/` token already does that; this one names the app and its version for the site and for support.
+  win.webContents.setUserAgent(`${win.webContents.getUserAgent()} DineFlowDesktop/${app.getVersion()}`);
   void win.loadURL(URL_TO_OPEN);
 }
 

@@ -73,6 +73,21 @@ pathname takes over as soon as it changes, or after 4 s if the navigation never 
 profile (`perfx.mjs nav,taps restaurant phone`, 4× CPU, 4G): live site first visit median 610 ms (p90 1,231), this
 build 393 ms (p90 581) — the difference is the code not yet deployed.
 
+**Taps answered from the device (2026-10-20, second pass — the owner: "every click opens with a delay").**
+- **Warm-up** (`useWarmMenus` in `IntentPrefetch.tsx`): while the device is in use (a tap or key in the last 2 min,
+  tab visible, not Save-Data / 2G) the phone bar's tabs, then the menu, are fetched ahead one at a time when the
+  browser is idle — at most 8, again every 100 s. A kitchen TV left alone fetches nothing.
+- **Show, then freshen** (`useFreshOnArrival`): a screen that appeared within 150 ms of its click came from that cache;
+  it is re-read in the background 250 ms later (never while one of the page's own actions is answering —
+  `actionBusy`), so what is shown is never more than a moment old. `staleTimes` is 120 s for that reason (was 30).
+- **The animation library is out of the tap's way**: the page slide-in (`template.tsx`), every tile's rise (`Reveal`,
+  so every `StatTile`) and the segmented control's thumb are CSS animations (`df-page`, `df-rise`, `df-thumb` in
+  globals.css) — a CPU profile of a phone tap showed framer-motion measuring the page (`measureScroll`,
+  `getBoundingClientRect`) for each one; the segmented thumb's `layoutId` slide is now a fade in place.
+- Measured on a quiet machine, phone profile, first visit to a screen after 12 s of use (`warmtest.mjs`): median
+  **403 ms** against **645 ms** on the live build (Control room 502 against 1,056). Later runs the same day were 2×
+  slower for the live site too (the machine was busy), so compare like with like. `motioncheck.mjs` 10/10 after.
+
 ### The sidebar at each width
 
 | Width | Menu |
@@ -342,7 +357,8 @@ still open over the bar (z-30). Tablet and desktop are unchanged.
   `top-end` / `bottom-end`, which anchor the label's right side — and the step count out of it. A true one-tap
   install on iPhone is not possible for a web app — it needs an App Store app (see `apps/mobile`). Probe:
   `install-probe.mjs`. See [guest-facing.md](guest-facing.md) for `/get` and the manifest.
-- **The app as a file, one click — `.apk` and `.exe` (2026-10-20; the owner: "a single-click install for the
+- **(History — superseded the same day by *One install option per device*, below: the browser install and the other
+  platform's file are no longer drawn beside a device's own file.)** **The app as a file, one click — `.apk` and `.exe` (2026-10-20; the owner: "a single-click install for the
   .apk and .exe, not only the published installs").** `InstallPanel` now ends with `DownloadFiles`
   (`components/shell/DownloadFiles.tsx`), so all four places get it: on an **Android phone** the `.apk`, on a
   **Windows PC** the `.exe`, is the big tint button *first* (`[data-download=android|windows]`), then "or install
@@ -512,3 +528,26 @@ board counts as pinned in Edit bar (it was filtered by modules and dropped).
   report (`m126/before.txt`, `after.txt` in the scratchpad).
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. The More sheet's Help count is a mini flap tile; tab-bar counts (`[data-tab-count]`) and the bell's count (`[data-bell-count]`) stay red pills — a flap is unreadable at badge size.
+
+- **One install option per device (2026-10-20 — the owner: "proper install option for all devices, don't show
+  unwanted install options").** `installPlanFor(env, state, files)` in `lib/install.ts` (7 tests) decides the ONE way,
+  and every surface draws only it — the top bar's icon (`InstallButton`), the sign-in row (`InstallRow`), the install
+  sheet, Settings → Install on this device (`InstallApp`) and /get:
+
+  | Device | Shows |
+  | --- | --- |
+  | running as the app (any display-mode, iOS standalone, DineFlow's Android app — referrer `android-app://cloud.dineflow.app`, kept for the visit in sessionStorage `df-shell` — or the Windows app — UA `Electron/` / `DineFlowDesktop/`) | nothing; Settings says "installed" and keeps one row to /get |
+  | installed from this browser before | "Installed — open it from its icon" (+ "Not there? Install it again") |
+  | Android, .apk available | "Download for Android (.apk)" only — not the browser's install as well |
+  | Windows, .exe available | "Download for Windows (.exe)" only |
+  | Android / Windows, no file yet | the browser's install (one tap, or the menu's taps, or one tap to Chrome / Edge) |
+  | iPhone / iPad (iPadOS as a Mac with touch points) | Share → Add to Home Screen, drawn — never a file |
+  | Mac, Linux, Chromebook | the browser's install (prompt, Chrome/Edge's address-bar icon, Safari → Add to Dock) — never a file |
+
+  Other devices are ONE compact row, "Install on another device → /get" (`[data-install-other]`); the old list of
+  both files under every panel (`DownloadFiles`) is gone. `offersInstall()` hides the top-bar icon and the sign-in row
+  once installed, and on a computer whose browser cannot install (Firefox, unknown). A one-tap browser prompt runs from
+  the icon only when the browser's install IS the device's way; with a file, the icon opens the sheet. Hooks:
+  `data-install-plan=<android|windows|ios|desktop|installed>` and `data-install-primary=<apk|exe|browser|installed|installed-here>`
+  on the panel root (`data-steps` keeps the browser plan). The Windows app adds ` DineFlowDesktop/<version>` to its user
+  agent (`apps/desktop/main.cjs`) — in the next .exe build; until then `Electron/` does the same job.

@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { Download, Monitor, Smartphone } from "lucide-react";
 import { cn } from "../ui";
-import type { Device } from "@/lib/install";
 import type { Download as File, Downloads } from "@/lib/installers";
 
 /**
@@ -11,8 +10,8 @@ import type { Download as File, Downloads } from "@/lib/installers";
  * InstallPanel on every install screen — the in-app sheet, /get, Settings and the sign-in page's sheet.
  *
  * Which files exist is the server's answer (/api/download: a hosted release, or the file this machine built),
- * fetched once per page. A file that does not exist yet keeps its slot, greyed, "coming soon", so the owner
- * sees where it will be rather than nothing.
+ * fetched once per page. Since 2026-10-20 a device sees only its own file, and only when it exists (installPlanFor in
+ * lib/install.ts); the other platforms' files are listed once, on /get's "Other devices".
  */
 let asked: Promise<Downloads | null> | null = null;
 export function useDownloads() {
@@ -54,25 +53,5 @@ export function FileButton({ kind, file, big }: { kind: Kind; file: File | null 
     <a href={file.url} download={file.file} data-download={kind} rel="noopener"
       className={cn(cls, big ? "bg-[var(--color-tint)] text-[var(--color-on-tint)] hover:brightness-105 active:scale-[.99]" : "border border-[var(--color-separator)] bg-[var(--color-bg-2)] hover:bg-[var(--color-fill)]")}
       style={big ? { boxShadow: "0 16px 34px -20px var(--color-tint)" } : undefined}>{inner}</a>
-  );
-}
-
-/**
- * Both files, the device's own first. An Android phone or a Windows PC gets its own file as the big button
- * (`lead`, drawn by InstallPanel above the browser's install); the other file sits under "App files" for
- * setting up another device. An iPhone, iPad or Mac cannot run either — they install from the browser — so
- * the two are offered quietly, for the Android phones and Windows tills of the same property.
- */
-export function DownloadFiles({ device, files, skip }: { device: Device; files: Downloads | null; skip?: Kind | null }) {
-  if (!files) return <div className="h-14" aria-hidden />;
-  const order: Kind[] = device === "windows" ? ["windows", "android"] : ["android", "windows"];
-  const rest = order.filter((k) => k !== skip);
-  const apple = device === "iphone" || device === "ipad" || device === "mac";
-  return (
-    <div className="pt-1" data-download-files>
-      <div className="text-[11.5px] font-semibold uppercase tracking-[.12em] text-[var(--color-label-2)] mb-2">
-        {skip ? "Another device" : apple ? "For Android phones and Windows PCs" : "App files — one click"}</div>
-      <div className="grid gap-2">{rest.map((k) => <FileButton key={k} kind={k} file={files[k]} />)}</div>
-    </div>
   );
 }

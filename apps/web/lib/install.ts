@@ -102,6 +102,52 @@ export function stepsPlan({ device, browser, ios, safari }: Env): Plan {
   return "other";
 }
 
+/** Which family of install a device belongs to: its own app file (Android, Windows), Apple's Add to Home Screen,
+ *  or the browser's own install on every other computer. */
+export type InstallKind = "android" | "windows" | "ios" | "desktop";
+export const kindFor = (d: Device): InstallKind => (d === "android" ? "android" : d === "windows" ? "windows" : d === "iphone" || d === "ipad" ? "ios" : "desktop");
+
+/** Running inside DineFlow's own app already: the Windows app (Electron — its user agent carries `Electron/` and,
+ *  from 1.1.1, `DineFlowDesktop/`) or the Android app (a Trusted Web Activity — its first page's referrer is
+ *  `android-app://cloud.dineflow.app`; after that it is caught by display-mode: standalone). */
+export function inAppShell(ua: string, referrer = ""): boolean {
+  return /DineFlowDesktop\/|Electron\//i.test(ua) || referrer.startsWith("android-app://cloud.dineflow.app");
+}
+
+/**
+ * The ONE way to install on the device in hand (2026-10-20 — the owner: "proper install option for all devices,
+ * don't show unwanted install options"). Every install screen draws only this:
+ *
+ * - running as the app (standalone, the Android or Windows app) → `installed`, and no button anywhere;
+ * - installed from this browser before → `installed-here` (open it from its icon);
+ * - Android with the .apk available → `apk`; Windows with the .exe → `exe` — never the browser's install beside it;
+ * - otherwise the browser's own way (`browser`, with `plan` saying which: the one-tap prompt, the menu's taps, Add to
+ *   Home Screen on an iPhone/iPad, Add to Dock on a Mac, one tap to a browser that can). An iPhone, iPad, Mac,
+ *   Linux PC or Chromebook never sees an .apk or .exe.
+ *
+ * `files` is what /api/download answered (null while it is still being asked).
+ */
+export type Primary = "installed" | "installed-here" | "apk" | "exe" | "browser";
+export type InstallOffer = { kind: InstallKind; primary: Primary; plan: Plan };
+export function installPlanFor(env: Env, s: InstallState, files: { android: boolean; windows: boolean } | null): InstallOffer {
+  const kind = kindFor(env.device);
+  const plan = installPlan(env, s);
+  if (plan === "installed") return { kind, primary: "installed", plan };
+  if (plan === "installed-here") return { kind, primary: "installed-here", plan };
+  if (kind === "android" && files?.android) return { kind, primary: "apk", plan };
+  if (kind === "windows" && files?.windows) return { kind, primary: "exe", plan };
+  return { kind, primary: "browser", plan };
+}
+
+/** Whether to offer installing at all (the top bar's icon, the sign-in page's row, the Settings card): not once it
+ *  is installed, and on a computer only where the browser can actually install (a one-tap offer, Chrome/Edge's
+ *  menu, Safari's Add to Dock) — a Firefox or unknown desktop browser gets nothing rather than advice. */
+export function offersInstall(o: InstallOffer): boolean {
+  if (o.primary === "installed" || o.primary === "installed-here") return false;
+  if (o.kind !== "desktop") return true;
+  return o.plan === "prompt" || o.plan === "menu" || o.plan === "mac-safari";
+}
+
 /** "this iPhone" — what the screens call the device in hand. */
 export function deviceName(d: Device): string {
   return { iphone: "iPhone", ipad: "iPad", android: "phone", windows: "PC", mac: "Mac", chromeos: "Chromebook", linux: "computer", other: "device" }[d];
@@ -153,4 +199,4 @@ export const INSTALLED_FLAG = "df-app";
  * It also remembers that the app is installed (INSTALLED_FLAG), so a browser tab can say "installed —
  * open it from the Start menu" instead of steps that no longer lead anywhere.
  */
-export const INSTALL_CAPTURE = `(function(){try{var F="${INSTALLED_FLAG}",k=function(v){try{v?localStorage.setItem(F,"1"):localStorage.removeItem(F)}catch(e){}};if(matchMedia("(display-mode: standalone)").matches||navigator.standalone===true)k(1);addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__dfInstall=e;k(0);dispatchEvent(new Event("df-installable"))});addEventListener("appinstalled",function(){window.__dfInstall=null;k(1);dispatchEvent(new Event("df-installed"))})}catch(e){}})();`;
+export const INSTALL_CAPTURE = `(function(){try{var F="${INSTALLED_FLAG}",k=function(v){try{v?localStorage.setItem(F,"1"):localStorage.removeItem(F)}catch(e){}};if(matchMedia("(display-mode: standalone)").matches||navigator.standalone===true)k(1);if(/DineFlowDesktop\\/|Electron\\//i.test(navigator.userAgent)||String(document.referrer).indexOf("android-app://cloud.dineflow.app")===0){try{sessionStorage.setItem("df-shell","1")}catch(e){}}addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__dfInstall=e;k(0);dispatchEvent(new Event("df-installable"))});addEventListener("appinstalled",function(){window.__dfInstall=null;k(1);dispatchEvent(new Event("df-installed"))})}catch(e){}})();`;

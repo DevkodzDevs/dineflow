@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chromeHref, detect, edgeHref, installPlan, stepsPlan, waShareHref } from "./install";
+import { chromeHref, detect, edgeHref, inAppShell, installPlan, installPlanFor, offersInstall, stepsPlan, waShareHref } from "./install";
 
 /* Real user agents, as each browser sends them. */
 const UA = {
@@ -109,5 +109,48 @@ describe("install — the links that move to a browser that can", () => {
     expect(chromeHref("https://www.dineflow.cloud/get")).toBe("intent://www.dineflow.cloud/get#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Fwww.dineflow.cloud%2Fget;end");
     expect(chromeHref("http://192.168.1.5:3000/get?x=1")).toMatch(/^intent:\/\/192\.168\.1\.5:3000\/get\?x=1#Intent;scheme=http;package=com\.android\.chrome;/);
     expect(waShareHref("Install DineFlow: https://x.in/get")).toBe("https://wa.me/?text=Install%20DineFlow%3A%20https%3A%2F%2Fx.in%2Fget");
+  });
+});
+
+describe("install — one way per device (installPlanFor, 2026-10-20)", () => {
+  const S = { canPrompt: false, standalone: false, here: false };
+  const both = { android: true, windows: true }, nofiles = { android: false, windows: false };
+  const plan4 = (ua: string, s = S, f: { android: boolean; windows: boolean } | null = both, touch = 0) => installPlanFor(detect(ua, touch), s, f);
+  it("Android with the .apk: the file only, even when the browser offers its install", () => {
+    expect(plan4(UA.androidChrome).primary).toBe("apk");
+    expect(plan4(UA.androidChrome, { ...S, canPrompt: true }).primary).toBe("apk");
+    expect(plan4(UA.androidSamsung).kind).toBe("android");
+  });
+  it("Android without a file: the browser's install", () => {
+    expect(plan4(UA.androidChrome, { ...S, canPrompt: true }, nofiles)).toMatchObject({ primary: "browser", plan: "prompt" });
+    expect(plan4(UA.androidChrome, S, nofiles)).toMatchObject({ primary: "browser", plan: "menu" });
+  });
+  it("Windows with the .exe: the file only; without it, Edge/Chrome's install", () => {
+    expect(plan4(UA.winEdge).primary).toBe("exe");
+    expect(plan4(UA.winFirefox).primary).toBe("exe");
+    expect(plan4(UA.winEdge, S, nofiles)).toMatchObject({ primary: "browser", plan: "menu" });
+  });
+  it("iPhone, iPad, Mac, Linux and Chromebook never get a file", () => {
+    for (const ua of [UA.iphoneSafari, UA.iphoneChrome, UA.ipadMobile, UA.macSafari, UA.macChrome, UA.linuxChrome, UA.chromebook]) expect(plan4(ua).primary).toBe("browser");
+    expect(plan4(UA.ipadDesktop, S, both, 5)).toMatchObject({ kind: "ios", primary: "browser", plan: "ios" });
+    expect(plan4(UA.macSafari).kind).toBe("desktop");
+  });
+  it("running as the app, or installed here before: nothing to install", () => {
+    expect(plan4(UA.androidChrome, { ...S, standalone: true }).primary).toBe("installed");
+    expect(plan4(UA.winEdge, { ...S, here: true }).primary).toBe("installed-here");
+    expect(offersInstall(plan4(UA.androidChrome, { ...S, standalone: true }))).toBe(false);
+  });
+  it("offers an install on a computer only where the browser can", () => {
+    expect(offersInstall(plan4(UA.macChrome))).toBe(true);
+    expect(offersInstall(plan4(UA.macSafari))).toBe(true);
+    expect(offersInstall(plan4(UA.linuxFirefox))).toBe(false);
+    expect(offersInstall(plan4(UA.macFirefox))).toBe(false);
+    expect(offersInstall(plan4(UA.iphoneSafari))).toBe(true);
+  });
+  it("knows DineFlow's own Windows and Android apps", () => {
+    expect(inAppShell(UA.winChrome + " Electron/31.0.0")).toBe(true);
+    expect(inAppShell(UA.winChrome + " DineFlowDesktop/1.1.1")).toBe(true);
+    expect(inAppShell(UA.androidChrome, "android-app://cloud.dineflow.app/")).toBe(true);
+    expect(inAppShell(UA.androidChrome, "https://www.google.com/")).toBe(false);
   });
 });

@@ -153,8 +153,8 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
   drawn Share → Add to Home Screen steps on an iPhone or iPad. Its right half is for whoever sets up the
   other devices: a QR for the next phone, **Share / WhatsApp / Copy link** (`SendInstallLink` — a `wa.me`
   link with the message typed and no number), one line per kind of device and the manual. The packaged
-  files (.apk, .exe) are now InstallPanel's own (`DownloadFiles`, 2026-10-20 — on an Android phone or a Windows
-  PC its own file leads; see shell-and-nav.md and docs/install-builds.md); `/get` no longer lists them itself. The card flips with the theme like the sign-in page — it was dark-only, in fixed
+  files (.apk, .exe): this device's own on the left, the others under *Other devices* (see the 2026-10-20 bullet
+  below, shell-and-nav.md and docs/install-builds.md). The card flips with the theme like the sign-in page — it was dark-only, in fixed
   hex colours — one column on a phone, two from `lg`.
 - **The manifest and the apple-* tags are written into `<head>` by the root layout**, not through
   `metadata`: Next 15 streams metadata into `<body>` for an ordinary browser on a dynamic page, and
@@ -181,6 +181,13 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
   mode, a damaged profile) the precache rejected and the whole worker was discarded: no offline copy,
   no notification taps. A failed precache now only means nothing is cached yet. `pwa.mjs` asserts the
   worker reaches `active`.
+- **/get shows this device's one way, then the others collapsed (2026-10-20).** The left half is InstallPanel with
+  `others="none"`: only this device's way (installPlanFor — the .apk on an Android phone, the .exe on a Windows PC, Add
+  to Home Screen on an iPhone/iPad, the browser's install on a Mac or other computer; never another platform's file).
+  The right half keeps the QR and the WhatsApp link (SendInstallLink) and an **Other devices** `<details>`
+  (`[data-devices]`, closed) with one row per *other* kind — Android (its .apk download, else "Chrome → Install"),
+  Windows (its .exe, else "Edge → Install"), iPhone or iPad (Safari → Add to Home Screen), Mac/Chromebook/other (the
+  browser's install) — the current device's own kind left out. See shell-and-nav.md for the rule table.
 - **`/get` and `/offline` are part of the PWA.** Changing the service worker
   (`components/ServiceWorker.tsx`) can strand installed users on a cached build.
 
