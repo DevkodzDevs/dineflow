@@ -87,7 +87,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
       <div className="relative h-52 md:h-72 bg-gradient-to-br from-[var(--color-champagne)] to-[var(--color-ink)]">
         {d.photos?.[0] && <img src={d.photos[0]} alt="" className="h-full w-full object-cover" />}
         <div className="absolute inset-0 bg-gradient-to-t from-[rgb(13_28_23/.85)] to-transparent" />
-        <Link href="/dine" className="absolute top-4 left-4 h-9 w-9 rounded-full material grid place-items-center"><ChevronLeft size={18} /></Link>
+        <Link href="/dine" aria-label="Back" className="absolute top-4 left-4 h-11 w-11 rounded-full material grid place-items-center"><ChevronLeft size={18} /></Link>
         <div className="absolute bottom-4 inset-x-0 px-5 max-w-4xl mx-auto text-white">
           <h1 className="font-display text-3xl md:text-4xl">{d.name}</h1>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-white/75">

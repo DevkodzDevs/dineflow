@@ -1,6 +1,6 @@
 {
   "name": "@dineflow/desktop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "DineFlow as a Windows application — a window around the deployed app.",
   "main": "main.cjs",

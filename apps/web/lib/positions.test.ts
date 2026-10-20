@@ -49,7 +49,7 @@ describe("job positions", () => {
   });
 });
 
-import { POSITION_ACCESS, positionModules, positionHome, sameModules, ROLE_ACCESS, MODULES_BY_TYPE, OPEN_HOMES, modulesFor, homeFor } from "@dineflow/shared";
+import { POSITION_ACCESS, positionModules, positionHome, sameModules, ROLE_ACCESS, MODULES_BY_TYPE, OPEN_HOMES, modulesFor, homeFor, landingFor, landsOnMyDay } from "@dineflow/shared";
 describe("the control room (2026-10-18)", () => {
   it("is the owner's; a manager's only when ticked; nobody else's, ticked or not", () => {
     expect(modulesFor("restaurant", "owner", null, null)).toContain("dashboard");
@@ -60,6 +60,15 @@ describe("the control room (2026-10-18)", () => {
       expect(modulesFor("hotel", r, null, null), r).not.toContain("dashboard");
       expect(modulesFor("hotel", r, null, ["dashboard", "scan"]), r).not.toContain("dashboard");
     }
+  });
+  it("staff land on My day; the owner and managers keep the control room (2026-10-20)", () => {
+    for (const r of ["supervisor", "supervisor_2", "employee", "cashier", "waiter", "chef", "store", "frontdesk", "housekeeping"]) {
+      expect(landsOnMyDay(r), r).toBe(true);
+      expect(landingFor(r, modulesFor("restaurant", r as never, null, null), null), r).toBe("home");
+    }
+    expect(landingFor("owner", modulesFor("hotel", "owner", null, null))).toBe("dashboard");
+    expect(landsOnMyDay("manager")).toBe(false);
+    expect(landingFor("manager", modulesFor("restaurant", "manager", null, ["orders", "kitchen"]), null)).toBe("orders");
   });
   it("everyone else has a home of their own — never nowhere", () => {
     expect(homeFor(modulesFor("restaurant", "waiter", null, null))).toBe("orders");
@@ -89,7 +98,7 @@ describe("what each position opens", () => {
     for (const [k, a] of Object.entries(POSITION_ACCESS)) if (a.home) expect(a.open?.includes(a.home) || OPEN_HOMES.includes(a.home), k).toBe(true);
   });
   it("the case studies: a commis sees the kitchen only, a cashier billing not the kitchen, a receptionist the front desk", () => {
-    expect(positionModules("commis_2", "restaurant", MODULES_BY_TYPE)).toEqual(["kitchen", "scan"]);
+    expect(positionModules("commis_2", "restaurant", MODULES_BY_TYPE)).toEqual(["kitchen"]);
     expect(positionModules("fnb_cashier", "restaurant", MODULES_BY_TYPE)).toContain("billing");
     expect(positionModules("fnb_cashier", "restaurant", MODULES_BY_TYPE)).not.toContain("kitchen");
     expect(positionModules("steward", "hotel", MODULES_BY_TYPE)).not.toContain("billing");
@@ -97,8 +106,8 @@ describe("what each position opens", () => {
     expect(positionModules("general_manager", "hotel", MODULES_BY_TYPE)).toBeNull();
   });
   it("a section the property kind lacks is dropped (no Facilities screen in a hotel)", () => {
-    expect(positionModules("spa_therapist", "hotel", MODULES_BY_TYPE)).toEqual(["guests", "scan"]);
-    expect(positionModules("spa_therapist", "resort", MODULES_BY_TYPE)).toEqual(["facilities", "guests", "scan"]);
+    expect(positionModules("spa_therapist", "hotel", MODULES_BY_TYPE)).toEqual(["guests"]);
+    expect(positionModules("spa_therapist", "resort", MODULES_BY_TYPE)).toEqual(["facilities", "guests"]);
   });
   it("start screens fall back to the control room when not held", () => {
     expect(positionHome("cdp", ["dashboard", "kitchen"])).toBe("kitchen");
@@ -126,5 +135,49 @@ describe("position lookups are safe", () => {
       expect(positionModules(k, "hotel", MODULES_BY_TYPE)).toBeNull();
       expect(positionHome(k, ["kitchen"])).toBe("dashboard");
     }
+  });
+});
+
+import { ROLE_DEFAULT } from "@dineflow/shared";
+import { freshFor, seesFresh, deptOf, endFor } from "@/components/shell/sections";
+describe("each job sees its own sections (2026-10-20)", () => {
+  const BACK_OFFICE = ["channels", "labour", "reports", "tax", "staff", "settings", "proof", "neighbours"];
+  it("a job role's default holds none of the back office, and stays inside its ceiling", () => {
+    for (const r of ["waiter", "chef", "cashier", "store", "frontdesk", "housekeeping", "employee"] as const) {
+      for (const t of ["restaurant", "hotel", "resort"] as const) for (const m of modulesFor(t, r, null, null)) expect(BACK_OFFICE.includes(m), `${r}/${t}: ${m}`).toBe(false);
+      for (const m of ROLE_DEFAULT[r]) expect(ROLE_ACCESS[r].includes(m), `${r}: ${m}`).toBe(true);
+    }
+    expect(modulesFor("resort", "waiter", null, null)).not.toContain("scan");
+    expect(modulesFor("resort", "frontdesk", null, null)).toEqual(expect.arrayContaining(["frontdesk", "rooms", "guests", "reservations"]));
+  });
+  it("an unconfigured employee holds no module and starts on Work; the owner's ticks still widen a job", () => {
+    expect(modulesFor("resort", "employee", null, null)).toEqual([]);
+    expect(homeFor(modulesFor("resort", "employee", null, null), "security_guard")).toBe("work");
+    expect(modulesFor("restaurant", "waiter", null, ["orders", "scan"])).toContain("scan");
+  });
+  it("a person's team: the one set on them, else their position's, else their role's", () => {
+    expect(deptOf("employee", "security", "gardener")).toBe("security");
+    expect(deptOf("employee", null, "cleaner")).toBe("housekeeping");
+    expect(deptOf("waiter", null, null)).toBe("service");
+    expect(deptOf("employee", null, null)).toBeNull();
+  });
+  it("the control links follow the job", () => {
+    const keys = (role: Parameters<typeof freshFor>[0], dept: string | null) => freshFor(role, dept).map((i) => i.key);
+    expect(keys("owner", null)).toEqual(expect.arrayContaining(["intelligence", "audit", "chain", "payroll", "controls", "expenses", "cleaning", "work-records"]));
+    expect(keys("waiter", "service")).toEqual(["tasks", "cleaning", "work"]);
+    expect(keys("chef", "kitchen")).toEqual(["tasks", "work"]);
+    expect(keys("employee", "security")).toEqual(["tasks", "work"]);
+    expect(keys("employee", "housekeeping")).toEqual(["tasks", "cleaning", "work"]);
+    expect(keys("cashier", "service")).toEqual(["controls", "expenses", "tasks", "cleaning", "work"]);
+    expect(keys("supervisor", "kitchen")).toEqual(["tasks", "work"]);
+    expect(keys("supervisor", null)).toEqual(["controls", "expenses", "tasks", "cleaning", "work"]);
+    for (const k of ["intelligence", "audit", "chain"]) expect(seesFresh(k, "supervisor", null), k).toBe(false);
+    expect(seesFresh("cleaning", "employee", "engineering")).toBe(false);
+    expect(seesFresh("cleaning", "housekeeping", "housekeeping")).toBe(true);
+  });
+  it("Help & support is the owner's; everyone else has Feedback & complaints and their own Settings", () => {
+    expect(endFor("owner").map((i) => i.label)).toEqual(["My profile", "Staff feedback", "Help & support"]);
+    expect(endFor("waiter").map((i) => i.href)).toEqual(["/me", "/voice"]);
+    expect(endFor("manager").map((i) => i.label)).toEqual(["Settings", "Feedback & complaints"]);
   });
 });

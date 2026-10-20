@@ -107,6 +107,30 @@ Numbered, additive, applied in order. Recent ones give the flavour:
                                 (was pending/; applied by hand in the SQL Editor after the deploy, 2026-10-19)
 0120_control_room_owner       — effective_modules() gives 'dashboard' to the owner and a manager it was ticked for only
                                 (was pending/; applied by hand after the deploy, 2026-10-19 — dashboard.md)
+0122_checklists_by_department — checklists.departments (empty = everyone); RLS on checklists and checklist_runs hands
+                                a person the lists for everyone and for _my_dept(); a six-argument checklist_save;
+                                checklist_tick refuses another department's list (expenses-and-checklists.md)
+0123_checklists_by_job_and_position — checklists.jobs (role keys) and .positions (profiles.position keys); a list is
+                                for a person whose team, job or position it names (_checklist_for_me(d, j, p)); an
+                                eight-argument checklist_save; checklist_tick uses the same rule
+0124_staff_voice              — Feedback & complaints: staff_voice, staff_voice_authors (the only place an anonymous
+                                item's author is kept; read "own rows" only), staff_voice_replies; the owner reads every
+                                item, anyone else their own (not managers); voice_send/reply/set_status/seen/unread;
+                                dry-run passed (dry124.cjs, 34), applied 2026-10-20 (staff-voice.md)
+0125_my_profile               — profiles.display_name, emergency_name/_phone, about, languages, avatar_tone; my_profile_save
+                                writes ONLY the caller's own row and ONLY those columns (+ phone, contact_email — a new
+                                one clears contact_verified_at). dry125.cjs 21/21, applied 2026-10-20 (my-profile.md)
+0126_menu_by_job              — role_modules.default_set narrowed to each job's own screens; profiles on a position
+                                list exactly as the Staff screen wrote it moved to the narrower list (staff-and-labour.md);
+                                dry126.cjs 33/33, applied 2026-10-20
+0127_staff_leave              — staff_leave (ask / withdraw / decide: leave_request, leave_cancel, leave_decide); read by the
+                                person, the owner and managers, and a supervisor for their own team (_leave_mine_to_see,
+                                _dept_of); my_payslips() — the caller's own final payroll lines with their month.
+                                dry127.cjs 30/30, applied 2026-10-20 (my-day.md, staff-and-labour.md)
+0128_app_files                — the public Storage bucket `app-files` (100 MB, .apk/.exe types; only is_master() may
+                                write, in android/ or windows/), app_releases (one is_current per platform; anon reads
+                                current rows only), app_release_publish / app_release_make_current (Master control
+                                only). applied 2026-10-20 — dry128.cjs 19/19 (admin-and-membership.md, docs/install-builds.md)
 ```
 
 **Re-creating an RPC means copying the latest body, not the first.** 0079 replaced `dine_order`
@@ -129,6 +153,16 @@ made in between is silently undone.
   gen_random_bytes(integer) does not exist") and the owner could never switch an old TV link off. Write
   `extensions.gen_random_bytes(...)` (or `gen_random_uuid()`, which is core). A column default is safe: it is
   resolved when the migration runs. The 0103 dry run did not try the rotation — test every branch of a new RPC.
+- **0123 — checklists by job and position (2026-10-20).** Applied before its code, safely: both new columns default to
+  `'{}'`, so every list stays as 0122 left it; the five- and six-argument saves the deployed screens call are untouched
+  and never write jobs or positions (the eight-argument one has no defaults, so PostgREST's named call picks by key
+  count). The RLS policy now calls `_checklist_for_me(departments, jobs, positions)`; 0122's one-argument form is left
+  in place, unused. Dry run `dry123.cjs` (23, rolled back); after: 3 saves (5, 6, 8 arguments), the policy on the new
+  rule, 0 lists with a job or position audience, `notify pgrst` sent.
+- **0122 — checklists by department (2026-10-20).** Applied before its code, safely: every existing list has
+  `departments = '{}'` (everyone), so the deployed screens see exactly what they saw; the old five-argument
+  `checklist_save` is untouched (the new one has a sixth, `p_departments`, with no default — so PostgREST's named-argument
+  call with five keys can only match the old one, and six only the new). Dry run `dry122.cjs` (23, rolled back).
 - **0119 — royal classic (2026-10-18).** The same widening for `'royal'`; dry-run `dry119.cjs` (6, the same checks).
 - **0118 — colourful light (2026-10-18).** The same widening as 0117 for `'bright'`; dry-run `dry118.cjs` (6, the
   same checks). Applied before its code, safely — old code never sends it.

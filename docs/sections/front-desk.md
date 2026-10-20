@@ -137,3 +137,5 @@ pnpm --filter @dineflow/web typecheck
 [rooms-and-reservations.md](rooms-and-reservations.md) · [housekeeping.md](housekeeping.md) ·
 [guests-and-customers.md](guests-and-customers.md) ·
 [billing-and-invoices.md](billing-and-invoices.md)
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Arrivals, Departures, In house and Rooms ready are `StatTile` flaps, which now shuffle and settle when a count changes.

@@ -152,9 +152,9 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
   **to Chrome** (Android, from inside Instagram or Facebook too) from a browser that cannot install, and the
   drawn Share → Add to Home Screen steps on an iPhone or iPad. Its right half is for whoever sets up the
   other devices: a QR for the next phone, **Share / WhatsApp / Copy link** (`SendInstallLink` — a `wa.me`
-  link with the message typed and no number), one line per kind of device, the packaged files when hosted
-  (Windows .exe, Android .apk — underneath, never the headline: the exe raises an unsigned-installer
-  warning) and the manual. The card flips with the theme like the sign-in page — it was dark-only, in fixed
+  link with the message typed and no number), one line per kind of device and the manual. The packaged
+  files (.apk, .exe) are now InstallPanel's own (`DownloadFiles`, 2026-10-20 — on an Android phone or a Windows
+  PC its own file leads; see shell-and-nav.md and docs/install-builds.md); `/get` no longer lists them itself. The card flips with the theme like the sign-in page — it was dark-only, in fixed
   hex colours — one column on a phone, two from `lg`.
 - **The manifest and the apple-* tags are written into `<head>` by the root layout**, not through
   `metadata`: Next 15 streams metadata into `<body>` for an ordinary browser on a dynamic page, and
@@ -207,3 +207,11 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   photo shows it on the right (112px, 128 from `sm`, rounded) with *Add* / the − n + stepper riding its
   bottom edge, the way delivery apps lay it out; a dish without one keeps the old row. Photos are lazy
   loaded. See menu.md for where they come from and how they are credited.
+
+- **The queue page has a Back button, and Back never leaves the queue** (2026-10-20, the owner's "add a back option").
+  `[data-queue-back]` (44px, top-left, in the page's paper style) goes back on this site when the guest came from it
+  (same-origin `document.referrer` and history to go back to), else to the property's storefront `/dine/<slug>` —
+  straight from the door QR there is nothing behind them. The place is kept: the device remembers its token in
+  `localStorage` (`df-queue:<slug>`, wrapped in try/catch — a private window just loses the convenience), so scanning
+  the code or opening `/queue/<slug>` again shows the place, not an empty form; a seated or left place is forgotten.
+  Under Leave the queue, `[data-queue-kept]` says so in one muted line. Leave the queue still calls `queue_leave`.

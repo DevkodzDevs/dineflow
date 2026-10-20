@@ -39,6 +39,9 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(auth)/**`, `app/account/**`, `app/page.tsx`, `middleware.ts`, `lib/auth.ts` | [auth-and-session.md](auth-and-session.md) |
 | `app/admin/**`, `app/membership/**`, `app/(app)/about/**` | [admin-and-membership.md](admin-and-membership.md) |
 | `app/(app)/help/**`, `app/admin/support/**`, `lib/support.ts`, `components/support/**` — Help & support | [help-and-support.md](help-and-support.md) |
+| `app/(app)/voice/**`, `lib/voice.ts`, `components/voice/**` — Feedback & complaints, the staff to their owner | [staff-voice.md](staff-voice.md) |
+| `app/(app)/me/**` — My profile: each person's own details, sign-in and this device | [my-profile.md](my-profile.md) |
+| `app/(app)/home/**` — My day: where staff land; their work, checklists, attendance, leave and pay | [my-day.md](my-day.md) |
 | `app/legal/**`, `lib/company.ts` | [legal.md](legal.md) |
 | `app/api/**` | [api-routes.md](api-routes.md) |
 

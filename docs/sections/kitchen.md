@@ -99,3 +99,10 @@ Then open `/kitchen/board` at 1920 and stand back from it.
   Fire and Recall show at once (optimistic) and hold nothing; only the station view's two buttons, which wait for the
   server to move a line, still do. A ticket's old copy fades in 140 ms. The realtime refresh waits for the action's own
   answer (`lib/liveRefresh.ts`). Probe: `cookchk.mjs` — the board's buttons free 60 ms after a tap, the database moved.
+- **The Order board is a menu row of its own** (2026-10-20, the owner: "order board needs a separate menu option"):
+  `order-board` in `components/shell/sections.ts`, after Kitchen, Tv icon, gated by the kitchen module (`mod:
+  "kitchen"`) — in the sidebar, the phone's More sheet and Ctrl/⌘ K. Kitchen's own Order board button stays. On
+  `/kitchen/board` the Order board row is lit, not Kitchen (`isOn`, shell-and-nav.md). The board still covers the
+  shell and its ✕ goes to `/kitchen`.
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Each ticket's age is a ticking flip clock (`FlapClock since`, `[data-kt-age]`) — emerald, amber at `warnAt`, red at `lateAt` (red too when a promise is missed); the words stay as sr-only text. Column counts shuffle on 40px compact tiles (`[data-kcol-count]`, the old `<b class="num">` kept sr-only). The Order board spells the newest ready order (`[data-board-call]`, `FlapSpell`) its Preparing count breathes (`[data-board-preparing]`) and its Ready count shuffles (`[data-board-ready-count]`), 40px on the wall, 34 on a phone.

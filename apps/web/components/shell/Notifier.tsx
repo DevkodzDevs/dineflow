@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import { Bell, BellOff, BellRing, Bike, CalendarCheck, BedDouble, ChefHat, UtensilsCrossed, Sparkles, Play, Volume2, Monitor, Smartphone, ConciergeBell, Flame, CheckCheck, Settings2, Clock, HandPlatter, Star, SprayCan, UserCheck, CircleCheck, ListTodo, ClipboardCheck } from "lucide-react";
+import { Bell, BellOff, BellRing, Bike, CalendarCheck, BedDouble, ChefHat, UtensilsCrossed, Sparkles, Play, Volume2, Monitor, Smartphone, ConciergeBell, Flame, CheckCheck, Settings2, Clock, HandPlatter, Star, SprayCan, UserCheck, CircleCheck, ListTodo, ClipboardCheck, MessagesSquare } from "lucide-react";
 import { DEPARTMENTS } from "@dineflow/shared";
 import { getClient } from "@/lib/supabase/lazy";
 import { formatINR, todayIST } from "@/lib/format";
@@ -19,7 +19,7 @@ type Ctx = {
 const NotifyCtx = createContext<Ctx | null>(null);
 export const useNotify = () => useContext(NotifyCtx);
 
-const KIND_ICON: Record<NotifyKind, typeof Bell> = { online: Bike, reservation: CalendarCheck, booking: BedDouble, kot: ChefHat, ready: UtensilsCrossed, housekeeping: Sparkles, call: HandPlatter, feedback: Star, clean: SprayCan, assigned: UserCheck, roomdone: CircleCheck, job: ListTodo, jobdone: ClipboardCheck, taken: UserCheck };
+const KIND_ICON: Record<NotifyKind, typeof Bell> = { online: Bike, reservation: CalendarCheck, booking: BedDouble, kot: ChefHat, ready: UtensilsCrossed, housekeeping: Sparkles, call: HandPlatter, feedback: Star, clean: SprayCan, assigned: UserCheck, roomdone: CircleCheck, job: ListTodo, jobdone: ClipboardCheck, taken: UserCheck, voice: MessagesSquare, leave: CalendarCheck };
 const KIND_TONE: Record<NotifyKind, string> = {
   online: "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]",
   reservation: "bg-[var(--color-blue-2)] text-[var(--color-blue)]",
@@ -35,6 +35,8 @@ const KIND_TONE: Record<NotifyKind, string> = {
   job: "bg-[var(--color-orange-2)] text-[var(--color-orange)]",
   jobdone: "bg-[var(--color-green-2)] text-[var(--color-green)]",
   taken: "bg-[var(--color-cyan-2)] text-[var(--color-cyan)]",
+  voice: "bg-[var(--color-violet-2)] text-[var(--color-violet)]",
+  leave: "bg-[var(--color-cyan-2)] text-[var(--color-cyan)]",
 };
 const hm = (v: unknown) => (v ? new Date(str(v)).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "");
 const mins = (a: unknown, b: unknown) => (a && b ? Math.max(1, Math.round((new Date(str(b)).getTime() - new Date(str(a)).getTime()) / 60000)) : null);
@@ -64,6 +66,22 @@ function describe(kind: NotifyKind, r: Row): { title: string; sub: string } {
     case "assigned": return { title: `Given to you · ${r.title ? str(r.title) : r.room_id ? `Room ${str(r.place)}` : str(r.place) || "a job"}`, sub: r.title ? [str(r.place), str(r.details)].filter(Boolean).join(" — ") || "A job for you" : str(r.notes).startsWith("Failed inspection") ? str(r.notes) : r.room_id ? "A room to clean" : "A table to clean" };
     case "call": return { title: r.kind === "bill" ? "A table wants the bill" : r.kind === "water" ? "A table wants water" : "A table is calling a waiter", sub: "See which on Orders" };
     case "feedback": return { title: `Low rating · ${str(r.rating)}★`, sub: [str(r.comment).slice(0, 80), (r.tags as string[] | null)?.join(", ")].filter(Boolean).join(" — ") || "Read it under Customers → Feedback" };
+    // 0124: `ev` is set where the event is heard — "new" and "reply" reach the owner, "answer" the person who sent it
+    case "voice": {
+      const what = ({ complaint: "complaint", feedback: "feedback", suggestion: "idea", appreciation: "thanks" } as Record<string, string>)[str(r.kind)] ?? "message";
+      const who = r.anonymous ? "Anonymous" : str(r.author_name) || "Staff";
+      if (r.ev === "new") return { title: `New ${what} from your staff`, sub: `${str(r.subject)} — ${who}` };
+      if (r.ev === "reply") return { title: `${who} answered`, sub: str(r.subject) };
+      // the row cannot say whether the owner wrote, read or moved it — so the alert says where it stands now
+      const where = ({ seen: "seen by the owner", in_progress: "the owner is on it", resolved: "resolved" } as Record<string, string>)[str(r.status)] ?? "updated";
+      return { title: "Update from the owner", sub: `${str(r.subject)} — ${where}` };
+    }
+    // 0127: `ev` "ask" reaches whoever decides (RLS narrows the rows to them), "answer" the person who asked
+    case "leave": {
+      const days = Number(r.days ?? 0); const span = `${str(r.from_date)}${r.to_date !== r.from_date ? ` → ${str(r.to_date)}` : ""} · ${days} day${days === 1 ? "" : "s"}`;
+      if (r.ev === "ask") return { title: `${str(r.who) || "Someone"} asks for ${str(r.kind)} leave`, sub: span };
+      return { title: r.status === "approved" ? "Your leave is approved" : "Your leave was not approved", sub: [span, str(r.decision_note ?? "")].filter(Boolean).join(" — ") };
+    }
   }
 }
 
@@ -180,6 +198,25 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
           if (kinds.includes("jobdone") && (r.created_by === me || (boss && mine))) void nameOf(r.done_by).then((who) => announce("jobdone", { ...r, id: `${str(r.id)}:done`, who, label: labelOf(table, r) }));
         }
       });
+      /* Feedback & complaints (0124). RLS already narrows the rows: the owner hears every item of the property, anyone
+         else only their own. The owner: a new item, and a staff answer on an old one (its staff_at moved past the
+         owner's last look). The person who sent it: the owner's answer or move (owner_at moved past their last look). */
+      if (kinds.includes("voice")) {
+        const fresh = (v: unknown) => !!v && Date.now() - new Date(str(v)).getTime() < 60_000;
+        const after = (a: unknown, b: unknown) => !!a && (!b || new Date(str(a)).getTime() > new Date(str(b)).getTime());
+        if (role === "owner") {
+          on("staff_voice", "INSERT", (r) => announce("voice", { ...r, ev: "new" }));
+          on("staff_voice", "UPDATE", (r) => { if (fresh(r.staff_at) && after(r.staff_at, r.created_at) && after(r.staff_at, r.owner_seen_at)) announce("voice", { ...r, id: `${str(r.id)}:${str(r.staff_at)}`, ev: "reply" }); });
+        } else {
+          on("staff_voice", "UPDATE", (r) => { if (fresh(r.owner_at) && after(r.owner_at, r.author_seen_at)) announce("voice", { ...r, id: `${str(r.id)}:${str(r.owner_at)}`, ev: "answer" }); });
+        }
+      }
+      /* Leave (0127): whoever may decide hears a new request (RLS hands them only the ones they may see, never their own
+         read as someone else's); the person who asked hears the decision. */
+      if (kinds.includes("leave")) {
+        on("staff_leave", "INSERT", (r) => { if (r.profile_id !== me && ["owner", "manager", "supervisor", "supervisor_2"].includes(role ?? "")) void nameOf(r.profile_id).then((who) => announce("leave", { ...r, ev: "ask", who })); });
+        on("staff_leave", "UPDATE", (r) => { if (r.profile_id === me && (r.status === "approved" || r.status === "rejected") && !!r.decided_at && Date.now() - new Date(str(r.decided_at)).getTime() < 60_000) announce("leave", { ...r, id: `${str(r.id)}:${str(r.status)}`, ev: "answer" }); });
+      }
       if (kinds.includes("ready")) on("kots", "UPDATE", (r) => {
         const at = r.ready_at ? new Date(str(r.ready_at)).getTime() : 0;
         if (r.status === "ready" && Date.now() - at < 60_000) announce("ready", r);
@@ -227,7 +264,7 @@ export function NotificationBell({ lateKots }: { lateKots: number }) {
       <button type="button" onClick={toggle} aria-expanded={open} aria-haspopup="dialog" aria-label={badge ? `Notifications, ${badge} new` : "Notifications"}
         className={cn("relative h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)]", open && "bg-[var(--color-fill)]")}>
         {n?.prefs && !n.prefs.on ? <BellOff size={17} /> : unread ? <BellRing size={17} /> : <Bell size={17} />}
-        {badge > 0 && <span className="absolute -top-0.5 -right-0.5 num h-4 min-w-4 px-1 rounded-full bg-chili text-white text-[10px] grid place-items-center">{badge > 99 ? "99+" : badge}</span>}
+        {badge > 0 && <span className="absolute -top-0.5 -right-0.5 num h-4 min-w-4 px-1 rounded-full bg-chili text-white text-[10px] grid place-items-center" data-bell-count={badge}>{badge > 99 ? "99+" : badge}</span>}
       </button>
       {open && (
         <div role="dialog" aria-label="Notifications" data-no-gesture

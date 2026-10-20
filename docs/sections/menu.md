@@ -160,3 +160,19 @@ storefront now does too — see guest-facing.md.
   `MenuClient` — most of the screen's JavaScript, ~0.9 s on a first visit. `page.tsx` now finds the plate for each of
   this property's dishes and passes `std: Record<itemId, StandardRecipe>`; the list, the recipes overview and the recipe
   editor read it. Do not import `findStandardRecipe` (or anything from `recipes.ts`) in a client component.
+- **"No recipe" is a frosted badge on the photo** (2026-10-20 — the owner marked the amber "⚠ No recipe" pill, which
+  sat in a row of its own on some cards only: "the design and the placing are not good"; a first try that turned it into
+  a "+ Add recipe" chip row was not what they asked for). It sits on the photo's bottom-left corner (veg mark top-left,
+  camera top-right), so it takes no row and every card in a row is the same height: 26px, 11.5px semibold white text, an
+  amber dot, dark glass `rgb(10 10 13 / .55)` + `backdrop-blur-md` with a faint white ring — it reads over any photo and
+  over the no-photo plate in all five themes. A ✦ sparkle when the library has a standard plate for the dish. It is a
+  `<button>` of its own beside the photo button (a wrapper `div.relative` holds both — buttons cannot nest),
+  `[data-no-recipe]`, `aria-label="Recipe — dish"` as before, and opens the recipe editor; on touch an invisible
+  `::before` (`-inset-[9px]`) makes it a 44px target. Dishes with a recipe show nothing extra. The phone row says the
+  same in its meta line: a small amber dot and "No recipe" (the amber mixed a quarter toward the label, so it reads on
+  the light themes).
+- **The Photo dialog is wide and two columns** (2026-10-20, the owner's "dialog height issue"). `DishPhotoPicker` is an
+  `@container`: from 34rem the chosen photo sits left and the found photos, Take a photo / Upload and the note right; the
+  photo is never taller than 42dvh. Stacked in the 512px dialog the 4:3 photo alone was 348px, so on an iPad held sideways
+  the dialog reached the screen's edge with the found photos and Upload below the fold — it looked cut off. The dish form
+  (a narrow dialog) stays stacked. `Sheet`'s body is also `flex-auto` now — see design-system.md.

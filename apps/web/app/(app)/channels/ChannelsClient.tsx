@@ -88,7 +88,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
 
       {tab === "food" && (<div className="space-y-4">
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-          <b>How this works.</b> Each channel gets its own webhook address. Give that URL to whoever sends you orders and they appear on the <Link href="/online-orders" className="underline font-semibold">Online orders</Link> screen, print a KOT and deduct stock like any other order.
+          <b>How this works.</b> Each channel gets its own webhook address. Give that URL to whoever sends you orders and they appear on the <Link href="/online-orders" className="tap underline font-semibold">Online orders</Link> screen, print a KOT and deduct stock like any other order.
           Swiggy and Zomato only hand out direct API access to approved partners, so most restaurants connect through a middleware (UrbanPiper, Petpooja Connect and similar) or start with their own website. Paste the URL there and it works today; swap in direct credentials the day you get them.</div></Card>
         <div className="flex justify-end"><Button onClick={() => setEditOc({ kind: "swiggy", commission_pct: 22, prep_minutes: 20 })}><Plus size={16} /> Add channel</Button></div>
         <div className="grid gap-3 md:grid-cols-2 [&>*]:min-w-0">{orderChannels.map((c) => (

@@ -107,3 +107,11 @@ Then receive a small PO on a demo property and confirm the ledger and the level 
 [menu.md](menu.md) · [reports-and-forecast.md](reports-and-forecast.md) · [scan.md](scan.md)
 - **The pantry is a list on a phone and cards from `sm`** (2026-10-15): the amount a store keeper opens the page
   for is the biggest thing on each row and card. (It was a table whose *In stock* column ran off a 412 screen.)
+- **The item's picture is in its kind's colour** (2026-10-20 — the owner could barely see it: the state's green drawn on
+  the state's green wash, the same on every healthy item). `IngIcon` in `InventoryClient` (`[data-ing-icon]`, card and
+  phone row): `ING_HUE` by category — vegetables green, fruit and grocery amber, dairy blue, meat red, seafood and
+  cleaning cyan, drinks and packaged violet — as a 17% wash over the card with a hairline of the hue, the drawing 23px at
+  2.1 stroke in the hue mixed a fifth toward the label (lifted in the dark themes, deepened in the light). A finished or
+  low item carries a dot in its state's colour (`--st`) on the corner; the state itself is still the pill and the bar.
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Finished / Running low / Enough are shuffling flap counts (`[data-level-n]`), red / amber / green when they hold anything.

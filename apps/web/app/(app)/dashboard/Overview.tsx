@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Wallet, Users, Timer, BedDouble, Bike, Boxes, ConciergeBell, Sparkles, Flame, ReceiptText } from "lucide-react";
-import { Flip, cn } from "@/components/ui";
+import { cn, FlapShuffle, FlapPercent } from "@/components/ui";
 import { AnalogClock } from "@/components/ui/AnalogClock";
 import { formatINR } from "@/lib/format";
 
@@ -260,10 +260,14 @@ export function Overview({
 
       {/* The split-flap row, back where it belongs. It reads from the pass, which no stat card
           does, and it is the one piece of this app that is unmistakably this app. */}
+      {/* 2026-10-20 flap numbers: each counter shuffles and settles when it changes; a resort's "% full" counts up
+          to its percentage over a filling bar (components/ui/Flap.tsx) */}
       <div className="flip-row">
         {flaps.map((f) => (
           <Link key={f.label} href={f.href} className="rounded-2xl focus-visible:outline-none">
-            <Flip value={f.value} label={f.label} tone={f.tone} />
+            {f.label === "% full"
+              ? <FlapPercent value={Number(f.value)} label="full" size="md" tone={f.tone} />
+              : <FlapShuffle value={f.value} label={f.label} tone={f.tone} size="md" />}
           </Link>
         ))}
       </div>

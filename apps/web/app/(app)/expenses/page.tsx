@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { seesFresh, deptOf } from "@/components/shell/sections";
 import { todayIST } from "@/lib/format";
 import { ExpensesClient, type Expense } from "./ExpensesClient";
 export const metadata = { title: "Expenses" };
@@ -13,7 +14,8 @@ const CAN = ["owner", "manager", "supervisor", "cashier"];
 /** What the business spends, a month at a time (`?m=2026-10`). */
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
   const session = await requireSession();
-  if (!CAN.includes(session.profile.role)) redirect("/dashboard?locked=expenses");
+  // and since 2026-10-20 only the money teams' supervisors and cashiers (sections.ts seesFresh — the link asks the same)
+  if (!CAN.includes(session.profile.role) || !seesFresh("expenses", session.profile.role, deptOf(session.profile.role, session.profile.department ?? null, session.profile.position ?? null))) redirect("/dashboard?locked=expenses");
   const { m } = await searchParams;
   const month = /^\d{4}-\d{2}$/.test(m ?? "") ? m! : todayIST().slice(0, 7);
   const [y, mo] = month.split("-").map(Number); const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();

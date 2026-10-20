@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { ThreadClient, type Ticket, type Msg } from "./ThreadClient";
@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
  *  screenshots are private; each gets a signed link for the hour. */
 export default async function RequestPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sent?: string }> }) {
   const [{ id }, sp, session] = await Promise.all([params, searchParams, requireSession()]);
+  if (session.profile.role !== "owner" && !session.isAdmin) redirect("/voice");   // the owner's line to DineFlow (2026-10-20)
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const s = await createClient();
   const [{ data: t }, { data: msgs }] = await Promise.all([

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Flame, Check, Bell, BellRing, CheckCheck, Clock, AlertTriangle, Printer, Boxes, Timer, Tv, RotateCcw, PauseCircle } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { cn, useToast } from "@/components/ui";
+import { cn, useToast, FlapShuffle, FlapClock } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import type { Word } from "@/lib/say";
@@ -216,7 +216,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
           const list = board.filter((k) => k.status === key);
           return (
             <section key={key} className={cn("kcol md:min-h-[60dvh]", cls)} data-col={key}>
-              <div className="kcol-head"><Icon size={20} aria-hidden /><Say w={w} start /><b className="num">{list.length}</b></div>
+              <div className="kcol-head"><Icon size={20} aria-hidden /><Say w={w} start /><b className="num sr-only">{list.length}</b><span className="ml-auto" data-kcol-count><FlapShuffle value={list.length} pad={0} size="xs" tile="40px" bare say={`${list.length}`} /></span></div>
               <motion.div className="space-y-3" variants={listV} initial="hidden" animate="show">
                 <AnimatePresence mode="popLayout">
                   {list.map((k) => {
@@ -234,7 +234,12 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                         transition={{ type: "spring", stiffness: 340, damping: 32 }} className={cn("kt", cls, (late || overdue) && "late", warn && !overdue && "warn")} data-kot={k.kot_no} data-late={late || overdue || undefined}>
                         <div className="kt-head">
                           <span className="where">{where(k)}</span>
-                          <span className="kt-mins num" style={{ ["--age" as string]: late || overdue ? "var(--color-red)" : warn ? "var(--color-orange)" : "var(--color-green)" }} title={`${age} minutes since it was sent`}><Clock size={16} aria-hidden />{fmtAge(k.created_at).value} {fmtAge(k.created_at).label}</span>
+                          {/* 2026-10-20: the ticket's age as a ticking flip clock (mm:ss) — emerald, amber at the hurry minutes, red when
+                              late (Flap.tsx); the words stay for a screen reader */}
+                          <span className="ml-auto flex items-center" title={`${age} minutes since it was sent`} data-kt-age>
+                            <span className="sr-only">{fmtAge(k.created_at).value} {fmtAge(k.created_at).label}</span>
+                            <FlapClock since={k.created_at} hurry={key !== "ready" ? warnAt : null} late={key !== "ready" ? lateAt : null} size="xs" tile="34px" bare tone={overdue ? "alert" : undefined} />
+                          </span>
                         </div>
                         <div className="px-3.5 pt-2 kt-sub num">KOT #{k.kot_no} · order #{k.orders?.order_no}{hotkey ? ` · key ${hotkey}` : ""}{k.cook && <span className="font-sans" data-cook> · {k.cook}</span>}</div>
                         <div className="px-3.5">

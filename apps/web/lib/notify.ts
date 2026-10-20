@@ -8,7 +8,7 @@
  * (a phone, a hotel's desk, a restaurant's till) — see `guessStation`.
  */
 
-export type NotifyKind = "online" | "reservation" | "booking" | "kot" | "ready" | "housekeeping" | "call" | "feedback" | "clean" | "assigned" | "roomdone" | "job" | "jobdone" | "taken";
+export type NotifyKind = "online" | "reservation" | "booking" | "kot" | "ready" | "housekeeping" | "call" | "feedback" | "clean" | "assigned" | "roomdone" | "job" | "jobdone" | "taken" | "voice" | "leave";
 export type ToneId = "chime" | "bell" | "ticket" | "pop" | "marimba" | "rush";
 export type StationId = "front" | "kitchen" | "till" | "phone" | "cleaning" | "custom";
 
@@ -37,6 +37,10 @@ export const KINDS: { kind: NotifyKind; label: string; hint: string; href: strin
   { kind: "jobdone", label: "Jobs finished", hint: "Something you raised is done, or a job in your department — who and how long", href: "/work", module: "" },
   { kind: "taken", label: "Jobs taken", hint: "Who took a job in your department, and from when (supervisors)", href: "/work", module: "" },
   { kind: "feedback", label: "A low rating", hint: "A guest gave three stars or fewer on the feedback QR", href: "/customers?tab=feedback", module: "customers" },
+  // 0124: the staff's messages to the owner, and the owner's answers to them — everyone, no section needed
+  { kind: "voice", label: "Feedback & complaints", hint: "For the owner, a message from the staff; for anyone else, the owner's answer to theirs", href: "/voice", module: "" },
+  // 0127: a leave request for whoever decides it, and the decision for the person who asked
+  { kind: "leave", label: "Leave", hint: "A leave request to decide, or the answer to yours", href: "/home", module: "" },
 ];
 
 /**
@@ -74,17 +78,17 @@ export const TONES: { id: ToneId; label: string; hint: string }[] = [
   { id: "rush", label: "Rush", hint: "Three rising beeps, hard to miss" },
 ];
 
-const ALL: Record<NotifyKind, boolean> = { online: true, reservation: true, booking: true, kot: true, ready: true, housekeeping: true, call: true, feedback: true, clean: true, assigned: true, roomdone: true, job: true, jobdone: true, taken: true };
-const NONE: Record<NotifyKind, boolean> = { online: false, reservation: false, booking: false, kot: false, ready: false, housekeeping: false, call: false, feedback: false, clean: false, assigned: false, roomdone: false, job: false, jobdone: false, taken: false };
+const ALL: Record<NotifyKind, boolean> = { online: true, reservation: true, booking: true, kot: true, ready: true, housekeeping: true, call: true, feedback: true, clean: true, assigned: true, roomdone: true, job: true, jobdone: true, taken: true, voice: true, leave: true };
+const NONE: Record<NotifyKind, boolean> = { online: false, reservation: false, booking: false, kot: false, ready: false, housekeeping: false, call: false, feedback: false, clean: false, assigned: false, roomdone: false, job: false, jobdone: false, taken: false, voice: false, leave: false };
 
 /** A station is a sensible starting point for a kind of machine; changing anything makes it Custom. */
 export const STATIONS: { id: StationId; label: string; hint: string; tone: ToneId; kinds: Record<NotifyKind, boolean> }[] = [
-  { id: "front", label: "Front desk", hint: "Bookings, table bookings, online orders", tone: "bell", kinds: { ...NONE, booking: true, reservation: true, online: true, housekeeping: true, feedback: true, assigned: true, roomdone: true, job: true, jobdone: true } },
+  { id: "front", label: "Front desk", hint: "Bookings, table bookings, online orders", tone: "bell", kinds: { ...NONE, booking: true, reservation: true, online: true, housekeeping: true, feedback: true, assigned: true, roomdone: true, job: true, jobdone: true, voice: true, leave: true } },
   { id: "kitchen", label: "Kitchen screen", hint: "Every ticket and online order, loud", tone: "ticket", kinds: { ...NONE, kot: true, online: true, job: true } },
-  { id: "till", label: "Till / waiters", hint: "Food ready, tables calling, bookings, online orders", tone: "chime", kinds: { ...NONE, ready: true, reservation: true, online: true, call: true, feedback: true, clean: true, assigned: true, job: true, jobdone: true } },
+  { id: "till", label: "Till / waiters", hint: "Food ready, tables calling, bookings, online orders", tone: "chime", kinds: { ...NONE, ready: true, reservation: true, online: true, call: true, feedback: true, clean: true, assigned: true, job: true, jobdone: true, voice: true, leave: true } },
   { id: "phone", label: "Owner's phone", hint: "Everything, softly", tone: "pop", kinds: { ...ALL } },
   // 0111: a cleaner's phone or the housekeeping tablet — what to clean, and what is given to them
-  { id: "cleaning", label: "Cleaning crew", hint: "Tables and rooms to clean, and jobs given to you", tone: "bell", kinds: { ...NONE, housekeeping: true, clean: true, assigned: true, job: true, jobdone: true } },
+  { id: "cleaning", label: "Cleaning crew", hint: "Tables and rooms to clean, and jobs given to you", tone: "bell", kinds: { ...NONE, housekeeping: true, clean: true, assigned: true, job: true, jobdone: true, voice: true, leave: true } },
 ];
 
 export function guessStation(propertyType: string, role?: string): StationId {
@@ -104,7 +108,7 @@ const KEY = "df-notify";
 export function loadPrefs(propertyType: string, role?: string): NotifyPrefs {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) { const p = JSON.parse(raw) as NotifyPrefs; if (p && p.kinds && p.tone) return { ...stationPrefs("phone"), ...p, kinds: { ...NONE, call: p.station !== "kitchen", feedback: p.station !== "kitchen", clean: p.station !== "kitchen" && p.station !== "front", assigned: true, roomdone: p.station === "front" || p.station === "phone", job: true, jobdone: p.station !== "kitchen", taken: true, ...(p.kinds as Partial<Record<NotifyKind, boolean>>) } }; }
+    if (raw) { const p = JSON.parse(raw) as NotifyPrefs; if (p && p.kinds && p.tone) return { ...stationPrefs("phone"), ...p, kinds: { ...NONE, call: p.station !== "kitchen", feedback: p.station !== "kitchen", clean: p.station !== "kitchen" && p.station !== "front", assigned: true, roomdone: p.station === "front" || p.station === "phone", job: true, jobdone: p.station !== "kitchen", taken: true, voice: p.station !== "kitchen", leave: p.station !== "kitchen", ...(p.kinds as Partial<Record<NotifyKind, boolean>>) } }; }
   } catch { /* storage blocked: fall through to the guess */ }
   return stationPrefs(guessStation(propertyType, role));
 }

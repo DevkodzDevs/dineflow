@@ -96,6 +96,20 @@ and only then `admin_delete_property`.
 
 **`install_sample_estate`** builds a whole demo estate; `sweep_expired_demos` clears sandboxes.
 
+**App files (`/admin/app-files`, 0128, 2026-10-20 — the owner: "simple and easy options to update").** The Android
+`.apk` and Windows `.exe` every install screen offers. One card each: the current file (version, size, date, Test
+download), a drop zone (`[data-app-file-drop]`, `[data-app-file-input]` accepts only that extension, ≤ 100 MB),
+Version (read from the file name, must be new — `[data-app-file-version]`), optional notes, **Upload**
+(`[data-app-file-upload]`), real progress (`[data-app-file-progress]`) and the result (`[data-app-file-msg]`), and
+Earlier uploads with **Make current** (`[data-app-file-rollback]`). The upload goes **from the browser straight to
+Storage** (XHR to `/storage/v1/object/app-files/<platform>/<name>` with the master's session — supabase-js reports no
+progress, and a Vercel function refuses bodies over 4.5 MB), then the `publishRelease` action calls
+`app_release_publish`, which checks `is_master()`, that the object is really in the bucket, the extension and that
+the version is new. Storage's refusals are turned into sentences — above all the project-wide **Upload file size
+limit** (Supabase → Storage → Settings, 50 MB by default; the Windows file is ~78 MB): raise it to 100 MB once. The
+tab is the sixth in `AdminNav` (three across on a phone, six from `sm`). How to build the files:
+[docs/install-builds.md](../install-builds.md).
+
 ## Before you edit
 
 - **The overview warns while the master login still uses its shipped password** (0098,

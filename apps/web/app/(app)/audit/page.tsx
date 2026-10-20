@@ -6,7 +6,7 @@ import { AuditClient, type Event } from "./AuditClient";
 export const metadata = { title: "Audit trail" };
 export const dynamic = "force-dynamic";
 
-const SEES = ["owner", "manager", "supervisor"];   // the RLS policy on audit_events says the same
+const SEES = ["owner", "manager"];   // 2026-10-20: the owner's and managers' (the RLS policy on audit_events still lets a supervisor read; the screen is not theirs)
 const PAGE = 200;
 
 export default async function AuditPage({ searchParams }: { searchParams: Promise<{ days?: string; before?: string }> }) {

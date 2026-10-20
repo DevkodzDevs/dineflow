@@ -2,9 +2,9 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Phone, X, Armchair, Plus, Star, PartyPopper, Percent, ChevronLeft, ChevronRight, MessageCircle, Clock, AlarmClock, MoreHorizontal, ClipboardList, Check, CalendarDays, List } from "lucide-react";
+import { Users, Phone, X, Armchair, Plus, Star, PartyPopper, Percent, ChevronLeft, ChevronRight, MessageCircle, Clock, AlarmClock, MoreHorizontal, ClipboardList, Check, CalendarDays, List, Undo2 } from "lucide-react";
 import { waHref, waDate, waTime, firstName } from "@/lib/wa";
-import { Button, Card, Field, Pill, Sheet, Segmented, cn, Empty, useToast } from "@/components/ui";
+import { Button, Card, Field, Pill, Sheet, cn, Empty, useToast, FlapClock } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import { useLive } from "@/lib/useLive";
@@ -23,8 +23,9 @@ const mins = (t: string) => { const [h, m] = t.split(":").map(Number); return h 
 const LATE_AFTER = 15;
 
 /**
- * Who is coming to eat (globals.css SIMPLE SERVICE): a strip of the next seven days with how many tables
- * are booked on each; chips for Coming (blue), Late (red) and At table (green); then one card per
+ * Who is coming to eat (globals.css SIMPLE SERVICE): one panel with the month, the chosen day's numbers and a rail of
+ * the next seven days, then the chips for Coming (blue), Late (red) and At table (green) beside the Day · Month · Reviews
+ * switch; then one card per
  * booking — the time big, the name, how many — with Seat now, a call and the WhatsApp confirmation. The
  * month grid and the guests' reviews are the other two tabs.
  */
@@ -49,6 +50,12 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
   const order: Record<Kind, number> = { late: 0, coming: 1, seated: 2 };
   const shown = live.filter((r) => !only || kindOf(r) === only).sort((a, b) => order[kindOf(a)!] - order[kindOf(b)!] || a.at_time.localeCompare(b.at_time));
   const covers = list.filter((r) => r.status !== "cancelled" && r.status !== "no_show").reduce((t, r) => t + r.party_size, 0);
+  // the panel's heading: the month the seven days sit in, and the chosen day with its tables and guests
+  const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { ...o, timeZone: "UTC" });
+  const first = days[0]?.date ?? day, last = days[days.length - 1]?.date ?? day;
+  const monthLabel = first.slice(0, 7) === last.slice(0, 7) ? fmt(first, { month: "long", year: "numeric" }) : `${fmt(first, { month: "short" })} – ${fmt(last, { month: "short", year: "numeric" })}`;
+  const dayLabel = day === today ? `Today, ${fmt(day, { day: "numeric", month: "short" })}` : fmt(day, { weekday: "short", day: "numeric", month: "short" });
+  const dayTables = days.find((d) => d.date === day)?.n ?? list.filter((r) => r.status !== "cancelled" && r.status !== "no_show").length;
   const move = (d: number) => { const x = new Date(`${day}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + d); return `/reservations?date=${x.toISOString().slice(0, 10)}`; };
   const act = (r: R, status: Parameters<typeof setReservation>[1], table?: string) => start(async () => { const x = await setReservation(r.id, status, table); if ("error" in x) toast(x.error!, "err"); else { toast(status === "seated" ? `${r.guest_name} seated` : `Marked ${status.replace("_", " ")}`); setSeating(null); setMore(null); } });
   const K: Record<Kind, { cls: string; w: "coming" | "late" | "at_table"; Icon: typeof Clock }> = { coming: { cls: "st-new", w: "coming", Icon: Clock }, late: { cls: "st-late", w: "late", Icon: AlarmClock }, seated: { cls: "st-ready", w: "at_table", Icon: Armchair } };
@@ -63,8 +70,9 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
         className={cn("feather !rounded-[22px] relative overflow-hidden p-4 pl-5 min-w-0", meta.cls)} data-res={r.id} data-kind={k}>
         <span aria-hidden className="absolute inset-y-0 left-0 w-[5px]" style={{ background: "var(--st)" }} />
         <div className="flex items-start gap-3 min-w-0">
-          <div className="text-center shrink-0 w-[4.5rem]">
-            <div className="font-display num text-[34px] leading-none">{((h + 11) % 12) + 1}:{String(mm).padStart(2, "0")}</div>
+          <div className="text-center shrink-0 min-w-[4.5rem] flex flex-col items-center">
+            {/* 2026-10-20: the booking time on flap tiles (Flap.tsx); AM/PM stays the line under it */}
+            <div className="leading-none" data-res-time={`${((h + 11) % 12) + 1}:${String(mm).padStart(2, "0")}`}><FlapClock at={r.at_time} half={false} size="xs" tile="32px" bare say={`${((h + 11) % 12) + 1}:${String(mm).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`} /></div>
             <div className="mt-1 text-[12px] font-bold text-steel">{h < 12 ? "AM" : "PM"}</div>
           </div>
           <div className="flex-1 min-w-0">
@@ -102,38 +110,66 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
       <SvcHead icon="reservations" title="Reservations" sub="Who is coming to eat — tap Seat now when they arrive"
         actions={<button type="button" className="svc-btn go sm !px-5" onClick={() => { setW((x) => ({ ...x, date: day })); setWalkIn(true); }} data-new-booking><Plus size={19} aria-hidden /><Say w="new_booking" /></button>} />
 
-      {/* the next seven days, each with how many tables are booked; the arrows step a day either way */}
-      <div className="flex items-center gap-2 mb-4 min-w-0" data-days>
-        <Link href={move(-1)} aria-label="Previous day" className="hidden sm:grid h-[84px] w-11 shrink-0 place-items-center rounded-[18px] bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"><ChevronLeft size={18} /></Link>
-        <div className="rail-fade flex-1 min-w-0 flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none]">
+      {/* one panel for "which day, and what to show": the month and the chosen day's numbers with the day arrows, the
+          next seven days as a rail of day pills (seven across at every width — 47px each on a 412 phone), then the
+          state chips and the Day · Month · Reviews switch on one bar (2026-10-20) */}
+      <section className="feather !rounded-[24px] p-3 sm:p-4 mb-5 min-w-0" data-res-top>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 text-[16px] sm:text-[18px] font-extrabold leading-tight" data-month-label>
+              <CalendarDays size={17} className="shrink-0 text-steel" aria-hidden /><span className="truncate">{monthLabel}</span>
+            </div>
+            <div className="mt-0.5 text-[12.5px] sm:text-[13px] font-semibold text-steel num truncate" data-day-summary>
+              {dayLabel}<span aria-hidden> · </span>{dayTables} table{dayTables === 1 ? "" : "s"}
+              {covers > 0 && <><span aria-hidden> · </span><span data-guests>{covers} guest{covers === 1 ? "" : "s"}</span></>}
+            </div>
+          </div>
+          {day !== today && <Link href={`/reservations?date=${today}`} className="h-11 shrink-0 px-3.5 rounded-[14px] inline-flex items-center gap-1.5 text-[13.5px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" data-today-jump>
+            <Undo2 size={15} aria-hidden />Today</Link>}
+          <Link href={move(-1)} aria-label="Previous day" className="h-11 w-11 shrink-0 grid place-items-center rounded-[14px] bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"><ChevronLeft size={19} /></Link>
+          <Link href={move(1)} aria-label="Next day" className="h-11 w-11 shrink-0 grid place-items-center rounded-[14px] bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"><ChevronRight size={19} /></Link>
+        </div>
+
+        {/* the next seven days: the chosen one solid, today ringed in the tint, an empty day quieter; a busy day shows
+            up to three dots on a phone and "n tables" from sm (the words stay for a screen reader on a phone) */}
+        <div className="mt-3 grid grid-cols-7 gap-1 sm:gap-2 min-w-0" data-days>
           {days.map((d) => {
-            const on = d.date === day; const dt = new Date(`${d.date}T00:00:00Z`);
+            const on = d.date === day; const isToday = d.date === today; const dt = new Date(`${d.date}T00:00:00Z`);
             return (
-              <Link key={d.date} href={`/reservations?date=${d.date}`} aria-current={on ? "date" : undefined} className={cn("shrink-0 w-[76px] sm:flex-1 sm:w-auto min-h-[84px] rounded-[18px] flex flex-col items-center justify-center gap-0.5 transition-colors", on ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
-                <span className="text-[12px] font-extrabold">{d.date === today ? "Today" : dt.toLocaleDateString("en-IN", { weekday: "short", timeZone: "UTC" })}</span>
-                <span className="font-display num text-[26px] leading-none">{dt.getUTCDate()}</span>
-                <span className={cn("text-[11px] font-bold num", on ? "opacity-70" : "text-steel")}>{d.n} table{d.n === 1 ? "" : "s"}</span>
-                {on && covers > 0 && <span className="text-[11px] font-bold num opacity-70" data-guests>{covers} guest{covers === 1 ? "" : "s"}</span>}
+              <Link key={d.date} href={`/reservations?date=${d.date}`} aria-current={on ? "date" : undefined} data-day={d.date} data-busy={d.n > 0 || undefined}
+                className={cn("min-w-0 min-h-[70px] sm:min-h-[86px] rounded-[16px] sm:rounded-[18px] flex flex-col items-center justify-center gap-1 px-0.5 transition-colors",
+                  on ? "bg-[var(--color-label)] text-[var(--color-on-label)] shadow-[var(--shadow-card)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]",
+                  !on && isToday && "shadow-[inset_0_0_0_2px_var(--color-tint)]")}>
+                <span className={cn("text-[10px] sm:text-[11.5px] font-extrabold uppercase tracking-[.06em] leading-none max-w-full truncate", !on && (isToday ? "text-[var(--color-tint)]" : "text-steel"))}>
+                  {isToday ? "Today" : dt.toLocaleDateString("en-IN", { weekday: "short", timeZone: "UTC" })}</span>
+                <span className={cn("font-display num text-[23px] sm:text-[30px] leading-none", !on && d.n === 0 && "text-[var(--color-label-2)]")}>{dt.getUTCDate()}</span>
+                <span className="h-1.5 flex items-center gap-[3px] sm:hidden" aria-hidden>
+                  {Array.from({ length: Math.min(d.n, 3) }, (_, i) => <span key={i} className={cn("h-1.5 w-1.5 rounded-full", on ? "bg-[var(--color-on-label)]" : "bg-[var(--color-tint)]")} />)}
+                </span>
+                <span className={cn("max-sm:sr-only text-[11.5px] font-bold num leading-none", on ? "opacity-75" : d.n ? "text-[var(--color-label-2)]" : "text-[var(--color-label-3)]")}>{d.n} table{d.n === 1 ? "" : "s"}</span>
               </Link>
             );
           })}
         </div>
-        <Link href={move(1)} aria-label="Next day" className="hidden sm:grid h-[84px] w-11 shrink-0 place-items-center rounded-[18px] bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"><ChevronRight size={18} /></Link>
-      </div>
 
-      {/* the chips: on a phone one compact row of equal parts (they wrapped onto two lines); the day's guest
-          count sits in its tile in the strip above */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 mb-5">
-        <div className="grid grid-flow-col auto-cols-fr gap-2 sm:flex sm:flex-wrap min-w-0" data-res-chips>
-          {(["coming", "late", "seated"] as Kind[]).map((k) => { const meta = K[k]; const n = count(k); if (k === "late" && !n) return null; return (
-            <button key={k} type="button" onClick={() => setOnly((x) => (x === k ? null : k))} aria-pressed={only === k} className={cn("svc-chip min-w-0 max-sm:justify-center max-sm:!px-2 max-sm:!gap-1.5 max-sm:!text-[13px]", meta.cls)} data-state-chip={k}><meta.Icon size={15} aria-hidden className="shrink-0" /><Say w={meta.w} start /><b className="num shrink-0">{n}</b></button>
-          ); })}
+        {/* the chips filter the list; the switch picks Day, Month or Reviews — one bar, or two rows on a phone */}
+        <div className="mt-3 pt-3 border-t border-[var(--color-separator)] flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3 min-w-0">
+          <div className="grid grid-flow-col auto-cols-fr gap-2 sm:flex sm:flex-wrap min-w-0" data-res-chips>
+            {(["coming", "late", "seated"] as Kind[]).map((k) => { const meta = K[k]; const n = count(k); if (k === "late" && !n) return null; return (
+              <button key={k} type="button" onClick={() => setOnly((x) => (x === k ? null : k))} aria-pressed={only === k} className={cn("svc-chip min-w-0 [@media(pointer:coarse)]:!min-h-11 max-sm:justify-center max-sm:!px-2 max-sm:!gap-1.5 max-sm:!text-[13px]", meta.cls)} data-state-chip={k}><meta.Icon size={15} aria-hidden className="shrink-0" /><Say w={meta.w} start /><b className="num shrink-0">{n}</b></button>
+            ); })}
+          </div>
+          <div role="tablist" aria-label="Show" className="sm:ml-auto grid grid-cols-3 sm:inline-grid sm:auto-cols-max sm:grid-flow-col gap-1 p-1 rounded-[16px] bg-[var(--color-fill)] min-w-0" data-res-tabs>
+            {([["day", "Day", List], ["month", "Month", CalendarDays], ["reviews", "Reviews", Star]] as const).map(([v, label, Icon]) => (
+              <button key={v} type="button" role="tab" aria-selected={tab === v} data-on={tab === v} data-tab={v} onClick={() => setTab(v)}
+                className={cn("!min-h-10 [@media(pointer:coarse)]:!min-h-11 min-w-0 px-3 sm:px-4 rounded-[12px] inline-flex items-center justify-center gap-1.5 text-[14px] font-bold transition-colors",
+                  tab === v ? "bg-[var(--color-label)] text-[var(--color-on-label)] shadow-[0_2px_8px_-3px_rgb(0_0_0/.45)]" : "text-steel hover:text-[var(--color-label)]")}>
+                <Icon size={15} className="shrink-0" aria-hidden /><span className="truncate">{label}</span>
+                {v === "reviews" && reviews.length > 0 && <b className={cn("num shrink-0 min-w-5 h-5 px-1.5 rounded-full grid place-items-center text-[11.5px]", tab === v ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")}>{reviews.length}</b>}
+              </button>))}
+          </div>
         </div>
-        <Segmented value={tab} onChange={setTab} className="sm:ml-auto max-sm:w-full max-sm:[&>button]:flex-1" options={[
-          { value: "day", label: <span className="inline-flex items-center gap-1.5"><List size={15} /> Day</span> },
-          { value: "month", label: <span className="inline-flex items-center gap-1.5"><CalendarDays size={15} /> Month</span> },
-          { value: "reviews", label: `Reviews${reviews.length ? ` · ${reviews.length}` : ""}` }]} />
-      </div>
+      </section>
 
       {tab === "day" ? (
         list.length === 0 ? <Empty title="No bookings for this day" hint="Take one on the phone with New booking, or switch the storefront on in Settings → Storefront and guests book themselves." action={<Link href="/settings/storefront"><Button variant="gray">Set up the storefront</Button></Link>} /> : (

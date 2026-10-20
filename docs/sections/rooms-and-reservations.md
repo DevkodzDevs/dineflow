@@ -52,8 +52,8 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
 
 - **Reservations is Simple Service (2026-10-15).** `SvcHead` with **New booking** (the phone-booking sheet) · a
   strip of seven days (`[data-days]`: today, or from the chosen day when it is further out — `page.tsx` reads
-  their counts) with a 44px arrow either side from `sm` (`aria-label` Previous day / Next day — the `[` `]` keys
-  press them); the chosen day's tile also says how many guests are expected · chips **Coming** (blue), **Late**
+  their counts) with day arrows (`aria-label` Previous day / Next day — the `[` `]` keys press them; since
+  2026-10-20 in the panel's heading, see below) and the chosen day's guest count · chips **Coming** (blue), **Late**
   (red: not seated 15 min after its time, in IST) and **At table** (green), each filtering — on a phone one row
   of equal parts (`grid-flow-col auto-cols-fr`; they wrapped onto two lines with the guest count) · tabs **Day · Month · Reviews**: the month grid
   (`Calendar.tsx`, unchanged) is the Month tab and a tap on a day comes back to Day. A booking is one card
@@ -62,6 +62,23 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   booking*); a seated one has **Take order** at its table and **Done**. Late first, then by time; two across from
   `md`, three from `min-[100rem]`.
 
+- **The top of Reservations is one panel (2026-10-20, `[data-res-top]` — the owner: "plain, not polished").**
+  The strip of days, the arrows on its sides, and the chips and tabs floating under it are now one `feather` card:
+  - **Heading row:** the month the seven days sit in (`[data-month-label]`, "October 2026", or "Oct – Nov 2026" across a
+    month end), under it the chosen day with its tables and guests (`[data-day-summary]`, "Today, 20 Oct · 1 table ·
+    4 guests"; the guests keep `[data-guests]`); on the right a **Today** jump (`[data-today-jump]`, only when another
+    day is open) and the two 44px arrows — now on a phone too (`aria-label` Previous day / Next day, still pressed by
+    the `[` `]` keys).
+  - **The rail** (`[data-days]`) is `grid-cols-7` at every width — no sideways scroll, 47px pills on a 412 phone. A
+    pill (`data-day`, `data-busy`, `aria-current="date"` on the chosen one) is weekday small caps ("TODAY" for today),
+    the date in display type, then up to three tint dots on a phone and "n tables" from `sm` (the words stay as
+    `sr-only` text on a phone — `svcflow2.mjs` reads them). Chosen: solid label colour; today otherwise: a 2px tint
+    ring and the weekday in the tint; an empty day's numeral is quieter (`label-2`).
+  - **The bar under a hairline:** the state chips (`[data-res-chips]`, `[data-state-chip]`, unchanged) and the switch
+    (`[data-res-tabs]`, `role=tablist`, each `[data-tab=day|month|reviews]` with `aria-selected`) — a plain three-part
+    control with icons and the review count as a badge. It replaced the kit `Segmented`, whose animated thumb and
+    unequal labels crowded "Month" under "Reviews · 10" on the iPad. On a phone: chips in one row, then the switch full
+    width in three equal parts.
 - **The state chips (Ready · Occupied · Arriving · Cleaning · Maintenance) are a `Rail`** labelled
   "Rooms by state", wrapped `flex flex-1` so it still shares the toolbar with Room types & rates and
   + Room. On a phone and an iPad in portrait the chips run past the edge; the round arrow on the right
@@ -106,3 +123,5 @@ node cal.mjs             # 6 checks — 42 cells, 7 weekday heads, dots, the ope
 
 [front-desk.md](front-desk.md) · [housekeeping.md](housekeeping.md) ·
 [guest-facing.md](guest-facing.md) · [design-system.md](design-system.md)
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Room numbers on the Rooms cards are spelled on flap tiles (up to four characters); each reservation's time is a `FlapClock at` (`[data-res-time]`), AM/PM under it.

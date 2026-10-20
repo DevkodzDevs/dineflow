@@ -7,7 +7,7 @@ export const metadata = { title: "Intelligence" };
 export const dynamic = "force-dynamic";
 
 /** Owner, managers and supervisors: the people who act on margins and exceptions. The RPCs check the same. */
-const SEES = ["owner", "manager", "supervisor"];
+const SEES = ["owner", "manager"];   // 2026-10-20: the owner's and managers' (it was every supervisor's too) — sections.ts FRESH
 
 export default async function IntelligencePage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   const { days: d } = await searchParams;

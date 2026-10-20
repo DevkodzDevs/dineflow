@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Calculator, Lock, FileText, FileSpreadsheet, HandCoins, Check, Settings2, Wallet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calculator, Lock, FileText, FileSpreadsheet, HandCoins, Check, Settings2, Wallet, IndianRupee } from "lucide-react";
 import { Card, Empty, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveSettings, setPay, giveAdvance, buildMonth, setLine, finalise, payLine } from "./actions";
@@ -56,10 +56,10 @@ export function PayrollClient({ month, today, property, settings, people, advanc
 
   return (
     <div className="space-y-5" data-payroll>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-        <div className="space-y-4 min-w-0">
+      {/* the switches and the advances side by side; the rates take the whole width under them (2026-10-20) */}
+      <div className="grid gap-4 md:grid-cols-2 md:items-start">
           {/* ── the switches ── */}
-          <Card data-payroll-settings>
+          <Card className="min-w-0" data-payroll-settings>
             <div className="flex items-center gap-2 text-[17px] font-extrabold mb-3"><Settings2 size={18} aria-hidden /> How pay is worked out</div>
             {([["pf", "PF", "12% from the person and 12% from you, on pay up to ₹15,000. Required from 20 staff."], ["esi", "ESI", "0.75% from the person and 3.25% from you, for pay up to ₹21,000 a month. Required from 10 staff."]] as const).map(([k, label, hint]) => (
               <label key={k} className="flex items-start gap-3 py-2 !min-h-11 cursor-pointer"><input type="checkbox" className="h-5 w-5 mt-0.5" checked={cfg[k]} onChange={(e) => setCfg((c) => ({ ...c, [k]: e.target.checked }))} data-switch={k} />
@@ -72,7 +72,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
           </Card>
 
           {/* ── advances ── */}
-          <Card data-advances>
+          <Card className="min-w-0" data-advances>
             <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Wallet size={18} aria-hidden /> Advances</div>
             <p className="text-[12.5px] text-steel mb-3">Money given ahead of pay; it comes off the next month worked out. Cash leaves the drawer now.</p>
             <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-2">
@@ -85,30 +85,80 @@ export function PayrollClient({ month, today, property, settings, people, advanc
               onClick={() => start(async () => { const r = await giveAdvance(adv.who, Number(adv.amount), adv.method, adv.note); if ("error" in r && r.error) toast(r.error, "err"); else { toast("Advance written down"); setAdv((a) => ({ ...a, amount: "", note: "" })); } })}><HandCoins size={16} aria-hidden /><Say w="give_advance" /></button>
             {advances.length > 0 && <ul className="mt-3 divide-y divide-[var(--color-separator)] text-[13.5px]">{advances.map((a) => <li key={a.id} className="py-2 flex justify-between gap-2"><span className="truncate">{people.find((p) => p.id === a.profile_id)?.full_name ?? "—"} · {a.given_on}{a.note ? ` · ${a.note}` : ""}</span><span className="num font-bold shrink-0">{inr(a.amount)}</span></li>)}</ul>}
           </Card>
-        </div>
-
-        {/* ── rates ── */}
-        <Card className="min-w-0" data-rates>
-          <div className="text-[17px] font-extrabold mb-1">Pay rates</div>
-          <p className="text-[12.5px] text-steel mb-3">Everyone with a rate is on the month&apos;s sheet. Days present come from attendance (Staff → attendance, or punching in).</p>
-          {people.length === 0 ? <Empty title="No staff yet" hint="Add people under Staff first." /> : <div className="divide-y divide-[var(--color-separator)]">
-            {people.map((p) => { const r = rates[p.id]; const set = (x: Partial<typeof r>) => setRates((all) => ({ ...all, [p.id]: { ...all[p.id], ...x } })); return (
-              <div key={p.id} className="py-3 grid gap-2 items-center grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,0.9fr)_auto]" data-rate={p.full_name}>
-                <div className="min-w-0"><div className="font-bold truncate">{p.full_name}</div><div className="text-[12px] text-steel">{cap(p.role)}{owedAdv(p.id) ? ` · advance ${inr(owedAdv(p.id))}` : ""}</div></div>
-                <div className="inline-flex rounded-xl bg-[var(--color-fill)] p-1" role="group" aria-label={`${p.full_name}: paid by`}>
-                  {(["monthly", "daily"] as const).map((b) => <button key={b} type="button" aria-pressed={r.basis === b} onClick={() => set({ basis: b })} className={cn("!min-h-10 px-3 rounded-lg text-[13px] font-bold", r.basis === b ? "bg-[var(--color-bg-2)] shadow-feather" : "text-steel")}>{b === "monthly" ? "Month" : "Day"}</button>)}
-                </div>
-                <input inputMode="decimal" className={cn("num", (cfg.pf || cfg.esi) && "max-sm:col-span-2")} placeholder={r.basis === "monthly" ? "₹ a month" : "₹ a day"} value={r.amount} onChange={(e) => set({ amount: e.target.value.replace(/[^\d.]/g, "") })} aria-label={`${p.full_name}: rate`} />
-                <div className={cn("flex flex-wrap items-center justify-end gap-2", (cfg.pf || cfg.esi) && "max-sm:col-span-2")}>
-                  {cfg.pf && <label className="inline-flex items-center gap-1 text-[12.5px] font-semibold !min-h-10"><input type="checkbox" checked={r.pf} onChange={(e) => set({ pf: e.target.checked })} className="h-4 w-4" />PF</label>}
-                  {cfg.pf && r.pf && <label className="inline-flex items-center gap-1 text-[12.5px] font-semibold" title="The share of pay that is basic + DA — PF is worked on it"><span className="text-steel">Basic</span><input inputMode="numeric" className="!w-16 !h-10 num text-center" value={r.basic} onChange={(e) => set({ basic: e.target.value.replace(/[^\d.]/g, "").slice(0, 5) })} aria-label={`${p.full_name}: basic + DA percent`} data-basic-pct />%</label>}
-                  {cfg.esi && <label className="inline-flex items-center gap-1 text-[12.5px] font-semibold !min-h-10"><input type="checkbox" checked={r.esi} onChange={(e) => set({ esi: e.target.checked })} className="h-4 w-4" />ESI</label>}
-                  <button type="button" disabled={pending || r.amount === ""} className="svc-btn quiet sm !px-3" data-save-rate onClick={() => act(setPay(p.id, r.basis, Number(r.amount), r.pf, r.esi, Math.min(100, Math.max(1, Number(r.basic) || 100))), `${p.full_name}: rate saved`)}>Save</button>
-                </div>
-              </div>); })}
-          </div>}
-        </Card>
       </div>
+
+      {/* ── rates ──
+          One set of pieces, two layouts, chosen by the list's own width (@container, 62rem): wide, a table whose every
+          row uses the same column tracks (`--rate-cols`, built from which of PF and ESI are on) under a header row —
+          the wrappers turn `contents` so their pieces become the row's cells, and the Basic % field keeps its slot,
+          dimmed, when a person's PF is off; narrower, a card per person (two across from 36rem): name and Save on top,
+          then Paid by and the rate, then PF · basic % · ESI. */}
+      <Card className="min-w-0" data-rates>
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[17px] font-extrabold"><IndianRupee size={18} aria-hidden /> Pay rates</div>
+            <p className="text-[12.5px] text-steel mt-0.5 max-w-[46rem]">Everyone with a rate is on the month&apos;s sheet. Days present come from attendance (Staff → attendance, or punching in).</p>
+          </div>
+          {people.length > 0 && <span className="shrink-0 rounded-full px-3 h-8 inline-flex items-center text-[12.5px] font-bold bg-[var(--color-fill)] num" data-rates-count>{people.filter((p) => p.pay).length} of {people.length} on the sheet</span>}
+        </div>
+        {people.length === 0 ? <Empty title="No staff yet" hint="Add people under Staff first." /> : (
+          <div className="@container" style={{ "--rate-cols": ["minmax(0,1.5fr)", "8.75rem", "minmax(9rem,1fr)", ...(cfg.pf ? ["12rem"] : []), ...(cfg.esi ? ["5.75rem"] : []), "7rem"].join(" ") } as React.CSSProperties}>
+            <div className="hidden @[62rem]:grid [grid-template-columns:var(--rate-cols)] gap-x-3 px-3 pb-2 border-b border-[var(--color-separator)] text-[12px] font-semibold text-steel" aria-hidden>
+              <span>Person</span><span>Paid by</span><span>Rate</span>{cfg.pf && <span>PF · basic + DA</span>}{cfg.esi && <span>ESI</span>}<span />
+            </div>
+            <div className="grid gap-3 @[36rem]:grid-cols-2 @[62rem]:grid-cols-1 @[62rem]:gap-0 @[62rem]:divide-y @[62rem]:divide-[var(--color-separator)]">
+              {people.map((p) => {
+                const r = rates[p.id]; const set = (x: Partial<typeof r>) => setRates((all) => ({ ...all, [p.id]: { ...all[p.id], ...x } }));
+                const saved = p.pay; const owed = owedAdv(p.id);
+                const dirty = !saved ? r.amount !== "" : r.basis !== saved.basis || Number(r.amount) !== Number(saved.amount) || r.pf !== saved.pf_on || r.esi !== saved.esi_on || Number(r.basic) !== Number(saved.pf_basic_pct ?? 100);
+                const pill = (on: boolean) => cn("inline-flex items-center gap-2 !min-h-11 h-11 px-3 rounded-xl cursor-pointer text-[13.5px] font-bold ring-1 ring-inset select-none", on ? "ring-[var(--color-tint)] bg-[color-mix(in_srgb,var(--color-tint)_12%,transparent)]" : "ring-[var(--color-separator)] text-steel");
+                return (
+                  <div key={p.id} data-rate={p.full_name}
+                    className="min-w-0 grid gap-3 content-start rounded-2xl bg-[var(--color-fill)] p-4 @[62rem]:[grid-template-columns:var(--rate-cols)] @[62rem]:items-center @[62rem]:gap-x-3 @[62rem]:gap-y-0 @[62rem]:rounded-none @[62rem]:bg-transparent @[62rem]:px-3 @[62rem]:py-3 @[62rem]:hover:bg-[var(--color-fill)]">
+                    {/* who, and Save (top right on a card; the last column in the table) */}
+                    <div className="flex items-center gap-3 min-w-0 @[62rem]:contents">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="h-10 w-10 shrink-0 rounded-full grid place-items-center text-[13px] font-extrabold bg-[var(--color-fill-2)]" aria-hidden>{p.full_name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</span>
+                        <div className="min-w-0">
+                          <div className="font-bold truncate">{p.full_name}</div>
+                          <div className="text-[12px] text-steel flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                            <span>{cap(p.role)}</span>
+                            {owed > 0 && <span className="inline-flex items-center gap-1 font-semibold text-[var(--color-orange)]"><HandCoins size={12} aria-hidden />advance {inr(owed)}</span>}
+                            {!saved && <span className="font-semibold text-[var(--color-orange)]" data-no-rate>· no rate yet</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <button type="button" disabled={pending || r.amount === "" || !dirty} className={cn("svc-btn sm shrink-0 !px-4 @[62rem]:order-last @[62rem]:w-full", dirty ? "go" : "quiet")} data-save-rate
+                        onClick={() => act(setPay(p.id, r.basis, Number(r.amount), r.pf, r.esi, Math.min(100, Math.max(1, Number(r.basic) || 100))), `${p.full_name}: rate saved`)}>
+                        {!dirty && saved ? <><Check size={16} aria-hidden />Saved</> : "Save"}</button>
+                    </div>
+                    {/* paid by and the rate */}
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 min-w-0 @[62rem]:contents">
+                      <div className="grid grid-cols-2 rounded-xl bg-[var(--color-bg-3)] p-1 w-[8.75rem]" role="group" aria-label={`${p.full_name}: paid by`}>
+                        {(["monthly", "daily"] as const).map((b) => <button key={b} type="button" aria-pressed={r.basis === b} onClick={() => set({ basis: b })} className={cn("!min-h-10 [@media(pointer:coarse)]:!min-h-11 rounded-lg text-[13px] font-bold", r.basis === b ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-feather" : "text-steel")}>{b === "monthly" ? "Month" : "Day"}</button>)}
+                      </div>
+                      <label className="relative block min-w-0">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-steel pointer-events-none" aria-hidden>₹</span>
+                        <input inputMode="decimal" className="num !pl-8 !pr-[4.25rem]" placeholder="0" value={r.amount} onChange={(e) => set({ amount: e.target.value.replace(/[^\d.]/g, "") })} aria-label={`${p.full_name}: rate`} />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[12.5px] font-semibold text-steel pointer-events-none" aria-hidden>/ {r.basis === "monthly" ? "month" : "day"}</span>
+                      </label>
+                    </div>
+                    {/* PF on basic + DA, and ESI — each in its own slot, whether or not this person has it */}
+                    {(cfg.pf || cfg.esi) && <div className="flex flex-wrap items-center gap-2 min-w-0 @[62rem]:contents">
+                      {cfg.pf && <div className="flex items-center gap-2 min-w-0">
+                        <label className={pill(r.pf)}><input type="checkbox" checked={r.pf} onChange={(e) => set({ pf: e.target.checked })} />PF</label>
+                        <label className={cn("relative block w-[6.5rem] shrink-0 transition-opacity", !r.pf && "opacity-40")} title="The share of pay that is basic + DA — PF is worked on it">
+                          <input inputMode="numeric" disabled={!r.pf} className="!h-11 !min-h-11 num !pl-3 !pr-[3.6rem]" value={r.basic} onChange={(e) => set({ basic: e.target.value.replace(/[^\d.]/g, "").slice(0, 5) })} aria-label={`${p.full_name}: basic + DA percent`} data-basic-pct />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-steel pointer-events-none" aria-hidden>% basic</span>
+                        </label>
+                      </div>}
+                      {cfg.esi && <div className="min-w-0"><label className={pill(r.esi)}><input type="checkbox" checked={r.esi} onChange={(e) => set({ esi: e.target.checked })} />ESI</label></div>}
+                    </div>}
+                  </div>);
+              })}
+            </div>
+          </div>)}
+      </Card>
 
       {/* ── the month ── */}
       <Card className="min-w-0 !p-0 overflow-hidden" data-payroll-month>

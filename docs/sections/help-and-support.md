@@ -24,7 +24,7 @@ their own thread and rates the help.
 ## How it works
 
 **The property side, `/help`.** It is reached from the sidebar menu's last group (**Help & support** beside
-Settings, after *Insights & control*, scrolling with the menu — every role, not a module; it was a row in the
+Settings, after *Insights & control*, scrolling with the menu — the owner's since 2026-10-20 (anyone else is sent to `/voice`), not a module; it was a row in the
 sidebar's foot until 2026-10-13) and the phone's More sheet. The page has:
 
 - three ways to reach DineFlow, from `lib/company.ts`;
@@ -91,6 +91,11 @@ Each screenshot has a remove button (0097): the path comes off the message, the 
 is deleted through the Storage API.
 
 ## Before you edit
+
+- **Help & support is the owner's since 2026-10-20** (the owner: "only the owner; the staff get a feedback or
+  complaints section"). `/help` and `/help/[id]` redirect anyone but the owner (and Master control standing in a
+  property) to `/voice` — **Feedback & complaints** (0124, [staff-voice.md](staff-voice.md)), where the staff speak to
+  their own owner. Requests staff raised before stay in the owner's list. The menu rows are wired in the nav session.
 
 - **The page is `/help`, not `/support`.** Middleware's `ALIASES` sends `/support` to the public `/legal/contact` —
   a signed-out visitor needs that. Master control's desk is `/admin/support`, which no alias touches.

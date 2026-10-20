@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, AlertTriangle, Images, ImagePlus, ChevronDown, Wrench, Ban } from "lucide-react";
+import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, Images, ImagePlus, ChevronDown, Wrench, Ban } from "lucide-react";
 import { DishPhotoPicker, type DishPhoto } from "@/components/menu/DishPhotoPicker";
 import { DishGlyph, glyphFor } from "@/components/menu/DishGlyph";
 import { motion, AnimatePresence } from "framer-motion";
@@ -147,7 +147,8 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
                     <span className={cn("text-[12.5px] font-bold truncate", it.is_available ? "text-[var(--color-green)]" : "text-[var(--color-red)]")}><Say w={it.is_available ? "available" : "sold_out"} start /></span>
                   </span>
                   <span className="mt-1 flex items-center gap-1.5 text-[12px] text-steel min-w-0"><Clock size={11} className="shrink-0" />{it.prep_minutes} min<span aria-hidden>·</span>
-                    {mapped > 0 ? <span className="text-[var(--color-green)] truncate">{mapped} ingredient{mapped === 1 ? "" : "s"}</span> : <span className="text-[var(--color-orange)] truncate">No recipe</span>}</span>
+                    {mapped > 0 ? <span className="text-[var(--color-green)] truncate">{mapped} ingredient{mapped === 1 ? "" : "s"}</span>
+                      : <span className="inline-flex items-center gap-1.5 min-w-0 font-semibold text-[color-mix(in_srgb,var(--color-orange)_76%,var(--color-label))]" data-no-recipe><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-orange)] shadow-[0_0_0_3px_var(--color-orange-2)]" aria-hidden /><span className="truncate">No recipe</span></span>}</span>
                 </button>
                 <Switch on={it.is_available} onChange={(v) => toggle(it, v)} name={`${it.name} available`} />
               </div>
@@ -158,9 +159,9 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
         {/* A tablet and up: one card per dish (2026-10-15, the third pass — the owner marked the last two "not
             looking good"). An inset photo with rounded corners (the card's own 8px padding round it); with no
             photo, a soft neutral plate with the dish's drawing in a glass circle and "Add a photo" — not a block
-            of green or red. Under it the name and the price on one line, then "Starters · 15 min" (and, only
-            when the dish has none, an amber "No recipe"), then one footer: the Available / Sold out switch as a
-            pill, and Edit. Sizes, add-ons and the recipe open from Edit. Sold out darkens the photo under a
+            of green or red. A dish with no recipe wears a small frosted "No recipe" badge on the photo's bottom-left
+            corner. Under the photo the name and the price on one line, then "Starters · 15 min", then one footer: the
+            Available / Sold out switch as a pill, and Edit. Sizes, add-ons and the recipe open from Edit. Sold out darkens the photo under a
             SOLD OUT label and turns the pill red. */}
         <div className="hidden sm:grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" data-dish-grid>
           <AnimatePresence initial={false}>
@@ -171,6 +172,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
               return (
               <motion.div key={it.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} data-dish={it.id} data-off={!it.is_available || undefined}
                 className="group/dish relative flex flex-col min-w-0 rounded-[26px] p-2 bg-[var(--color-bg-2)] border border-[var(--color-separator)] shadow-[var(--shadow-card)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
+                <div className="relative">
                 <button type="button" onClick={() => setPhotoFor(it)} aria-label={`${it.image_url ? "Change" : "Add"} the photo — ${it.name}`} title={it.image_url ? (it.image_credit ?? "Change the photo") : "Add a photo"} data-photo
                   className="relative block w-full aspect-[4/3] !min-h-0 rounded-[19px] overflow-hidden isolate">
                   {it.image_url
@@ -184,6 +186,21 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
                   {it.image_url && <span className="absolute right-2.5 top-2.5 z-[1] h-9 w-9 rounded-full grid place-items-center bg-[rgb(10_10_13/.5)] text-white backdrop-blur-sm opacity-0 group-hover/dish:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity" aria-hidden><Camera size={16} /></span>}
                   {!it.is_available && <span className="absolute inset-0 z-[2] grid place-items-center bg-[rgb(10_10_13/.55)]"><span className="h-9 px-4 rounded-full bg-[var(--color-red)] text-white text-[13px] font-extrabold tracking-[.08em] inline-flex items-center gap-1.5"><Ban size={15} aria-hidden /> SOLD OUT</span></span>}
                 </button>
+                {/* No recipe (2026-10-20, the owner's second word on it: "the design and the placing"): a compact frosted
+                    badge on the photo's bottom-left corner — the veg mark has the top-left, the camera the top-right — so
+                    it takes no row and every card in a row stays the same height. Dark glass with white text reads over
+                    any photo and over the no-photo plate, in every theme; an amber dot says what kind of notice it is, and
+                    a sparkle when the library already has a standard plate for it. A tap opens the recipe; on touch an
+                    invisible ::before makes the target 44px without the badge looking bigger. */}
+                {!mapped && (
+                  <button type="button" onClick={() => setRecipeFor(it)} aria-label={`Recipe — ${it.name}`} title={std[it.id] ? "No recipe yet — a standard one is ready, tap to add it" : "No recipe yet — this dish moves no stock until you map what it takes"} data-no-recipe
+                    className="absolute left-2.5 bottom-2.5 z-[3] !min-h-0 h-[26px] pl-2 pr-2.5 rounded-full inline-flex items-center gap-1.5 text-[11.5px] font-semibold tracking-[.01em] text-white bg-[rgb(10_10_13/.55)] backdrop-blur-md ring-1 ring-white/15 shadow-[0_4px_14px_-6px_rgb(0_0_0/.6)] hover:bg-[rgb(10_10_13/.7)] active:scale-[.96] transition before:absolute before:-inset-[9px] before:content-[''] [@media(pointer:fine)]:before:hidden">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--color-orange)_72%,white)] shadow-[0_0_0_3px_rgb(255_190_90/.22)]" aria-hidden />
+                    No recipe
+                    {std[it.id] && <Sparkles size={11} className="shrink-0 opacity-85" aria-hidden />}
+                  </button>
+                )}
+                </div>
                 <div className="px-2 pt-3 flex items-start gap-3 min-w-0">
                   <div className="min-w-0 flex-1">
                     <div className="font-bold text-[16.5px] leading-snug truncate" role="heading" aria-level={3} title={it.name}>{it.name}</div>
@@ -197,12 +214,6 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
                     <div className="font-display num text-[24px]">{formatINR(lo, { whole: true })}</div>
                   </div>
                 </div>
-                {/* the one thing an owner must not miss: a dish that moves no stock */}
-                {!mapped && (
-                  <button type="button" onClick={() => setRecipeFor(it)} aria-label={`Recipe — ${it.name}`} title={std[it.id] ? "A standard recipe is ready — tap to add it" : "Map what this dish takes from the pantry"}
-                    className="mx-2 mt-2 self-start !min-h-0 h-7 px-2.5 rounded-full inline-flex items-center gap-1.5 text-[12px] font-bold bg-[var(--color-orange-2)] text-[var(--color-orange)] hover:brightness-110">
-                    <AlertTriangle size={12} aria-hidden />No recipe{std[it.id] ? " · add in one tap" : ""}</button>
-                )}
                 <div className="mt-auto pt-3 flex items-center gap-2">
                   {/* on or off: the whole pill is the switch — a dot, the word, the toggle */}
                   <label className={cn("flex-1 min-w-0 h-12 rounded-[17px] pl-3.5 pr-2 flex items-center gap-2.5 cursor-pointer select-none transition-colors", it.is_available ? "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" : "bg-[var(--color-red-2)]")} data-available={it.is_available}>
@@ -266,7 +277,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
       </Sheet>
 
       {/* the photo alone, from a card: saved the moment one is picked */}
-      <Sheet open={!!photoFor} onClose={() => setPhotoFor(null)} title={`Photo · ${photoFor?.name ?? ""}`}>
+      <Sheet open={!!photoFor} onClose={() => setPhotoFor(null)} title={`Photo · ${photoFor?.name ?? ""}`} wide>
         {photoFor && <DishPhotoPicker key={photoFor.id} name={photoFor.name} category={catName(photoFor.category_id)}
           value={photoFor.image_url ? { url: photoFor.image_url, credit: photoFor.image_credit, source: photoFor.image_source } : null}
           onChange={(p) => start(async () => { const r = await setDishPhoto(photoFor.id, p); if (r && "error" in r) toast(r.error!, "err"); else { setPhotoFor({ ...photoFor, image_url: p?.url ?? null, image_credit: p?.credit ?? null, image_source: p?.source ?? null }); toast(p ? "Photo saved" : "Photo removed"); } })} />}

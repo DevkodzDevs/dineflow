@@ -13,7 +13,7 @@ export default async function ChainPage() {
   // themselves, so nothing is shown before the role gate below; it only stops waiting on the session first (2026-10-18)
   const s = await createClient();
   const [session, [{ data: list }, { data: people }]] = await Promise.all([requireSession(), Promise.all([s.rpc("chain_overview"), s.rpc("chain_people")])]);
-  if (!["owner", "manager", "supervisor"].includes(session.profile.role)) redirect("/dashboard?locked=chain");
+  if (!["owner", "manager"].includes(session.profile.role)) redirect("/dashboard?locked=chain");   // 2026-10-20: no longer every supervisor's
   return (
     <>
       <PageHeader eyebrow="Your chain" title="Outlets" sub="Every outlet's day as it happens — orders, tables, the kitchen, sales — and one tap to work in any of them. The menu can go from this outlet to the others." />

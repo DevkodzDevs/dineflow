@@ -100,3 +100,5 @@ node cleaner.mjs     # 42 checks: a restaurant Cleaner's phone and a resort's at
 [data-and-rls.md](data-and-rls.md)
 - **Each card waits on its own answer** (2026-10-18): the board's one `pending` greyed every card while any one tap was
   answering. `actOn(id)` keeps a `busy` set; a card is held only while its own take / done / give / drop is answering.
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Waiting breathes; On it and Cleaned today shuffle (`[data-clean-n]`); the average stays words.

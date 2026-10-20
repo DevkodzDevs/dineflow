@@ -19,14 +19,17 @@ baseline.
 - **Cash & controls** — what the drawer should hold now (cash sales + cash in − cash out since the
   last close; the counter adds the float), a form to record cash in/out with a reason, this week's
   movements, the last 30 shift closes with their variance, and this week's voided bills and
-  cancelled dishes with the reason and the name. Owner, manager, supervisor, cashier.
+  cancelled dishes with the reason and the name. Owner, manager, and (since 2026-10-20) the supervisors and cashiers of
+  the money teams — service, front office, finance, management; not a kitchen or engineering supervisor (`seesFresh`,
+  [shell-and-nav.md](shell-and-nav.md)).
 - **Audit trail** — `audit_events`, newest first, under **one filter bar** (`[data-filters]`): the
   window as a `Segmented` (Today · 7 · 30 · 90), the six kinds (All · Money · Orders · Stock · Menu ·
   People & settings, counts in a small badge) on a `Rail` that scrolls sideways instead of wrapping,
   and the search — three stacked rows on a phone with the control and the search at full width,
   one row from `lg`. It was three loose rows of pills that heaped up at 412. *Older* pages by id. Each row:
   what, which (bill 214, 2× Paneer tikka, Chicken Briyani…), the reason in quotes, the changed
-  fields `before → after`, who and when, the amount. Owner, manager, supervisor.
+  fields `before → after`, who and when, the amount. Owner and manager (supervisors until 2026-10-20; the RLS policy
+  still lets one read through the API).
 - **Intelligence** — a period control (7 · 28 · 90 days, a `Segmented`, full width on a phone), a
   **scoreboard** (one card, four cells of one shape: a tinted mark, a display numeral, a label, a
   line — food cost with a ring that fills to the percentage, stars, dogs, flags; 2 × 2 on a phone,
@@ -34,8 +37,8 @@ baseline.
   Add recipes in Menu →*, never a dash), the owner's briefing (yesterday against the same weekday
   last week, today so far, wastage, low stock, the last shift's variance, discounts/voids/
   cancellations against their 28-day baseline, food cost), the menu-engineering matrix (Star /
-  Plowhorse / Puzzle / Dog / No recipe / Not sold) and four exception cards. Owner, manager,
-  supervisor. The scoreboard replaced four `StatTile`s — a percentage numeral beside three flip
+  Plowhorse / Puzzle / Dog / No recipe / Not sold) and four exception cards. Owner and manager
+  (supervisors until 2026-10-20). The scoreboard replaced four `StatTile`s — a percentage numeral beside three flip
   counters read as three kinds of tile, and an empty food cost was a bare "—".
 
 ## How it works

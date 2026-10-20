@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { seesFresh, deptOf } from "@/components/shell/sections";
 import { ControlsClient, type Expected } from "./ControlsClient";
 export const metadata = { title: "Cash & controls" };
 export const dynamic = "force-dynamic";
@@ -21,7 +22,8 @@ export default async function ControlsPage() {
     s.from("bills").select("id, bill_no, total, void_reason, voided_at, voided_by, created_at").eq("status", "void").gte("created_at", weekAgo).order("created_at", { ascending: false }).limit(50),
     s.from("order_items").select("id, name_snapshot, qty, price_snapshot, cancel_reason, cancelled_by, cancelled_at, created_at, orders(order_no, status)").eq("status", "cancelled").gte("created_at", weekAgo).order("created_at", { ascending: false }).limit(100),
   ])]);
-  if (!CAN.includes(session.profile.role)) redirect("/dashboard?locked=controls");
+  // and since 2026-10-20 only the money teams' supervisors and cashiers (sections.ts seesFresh — the link asks the same)
+  if (!CAN.includes(session.profile.role) || !seesFresh("controls", session.profile.role, deptOf(session.profile.role, session.profile.department ?? null, session.profile.position ?? null))) redirect("/dashboard?locked=controls");
   // the names behind the ids, one query; a platform admin acting as the owner is not in profiles
   const ids = new Set<string>();
   for (const r of [...(moves ?? []), ...(shifts ?? []), ...(voids ?? []), ...(lines ?? [])] as { created_by?: string | null; closed_by?: string | null; voided_by?: string | null; cancelled_by?: string | null }[]) {

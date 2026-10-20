@@ -66,6 +66,8 @@ code and `join_restaurant`; a staff member uses a login the owner created and is
   works out the sections they hold (`modulesFor`), and redirects to the position's start screen (`positionHome`) — a
   commis to `/kitchen`, a cashier to `/billing` — else `/dashboard`, which the layout turns into the person's own screen
   (`homeFor`) unless they hold the control room (owner, or a manager it was given to). Any error falls back to `/dashboard`, the same way.
+  **Since 2026-10-20 staff (everyone but the owner and a manager) go to `/home` instead** — their own My day
+  (`landsOnMyDay`, [my-day.md](my-day.md)); the position's screen is one tap away on their bar.
 - **Outlets (0106).** `session_bundle` answers the outlet this sign-in chose (`outlet_session` + `outlet_access`):
   `restaurant` is that outlet, `profile.restaurant_id` is that outlet and `profile.home_restaurant_id` the person's own,
   and `outlets` lists them for the switcher (empty for a one-outlet person). `requireSession` passes `outlets` on as

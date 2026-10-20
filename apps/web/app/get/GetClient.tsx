@@ -18,8 +18,6 @@ import { deviceName } from "@/lib/install";
  * iPhone steps — which are in the app's tokens — read in both.
  */
 
-type Links = { windows: string | null; android: string | null };
-
 /**
  * Whether anybody *other than the person reading this* can open the address.
  *
@@ -36,7 +34,7 @@ type Links = { windows: string | null; android: string | null };
  */
 type Reach = "checking" | "open" | "gated";
 
-export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string }) {
+export function GetClient({ pageUrl }: { pageUrl: string }) {
   const { env, plan } = useInstall();
   const [reach, setReach] = useState<Reach>("checking");
 
@@ -83,16 +81,14 @@ export function GetClient({ links, pageUrl }: { links: Links; pageUrl: string })
           <section className="min-w-0" aria-label="Another device">
             <Label>On another phone, tablet or computer</Label>
             <SendInstallLink url={pageUrl} />
-            {/* every device installs from its own browser — no store, nothing to publish. A packaged file,
-                where one is hosted, is offered underneath; it used to lead on Windows, with an
-                unsigned-installer warning. */}
+            {/* every device installs from its own browser — no store, nothing to publish — or, on an Android
+                phone or a Windows PC, from the app file in one click (InstallPanel's DownloadFiles, on the left;
+                2026-10-20). */}
             <ul className="mt-5 grid gap-2" data-devices>
-              <Other icon={<Smartphone size={16} />} title="Android phone or tablet" note="Open the link in Chrome → Install" />
+              <Other icon={<Smartphone size={16} />} title="Android phone or tablet" note="Download the .apk on it, or open the link in Chrome → Install" />
               <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open the link in Safari → Share → Add to Home Screen" />
-              <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note="Open the link in Edge or Chrome → Install" />
+              <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note="Download the .exe on it, or open the link in Edge or Chrome → Install" />
               <Other icon={<Laptop size={16} />} title="Mac" note="Safari → File → Add to Dock, or Chrome → Install" />
-              {links.windows && <Other icon={<Download size={16} />} title="Windows installer" note="DineFlow-Setup.exe · 79 MB · for a PC without Edge or Chrome" href={links.windows} />}
-              {links.android && <Other icon={<Download size={16} />} title="Android APK" note="Install straight from the file" href={links.android} />}
             </ul>
 
             {/* the printed manual, for whoever is setting the place up rather than using it */}

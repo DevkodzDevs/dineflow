@@ -1,13 +1,32 @@
 "use client";
-import { useState, useTransition } from "react";
-import { Copy, UserPlus, KeyRound, Check, Clock, MailWarning, Ban, Users, Network, BookOpen, Briefcase, Search, Ticket, ShieldCheck, UserCheck, Building2, AlertCircle, Phone, CalendarDays, X } from "lucide-react";
+import { useState, useTransition, type ReactNode } from "react";
+import { Copy, UserPlus, KeyRound, Check, MailWarning, MailCheck, Mail, Hash, Users, Network, BookOpen, Briefcase, Search, Ticket, ShieldCheck, UserCheck, Building2, AlertCircle, Phone, CalendarDays, X, LayoutDashboard } from "lucide-react";
 import { SlidersHorizontal as AccessIcon } from "lucide-react";
-import { Button, Field, Sheet, cn, useToast } from "@/components/ui";
-import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
+import { Button, Field, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
+import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, ROLE_DEFAULT, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
 import { createInvite, setAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition } from "./actions";
 import { PositionFields, TeamChart, PositionsGuide, Avatar, DeptIcon, ModuleChips, titleOf, deptOf, levelFor, DEPT_ORDER, deptHue } from "./StaffPositions";
 import { copyText } from "@/lib/clipboard";
 import { Say } from "@/components/ui/Say";
+
+/** One switch in a list (Access, Add staff, Active): the words on the left, the switch on the right, centred on one
+ *  line at every width, and the whole row is the tap target (the switch is the label's control). Not `.group > .row`
+ *  (2026-10-20): under 640px that rule wraps and gave the words the full width, which put every switch on a line of
+ *  its own under its description — the owner's "switch alignment placing is not good". */
+function SwitchRow({ title, hint, on, onToggle, icon, data }: { title: string; hint?: string; on: boolean; onToggle: () => void; icon?: ReactNode; data?: Record<string, string> }) {
+  return (
+    <label className="flex items-center gap-3.5 min-h-[64px] px-4 sm:px-[18px] py-3 cursor-pointer select-none transition-colors hover:bg-[var(--color-fill)] active:bg-[var(--color-fill)]" data-switch-row>
+      {icon && <span className="h-10 w-10 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]" aria-hidden>{icon}</span>}
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold leading-snug text-[var(--color-label)] [overflow-wrap:anywhere]">{title}</span>
+        {hint && <span className="block mt-0.5 text-[13px] leading-snug text-steel [overflow-wrap:anywhere]">{hint}</span>}
+      </span>
+      <button type="button" role="switch" aria-checked={on} data-on={on ? "true" : "false"} className="switch shrink-0" onClick={onToggle} {...data} />
+    </label>
+  );
+}
+/** A card of switch rows, a hairline between each. */
+const SWITCH_GROUP = "group divide-y divide-[var(--color-separator)]";
 
 /** The slip you hand over: a login ID and a temporary password, which they must change on first use. */
 function Credentials({ title, loginId, password, staffCode, note }: { title: string; loginId: string; password: string | null; staffCode?: string | null; note?: string }) {
@@ -38,6 +57,27 @@ const posOf = (p?: Staff | null): Pos => ({ department: p ? deptOf(p) ?? "" : ""
 const samePos = (a: Pos, b: Pos) => a.department === b.department && a.position === b.position && a.title.trim() === b.title.trim() && a.reportsTo === b.reportsTo && a.joinedOn === b.joinedOn;
 const savePos = (id: string, v: Pos) => setPosition(id, { position: v.position || null, department: v.department || null, title: v.title, reportsTo: v.reportsTo || null, joinedOn: v.joinedOn || null });
 type Invite = { code: string; role: Role; expires_at: string };
+
+/** A phone as people read it out: "9845011223" → "98450 11223", "+919845011223" → "+91 98450 11223"; else as written. */
+const phoneOut = (raw: string) => {
+  const d = raw.replace(/\D/g, "");
+  if (d.length === 10) return `${d.slice(0, 5)} ${d.slice(5)}`;
+  if (d.length === 12 && d.startsWith("91")) return `+91 ${d.slice(2, 7)} ${d.slice(7)}`;
+  return raw;
+};
+
+/** One fact on a person's card (2026-10-20): a small icon in a tinted circle, a quiet caption, the value. */
+function Fact({ icon, tint, caption, title, className, children, ...rest }: { icon: ReactNode; tint: string; caption: string; title?: string; className?: string; children: ReactNode } & Record<`data-${string}`, string>) {
+  return (
+    <div className={cn("min-w-0 flex items-center gap-2.5", className)} title={title} {...rest}>
+      <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center" style={{ background: `color-mix(in srgb, ${tint} 16%, transparent)`, color: tint }} aria-hidden>{icon}</span>
+      <span className="min-w-0 flex-1 leading-tight">
+        <span className="block text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)]">{caption}</span>
+        <span className="block mt-0.5 text-[13px] font-semibold text-[var(--color-label)] truncate">{children}</span>
+      </span>
+    </div>
+  );
+}
 
 export function StaffClient({ me, myRole, myModules, type, enabled, staff, invites, loginDomain, onDuty = 0 }: { me: string; myRole: Role; myModules: string[]; type: PropertyType; enabled: string[] | null; staff: Staff[]; invites: Invite[]; loginDomain: string; onDuty?: number }) {
   // the ranks below mine — the only ones I may appoint anyone to
@@ -70,13 +110,16 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
    *  what I hold myself — or null (the role's own default) for a position that opens everything its role allows */
   const posTicks = (key: string | null | undefined, r: Role): string[] | null => { const m = positionModules(key, type, MODULES_BY_TYPE); return m === null ? null : m.filter((x) => ceiling(r).includes(x)); };
   const posOpens = (p: Staff) => posTicks(p.position, p.role);
-  const isOn = (k: string) => ticks === null ? true : ticks.includes(k);
-  const toggle = (k: string) => { const base = ticks === null ? ceiling(role).filter((x) => x !== "dashboard") : ticks; setTicks(base.includes(k) ? base.filter((x) => x !== k) : [...base, k]); };
+  /** No ticks = the role's default (ROLE_DEFAULT), which for a job role is its own screens, narrower than its ceiling since
+   *  2026-10-20 — so the sheet shows exactly what that person opens, and the first tap starts from it. */
+  const byDefault = (r: Role) => ceiling(r).filter((x) => x !== "dashboard" && ROLE_DEFAULT[r].includes(x));
+  const isOn = (k: string) => ticks === null ? byDefault(role).includes(k) : ticks.includes(k);
+  const toggle = (k: string) => { const base = ticks === null ? byDefault(role) : ticks; setTicks(base.includes(k) ? base.filter((x) => x !== k) : [...base, k]); };
   /** The control room is the owner's to give, and only to a manager (constants.ts controlRoomFor). */
   const controlRoomSwitch = (list: string[] | null, r: Role, onToggle: () => void) => myRole === "owner" && r === "manager" ? (
-    <div className="group mb-4" data-control-room-switch><label className="row cursor-pointer"><div className="flex-1"><div className="text-[15px] font-semibold">Control room</div>
-      <div className="text-[13px] text-steel">The day&apos;s sales, the money and every department at once. Only you have it unless you give it to a manager here.</div></div>
-      <span className="switch" data-on={list?.includes("dashboard") ? "true" : "false"} onClick={onToggle} data-control-room /></label></div>) : null;
+    <div className={cn(SWITCH_GROUP, "mb-4")} data-control-room-switch>
+      <SwitchRow title="Control room" hint="The day's sales, the money and every department at once. Only you have it unless you give it to a manager here."
+        icon={<LayoutDashboard size={19} />} on={!!list?.includes("dashboard")} onToggle={onToggle} data={{ "data-control-room": "" }} /></div>) : null;
   const [open, setOpen] = useState(false); const [code, setCode] = useState<string | null>(null); const [pending, start] = useTransition();
   // adding someone outright, and the slip that comes back
   const [add, setAdd] = useState(false);
@@ -149,7 +192,9 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
           ] as const).map(([I, k, v, sub, hue]) => (
             <div key={k} className="min-w-0 rounded-[20px] bg-[color-mix(in_srgb,var(--color-fill)_70%,transparent)] px-4 py-3 flex items-center gap-3" data-stat={k}>
               <span className="h-10 w-10 shrink-0 rounded-[13px] grid place-items-center" style={{ background: `color-mix(in srgb, ${hue} 20%, transparent)`, color: hue }}><I size={19} aria-hidden /></span>
-              <div className="min-w-0"><div className="text-[12px] font-bold text-steel truncate">{k}</div><div className="font-display num text-[26px] leading-none mt-0.5">{v}</div><div className="text-[11.5px] text-steel leading-snug mt-1 line-clamp-2">{sub}</div></div>
+              <div className="min-w-0"><div className="text-[12px] font-bold text-steel truncate">{k}</div>{k === "On duty today"   /* 2026-10-20: the one live count here shuffles when someone punches in or out (Flap.tsx) */
+                  ? <div className="mt-1"><FlapShuffle value={v} pad={0} size="xs" tile="34px" bare say={`${v} on duty today`} /></div>
+                  : <div className="font-display num text-[26px] leading-none mt-0.5">{v}</div>}<div className="text-[11.5px] text-steel leading-snug mt-1 line-clamp-2">{sub}</div></div>
             </div>))}
         </div>
       </section>
@@ -197,30 +242,66 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
                   </div>
                   {lv && <span className="shrink-0 rounded-full px-2 h-7 grid place-items-center text-[12px] font-black num bg-[var(--color-fill)]" title={`Level ${lv} · ${LEVELS[lv - 1].label}`} data-level-badge>L{lv}</span>}
                 </div>
-                <div className="px-4 flex flex-wrap items-center gap-1.5" data-state>
-                  <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-semibold whitespace-nowrap bg-[var(--color-fill)] text-[var(--color-label)]"><ShieldCheck size={13} className="text-steel" aria-hidden />{ROLE_LABEL[p.role]}{p.role !== "owner" && <span className="font-normal text-[var(--color-label-2)]">· {p.position && sameModules(p.allowed_modules, posOpens(p)) ? "position access" : p.allowed_modules ? `${p.allowed_modules.length} sections${p.position ? " · custom" : ""}` : "default"}</span>}</span>
-                  {p.must_change_password && <span title="Has not signed in and set their own password yet" className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-semibold whitespace-nowrap text-[var(--color-label)] bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)]"><Clock size={13} className="text-[var(--color-orange)]" /> Not signed in</span>}
-                  {p.contact_email && !p.contact_verified_at && <span title="Their email is unconfirmed, so they cannot reset their own password yet" className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-semibold whitespace-nowrap text-[var(--color-label)] bg-[var(--color-red-2)]"><MailWarning size={13} className="text-[var(--color-red)]" /> Email</span>}
-                  {!p.is_active && <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-semibold whitespace-nowrap text-[var(--color-label)] bg-[var(--color-red-2)]"><Ban size={13} className="text-[var(--color-red)]" /> Off</span>}
-                </div>
-                <div className="px-4 pt-2 pb-3 text-[12.5px] text-steel flex flex-wrap gap-x-3 gap-y-0.5 min-w-0">
-                  {p.staff_code && <span className="num font-semibold text-[var(--color-label-2)]">{p.staff_code}</span>}
-                  {p.phone && <span className="inline-flex items-center gap-1 num"><Phone size={12} aria-hidden />{p.phone}</span>}
-                  {p.joined_on && <span className="inline-flex items-center gap-1"><CalendarDays size={12} aria-hidden />since {new Date(p.joined_on + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span>}
-                  {p.reports_to && staff.find((x) => x.id === p.reports_to) && <span className="truncate">→ {staff.find((x) => x.id === p.reports_to)!.full_name}</span>}
-                </div>
-                {mine ? (
-                  <div className="mt-auto grid grid-cols-2 border-t border-[var(--color-separator)]" data-actions>
-                    <button type="button" disabled={pending} onClick={() => showLogin(p)} title="Sign-in details" aria-label={`Sign-in details for ${p.full_name}`}
-                      className="!min-h-12 inline-flex items-center justify-center gap-2 text-[13.5px] font-bold text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] border-r border-[var(--color-separator)] disabled:opacity-40"><KeyRound size={16} aria-hidden /> Sign-in</button>
-                    <button type="button" onClick={() => openAccess(p)} aria-label={`Access for ${p.full_name}`} title="Access and position"
-                      className="!min-h-12 inline-flex items-center justify-center gap-2 text-[13.5px] font-bold hover:bg-[var(--color-fill)]"><AccessIcon size={16} aria-hidden /> Access</button>
-                  </div>
-                ) : p.id === me && myRole === "owner" ? (
-                  <div className="mt-auto border-t border-[var(--color-separator)]" data-actions>
-                    <button type="button" className="w-full !min-h-12 inline-flex items-center justify-center gap-2 text-[13.5px] font-bold hover:bg-[var(--color-fill)]" aria-label="Your position" title="Your position" data-own-position onClick={() => { setSelfEdit(p); setSelfPos(posOf(p)); setSelfErr(null); }}><Briefcase size={16} aria-hidden /> Your position</button>
-                  </div>
-                ) : <div className="mt-auto" />}
+                {/* the facts (2026-10-20 — the owner: "not good, make it modern and tidy"): one soft panel instead of loose
+                    chips and a loose line. Access across the top (the role, how it was set as a quiet pill); then Phone ·
+                    Staff code and Email · Joined in two even columns; a hairline line under them only for what needs
+                    saying — not signed in yet, switched off, who they report to. */}
+                {(() => {
+                  const boss = p.reports_to ? staff.find((x) => x.id === p.reports_to) : null;
+                  const how = p.role === "owner" ? null : p.position && sameModules(p.allowed_modules, posOpens(p)) ? "position access" : p.allowed_modules ? `${p.allowed_modules.length} sections${p.position ? " · custom" : ""}` : "default";
+                  const mail = !p.contact_email ? { icon: <Mail size={14} />, tint: "var(--color-label-2)", text: "—", title: "No email on their record" }
+                    : p.contact_verified_at ? { icon: <MailCheck size={14} />, tint: "var(--color-green)", text: "Verified", title: p.contact_email }
+                    : { icon: <MailWarning size={14} />, tint: "var(--color-orange)", text: "Not verified", title: "Their email is unconfirmed, so they cannot reset their own password yet" };
+                  const notes = [
+                    p.must_change_password && <span key="pw" title="Has not signed in and set their own password yet" className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--color-orange)]" aria-hidden />Not signed in</span>,
+                    !p.is_active && <span key="off" className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--color-red)]" aria-hidden />Off</span>,
+                    boss && <span key="boss" className="inline-flex items-center gap-1 min-w-0"><span aria-hidden>→</span><span className="truncate">{boss.full_name}</span></span>,
+                  ].filter(Boolean);
+                  return (
+                    <div className="px-4 pb-4" data-state>
+                      <div className="rounded-2xl bg-[var(--color-fill)] border border-[var(--color-separator)] p-3">
+                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-2.5">
+                          <div className="col-span-2 min-w-0 flex items-center gap-2.5" data-access>
+                            <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center" style={{ background: `color-mix(in srgb, ${hue} 18%, transparent)`, color: hue }} aria-hidden><ShieldCheck size={14} /></span>
+                            <span className="min-w-0 flex-1 leading-tight">
+                              <span className="block text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)]">Access</span>
+                              <span className="block mt-0.5 text-[13.5px] font-bold text-[var(--color-label)] truncate">{ROLE_LABEL[p.role]}</span>
+                            </span>
+                            {how && <span className="shrink-0 max-w-[55%] truncate h-6 px-2.5 rounded-full inline-flex items-center text-[11.5px] font-semibold text-[var(--color-label-2)] bg-[var(--color-bg-2)] border border-[var(--color-separator)]">{how}</span>}
+                          </div>
+                          <Fact icon={<Phone size={14} />} tint="var(--color-green)" caption="Phone" title={p.phone ?? undefined}><span className="num">{p.phone ? phoneOut(p.phone) : "—"}</span></Fact>
+                          <Fact icon={<Hash size={14} />} tint="var(--color-blue)" caption="Staff code"><span className="num">{p.staff_code ?? "—"}</span></Fact>
+                          <Fact icon={mail.icon} tint={mail.tint} caption="Email" title={mail.title} data-email-state={p.contact_email ? (p.contact_verified_at ? "verified" : "unverified") : "none"}>{mail.text}</Fact>
+                          <Fact icon={<CalendarDays size={14} />} tint="var(--color-violet)" caption="Joined">{p.joined_on ? new Date(p.joined_on + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—"}</Fact>
+                        </div>
+                        {notes.length > 0 && <div className="mt-2.5 pt-2.5 border-t border-[var(--color-separator)] flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] font-semibold text-[var(--color-label-2)] min-w-0">{notes}</div>}
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* the foot (2026-10-20): Call — when they have a phone and are not me — then Sign-in and Access for someone I
+                    manage, or the owner's own Your position. Equal sections, hairlines between; under 19.5rem of card the
+                    icon goes over the word so three still fit a phone. */}
+                {(() => {
+                  const acts: { key: string; label: string; icon: ReactNode; href?: string; onClick?: () => void; aria: string; data?: Record<string, string>; cls?: string }[] = [];
+                  if (p.phone && p.id !== me) acts.push({ key: "call", label: "Call", icon: <Phone size={16} className="text-[var(--color-green)]" aria-hidden />, href: `tel:${p.phone.replace(/\s/g, "")}`, aria: `Call ${p.full_name} on ${p.phone}`, data: { "data-call": "" } });
+                  if (mine) {
+                    acts.push({ key: "login", label: "Sign-in", icon: <KeyRound size={16} aria-hidden />, onClick: () => showLogin(p), aria: `Sign-in details for ${p.full_name}`, cls: "text-[var(--color-label-2)] hover:text-[var(--color-label)]" });
+                    acts.push({ key: "access", label: "Access", icon: <AccessIcon size={16} aria-hidden />, onClick: () => openAccess(p), aria: `Access for ${p.full_name}` });
+                  } else if (p.id === me && myRole === "owner") acts.push({ key: "own", label: "Your position", icon: <Briefcase size={16} aria-hidden />, onClick: () => { setSelfEdit(p); setSelfPos(posOf(p)); setSelfErr(null); }, aria: "Your position", data: { "data-own-position": "" } });
+                  if (!acts.length) return <div className="mt-auto" />;
+                  return (
+                    <div className="@container mt-auto grid border-t border-[var(--color-separator)] divide-x divide-[var(--color-separator)]" style={{ gridTemplateColumns: `repeat(${acts.length}, minmax(0, 1fr))` }} data-actions>
+                      {acts.map((a) => {
+                        const cls = cn("min-w-0 !min-h-12 !rounded-none px-1.5 py-1.5 inline-flex flex-col items-center justify-center gap-1 text-[12px] font-bold whitespace-nowrap hover:bg-[var(--color-fill)] disabled:opacity-40 focus-visible:!outline-offset-[-3px]",
+                          "@[19.5rem]:flex-row @[19.5rem]:gap-2 @[19.5rem]:text-[13.5px]", a.cls);
+                        const body = <>{a.icon}<span className="truncate max-w-full">{a.label}</span></>;
+                        return a.href
+                          ? <a key={a.key} href={a.href} aria-label={a.aria} title={a.aria} className={cls} {...a.data}>{body}</a>
+                          : <button key={a.key} type="button" disabled={a.key === "login" && pending} onClick={a.onClick} aria-label={a.aria} title={a.aria} className={cls} {...a.data}>{body}</button>;
+                      })}
+                    </div>);
+                })()}
               </article>
             );
           })}
@@ -249,7 +330,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               {accPos.position && (() => {
                 const want = suggestedRole(positionByKey(accPos.position), assignable.filter((x) => x !== "owner")) ?? role;
                 const opens = posTicks(accPos.position, want);
-                const matches = role === want && (opens === null ? ticks === null : sameModules(ticks ?? ceiling(role).filter((x) => x !== "dashboard"), opens));
+                const matches = role === want && (opens === null ? ticks === null : sameModules(ticks ?? byDefault(role), opens));
                 return (
                   <div className={cn("mt-3 rounded-2xl p-3 border", matches ? "bg-[color-mix(in_srgb,var(--color-green)_9%,transparent)] border-[color-mix(in_srgb,var(--color-green)_28%,transparent)]" : "bg-[color-mix(in_srgb,var(--color-orange)_9%,transparent)] border-[color-mix(in_srgb,var(--color-orange)_28%,transparent)]")} data-position-access={matches ? "match" : "custom"}>
                     <div className="flex flex-wrap items-center gap-2">
@@ -269,9 +350,9 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               {controlRoomSwitch(ticks, role, () => toggle("dashboard"))}
               <div className="grid sm:grid-cols-2 gap-x-6">
                 {MODULE_GROUPS.map((g) => { const keys = g.keys.filter((k) => ceiling(role).includes(k.key)); if (!keys.length) return null; return (
-                  <div key={g.title} className="mb-4"><div className="eyebrow mb-2">{g.title}</div><div className="group">{keys.map((k) => <label key={k.key} className="row cursor-pointer"><div className="flex-1"><div className="text-[15px]">{k.label}</div><div className="text-[13px] text-steel">{k.hint}</div></div><span className="switch" data-on={isOn(k.key) ? "true" : "false"} onClick={() => toggle(k.key)} /></label>)}</div></div>); })}
+                  <div key={g.title} className="mb-4 min-w-0"><div className="eyebrow mb-2">{g.title}</div><div className={SWITCH_GROUP}>{keys.map((k) => <SwitchRow key={k.key} title={k.label} hint={k.hint} on={isOn(k.key)} onToggle={() => toggle(k.key)} />)}</div></div>); })}
               </div></>)}
-            {acc.id !== me && <div className="group"><label className="row cursor-pointer"><div className="flex-1"><div className="text-[15px]">Active</div><div className="text-[13px] text-steel">Off means they can't sign in until you turn it back on.</div></div><span className="switch" data-on={active ? "true" : "false"} onClick={() => setActive(!active)} /></label></div>}
+            {acc.id !== me && <div className={SWITCH_GROUP}><SwitchRow title="Active" hint="Off means they can't sign in until you turn it back on." on={active} onToggle={() => setActive(!active)} /></div>}
             {err && <p className="text-sm text-chili">{err}</p>}
             <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setAccess(acc.id, role, role === "owner" ? null : ticks, active); if ("error" in r) { setErr(r.error!); return; } if (!samePos(accPos, posOf(acc))) { const x = await savePos(acc.id, accPos); if ("error" in x) { setErr(x.error!); return; } } setAcc(null); })} data-save-access>Save</Button><Button variant="gray" onClick={() => setAcc(null)}>Cancel</Button></div>
             <div className="pt-1 border-t border-line">
@@ -357,7 +438,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               {controlRoomSwitch(addTicks, addRole, () => addToggle("dashboard"))}
               <div className="grid sm:grid-cols-2 gap-x-6">
                 {MODULE_GROUPS.map((g) => { const keys = g.keys.filter((k) => ceiling(addRole).includes(k.key)); if (!keys.length) return null; return (
-                  <div key={g.title} className="mb-4"><div className="text-[11px] uppercase tracking-wide text-steel mb-1">{g.title}</div><div className="group">{keys.map((k) => <label key={k.key} className="row cursor-pointer"><div className="flex-1"><div className="text-[15px]">{k.label}</div><div className="text-[13px] text-steel">{k.hint}</div></div><span className="switch" data-on={addOn(k.key) ? "true" : "false"} onClick={() => addToggle(k.key)} /></label>)}</div></div>); })}
+                  <div key={g.title} className="mb-4 min-w-0"><div className="eyebrow mb-2">{g.title}</div><div className={SWITCH_GROUP}>{keys.map((k) => <SwitchRow key={k.key} title={k.label} hint={k.hint} on={addOn(k.key)} onToggle={() => addToggle(k.key)} />)}</div></div>); })}
               </div>
             </div>
             {addErr && <p className="text-sm text-chili">{addErr}</p>}

@@ -8,39 +8,43 @@
    Dark by default. Light ("paper") is available with data-theme="paper".
    ═══════════════════════════════════════════════════════════════════════ */
 @theme {
-  --color-bg: #17171c;               /* graphite wall */
-  --color-bg-2: #1f2027;             /* card */
-  --color-bg-3: #2a2b34;             /* inset controls / tile top */
+  /* 2026-10-20 — the owner's "rich look and classic colours, not annoying": the neon system hues (#4cd964,
+     #ff453a, #33cfe8…) became jewel tones — emerald, ruby, sapphire, amber, amethyst, teal — a step deeper and
+     softer, and the text warm ivory and stone instead of cool white and ash. On the card: label 14.3, label-2 6.6,
+     label-3 3.4, every hue 5.3–7.8, and each hue on its own wash 4.3–5.7. */
+  --color-bg: #15161b;               /* graphite wall */
+  --color-bg-2: #1d1f26;             /* card */
+  --color-bg-3: #282a33;             /* inset controls / tile top */
   --color-bezel: #0a0a0d;            /* deck gutter, tile edge */
   --color-fill: rgb(255 255 255 / .07);
   --color-fill-2: rgb(255 255 255 / .12);
-  --color-label: #f4f4f1;            /* paper */
-  --color-label-2: #9a9aa6;          /* ash */
-  --color-label-3: #62626e;
+  --color-label: #f3efe7;            /* warm ivory */
+  --color-label-2: #a8a39a;          /* stone */
+  --color-label-3: #75716a;
   --color-separator: rgb(255 255 255 / .09);
-  --color-tint: #4cd964;             /* signal — live, confirm, go */
-  --color-tint-2: #8ff0a1;
-  --color-champagne: #cfcfd6;        /* retired gold → quiet silver */
-  --color-green: #4cd964; --color-green-2: rgb(76 217 100 / .16);
-  --color-red: #ff453a;  --color-red-2: rgb(255 69 58 / .16);
-  --color-blue: #64a9ff; --color-blue-2: rgb(100 169 255 / .16);
-  --color-orange: #ffb340; --color-orange-2: rgb(255 179 64 / .16);
+  --color-tint: #3fbe7c;             /* signal — live, confirm, go (emerald) */
+  --color-tint-2: #86d9ab;
+  --color-champagne: #d4cfc4;        /* retired gold → quiet silver */
+  --color-green: #3fbe7c; --color-green-2: rgb(63 190 124 / .16);
+  --color-red: #ef7266;  --color-red-2: rgb(239 114 102 / .16);
+  --color-blue: #74a3ec; --color-blue-2: rgb(116 163 236 / .16);
+  --color-orange: #e2a84f; --color-orange-2: rgb(226 168 79 / .16);
   /* the Dining screens' "Bill" state (bill printed, not paid) — the one hue the board had no use for */
-  --color-violet: #c084fc; --color-violet-2: rgb(192 132 252 / .16);
-  /* 0111: a table being cleaned — cyan, clear of Ordered's blue and Ready's green */
-  --color-cyan: #33cfe8; --color-cyan-2: rgb(51 207 232 / .16);
+  --color-violet: #b597ee; --color-violet-2: rgb(181 151 238 / .16);
+  /* 0111: a table being cleaned — teal, clear of Ordered's blue and Ready's green */
+  --color-cyan: #4fb6c4; --color-cyan-2: rgb(79 182 196 / .16);
   --color-paper-ink: #1c1b18;        /* the ink on a kitchen ticket, paper in both themes */
-  --color-ink: #f4f4f1;              /* "ink" is the text colour everywhere */
+  --color-ink: #f3efe7;              /* "ink" is the text colour everywhere */
   --color-on-label: #0a0a0d;         /* text that sits on a label-coloured surface (avatars, ink buttons, the active chip) */
   --color-on-tint: #06120a;          /* text that sits on the green tint — dark enough for both the bright dark-theme green and the deeper paper one */
   --color-paper: #fdfcf8;            /* the receipt keeps real paper */
 
   /* legacy aliases so every existing screen keeps working */
-  --color-porcelain: var(--color-bg); --color-porcelain-2: var(--color-bg-3); --color-porcelain-3: #33343e;
+  --color-porcelain: var(--color-bg); --color-porcelain-2: var(--color-bg-3); --color-porcelain-3: #33353f;
   --color-card: var(--color-bg-2); --color-line: var(--color-separator); --color-line-2: rgb(255 255 255 / .16);
-  --color-ink-2: #e6e6e3; --color-ink-3: #cfcfd6; --color-steel: #9a9aa6; --color-steel-2: #62626e;
+  --color-ink-2: #e7e2d8; --color-ink-3: #d4cfc4; --color-steel: #a8a39a; --color-steel-2: #75716a;
   --color-saffron: var(--color-tint); --color-saffron-2: var(--color-tint-2); --color-champagne-2: rgb(255 255 255 / .1);
-  --color-mint: #4cd964; --color-mint-2: rgb(76 217 100 / .16); --color-chili: #ff453a; --color-chili-2: rgb(255 69 58 / .16); --color-sky: #64a9ff; --color-sky-2: rgb(100 169 255 / .16);
+  --color-mint: #3fbe7c; --color-mint-2: rgb(63 190 124 / .16); --color-chili: #ef7266; --color-chili-2: rgb(239 114 102 / .16); --color-sky: #74a3ec; --color-sky-2: rgb(116 163 236 / .16);
 
   --font-display: var(--font-oswald), "Oswald", "Arial Narrow", sans-serif;
   --font-sans: var(--font-manrope), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -51,7 +55,7 @@
   --shadow-pop: 0 1px 0 rgb(255 255 255 / .06) inset, 0 30px 60px -20px rgb(0 0 0 / .95);
   --shadow-feather: var(--shadow-card); --shadow-lift: var(--shadow-pop);
   --shadow-inset-top: inset 0 1px 0 rgb(255 255 255 / .06);
-  --shadow-glow: 0 0 0 1px rgb(76 217 100 / .4), 0 0 24px -6px rgb(76 217 100 / .5);
+  --shadow-glow: 0 0 0 1px rgb(63 190 124 / .4), 0 0 24px -6px rgb(63 190 124 / .5);
 
   --ease-out: cubic-bezier(.16, 1, .3, 1);
   --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
@@ -63,24 +67,28 @@
 
 /* paper: for anyone who wants the old light room, or a bright counter in daylight */
 [data-theme="paper"] {
-  /* a warm, slightly toned light: no pure white anywhere except the cards, and the cards get a real edge */
-  --color-bg: #ecece7; --color-bg-2: #ffffff; --color-bg-3: #e3e3dd; --color-bezel: #17171c;   /* the deck stays dark: bright cards on a graphite gutter */
-  --color-fill: rgb(23 23 28 / .055); --color-fill-2: rgb(23 23 28 / .10);
-  --color-label: #17171c; --color-label-2: #5f5f68; --color-label-3: #9a9aa1; --color-separator: rgb(23 23 28 / .09);
-  --color-ink: #17171c; --color-ink-2: #23232b; --color-ink-3: #33343e; --color-steel: #5f5f68; --color-steel-2: #9a9aa1;
-  --color-porcelain: var(--color-bg); --color-porcelain-2: var(--color-bg-3); --color-card: var(--color-bg-2); --color-line: var(--color-separator); --color-line-2: rgb(23 23 28 / .16);
-  --color-champagne: #6d6d78; --color-champagne-2: rgb(23 23 28 / .06);
-  --color-tint: #1fa84a; --color-tint-2: #2fc45c; --color-green: #1fa84a; --color-green-2: rgb(31 168 74 / .12);
-  --color-red: #d9302a; --color-red-2: rgb(217 48 42 / .10); --color-blue: #1f6fd6; --color-blue-2: rgb(31 111 214 / .10); --color-orange: #c77d0a; --color-orange-2: rgb(199 125 10 / .12);
-  --color-violet: #8b3fd9; --color-violet-2: rgb(139 63 217 / .10);
-  --color-cyan: #0a7f96; --color-cyan-2: rgb(10 127 150 / .10);
-  --color-mint: #1fa84a; --color-mint-2: rgb(31 168 74 / .12); --color-chili: #d9302a; --color-chili-2: rgb(217 48 42 / .10); --color-sky: #1f6fd6; --color-sky-2: rgb(31 111 214 / .10);
-  --color-saffron: #1fa84a; --color-saffron-2: #2fc45c;
-  --shadow-card: 0 1px 2px rgb(23 23 28 / .04), 0 8px 24px -16px rgb(23 23 28 / .18);
-  --shadow-pop: 0 2px 6px rgb(23 23 28 / .08), 0 30px 60px -20px rgb(23 23 28 / .35);
+  /* a warm, slightly toned light: no pure white anywhere except the cards, and the cards get a real edge.
+     2026-10-20 — rich and classic: a warm stone page and ivory cards; deep emerald, ruby, sapphire, bronze-amber,
+     amethyst and teal that read as text on white (5.3–7.3; the old green was 3.1 and its pills ~2.8) and carry
+     white on them (5.4–7.4) — so the main button is emerald with white letters now, not green with black. */
+  --color-bg: #efece5; --color-bg-2: #fffdf9; --color-bg-3: #e5e1d8; --color-bezel: #1b1d23;   /* the deck stays dark: bright cards on a graphite gutter */
+  --color-fill: rgb(27 28 34 / .055); --color-fill-2: rgb(27 28 34 / .10);
+  --color-label: #1b1c22; --color-label-2: #57575f; --color-label-3: #86847e; --color-separator: rgb(27 28 34 / .09);
+  --color-ink: #1b1c22; --color-ink-2: #25262d; --color-ink-3: #36373f; --color-steel: #57575f; --color-steel-2: #86847e;
+  --color-porcelain: var(--color-bg); --color-porcelain-2: var(--color-bg-3); --color-card: var(--color-bg-2); --color-line: var(--color-separator); --color-line-2: rgb(27 28 34 / .16);
+  --color-champagne: #6b6a70; --color-champagne-2: rgb(27 28 34 / .06);
+  --color-tint: #17794a; --color-tint-2: #2a9d63; --color-green: #17794a; --color-green-2: rgb(23 121 74 / .11);
+  --color-red: #b3302a; --color-red-2: rgb(179 48 42 / .09); --color-blue: #2356b5; --color-blue-2: rgb(35 86 181 / .09); --color-orange: #97580a; --color-orange-2: rgb(151 88 10 / .11);
+  --color-violet: #6c37b3; --color-violet-2: rgb(108 55 179 / .09);
+  --color-cyan: #0d6c7d; --color-cyan-2: rgb(13 108 125 / .09);
+  --color-mint: #17794a; --color-mint-2: rgb(23 121 74 / .11); --color-chili: #b3302a; --color-chili-2: rgb(179 48 42 / .09); --color-sky: #2356b5; --color-sky-2: rgb(35 86 181 / .09);
+  --color-saffron: #17794a; --color-saffron-2: #2a9d63;
+  --shadow-card: 0 1px 2px rgb(27 28 34 / .04), 0 8px 24px -16px rgb(27 28 34 / .18);
+  --shadow-pop: 0 2px 6px rgb(27 28 34 / .08), 0 30px 60px -20px rgb(27 28 34 / .35);
   --shadow-inset-top: inset 0 1px 0 rgb(255 255 255 / .9);
+  --shadow-glow: 0 0 0 1px rgb(23 121 74 / .35), 0 0 24px -6px rgb(23 121 74 / .4);
   /* the theme carries its own text colour, so it is right wherever it is applied — html, or a wrapper */
-  --color-on-label: #ffffff;
+  --color-on-label: #ffffff; --color-on-tint: #ffffff;
   color: var(--color-label); color-scheme: light;
 }
 
@@ -185,12 +193,12 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .eyebrow { font-family: var(--font-display); font-size: 13px; font-weight: 400; letter-spacing: .06em; color: var(--color-label-2); text-transform: none; }
 .large-title { font-family: var(--font-display); font-size: clamp(30px, 4.6vw, 44px); line-height: 1.02; font-weight: 500; }
 .footnote { font-size: 12px; color: var(--color-label-2); }
-::selection { background: rgb(76 217 100 / .35); color: var(--color-label); }
+::selection { background: color-mix(in srgb, var(--color-tint) 35%, transparent); color: var(--color-label); }
 /* No border-radius here. Setting one forced every focused element to an 8 px corner while the outline
    still traced the element's own shape, so on anything rounder — a table card at 22 px, a pill, a
    round avatar — the ring cut across the corners and left green arcs poking out of them. An outline
    follows the element's real radius on its own. */
-:focus-visible { outline: 3px solid rgb(76 217 100 / .6); outline-offset: 2px; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--color-tint) 60%, transparent); outline-offset: 2px; }
 
 /* ── the hand: everything you can click shows the pointer ─────────────────
    Tailwind v4's preflight leaves <button> on the arrow cursor, so every button,
@@ -332,7 +340,7 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
    38px; 16rem is 256. */
 @container (min-width: 16rem) { .stat-fig { font-size: 38px; } }
 /* the state light, in the corner where one goes */
-.flip.live { color: #4cd964; } .flip.alert { color: #ff453a; }
+.flip.live { color: #49c785; } .flip.alert { color: #f0786c; }   /* the plates are dark in every theme: a fixed emerald and ruby */
 .flip-label { font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-label-2); text-align: center; margin-top: 12px; font-weight: 500; }
 .flip-row { display: flex; gap: clamp(10px, 2.4vw, 24px); align-items: flex-start; justify-content: flex-start; flex-wrap: wrap; }
 @media (max-width: 480px) {
@@ -438,21 +446,21 @@ body:has(.deck-card) { background: #0a0a0d; }
 [data-theme="paper"] .deck-card { box-shadow: 0 0 0 .5px rgb(0 0 0 / .1), 0 30px 80px -30px rgb(0 0 0 / .6); }
 [data-theme="paper"] .feather, [data-theme="paper"] .card, [data-theme="paper"] .group, [data-theme="paper"] .dt-shell { border-color: rgb(23 23 28 / .10); }
 [data-theme="paper"] .material { background: color-mix(in srgb, #ffffff 94%, transparent); border-color: rgb(23 23 28 / .08); }
-[data-theme="paper"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), [data-theme="paper"] select, [data-theme="paper"] textarea { background-color: #f1f1ec; border-color: rgb(23 23 28 / .06); }
+[data-theme="paper"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), [data-theme="paper"] select, [data-theme="paper"] textarea { background-color: #f5f2ec; border-color: rgb(23 23 28 / .06); }
 [data-theme="paper"] input:focus, [data-theme="paper"] select:focus, [data-theme="paper"] textarea:focus { background-color: #ffffff; }
 [data-theme="paper"] .chip { background: rgb(23 23 28 / .06); } [data-theme="paper"] .chip:hover { background: rgb(23 23 28 / .10); }
 [data-theme="paper"] .btn-gray { background: rgb(23 23 28 / .07); } [data-theme="paper"] .btn-gray:hover { background: rgb(23 23 28 / .12); }
-[data-theme="paper"] .btn-filled { color: #06120a; box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 8px 20px -12px rgb(31 168 74 / .7); }
+[data-theme="paper"] .btn-filled { color: var(--color-on-tint); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), 0 8px 20px -12px color-mix(in srgb, var(--color-tint) 70%, transparent); }
 [data-theme="paper"] .switch { background: rgb(23 23 28 / .16); } [data-theme="paper"] .switch::after { box-shadow: 0 2px 6px rgb(0 0 0 / .25); }
 [data-theme="paper"] .pill-pending, [data-theme="paper"] .pill-served { background: rgb(23 23 28 / .07); color: #5f5f68; }
-[data-theme="paper"] .pill-gold { background: rgb(23 23 28 / .08); color: #17171c; }
-[data-theme="paper"] .pill-preparing { background: rgb(199 125 10 / .14); color: #9a600a; }
-[data-theme="paper"] .dt-search, [data-theme="paper"] table.dt thead th, [data-theme="paper"] .table-wrap thead th { background: #f4f4f0; }
+[data-theme="paper"] .pill-gold { background: rgb(27 28 34 / .08); color: var(--color-label); }
+[data-theme="paper"] .pill-preparing { background: var(--color-orange-2); color: var(--color-orange); }
+[data-theme="paper"] .dt-search, [data-theme="paper"] table.dt thead th, [data-theme="paper"] .table-wrap thead th { background: #f6f3ed; }
 [data-theme="paper"] .shimmer { background: linear-gradient(90deg, rgb(23 23 28 / .06) 25%, rgb(23 23 28 / .11) 50%, rgb(23 23 28 / .06) 75%); background-size: 200% 100%; }
 [data-theme="paper"] .scrim { background: rgb(23 23 28 / .35); }
 [data-theme="paper"] .paper.thermal { box-shadow: 0 2px 6px rgb(0 0 0 / .08), 0 12px 30px -16px rgb(0 0 0 / .25); }
 [data-theme="paper"] .wait-track { background: rgb(23 23 28 / .10); }
-[data-theme="paper"] ::selection { background: rgb(31 168 74 / .25); }
+[data-theme="paper"] ::selection { background: color-mix(in srgb, var(--color-tint) 22%, transparent); }
 [data-theme="paper"] .material { background: color-mix(in srgb, #ffffff 94%, transparent); }
 
 [data-theme="paper"] .scrim { background: rgb(0 0 0 / .35); }
@@ -645,10 +653,10 @@ body:has(.deck-card) { background: #0a0a0d; }
 .btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 16px; font-weight: 700; font-size: 15px; letter-spacing: -0.01em; user-select: none; white-space: nowrap;
   transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast), box-shadow var(--dur-fast), filter var(--dur-fast); }
 .btn:active { transform: scale(.96); }
-.btn-filled { background: var(--color-tint); color: var(--color-on-tint); box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 10px 24px -12px rgb(76 217 100 / .8); }
+.btn-filled { background: var(--color-tint); color: var(--color-on-tint); box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 10px 24px -12px color-mix(in srgb, var(--color-tint) 80%, transparent); }
 .btn-filled:hover { filter: brightness(1.05); }
 .btn-ink { background: var(--color-label); color: var(--color-on-label); box-shadow: inset 0 1px 0 rgb(255 255 255 / .5), 0 10px 22px -12px rgb(0 0 0 / .9); }
-.btn-tinted { background: rgb(76 217 100 / .16); color: var(--color-tint); }
+.btn-tinted { background: color-mix(in srgb, var(--color-tint) 16%, transparent); color: var(--color-tint); }
 .btn-gray { background: var(--color-fill); color: var(--color-label); }
 .btn-gray:hover { background: var(--color-fill-2); }
 .btn-plain { background: transparent; color: var(--color-tint); }
@@ -661,7 +669,7 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, te
   width: 100%; background-color: var(--color-bg-3); color: var(--color-label); border: .5px solid transparent; border-radius: 14px; padding: 13px 16px; font: inherit; font-size: 16px; outline: none; min-height: 48px;
   transition: background var(--dur-fast), box-shadow var(--dur), border-color var(--dur-fast); -webkit-appearance: none; appearance: none; }
 input:hover, select:hover, textarea:hover { background-color: var(--color-fill-2); }
-input:focus, select:focus, textarea:focus { background-color: var(--color-bg-2); border-color: rgb(76 217 100 / .6); box-shadow: 0 0 0 4px rgb(76 217 100 / .18); }
+input:focus, select:focus, textarea:focus { background-color: var(--color-bg-2); border-color: color-mix(in srgb, var(--color-tint) 60%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-tint) 18%, transparent); }
 input::placeholder, textarea::placeholder { color: var(--color-label-3); }
 /* A field inside a grey panel (Settings → Razorpay, Add a table, …) was the panel's own grey and
    vanished into it, in both themes. Inside any element filled with --color-fill, fields take the
@@ -685,7 +693,7 @@ select:disabled { opacity: .45; cursor: not-allowed; }
   select, ::picker(select) { appearance: base-select; }
   select { display: flex; align-items: center; }
   select::picker-icon { display: none; }   /* the chip in the background is the icon */
-  select:open { background-color: var(--color-bg-2); border-color: rgb(76 217 100 / .6); box-shadow: 0 0 0 4px rgb(76 217 100 / .18); }
+  select:open { background-color: var(--color-bg-2); border-color: color-mix(in srgb, var(--color-tint) 60%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-tint) 18%, transparent); }
   ::picker(select) { border: .5px solid var(--color-separator); border-radius: 16px; background: var(--color-bg-3); color: var(--color-label);
     padding: 6px; margin-block: 6px; box-shadow: var(--shadow-pop); max-height: min(340px, 55dvh); overflow-y: auto; overscroll-behavior: contain;
     min-width: anchor-size(width);   /* at least as wide as its field — it was as wide as its longest option */
@@ -706,7 +714,7 @@ select:disabled { opacity: .45; cursor: not-allowed; }
 /* Where the list cannot be styled (every iPad browser is WebKit), a tablet opens components/ui/
    TouchSelect instead of the native menu — the field's own width, the list above's look. The field
    wears the open state while it is up. */
-select[data-open] { background-color: var(--color-bg-2); border-color: rgb(76 217 100 / .6); box-shadow: 0 0 0 4px rgb(76 217 100 / .18); }
+select[data-open] { background-color: var(--color-bg-2); border-color: color-mix(in srgb, var(--color-tint) 60%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-tint) 18%, transparent); }
 .touch-select { border: .5px solid var(--color-separator); border-radius: 16px; background: var(--color-bg-3); color: var(--color-label);
   padding: 6px; box-shadow: var(--shadow-pop); overflow-y: auto; overscroll-behavior: contain; animation: ts-in var(--dur) var(--ease-spring); }
 [data-theme="paper"] .touch-select { background: var(--color-bg-2); }
@@ -720,7 +728,7 @@ select[data-open] { background-color: var(--color-bg-2); border-color: rgb(76 21
 @keyframes ts-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
 input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 24px; height: 24px; border-radius: 8px; border: 1.5px solid var(--color-line-2); background: var(--color-bg-3); display: inline-grid; place-items: center; cursor: pointer; transition: all var(--dur-fast); flex: none; }
 input[type="checkbox"]:checked { background: var(--color-tint); border-color: var(--color-tint); }
-input[type="checkbox"]:checked::after { content: ""; width: 6px; height: 11px; border: solid #06120a; border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
+input[type="checkbox"]:checked::after { content: ""; width: 6px; height: 11px; border: solid var(--color-on-tint); border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
 /* A radio drawn the same way as the checkbox: a 22px ring, a solid tint dot when chosen. Native
    radios are 13px and look like nothing beside the 24px box (Settings → Kitchen, 2026-10-12). Sized
    here, not by a utility on the element: a `w-auto` or `w-4` on a drawn control collapses or shrinks
@@ -770,7 +778,7 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .chip:hover { background: var(--color-fill-2); } .chip:active { transform: scale(.96); }
 .chip.on { background: var(--color-label); color: var(--color-on-label); }
 .pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
-.pill-pending { background: var(--color-fill); color: var(--color-label-2); } .pill-preparing { background: rgb(255 179 64 / .18); color: var(--color-orange); }
+.pill-pending { background: var(--color-fill); color: var(--color-label-2); } .pill-preparing { background: var(--color-orange-2); color: var(--color-orange); }
 .pill-ready { background: var(--color-green-2); color: var(--color-green); } .pill-served { background: var(--color-fill); color: var(--color-label-3); }
 .pill-alert { background: var(--color-red-2); color: var(--color-red); } .pill-gold { background: var(--color-fill-2); color: var(--color-label); } .pill-sky { background: var(--color-blue-2); color: var(--color-blue); }
 
@@ -1167,10 +1175,10 @@ body { overflow-wrap: break-word; }
 /* ═══ LOADERS ═══════════════════════════════════════════════════════════
    The board searching for its number. One hairline of progress at the top of the page.
    ═══════════════════════════════════════════════════════════════════════ */
-.flip.loader { box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .04), 0 18px 40px -20px rgb(0 0 0 / .95), 0 0 0 0 rgb(76 217 100 / 0); animation: loaderGlow 2.4s ease-in-out infinite; }
+.flip.loader { box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .04), 0 18px 40px -20px rgb(0 0 0 / .95), 0 0 0 0 color-mix(in srgb, var(--color-tint) 0%, transparent); animation: loaderGlow 2.4s ease-in-out infinite; }
 .flip.loader.alert { animation-name: loaderGlowAlert; }
-@keyframes loaderGlow { 50% { box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .04), 0 18px 40px -20px rgb(0 0 0 / .95), 0 0 0 8px rgb(76 217 100 / .10) } }
-@keyframes loaderGlowAlert { 50% { box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .04), 0 18px 40px -20px rgb(0 0 0 / .95), 0 0 0 8px rgb(255 69 58 / .12) } }
+@keyframes loaderGlow { 50% { box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .04), 0 18px 40px -20px rgb(0 0 0 / .95), 0 0 0 8px color-mix(in srgb, var(--color-tint) 10%, transparent) } }
+@keyframes loaderGlowAlert { 50% { box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 0 0 1px rgb(255 255 255 / .04), 0 18px 40px -20px rgb(0 0 0 / .95), 0 0 0 8px color-mix(in srgb, var(--color-red) 12%, transparent) } }
 .flip.xs.loader { --tile: 28px; border-width: 1.5px; box-shadow: none; animation: none; }
 .flip.xs.loader .flip-pin { display: none; }
 .btn .flip.xs.loader { color: #f4f4f1; background: rgb(0 0 0 / .35); border-color: transparent; margin-right: 2px; }   /* the tile is always dark, so its digits are always light — whatever the button colour */
@@ -1180,7 +1188,7 @@ body { overflow-wrap: break-word; }
 @keyframes loaderLine { from { opacity: 0; transform: translateY(4px) } }
 .loader-dots::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.6s steps(4, end) infinite; }
 @keyframes dots { 0% { content: "" } 25% { content: "." } 50% { content: ".." } 75% { content: "..." } }
-.nav-progress { position: fixed; top: 0; left: 0; height: 2px; width: 0; background: linear-gradient(90deg, #4cd964, #8ff0a1); box-shadow: 0 0 12px rgb(76 217 100 / .8); z-index: 100; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.nav-progress { position: fixed; top: 0; left: 0; height: 2px; width: 0; background: linear-gradient(90deg, var(--color-tint), var(--color-tint-2)); box-shadow: 0 0 12px color-mix(in srgb, var(--color-tint) 80%, transparent); z-index: 100; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .nav-progress.on { opacity: 1; animation: navFill 6s cubic-bezier(.1, .9, .2, 1) forwards; }
 @keyframes navFill { 0% { width: 0 } 15% { width: 40% } 50% { width: 78% } 100% { width: 94% } }
 .paper .flip-label { color: #6b6b66; }
@@ -1195,8 +1203,8 @@ body { overflow-wrap: break-word; }
 .paper .btn-plain:hover { background: rgb(20 35 29 / .08); }   /* a tile label on a white ticket needs a darker grey */
 /* the track under a timed wait: signal green emptying (or filling) on a hairline */
 .wait-track { height: 3px; border-radius: 99px; background: var(--color-fill-2); margin-top: 10px; overflow: hidden; }
-.wait-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4cd964, #8ff0a1); box-shadow: 0 0 10px rgb(76 217 100 / .6); transition: width .25s linear; }
-.wait-fill.alert { background: linear-gradient(90deg, #ff453a, #ff7a70); box-shadow: 0 0 10px rgb(255 69 58 / .6); }
+.wait-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--color-tint), var(--color-tint-2)); box-shadow: 0 0 10px color-mix(in srgb, var(--color-tint) 60%, transparent); transition: width .25s linear; }
+.wait-fill.alert { background: linear-gradient(90deg, var(--color-red), color-mix(in srgb, var(--color-red) 70%, #fff)); box-shadow: 0 0 10px color-mix(in srgb, var(--color-red) 60%, transparent); }
 .wait-fill.done { animation: waitDone .6s var(--ease-out) both; }
 @keyframes waitDone { 0% { filter: brightness(1.6) } 100% { filter: brightness(1) } }
 
@@ -1220,7 +1228,7 @@ body { overflow-wrap: break-word; }
 @keyframes tickUp { from { opacity: 0; transform: translateY(.35em) } }
 .tick { animation: tickUp var(--dur) var(--ease-ios) both; }
 /* a surface that just received something — a ticket moved to Ready */
-@keyframes landed { 0% { box-shadow: 0 0 0 0 rgb(76 217 100 / .5) } 100% { box-shadow: 0 0 0 14px rgb(76 217 100 / 0) } }
+@keyframes landed { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-tint) 50%, transparent) } 100% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--color-tint) 0%, transparent) } }
 .landed { animation: landed .7s var(--ease-out) 1; }
 
 /* ── the hand, part two: controls that are switched off ───────────────────
@@ -1248,9 +1256,10 @@ input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
 /* The till's cart bar (PosClient, [data-cart-bar]) and the assistant's round button
    (Assist.tsx, [data-assist]) sat at the same height on a phone, the button over "Review →".
    While the bar is showing, the button rides above it: the bar is 56px with 10–12px of air.
-   Below lg only — on a laptop the ticket is a rail and there is no bar. */
+   Below lg only — on a laptop the ticket is a rail and there is no bar. On a phone the cart bar itself sits 10px over
+   the docked tab bar (`--tabbar`, below), so the button sits over both. */
 @media (max-width: 1023.98px) {
-  body:has([data-cart-bar] button) [data-assist] { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 78px + 68px); transition: bottom var(--dur) var(--ease-out); }
+  body:has([data-cart-bar] button) [data-assist] { bottom: calc(var(--tabbar) + 10px + 68px); transition: bottom var(--dur) var(--ease-out); }
 }
 @media (min-width: 768px) and (max-width: 1023.98px) {
   body:has([data-cart-bar] button) [data-assist] { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 68px); }
@@ -1492,7 +1501,7 @@ html[data-lang-all] .rail-fade { flex-shrink: 1 !important; min-width: 0; }
 /* the phone's bottom bar: a Tamil or Hindi section name ("கட்டுப்பாட்டு அறை") is twice the English, and one
    truncated line left "கட்டுப்பா…" — two short lines instead. Selected by the bar's class: its aria-label is
    itself translated */
-html[data-lang-all] nav.material-thick a > span:last-child { white-space: normal; overflow: hidden; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 10px; line-height: 1.15; text-align: center; }
+html[data-lang-all] nav.tabbar a > span:last-child { white-space: normal; overflow: hidden; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 10px; line-height: 1.15; text-align: center; }
 
 /* ═══ BRIGHT — colourful on a light page ══════════════════════════════════
    html[data-palette="bright"] on top of data-theme="paper" (tokens at the top of the file). Every rule that paints
@@ -1619,8 +1628,59 @@ html[data-palette="royal"] [style*="radial-gradient"]:not(div[data-theme] *) { b
 html[data-palette="royal"] [style*="linear-gradient"]:not([style*="rgb(13 28 23"]):not(div[data-theme] *):not([data-theme-picker] *):not([data-theme-menu] *) { background-size: 2px 2px !important; background-repeat: repeat !important; }
 /* the logo well's checkerboard (it shows a logo's transparent parts) is a gradient too: plain ivory here */
 html[data-palette="royal"] .logo-well { background-image: none; }
-/* the phone bar's chosen section sits on a pill written as the dark theme's green; each colourful theme gives it its
-   own tint (the class is the screen's, so it is matched by its colour) */
-html[data-theme="colour"] nav.material-thick [class*="bg-[rgb(76_217_100"] { background-color: rgb(255 92 168 / .18); }
-html[data-palette="bright"] nav.material-thick [class*="bg-[rgb(76_217_100"] { background-color: rgb(219 39 119 / .12); }
-html[data-palette="royal"] nav.material-thick [class*="bg-[rgb(76_217_100"] { background-color: rgb(30 58 138 / .12); }
+/* the phone bar's chosen section: its pill is var(--color-tint) at 16% (Nav.tsx), so each theme's own tint already —
+   the three per-theme overrides that matched the old fixed green are gone (2026-10-20) */
+
+/* ═══ THE PHONE'S TAB BAR (2026-10-20) ═══════════════════════════════════════════════════════════════════════
+   The owner: "fit the menu bar to the bottom — not floating — on iOS and Android, phone only". BottomNav (Nav.tsx,
+   `nav.tabbar`, below md) is docked: edge to edge, flush to the foot, square, a solid surface with a hairline on top
+   and a soft shadow upward. It pads the safe areas itself, so the iPhone's home indicator and Android's gesture bar
+   sit inside the bar's own colour — nothing of the page shows under or beside it.
+   `--tabbar` is its real height (the 60px row + the bottom safe area) and 0 from md, where there is no bar: every
+   bottom offset on a phone reads it — main's padding, the till's cart bar, the assistant's button, Settings' save
+   bar. Change the row here, not in those. */
+:root { --tabbar-row: 60px; --tabbar: calc(var(--tabbar-row) + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 768px) { :root { --tabbar: 0px; } }
+nav.tabbar {
+  background: var(--color-bg-2); border-top: 1px solid var(--color-separator);
+  box-shadow: 0 -10px 28px -20px rgb(0 0 0 / .7);
+  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+[data-theme="paper"] nav.tabbar { box-shadow: 0 -8px 24px -18px rgb(27 28 34 / .28); }
+/* the colourful, bright and royal blocks paint cards and panels; the bar keeps its card colour, solid, in each */
+html[data-palette="royal"] nav.tabbar { border-top-color: rgb(184 145 58 / .35); }
+
+/* ═══ FLAP NUMBERS (2026-10-20) ═════════════════════════════════════════
+   components/ui/Flap.tsx — the six approved split-flap designs on the app's own .flip tile:
+   shuffle, spell, percent, clock, mini, breathe. See design-system.md, "Flap numbers".
+   ═══════════════════════════════════════════════════════════════════════ */
+/* a shuffle turns its flaps quickly: each frame lasts 110 ms, the full .66 s turn would never land */
+.flip.fast .flap-turn-top, .flip.fast .flap-turn-top::after { animation-duration: .1s; }
+.flip.fast .flap-turn-bottom, .flip.fast .flap-turn-bottom::after { animation-duration: .12s; animation-delay: calc(var(--d, 0ms) * .3 + .09s); }
+.flip.warn { color: #e8b25a; }   /* amber on the dark plate, every theme — a ticket past its hurry time */
+.flip.bare { box-shadow: none; }
+/* small flaps (Flap.tsx gives every xs or sized one `.compact`, never under 30px): the board's proportions squeezed a
+   lone digit into a narrow black capsule at 17–26px. A compact tile is at least .8 of its height wide, its cards .8em,
+   its digits 64% of the tile in a bold cut — a 30px tile reads 19px digits — with a slim border and a soft drop. */
+.flip.compact { min-width: calc(var(--tile) * .8); padding: 0 .14em; border-width: 1.5px; border-radius: calc(var(--tile) * .24);
+  font-size: calc(var(--tile) * .64); font-weight: 600; letter-spacing: 0; --fw: .8em; --fp: .1em; --fh: 1.26em; --hinge: 1px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 4px 12px -6px rgb(0 0 0 / .55); vertical-align: middle; flex-shrink: 0; }
+.flip.compact .flip-stage { gap: .07em; }
+.flip.compact .flap-narrow { --fw: .34em; --fp: .02em; }
+/* the percent counter's bar: the tint filling a hairline track, the width of the tiles above it */
+.flap-bar { position: absolute; left: 6%; right: 6%; top: calc(100% + 4px); height: 4px; border-radius: 4px; background: var(--color-fill-2); overflow: hidden; }
+.flap-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--color-tint); transition: width .07s linear; }
+/* a fixed time's AM / PM, set small beside its tiles */
+.flap-ap { font-family: var(--font-display); font-size: 13px; letter-spacing: .12em; color: var(--color-label-2); padding-bottom: .35em; }
+/* the breathing tile: two rings swelling out of the tile while something waits; kept within 6px so a card's edge never clips it */
+/* the breathing tile: a glow swelling out from the tile's own edge (a box-shadow, so never over the digits), with 6px
+   of room kept round it so it fits its slot; red with .alert. Still, as a steady ring, under reduce-motion. */
+.flap-breathe { position: relative; display: inline-grid; place-items: center; padding: 6px; margin: -6px; --glow: var(--color-tint); }
+.flap-breathe.alert { --glow: var(--color-red); }
+.flap-breathe.on .flip { animation: flapGlow 2.2s ease-out infinite; }
+@keyframes flapGlow {
+  0% { box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 0 0 0 color-mix(in srgb, var(--glow) 60%, transparent); }
+  70%, 100% { box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 0 0 7px color-mix(in srgb, var(--glow) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .flap-breathe.on .flip { animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--glow) 55%, transparent); } }
+/* the till's count on a dish photo: the mini tile itself is the badge (it was a tint circle with the number) */
+.svc-dish .qty.qty-flap { min-width: 0; height: auto; padding: 0; background: none; box-shadow: none; }

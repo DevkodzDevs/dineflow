@@ -88,3 +88,14 @@ node guests-test.mjs     # 17 checks, ending with
 - **CSV exports neutralise formulas** (`lib/csv.ts`, `csvCell`): a cell starting = + - @ gets a leading
   apostrophe (numbers, negative ones too, are left alone). Customer names arrive from public orders.
   Tax's GST export uses the same helper.
+
+- **Give or take points is a tidy form** (2026-10-20, the owner: "alignment and spacing not good"). `[data-points-form]`:
+  a title row (gift icon, one line of why, the balance now as a pill); a **Give / Take back** segmented choice
+  (`[data-points-mode]`, `[data-points-mode-pick]`) so nobody types a minus sign — the action still gets the same signed
+  number (`loyalty_adjust`); the amount as digits only with a "pts" suffix (`[data-points-amount]`) and quick picks
+  +50 / +100 / +200 / +500 (`[data-points-quick]`); **Why** full width (`[data-points-why]`); "Balance after: N points"
+  (red under zero) beside the Apply button (`[data-points-apply]`, green "Give N points" / red "Take back N points",
+  full width on a phone). The loyalty-off notice is an info row (`[data-loyalty-off]`); no movements is a small empty
+  state (`[data-points-empty]`). **Fixed on the way:** after Apply the list reset to `null` and `load()` — which only
+  fetches when the list is empty in its own stale closure — never fetched again, so the history stayed a shimmer; it
+  now refetches directly.

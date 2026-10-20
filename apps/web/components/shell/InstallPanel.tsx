@@ -5,6 +5,7 @@ import { Loader, cn } from "../ui";
 import { copyText } from "@/lib/clipboard";
 import { browserName, chromeHref, deviceName, edgeHref, iconHome, stepsPlan, type Env, type Plan } from "@/lib/install";
 import { IosGuide } from "./IosGuide";
+import { DownloadFiles, FileButton, useDownloads } from "./DownloadFiles";
 import { useInstall } from "./useInstall";
 
 /**
@@ -18,6 +19,10 @@ import { useInstall } from "./useInstall";
  * - an iPhone or iPad → Share → Add to Home Screen → Add, drawn (IosGuide); Safari on a Mac → Add to Dock;
  * - installed from here already → where its icon is.
  *
+ * Under it, the app as a file, one click (DownloadFiles — 2026-10-20): an Android phone or a Windows PC gets its own
+ * file (.apk / .exe) as the big button first, "or install from the browser" after it; the other file, or both on an
+ * iPhone, iPad or Mac, sit under it for the property's other devices. A file not built yet keeps its slot, greyed.
+ *
  * `url` is where "open in Edge / Chrome" and "copy" send the person: the install page, so they land on
  * the button.
  */
@@ -26,6 +31,7 @@ export function InstallPanel({ size = "md", url }: { size?: "md" | "lg"; url?: s
   const [again, setAgain] = useState(false);
   const [origin, setOrigin] = useState("");
   useEffect(() => setOrigin(location.origin), []);
+  const files = useDownloads();
   if (!env || !plan) return <div className="h-24" aria-hidden />;   // one frame, before the device is known
   const address = url ?? `${origin}/get`;
   const shown: Plan = plan === "installed-here" && again ? stepsPlan(env) : plan;
@@ -125,7 +131,19 @@ export function InstallPanel({ size = "md", url }: { size?: "md" | "lg"; url?: s
       </Card>;
   }
 
-  return <div className="space-y-3" data-install-panel data-install-plan={shown} data-device={d} data-browser={b}>{body}</div>;
+  // the device's own file leads when it exists: an Android phone gets the .apk, a Windows PC the .exe
+  const own = d === "android" ? "android" : d === "windows" ? "windows" : null;
+  const lead = own && files?.[own] && shown !== "installed" ? own : null;
+  return (
+    <div className="space-y-3" data-install-panel data-install-plan={shown} data-device={d} data-browser={b}>
+      {lead && <>
+        <FileButton kind={lead} file={files![lead]} big />
+        <div className="flex items-center gap-3 text-[12px] font-semibold text-[var(--color-label-2)]" aria-hidden><span className="h-px flex-1 bg-[var(--color-separator)]" />or install from the browser<span className="h-px flex-1 bg-[var(--color-separator)]" /></div>
+      </>}
+      {body}
+      {shown !== "installed" && <DownloadFiles device={d} files={files} skip={lead} />}
+    </div>
+  );
 }
 
 /** Chrome / Edge / Samsung Internet that has not offered its one-tap install (yet): its own menu. */

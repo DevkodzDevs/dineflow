@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { dishMatch } from "@/lib/tillSearch";
 import { motion, AnimatePresence } from "framer-motion";
 import { Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils } from "lucide-react";
-import { Button, Sheet, cn, useToast } from "@/components/ui";
+import { Button, Sheet, cn, useToast, FlapMini } from "@/components/ui";
 import { Say, CatIcon } from "@/components/ui/Say";
 import { SVC_ICON, stClass } from "@/components/ui/Service";
 import { catIcon } from "@/lib/say";
@@ -39,7 +39,7 @@ type Line = { key: string; item: Item; variant: Variant | null; addons: Addon[];
 const LINE_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain", "Parcel", "Well done", "No ice"];
 const QUICK_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain", "Kids portion", "Serve together", "Pack separately"];
 
-export function PosClient({ categories, items, tables, initialTable, initialType = null, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {}, popular = {} }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; initialType?: "takeaway" | "delivery" | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]>; popular?: Record<string, number> }) {
+export function PosClient({ categories, items, tables, initialTable, initialType = null, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {}, popular = {}, notFree = {} }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; initialType?: "takeaway" | "delivery" | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]>; popular?: Record<string, number>; notFree?: Record<string, "occupied" | "reserved" | "cleaning"> }) {
   const router = useRouter();
   // a parcel or a delivery starts from Orders' header button (?type=), a table from the floor (?table=)
   const [type, setType] = useState<"dine_in" | "takeaway" | "delivery" | "room_service">(initialType ?? "dine_in");
@@ -379,12 +379,23 @@ export function PosClient({ categories, items, tables, initialTable, initialType
 
       {type === "dine_in" ? (
         <>
-          {pickOpen && (
-            <div className="mt-2 grid grid-cols-5 gap-1.5" data-table-picker>
-              {tables.map((t) => <button key={t.id} type="button" onClick={() => { pickTable(t); setPickOpen(false); }} aria-pressed={tableId === t.id}
-                className={cn("h-11 px-1 rounded-xl text-[14px] font-bold border truncate", tableId === t.id ? "bg-ink text-on-label border-ink" : t.status === "occupied" ? "bg-[var(--color-fill)] border-transparent text-steel" : "border-line hover:bg-[var(--color-fill)]")}>{t.name}</button>)}
-            </div>
-          )}
+          {/* A new order picks from the free tables only (2026-10-20, the owner): a table with an open order or marked
+              occupied, one held for a booking (marked reserved, or due within two hours) and one being cleaned are left
+              out — page.tsx works out `notFree`. The table this order already has always stays, so it can be seen. */}
+          {pickOpen && (() => {
+            const free = tables.filter((t) => !notFree[t.id] || t.id === tableId);
+            const hidden = tables.length - free.length;
+            return (
+              <div className="mt-2" data-table-picker>
+                {free.some((t) => t.id !== tableId)
+                  ? <div className="grid grid-cols-5 gap-1.5">
+                      {free.map((t) => <button key={t.id} type="button" onClick={() => { pickTable(t); setPickOpen(false); }} aria-pressed={tableId === t.id} data-free-table={t.name}
+                        className={cn("h-11 px-1 rounded-xl text-[14px] font-bold border truncate", tableId === t.id ? "bg-ink text-on-label border-ink" : "border-line hover:bg-[var(--color-fill)]")}>{t.name}</button>)}
+                    </div>
+                  : <p className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[13px] font-semibold" data-no-free-table>No table is free right now — every one is in use, held for a booking or being cleaned.</p>}
+                {hidden > 0 && <p className="mt-1.5 text-[12px] text-steel" data-hidden-tables>Free tables only · {hidden} in use, booked or being cleaned</p>}
+              </div>);
+          })()}
           {busy && (
             <div className="mt-2 rounded-xl border border-line bg-[var(--color-fill)] p-2.5 text-xs">
               <div className="font-semibold">{tables.find((t) => t.id === busy.table_id)?.name ?? "That table"} already has order #{busy.order_no} running.</div>
@@ -627,27 +638,35 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                   /* The stepper is a sibling of the tap target, not a child of it: a button inside a
                      button is not valid markup, and the dish has to stay a real button for the keyboard. */
                   <div key={it.id} className="svc-dish" data-tile data-on={qty > 0 || undefined}>
-                    <button type="button" onClick={() => tap(it)} className="!min-h-0 text-left flex flex-col min-w-0" aria-label={`${it.name} — add one`}>
+                    <button type="button" onClick={() => tap(it)} className="!min-h-0 text-left flex flex-col min-w-0 max-sm:after:absolute max-sm:after:inset-0 max-sm:after:content-['']" aria-label={`${it.name} — add one`}>
                       <span className="pic" data-nophoto={!it.image_url || undefined}>
                         {it.image_url
                           // eslint-disable-next-line @next/next/no-img-element -- owner-supplied URLs from any host; next/image would need every one allow-listed
                           ? <img src={it.image_url} alt="" loading="lazy" decoding="async" />
                           : <span className="absolute inset-0 grid place-items-center text-[var(--color-label-3)]"><CatIcon name={catIcon(catName(it.category_id))} size={34} /></span>}
-                        {qty > 0 && <span className="qty num">{qty}</span>}
+                        {qty > 0 && <span className="qty qty-flap num" data-qty={qty}><FlapMini value={qty} tile="32px" tone="live" say={`${qty} on the ticket`} /></span>}
                         {c?.portions === 0 ? <span className="flag short"><AlertTriangle size={12} aria-hidden />Pantry short</span>
                           : !!c?.portions && c.portions <= 5 ? <span className="flag num">{c.portions} left</span>
                           : it.is_combo ? <span className="flag"><Layers size={12} aria-hidden />Combo</span> : null}
                       </span>
                       <span className="flex items-start gap-2 px-3 pt-2.5 min-w-0"><span className="mt-[3px]"><VegMark veg={it.is_veg} big /></span><span className="font-bold text-[15px] leading-snug line-clamp-2 min-w-0">{it.name}</span></span>
                     </button>
-                    <div className="mt-auto flex items-center gap-2 px-3 pb-3 pt-2 min-w-0">
-                      <span className="font-display num text-[22px] leading-none min-w-0 truncate">{tp.from && <span className="font-sans text-[12px] text-steel">from </span>}{formatINR(tp.price, { whole: true })}</span>
+                    {/* below sm (two across, ~184px) the whole card is the Add (the dish button's ::after covers it), so a
+                        plain dish shows no button at all — just its price; a dish that asks for a size or add-ons shows a
+                        compact "Choose" pill (32px to the eye, 44px to the finger) that never squeezes the price. "from"
+                        sits over the price. The stepper and the pill stand above the card-wide tap (z-[1]). */}
+                    <div className="mt-auto flex items-center gap-2 px-3 pb-3 pt-2 min-w-0 max-sm:gap-1.5 max-sm:px-2.5 max-sm:pb-2.5 max-sm:pt-1.5">
+                      <span className="font-display num text-[22px] leading-none min-w-0 truncate max-sm:flex max-sm:flex-col max-sm:text-[20px]" data-tile-price>{tp.from && <span className="font-sans text-[12px] text-steel max-sm:text-[11px] max-sm:leading-tight">from </span>}{formatINR(tp.price, { whole: true })}</span>
                       {qty > 0
-                        ? <div className="stepper ml-auto shrink-0 !gap-1.5">
+                        ? <div className="stepper ml-auto shrink-0 !gap-1.5 max-sm:!relative max-sm:z-[1]">
                             <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`} className="less !rounded-xl"><Minus size={17} /></button>
                             <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="more !rounded-xl"><Plus size={18} /></button>
                           </div>
-                        : <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="svc-add more ml-auto">{asks ? <SlidersHorizontal size={16} aria-hidden /> : <Plus size={18} aria-hidden />}<Say w={asks ? "choose" : "add"} /></button>}
+                        : <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} title={asks ? "Choose" : "Add"} data-choose={asks || undefined}
+                            className={cn("svc-add more ml-auto", asks
+                              ? "max-sm:!relative max-sm:z-[1] max-sm:!min-h-0 max-sm:!h-8 max-sm:!px-2.5 max-sm:!gap-1 max-sm:!rounded-full max-sm:!text-[12.5px] max-sm:!font-bold max-sm:!bg-[var(--color-fill-2)] max-sm:!text-[var(--color-label)] max-sm:shrink-0 max-sm:before:absolute max-sm:before:-inset-y-1.5 max-sm:before:-inset-x-1 max-sm:before:content-['']"
+                              : "max-sm:!hidden")}>
+                            {asks ? <SlidersHorizontal size={16} aria-hidden className="max-sm:!w-3.5 max-sm:!h-3.5" /> : <Plus size={18} aria-hidden />}<span className="contents max-sm:hidden"><Say w={asks ? "choose" : "add"} /></span>{asks && <span className="sm:hidden">Choose</span>}</button>}
                     </div>
                   </div>
                 );
@@ -699,12 +718,12 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       {/* The phone and tablet bar: a green strip above the tab bar (on a tablet, near the edge) — how
           many and how much on the left, which opens the ticket, and Send to kitchen on the right. It
           is gone, not parked half-hidden, while the ticket is empty. */}
-      <div className="lg:hidden fixed inset-x-4 z-30 bottom-[calc(max(10px,env(safe-area-inset-bottom))+78px)] md:bottom-[max(16px,env(safe-area-inset-bottom))] pointer-events-none" data-cart-bar>
+      <div className="lg:hidden fixed inset-x-4 z-30 bottom-[calc(var(--tabbar)+10px)] md:bottom-[max(16px,env(safe-area-inset-bottom))] pointer-events-none" data-cart-bar>
         <AnimatePresence>{count > 0 && (
           <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 34 }}
             className="pointer-events-auto w-full min-h-[72px] rounded-[22px] bg-[var(--color-tint)] text-[var(--color-on-tint)] flex items-center gap-2 p-2 shadow-[0_18px_40px_-16px_rgb(0_0_0/.7)]">
             <button type="button" onClick={() => setCartOpen(true)} className="!min-h-0 h-14 flex items-center gap-3 shrink-0 text-left rounded-2xl pl-1 pr-1" aria-label="See the ticket">
-              <span className="h-11 min-w-11 px-2 rounded-[14px] bg-black/15 grid place-items-center num text-[19px] font-black">{count}</span>
+              {/* 2026-10-20: the dish count flips as dishes are added (Flap.tsx) */}<span className="h-11 min-w-11 px-1 grid place-items-center" data-cart-count={count}><FlapMini value={count} tile="34px" say={`${count} dishes`} /></span>
               <span className="min-w-0 leading-tight"><span className="block text-[12.5px] font-bold opacity-75">{count === 1 ? "1 dish" : `${count} dishes`}</span><span className="block font-display num text-[24px] leading-none mt-0.5 whitespace-nowrap">{formatINR(total)}</span></span>
             </button>
             <button type="button" onClick={sendFromBar} disabled={pending} className="!min-h-0 h-14 px-4 ml-auto rounded-2xl bg-[var(--color-on-tint)] text-[var(--color-tint)] font-black text-[16px] inline-flex items-center justify-center gap-2 flex-1 min-w-0 max-w-[15rem]" data-bar-send>

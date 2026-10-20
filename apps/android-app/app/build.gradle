@@ -1,0 +1,46 @@
+// DineFlow for Android: a Trusted Web Activity — Chrome, full screen, opening https://dineflow.cloud. Like the
+// Windows app (apps/desktop) it holds no copy of DineFlow; you deploy, they reopen. See apps/android-app/README.md.
+plugins { id 'com.android.application' }
+
+// The release key lives outside the repository. DINEFLOW_KEYSTORE / DINEFLOW_KEYSTORE_PASSWORD / DINEFLOW_KEY_ALIAS
+// name it at build time; without them the build is signed with the debug key (fine to try, not to hand out —
+// an update must be signed with the same key as the install it replaces).
+def ks = System.getenv('DINEFLOW_KEYSTORE')
+
+android {
+  namespace 'cloud.dineflow.app'
+  compileSdk 35
+  defaultConfig {
+    applicationId 'cloud.dineflow.app'
+    minSdk 21
+    targetSdk 35
+    versionCode 1
+    versionName '1.0.0'
+  }
+  signingConfigs {
+    release {
+      if (ks) {
+        storeFile file(ks)
+        storePassword System.getenv('DINEFLOW_KEYSTORE_PASSWORD')
+        keyAlias System.getenv('DINEFLOW_KEY_ALIAS') ?: 'dineflow'
+        keyPassword System.getenv('DINEFLOW_KEYSTORE_PASSWORD')
+      }
+    }
+  }
+  buildTypes {
+    release {
+      minifyEnabled false
+      signingConfig ks ? signingConfigs.release : signingConfigs.debug
+    }
+  }
+  // nothing here but a manifest and resources — the release lint pass only slows the build
+  lint { checkReleaseBuilds false }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+dependencies {
+  implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

@@ -19,7 +19,19 @@ function Flap({ ch, delay }: { ch: string; delay: number }) {
     </span>
   );
 }
-export function Flip({ value, label, size = "md", tone, className, pad = 2 }: { value: number | string; label?: string; size?: "md" | "sm" | "xs"; tone?: "live" | "alert"; className?: string; pad?: number }) {
+export function Flip({ value, label, size = "md", tone, className, pad = 2, say, tile, bare, fast, quiet, compact }: { value: number | string; label?: string; size?: "md" | "sm" | "xs"; tone?: "live" | "alert" | "warn"; className?: string; pad?: number;
+  /** what a screen reader hears instead of `value` — the flap numbers (Flap.tsx) pass the settled value while the tiles shuffle */
+  say?: string;
+  /** the tile height (`--tile`), e.g. "28px" or a clamp — the flap numbers size a tile to the place it sits in */
+  tile?: string;
+  /** no pins: a tile small enough to sit in a badge or a button */
+  bare?: boolean;
+  /** quicker turns while a number shuffles to its new value */
+  fast?: boolean;
+  /** not announced as it changes — a ticking clock would speak every second */
+  quiet?: boolean;
+  /** the small-tile proportions (globals.css FLAP NUMBERS): wider cards and bolder digits, so a 30px tile still reads */
+  compact?: boolean }) {
   const raw = String(value);
   /* A lone digit gets a leading zero. A split-flap unit reads as a pair of cards — a single card
      marooned in its housing sat wrong beside the two-card tiles, and a board that flickers between
@@ -30,9 +42,9 @@ export function Flip({ value, label, size = "md", tone, className, pad = 2 }: { 
   return (
     <div className={cn("inline-flex flex-col items-center", className)}>
       {/* the padded zero is decoration, so the label a screen reader hears keeps the real value */}
-      <div className={cn("flip", size !== "md" && size, tone)} aria-live="polite" aria-label={label ? `${raw} ${label}` : raw}>
+      <div className={cn("flip", size !== "md" && size, tone, bare && "bare", fast && "fast", compact && "compact")} style={tile ? ({ "--tile": tile } as CSSProperties) : undefined} aria-live={quiet ? "off" : "polite"} aria-label={say ?? (label ? `${raw} ${label}` : raw)}>
         <span className="flip-stage">{chars.map((c, i) => <Flap key={`${chars.length}-${i}`} ch={c} delay={(chars.length - 1 - i) * 70} />)}</span>
-        <span className="flip-pin left" /><span className="flip-pin right" />
+        {!bare && <><span className="flip-pin left" /><span className="flip-pin right" /></>}
       </div>
       {label && <div className="flip-label">{label}</div>}
     </div>

@@ -104,3 +104,5 @@ count differs and so does the grid.
 
 [design-system.md](design-system.md) · [shell-and-nav.md](shell-and-nav.md) ·
 [reports-and-forecast.md](reports-and-forecast.md)
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. The three big counters shuffle and settle when they change (`FlapShuffle`); a resort's "% full" counts up over a bar (`FlapPercent`). Every `StatTile` count shuffles too.

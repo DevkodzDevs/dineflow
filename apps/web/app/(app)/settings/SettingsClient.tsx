@@ -276,7 +276,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               const title = pending ? "Saving…" : failed ? "Couldn't save" : dirty ? "Unsaved changes" : saved ? "All changes saved" : "No changes yet";
               const sub = pending ? "Saving all the cards" : failed ? msg : dirty ? "Saves all the cards at once" : saved ? "Saved just now" : "Edit a card, then save";
               return (
-                <div className={cn("settings-savebar sticky bottom-[calc(env(safe-area-inset-bottom)+92px)] md:bottom-4 z-10 flex items-center gap-3 border transition-[margin,border-radius,box-shadow,background-color] duration-200",
+                <div className={cn("settings-savebar sticky bottom-[calc(var(--tabbar)+12px)] md:bottom-4 z-10 flex items-center gap-3 border transition-[margin,border-radius,box-shadow,background-color] duration-200",
                   floating
                     ? "mr-[72px] rounded-[22px] pl-2.5 pr-2 py-2 material-thick border-[var(--color-separator)] shadow-[var(--shadow-pop)]"
                     : "rounded-[22px] pl-3 pr-3 py-3 bg-[var(--color-bg-2)] border-[var(--color-separator)]")}>

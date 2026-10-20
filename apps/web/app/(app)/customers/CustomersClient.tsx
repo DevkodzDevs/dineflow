@@ -3,7 +3,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { csvCell } from "@/lib/csv";
 import { motion } from "framer-motion";
-import { Plus, Search, MessageCircle, Download, Gift, Coins, Cake, Heart, Users, Sparkles, Moon, Star, Phone } from "lucide-react";
+import { Plus, Search, MessageCircle, Download, Gift, Coins, Cake, Heart, Users, Sparkles, Moon, Star, Phone, Info, Check, Minus } from "lucide-react";
 import { Button, Card, Field, Sheet, Empty, StatTile, cn, useToast } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
@@ -168,8 +168,11 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
   const [tab, setTab] = useState<"details" | "history" | "points">("details");
   const [hist, setHist] = useState<{ bills: HistoryRow[]; ledger: { points: number; kind: string; note: string | null; created_at: string }[] } | null>(null);
   const [pts, setPts] = useState(""); const [why, setWhy] = useState(""); const [bal, setBal] = useState(Number(c.points));
+  const [mode, setMode] = useState<"give" | "take">("give");   // the sign, so nobody has to type a minus (2026-10-20)
   const [pending, start] = useTransition(); const toast = useToast();
-  const load = () => { if (!hist) customerHistory(c.id).then((r) => { if ("error" in r) toast(r.error!, "err"); else setHist({ bills: r.bills, ledger: r.ledger }); }); };
+  const fetchHist = () => customerHistory(c.id).then((r) => { if ("error" in r) toast(r.error!, "err"); else setHist({ bills: r.bills, ledger: r.ledger }); });
+  const load = () => { if (!hist) fetchHist(); };
+  const amount = Math.abs(Math.round(Number(pts) || 0)); const signed = mode === "take" ? -amount : amount; const after = Math.round(bal) + signed;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -196,16 +199,59 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
       ))}
       {tab === "points" && (
         <div className="space-y-4">
-          {!loyalty.enabled && <p className="text-xs text-steel rounded-xl bg-[var(--color-fill)] p-3">Loyalty is switched off for this property, so nothing is earned on bills. Points given here still count once it is on — Settings → Payments.</p>}
-          <div className="rounded-xl bg-[var(--color-fill)] p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1.5"><Gift size={13} /> Give or take points</div>
-            <div className="grid grid-cols-[110px_minmax(0,1fr)_auto] gap-2 items-end">
-              <Field label="Points" hint="− to take back"><input type="number" className="num" value={pts} onChange={(e) => setPts(e.target.value)} placeholder="100" /></Field>
-              <Field label="Why"><input value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Birthday gift · complaint · correction" /></Field>
-              <Button disabled={pending || !Number(pts)} onClick={() => start(async () => { const r = await adjustPoints(c.id, Number(pts), why); if ("error" in r) toast(r.error!, "err"); else { setBal(r.balance); setPts(""); setWhy(""); setHist(null); load(); toast(`Balance ${Math.round(r.balance)} points`); } })}><Coins size={14} /> Apply</Button>
+          {!loyalty.enabled && (
+            <div className="flex items-start gap-3 rounded-2xl bg-[var(--color-fill)] px-3.5 py-3" data-loyalty-off>
+              <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center bg-[var(--color-blue-2)] text-[var(--color-blue)]"><Info size={15} aria-hidden /></span>
+              <p className="min-w-0 text-[12.5px] leading-snug text-steel pt-1">Loyalty is switched off for this property, so nothing is earned on bills. Points given here still count once it is on — Settings → Payments.</p>
+            </div>)}
+          {/* give or take: the sign is a choice, the amount a plain number with quick picks, the reason full width, and
+              the balance it leaves shown before Apply */}
+          <section className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-fill)] p-4 space-y-3" data-points-form>
+            <div className="flex items-center gap-3">
+              <span className="h-10 w-10 shrink-0 rounded-xl grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><Gift size={18} aria-hidden /></span>
+              <div className="min-w-0 flex-1"><div className="text-[15px] font-bold leading-tight">Give or take points</div>
+                <div className="text-[12.5px] text-steel">A gift, a goodwill gesture, or putting a mistake right</div></div>
+              <span className="shrink-0 num text-[12.5px] font-bold px-2.5 h-7 rounded-full grid place-items-center bg-[var(--color-bg-2)] ring-1 ring-[var(--color-separator)]" title="Their balance now">{Math.round(bal)} pts</span>
             </div>
-          </div>
-          {!hist ? <div className="shimmer h-16" /> : hist.ledger.length === 0 ? <p className="text-sm text-steel">No point movements yet.</p> : (
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
+              <div role="group" aria-label="Give or take" className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[var(--color-bg-2)] ring-1 ring-[var(--color-separator)]" data-points-mode={mode}>
+                {(["give", "take"] as const).map((m) => (
+                  <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)} data-points-mode-pick={m}
+                    className={cn("!min-h-11 rounded-lg inline-flex items-center justify-center gap-1.5 text-[14px] font-bold transition-colors",
+                      mode === m ? (m === "give" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-red-2)] text-[var(--color-red)]") : "text-steel hover:text-[var(--color-label)]")}>
+                    {m === "give" ? <Plus size={16} aria-hidden /> : <Minus size={16} aria-hidden />}{m === "give" ? "Give" : "Take back"}
+                  </button>))}
+              </div>
+              <label className="relative block min-w-0">
+                <span className="sr-only">Points</span>
+                <input type="text" inputMode="numeric" className="num !pr-14" value={pts} onChange={(e) => setPts(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="100" data-points-amount />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-bold text-steel" aria-hidden>pts</span>
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Quick amounts">
+              {[50, 100, 200, 500].map((n) => (
+                <button key={n} type="button" aria-pressed={amount === n} onClick={() => setPts(String(n))} data-points-quick={n}
+                  className={cn("chip num !min-h-11 min-w-16 justify-center", amount === n && "on")}>{mode === "take" ? "−" : "+"}{n}</button>))}
+            </div>
+            <label className="block"><span className="text-[13px] font-semibold text-steel">Why</span>
+              <input className="mt-1" value={why} onChange={(e) => setWhy(e.target.value)} maxLength={120} placeholder="Birthday gift · complaint · correction" data-points-why /></label>
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3 pt-1">
+              <p className="min-w-0 flex-1 text-[13px] text-steel" data-points-after>
+                {amount ? <>Balance after: <b className={cn("num", after < 0 ? "text-chili" : "text-[var(--color-label)]")}>{after} points</b></> : "Pick give or take, then how many."}
+              </p>
+              <button type="button" disabled={pending || !amount} data-points-apply
+                className={cn("svc-btn sm w-full sm:w-auto !px-6", mode === "give" ? "go" : "no")}
+                onClick={() => start(async () => { const r = await adjustPoints(c.id, signed, why); if ("error" in r) toast(r.error!, "err"); else { setBal(r.balance); setPts(""); setWhy(""); fetchHist(); toast(`Balance ${Math.round(r.balance)} points`); } })}>
+                <Check size={17} aria-hidden />{mode === "give" ? `Give ${amount || ""} points` : `Take back ${amount || ""} points`}
+              </button>
+            </div>
+          </section>
+          {!hist ? <div className="shimmer h-16" /> : hist.ledger.length === 0 ? (
+            <div className="flex flex-col items-center text-center gap-2 rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-6" data-points-empty>
+              <span className="h-10 w-10 rounded-full grid place-items-center bg-[var(--color-fill)] text-steel"><Coins size={18} aria-hidden /></span>
+              <p className="text-[14px] font-semibold">No point movements yet.</p>
+              <p className="text-[12.5px] text-steel max-w-[34ch]">Points earned on bills, spent on them, or given here appear in this list.</p>
+            </div>) : (
             <div className="divide-y divide-line rounded-xl border border-line text-sm">
               {hist.ledger.map((l, i) => (
                 <div key={i} className="flex items-center gap-3 px-3 py-2"><span className={cn("num w-16 font-semibold", Number(l.points) < 0 ? "text-chili" : "text-mint")}>{Number(l.points) > 0 ? "+" : ""}{Math.round(Number(l.points))}</span><span className="flex-1 truncate">{l.note ?? l.kind}</span><span className="text-xs text-steel">{fmtDate(l.created_at)}</span></div>

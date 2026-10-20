@@ -99,7 +99,7 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
           {notes.map((n, i) => {
             const Icon = n.tone === "warn" ? AlertTriangle : n.tone === "ok" ? CheckCircle2 : Info;
             const row = <><span className={cn("h-7 w-7 shrink-0 rounded-lg grid place-items-center", n.tone === "warn" ? "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]" : n.tone === "ok" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><Icon size={14} /></span><span className="text-[14px] leading-snug min-w-0 flex-1">{n.text}</span></>;
-            return <li key={i} className="py-2.5 first:pt-0 last:pb-0">{n.href ? <Link href={n.href} className="flex items-start gap-3 min-w-0 hover:opacity-80">{row}</Link> : <div className="flex items-start gap-3 min-w-0">{row}</div>}</li>;
+            return <li key={i} className="py-2.5 first:pt-0 last:pb-0">{n.href ? <Link href={n.href} className="flex items-start gap-3 min-w-0 hover:opacity-80 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center">{row}</Link> : <div className="flex items-start gap-3 min-w-0">{row}</div>}</li>;
           })}
           {notes.length === 0 && <li className="py-2 text-sm text-steel">Not enough data yet — the briefing starts once there are bills.</li>}
         </ul>
@@ -160,7 +160,7 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
           <Card>
             <Head icon={<Wallet size={16} />} title="Cash & shift closes" sub={`in ${inr(exceptions.cash.in)} · out ${inr(exceptions.cash.out)} · ${exceptions.cash.shift_count} closes · variances ${inr(exceptions.cash.variance_abs)} in all`} />
             <List rows={exceptions.cash.shifts.map((s) => ({ k: `${s.date}-${s.at}`, a: day(s.date), b: [`expected ${inr(s.expected)}`, s.counted != null ? `counted ${inr(Number(s.counted) - Number(s.float))}` : null, s.by, s.note].filter(Boolean).join(" · "), c: when(s.at), amt: s.variance == null ? "—" : Math.abs(Number(s.variance)) < 1 ? "exact" : `${Number(s.variance) > 0 ? "+" : "−"}${inr(Math.abs(Number(s.variance)))}`, bad: s.variance != null && Math.abs(Number(s.variance)) >= 100 }))} empty="No shift closes in this window." />
-            <Link href="/controls" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-tint)]">Cash & controls <ArrowUpRight size={14} /></Link>
+            <Link href="/controls" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-tint)] [@media(pointer:coarse)]:min-h-11">Cash & controls <ArrowUpRight size={14} /></Link>
           </Card>
         </div>
       )}

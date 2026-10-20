@@ -78,23 +78,28 @@ export const ROLE_ACCESS: Record<Role, string[]> = {
 };
 
 /**
- * What a role holds until someone ticks a narrower set. For the job roles this is simply their
- * ceiling — a waiter is a waiter. For the supervisory ranks it is a modest starting point, so an
- * unconfigured supervisor is not silently handed the till and the books. Mirrors role_modules.default_set.
+ * What a role holds until someone ticks a different set — the job's own screens and nothing of the back office
+ * (2026-10-20, the owner: "the menu shows only what each job needs; the internal controls follow the job too").
+ * Until then a job role's default was its whole ceiling, so a front-desk person opened Channels and Labour, a cashier
+ * Reports, a store keeper Labour and Neighbours, and every floor job had Scan; an unconfigured `employee` (a guard, a
+ * gardener) opened Orders and Pulse. The ceiling (ROLE_ACCESS) is unchanged: the owner can still tick more for anyone.
+ * For the supervisory ranks it stays a modest starting point (less Reports for a supervisor), so an unconfigured
+ * supervisor is not silently handed the books. An `employee` holds no module by default — Work and Checklists, open to
+ * everyone, are their day (homeFor sends them to Work). Mirrors role_modules.default_set (0126).
  */
 export const ROLE_DEFAULT: Record<Role, string[]> = {
   ...({} as Record<Role, string[]>),
   owner: ROLE_ACCESS.owner,
   manager: ROLE_ACCESS.manager,
-  supervisor: ["dashboard", "scan", "orders", "kitchen", "billing", "pulse", "reservations", "inventory", "staff", "reports"],
+  supervisor: ["dashboard", "scan", "orders", "kitchen", "billing", "pulse", "reservations", "inventory", "staff"],
   supervisor_2: ["dashboard", "scan", "orders", "kitchen", "pulse", "reservations", "staff"],
-  employee: ["dashboard", "scan", "orders", "pulse"],
-  cashier: ROLE_ACCESS.cashier,
-  waiter: ROLE_ACCESS.waiter,
-  chef: ROLE_ACCESS.chef,
-  store: ROLE_ACCESS.store,
-  frontdesk: ROLE_ACCESS.frontdesk,
-  housekeeping: ROLE_ACCESS.housekeeping,
+  employee: ["dashboard"],
+  cashier: ["dashboard", "billing", "orders", "invoices", "online-orders", "customers", "reservations", "pulse"],
+  waiter: ["dashboard", "orders", "reservations", "pulse", "customers"],
+  chef: ["dashboard", "kitchen", "menu", "tomorrow", "scan"],
+  store: ["dashboard", "inventory", "scan", "tomorrow"],
+  frontdesk: ["dashboard", "frontdesk", "rooms", "guests", "facilities", "housekeeping", "reservations", "invoices", "customers"],
+  housekeeping: ["dashboard", "housekeeping", "rooms"],
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -109,7 +114,7 @@ export const ROLE_HINT: Record<Role, string> = {
   supervisor_2: "Runs a team inside a department. Manages employees only.",
   employee: "Does the work. Manages nobody.",
   cashier: "Till, bills and invoices.", waiter: "Takes orders on the floor.", chef: "The kitchen screen and the menu.",
-  store: "Pantry, stock and labour.", frontdesk: "Arrivals, rooms and guests.", housekeeping: "Room turnaround.",
+  store: "Pantry, stock and the buy list.", frontdesk: "Arrivals, rooms and guests.", housekeeping: "Room turnaround.",
 };
 
 /** Modules the master may switch off per property. The rest are always on: an owner must always be able to land somewhere and reach settings. */

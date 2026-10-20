@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Clock, Timer, Hourglass, ListChecks, CalendarCheck, ShieldCheck, ShieldX, Users } from "lucide-react";
-import { Card, Segmented, cn, useToast } from "@/components/ui";
+import { Card, Segmented, cn, useToast, FlapBreathe, FlapShuffle } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { useLive } from "@/lib/useLive";
 import { saveCleanSettings } from "./actions";
@@ -103,7 +103,11 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
           [Clock, "Average clean", took == null ? "—" : brief(took)]] as const).map(([I, k, v]) => (
           <div key={k} className="feather !rounded-[18px] px-4 py-3 min-w-0 flex items-center gap-3">
             <span className="h-10 w-10 shrink-0 rounded-xl grid place-items-center bg-[var(--color-cyan-2)] text-[var(--color-cyan)]"><I size={19} aria-hidden /></span>
-            <div className="min-w-0"><div className="text-[12px] font-bold text-steel">{k}</div><div className="font-display num text-[24px] leading-tight truncate">{v}</div></div></div>))}
+            <div className="min-w-0"><div className="text-[12px] font-bold text-steel">{k}</div>
+              {/* 2026-10-20: what waits breathes, the other counts shuffle on a change; a duration stays words (Flap.tsx) */}
+              {k === "Waiting" ? <div className="mt-1" data-clean-n={v}><FlapBreathe value={waiting.length} pad={0} size="xs" tile="34px" say={`${v} waiting`} /></div>
+                : k !== "Average clean" ? <div className="mt-1" data-clean-n={v}><FlapShuffle value={v} pad={0} size="xs" tile="34px" bare say={`${v} ${k}`} /></div>
+                : <div className="font-display num text-[24px] leading-tight truncate">{v}</div>}</div></div>))}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Segmented value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "table", label: "Tables" }, ...(hasRooms ? [{ value: "room" as Filter, label: "Rooms" }] : []), { value: "mine", label: "Mine" }]} />

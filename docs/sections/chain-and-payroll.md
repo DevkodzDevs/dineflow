@@ -100,9 +100,23 @@ node batch3.mjs     # 25 checks on a throwaway demo — see testing-and-gates.md
 [expenses-and-checklists.md](expenses-and-checklists.md) · [staff-and-labour.md](staff-and-labour.md)
 - **Phones and tablets (2026-10-18):** below `lg` the month sheet is a card per person (labels from `data-label`, the
   header and footer hidden, a total card under it) instead of a 900px table that scrolled sideways; the same `<table>`
-  markup, so `data-line`, `data-net`, `data-save-line`, `data-pay` and `data-payslip` are unchanged. In Pay rates on a
-  phone, with PF or ESI on, the amount and the PF/Basic/ESI/Save row each take a full line (they had crushed the name to
-  two letters). batch3 checks the sheet has no inner sideways scroll at 412 and none at 834.
+  markup, so `data-line`, `data-net`, `data-save-line`, `data-pay` and `data-payslip` are unchanged. batch3 checks the
+  sheet has no inner sideways scroll at 412 and none at 834.
+- **Pay rates, redesigned (2026-10-20 — the owner: "alignment and spacing not good").** The rows had no shared columns:
+  a person without PF lost the Basic % field, so everything after it slid left, and the name, the Month/Day switch, the
+  amount and the ticks were sized by their content. Now the switches and Advances sit side by side and **Pay rates takes
+  the whole width under them**, and one set of pieces is laid out by the list's own width (`@container`):
+  - **62rem and wider — a table.** A header row (Person · Paid by · Rate · PF · basic + DA · ESI) and every row on the
+    same tracks, `--rate-cols`, built from which of PF and ESI the property has on (`8.75rem` switch, the rate
+    `minmax(9rem,1fr)`, PF `12rem`, ESI `5.75rem`, Save `7rem`). The card's wrappers turn `display: contents` there, so
+    their pieces are the row's cells; Save is `order-last`. **The Basic % field never leaves its slot** — with a
+    person's PF off it is disabled and dimmed.
+  - **Narrower — a card per person**, two across from 36rem: initials, name, role, the advance owed and *no rate yet*
+    on top with Save; Month/Day and the rate (₹ in front, "/ month" or "/ day" behind); then PF, basic % and ESI as
+    44px pills.
+  - Save is green when the row differs from what is saved and reads *✓ Saved* (disabled) when it does not. The card's
+    head counts *n of m on the sheet* (`[data-rates-count]`). `data-rate`, `data-basic-pct` and `data-save-rate` are
+    unchanged.
 - **The "Live · updated" clock starts in the browser** (2026-10-18): it read the time to the second on the server and
   again on waking, and when the second had turned the two disagreed — React #418 on some loads. It shows *Live* until
   the screen is up, then the time.

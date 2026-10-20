@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, X, Bike, Clock, Link2, AlertTriangle, Bell, Flame, PackageCheck, BadgeCheck, Banknote, ExternalLink, MapPin } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { Button, Card, Sheet, cn, Empty } from "@/components/ui";
+import { Button, Card, Sheet, cn, Empty, FlapBreathe } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { formatINR, fmtSince } from "@/lib/format";
 import { usePrinters } from "@/lib/print/usePrinter";
@@ -57,7 +57,9 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
             <button key={k} type="button" role="tab" aria-selected={on} onClick={() => setTab(k)}
               className={cn("!min-h-12 rounded-full px-2 flex items-center justify-center gap-1.5 text-[14px] font-extrabold transition-colors min-w-0", on ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
               <Icon size={16} aria-hidden className="shrink-0" /><Say w={w} />
-              <b className={cn("num shrink-0 min-w-6 h-6 px-1.5 rounded-full grid place-items-center text-[13px]", k === "new" && c ? "bg-[var(--color-red)] text-white" : on ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")}>{c}</b>
+              {/* 2026-10-20: orders not yet accepted breathe until someone takes them (Flap.tsx) */}
+              {k === "new" && c > 0 ? <span className="shrink-0 ml-0.5" data-new-count={c}><FlapBreathe value={c} pad={0} size="xs" tile="32px" tone="alert" say={`${c} new`} /></span> :
+              <b className={cn("num shrink-0 min-w-6 h-6 px-1.5 rounded-full grid place-items-center text-[13px]", k === "new" && c ? "bg-[var(--color-red)] text-white" : on ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")}>{c}</b>}
             </button>
           );
         })}

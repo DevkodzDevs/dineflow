@@ -14,7 +14,7 @@ import { lookFor, readThemeCookie, type ThemeChoice } from "@/lib/themeLook";
  *  — so every rule written for dark text on a light surface stays right without being repeated. */
 export type ThemeMode = ThemeChoice;
 /** The bar colour a phone draws above the page, per theme. */
-const BAR: Record<string, string> = { dark: "#0a0a0d", paper: "#17171c", colour: "#0c0624", bright: "#4c1d95", royal: "#14213d" };
+const BAR: Record<string, string> = { dark: "#0a0a0d", paper: "#1b1d23", colour: "#0c0624", bright: "#4c1d95", royal: "#14213d" };
 const KEY = "df-theme";
 /** What <html> wears for a choice: its data-theme, and its data-palette (or none) — lib/themeLook.ts, tested. */
 const look = (mode: ThemeMode) => lookFor(mode, matchMedia("(prefers-color-scheme: light)").matches);
@@ -50,12 +50,12 @@ const OPTIONS: { v: ThemeMode; label: string; Icon: typeof Moon; hint: string }[
 ];
 /** A small swatch of each theme, so the choice is seen before it is made. */
 const SWATCH: Record<ThemeMode, string> = {
-  dark: "linear-gradient(135deg, #17171c 0 55%, #4cd964 55% 70%, #1f2027 70%)",
-  paper: "linear-gradient(135deg, #ecece7 0 55%, #1fa84a 55% 70%, #ffffff 70%)",
+  dark: "linear-gradient(135deg, #15161b 0 55%, #3fbe7c 55% 70%, #1d1f26 70%)",
+  paper: "linear-gradient(135deg, #efece5 0 55%, #17794a 55% 70%, #fffdf9 70%)",
   colour: "linear-gradient(135deg, #2a1166 0 30%, #ff5ca8 30% 50%, #ffb547 50% 62%, #2fe1f5 62% 76%, #2ee6a0 76%)",
   bright: "linear-gradient(135deg, #f6f1ff 0 34%, #ec4899 34% 50%, #f97316 50% 62%, #06b6d4 62% 76%, #8b5cf6 76%)",
   royal: "linear-gradient(135deg, #faf6ee 0 40%, #1e3a8a 40% 62%, #8b1d3b 62% 80%, #b8913a 80%)",
-  system: "linear-gradient(135deg, #17171c 0 50%, #ecece7 50%)",
+  system: "linear-gradient(135deg, #15161b 0 50%, #efece5 50%)",
 };
 
 /** The Settings screen's six choices, as cards. */

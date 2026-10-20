@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, ChefHat, BellRing } from "lucide-react";
 import { useLive } from "@/lib/useLive";
-import { cn } from "@/components/ui";
+import { cn, FlapSpell, FlapBreathe, FlapShuffle } from "@/components/ui";
 
 type K = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string; ready_at: string | null;
   orders: { order_no: number; type: string; customer_name: string | null; dining_tables: { name: string } | null } | null };
@@ -67,15 +67,20 @@ export function BoardClient({ kots, name }: { kots: K[]; name: string }) {
 
 function Column({ title, items, tone }: { title: string; items: O[]; tone: "prep" | "ready" }) {
   return (
-    <section className={cn("p-6 overflow-hidden flex flex-col", tone === "ready" && "bg-[rgb(76_217_100/.08)]")}>
-      <h2 className={cn("text-2xl md:text-3xl font-semibold mb-5 flex items-center gap-3", tone === "ready" ? "text-[#4cd964]" : "text-white/80")}>
-        {tone === "ready" && <span className="h-3 w-3 rounded-full bg-[#4cd964] pulse-dot text-[#4cd964]" />}{title}<span className="num text-lg text-white/40 ml-auto">{items.length}</span>
+    <section className={cn("p-6 overflow-hidden flex flex-col", tone === "ready" && "bg-[rgb(73_199_133/.08)]")}>
+      <h2 className={cn("text-2xl md:text-3xl font-semibold mb-5 flex items-center gap-3", tone === "ready" ? "text-[#49c785]" : "text-white/80")}>
+        {tone === "ready" && <span className="h-3 w-3 rounded-full bg-[#49c785] pulse-dot text-[#49c785]" />}{title}
+        {/* 2026-10-20 flap numbers: while orders cook their count breathes; the ready count is plain */}
+        {tone === "prep" ? <span className="ml-auto" data-board-preparing><FlapBreathe value={items.length} pad={0} size="xs" tile="40px" say={`${items.length} preparing`} /></span>
+          : <span className="ml-auto" data-board-ready-count><FlapShuffle value={items.length} pad={0} size="xs" tile="40px" bare tone={items.length ? "live" : undefined} say={`${items.length} ready`} /></span>}
       </h2>
+      {/* the newest ready order, spelled out on the flaps the way a station board calls a train */}
+      {tone === "ready" && items[0] && <div className="mb-5 flex items-center gap-4" data-board-call><FlapSpell text={`#${items[0].no}`} size="md" tone="live" say={`Order ${items[0].no} is ready`} /><span className="font-display text-3xl md:text-4xl tracking-wide text-[#49c785]">READY</span></div>}
       <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 content-start overflow-y-auto">
         <AnimatePresence mode="popLayout">
           {items.map((o) => (
             <motion.div key={o.no} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 300, damping: 28 }}
-              className={cn("rounded-2xl px-4 py-3", tone === "ready" ? "bg-[#4cd964] text-[#04240c]" : "bg-white/[.07]")}>
+              className={cn("rounded-2xl px-4 py-3", tone === "ready" ? "bg-[#49c785] text-[#04240c]" : "bg-white/[.07]")}>
               <div className="num text-4xl md:text-5xl font-bold leading-none">#{o.no}</div>
               <div className={cn("text-sm mt-1.5 truncate", tone === "ready" ? "opacity-80" : "text-white/50")}>{o.where}</div>
             </motion.div>
@@ -92,18 +97,20 @@ function Column({ title, items, tone }: { title: string; items: O[]; tone: "prep
 function PhonePanel({ title, items, tone }: { title: string; items: O[]; tone: "prep" | "ready" }) {
   const ready = tone === "ready";
   return (
-    <section className={cn("rounded-[24px] border p-4", ready ? "bg-[rgb(76_217_100/.09)] border-[rgb(76_217_100/.28)]" : "bg-white/[.03] border-white/10")}>
-      <h2 className={cn("flex items-center gap-2.5 text-[19px] font-semibold", ready ? "text-[#4cd964]" : "text-white/85")}>
-        {ready ? <span className="h-2.5 w-2.5 rounded-full bg-[#4cd964] pulse-dot text-[#4cd964]" /> : <ChefHat size={18} className="text-white/55" />}
+    <section className={cn("rounded-[24px] border p-4", ready ? "bg-[rgb(73_199_133/.09)] border-[rgb(73_199_133/.28)]" : "bg-white/[.03] border-white/10")}>
+      <h2 className={cn("flex items-center gap-2.5 text-[19px] font-semibold", ready ? "text-[#49c785]" : "text-white/85")}>
+        {ready ? <span className="h-2.5 w-2.5 rounded-full bg-[#49c785] pulse-dot text-[#49c785]" /> : <ChefHat size={18} className="text-white/55" />}
         {title}
-        <span className={cn("ml-auto num text-[13px] font-bold min-w-7 h-7 px-2 rounded-full grid place-items-center", ready ? "bg-[#4cd964] text-[#04240c]" : "bg-white/10 text-white/70")}>{items.length}</span>
+        {ready ? <span className="ml-auto" data-board-ready-count><FlapShuffle value={items.length} pad={0} size="xs" tile="34px" bare tone={items.length ? "live" : undefined} say={`${items.length} ready`} /></span>
+          : <span className="ml-auto" data-board-preparing><FlapBreathe value={items.length} pad={0} size="xs" tile="34px" say={`${items.length} preparing`} /></span>}
       </h2>
+      {ready && items[0] && <div className="mt-3.5 flex items-center justify-center gap-3" data-board-call><FlapSpell text={`#${items[0].no}`} size="sm" tile="52px" tone="live" say={`Order ${items[0].no} is ready`} /><span className="font-display text-2xl tracking-wide text-[#49c785]">READY</span></div>}
       {items.length > 0 ? (
         <div className="grid grid-cols-3 gap-2 mt-3.5">
           <AnimatePresence mode="popLayout">
             {items.map((o) => (
               <motion.div key={o.no} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                className={cn("rounded-2xl px-2 py-3 text-center min-w-0", ready ? "bg-[#4cd964] text-[#04240c]" : "bg-white/[.07]")}>
+                className={cn("rounded-2xl px-2 py-3 text-center min-w-0", ready ? "bg-[#49c785] text-[#04240c]" : "bg-white/[.07]")}>
                 <div className="num text-[30px] font-bold leading-none">#{o.no}</div>
                 <div className={cn("text-[11.5px] mt-1.5 truncate", ready ? "opacity-80" : "text-white/50")}>{o.where}</div>
               </motion.div>
@@ -112,7 +119,7 @@ function PhonePanel({ title, items, tone }: { title: string; items: O[]; tone: "
         </div>
       ) : (
         <div className="mt-3.5 rounded-2xl border border-dashed border-white/12 px-4 py-6 text-center">
-          <span className={cn("mx-auto h-11 w-11 rounded-2xl grid place-items-center", ready ? "bg-[rgb(76_217_100/.14)] text-[#4cd964]" : "bg-white/[.06] text-white/50")}>{ready ? <BellRing size={20} /> : <ChefHat size={20} />}</span>
+          <span className={cn("mx-auto h-11 w-11 rounded-2xl grid place-items-center", ready ? "bg-[rgb(73_199_133/.14)] text-[#49c785]" : "bg-white/[.06] text-white/50")}>{ready ? <BellRing size={20} /> : <ChefHat size={20} />}</span>
           <div className="text-[14px] font-semibold text-white/80 mt-2.5">{ready ? "Nothing ready yet" : "No orders cooking"}</div>
           <div className="text-[12px] text-white/45 mt-1">{ready ? "Numbers appear here the moment the kitchen marks them ready." : "New orders show here as soon as they reach the kitchen."}</div>
         </div>

@@ -35,6 +35,65 @@ grey patch on indigo.
 | 662 | LOADERS | `.flip.loader`, `.nav-progress` |
 | 703 | MOTION | keyframes, reduce-motion |
 
+## Dark and Light, rich and classic (2026-10-20)
+
+The owner: the dark and light colours "feel annoying — use rich and classic colours". The neon system hues are gone
+from both; only tokens changed (and the few rules that had the old green written in):
+
+- **Dark** (`@theme`): surfaces a touch deeper (#15161b / #1d1f26 / #282a33); text warm ivory #f3efe7, stone
+  #a8a39a, #75716a; hues are jewel tones a step softer — emerald tint #3fbe7c, ruby #ef7266, sapphire #74a3ec,
+  amber #e2a84f, amethyst #b597ee, teal #4fb6c4 (Cleaning's cyan was the loudest thing on the floor). On a card:
+  label 14.3, label-2 6.6, label-3 3.4, each hue 5.3–7.8, each hue on its own wash 4.3–5.7.
+- **Light** (`[data-theme="paper"]`): warm stone page #efece5, ivory cards #fffdf9, ink #1b1c22; deep emerald tint
+  #17794a, ruby #b3302a, sapphire #2356b5, bronze-amber #97580a, amethyst #6c37b3, teal #0d6c7d — all 5.3–7.3 as text
+  on a card (the old green was 3.1, which is why paper's pills measured ~2.8 in the table below). **`--color-on-tint`
+  is white in paper now**: the main button is emerald with white letters, and the ticked checkbox's mark is drawn in
+  `--color-on-tint` (it was a fixed near-black — invisible on royal's navy).
+- **Glows follow the theme.** Selection, focus ring, field focus, `.btn-filled`'s shadow, `.btn-tinted`, the loader
+  glow, the top progress bar and the wait bars were a fixed `rgb(76 217 100)` / `#4cd964` in every theme; they are
+  `color-mix(… var(--color-tint) …)` / `var(--color-tint)` now, so a royal field focuses navy and a colourful one
+  magenta. `.flip.live` / `.flip.alert` stay fixed colours (the plates are dark in every theme): #49c785 / #f0786c.
+- Theme swatches and the phone bar colour (`Theme.tsx`) follow. The three colourful/royal palettes set their own
+  tokens and are unchanged.
+
+## Flap numbers (2026-10-20)
+
+The owner picked six split-flap designs (first shown as loaders) and approved them for the numbers people watch all
+day. **`components/ui/Flap.tsx`** builds all six on the app's own tile — `Flip` in `components/ui/flip.tsx`, which gained
+`say` (what a screen reader hears), `tile` (the `--tile` height), `bare` (no pins), `fast` (quick turns while shuffling)
+and `quiet` (not announced as it changes); there is no second tile. The pure parts are `lib/flap.ts` (5 tests).
+
+| Component | What it does | Where |
+| --- | --- | --- |
+| `FlapShuffle value` | shuffles each digit 3 + i frames, then settles, left → right, when the value changes | Control room counters; every `StatTile` flap (so Front desk's arrivals / departures / in house / rooms ready); Kitchen column counts; Staff "on duty today"; Pantry's finished / running low / enough; Pulse's free tables; Cleaning's on-it / cleaned counts; My day attendance and messages |
+| `FlapSpell text` | letters flick and land | Order board "#14 READY" call (and both board counts shuffle); Pulse "Seat now" table (T4); room numbers on Rooms |
+| `FlapPercent value` | counts to the % in 8 steps, a bar filling under it | Control room "% full" (resort); each checklist card; My day checklist tile |
+| `FlapClock since / at` | `since`: a ticking age, mm:ss then h:mm, amber at `hurry`, red at `late`; `at`: a fixed time on a 12-hour face | Kitchen ticket age (KOT hurry/late minutes); each Pulse party's wait; Reservations booking times; My day "In since" |
+| `FlapMini value` | one or two pinless compact tiles (30px and up) | Till cart count and the dish-photo `.qty`; the More sheet's Help count; My day "n new" work badge |
+| `FlapBreathe value` | a shuffle count whose tile glows outward from its own edge while `value > 0` (red with `tone="alert"`) | Pulse parties waiting; Online orders new; Order board preparing; Staff feedback new (owner); Cleaning waiting |
+
+**Sizes (after the first browser pass, the same day).** At 17–26px the board's proportions squeezed a lone digit into
+a narrow black capsule and the breathing rings were drawn over the digit. Now every small flap — `size="xs"` or given a
+`tile` — wears `.flip.compact` and is never under **30px** (`MIN_TILE`, so digits are ~19px): cards .8em wide, digits 64% of
+the tile at 600, a tile at least .8 of its height wide. The breathing glow is a `box-shadow` outside the tile's border
+(`flapGlow`), never over the digits, with 6px of room kept round it. Sizes by place: kitchen column counts and both board
+counts 40px (34 on a phone), KOT age 34, Pulse glance clamp(32–40px), a waiting party's clock 30, the dish-photo `.qty`
+32, Pantry levels clamp(34–48px), Cleaning 34, checklist % 34, booking times 32. **Tab-bar and bell counts stay red
+pills** — a flap cannot be read at 18px, and anything bigger would cover the icon.
+
+**Rules.** The server and first paint show the settled value — a shuffle runs only on a change after mount, so no
+hydration mismatch and no layout shift; a `since` clock is drawn after mount, with an invisible same-size placeholder
+until then (the server cannot know the second). One shared 1-second ticker (`useNow`) serves every clock on a page;
+a fixed `at` time never subscribes. A screen reader hears `say` — the settled value — never a shuffle frame, and a
+ticking clock is `quiet`. Reduce-motion: values swap without flipping, the rings stand still. Tiles stay the dark plate
+in every theme (royal's solid overrides for `.flip` / `.flap-*` still apply; `.flap-bar` and the rings are solid). **Money
+is never a flap** — amounts stay figures. A value too long for its place falls back to plain text (Pulse's quoted wait
+from 100 minutes, a room number over four characters). CSS: the FLAP NUMBERS block at the end of `globals.css`
+(`.flip.fast`, `.flip.warn`, `.flip.bare`, `.flap-bar`, `.flap-ap`, `.flap-breathe`, `.qty.qty-flap`).
+**Skipped on purpose:** the till's order-line item counts (text in a 60px rail card), kitchen station names (a filter,
+not columns), Front desk's occupancy % (a caption under In house — the Control room carries it), Reports targets
+(none exist).
+
 ## The colourful theme (2026-10-18)
 
 The owner's "one more theme — colourful". **Built on dark, not on paper**: its text is light on dark surfaces, so
@@ -551,3 +610,10 @@ Then look at it, in both themes, at 1440 and 412.
   Corollary: anything that appears after mount now shows as layout shift (it used to be hidden in the
   fade) — render it at full size from the start (the Notifications card renders with default prefs,
   then loads the device's own).
+
+- **A dialog is as tall as what is in it** (2026-10-20). `Sheet`'s `.sheet-body` is `flex-auto min-h-0` (it was
+  `flex-1`): its content's height is the starting size, so the dialog hugs short content in every engine and, only when
+  the content is taller than the screen, stops at the frame's edge (`max-h-full` of the visual-viewport frame, less
+  `sm:p-6`) and scrolls inside. A 0% basis in a column with no set height left that to the engine. Nothing else about the
+  frame, the keyboard handling or the phone bottom sheet changed. If a dialog fills the screen, the fix is usually its
+  content (Menu's Photo dialog: a full-width 4:3 photo — see menu.md).

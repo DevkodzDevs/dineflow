@@ -1,18 +1,18 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useNavPath } from "./useNavPath";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LogOut, ShieldCheck, Menu, X, LayoutGrid, Fingerprint, LifeBuoy } from "lucide-react";
+import { LogOut, ShieldCheck, Menu, X, LayoutGrid, Fingerprint } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn, Sheet } from "../ui";
+import { cn, Sheet, FlapMini } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
 import { barFor } from "@/lib/bar";
-import { ITEMS, freshFor } from "./sections";
+import { ITEMS, freshFor, endFor, myDayFor, modOf, isOn, type Section } from "./sections";
 import { useSupportUnread } from "@/components/support/useUnread";
 
 /** A menu row; `badge` is a count that wants attention (a red dot on the icon, the number beside the label). */
-type NavItem = (typeof ITEMS)[number] & { badge?: number; hint?: string };
+type NavItem = Section & { badge?: number; hint?: string };
 
 /** One titled block of the menu. Declared here, not inside Sidebar: a component created during
  *  render is a new type every time, which unmounts and rebuilds the whole menu on each pass. */
@@ -23,11 +23,11 @@ function Group({ title, items, path, className }: { title?: string; items: NavIt
     <div className={cn("nav-group", className)}>
       {title && <div className="px-3 pb-2 font-display text-[12px] tracking-[.12em] uppercase text-white/35 rail-hide">{title}</div>}
       {items.map(({ key, href, label, Icon, badge, hint }) => {
-        const active = path.startsWith(href);
+        const active = isOn(path, href);
         return (
           <Link key={key} href={href} title={hint ?? label} data-active={active ? "true" : undefined} data-help={key === "help" ? "" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
             {active && <span className="absolute inset-0 rounded-[10px] bg-white/[.12] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/.12)]" />}
-            {active && <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-[var(--color-tint)] shadow-[0_0_14px_rgb(76_217_100/.8)]" />}
+            {active && <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-[var(--color-tint)] shadow-[0_0_14px_color-mix(in_srgb,var(--color-tint)_80%,transparent)]" />}
             <span className="relative shrink-0"><Icon size={17} strokeWidth={active ? 2.2 : 1.8} />{badge ? <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-red)] ring-2 ring-[#121216]" aria-hidden /> : null}</span>
             <span className="relative rail-hide flex-1 min-w-0 truncate">{label}</span>
             {badge ? <span className="relative rail-hide shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--color-red)] text-white text-[11px] font-bold grid place-items-center num">{badge}</span> : null}
@@ -89,10 +89,10 @@ function useKeepMenuInPlace(path: string) {
   return ref;
 }
 
-type Props = { name: string; role: Role; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null; attend?: boolean };
+type Props = { name: string; role: Role; dept?: string | null; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null; attend?: boolean };
 
-export function Sidebar({ name, role, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref, attend }: Props) {
-  const path = usePathname();
+export function Sidebar({ name, role, dept = null, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref, attend }: Props) {
+  const path = useNavPath();   // lights the tapped item at once (useNavPath.ts)
   const navRef = useKeepMenuInPlace(path);
   /* The drawer. On an iPad or a tablet (768–1279) the menu is an icon rail; the hamburger at its
      top opens the whole menu over the page, labels and all, without moving the page underneath.
@@ -108,17 +108,17 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
     return () => { window.removeEventListener("keydown", esc); window.removeEventListener("resize", wide); };
   }, [open]);
   const mods = modulesFor(type, role, enabled, personal);
-  const allowed = ITEMS.filter((i) => mods.includes(i.key));
+  const allowed = ITEMS.filter((i) => mods.includes(modOf(i)));
   const unread = useSupportUnread(path);
   const hospitality = allowed.filter((i) => ["frontdesk", "rooms", "housekeeping", "guests", "facilities"].includes(i.key));
   const dining = allowed.filter((i) => !hospitality.includes(i) && !["dashboard", "tomorrow", "scan", "reports", "tax", "staff", "settings", "labour", "invoices", "channels", "neighbours", "proof"].includes(i.key));
   const manage = allowed.filter((i) => ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff"].includes(i.key));
-  /* the menu's last group: Settings (when this person may open it) and Help & support, which is for everyone
-     in the property whatever their modules — a red dot while a reply from DineFlow is unread */
+  /* the menu's last group (2026-10-20): the property's Settings (the owner), the person's own settings (/me —
+     "Settings" for everyone else, "My profile" for the owner), Feedback & complaints (the owner reads it as Staff
+     feedback) and, for the owner alone, Help & support — a red dot while a reply from DineFlow is unread */
   const end: NavItem[] = [
     ...allowed.filter((i) => i.key === "settings"),
-    { key: "help", href: "/help", label: "Help & support", Icon: LifeBuoy, badge: unread,
-      hint: unread ? `Help & support · ${unread} new repl${unread === 1 ? "y" : "ies"}` : undefined },
+    ...endFor(role).map((i): NavItem => i.key === "help" ? { ...i, badge: unread, hint: unread ? `Help & support · ${unread} new repl${unread === 1 ? "y" : "ies"}` : undefined } : i),
   ];
   const who = (
     <>
@@ -136,17 +136,18 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
         className="rail-only mb-4 h-11 w-11 shrink-0 rounded-xl grid place-items-center text-white/75 bg-white/[.06] hover:bg-white/10 hover:text-white transition">
         {open ? <X size={20} /> : <Menu size={20} />}
       </button>
-      <Link href="/dashboard" className="px-2 flex items-center gap-2.5 min-w-0">
+      <Link href={myDayFor(role) ? "/home" : "/dashboard"} className="px-2 flex items-center gap-2.5 min-w-0 [@media(pointer:coarse)]:min-h-11">
         {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 object-contain" /> : <span className="flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px] shrink-0"><span className="flip-face">{restaurant.slice(0, 1)}</span></span>}
         <div className="min-w-0"><div className="font-display text-[17px] leading-tight text-white tracking-wide rail-hide truncate">{restaurant}</div><div className="rail-hide text-[11px] text-white/45 mt-0.5 truncate">{PROPERTY_LABEL[type]}</div></div>
       </Link>
       <nav ref={navRef} className="mt-7 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] -mx-1 px-1 sidebar-scroll">
-        <Group items={allowed.filter((i) => ["dashboard", "tomorrow", "scan"].includes(i.key))} path={path} />
+        {/* staff: My day first (their landing); the owner and managers: the control room */}
+        <Group items={[...(myDayFor(role) ? [myDayFor(role)!] : []), ...allowed.filter((i) => ["dashboard", "tomorrow", "scan"].includes(i.key))]} path={path} />
         <Group title={type === "resort" ? "Resort" : "Hotel"} items={hospitality} path={path} />
         <Group title="Dining" items={dining} path={path} />
         <Group title="Manage" items={manage} path={path} />
-        <Group title="Insights & control" items={freshFor(role)} path={path} />
-        {/* the last group: Settings and Help & support, straight after the rest and scrolling with them */}
+        <Group title="Insights & control" items={freshFor(role, dept)} path={path} />
+        {/* the last group: Settings, the person's own settings, Feedback & complaints (and the owner's Help & support), straight after the rest and scrolling with them */}
         <Group items={end} path={path} />
       </nav>
       {/* the foot: who you are, and the way out — kept short (owner, 2026-10-13). Settings and Help & support
@@ -159,7 +160,7 @@ export function Sidebar({ name, role, restaurant, type, membership, daysLeft, is
             leaves once it collapses, so the avatar alone still sits square inside it */}
         <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[.04] p-[7px]">
           {accountHref
-            ? <Link href={accountHref} title={`${name} · settings`} className="flex items-center gap-2.5 min-w-0 flex-1 rounded-xl transition hover:brightness-125">{who}</Link>
+            ? <Link href={accountHref} title={`${name} · settings`} className="flex items-center gap-2.5 min-w-0 flex-1 rounded-xl transition hover:brightness-125 [@media(pointer:coarse)]:min-h-11">{who}</Link>
             : <span className="flex items-center gap-2.5 min-w-0 flex-1">{who}</span>}
           <form action="/logout" method="post" className="rail-hide shrink-0">
             <button title="Sign out" aria-label="Sign out" className="h-8 w-8 grid place-items-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white transition"><LogOut size={15} /></button>
@@ -190,11 +191,11 @@ type MoreProps = { role: Role; type: PropertyType; dept?: string | null; enabled
  * way the sidebar groups them, with the account, Master control and Sign out at the foot.
  */
 export function BottomNav({ role, type, dept = null, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0, attend }: MoreProps) {
-  const path = usePathname();
+  const path = useNavPath();   // lights the tapped item at once (useNavPath.ts)
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [path]);
   const mods = modulesFor(type, role, enabled, personal);
-  const allowed = ITEMS.filter((i) => mods.includes(i.key));
+  const allowed = ITEMS.filter((i) => mods.includes(modOf(i)));
   /* The bar's four: the person's own pins if they set any on this device (Square lets staff pin the
      applets they use most), else what their role does all day, else the property's default. */
   const [pins, setPins] = useState<string[] | null>(null);
@@ -219,13 +220,19 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
     return () => clearTimeout(t);
   }, [open]);
   const savePins = (v: string[] | null) => { setPins(v); try { if (v) localStorage.setItem(PIN_KEY, JSON.stringify(v)); else localStorage.removeItem(PIN_KEY); } catch { /* fine */ } };
-  const fresh = freshFor(role);
+  const fresh = freshFor(role, dept);
   // the Cleaning and Work boards are no modules, but they are the day of the people who clean and fix: the bar may carry them (lib/bar.ts)
   const onBar = [...allowed, ...fresh.filter((i) => i.key === "cleaning" || i.key === "work")];
-  const primary = barFor(role, type, onBar.map((i) => i.key), pins, dept).map((k) => onBar.find((i) => i.key === k)!);
+  /* A screen inside another section (Join by QR, the Order board) goes on the bar only when pinned — it never
+     fills a gap by itself. */
+  const fills = onBar.filter((i) => !i.mod || (pins ?? []).includes(i.key));
+  const primary = barFor(role, type, fills.map((i) => i.key), pins, dept).map((k) => fills.find((i) => i.key === k)!);
+  /* what the bar shows: staff keep My day in the first place (2026-10-20), then three of their own */
+  const myDay = myDayFor(role);
+  const bar = myDay ? [myDay, ...primary.filter((i) => i.key !== "home").slice(0, 3)] : primary;
   /* What the person chose — not what the bar shows. When fewer than four are pinned the bar fills the
      gaps from the menu; counting those fillers as pins made a newly pinned section push itself out. */
-  const pinned = pins ? pins.filter((k) => mods.includes(k)) : primary.map((i) => i.key);
+  const pinned = pins ? pins.filter((k) => onBar.some((i) => i.key === k)) : primary.map((i) => i.key);
   const togglePin = (k: string) => {
     const cur = pinned;
     if (cur.includes(k)) { if (cur.length > 1) savePins(cur.filter((x) => x !== k)); }
@@ -233,26 +240,33 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
   };
   /* what needs attention, as a count on its section: tickets over 15 minutes in the kitchen */
   const badge = (key: string) => (key === "kitchen" && lateKots > 0 ? lateKots : 0);
-  const rest = allowed.filter((i) => !primary.includes(i));
-  const onMore = rest.some((i) => path.startsWith(i.href)) || fresh.some((i) => path.startsWith(i.href));
+  const rest = allowed.filter((i) => !bar.includes(i));
+  const onMore = rest.some((i) => isOn(path, i.href)) || fresh.some((i) => isOn(path, i.href)) || endFor(role).some((i) => isOn(path, i.href));
   const unread = useSupportUnread(path);
-  const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0) + unread;
-  const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num">{n > 99 ? "99+" : n}</span>;
+  const owner = role === "owner";
+  const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0) + (owner ? unread : 0);
+  /* the foot's links: the menu's last group less the one the account row already is (/settings or /me) */
+  const foot = endFor(role).filter((i) => i.href !== accountHref);
+  /* a count on a tab stays a red pill: a flap tile cannot be read at 18px (2026-10-20, design-system.md "Flap numbers") */
+  const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num" data-tab-count={n}>{n > 99 ? "99+" : n}</span>;
   const groups = [
-    { title: null as string | null, items: allowed.filter((i) => TOP.includes(i.key)) },
+    { title: null as string | null, items: [...(myDay ? [myDay] : []), ...allowed.filter((i) => TOP.includes(i.key))] },
     { title: type === "resort" ? "Resort" : "Hotel", items: allowed.filter((i) => HOSPITALITY.includes(i.key)) },
     { title: "Dining", items: allowed.filter((i) => !HOSPITALITY.includes(i.key) && !MANAGE.includes(i.key) && !TOP.includes(i.key)) },
     { title: "Manage", items: allowed.filter((i) => MANAGE.includes(i.key)) },
-    { title: "Insights & control", items: fresh.filter((i) => !primary.some((p) => p.key === i.key)) },
+    { title: "Insights & control", items: fresh.filter((i) => !bar.some((p) => p.key === i.key)) },
   ].filter((g) => g.items.length);
-  const tab = (active: boolean) => cn("flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 text-[11px] font-display tracking-wide transition-colors", active ? "text-[var(--color-tint)]" : "text-[var(--color-label-2)]");
-  const pip = (active: boolean) => cn("h-8 w-12 grid place-items-center rounded-full transition", active && "bg-[rgb(76_217_100/.16)]");
+  const tab = (active: boolean) => cn("flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-[11px] font-display tracking-wide transition-colors", active ? "text-[var(--color-tint)]" : "text-[var(--color-label-2)]");
+  const pip = (active: boolean) => cn("h-8 w-12 grid place-items-center rounded-full transition", active && "bg-[color-mix(in_srgb,var(--color-tint)_16%,transparent)]");
+  /* Docked to the foot of the screen (2026-10-20, the owner: "fit to the bottom, not floating"): edge to edge, a
+     solid surface with a hairline on top, the home indicator / gesture bar inside its own colour (`.tabbar` in
+     globals.css pads env(safe-area-inset-*)). Its height is `--tabbar` — every bottom offset on a phone reads it. */
   return (
     <>
-      <nav aria-label="Sections" className="md:hidden fixed bottom-[max(10px,env(safe-area-inset-bottom))] left-[max(12px,env(safe-area-inset-left))] right-[max(12px,env(safe-area-inset-right))] z-30 material-thick rounded-[26px] shadow-[var(--shadow-pop)]">
-        <div className="flex px-1">
-          {primary.map(({ key, href, label, Icon }) => {
-            const active = path.startsWith(href);
+      <nav aria-label="Sections" className="tabbar md:hidden fixed inset-x-0 bottom-0 z-30" data-tabbar>
+        <div className="flex h-[var(--tabbar-row)] px-1">
+          {bar.map(({ key, href, label, Icon }) => {
+            const active = isOn(path, href);
             return (
               <Link key={key} href={href} aria-current={active ? "page" : undefined} className={tab(active)}>
                 <motion.span whileTap={{ scale: .85 }} className={cn(pip(active), "relative")}><Icon size={20} strokeWidth={active ? 2.4 : 1.9} />{count(badge(key))}</motion.span><span className="truncate max-w-full px-0.5">{label}</span>
@@ -268,7 +282,7 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
       <Sheet open={open} onClose={() => setOpen(false)} title="Menu">
         <div className="space-y-5" ref={sheetRef} data-more>
           <div className={cn("flex items-center gap-2 rounded-2xl p-2.5 pl-3.5", editing ? "bg-[var(--color-green-2)]" : "bg-[var(--color-fill)]")}>
-            <span className="flex-1 min-w-0 text-[12.5px] leading-snug">{editing ? <><b>Tap to pin</b> up to 4 sections to your bar.</> : <>Your bar: <b>{primary.map((i) => i.label).join(" · ")}</b></>}</span>
+            <span className="flex-1 min-w-0 text-[12.5px] leading-snug">{editing ? <><b>Tap to pin</b> up to 4 sections to your bar.</> : <>Your bar: <b>{bar.map((i) => i.label).join(" · ")}</b></>}</span>
             {editing && pins && <button type="button" onClick={() => savePins(null)} className="h-10 px-3 rounded-xl text-[12.5px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)]">Reset</button>}
             <button type="button" onClick={() => setEditing((v) => !v)} aria-pressed={editing}
               className={cn("h-10 px-3.5 rounded-xl text-[13px] font-semibold shrink-0 transition-colors", editing ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_2px_rgb(0_0_0/.15)]")}>{editing ? "Done" : "Edit bar"}</button>
@@ -278,13 +292,13 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
               {g.title && <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-[var(--color-label-3)] mb-2">{g.title}</div>}
               <div className="grid grid-cols-3 gap-2">
                 {g.items.map(({ key, href, label, Icon }) => {
-                  const active = path.startsWith(href);
+                  const active = isOn(path, href);
                   if (editing) {
                     const on = pinned.includes(key);
                     return (
                       <button key={key} type="button" onClick={() => togglePin(key)} aria-pressed={on}
                         className={cn("relative min-w-0 min-h-[76px] rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center text-[12px] font-semibold leading-tight transition-colors",
-                          on ? "bg-[rgb(76_217_100/.14)] text-[var(--color-tint)] ring-2 ring-[var(--color-tint)]" : "bg-[var(--color-fill)] text-[var(--color-label)] border border-dashed border-[var(--color-label-3)]")}>
+                          on ? "bg-[color-mix(in_srgb,var(--color-tint)_14%,transparent)] text-[var(--color-tint)] ring-2 ring-[var(--color-tint)]" : "bg-[var(--color-fill)] text-[var(--color-label)] border border-dashed border-[var(--color-label-3)]")}>
                         <span className={cn("absolute top-1.5 right-1.5 h-5 w-5 rounded-full grid place-items-center text-[10px] font-bold num", on ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-bg-2)] text-[var(--color-label-3)]")}>{on ? pinned.indexOf(key) + 1 : "+"}</span>
                         <Icon size={20} /><span className="line-clamp-2">{label}</span>
                       </button>
@@ -293,7 +307,7 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
                   return (
                     <Link key={key} href={href} aria-current={active ? "page" : undefined}
                       className={cn("min-w-0 min-h-[76px] rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center text-[12px] font-semibold leading-tight transition-colors",
-                        active ? "bg-[rgb(76_217_100/.14)] text-[var(--color-tint)] ring-1 ring-[rgb(76_217_100/.4)]" : "bg-[var(--color-fill)] text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}>
+                        active ? "bg-[color-mix(in_srgb,var(--color-tint)_14%,transparent)] text-[var(--color-tint)] ring-1 ring-[color-mix(in_srgb,var(--color-tint)_40%,transparent)]" : "bg-[var(--color-fill)] text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}>
                       <span className="relative"><Icon size={20} strokeWidth={active ? 2.3 : 1.9} />{count(badge(key))}</span><span className="line-clamp-2">{label}</span>
                     </Link>
                   );
@@ -317,10 +331,11 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
                 ? <Link href={accountHref} className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors">{who}<span className="text-xs text-[var(--color-label-2)] shrink-0">Settings</span></Link>
                 : <div className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)]">{who}</div>;
             })()}
-            <Link href="/help" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors" data-help>
-              <LifeBuoy size={17} /> Help & support
-              {unread > 0 && <span className="ml-auto min-w-[22px] h-[22px] px-1.5 rounded-full bg-[var(--color-red)] text-white text-[11px] font-bold grid place-items-center num">{unread} new</span>}
-            </Link>
+            {foot.map(({ key, href, label, Icon }) => (
+              <Link key={key} href={href} aria-current={isOn(path, href) ? "page" : undefined} className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors" data-help={key === "help" ? "" : undefined} data-end={key}>
+                <Icon size={17} /> {label}
+                {key === "help" && unread > 0 && <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] font-bold text-[var(--color-red)]"><FlapMini value={unread} say={`${unread} new`} />new</span>}
+              </Link>))}
             {attend && <Link href="/attendance" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><Fingerprint size={17} /> My attendance</Link>}
             {isAdmin && <Link href="/admin" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><ShieldCheck size={17} /> Master control</Link>}
             <form action="/logout" method="post">

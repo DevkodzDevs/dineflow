@@ -19,8 +19,8 @@ export type Screen = {
   hints?: [string, string][];
 };
 
-/** `G` + letter → section. Shown only when this person may open it (`module` from modulesFor, or always). */
-export const GO: { key: string; href: string; label: string; module?: string }[] = [
+/** `G` + letter → section. Shown only when this person may open it (`module` from modulesFor, or always; `owner`: the owner's alone). */
+export const GO: { key: string; href: string; label: string; module?: string; owner?: true }[] = [
   { key: "d", href: "/dashboard", label: "Control room", module: "dashboard" },
   { key: "r", href: "/reservations", label: "Reservations", module: "reservations" },
   { key: "p", href: "/pulse", label: "Pulse", module: "pulse" },
@@ -34,7 +34,8 @@ export const GO: { key: string; href: string; label: string; module?: string }[]
   { key: "i", href: "/inventory", label: "Pantry", module: "inventory" },
   { key: "t", href: "/reports", label: "Reports", module: "reports" },
   { key: "s", href: "/settings", label: "Settings", module: "settings" },
-  { key: "h", href: "/help", label: "Help & support" },
+  { key: "f", href: "/voice", label: "Feedback & complaints" },
+  { key: "h", href: "/help", label: "Help & support", owner: true },
 ];
 
 const LIST: [string, string][] = [["↑ ↓", "move through the list"], ["Enter", "open the highlighted one"], ["Esc", "let go"]];

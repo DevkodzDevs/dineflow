@@ -1,9 +1,10 @@
 import { requireSession, daysLeft } from "@/lib/auth";
 import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { modulesFor, homeFor } from "@dineflow/shared";
+import { modulesFor, landingFor } from "@dineflow/shared";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar, BottomNav } from "@/components/shell/Nav";
+import { deptOf } from "@/components/shell/sections";
 import { TopBar } from "@/components/shell/TopBar";
 import { Gestures } from "@/components/shell/Gestures";
 import { DeckScroll } from "@/components/shell/DeckScroll";
@@ -60,12 +61,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (key && !mods.includes(key)) {
     /* The control room is the owner's (and a manager's the owner ticks): everyone else who reaches /dashboard — after
        signing in, from the logo, from the forty links that end there — goes to their own screen, quietly. Any other
-       section they cannot open sends them home with a note. homeFor always has an answer: Work is open to everyone. */
-    const home = homeFor(mods, s.profile.position ?? null);
+       section they cannot open sends them home with a note. Staff's home is My day (/home, open to everyone, 2026-10-20);
+       the owner's and a manager's is homeFor, which always has an answer: Work is open to everyone. */
+    const home = landingFor(s.profile.role, mods, s.profile.position ?? null);
     redirect(key === "dashboard" ? `/${home}` : `/${home}?locked=${key}`);
   }
-  // the profile avatar becomes a button only for people whose role can open settings
-  const accountHref = mods.includes("settings") ? "/settings" : null;
+  // the profile avatar opens the property's Settings for whoever may open them, and everyone else's own settings (/me, 2026-10-20)
+  const accountHref = mods.includes("settings") ? "/settings" : "/me";
+  // the person's team — set on them, else their position's, else their role's — decides the team-bound control links
+  const dept = deptOf(s.profile.role, s.profile.department ?? null, s.profile.position ?? null);
   // "My attendance" appears once the owner turns on a way to punch from one's own phone
   const attend = !s.actingAs && ((s.restaurant.attendance_methods as string[] | undefined) ?? []).some((m) => m === "biometric" || m === "selfie");
   // the late-ticket badge rides along with the session now; it used to cost a query of its own here
@@ -85,15 +89,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
-      <Sidebar name={s.profile.full_name} role={s.profile.role} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />
-      <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-28 md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
+      <Sidebar name={s.profile.full_name} role={s.profile.role} dept={dept} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />
+      <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-[calc(var(--tabbar)+28px)] md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
         {s.isAdmin && s.actingAs && <MasterBanner property={s.restaurant.name} />}
         <TopBar membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} outlets={s.outlets} />
         {children}
       </div></main>
-      <BottomNav role={s.profile.role} type={s.restaurant.property_type} dept={s.profile.department ?? null} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
+      <BottomNav role={s.profile.role} type={s.restaurant.property_type} dept={dept} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
         name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} />
       <Assist />
       {/* pull to refresh everywhere on touch; edge swipe back/forward in the installed app */}
@@ -104,7 +108,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* the next screen is fetched when a finger touches a menu link or a mouse rests on one, not on the click */}
       <IntentPrefetch />
       {/* the keyboard: Ctrl K go to, G + letter, N new order, ↑ ↓ Enter on lists, ? for the list (keymap.ts) */}
-      <Keys modules={mods} role={s.profile.role} />
+      <Keys modules={mods} role={s.profile.role} dept={dept} />
     </div>
    </SayProvider>
    </NotifierProvider>

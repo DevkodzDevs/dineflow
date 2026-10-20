@@ -1,8 +1,8 @@
 # Reports, pulse, tomorrow and proof
 
-**Routes** `/reports` · `/pulse` · `/tomorrow` · `/proof`
+**Routes** `/reports` · `/pulse` · `/pulse/qr` (Join by QR) · `/tomorrow` · `/proof`
 **Files** `app/(app)/reports/ReportsClient.tsx` · `Charts.tsx` · `Breakdown.tsx` ·
-`app/(app)/pulse/PulseClient.tsx` · `app/(app)/tomorrow/TomorrowClient.tsx` ·
+`app/(app)/pulse/PulseClient.tsx` · `app/(app)/pulse/qr/QrClient.tsx` · `app/(app)/tomorrow/TomorrowClient.tsx` ·
 `app/(app)/proof/ProofClient.tsx` · each `actions.ts`
 **Reads** `day_closes`, `night_audits`, `walkins`, `forecast_runs`
 **Writes** `report_extra` (0105), `report_summary`, `sales_breakdown`, `hotel_kpis`, `kitchen_speed`, `table_pulse`,
@@ -61,16 +61,27 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   `lib/tablePdf.ts` (jsPDF, Latin-1: ₹ prints as "Rs"). Both load only when pressed. A zero discount shows ₹0,
   not −₹0.
 
-- **Pulse is the waiting list first (Simple Service, 2026-10-15).** `SvcHead` ("Guests at the door, and when a
-  table frees up"). Left, `[data-quote]`: **How many people?** as eight 64px buttons, the wait in display type in
-  a blue wash (green "Seat now · A table that fits is free" when it is 0), Name and Phone, and **Add to waiting
-  list** (`data-add-walkin`). Right, `[data-queue]`: **Waiting now** — the party size in a square, the name, how
-  long, then **Table ready** (marks them called, `data-table-ready`) → **Seat now** (the free tables that fit),
-  Call, the WhatsApp "your table is ready" and ✕ left; the separate seat icon hides on a phone so Table ready
-  keeps one line. Under them **Tables freeing soon** (four, in the floor's colours by stage) and **Every table**
-  (the All · Free · Reserved · In use tabs and tiles, now in the same colours; reserved amber and dashed), then
-  the Join by QR card. The "Right now" card with its three flip tiles is gone — the counts are in the line above
-  the party buttons and in the tabs.
+- **Pulse, redesigned for the host at the door (2026-10-20, the owner: "good concept, not user-friendly enough").**
+  Every block has a title and one plain line saying what it is for. Top to bottom:
+  - `SvcHead` ("Who is waiting at the door, and which table frees up next") with a **Join by QR** button
+    (`data-joinqr-link`) → `/pulse/qr`.
+  - **Three glance tiles** (`[data-pulse-glance]`, 3-up at every width): tables free to seat (of all — Free
+    excludes Reserved), parties waiting, how long a sitting usually takes (`avg_dwell`).
+  - `[data-pulse-top]`, side by side from `lg`: **Add a guest who is waiting** (`[data-quote]`, an `@container`) as
+    numbered steps — **1 How many people?** (eight buttons, 4-up, 8-up from a 34rem card), the answer under them
+    (`[data-wait]`, `aria-live`): **Seat now — "T4 is free and seats 4"** (the smallest free, un-booked table that
+    fits), **About 25 min** "until a table for 3 is likely free", or, when `quote_wait` is null, *No table fits*
+    ("put two together") / *Long wait* (more parties that size waiting than tables); **2 Their name and phone**;
+    **3 Put them on the list** (`data-add-walkin`). Beside it **Waiting now** (`[data-queue]`, a card with the
+    count): each guest a row (`data-walkin`, an `@container`) — party size in a square, #place, name, "waiting
+    12 min · told 20 min", then the one big move (**Table ready** `data-table-ready` → **Seat now**
+    `data-seat-walkin`) and Call · WhatsApp · Seat · Left as 44px squares (48 on touch) whose words show from a
+    36rem row; the separate Seat hides on a phone. Seat opens **Pick a free table for N** — the tables that fit,
+    smallest first, a booked one in amber with its time. Nobody waiting shows an empty state with a link to the
+    door QR.
+  - **Next tables to free up** (`[data-frees-next]`, four, in the floor's colours, the stage under the time), then
+    **Every table** — the All · Free · Reserved · In use tabs and tiles, now the full width (the right-hand QR column
+    is gone).
 
 - **`table_pulse` reads the dwell history once** (0102): it called `dwell_minutes()` per table. Its medians now
   come from `dwell_medians(rid)` and `dwell_pick()` — the same fallbacks, the same figures (`dry102.cjs`).
@@ -105,14 +116,10 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   tiles carry no flap-alignment band — ~108px tall instead of 177px at 834, where two rows of them
   sat before the first chart. Pantry's row stays banded because it mixes flaps and a figure.
 
-- **Pulse's top is two cards that line up** (`xl:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]`,
-  stretched, `[data-pulse-top]`): "Right now" — three flip tiles in one row, then *Frees next*
-  (`[data-frees-next]`, the three busy tables nearest to freeing, stale ones left out) pinned to
-  the bottom — and Quote a wait with party size as an even grid (4 across on a phone, 8 above).
-  The tiles sit in `.flip-fit`, which sizes them from the card (cqw) at every width and never
-  wraps. **Do not give that card an `auto` track**: `.flip-fit` is an inline-size container with
-  no width of its own, so the track collapsed, the tiles stacked into a 600px column and the quote
-  card beside it was half empty (2026-10-12).
+- **History: Pulse's top was once two cards that lined up** — "Right now" with three flip tiles in `.flip-fit`
+  beside Quote a wait. If flip tiles ever come back here, **do not give their card an `auto` track**: `.flip-fit` is
+  an inline-size container with no width of its own, so the track collapsed and the tiles stacked into a 600px
+  column (2026-10-12).
 - **Pulse's tables are tabs and tiles** — All · Free · Reserved · In use, each with a count (a 4-up
   segmented control; on a phone the count stacks under the label so "Reserved" is not cut). The page
   also reads today's `reservations` that hold a table (`requested`/`confirmed`, `table_id` set): a
@@ -132,13 +139,16 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   ≥90%, red <70%). The Rooms tiles use the same `Mini` in whole rupees, two by two until the card
   is 30rem, then four across. "1 ticket", "1 recall". Probe: `speed.mjs`.
 
-- **Pulse's Join by QR card shows the real code** (`components/QR.tsx`, 148px on a white tile in
-  both themes — a scanner wants dark on light) for `/queue/<booking_slug>`; it was a QR *icon*
-  beside the address, nothing to scan or print. Beside or under it (`@container`, row from 26rem):
-  "Scan to join the queue", the link as a copy chip, Open, and **Print poster** — `printPoster`
-  opens a window with an A4 door sign (the property, a 640px code, three steps, the link) and
-  prints it. A property that is not Listed publicly gets "Join by QR is off" and a link to
-  Settings → Storefront instead. Probe: `joinqr.mjs`.
+- **Join by QR is its own screen, `/pulse/qr` (2026-10-20 — it was a card at the foot of Pulse).** `qr/page.tsx`
+  reads only the session (slug, Listed publicly, name) and the base address (`NEXT_PUBLIC_CLOUD_URL` or the request's
+  host, as Pulse did). Gated like Pulse — the app layout maps the first segment, `pulse`, to the pulse module — and a
+  menu row of its own after Pulse (`pulse-qr`, shell-and-nav.md). Left, `[data-joinqr]`: the property's name, the
+  real code (`components/QR.tsx` drawn at 320px, shown up to 19rem wide on a white tile in every theme — a scanner
+  wants dark on light, `[data-code]`), the link as a copy chip, **Print poster** (`printPoster`, the A4 door sign:
+  the property, a 640px code, three steps, the link), Open, Share (`shareText`; copies where there is no share
+  sheet) and Copy link. Right: *How guests use it* (scan · add name and party · you tap Table ready) and *Where to
+  put it*. Not Listed publicly (or no slug) → `[data-joinqr-off]` "Join by QR is off" with Open Storefront
+  settings; Pulse then shows one line linking to it. Probe: `joinqr.mjs` (rebuild it for the new route).
 
 - **A sealed period must not move.** If a report lets a closed day change, the proof record is a
   lie. `close_day` and `run_night_audit` are the seals.
@@ -164,3 +174,5 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
   window *Sales by day* and *Top dishes* show a dashed 224px box reading "No paid bills in this window"
   / "Nothing sold in this window yet" — the same height the chart takes, so the row does not jump
   when data arrives. They were blank cards, which read as broken (2026-10-12 whole-app review).
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Pulse: Parties waiting breathes, Tables free to seat shuffles (`[data-glance-n]`); "Seat now" spells the table (`FlapSpell`); a quoted wait under 100 min shows its minutes on tiles; each waiting party's time is a ticking `FlapClock` (amber at the quoted minutes, red 10 after).

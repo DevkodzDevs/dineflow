@@ -28,12 +28,12 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
   return (
     <>
     <div ref={mark} aria-hidden className="h-px -mb-px" />
-    <motion.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} data-stuck={stuck ? "" : undefined} className="topbar material sticky top-[env(safe-area-inset-top,0px)] z-20 mb-8 flex items-center gap-3 px-4 py-2 rounded-[20px]">
+    <motion.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} data-stuck={stuck ? "" : undefined} className="topbar material sticky top-[env(safe-area-inset-top,0px)] z-20 mb-8 flex items-center gap-3 px-4 py-2 rounded-[20px] max-[400px]:gap-1 max-[400px]:px-3">
       {/* Go to (components/shell/Keys.tsx): the hint said ⌘K for months and nothing answered it */}
       <button type="button" onClick={() => dispatchEvent(new Event("df-palette"))} data-goto-open className="hidden sm:flex items-center gap-2 text-steel text-sm flex-1 min-w-0 h-10 -my-1 px-1 rounded-xl text-left hover:text-[var(--color-label)] transition-colors"><Search size={18} className="shrink-0" /><span className="text-xs truncate">Go to a section — orders, kitchen, billing…</span><kbd className="kbd ml-auto">{mac ? "⌘" : "Ctrl"} K</kbd></button>
       {/* the wordmark goes home, like the sidebar's: /dashboard, or the first section this person holds */}
       {/* with several outlets the phone's top bar shows the outlet instead: there is no room for both (0106) */}
-      <div className={cn("sm:hidden flex-1 min-w-0", outlets.length > 1 && "hidden")}><Link href="/dashboard" aria-label="DineFlow — home" className="inline-flex items-center !min-h-11 font-display text-xl tracking-wide">DineFlow</Link></div>
+      <div className={cn("sm:hidden flex-1 min-w-0", outlets.length > 1 && "hidden")}><Link href="/dashboard" aria-label="DineFlow — home" className="inline-flex items-center !min-h-11 font-display text-xl tracking-wide max-[400px]:text-lg">DineFlow</Link></div>
       {/* which outlet this device is working in, when there is more than one (0106) */}
       <OutletSwitcher outlets={outlets} className="max-sm:flex-1" />
       {boxSync !== null && boxSync !== undefined && (
@@ -50,10 +50,10 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
       <LangButton />
       <ThemeButton />
       <NotificationBell lateKots={alerts} />
-      {/* same rule as the sidebar: a button only when there is somewhere to go */}
+      {/* the circle opens Settings for whoever may; for everyone else, their own profile (/me, 2026-10-20) */}
       {accountHref
         ? <Link href={accountHref} title={`${name} · your settings`} aria-label={`${name} · your settings`} className="tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</Link>
-        : <span title={name} className="tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base">{name.slice(0, 1)}</span>}
+        : <Link href="/me" title={`${name} · my profile`} aria-label={`${name} · my profile`} data-my-profile className="tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</Link>}
     </motion.header>
     </>
   );

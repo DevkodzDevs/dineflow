@@ -24,6 +24,20 @@ punched in and paid, tracked in `labourers` / `labour_attendance` / `labour_paym
 actually left for one person (`profiles.allowed_modules`). The owner sees everything their property
 has enabled.
 
+**A job's default is its own screens (2026-10-20, 0126 — the owner: "each job sees only what it needs; the internal
+controls follow the job").** `ROLE_DEFAULT` (and `role_modules.default_set`) was the whole ceiling for a job role; it is
+now the job's screens only — waiter: Orders, Reservations, Pulse, Customers; cashier: Billing, Orders, Invoices, Online
+orders, Customers, Reservations, Pulse; chef: Kitchen, Menu, Tomorrow, Scan; store: Pantry, Scan, Tomorrow; front desk:
+Front desk, Rooms, Guests, Facilities, Housekeeping, Reservations, Invoices, Customers; housekeeping: Housekeeping, Rooms;
+an `employee` (guard, gardener, helper): nothing — Work and Checklists are everyone's and `homeFor` lands them on Work;
+a supervisor lost Reports. Gone from the defaults: Channels, Labour, Reports, Neighbours, Front desk-for-a-cashier and
+Scan for the floor. **Ceilings did not move**: the owner can still tick any of them for anyone, and their ticks win. The
+position lists (`positionAccess.ts`) lost Scan for the floor and back-of-house jobs and the gardener lost Housekeeping;
+the guard, cleaner, kitchen steward and maintenance helper hold no module. 0126 moved everyone still on a position list
+*exactly as the Staff screen wrote it* to the narrower one; a hand-changed list was left alone (dry run `dry126.cjs`, 33).
+**The Access sheet shows the real default** (`byDefault` in `StaffClient.tsx`): with no ticks it showed every ceiling
+section switched on, which was never what the person opened (a supervisor's default has always been narrower).
+
 Final visibility is `modulesFor(type, role, enabled, allowed)` — property type ∩ role access ∩ the
 master's enabled set ∩ this person's ticks — the control room only for the owner, and for a manager the owner ticks it
 for (the *Control room* switch in Access, owner only; [dashboard.md](dashboard.md)). See
@@ -37,7 +51,7 @@ sign-in (`must_change_password`). Contact verification and reset run on OTP RPCs
 (`next_labour_code` allocates one), and payments are recorded against attendance. `/scan` can punch
 a labourer from an ID card.
 
-**The Staff page layout.** A toolbar on top (head count, "n not signed in", "n email
+**The Staff page layout** *(history: the list before the cards; `[data-state]` is the facts panel now — 2026-10-20 below)*. A toolbar on top (head count, "n not signed in", "n email
 unconfirmed" on the left; Invite with a code and Add staff on the right), then the list at full
 width. Each person (`[data-person]`) is a grid `44px · minmax(0,1fr) · auto`: the avatar, name over
 code·email·phone, and the buttons (`[data-actions]`: a key square and Access — a square on a phone,
@@ -53,6 +67,29 @@ that. Probe: `staffrow.mjs`.
 
 ## Before you edit
 
+- **A switch sits on the right of its words, on one line, at every width (2026-10-20, the owner's "switch alignment
+  placing is not good").** Access, Add staff and *Active* use `SwitchRow` (top of `StaffClient.tsx`): title over a
+  wrapping description on the left (`min-w-0`), the switch on the right, centred, 64px rows with a hairline between
+  (`divide-y` on the `.group`); the whole row is a `<label>` whose control is a real `button role="switch"`
+  (keyboard and screen reader too — it was a bare `<span onClick>`). The Control room row is the same with an icon
+  square (`[data-control-room-switch]`, the switch keeps `[data-control-room]`). **Do not put these back on
+  `.group > .row`**: under 640px that rule wraps and gives the words 100%, which dropped every switch onto a line of
+  its own under its description.
+- **A staff card's middle is one facts panel (2026-10-20, the owner: "not good — make it modern and tidy").** The loose
+  chips (role · access, a red *Email*, *Not signed in*, *Off*) and the loose code · phone · since · → manager line are
+  one soft panel (`[data-state]`, `--color-fill`, 16px radius, hairline). Across its top, **Access**: a shield in the
+  department's hue, the role in bold and how its sections were set as a quiet pill (*position access* / *default* /
+  *6 sections · custom*; none for the owner) — `[data-access]`. Under it two even columns (`minmax(0,1fr)` each, never
+  a hole): **Phone** written as it is read out (`phoneOut`: 98450 11223, +91 98450 11223), **Staff code**, **Email**
+  (`[data-email-state]`: *Verified* green, *Not verified* amber with the old "cannot reset their own password" title,
+  *—* with none) and **Joined** (month and year). Each is `Fact`: a 28px tinted circle, a 10.5px caption, the value
+  truncating. A hairline row under them appears only for what needs saying — *Not signed in* (orange dot), *Off* (red
+  dot), → their manager. Every value is `--color-label`; the hue is only in the circles and dots, so it reads in all
+  five themes. The owner's own card has the same panel.
+- **A staff card's foot has Call (2026-10-20).** Anyone with a phone on the list, except yourself, gets **Call**
+  (`tel:`, green phone, `[data-call]`) as the first section, before *Sign-in* and *Access* (or alone, on a card you do
+  not manage). Equal sections with hairlines (`@container`): from 19.5rem of card the icon sits beside the word,
+  narrower it goes over it, so three fit a 412 phone.
 - **A day labourer can be given a job (0113).** `jobs.labourer_id` — a supervisor gives it from the Work board's *Give
   to…* (labourers after the people), anyone takes and finishes it *for* them, and the done row says so. Labourers have no
   sign-in, so nothing rings for them. New positions: Plumber, Electrician, AC / Refrigeration Technician (Engineering,
@@ -87,8 +124,8 @@ that. Probe: `staffrow.mjs`.
   segmented switch (People · Team chart · Positions) and a round search (name, title, code, department; 3+ digits
   search phones). **People are cards** (`[data-person]`, 1 → 2 → 3 → 4 columns at sm/xl/1700px): a 4px department
   colour strip, initials on the department's colour (`Avatar`, a dot: green active, orange not signed in, red off),
-  title, department with its icon (`DeptIcon`), a level badge `L3`, the role and warnings as chips, code · phone ·
-  since · → manager, and *Sign-in* / *Access* (or the owner's *Your position*) across the foot. The **chart** opens on
+  title, department with its icon (`DeptIcon`), a level badge `L3`, a facts panel (`[data-state]`, see 2026-10-20 below),
+  and *Call* / *Sign-in* / *Access* (or the owner's *Your position*) across the foot. The **chart** opens on
   *Reporting lines* (a tree from `reports_to`, connector lines) when anyone has a manager, else *By level* (a rail with
   a node per level). The **positions guide** has a search and level chips; each department is a card with its icon on
   its colour, "n filled here", and a ladder whose node is filled in the department's colour where someone holds it,
@@ -202,3 +239,17 @@ photo). `labour_attendance` / `staff_attendance` keep one row per person per IST
   domain and a preview URL are different keys).
 
 Probes: `att.mjs` (21) and `wa.mjs` (5) — see testing-and-gates.md.
+
+## Leave (0127, 2026-10-20)
+
+A person asks for leave on their **My day** (`/home` → Leave): first and last day, a kind (casual, sick, earned, unpaid,
+other) and a reason if they like. `leave_request` refuses a request overlapping their own waiting or approved leave,
+more than 60 days, more than a year ahead or more than a week back. They may withdraw it while it waits, or an approved
+one before it starts (`leave_cancel`). **Leave requests** on this screen (`StaffLeave.tsx`, `[data-staff-leave]`) lists
+the waiting ones first with Approve / Not approve and a note, then the last few decided — the owner and managers see
+the whole property's, a supervisor their own team's (the team rule is `_my_dept()`'s); `leave_decide` checks the same
+and nobody decides their own. The decision reaches the person on their Leave tile and on the bell (`leave` kind,
+lib/notify.ts); a new request reaches whoever decides it. There are no balances yet — the tile counts days taken this
+year. See [my-day.md](my-day.md).
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. "On duty today" on the Staff summary is a shuffling flap count.

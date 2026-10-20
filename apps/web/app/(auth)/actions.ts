@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
-import { toLoginAddress, modulesFor, positionHome, type PropertyType, type Role } from "@dineflow/shared";
+import { toLoginAddress, modulesFor, positionHome, landsOnMyDay, type PropertyType, type Role } from "@dineflow/shared";
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40) + "-" + Math.random().toString(36).slice(2, 6);
 
@@ -42,6 +42,7 @@ export async function login(_: unknown, fd: FormData) {
 /**
  * Where someone lands after signing in: their position's own screen — Kitchen for a commis, Billing for a cashier,
  * Front desk for a receptionist (packages/shared/src/positionAccess.ts) — when they hold it, else the control room.
+ * Since 2026-10-20 staff (everyone but the owner and a manager) start on their own My day (/home) instead.
  * Any failure here is not a reason to keep someone out: it falls back to the control room.
  */
 async function startScreen(supabase: Awaited<ReturnType<typeof createClient>>, userId: string | null) {
@@ -54,6 +55,8 @@ async function startScreen(supabase: Awaited<ReturnType<typeof createClient>>, u
     ]);
     const bundle = b as { profile?: { role: Role; allowed_modules?: string[] | null } | null; restaurant?: { property_type: PropertyType; enabled_modules?: string[] | null } | null } | null;
     const position = (me as { position?: string | null } | null)?.position;
+    // staff start on their own My day (2026-10-20); the owner and managers on the control room / their position's screen
+    if (bundle?.profile && landsOnMyDay(bundle.profile.role)) return "/home";
     if (!position || !bundle?.profile || !bundle.restaurant) return "/dashboard";
     const held = modulesFor(bundle.restaurant.property_type, bundle.profile.role, bundle.restaurant.enabled_modules ?? null, bundle.profile.allowed_modules ?? null);
     return `/${positionHome(position, held)}`;

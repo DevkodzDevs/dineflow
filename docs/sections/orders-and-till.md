@@ -55,7 +55,7 @@ still the Cooking request sheet.
 
 **The ticket rail** (`CartPanel`, `[data-cart]`, used in the desktop `<aside>` and the phone sheet alike) reads
 top to bottom: where it is going, big (*Table T2*, or *Parcel* / *Delivery* / *Room*) with **Change** (or a green
-**Table** when none is picked) that opens a 5-across table grid — occupied dimmed, the "already has order #n
+**Table** when none is picked) that opens a 5-across grid of the **free** tables only (2026-10-20, below), the "already has order #n
 running" notice under it · the order type as three or four picture tiles (Dine in / Parcel / Delivery / Room
 when guests are in; icon over word when there are four) · for dine-in the guest folded into one row (*Guest name
 or phone (optional)*, opening Name + Phone — the phone drives `lookupCustomer`); parcel and delivery show Name +
@@ -190,7 +190,8 @@ one), `split_order` (one into two) — all RPCs, all atomic.
   pointer). A plain `h-8` utility loses to it; only an `!important` utility wins. Size tile and rail
   controls at 40 (`h-10`) and let the floor lift them on touch — do not fight it with `!h-8`.
 - **A picture card at two across on a 412 phone is ~184px**: the price and Add (or − +) share its foot, which is
-  why the stepper on a card has no count (it is on the photo) and the price truncates before the buttons do.
+  why the stepper on a card has no count (it is on the photo). Below `sm` the foot is compact (2026-10-20, below), so the
+  price is not cut any more.
 - **`minmax(0,1fr)`, never `1fr`, for the dish track.** A `1fr` grid item will not shrink below its
   content and pushes the ticket rail off the screen. Pair with `min-w-0` on the section.
 - **A floor table is one card in its state's colour** (`.svc-table`, `[data-table-card]`, `data-state`):
@@ -221,6 +222,25 @@ one), `split_order` (one into two) — all RPCs, all atomic.
   `menu_stock` is the live count derived from recipes and the pantry. Both can hide a dish.
 - **Never write `order_items` directly.** `place_order` recomputes the ticket, applies variants and
   add-ons, and checks stock in one transaction.
+
+- **The phone's dish card is compact and the whole card adds (2026-10-20 — the owner: the price showed as "fro…"
+  beside a big Choose).** Below `sm` only (two across): the dish button's `::after` covers the whole card, so a tap on
+  the photo, the name or the price adds one — **a plain dish shows no button at all**, only its price (the owner, on a
+  first try with a round `+`: "don't add an Add button — the card is the Add"; its `.more` is `max-sm:!hidden`, still in
+  the page for wider screens). A dish that asks a size or add-ons shows a compact **Choose** pill (`[data-choose]`, 32px
+  to the eye, 44px to the finger through a `::before`, sliders icon + the word) and its card opens the chooser (it
+  cannot go on the ticket without one). "from" sits as a small line over the price (`[data-tile-price]`, 20px), which
+  is never cut. The stepper and the pill stand above the card-wide tap (`relative z-[1]`). From `sm` the card is
+  unchanged. `data-tile`, `.more`, `.less` and the aria-labels are as before.
+- **A new order picks from the free tables only (2026-10-20 — the owner: "only show the free tables, not the reserved
+  or booked ones").** `new/page.tsx` works out `notFree` (table id → why): **occupied** — an open order on it, or
+  marked occupied; **reserved** — marked reserved on the floor, or a today's reservation (requested / confirmed) due
+  from 30 min ago to 2 h from now (IST); **cleaning** — an open `table_cleanings` job (0111). The picker
+  (`[data-table-picker]`, buttons `[data-free-table]`) leaves those out but always keeps the order's own table; with
+  nothing free it says so (`[data-no-free-table]`), and a line under it counts what is hidden (`[data-hidden-tables]`).
+  The phone's step **1 Table** opens the same grid. Move / merge on the order page are unchanged (moving onto a busy
+  table is a merge). **Room** already lists only checked-in guests (`bookings.status = 'checked_in'`) — never a room
+  that is only booked, never an empty one.
 
 ## Verify
 
@@ -273,3 +293,5 @@ node fit.mjs             # nine dishes on the ticket at 7 real screen sizes (not
 - **The order screen's live channel refreshes calmly and signed in** (2026-10-18): it called `router.refresh()` on every
   `order_items` event — three dishes, three renders, each able to cancel the action's own answer — and joined without the
   signed-in token. It goes through `calmRefresher` (lib/liveRefresh.ts) and sets the token before joining.
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. The phone cart bar's count (`[data-cart-count]`) and each dish photo's `.qty` (now `.qty.qty-flap`, `[data-qty]`) are mini flap tiles that flip as dishes are added.

@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { Plus, ClipboardList, Flame, BellRing, Utensils, Receipt, AlarmClock, CalendarClock, CalendarCheck, Activity, Bike, HeartHandshake, UtensilsCrossed, Boxes, SprayCan, ListTodo, type LucideIcon } from "lucide-react";
+import { Plus, ClipboardList, Flame, BellRing, Utensils, Receipt, AlarmClock, CalendarClock, CalendarCheck, Activity, Bike, HeartHandshake, UtensilsCrossed, Boxes, SprayCan, ListTodo, QrCode, type LucideIcon } from "lucide-react";
 import { cn } from "./index";
 import { Say } from "./Say";
 import { SVC_WORD, type Svc } from "@/lib/service";
@@ -17,7 +17,7 @@ export function StateChip({ s, n, onClick, on, className }: { s: Svc | "late"; n
 }
 
 /** The head of a Dining screen: its picture in a square, the title, one plain sentence; actions on the right. */
-const HEAD_ICON: Record<string, LucideIcon> = { cleaning: SprayCan, work: ListTodo, orders: ClipboardList, kitchen: Flame, billing: Receipt, reservations: CalendarCheck, pulse: Activity, online: Bike, customers: HeartHandshake, menu: UtensilsCrossed, pantry: Boxes };
+const HEAD_ICON: Record<string, LucideIcon> = { cleaning: SprayCan, work: ListTodo, orders: ClipboardList, kitchen: Flame, billing: Receipt, reservations: CalendarCheck, pulse: Activity, qr: QrCode, online: Bike, customers: HeartHandshake, menu: UtensilsCrossed, pantry: Boxes };
 export function SvcHead({ icon, title, sub, actions, className }: { icon: keyof typeof HEAD_ICON | string; title: ReactNode; sub?: ReactNode; actions?: ReactNode; className?: string }) {
   const I = HEAD_ICON[icon] ?? UtensilsCrossed;
   return (

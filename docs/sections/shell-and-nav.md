@@ -28,7 +28,14 @@ sidebar renders exactly what this returns.
 
 `ROUTE_MODULE` in `app/(app)/layout.tsx` maps the first path segment to a module key and enforces
 the same rule on the server, so a locked screen cannot be reached by typing its URL. A segment not
-in that map is open to every signed-in person (e.g. `/membership`).
+in that map is open to every signed-in person (e.g. `/membership`, `/home`).
+
+**Where a person lands (2026-10-20).** `landingFor(role, held, position)` (`packages/shared/src/positionAccess.ts`):
+everyone but the owner and a manager lands on **My day** (`/home`, [my-day.md](my-day.md)) — after signing in
+(`startScreen` in `app/(auth)/actions.ts`), when they reach `/dashboard` (the logo, a link, a sign-in redirect), and
+when they open a section they do not hold (`/home?locked=<key>`, which says so in one line). The owner and managers keep
+the control room; a manager without it goes to `homeFor` as before. My day is the first row of the menu, the first
+place on the phone's bar (`myDayFor` in `sections.ts`; the bar shows it plus three of the person's own) and in ⌘K.
 
 ### There is deliberately no `loading.tsx`
 
@@ -59,6 +66,13 @@ click → screen median **160 ms (p90 282) against 443 ms (p90 1,540)** without 
 90 ms tap) **420 against 561 ms**. A prefetched screen is reused for 30 s — `staleTimes.static` is 30 for
 that reason (it was 180) — and any action that revalidates drops it.
 
+**The tapped menu item lights at once** (`components/shell/useNavPath.ts`, 2026-10-20 — the owner: "options open
+slowly"). The sidebar, the phone's tab bar and the More sheet light the item for the page you asked for from the click
+itself (a capture listener on internal links), not when that page arrives 200–500 ms later on a phone; the real
+pathname takes over as soon as it changes, or after 4 s if the navigation never lands. Measured the same day, phone
+profile (`perfx.mjs nav,taps restaurant phone`, 4× CPU, 4G): live site first visit median 610 ms (p90 1,231), this
+build 393 ms (p90 581) — the difference is the code not yet deployed.
+
 ### The sidebar at each width
 
 | Width | Menu |
@@ -74,14 +88,21 @@ the row so the page underneath does not move; `.nav-scrim` takes the click that 
 closes on Escape, on picking a screen (the `path` effect), and if the window grows past 1279.
 Every link carries `title={label}`, so the rail's icons name themselves on hover.
 
-**Settings and Help & support are the menu's last group** (owner, 2026-10-13 — the sidebar's foot had grown
-to ~200px with Help, Install and Master control). The last `Group` holds Settings (when this person may open
-it — it left *Manage*) and Help & support. It follows *Insights & control* directly and scrolls with the rest
+**The menu's last group** (owner, 2026-10-13 — the sidebar's foot had grown to ~200px with Help, Install and
+Master control; reshaped 2026-10-20). The last `Group` holds the property's Settings (the owner — it left *Manage*),
+then `endFor(role)` from `sections.ts`: **`/me`** — a person's own profile settings, labelled "Settings" for everyone
+who cannot open the property's Settings and "My profile" for the owner — **`/voice`**, "Feedback & complaints" (the
+owner reads the same screen as "Staff feedback"), and **Help & support, for the owner alone** (the owner, 2026-10-20:
+"Help & support only in the owner's menu; the staff get a feedback-or-complaints section to the owner instead";
+`/help` sends anyone else to `/voice`). It follows *Insights & control* directly and scrolls with the rest
 of the menu (the owner asked for that over a first version that pinned it to the foot of the menu). **The sidebar's foot is now only *My attendance* (when on), *Master control* (admins, full
 menu only — the collapsed rail hides it as it always did) and the account card: 68px, 112px with Master
-control** (`navfoot.mjs`). Installing moved to the top bar's button, now at every width. Help & support is
-not a module: no `ROUTE_MODULE` entry, no tick in Staff → Access. It is also a row in the More sheet's
-account block on a phone (unchanged). While a reply from DineFlow is unread:
+control** (`navfoot.mjs`). Installing moved to the top bar's button, now at every width. None of the last group is a
+module: no `ROUTE_MODULE` entry, no tick in Staff → Access. On a phone they are rows in the More sheet's account block
+(`[data-end=me|voice|help]`) — less whichever one the account row already is: the avatar opens `/settings` for the owner
+and `/me` for everyone else (`accountHref` in the layout, which was null for anyone without Settings). Ctrl/⌘ K lists the
+same rows; `G F` goes to Feedback & complaints, `G H` (the owner only, `owner: true` in `keymap.ts GO`) to Help. While a
+reply from DineFlow is unread (the owner's menu only — nobody else has the row):
 - the menu row has a red dot on its icon (all the rail shows) and a count beside the label (`NavItem.badge`);
 - the More row says "N new", and the More button's count includes it.
 
@@ -189,6 +210,19 @@ with *every* allowed section as 3-up tiles grouped like the sidebar, then the ac
 lit while the current page lives under it; the sheet closes on navigation. The old bar was one
 sideways-scrolling strip of every section — five fitted, nothing said it scrolled — and a phone
 had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375 paper).
+
+**The bar is docked, not floating (2026-10-20 — the owner: "fit it to the bottom, on iOS and Android, phone only").**
+`nav.tabbar` (`[data-tabbar]`, below md): `fixed inset-x-0 bottom-0`, square, a solid `--color-bg-2` surface with a
+hairline on top and a soft upward shadow (the TAB BAR block at the end of `globals.css`); it pads
+`env(safe-area-inset-bottom/left/right)` itself, so the iPhone home indicator and Android's gesture bar sit inside its
+colour. The item row is `--tabbar-row` (60px); **`--tabbar`** = that row + the bottom safe area, and 0 from md. Every
+bottom offset on a phone reads `--tabbar` — change the row there, not in these: `main`'s padding
+(`pb-[calc(var(--tabbar)+28px)]`, was `pb-28`), the till's cart bar (`[data-cart-bar]`, `--tabbar + 10px`, was
+`max(10px, safe) + 78px`), the assistant's button (`--tabbar + 12px`, was `+ 84px`; over the cart bar
+`--tabbar + 10px + 68px`), Settings' save bar (`--tabbar + 12px`, was `safe + 92px`). The chosen section's pill is
+`var(--color-tint)` at 16% (it was a fixed green that three theme overrides recoloured — those rules are gone) and the
+More sheet's chosen tiles the same at 14%. The whole-app-language label rule now targets `nav.tabbar`. Sheets (z-50)
+still open over the bar (z-30). Tablet and desktop are unchanged.
 
 ### The rest of the shell
 
@@ -308,6 +342,21 @@ had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375
   `top-end` / `bottom-end`, which anchor the label's right side — and the step count out of it. A true one-tap
   install on iPhone is not possible for a web app — it needs an App Store app (see `apps/mobile`). Probe:
   `install-probe.mjs`. See [guest-facing.md](guest-facing.md) for `/get` and the manifest.
+- **The app as a file, one click — `.apk` and `.exe` (2026-10-20; the owner: "a single-click install for the
+  .apk and .exe, not only the published installs").** `InstallPanel` now ends with `DownloadFiles`
+  (`components/shell/DownloadFiles.tsx`), so all four places get it: on an **Android phone** the `.apk`, on a
+  **Windows PC** the `.exe`, is the big tint button *first* (`[data-download=android|windows]`), then "or install
+  from the browser" and the plan as before (the browser's one-tap install stays); the other file sits under
+  *Another device*; an iPhone, iPad or Mac (which cannot run either) gets both quietly under *For Android phones and
+  Windows PCs*. Each is a real `<a href download>`; a file that does not exist keeps its slot greyed — "Coming soon —
+  the build is being prepared" (`[data-download-soon]`). **Which files exist** is `/api/download` →
+  `availableDownloads()` (`lib/installers.ts`, async since 0128): the file uploaded on Master control → App files
+  (`app_releases`, public Storage, kept 60 s) wins; then `NEXT_PUBLIC_APK_URL` / `NEXT_PUBLIC_EXE_URL` (or the older
+  `NEXT_PUBLIC_DOWNLOAD_ANDROID` / `_WINDOWS`; versions `NEXT_PUBLIC_APK_VERSION` / `_EXE_VERSION`); else the
+  file this machine built, streamed by `/api/download/<key>` (the newest `DineFlow-Setup-*.exe` in
+  `apps/desktop/dist`, `apps/android-app`'s signed release APK). `/get` dropped its own two file rows for these. The
+  Android app is new — `apps/android-app`, a Trusted Web Activity (~600 KB) with
+  `public/.well-known/assetlinks.json`; how to build, sign and host both: [docs/install-builds.md](../install-builds.md).
 - **The rail range lives in one media query** (`768px`–`1279.98px`) and the hamburger is drawn by
   CSS (`.rail-only`), not by JavaScript — move the breakpoint there, and only there.
 - **The spacer must stay the aside's next sibling** (`aside[data-open] + .nav-spacer`). Put anything
@@ -387,11 +436,22 @@ Sign in as a non-owner on a demo property and confirm the sidebar matches the ti
 the current outlet's name, a list of the others (own first, then city and membership), and *All outlets, live*
 (→ `/chain`). Choosing one calls `switchOutlet` and reloads on `/dashboard`. On a phone it takes the DineFlow
 wordmark's place (`max-sm:flex-1`; the wordmark hides) — both did not fit at 412 and overlapped. "Insights & control"
-also lists **Outlets** (owner, manager, supervisor), **Payroll** (owner, manager), **Expenses** and **Checklists**
-(0105), **Cleaning** (0111, every role but the kitchen and the store) **Work** (0113, everyone) and **Work records** (0116, owner and managers) — `FRESH` in
-`sections.ts`. The phone bar may carry Cleaning and Work (`Nav.tsx` offers them beside the modules); `lib/bar.ts`
+also lists **Outlets** (owner, manager — every supervisor's too until 2026-10-20), **Payroll** (owner, manager),
+**Expenses** (0105, the drawer's people of the money teams — below), **Checklists** (0105, everyone), **Cleaning** (0111;
+since 2026-10-20 the service and housekeeping teams and the front desk — below) **Work** (0113, everyone) and **Work
+records** (0116, owner and managers) — `FRESH` in `sections.ts`. The phone bar may carry Cleaning and Work (`Nav.tsx` offers them beside the modules); `lib/bar.ts`
 `DEPT_PRIMARY` puts a generic role's department first (an `employee` in Engineering starts on Work, one in Housekeeping
 on Cleaning), with `dept` from the session (0115).
+
+**A screen inside another section can be a menu row of its own** (2026-10-20): `ITEMS` rows are typed `Section` and may
+carry `mod`, the module whose tick opens them — **Join by QR** (`pulse-qr` → `/pulse/qr`, mod `pulse`) after Pulse and
+**Order board** (`order-board` → `/kitchen/board`, mod `kitchen`) after Kitchen. Sidebar, More sheet and Ctrl/⌘ K filter
+with `modOf(item)`; the route itself is gated by the layout's `ROUTE_MODULE` on its first segment, so nothing else
+changed. Such a row never fills a gap on the phone bar by itself — only when pinned (`fills` in `BottomNav`). **The lit
+row is `isOn(path, href)`, not `path.startsWith(href)`**: a row owns its path and what is under it except a deeper
+row's own, so /kitchen/board lights Order board and not Kitchen, and /work-records no longer lights Work too (the bare
+`startsWith` lit both). Pins are now checked against what the bar may carry (`onBar`), so a pinned Cleaning or Work
+board counts as pinned in Edit bar (it was filtered by modules and dropped).
 
 ## Notifications (the bell)
 
@@ -429,8 +489,26 @@ on Cleaning), with `dept` from the session (0115).
 - **"My attendance"** sits above *Install the app* in the sidebar's foot, and above Master control in the More sheet, only when
   the owner has turned on Fingerprint or Selfie (`attend` from `app/(app)/layout.tsx`, never while
   Master control is acting). `/attendance` is not a module in `ROUTE_MODULE`, so every role can open it.
-- **"Insights & control"** is a fifth group in the sidebar and the More sheet (`FRESH` in `Nav.tsx`): Intelligence,
+- **"Insights & control"** is a fifth group in the sidebar and the More sheet (`FRESH` in `sections.ts`): Intelligence,
   Cash & controls, Audit trail. They are **not modules** — no `ROUTE_MODULE` entry, no `role_modules`
   row, no tick in Staff → Access. `FRESH[].roles` decides who sees the link; each page redirects the
   rest (`/dashboard?locked=…`) and its RPCs check the role again. See
   [controls-and-intelligence.md](controls-and-intelligence.md).
+- **The control links follow the job (2026-10-20 — the owner: "the menu shows only what each job and position needs;
+  the internal controls follow the job too").** A `FRESH` row may name the teams it is for (`depts`); then the owner, a
+  manager, a supervisor with no team (who runs the whole floor, as on Work) and the people of those teams see it, plus
+  any job in `anyDept`. The person's team is `deptOf(role, department, position)` — the one set on them, else their
+  position's (`POSITIONS[].dept`), else their role's (the database's `_my_dept()` rule) — worked out once in the
+  layout and handed to the sidebar, the phone bar and Ctrl/⌘ K. Now: **Intelligence, Audit trail, Outlets** — owner and
+  managers (supervisors lost them); **Cash & controls, Expenses** — owner, manager, and the supervisors and cashiers of
+  the money teams (service, front office, finance, management): not a kitchen or engineering supervisor;
+  **Cleaning** — the service and housekeeping teams and the front desk: not a chef, a guard, a gardener, a bellboy;
+  Payroll and Work records unchanged; Checklists and Work everyone's. **Each page asks the same question**
+  (`seesFresh(key, role, dept)`): `/controls` and `/expenses` → `/dashboard?locked=…`, `/cleaning` → `/work` (open to
+  everyone, so no loop), `/intelligence`, `/audit` and `/chain` check owner/manager. The RPCs and RLS behind them are
+  unchanged (the audit trail's policy still lets a supervisor read through the API; the screen is no longer theirs).
+  The modules a job opens by default narrowed too (0126; [staff-and-labour.md](staff-and-labour.md)). Tests: five in
+  `lib/positions.test.ts`; the matrix of every role and the main positions before/after is in the 2026-10-20 session
+  report (`m126/before.txt`, `after.txt` in the scratchpad).
+
+- **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. The More sheet's Help count is a mini flap tile; tab-bar counts (`[data-tab-count]`) and the bell's count (`[data-bell-count]`) stay red pills — a flap is unreadable at badge size.

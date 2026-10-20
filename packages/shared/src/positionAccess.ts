@@ -7,6 +7,11 @@
  * Each list stays inside its position's suggested role's ceiling (ROLE_ACCESS — a test checks), so the database never
  * has to trim it. `null` = the role's own default (owners and managers: everything they may have). `home` = the screen
  * they start on after signing in. The control room (dashboard) is always open and is never listed.
+ *
+ * 2026-10-20 (the owner: "each job sees only the sections it needs"): the floor and back-of-house jobs lost Scan (it is
+ * the stock-receiving camera — the store, the kitchen leads and the managers keep it), the gardener lost Housekeeping, and
+ * the guard, the cleaner, the kitchen steward and the maintenance helper hold no module at all: Work and Checklists (open
+ * to everyone) are their day. 0126 moved everyone still on an untouched position list to the narrower one.
  */
 import type { PropertyType } from "./constants";
 
@@ -29,12 +34,12 @@ export const POSITION_ACCESS: Record<string, PositionAccess> = {
   gre: { open: ["guests", "customers", "frontdesk", "reservations", "facilities"], home: "guests" },
   reservations_executive: { open: [...FO, "reservations", "channels", "customers"], home: "frontdesk" },
   concierge: { open: ["frontdesk", "guests", "facilities", "reservations"], home: "guests" },
-  bell_captain: { open: ["rooms", "guests", "scan"], home: "rooms" },
-  front_office_associate: { open: [...FO, "reservations", "invoices", "customers", "scan"], home: "frontdesk" },
+  bell_captain: { open: ["rooms", "guests"], home: "rooms" },
+  front_office_associate: { open: [...FO, "reservations", "invoices", "customers"], home: "frontdesk" },
   night_auditor: { open: [...FO, "invoices", "channels", "housekeeping"], home: "frontdesk" },
   telephone_operator: { open: ["frontdesk", "guests", "reservations"], home: "frontdesk" },
-  bellboy: { open: ["rooms", "scan"], home: "rooms" },
-  driver: { open: ["scan", "guests"], home: "work" },
+  bellboy: { open: ["rooms"], home: "rooms" },
+  driver: { open: ["guests"], home: "work" },
   front_office_trainee: { open: FO, home: "frontdesk" },
   // housekeeping
   executive_housekeeper: { open: ["housekeeping", "rooms", "inventory", "labour", "staff", "reports", "tomorrow", "scan"], home: "housekeeping" },
@@ -44,22 +49,22 @@ export const POSITION_ACCESS: Record<string, PositionAccess> = {
   room_attendant: { open: ["housekeeping", "rooms"], home: "cleaning" },
   public_area_attendant: { open: ["housekeeping"], home: "cleaning" },
   laundry_attendant: { open: ["housekeeping"], home: "housekeeping" },
-  cleaner: { open: ["scan"], home: "cleaning" },
+  cleaner: { open: [], home: "cleaning" },
   housekeeping_trainee: { open: ["housekeeping", "rooms"], home: "cleaning" },
   // restaurant & bar service
   fnb_manager: { open: MGR_FNB },
   restaurant_manager: { open: MGR_FNB },
   asst_restaurant_manager: { open: ["orders", "reservations", "pulse", "online-orders", "customers", "kitchen", "billing", "menu", "reports", "staff", "tomorrow", "scan"], home: "orders" },
   bar_manager: { open: ["orders", "billing", "menu", "inventory", "kitchen", "reports", "staff", "scan"], home: "orders" },
-  senior_captain: { open: ["orders", "reservations", "pulse", "customers", "kitchen", "billing", "staff", "scan"], home: "orders" },
-  captain: { open: ["orders", "reservations", "pulse", "customers", "scan"], home: "orders" },
+  senior_captain: { open: ["orders", "reservations", "pulse", "customers", "kitchen", "billing", "staff"], home: "orders" },
+  captain: { open: ["orders", "reservations", "pulse", "customers"], home: "orders" },
   sommelier: { open: ["orders", "customers"], home: "orders" },
   host: { open: ["reservations", "pulse", "customers"], home: "pulse" },
-  senior_steward: { open: ["orders", "pulse", "reservations", "scan"], home: "orders" },
-  steward: { open: ["orders", "pulse", "scan"], home: "orders" },
-  bartender: { open: ["orders", "scan"], home: "orders" },
+  senior_steward: { open: ["orders", "pulse", "reservations"], home: "orders" },
+  steward: { open: ["orders", "pulse"], home: "orders" },
+  bartender: { open: ["orders"], home: "orders" },
   room_service_order_taker: { open: ["orders", "customers"], home: "orders" },
-  fnb_cashier: { open: ["billing", "orders", "invoices", "online-orders", "customers", "scan"], home: "billing" },
+  fnb_cashier: { open: ["billing", "orders", "invoices", "online-orders", "customers"], home: "billing" },
   busser: { open: ["orders"], home: "orders" },
   service_trainee: { open: ["orders"], home: "orders" },
   // kitchen
@@ -67,15 +72,15 @@ export const POSITION_ACCESS: Record<string, PositionAccess> = {
   head_chef: { open: ["kitchen", "menu", "inventory", "tomorrow", "online-orders", "reports", "staff", "scan"], home: "kitchen" },
   sous_chef: { open: ["kitchen", "menu", "inventory", "tomorrow", "staff", "scan"], home: "kitchen" },
   junior_sous_chef: { open: ["kitchen", "inventory", "tomorrow", "scan"], home: "kitchen" },
-  cdp: { open: ["kitchen", "tomorrow", "scan"], home: "kitchen" },
-  pastry_chef: { open: ["kitchen", "menu", "tomorrow", "scan"], home: "kitchen" },
-  dcdp: { open: ["kitchen", "scan"], home: "kitchen" },
-  commis_1: { open: ["kitchen", "scan"], home: "kitchen" },
-  commis_2: { open: ["kitchen", "scan"], home: "kitchen" },
-  commis_3: { open: ["kitchen", "scan"], home: "kitchen" },
-  cook: { open: ["kitchen", "scan"], home: "kitchen" },
+  cdp: { open: ["kitchen", "tomorrow"], home: "kitchen" },
+  pastry_chef: { open: ["kitchen", "menu", "tomorrow"], home: "kitchen" },
+  dcdp: { open: ["kitchen"], home: "kitchen" },
+  commis_1: { open: ["kitchen"], home: "kitchen" },
+  commis_2: { open: ["kitchen"], home: "kitchen" },
+  commis_3: { open: ["kitchen"], home: "kitchen" },
+  cook: { open: ["kitchen"], home: "kitchen" },
   kitchen_steward_supervisor: { open: ["kitchen", "inventory", "staff", "scan"], home: "kitchen" },
-  kitchen_steward: { open: ["scan"], home: "work" },
+  kitchen_steward: { open: [], home: "work" },
   kitchen_helper: { open: ["kitchen"], home: "kitchen" },
   kitchen_trainee: { open: ["kitchen"], home: "kitchen" },
   // banquets & events
@@ -85,31 +90,31 @@ export const POSITION_ACCESS: Record<string, PositionAccess> = {
   banquet_steward: { open: ["orders"], home: "orders" },
   // spa & wellness
   spa_manager: { open: ["facilities", "guests", "customers", "reservations", "inventory", "staff", "reports", "scan"], home: "facilities" },
-  spa_therapist: { open: ["facilities", "guests", "scan"], home: "facilities" },
+  spa_therapist: { open: ["facilities", "guests"], home: "facilities" },
   spa_receptionist: { open: ["facilities", "guests", "customers", "reservations"], home: "facilities" },
-  fitness_trainer: { open: ["facilities", "scan"], home: "facilities" },
+  fitness_trainer: { open: ["facilities"], home: "facilities" },
   // recreation & activities
   recreation_manager: { open: ["facilities", "guests", "staff", "labour", "reports", "scan"], home: "facilities" },
-  activities_coordinator: { open: ["facilities", "guests", "staff", "scan"], home: "facilities" },
-  lifeguard: { open: ["facilities", "scan"], home: "facilities" },
-  naturalist: { open: ["facilities", "scan"], home: "facilities" },
-  kids_club_host: { open: ["facilities", "scan"], home: "facilities" },
+  activities_coordinator: { open: ["facilities", "guests", "staff"], home: "facilities" },
+  lifeguard: { open: ["facilities"], home: "facilities" },
+  naturalist: { open: ["facilities"], home: "facilities" },
+  kids_club_host: { open: ["facilities"], home: "facilities" },
   // engineering & maintenance
   chief_engineer: { open: ["housekeeping", "rooms", "inventory", "labour", "staff", "reports", "scan"], home: "work" },
   asst_engineer: { open: ["housekeeping", "rooms", "inventory", "labour", "scan"], home: "work" },
   shift_engineer: { open: ["housekeeping", "rooms", "inventory", "labour", "scan"], home: "work" },
   // the people who fix and grow start on the Work board (0113): the jobs of their department, given to them or waiting
-  technician: { open: ["housekeeping", "rooms", "scan"], home: "work" },
-  plumber: { open: ["housekeeping", "rooms", "scan"], home: "work" },
-  electrician: { open: ["housekeeping", "rooms", "scan"], home: "work" },
-  ac_technician: { open: ["housekeeping", "rooms", "scan"], home: "work" },
-  carpenter: { open: ["housekeeping", "scan"], home: "work" },
-  gardener: { open: ["housekeeping", "scan"], home: "work" },
-  maintenance_helper: { open: ["scan"], home: "work" },
+  technician: { open: ["housekeeping", "rooms"], home: "work" },
+  plumber: { open: ["housekeeping", "rooms"], home: "work" },
+  electrician: { open: ["housekeeping", "rooms"], home: "work" },
+  ac_technician: { open: ["housekeeping", "rooms"], home: "work" },
+  carpenter: { open: ["housekeeping"], home: "work" },
+  gardener: { open: [], home: "work" },
+  maintenance_helper: { open: [], home: "work" },
   // security
-  security_manager: { open: ["scan", "labour", "guests", "staff", "reports"], home: "work" },
-  security_supervisor: { open: ["scan", "labour", "staff"], home: "work" },
-  security_guard: { open: ["scan"], home: "work" },
+  security_manager: { open: ["labour", "guests", "staff", "reports"], home: "work" },
+  security_supervisor: { open: ["labour", "staff"], home: "work" },
+  security_guard: { open: [], home: "work" },
   // sales & marketing
   sales_director: { open: ["reservations", "frontdesk", "rooms", "guests", "customers", "channels", "facilities", "reports", "proof", "neighbours"] },
   sales_manager: { open: ["reservations", "frontdesk", "rooms", "guests", "customers", "channels", "reports"], home: "customers" },
@@ -125,14 +130,14 @@ export const POSITION_ACCESS: Record<string, PositionAccess> = {
   // human resources
   hr_manager: { open: ["staff", "labour", "reports", "scan"], home: "staff" },
   training_manager: { open: ["staff", "labour"], home: "staff" },
-  hr_executive: { open: ["labour", "scan"], home: "labour" },
+  hr_executive: { open: ["labour"], home: "labour" },
   // stores & purchase
   purchase_manager: { open: ["inventory", "menu", "reports", "tomorrow", "neighbours", "scan"], home: "inventory" },
   store_keeper: { open: ["inventory", "tomorrow", "scan"], home: "inventory" },
   store_assistant: { open: ["inventory", "scan"], home: "inventory" },
   // delivery
-  delivery_supervisor: { open: ["online-orders", "orders", "customers", "staff", "scan"], home: "online-orders" },
-  delivery_rider: { open: ["online-orders", "scan"], home: "online-orders" },
+  delivery_supervisor: { open: ["online-orders", "orders", "customers", "staff"], home: "online-orders" },
+  delivery_rider: { open: ["online-orders"], home: "online-orders" },
 };
 
 /** The sections a position opens on this kind of property (a hotel has no Facilities screen, a restaurant no Front
@@ -156,6 +161,13 @@ export function homeFor(held: string[], position?: string | null): string {
   if (held.includes("dashboard")) return "dashboard";
   const p = positionHome(position, held); if (p !== "dashboard") return p;
   return HOME_ORDER.find((m) => held.includes(m)) ?? "work";
+}
+/** Everyone but the owner and a manager starts on **My day** (`/home`, 2026-10-20 — the owner: "staff go straight to their
+ *  own dashboard, not some screen"); the owner and managers keep the control room (or, without it, homeFor). */
+export const landsOnMyDay = (role: string) => role !== "owner" && role !== "manager";
+/** Where a person lands — after signing in, and when they reach a section they cannot open. */
+export function landingFor(role: string, held: string[], position?: string | null): string {
+  return landsOnMyDay(role) ? "home" : homeFor(held, position);
 }
 /** Do two tick lists open the same sections (order and the always-open control room aside)? Null means "the role's
  *  default", which only equals another null. */

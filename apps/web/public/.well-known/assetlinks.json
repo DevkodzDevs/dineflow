@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "cloud.dineflow.app",
+      "sha256_cert_fingerprints": ["29:19:CC:43:3D:5B:66:66:EE:16:24:FF:2F:CF:02:05:C8:DB:86:3D:9B:87:7F:E7:EE:FC:AF:11:DD:9C:ED:90"]
+    }
+  }
+]

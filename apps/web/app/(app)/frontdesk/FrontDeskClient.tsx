@@ -62,9 +62,10 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
         <StatTile label="In house" value={String(inHouse.length)} sub={`${occ}% occupancy`} tone={occ >= 80 ? "good" : undefined} delay={0.1} />
         <StatTile label="Rooms ready" value={String(rooms.filter((r) => r.status === "available").length)} sub={`${rooms.filter((r) => r.status === "cleaning").length} being cleaned`} delay={0.15} />
       </div>
-      <div className="flex items-center gap-2"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Today</div>
-        <div className="ml-auto flex items-center gap-2">
-          <Link href="/frontdesk/night-audit" className="h-11 px-4 rounded-full grid place-items-center text-sm font-semibold bg-card border border-line hover:bg-[var(--color-fill)] transition-colors"><span className="flex items-center gap-1.5"><ClipboardCheck size={16} /> Night audit</span></Link>
+      <div className="flex flex-wrap items-center gap-2"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Today</div>
+        {/* under 440px the two buttons take a row of their own and share it — "New booking" ran off a 360px phone */}
+        <div className="ml-auto flex items-center gap-2 max-[440px]:w-full max-[440px]:ml-0 max-[440px]:[&>*]:flex-1">
+          <Link href="/frontdesk/night-audit" className="h-11 px-4 rounded-full grid place-items-center whitespace-nowrap text-sm font-semibold bg-card border border-line hover:bg-[var(--color-fill)] transition-colors"><span className="flex items-center gap-1.5"><ClipboardCheck size={16} /> Night audit</span></Link>
           <Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>
         </div></div>
       <div className="grid gap-6 lg:grid-cols-2">
@@ -162,7 +163,7 @@ function RoomPick({ r, on, view, onPick }: { r: Room; on: boolean; view: "2" | "
   return (
     <button type="button" onClick={onPick} aria-pressed={on} title={[t?.label, note?.label].filter(Boolean).join(" · ") || undefined}
       className={cn("room-pick relative min-w-0 rounded-2xl border text-left transition-all",
-        on ? "border-[var(--color-tint)] bg-[var(--color-green-2)] shadow-[0_0_0_3px_rgb(76_217_100/.18)]" : "border-[var(--color-separator)] bg-[var(--color-bg-2)] hover:border-[var(--color-label-3)]",
+        on ? "border-[var(--color-tint)] bg-[var(--color-green-2)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-tint)_18%,transparent)]" : "border-[var(--color-separator)] bg-[var(--color-bg-2)] hover:border-[var(--color-label-3)]",
         view === "list" ? "max-sm:flex max-sm:items-center max-sm:gap-3 max-sm:h-14 max-sm:px-4" : "", wide ? "max-sm:px-3.5 max-sm:py-3" : "", "px-2 py-2.5 sm:px-2 sm:py-2.5")}>
       {view === "list" ? (<>
         <span className="sm:hidden font-display text-xl w-12 shrink-0">{r.number}</span>

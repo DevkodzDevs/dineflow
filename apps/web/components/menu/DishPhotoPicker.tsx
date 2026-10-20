@@ -86,12 +86,18 @@ export function DishPhotoPicker({ name, category, value, onChange, autoPick = fa
     finally { setUploading(false); }
   };
 
+  /* Two columns once the dialog is wide enough — the photo on the left; what was found, and your own, on the right —
+     and the photo never taller than 42% of the screen (2026-10-20). Stacked in a 512px dialog the 4:3 photo alone was
+     348px, so on an iPad held sideways the dialog filled the screen and the found photos and Upload sat below the
+     fold, looking cut off. Now the Photo dialog (wide) is as tall as what is in it; the dish form stays stacked. */
   return (
-    <div className="space-y-3" data-photo-picker>
+    <div className="@container" data-photo-picker>
+    <div className="grid gap-3 @[34rem]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] @[34rem]:gap-5 @[34rem]:items-start">
+    <div className="space-y-2 min-w-0">
       {/* the live camera takes the photo's place while it is open, so the shutter is where the eye already is */}
       {live && (
         <div className="space-y-2" data-live-camera>
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-black">
+          <div className="relative aspect-[4/3] w-full max-h-[42dvh] overflow-hidden rounded-2xl bg-black">
             <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
             <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 rounded-full bg-black/55 text-white text-[12px] px-2.5 py-1 backdrop-blur"><span className="h-2 w-2 rounded-full bg-[var(--color-red)]" /> Camera</span>
           </div>
@@ -102,7 +108,7 @@ export function DishPhotoPicker({ name, category, value, onChange, autoPick = fa
         </div>
       )}
       {/* the chosen photo, as guests will see it */}
-      <div className={cn("relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-[var(--color-fill)]", live && "hidden")}>
+      <div className={cn("relative aspect-[4/3] w-full max-h-[42dvh] overflow-hidden rounded-2xl bg-[var(--color-fill)]", live && "hidden")}>
         {value?.url
           // eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload
           ? <img src={value.url} alt={name || "Dish photo"} className="h-full w-full object-cover" data-chosen />
@@ -114,7 +120,9 @@ export function DishPhotoPicker({ name, category, value, onChange, autoPick = fa
         {busy && <span className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-full bg-black/55 text-white text-[12px] px-2.5 py-1 backdrop-blur"><Loader2 size={12} className="animate-spin" /> Finding photos</span>}
       </div>
       {value?.credit && <p className="text-[11px] text-[var(--color-label-3)] leading-snug truncate" title={value.credit}>{value.source ? <a href={value.source} target="_blank" rel="noreferrer" className="hover:underline">{value.credit}</a> : value.credit}</p>}
+    </div>
 
+    <div className="space-y-3 min-w-0">
       {/* what was found */}
       {found && found.length > 0 && (
         <div>
@@ -138,6 +146,8 @@ export function DishPhotoPicker({ name, category, value, onChange, autoPick = fa
         <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()} data-upload><Upload size={14} /> Upload</Button>
       </div>
       <p className="text-[11px] text-[var(--color-label-3)]">Found photos are free to use and credited (Wikimedia Commons). Your own photos are shrunk before they upload.</p>
+    </div>
+    </div>
       <input ref={fileRef} type="file" accept="image/*" hidden style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} />
       <input ref={camRef} type="file" accept="image/*" capture="environment" hidden style={{ display: "none" }} data-camera-input onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} />
     </div>

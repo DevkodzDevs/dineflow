@@ -1,0 +1,10 @@
+# build output and this machine's SDK path — never committed
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+keystore.properties

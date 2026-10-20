@@ -9,8 +9,10 @@ export const cn = clsx;
 export { snap, glide, settle, flipT, fast, enter, listV, itemV, pageV, sheetV, flipV, press, pressCard } from "@/lib/motion";
 import { snap, glide, sheetV, enter } from "@/lib/motion";
 export { Flip, FlipClock, Loader, PageLoader, Countdown, Waiting, reducedMotion } from "./flip";
+export { FlapShuffle, FlapSpell, FlapPercent, FlapClock, FlapMini, FlapBreathe, useNow } from "./Flap";
 export { PasswordInput } from "./PasswordInput";
-import { Flip, Loader } from "./flip";
+import { Loader } from "./flip";
+import { FlapShuffle } from "./Flap";
 /** A hairline at the very top that fills while the next page is on its way, then vanishes. */
 export function NavProgress() {
   const path = usePathname(); const [on, setOn] = useState(false);
@@ -183,7 +185,10 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
               <h2 className="text-[22px] font-display leading-tight min-w-0 truncate">{title}</h2>
               <button onClick={onClose} aria-label="Close" className="sheet-close shrink-0 h-10 w-10 rounded-full bg-[var(--color-fill)] grid place-items-center text-[var(--color-label-2)] hover:bg-[var(--color-fill-2)] active:scale-95 transition"><X size={17} strokeWidth={2.5} /></button>
             </div>
-            <div className="sheet-body flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 pt-4 pb-[max(20px,env(safe-area-inset-bottom))]">{children}</div>
+            {/* As tall as what is in it, and only when that is taller than the screen does it stop at the screen's edge
+                and scroll inside (2026-10-20): `flex-auto` takes its content's height as its starting size, where
+                `flex-1` (a 0% basis) leaves an engine to guess it in a column with no set height. */}
+            <div className="sheet-body flex-auto min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 pt-4 pb-[max(20px,env(safe-area-inset-bottom))]">{children}</div>
           </motion.div>
         </motion.div>
       )}
@@ -235,7 +240,7 @@ export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string
             so a figure stays a figure. Flaps count things; the display numeral states amounts. */}
         <div className="stat-body mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {flappable(value)
-            ? <div className="flip-stat shrink-0"><Flip value={value} size="sm" /></div>
+            ? <div className="flip-stat shrink-0"><FlapShuffle value={value} size="sm" /></div>   /* shuffles and settles on a change (Flap.tsx) */
             /* the same band a tile occupies, so a row of cards lines up whether its numbers are
                counted or priced */
             : <div className="stat-fig shrink-0 flex items-center leading-none font-display num count-up tabular-nums"
@@ -298,7 +303,7 @@ export function Select({ value, onChange, options, placeholder = "Choose", searc
   return (
     <div ref={ref} className={cn("relative", className)} onKeyDown={key}>
       <button type="button" disabled={disabled} onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}
-        className="w-full min-h-12 flex items-center gap-2 text-left rounded-[14px] bg-[var(--color-bg-3)] hover:bg-[var(--color-fill-2)] border-[.5px] border-transparent px-4 py-[11px] text-[16px] transition disabled:opacity-40 data-[open=true]:bg-[var(--color-bg-2)] data-[open=true]:border-[rgb(76_217_100/.6)] data-[open=true]:ring-4 data-[open=true]:ring-[rgb(76_217_100/.18)]" data-open={open}>
+        className="w-full min-h-12 flex items-center gap-2 text-left rounded-[14px] bg-[var(--color-bg-3)] hover:bg-[var(--color-fill-2)] border-[.5px] border-transparent px-4 py-[11px] text-[16px] transition disabled:opacity-40 data-[open=true]:bg-[var(--color-bg-2)] data-[open=true]:border-[color-mix(in_srgb,var(--color-tint)_60%,transparent)] data-[open=true]:ring-4 data-[open=true]:ring-[color-mix(in_srgb,var(--color-tint)_18%,transparent)]" data-open={open}>
         {cur?.icon}<span className={cn("flex-1 truncate", !cur && "text-[var(--color-label-3)]")}>{cur?.label ?? placeholder}</span>
         <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring} className="h-[26px] w-[26px] rounded-full grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)] shrink-0"><ChevronDown size={15} strokeWidth={2.5} /></motion.span>
       </button>

@@ -55,7 +55,7 @@ export function BookClient({ slug, property }: { slug: string; property: P }) {
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-white/50">Direct booking · no commission</div>
         <h1 className="font-display text-4xl md:text-5xl text-white mt-2">{property.name}</h1>
         {property.tagline && <p className="text-white/70 mt-2 max-w-lg">{property.tagline}</p>}
-        <div className="flex flex-wrap gap-4 mt-4 text-sm text-white/60">{property.address && <span className="flex items-center gap-1.5"><MapPin size={14} /> {property.address}</span>}{property.phone && <a href={`tel:${property.phone}`} className="flex items-center gap-1.5 hover:text-white"><Phone size={14} /> {property.phone}</a>}<span className="flex items-center gap-1.5"><CalendarDays size={14} /> Check-in {property.check_in_time.slice(0, 5)} · out {property.check_out_time.slice(0, 5)}</span></div>
+        <div className="flex flex-wrap gap-4 mt-4 text-sm text-white/60">{property.address && <span className="flex items-center gap-1.5"><MapPin size={14} /> {property.address}</span>}{property.phone && <a href={`tel:${property.phone}`} className="tap flex items-center gap-1.5 hover:text-white"><Phone size={14} /> {property.phone}</a>}<span className="flex items-center gap-1.5"><CalendarDays size={14} /> Check-in {property.check_in_time.slice(0, 5)} · out {property.check_out_time.slice(0, 5)}</span></div>
       </div></header>
 
       <main className="max-w-5xl mx-auto px-5 py-8 space-y-6">

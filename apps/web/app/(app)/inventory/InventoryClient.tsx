@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Plus, Trash2, Pencil, PackagePlus, AlertTriangle, History, ScanText, Loader2, Camera, CheckCircle2, Droplets, Truck, Search, ScanBarcode, Milk, Drumstick, Fish, Carrot, Apple, Wheat, CupSoda, Package, SprayCan, CircleCheck, CircleAlert, type LucideIcon } from "lucide-react";
-import { Button, Card, Field, Sheet, Empty, Pill, cn } from "@/components/ui";
+import { Button, Card, Field, Sheet, Empty, Pill, cn, FlapShuffle } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import type { Word } from "@/lib/say";
@@ -23,6 +23,23 @@ const LVL: Record<Lvl, { w: Word; cls: string; Icon: LucideIcon; order: number }
 };
 /** an ingredient's picture by its category */
 const ING_ICON: Record<string, LucideIcon> = { vegetable: Carrot, fruit: Apple, grocery: Wheat, dairy: Milk, meat: Drumstick, seafood: Fish, beverage: CupSoda, packaged: Package, cleaning: SprayCan, other: Package };
+/** …and its colour, by the same category (a colour token's name) */
+const ING_HUE: Record<string, string> = { vegetable: "green", fruit: "orange", grocery: "orange", dairy: "blue", meat: "red", seafood: "cyan", beverage: "violet", packaged: "violet", cleaning: "cyan", other: "blue" };
+
+/** An ingredient's picture in its kind's own colour (2026-10-20 — the owner could barely see the old one: the state's
+    green drawn on the state's green wash, the same on every healthy item). A wash of the hue over the card, a hairline
+    of it, and the drawing in the hue mixed a fifth toward the ink — lifted in the dark themes, deepened in the light
+    ones, so it reads on all five. A finished or low item also carries a dot in its state's colour on the corner. */
+function IngIcon({ cat, level }: { cat: string | null | undefined; level: Lvl }) {
+  const I = ING_ICON[cat ?? "other"] ?? Package; const hue = `var(--color-${ING_HUE[cat ?? "other"] ?? "blue"})`;
+  return (
+    <span className="relative h-12 w-12 shrink-0 rounded-[15px] grid place-items-center" data-ing-icon
+      style={{ background: `color-mix(in srgb, ${hue} 17%, var(--color-bg-2))`, color: `color-mix(in srgb, ${hue} 80%, var(--color-label))`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${hue} 36%, transparent)` }}>
+      <I size={23} strokeWidth={2.1} aria-hidden />
+      {level !== "ok" && <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full" style={{ background: "var(--st)", boxShadow: "0 0 0 2.5px var(--color-bg-2)" }} aria-hidden />}
+    </span>
+  );
+}
 
 export function InventoryClient({ ingredients, ledger, purchases, suppliers = [], orders = [], wastage = null, restaurant = "" }: { ingredients: IngRow[]; ledger: Led[]; purchases: Pur[]; suppliers?: Supplier[]; orders?: Po[]; wastage?: Wastage; restaurant?: string }) {
   const [tab, setTab] = useState<Tab>("stock");
@@ -63,7 +80,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           <button key={t.key} onClick={() => setTab(t.key)} className={cn("rounded-full px-4 h-10 text-[14px] font-bold transition flex items-center gap-1.5", tab === t.key ? "bg-ink text-on-label" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>{t.label}{t.badge ? <span className={cn("num text-[11px] rounded-full px-1.5", tab === t.key ? "bg-white/20" : "bg-saffron/20 text-saffron")}>{t.badge}</span> : null}</button>
         ))}
         </div><div className="toolbar-group toolbar-end">
-          <Button variant="outline" onClick={() => setEditing({ unit: "kg", reorder_level: 0, cost_per_unit: 0 })}><Plus size={16} /> Ingredient</Button>
+          <Button variant="outline" className="[@media(pointer:coarse)]:!min-h-11" onClick={() => setEditing({ unit: "kg", reorder_level: 0, cost_per_unit: 0 })}><Plus size={16} /> Ingredient</Button>
         </div>
       </div>
 
@@ -75,7 +92,8 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           {(["out", "low", "ok"] as Lvl[]).map((l) => { const m = LVL[l]; return (
             <button key={l} type="button" onClick={() => setOnly((x) => (x === l ? null : l))} aria-pressed={only === l} className={cn("!min-h-[84px] sm:!min-h-[88px] rounded-[20px] px-3 sm:px-5 flex flex-col sm:flex-row items-start sm:items-center justify-center sm:justify-between gap-1 text-left transition", m.cls, only === l && "ring-2 ring-[var(--st)]")} style={{ background: "var(--st-2)" }} data-level={l}>
               <span className="flex items-center gap-2 text-[14px] sm:text-[16px] font-extrabold min-w-0" style={{ color: "var(--st-ink)" }}><m.Icon size={18} aria-hidden className="shrink-0 max-sm:hidden" /><Say w={m.w} start /></span>
-              <span className="font-display num text-[30px] sm:text-[40px] leading-none" style={{ color: "var(--st-ink)" }}>{n(l)}</span>
+              {/* 2026-10-20: each count shuffles when stock moves it from one level to another (Flap.tsx) */}
+              <span className="leading-none" data-level-n={n(l)}><FlapShuffle value={n(l)} pad={0} size="xs" tile="clamp(34px, 8vw, 48px)" bare tone={l === "out" && n(l) > 0 ? "alert" : l === "low" && n(l) > 0 ? "warn" : l === "ok" ? "live" : undefined} say={`${n(l)}`} /></span>
             </button>); })}
         </div>
         {/* what has slipped to its reorder level is already on Tomorrow's buy list (0092); say so here,
@@ -96,7 +114,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
         ); })()}
         <div className="relative" data-pantry-search><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find an item — or type its barcode" aria-label="Find an item" className="!h-14 !rounded-[18px] !pl-12 !pr-14 !text-[16px]" />
-          <Link href="/scan" aria-label="Scan a barcode" title="Scan a barcode" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><ScanBarcode size={19} /></Link>
+          <Link href="/scan" aria-label="Scan a barcode" title="Scan a barcode" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:right-1.5 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><ScanBarcode size={19} /></Link>
         </div>
         <div className="text-[12.5px] text-steel -mt-2">Stock value <b className="num text-[var(--color-label)]">{formatINR(value)}</b> at last purchase cost · {ingredients.length} items</div>
         {/* A phone: a list, one row per item — its picture in its state's colour, the name, the amount big with
@@ -104,10 +122,10 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
             stock) and the bin (Waste). A tap on the name opens the item. Low ones first. */}
         <div className="sm:hidden space-y-2" data-pantry-list>
           {shownIngs.map((i) => {
-            const l = levelOf(i); const m = LVL[l]; const I = ING_ICON[i.category ?? "other"] ?? Package; const pct = barOf(i, l);
+            const l = levelOf(i); const m = LVL[l]; const pct = barOf(i, l);
             return (
               <div key={i.id} className={cn("feather !rounded-[18px] p-3 flex items-center gap-3 min-w-0", m.cls, l !== "ok" && "!border-[color-mix(in_srgb,var(--st)_55%,transparent)]")} data-ing={i.id} data-level={l}>
-                <span className="h-12 w-12 shrink-0 rounded-[14px] grid place-items-center" style={{ background: "var(--st-2)", color: "var(--st-ink)" }}><I size={21} aria-hidden /></span>
+                <IngIcon cat={i.category} level={l} />
                 <button type="button" onClick={() => setEditing(i)} aria-label="Edit" title={`Edit ${i.name}`} className="flex-1 min-w-0 text-left !min-h-0">
                   <span className="block font-bold text-[15px] leading-tight truncate">{i.name}</span>
                   <span className="mt-1 flex items-baseline gap-1 min-w-0">
@@ -132,11 +150,11 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
             wall of bright buttons. */}
         <div className="hidden sm:grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" data-pantry-grid>
           {shownIngs.map((i) => {
-            const l = levelOf(i); const m = LVL[l]; const I = ING_ICON[i.category ?? "other"] ?? Package; const pct = barOf(i, l);
+            const l = levelOf(i); const m = LVL[l]; const pct = barOf(i, l);
             return (
               <div key={i.id} className={cn("feather !rounded-[22px] p-4 flex flex-col gap-3.5 min-w-0 transition-shadow hover:shadow-[var(--shadow-pop)]", m.cls, l !== "ok" && "!border-[color-mix(in_srgb,var(--st)_55%,transparent)]")} data-ing={i.id} data-level={l}>
                 <div className="flex items-start gap-3 min-w-0">
-                  <span className="h-12 w-12 shrink-0 rounded-[15px] grid place-items-center" style={{ background: "var(--st-2)", color: "var(--st-ink)" }}><I size={22} aria-hidden /></span>
+                  <IngIcon cat={i.category} level={l} />
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-[16px] leading-snug truncate" title={i.name}>{i.name}</div>
                     <span className="mt-1 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[12px] font-bold" style={{ background: "var(--st-2)", color: "var(--st-ink)" }}><m.Icon size={12} aria-hidden /><Say w={m.w} start /></span>
