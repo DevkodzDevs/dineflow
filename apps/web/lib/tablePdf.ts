@@ -9,7 +9,8 @@ export const plain = (s: string) => s.replace(/₹/g, "Rs ").replace(/[—–]/g
   .replace(/★/g, "*").replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/…/g, "...").replace(/[^\x20-\xFF]/g, "");
 const cell = (v: string | number | null) => (v === null || v === undefined ? "" : typeof v === "number" ? v.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : plain(String(v)));
 
-export async function tablesPdf(title: string, subtitle: string, tables: Table[]) {
+/** `summary` (Assist's documents, 2026-10-21): a paragraph under the title band, before the first table. */
+export async function tablesPdf(title: string, subtitle: string, tables: Table[], opts: { summary?: string } = {}) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 40;
@@ -17,6 +18,15 @@ export async function tablesPdf(title: string, subtitle: string, tables: Table[]
   doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text(plain(title), M, 46);
   doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(180, 180, 190); doc.text(plain(subtitle), M, 68);
   let y = 122;
+  if (opts.summary?.trim()) {
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(20, 20, 24); doc.text("Summary", M, y); y += 18;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(45, 45, 52);
+    for (const para of opts.summary.replace(/\r/g, "").split(/\n+/)) {   // split first: plain() drops newlines
+      for (const line of doc.splitTextToSize(plain(para), W - 2 * M) as string[]) { if (y + 14 > H - M) { doc.addPage(); y = M + 10; } doc.text(line, M, y); y += 14; }
+      y += 6;
+    }
+    y += 16;
+  }
   const foot = () => { const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(140, 140, 150); doc.text(`${plain(title)}  |  page ${i} of ${n}`, M, H - 20); } };
   for (const t of tables) {
     const n = t.head.length; const total = (t.widths ?? t.head.map((_, i) => (i === 0 ? 3 : 1.4))).slice(0, n);

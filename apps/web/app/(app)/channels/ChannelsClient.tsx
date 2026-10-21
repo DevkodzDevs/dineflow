@@ -16,6 +16,7 @@ import { copyText } from "@/lib/clipboard";
 type Ota = { id: string; kind: string; label: string; mode: string; room_type_id: string | null; import_url: string | null; export_token: string; api_base: string | null; hotel_ref: string | null; commission_pct: number; rate_offset_pct: number; is_live: boolean; last_import_at: string | null; last_error: string | null; has_api_key?: boolean };
 type Oc = { id: string; kind: string; label: string; outlet_ref: string | null; webhook_token: string; commission_pct: number; prep_minutes: number; auto_accept: boolean; is_live: boolean; last_sync_at: string | null; api_base?: string | null; has_api_key?: boolean };
 const OTA_HUE: Record<string, string> = { booking_com: "--color-blue", airbnb: "--color-red", makemytrip: "--color-orange", agoda: "--color-green", expedia: "--color-orange", ical: "--color-tint" };
+const OC_HUE: Record<string, string> = { swiggy: "--color-orange", zomato: "--color-red", ondc: "--color-violet", website: "--color-tint", other: "--color-blue" };
 /** who the calendar link is given to — "Paste into Booking.com"; any other calendar is "their site" */
 const OTA_NAME: Record<string, string> = { booking_com: "Booking.com", airbnb: "Airbnb", makemytrip: "MakeMyTrip", agoda: "Agoda", expedia: "Expedia" };
 /** what a sync did, in a sentence: the route answers one report line per feed it read */
@@ -91,17 +92,54 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
           <b>How this works.</b> Each channel gets its own webhook address. Give that URL to whoever sends you orders and they appear on the <Link href="/online-orders" className="tap underline font-semibold">Online orders</Link> screen, print a KOT and deduct stock like any other order.
           Swiggy and Zomato only hand out direct API access to approved partners, so most restaurants connect through a middleware (UrbanPiper, Petpooja Connect and similar) or start with their own website. Paste the URL there and it works today; swap in direct credentials the day you get them.</div></Card>
         <div className="flex justify-end"><Button onClick={() => setEditOc({ kind: "swiggy", commission_pct: 22, prep_minutes: 20 })}><Plus size={16} /> Add channel</Button></div>
-        <div className="grid gap-3 md:grid-cols-2 [&>*]:min-w-0">{orderChannels.map((c) => (
-          <Card key={c.id}><div className="flex items-center gap-2"><span className="font-semibold capitalize">{c.label}</span><Pill tone={c.is_live ? "ready" : "pending"}>{c.is_live ? "live" : "draft"}</Pill>{c.auto_accept && <Pill tone="gold">auto-accept</Pill>}<span className="ml-auto num text-xs text-steel">{c.commission_pct}% commission</span></div>
-            <div className="mt-3"><label>Webhook URL</label><div className="mt-1 flex gap-2 min-w-0"><input readOnly className="num text-xs min-w-0" value={`${base}/api/webhooks/aggregator/${c.webhook_token}`} /><Button size="sm" variant="outline" onClick={() => copy(`${base}/api/webhooks/aggregator/${c.webhook_token}`)}><Copy size={14} /></Button></div></div>
-            <div className="mt-2 text-xs text-steel">{c.last_sync_at ? `Last order ${new Date(c.last_sync_at).toLocaleString("en-IN")}` : "No orders received yet"}</div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await sendTestOrder(c.webhook_token, base); setMsg("error" in r ? r.error! : "Test order sent — open Online orders"); })}><Send size={14} /> Send test order</Button>
-              <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await pushChannel(c.id, "menu"); setMsg("error" in r ? r.error! : r.message!); })}><Upload size={14} /> Push menu</Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditOc(c)}>Edit</Button><Button size="sm" variant="ghost" onClick={() => { if (confirm(`Remove ${c.label}?`)) start(async () => { const r = await deleteChannel(c.id); if ("error" in r) toast(r.error!, "err"); }); }}><Trash2 size={14} /></Button></div></Card>))}
-          {orderChannels.length === 0 && <p className="text-sm text-steel">No delivery channels yet.</p>}</div>
+        {/* each delivery channel the way an OTA card is (2026-10-21 — the owner: "messy"): its initial in the
+            platform's colour, name, commission and prep time, Live / Draft; the webhook as one field with Copy inside
+            it (the end of the address kept in view); the actions as the card's footer strip */}
+        <ul className="grid gap-3 md:grid-cols-2 [&>*]:min-w-0" aria-label="Delivery channels">{orderChannels.map((c) => {
+          const hue = OC_HUE[c.kind] ?? "--color-blue"; const hook = `${base}/api/webhooks/aggregator/${c.webhook_token}`; const shown = hook.replace(/^https?:\/\//, "");
+          const acts: StripAction[] = [
+            { key: "test", label: "Test order", icon: <Send />, tone: "go", disabled: pending, aria: `Send a test order · ${c.label}`, onClick: () => start(async () => { const r = await sendTestOrder(c.webhook_token, base); setMsg("error" in r ? r.error! : "Test order sent — open Online orders"); }) },
+            { key: "menu", label: "Push menu", icon: <Upload />, disabled: pending, aria: `Push menu · ${c.label}`, onClick: () => start(async () => { const r = await pushChannel(c.id, "menu"); setMsg("error" in r ? r.error! : r.message!); }) },
+            { key: "edit", label: "Edit", icon: <Pencil />, aria: `Edit · ${c.label}`, onClick: () => setEditOc(c) },
+            { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", aria: `Remove · ${c.label}`, onClick: () => { if (confirm(`Remove ${c.label}?`)) start(async () => { const r = await deleteChannel(c.id); if ("error" in r) toast(r.error!, "err"); }); } },
+          ];
+          return (
+          <li key={c.id} data-oc={c.kind} className="feather @container overflow-hidden flex flex-col min-w-0">
+            <div className="p-4 flex flex-col gap-3 flex-1 min-w-0">
+              <div className="flex items-start gap-3 min-w-0">
+                <span aria-hidden className="h-11 w-11 shrink-0 rounded-[12px] grid place-items-center font-display text-lg font-semibold" style={{ background: `color-mix(in srgb, var(${hue}) 16%, transparent)`, color: `var(${hue})` }}>{c.label.trim().charAt(0).toUpperCase() || "·"}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[15px] font-semibold truncate" title={c.label} data-name>{c.label}</div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] text-steel min-w-0">
+                    <span><span className="num">{c.commission_pct}%</span> commission</span><span aria-hidden>·</span><span><span className="num">{c.prep_minutes}</span> min prep</span>
+                    {c.auto_accept && <><span aria-hidden>·</span><span className="font-semibold text-[var(--color-orange)]">auto-accept</span></>}
+                  </div>
+                </div>
+                <span className="shrink-0 inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11.5px] font-semibold whitespace-nowrap" data-live
+                  style={{ background: `color-mix(in srgb, ${c.is_live ? "var(--color-green)" : "var(--color-label-2)"} ${c.is_live ? 16 : 14}%, transparent)`, color: c.is_live ? "var(--color-green)" : "var(--color-label-2)" }}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", c.is_live && "animate-pulse")} style={{ background: "currentColor" }} />{c.is_live ? "Live" : "Draft"}
+                </span>
+              </div>
+              <div className="mt-auto flex items-center gap-2.5 min-w-0 rounded-[14px] p-1.5 pl-3 ring-1 ring-inset ring-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_60%,transparent)]" title="Give this address to whoever sends you the orders" data-webhook>
+                <Link2 size={16} className="shrink-0 text-[var(--color-label-2)]" aria-hidden />
+                <div className="min-w-0 flex-1 leading-tight">
+                  <div className="text-[10.5px] font-semibold uppercase tracking-[.12em] text-steel truncate">Webhook URL</div>
+                  <div className="mt-0.5 flex min-w-0 text-[12.5px] font-medium tabular-nums text-[var(--color-label)] select-all" data-link><span className="truncate">{shown.slice(0, -10)}</span><span className="shrink-0">{shown.slice(-10)}</span></div>
+                </div>
+                <button type="button" onClick={() => copyLink(c.id, hook)} aria-label={`Copy the webhook URL for ${c.label}`} data-copy
+                  className="shrink-0 px-3 rounded-[10px] inline-flex items-center gap-1.5 text-[12.5px] font-semibold bg-[var(--color-fill-2)] text-[var(--color-label)] hover:brightness-125 transition focus-visible:!outline-offset-0 [&_svg]:shrink-0">
+                  {copied === c.id ? <><Check size={14} className="text-[var(--color-tint)]" /> Copied</> : <><Copy size={14} /> Copy</>}
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-steel" data-status>
+                {c.last_sync_at ? <><Check size={12} className="text-mint" /> Last order {new Date(c.last_sync_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</> : <><Clock size={12} /> No orders received yet</>}
+              </div>
+            </div>
+            <CardStrip actions={acts} data-actions />
+          </li>); })}
+          {orderChannels.length === 0 && <li className="text-sm text-steel">No delivery channels yet.</li>}</ul>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Test it right now</div>
-          <p className="text-sm text-steel">Press <b>Send test order</b> on any channel above and watch it appear on the Online orders screen. From outside the app the same thing looks like this:</p>
+          <p className="text-sm text-steel">Press <b>Test order</b> on any channel above and watch it appear on the Online orders screen. From outside the app the same thing looks like this:</p>
           <pre className="mt-2 text-[11px] num bg-porcelain-2 rounded-xl p-3 !whitespace-pre-wrap [overflow-wrap:anywhere]">{`curl -X POST '${base}/api/webhooks/aggregator/<token>' \\
   -H 'content-type: application/json' \\
   -d '{"id":"TEST-1","customer_name":"Ravi","total":560,

@@ -2,13 +2,13 @@
 import Link from "next/link";
 import { useNavPath } from "./useNavPath";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LogOut, ShieldCheck, Menu, X, LayoutGrid, Fingerprint } from "lucide-react";
+import { LogOut, ShieldCheck, Menu, X, LayoutGrid, Fingerprint, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn, Sheet, FlapMini } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
 import { barFor } from "@/lib/bar";
-import { ITEMS, freshFor, endFor, myDayFor, modOf, isOn, type Section } from "./sections";
+import { ITEMS, freshFor, endFor, myDayFor, modOf, isOn, menuGroups, type Section } from "./sections";
 import { useSupportUnread } from "@/components/support/useUnread";
 
 /** A menu row; `badge` is a count that wants attention (a red dot on the icon, the number beside the label). */
@@ -109,10 +109,9 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
   }, [open]);
   const mods = modulesFor(type, role, enabled, personal);
   const allowed = ITEMS.filter((i) => mods.includes(modOf(i)));
-  const unread = useSupportUnread(path);
-  const hospitality = allowed.filter((i) => ["frontdesk", "rooms", "housekeeping", "guests", "facilities"].includes(i.key));
-  const dining = allowed.filter((i) => !hospitality.includes(i) && !["dashboard", "tomorrow", "scan", "reports", "tax", "staff", "settings", "labour", "invoices", "channels", "neighbours", "proof"].includes(i.key));
-  const manage = allowed.filter((i) => ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff"].includes(i.key));
+  const unread = useSupportUnread(path, endFor(role).some((i) => i.key === "help"));
+  /* the menu under its headings (menuGroups, sections.ts — 2026-10-21) */
+  const groups = menuGroups([...allowed, ...freshFor(role, dept)], myDayFor(role) ? [myDayFor(role)!] : []);
   /* the menu's last group (2026-10-20): the property's Settings (the owner), the person's own settings (/me —
      "Settings" for everyone else, "My profile" for the owner), Feedback & complaints (the owner reads it as Staff
      feedback) and, for the owner alone, Help & support — a red dot while a reply from DineFlow is unread */
@@ -142,11 +141,7 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
       </Link>
       <nav ref={navRef} className="mt-7 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] -mx-1 px-1 sidebar-scroll">
         {/* staff: My day first (their landing); the owner and managers: the control room */}
-        <Group items={[...(myDayFor(role) ? [myDayFor(role)!] : []), ...allowed.filter((i) => ["dashboard", "tomorrow", "scan"].includes(i.key))]} path={path} />
-        <Group title={type === "resort" ? "Resort" : "Hotel"} items={hospitality} path={path} />
-        <Group title="Dining" items={dining} path={path} />
-        <Group title="Manage" items={manage} path={path} />
-        <Group title="Insights & control" items={freshFor(role, dept)} path={path} />
+        {groups.map((g, i) => <Group key={g.title ?? `top-${i}`} title={g.title ?? undefined} items={g.items} path={path} />)}
         {/* the last group: Settings, the person's own settings, Feedback & complaints (and the owner's Help & support), straight after the rest and scrolling with them */}
         <Group items={end} path={path} />
       </nav>
@@ -178,9 +173,6 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
 /** The four a phone keeps in reach, by kind of property; the rest live under More. Only modules
  *  this person may open are used, and the gaps fill from the menu's own order. */
 const PIN_KEY = "df-bar-pins";
-const HOSPITALITY = ["frontdesk", "rooms", "housekeeping", "guests", "facilities"];
-const MANAGE = ["invoices", "labour", "proof", "neighbours", "channels", "reports", "tax", "staff", "settings"];
-const TOP = ["dashboard", "tomorrow", "scan"];
 
 type MoreProps = { role: Role; type: PropertyType; dept?: string | null; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number; attend?: boolean };
 
@@ -229,7 +221,8 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
   const primary = barFor(role, type, fills.map((i) => i.key), pins, dept).map((k) => fills.find((i) => i.key === k)!);
   /* what the bar shows: staff keep My day in the first place (2026-10-20), then three of their own */
   const myDay = myDayFor(role);
-  const bar = myDay ? [myDay, ...primary.filter((i) => i.key !== "home").slice(0, 3)] : primary;
+  const full = myDay ? [myDay, ...primary.filter((i) => i.key !== "home").slice(0, 3)] : primary;
+  const bar = full;
   /* What the person chose — not what the bar shows. When fewer than four are pinned the bar fills the
      gaps from the menu; counting those fillers as pins made a newly pinned section push itself out. */
   const pinned = pins ? pins.filter((k) => onBar.some((i) => i.key === k)) : primary.map((i) => i.key);
@@ -242,39 +235,36 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
   const badge = (key: string) => (key === "kitchen" && lateKots > 0 ? lateKots : 0);
   const rest = allowed.filter((i) => !bar.includes(i));
   const onMore = rest.some((i) => isOn(path, i.href)) || fresh.some((i) => isOn(path, i.href)) || endFor(role).some((i) => isOn(path, i.href));
-  const unread = useSupportUnread(path);
+  const unread = useSupportUnread(path, endFor(role).some((i) => i.key === "help"));
   const owner = role === "owner";
   const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0) + (owner ? unread : 0);
   /* the foot's links: the menu's last group less the one the account row already is (/settings or /me) */
   const foot = endFor(role).filter((i) => i.href !== accountHref);
   /* a count on a tab stays a red pill: a flap tile cannot be read at 18px (2026-10-20, design-system.md "Flap numbers") */
   const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num" data-tab-count={n}>{n > 99 ? "99+" : n}</span>;
-  const groups = [
-    { title: null as string | null, items: [...(myDay ? [myDay] : []), ...allowed.filter((i) => TOP.includes(i.key))] },
-    { title: type === "resort" ? "Resort" : "Hotel", items: allowed.filter((i) => HOSPITALITY.includes(i.key)) },
-    { title: "Dining", items: allowed.filter((i) => !HOSPITALITY.includes(i.key) && !MANAGE.includes(i.key) && !TOP.includes(i.key)) },
-    { title: "Manage", items: allowed.filter((i) => MANAGE.includes(i.key)) },
-    { title: "Insights & control", items: fresh.filter((i) => !bar.some((p) => p.key === i.key)) },
-  ].filter((g) => g.items.length);
-  const tab = (active: boolean) => cn("flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-[11px] font-display tracking-wide transition-colors", active ? "text-[var(--color-tint)]" : "text-[var(--color-label-2)]");
-  const pip = (active: boolean) => cn("h-8 w-12 grid place-items-center rounded-full transition", active && "bg-[color-mix(in_srgb,var(--color-tint)_16%,transparent)]");
-  /* Docked to the foot of the screen (2026-10-20, the owner: "fit to the bottom, not floating"): edge to edge, a
-     solid surface with a hairline on top, the home indicator / gesture bar inside its own colour (`.tabbar` in
-     globals.css pads env(safe-area-inset-*)). Its height is `--tabbar` — every bottom offset on a phone reads it. */
+  /* the same headings as the sidebar (menuGroups); a "fresh" link already on the bar is not repeated here */
+  const groups = menuGroups([...allowed, ...fresh.filter((i) => !bar.some((p) => p.key === i.key))], myDay ? [myDay] : []);
+  /* The bar (2026-10-21, the owner's pick — sample 2, "Lift", alone; a mix with a centre + was tried and dropped): the
+     open tab's icon lifts out of the bar in a green circle ringed in the page colour (a notch), its label green under
+     it; the bar has rounded corners and stands 3px off the foot and 2.5px in from each side (`nav.tabbar`, globals.css). Four tabs and More. */
+  const tab = (active: boolean) => cn("relative flex-1 min-w-0 flex flex-col items-center justify-end gap-1 pb-[7px] text-[10.5px] leading-none transition-colors", active ? "text-[var(--color-tint)] font-extrabold" : "text-[var(--color-label-2)] font-semibold");
+  const TabIcon = ({ active, Icon, n }: { active: boolean; Icon: LucideIcon; n: number }) => active
+    ? <span className="absolute left-0 right-0 -top-[22px] flex justify-center pointer-events-none" aria-hidden>
+        <span className="tabbar-lift relative h-[50px] w-[50px] rounded-full grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] shadow-[0_0_0_5px_var(--color-bg),0_12px_24px_-8px_color-mix(in_srgb,var(--color-tint)_75%,transparent)]"><Icon size={22} strokeWidth={2.4} />{count(n)}</span>
+      </span>
+    : <motion.span whileTap={{ scale: .85 }} className="relative h-7 w-11 grid place-items-center"><Icon size={21} strokeWidth={1.9} />{count(n)}</motion.span>;
+  const slot = ({ key, href, label, Icon }: Section) => { const active = isOn(path, href); return (
+    <Link key={key} href={href} aria-current={active ? "page" : undefined} className={tab(active)} data-tab={key}>
+      <TabIcon active={active} Icon={Icon} n={badge(key)} /><span className="truncate max-w-full px-0.5">{label}</span>
+    </Link>); };
+  const moreOn = open || onMore;
   return (
     <>
-      <nav aria-label="Sections" className="tabbar md:hidden fixed inset-x-0 bottom-0 z-30" data-tabbar>
+      <nav aria-label="Sections" className="tabbar md:hidden fixed left-[2.5px] right-[2.5px] bottom-[3px] z-30" data-tabbar>
         <div className="flex h-[var(--tabbar-row)] px-1">
-          {bar.map(({ key, href, label, Icon }) => {
-            const active = isOn(path, href);
-            return (
-              <Link key={key} href={href} aria-current={active ? "page" : undefined} className={tab(active)}>
-                <motion.span whileTap={{ scale: .85 }} className={cn(pip(active), "relative")}><Icon size={20} strokeWidth={active ? 2.4 : 1.9} />{count(badge(key))}</motion.span><span className="truncate max-w-full px-0.5">{label}</span>
-              </Link>
-            );
-          })}
-          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} className={tab(open || onMore)}>
-            <motion.span whileTap={{ scale: .85 }} className={cn(pip(open || onMore), "relative")}><LayoutGrid size={20} strokeWidth={open || onMore ? 2.4 : 1.9} />{count(moreBadge)}</motion.span>More
+          {bar.map(slot)}
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} className={tab(moreOn)} data-tab="more">
+            <TabIcon active={moreOn} Icon={LayoutGrid} n={moreBadge} /><span>More</span>
           </button>
         </div>
       </nav>

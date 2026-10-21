@@ -312,6 +312,16 @@ made in between is silently undone.
 - **Dates are IST.** The business day runs on `Asia/Kolkata`, not UTC — `todayIST()` and
   `+05:30` offsets in the queries.
 
+- **Eleven tables let the master read every property** (2026-10-21, from `pg_policies`): `addon_groups`, `addons`,
+  `combo_items`, `customers`, `loyalty_ledger`, `menu_item_addon_groups`, `menu_variants`, `night_audits`,
+  `purchase_order_items`, `purchase_orders`, `suppliers` — their policy ends in `or is_platform_admin()`. A screen that
+  reads one without `restaurant_id` shows the master, standing inside one property, every property's rows (the till
+  offered other properties' sizes; Customers listed other properties' guests). Pages keep asking in parallel with the
+  session and, **for the master only**, ask again pinned (`lib/scoped.ts`: `pinned`, `optionReads`/`optionsFor`) —
+  every other login is already one property's by RLS, so it pays no extra round trip. Done on Menu, the till, the kiosk,
+  Customers (page and the ideas action), Night audit and Reports; Pantry already pinned its own.
+  `lib/scoped.test.ts` fails if a `page.tsx` reads one of these tables unpinned. Writes by `id` are fine as they are.
+
 ## Verify
 
 ```
@@ -535,3 +545,7 @@ Storage bucket `menu` (1.5 MB, PNG/JPEG/WebP), one folder per property; insert/u
 owner, manager, supervisor, supervisor_2 and chef in their own folder only; select on their own
 folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothing else changed
 (`dry88.cjs`: same payload size without it, anon still has execute).
+
+- **0131 `pulse_seated_walkins` — written and dry-run (6 of 6, rolled back), NOT applied (2026-10-21).** Replaces
+  `table_pulse` and `table_pulse_for` (stage *seated*; see reports-and-forecast.md). Apply after the code that knows
+  *seated* is deployed: `DATABASE_URL=… node scripts/migrate.mjs`, then `notify pgrst, 'reload schema'`.

@@ -21,7 +21,7 @@ import { hasOptions, defaultVariant, linePrice, lineKey, lineName, lineExtras, o
 import Link from "next/link";
 
 type Cat = { id: string; name: string };
-type Item = Optioned & { is_veg: boolean; category_id: string | null; is_available: boolean; image_url: string | null; station?: string | null; categories?: { station: string | null } | null };
+type Item = Optioned & { prep_minutes?: number | null; is_veg: boolean; category_id: string | null; is_available: boolean; image_url: string | null; station?: string | null; categories?: { station: string | null } | null };
 type Table = { id: string; name: string; status: string };
 type Guest = { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null };
 /** What the pantry can still cover, keyed by dish. A dish that is absent has no recipe: it moves no
@@ -580,7 +580,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                       <span className="font-display text-xl leading-tight truncate min-w-0">{o.dining_tables?.name ?? "Table"}</span>
                       <span className="svc-chip lone ml-auto shrink-0 !min-h-7 !text-[12px] !px-2.5 !gap-1.5"><I size={13} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={SVC_WORD[s]} start /></span>
                     </div>
-                    <div className="text-[11px] text-steel num flex items-center gap-1.5 min-w-0 whitespace-nowrap"><span>#{o.order_no}</span><span aria-hidden>·</span><span>{n} item{n === 1 ? "" : "s"}</span><span aria-hidden>·</span><span className="inline-flex items-center gap-1 min-w-0 truncate"><Clock size={11} className="shrink-0" />{fmtSince(o.created_at)}</span></div>
+                    <div className="text-[11px] text-steel num flex items-center gap-1.5 min-w-0 whitespace-nowrap"><span>#{o.order_no}</span><span aria-hidden>·</span><span>{n} item{n === 1 ? "" : "s"}</span><span aria-hidden>·</span>{/* minutes ago: the server and the device can fall either side of a minute — React would log #418 and redraw */}<span className="inline-flex items-center gap-1 min-w-0 truncate" suppressHydrationWarning><Clock size={11} className="shrink-0" />{fmtSince(o.created_at)}</span></div>
                     <div className="grid grid-cols-3 gap-1" aria-hidden data-steps={step}>{[1, 2, 3].map((k) => <span key={k} className="h-1 rounded-full" style={{ background: k <= step ? "var(--st)" : "var(--color-fill)" }} />)}</div>
                   </Link>
                 );
@@ -636,9 +636,15 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                 const qty = qtyOf(it.id); const tp = tilePrice(it); const asks = hasOptions(it); const c = coverOf(it.id);
                 return (
                   /* The stepper is a sibling of the tap target, not a child of it: a button inside a
-                     button is not valid markup, and the dish has to stay a real button for the keyboard. */
+                     button is not valid markup, and the dish has to stay a real button for the keyboard.
+                     2026-10-21 (the owner, a second time: "not satisfied on desktop, laptop and iPad"; prices cut at a
+                     card's foot on a phone): the move is on the photo — Add, or Choose for a dish with sizes or add-ons,
+                     or − / + once it is on the ticket — centred on the photo's lower edge (.act, placed in container
+                     units so it lands there at any card width); under it the veg mark and name, then the price, the
+                     prep time and "customisable". No foot row: nothing sits at the card's edge to be cut, and a short
+                     name leaves no hole. The whole card adds, at every width. */
                   <div key={it.id} className="svc-dish" data-tile data-on={qty > 0 || undefined}>
-                    <button type="button" onClick={() => tap(it)} className="!min-h-0 text-left flex flex-col min-w-0 max-sm:after:absolute max-sm:after:inset-0 max-sm:after:content-['']" aria-label={`${it.name} — add one`}>
+                    <button type="button" onClick={() => tap(it)} className="!min-h-0 text-left flex flex-col flex-1 min-w-0 after:absolute after:inset-0 after:content-['']" aria-label={`${it.name} — add one`}>
                       <span className="pic" data-nophoto={!it.image_url || undefined}>
                         {it.image_url
                           // eslint-disable-next-line @next/next/no-img-element -- owner-supplied URLs from any host; next/image would need every one allow-listed
@@ -649,24 +655,28 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                           : !!c?.portions && c.portions <= 5 ? <span className="flag num">{c.portions} left</span>
                           : it.is_combo ? <span className="flag"><Layers size={12} aria-hidden />Combo</span> : null}
                       </span>
-                      <span className="flex items-start gap-2 px-3 pt-2.5 min-w-0"><span className="mt-[3px]"><VegMark veg={it.is_veg} big /></span><span className="font-bold text-[15px] leading-snug line-clamp-2 min-w-0">{it.name}</span></span>
+                      <span className="flex flex-col flex-1 gap-1.5 px-3 pt-7 pb-3 min-w-0 max-sm:px-2.5 max-sm:pb-2.5">
+                        {/* the name on one line (2026-10-21, the owner: "no double lines"): the full width — the veg mark moved down beside
+                            the price — and a size down for a long name, so "Paneer butter masala" fits; past that, an ellipsis
+                            and the whole name on hover */}
+                        <span className={cn("block font-bold leading-snug truncate min-w-0", it.name.length <= 16 ? "text-[15px]" : it.name.length <= 22 ? "text-[13.5px]" : "text-[12.5px]")} title={it.name} data-tile-name>{it.name}</span>
+                        <span className="mt-auto flex items-center flex-wrap gap-x-1.5 gap-y-0.5 min-w-0" data-tile-price>
+                          <VegMark veg={it.is_veg} big />
+                          {tp.from && <span className="text-[11.5px] font-semibold text-steel">from</span>}
+                          <span className="font-display num text-[20px] leading-tight">{formatINR(tp.price, { whole: true })}</span>
+                          {(it.prep_minutes || asks) && <span className="text-[11.5px] font-semibold text-steel truncate min-w-0">{it.prep_minutes ? <>· <span className="num">{it.prep_minutes}</span> min</> : null}{asks ? <>{it.prep_minutes ? " " : ""}· customisable</> : null}</span>}
+                        </span>
+                      </span>
                     </button>
-                    {/* below sm (two across, ~184px) the whole card is the Add (the dish button's ::after covers it), so a
-                        plain dish shows no button at all — just its price; a dish that asks for a size or add-ons shows a
-                        compact "Choose" pill (32px to the eye, 44px to the finger) that never squeezes the price. "from"
-                        sits over the price. The stepper and the pill stand above the card-wide tap (z-[1]). */}
-                    <div className="mt-auto flex items-center gap-2 px-3 pb-3 pt-2 min-w-0 max-sm:gap-1.5 max-sm:px-2.5 max-sm:pb-2.5 max-sm:pt-1.5">
-                      <span className="font-display num text-[22px] leading-none min-w-0 truncate max-sm:flex max-sm:flex-col max-sm:text-[20px]" data-tile-price>{tp.from && <span className="font-sans text-[12px] text-steel max-sm:text-[11px] max-sm:leading-tight">from </span>}{formatINR(tp.price, { whole: true })}</span>
+                    <div className="act">
                       {qty > 0
-                        ? <div className="stepper ml-auto shrink-0 !gap-1.5 max-sm:!relative max-sm:z-[1]">
-                            <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`} className="less !rounded-xl"><Minus size={17} /></button>
-                            <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="more !rounded-xl"><Plus size={18} /></button>
+                        ? <div className="stepper shrink-0 !gap-1 rounded-full p-1 bg-[var(--color-bg-2)] shadow-[0_8px_20px_-10px_rgb(0_0_0/.6)] ring-1 ring-[var(--color-separator)]">
+                            <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`} className="less !rounded-full !h-9 !w-9 !min-h-9"><Minus size={16} /></button>
+                            <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="more !rounded-full !h-9 !w-9 !min-h-9"><Plus size={17} /></button>
                           </div>
-                        : <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} title={asks ? "Choose" : "Add"} data-choose={asks || undefined}
-                            className={cn("svc-add more ml-auto", asks
-                              ? "max-sm:!relative max-sm:z-[1] max-sm:!min-h-0 max-sm:!h-8 max-sm:!px-2.5 max-sm:!gap-1 max-sm:!rounded-full max-sm:!text-[12.5px] max-sm:!font-bold max-sm:!bg-[var(--color-fill-2)] max-sm:!text-[var(--color-label)] max-sm:shrink-0 max-sm:before:absolute max-sm:before:-inset-y-1.5 max-sm:before:-inset-x-1 max-sm:before:content-['']"
-                              : "max-sm:!hidden")}>
-                            {asks ? <SlidersHorizontal size={16} aria-hidden className="max-sm:!w-3.5 max-sm:!h-3.5" /> : <Plus size={18} aria-hidden />}<span className="contents max-sm:hidden"><Say w={asks ? "choose" : "add"} /></span>{asks && <span className="sm:hidden">Choose</span>}</button>}
+                        : <button type="button" onClick={() => tap(it)} aria-label={asks ? `Choose options for ${it.name}` : `Add ${it.name}`} title={asks ? "Choose" : "Add"} data-choose={asks || undefined} data-add={!asks || undefined}
+                            className="!min-h-0 h-10 min-w-[6.5rem] px-4 inline-flex items-center justify-center gap-1.5 rounded-full text-[13.5px] font-extrabold uppercase tracking-[.04em] bg-[var(--color-bg-2)] text-[var(--color-tint)] ring-1 ring-[color-mix(in_srgb,var(--color-tint)_45%,transparent)] shadow-[0_10px_22px_-12px_rgb(0_0_0/.7)] hover:bg-[color-mix(in_srgb,var(--color-tint)_12%,var(--color-bg-2))] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']">
+                            {asks ? <SlidersHorizontal size={15} aria-hidden /> : <Plus size={16} strokeWidth={2.8} aria-hidden />}<Say w={asks ? "choose" : "add"} /></button>}
                     </div>
                   </div>
                 );

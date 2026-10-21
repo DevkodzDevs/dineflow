@@ -133,3 +133,11 @@ are the whole point and they are theme-dependent.
 - **Each room and each task waits on its own answer** (2026-10-18): `act(fn, key)` with the room's or task's id; one
   shared `pending` used to grey the whole floor while any one tap was answering. Build today's sheet and Add task still
   hold the screen.
+
+- **Give to… offers the team the work belongs to (2026-10-21, the owner: "it shows the owner").** `crewFor(task)`: a
+  clean, stayover, turndown or pickup → Housekeeping; maintenance → Engineering & maintenance — by `deptOf` (department,
+  else position, else role). Never the owner or a manager. With nobody in that team yet, the housekeeping-role and
+  general staff. Whoever has it now stays listed. `page.tsx` reads `department, position` for this. **Recently done**
+  is one row per task (key card, what, by whom and when, *n min* in green); **New task**'s button is the green
+  `svc-btn go` and reads *Choose a room first* until one is. shots39: the clean offered Room Attendant + Floor
+  Supervisor, the maintenance task the engineer alone; never the owner or the chef.

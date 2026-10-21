@@ -98,7 +98,7 @@ export function CardStrip({ actions, className, style, ...rest }: { actions: Str
           STRIP_SIDE[Math.min(n, 4)], STRIP_TONE[a.tone ?? "quiet"]);
         const body = <>{a.icon}<span className="truncate max-w-full">{a.label}</span></>;
         return a.href
-          ? <a key={a.key} href={a.href} target={a.external ? "_blank" : undefined} rel={a.external ? "noreferrer" : undefined} aria-label={a.aria} className={cls} data-act={a.key}>{body}</a>
+          ? <a key={a.key} href={a.href} target={a.external ? "_blank" : undefined} rel={a.external ? "noreferrer" : undefined} onClick={a.onClick} aria-label={a.aria} className={cls} data-act={a.key}>{body}</a>
           : <button key={a.key} type="button" onClick={a.onClick} disabled={a.disabled} aria-label={a.aria} className={cls} data-act={a.key}>{body}</button>;
       })}
     </div>
@@ -147,8 +147,36 @@ export function Reveal({ children, className, delay = 0 }: { children: ReactNode
  * the title and close stay put. The scrim reaches half a screen past each edge so a shifted page
  * never shows through, and the page behind is locked (html and body) while it is open.
  */
+/**
+ * The row of buttons a dialog ends with — Save, Save · Deactivate, Receive into the pantry — is its footer, and stays
+ * in view at the foot of the dialog while the fields scroll under it (2026-10-21, the owner: "fixed header and footer
+ * for all dialogs"). Found, not declared, so all 74 dialogs get it: from the body's last element down through each
+ * last child, the first that is a button (or link-button) or a row made only of them. It must sit in a box at least
+ * half the content's height, or sticky would only hold it while that small box is on screen. A dialog that ends with
+ * something else — a hint, a picture — keeps its buttons in the flow. Marked `data-sheet-foot`; globals.css pins it.
+ */
+function markSheetFoot(body: HTMLElement) {
+  const isAct = (e: Element) => e.matches("button, a.btn, a.svc-btn, a[role=button]");
+  let foot: Element | null = null;
+  for (let e: Element | null = body.lastElementChild, i = 0; e && i < 7 && !foot; e = e.lastElementChild, i++) {
+    if (isAct(e) || (e.children.length > 0 && [...e.children].every(isAct))) foot = e;
+  }
+  const big = foot?.parentElement && foot.parentElement.getBoundingClientRect().height >= body.scrollHeight * 0.5 - 40;
+  body.querySelectorAll("[data-sheet-foot]").forEach((x) => { if (x !== foot || !big) x.removeAttribute("data-sheet-foot"); });
+  if (foot && big && !foot.hasAttribute("data-sheet-foot")) foot.setAttribute("data-sheet-foot", "");
+}
+
 export function Sheet({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   const frame = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  /* the footer is found again whenever what is in the dialog changes (a step, a line added, a field shown) */
+  useEffect(() => {
+    if (!open) return;
+    let raf = 0, mo: MutationObserver | null = null;
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (body.current) markSheetFoot(body.current); }); };
+    const start = requestAnimationFrame(() => { const el = body.current; if (!el) return; run(); mo = new MutationObserver(run); mo.observe(el, { childList: true, subtree: true }); });
+    return () => { cancelAnimationFrame(start); cancelAnimationFrame(raf); mo?.disconnect(); };
+  }, [open]);
   useEffect(() => { if (!open) return; const k = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [open, onClose]);
   /* On a touch screen nothing in a dialog takes focus by itself. A field marked autoFocus raised the
      keyboard the moment the dialog opened, before the person had seen it, and the frame below then
@@ -190,7 +218,7 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
             {/* As tall as what is in it, and only when that is taller than the screen does it stop at the screen's edge
                 and scroll inside (2026-10-20): `flex-auto` takes its content's height as its starting size, where
                 `flex-1` (a 0% basis) leaves an engine to guess it in a column with no set height. */}
-            <div className="sheet-body flex-auto min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 pt-4 pb-[max(20px,env(safe-area-inset-bottom))]">{children}</div>
+            <div ref={body} className="sheet-body flex-auto min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 pt-4 pb-[max(20px,env(safe-area-inset-bottom))]">{children}</div>
           </motion.div>
         </motion.div>
       )}

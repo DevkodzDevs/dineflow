@@ -176,3 +176,7 @@ storefront now does too — see guest-facing.md.
   photo is never taller than 42dvh. Stacked in the 512px dialog the 4:3 photo alone was 348px, so on an iPad held sideways
   the dialog reached the screen's edge with the found photos and Upload below the fold — it looked cut off. The dish form
   (a narrow dialog) stays stacked. `Sheet`'s body is also `flex-auto` now — see design-system.md.
+
+- **More tools is a panel of five even tiles** (`[data-tools]`, `[data-tool]`, 2026-10-21): icon in its colour, name, one
+  line on what it is for (wraps, never cut) — two across on a phone, three on a tablet, five on a desktop. Were five
+  outline buttons wrapping into uneven rows. `[data-recipes]` and `[data-find-photos]` are kept on their tiles.

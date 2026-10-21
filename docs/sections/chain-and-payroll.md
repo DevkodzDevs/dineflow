@@ -120,3 +120,13 @@ node batch3.mjs     # 25 checks on a throwaway demo — see testing-and-gates.md
 - **The "Live · updated" clock starts in the browser** (2026-10-18): it read the time to the second on the server and
   again on waking, and when the second had turned the two disagreed — React #418 on some loads. It shows *Live* until
   the screen is up, then the time.
+- **The month sheet on phones and tablets, and the deposits (2026-10-21 — the owner: "messy").** Same `<table>`
+  markup and hooks (`data-line`, `data-net`, `data-run-status`, `data-build`, `data-finalise`, `data-payroll-xlsx`):
+  - **The month**: one navigator (`[data-payroll-nav]`: ◀ · month with its state — Draft / Final / Not worked out — · ▶),
+    then `[data-payroll-actions]`; on a phone *Work out* takes its own row and Finalise and Excel share the next.
+  - **Each person (below `lg`)**: initials, name and rate, a *Days 24 → 28* pill top right (absolute; the name cell
+    keeps `!pr-[7.5rem]` so a long name truncates before it); the figures as two-across tiles — Gross | Bonus, PF | ESI,
+    Advance | Other — label on top in the body font (`before:font-sans`, the cells are `num`), and Net pay a tinted bar.
+  - **PF / ESI to deposit** (`[data-deposit]`): office, *Due 15 Oct* (the 15th of the next month), the total big
+    (`[data-deposit-total]`), a two-part bar staff | you (tint | blue) with its legend. Was one sentence of sums.
+  shots34 checks the navigator is one row, no card cell is cut, the name never runs under the pill, at 360–1440.

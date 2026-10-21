@@ -13,6 +13,17 @@ export async function POST(req: Request) {
       const { error } = await s.rpc("walkin_set", { p_id: arg, p_status: "called", p_table: null });
       return error ? NextResponse.json({ error: error.message }, { status: 400 }) : NextResponse.json({ done: "Called. Their phone now says \"You're up\"." });
     }
+    // the health check's two fixes (2026-10-21): the same RPCs, and so the same permission checks, as Pulse and Reservations
+    case "walkin_left": {
+      if (!/^[0-9a-f-]{36}$/.test(arg)) return NextResponse.json({ error: "bad id" }, { status: 400 });
+      const { error } = await s.rpc("walkin_set", { p_id: arg, p_status: "left", p_table: null });
+      return error ? NextResponse.json({ error: error.message }, { status: 400 }) : NextResponse.json({ done: "Marked as left. The wait quoted to everyone behind them is shorter now." });
+    }
+    case "reservation_no_show": {
+      if (!/^[0-9a-f-]{36}$/.test(arg)) return NextResponse.json({ error: "bad id" }, { status: 400 });
+      const { error } = await s.rpc("reservation_set", { p_id: arg, p_status: "no_show", p_table: null });
+      return error ? NextResponse.json({ error: error.message }, { status: 400 }) : NextResponse.json({ done: "Marked as a no-show." });
+    }
     case "reorder_message": {
       const { data: low } = await s.from("v_low_stock").select("name, unit, current_stock, reorder_level");
       if (!low?.length) return NextResponse.json({ done: "Nothing is below reorder right now." });

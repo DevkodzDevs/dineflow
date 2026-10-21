@@ -2,8 +2,9 @@
 import { Fragment, useMemo, useState, useTransition, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star, ChevronDown, ChevronsUpDown, ChevronsDownUp, Clock, Brush, RotateCcw } from "lucide-react";
+import { deptOf } from "@/components/shell/sections";
 import { useLive } from "@/lib/useLive";
-import { Button, Card, Field, Pill, Segmented, cn, Empty, useToast } from "@/components/ui";
+import { Button, Card, Field, Segmented, cn, Empty, useToast } from "@/components/ui";
 import { fmtSince } from "@/lib/format";
 import { addTask, setCondition, inspectRoom, buildSheet } from "./actions";
 import { setRoomStatus } from "../rooms/actions";
@@ -11,7 +12,7 @@ import { takeJob, finishJob, assignJob } from "../cleaning/actions";
 
 type Task = { id: string; kind: string; status: string; notes: string | null; created_at: string; rooms: { number: string; floor: number } | null;
   assigned_to?: string | null; assigned_by?: string | null; assigned_at?: string | null; taken_by?: string | null; taken_at?: string | null };   // 0111
-type Person = { id: string; full_name: string; role: string; position_title: string | null };
+type Person = { id: string; full_name: string; role: string; position_title: string | null; department?: string | null; position?: string | null };
 type Condition = "dirty" | "clean" | "inspected" | "pickup";
 type Room = { id: string; number: string; floor: number; status: string; condition: Condition; condition_at: string };
 type Stay = { room_id: string; check_out: string; guests: { full_name: string; vip: boolean } | null };
@@ -50,7 +51,19 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
   { today: string; tasks: Task[]; rooms: Room[]; stays: Stay[]; done: Done[]; canInspect: boolean; inspectRule: boolean; people?: Person[]; me?: string }) {
   // whose a task is (0111): the names on the card, and the people a supervisor gives tasks to — housekeeping first
   const nameOf = (id: string | null | undefined) => (id ? (id === me ? "You" : people.find((p) => p.id === id)?.full_name ?? "Someone") : null);
-  const crew = [...people].sort((a, b) => Number(b.role === "housekeeping") - Number(a.role === "housekeeping") || a.full_name.localeCompare(b.full_name));
+  /* Who a task can be given to is decided by the work (2026-10-21, the owner: "Give to shows the owner — show the job
+     positions by the work"): a clean, a stayover, a turndown or a pickup goes to Housekeeping; maintenance to
+     Engineering & maintenance — by each person's team (deptOf: their department, else their position's, else their
+     role's). Never the owner or a manager. A property with nobody in that team yet is offered its housekeeping-role
+     and general staff. Whoever has the task now stays in the list, so the select can show them. */
+  const crewFor = (t: Task) => {
+    const team = t.kind === "maintenance" ? "engineering" : "housekeeping";
+    const ok = (p: Person) => p.role !== "owner" && p.role !== "manager";
+    let list = people.filter((p) => ok(p) && deptOf(p.role, p.department ?? null, p.position ?? null) === team);
+    if (!list.length) list = people.filter((p) => ok(p) && (p.role === "housekeeping" || p.role === "employee"));
+    const now = t.assigned_to && !list.some((p) => p.id === t.assigned_to) ? people.filter((p) => p.id === t.assigned_to) : [];
+    return [...now, ...list.sort((a, b) => a.full_name.localeCompare(b.full_name))];
+  };
   const [pending, start] = useTransition(); const toast = useToast();
   const [f, setF] = useState({ room: "", kind: "clean", notes: "" });
   /* On a phone the board and the task sheet are two tabs, not one page five screens long: a
@@ -324,7 +337,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                   {canInspect && <select className="mt-2 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={!!busy[t.id]} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign
                     onChange={(e) => act(() => assignJob("room", t.id, e.target.value || null), t.id)}>
                     <option value="">{t.assigned_to ? "Nobody — anyone can take it" : "Give to…"}</option>
-                    {crew.map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.position_title ? ` — ${p.position_title}` : ""}</option>)}</select>}
+                    {crewFor(t).map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.position_title ? ` — ${p.position_title}` : ""}</option>)}</select>}
                 </motion.div>))}</AnimatePresence>{list.length === 0 && <p className="text-sm text-steel px-1 py-3">{c.key === "pending" ? "Nothing to do." : "Nothing in progress."}</p>}</div></section>); })}
           {tasks.length === 0 && <div className="sm:col-span-2"><Empty title="Nothing on the sheet" hint="Check-outs create cleaning tasks automatically. Build today's sheet for the stayovers." /></div>}
         </div>
@@ -333,8 +346,20 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             <Field label="Room"><select value={f.room} onChange={(e) => setF({ ...f, room: e.target.value })}><option value="">Choose</option>{rooms.map((r) => <option key={r.id} value={r.id}>{r.number} · {r.status === "maintenance" ? "out of order" : r.condition}</option>)}</select></Field>
             <Field label="Type"><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{Object.entries(KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
             <Field label="Notes"><input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="AC not cooling, extra towels…" /></Field>
-            <Button className="w-full" disabled={pending || !f.room} onClick={() => start(async () => { const r = await addTask(f.room, f.kind, f.notes); if ("error" in r) return void toast(r.error!, "err"); setF({ room: "", kind: "clean", notes: "" }); })}><Plus size={15} /> Add</Button></div></Card>
-          <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Recently done</div><ul className="space-y-1.5 text-sm">{done.map((d) => <li key={d.id} className="flex justify-between gap-2"><span className="min-w-0">Room {d.rooms?.number} · {KIND[d.kind] ?? d.kind}{d.done_by && <span className="block text-[12px] text-steel">by {nameOf(d.done_by)}{d.taken_at ? ` · took ${Math.max(1, Math.round((new Date(d.done_at).getTime() - new Date(d.taken_at).getTime()) / 60000))} min` : ""}</span>}</span><Pill tone="ready">done</Pill></li>)}{done.length === 0 && <li className="text-steel">—</li>}</ul></Card>
+            <button type="button" className="svc-btn go w-full" disabled={pending || !f.room} data-add-task onClick={() => start(async () => { const r = await addTask(f.room, f.kind, f.notes); if ("error" in r) return void toast(r.error!, "err"); setF({ room: "", kind: "clean", notes: "" }); })}><Plus size={18} strokeWidth={2.4} aria-hidden /> {f.room ? "Add task" : "Choose a room first"}</button></div></Card>
+          {/* each finished task a row: the room on its key card, what and who, and how long it took (2026-10-21) */}
+          <Card data-hk-done><div className="flex items-center gap-2.5 mb-3"><span className="h-9 w-9 rounded-[11px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]" aria-hidden><Check size={17} strokeWidth={2.6} /></span><h3 className="text-lg leading-none">Recently done</h3><span className="ml-auto num text-[12.5px] font-semibold text-steel">{done.length}</span></div>
+            {done.length === 0 ? <p className="text-[13.5px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] px-3 py-4 text-center">Nothing finished yet today.</p>
+              : <ul className="divide-y divide-[var(--color-separator)]">{done.map((d) => { const took = d.taken_at ? Math.max(1, Math.round((new Date(d.done_at).getTime() - new Date(d.taken_at).getTime()) / 60000)) : null; return (
+                <li key={d.id} className="flex items-center gap-3 py-2.5 min-w-0">
+                  <span className="keycard h-10 w-11 shrink-0 grid place-items-center font-display text-[16px]">{d.rooms?.number ?? "—"}</span>
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <div className="text-[14px] font-semibold truncate">{KIND[d.kind] ?? d.kind}</div>
+                    <div className="text-[12px] text-steel truncate mt-0.5">{d.done_by ? `by ${nameOf(d.done_by)}` : "done"}{d.done_at ? ` · ${fmtSince(d.done_at)} ago` : ""}</div>
+                  </div>
+                  {took != null && <span className="shrink-0 inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)] num"><Clock size={12} aria-hidden />{took} min</span>}
+                </li>); })}</ul>}
+          </Card>
         </div>
       </div>
     </div>

@@ -623,4 +623,24 @@ Then look at it, in both themes, at 1440 and 412.
   that fades in place (no `LayoutGroup` / `layoutId`). Same distances and timing as `lib/motion.ts` `enter`; reduced
   motion turns them off. Sheets, toasts, flap tiles and the kitchen's tickets keep framer-motion. Probe:
   `motioncheck.mjs` (every screen ends at opacity 1 with no transform).
+  - **`df-page` and `df-rise` fill `backwards`, never `both` (2026-10-21).** With `both` the finished animation kept
+    applying its end state, and in Chrome that makes the page wrapper a stacking context. Every `Sheet` is rendered
+    inside it, so its z-50 counted only inside the page and the app's top bar and phone tab bar were drawn over every
+    dialog: its foot cut off under the tab bar, its top under the bar (the owner's screenshot, the labourer dialog). The
+    end state is the element's own, so `backwards` loses nothing. shots38 puts `both` back on `.df-page` and shows the
+    dialog's foot covered, then the fix. **Do not give anything that wraps a page an animation with a forwards fill.**
+- **Every dialog's footer stays in view (2026-10-21, the owner: "fixed header and footer for all dialogs").** The header
+  was already outside the scrolling body. `Sheet` now finds the footer itself (`markSheetFoot` in
+  `components/ui/index.tsx`): from `.sheet-body`'s last element down through last children, the first that is a
+  button / link-button or a row made only of them, inside a box at least half the content's height. It is marked
+  `data-sheet-foot` (again whenever the content changes, a `MutationObserver`), and `globals.css` makes it sticky at the
+  foot with a band of the dialog's own colour (`--color-bg-2`, every theme) and a hairline, painted as box-shadows so
+  the row keeps its size — 10px above the row, so at rest it never covers the last field, and out to both edges and the
+  home-bar inset. A dialog that ends with something else (a photo picker, a hint) keeps its buttons in the flow, so
+  **end a dialog with its buttons** — the labourer dialog's QR moved above Save · Deactivate for this. shots38: 32
+  dialogs (both property kinds, 412 and 1440) on top and whole, header kept at the end of the scroll, 30 with a footer
+  that holds (the two without are Menu's photo dialogs).
 
+
+- **`CardStrip` passes `onClick` to a link action too** (2026-10-21) — a WhatsApp *Send* on a purchase order is an `href`
+  that also marks the draft sent.

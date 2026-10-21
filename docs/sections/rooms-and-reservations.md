@@ -125,3 +125,19 @@ node cal.mjs             # 6 checks — 42 cells, 7 weekday heads, dots, the ope
 [guest-facing.md](guest-facing.md) · [design-system.md](design-system.md)
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Room numbers on the Rooms cards are spelled on flap tiles (up to four characters); each reservation's time is a `FlapClock at` (`[data-res-time]`), AM/PM under it.
+
+- **Facilities, 2026-10-21 (the owner: "the button takes a whole row"; "the schedule is messy").** The row above the
+  sections carries a count chip per kind (Spa · Activities · Venues, in their colours) and **+ Facility**
+  (`[data-fac-bar]`, `[data-new-facility]`). The **Schedule** card (`[data-fac-schedule]`) is one row per booking
+  (`[data-fac-slot]`): a date tile — day, month, time in IST — then what and who, the amount (or *folio*) and a 44px ✕
+  to cancel. The time had been a 64px column that ran into the name. shots41.
+
+- **Rooms: the number a size up** (2026-10-21): the flap tiles are 36px for a three-figure number (32px for four, so it
+  still clears the room type on a phone) — were 30px.
+- **Reservations, the date head on a phone (2026-10-21, the owner: "messy").** Row one: the month and the ‹ › day arrows
+  joined in one control (`[data-day-arrows]`); row two: the chosen day's line (`[data-day-summary]`) with a small tinted
+  *↺ Today* chip (`[data-today-jump]`, 44px to the finger) when another day is open. The summary had run under a Today
+  button and two arrows on one row. The seven day pills are a touch more compact on a phone (62px, 21px figure).
+  shots41: nothing overlaps at 412 or 1440, seven days on one row.
+  The kind chips are a `Rail` (`rail-fade`, label *Kinds*): on a phone, where they run past the edge, the shared light round
+  › (glass, 80% opacity) slides the rest into view and turns round at the end. shots42: 412 and 360.

@@ -67,7 +67,8 @@ export async function marketingIdeas(): Promise<{ ok: true; ideas: Idea[]; facts
   const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
   const [{ data: lines, error }, { data: people }] = await Promise.all([
     s.from("order_items").select("order_id, name_snapshot, qty, price_snapshot, created_at, orders!inner(status)").gte("created_at", since30).neq("orders.status", "cancelled").limit(20000),
-    s.from("customers").select("visits, last_visit_at, first_visit_at, points").limit(5000),
+    // pinned: the master's policy reads every property's customers (lib/scoped.ts); the session is already here
+    s.from("customers").select("visits, last_visit_at, first_visit_at, points").eq("restaurant_id", r.id).limit(5000),
   ]);
   if (error) return { error: error.message };
   const byOrder = new Map<string, { id: string; created_at: string; total: number }>();

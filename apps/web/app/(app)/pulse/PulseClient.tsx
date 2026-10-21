@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition, useEffect, type ReactNode } from "react";
-import { Phone, Bell, BellRing, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check, Hourglass, Clock, Timer, ArrowRight, Info } from "lucide-react";
+import { type LucideIcon, Phone, Bell, BellRing, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check, Hourglass, Clock, Timer, ArrowRight, Info } from "lucide-react";
 import Link from "next/link";
 import { waHref, firstName } from "@/lib/wa";
 import { Card, useToast, cn, FlapShuffle, FlapSpell, FlapClock, FlapBreathe } from "@/components/ui";
@@ -14,12 +14,14 @@ import { addWalkin, setWalkin, quote } from "./actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 
-type T = { id: string; name: string; capacity: number; stage: "free" | "ordered" | "eating" | "served" | "billed"; age: number; mins_left: number; free_at: string };
+type T = { id: string; name: string; capacity: number; stage: "free" | "seated" | "ordered" | "eating" | "served" | "billed"; age: number; mins_left: number; free_at: string };
 type Pulse = { tables: T[]; free_now: number; seats_free_now: number; next_free_min: number | null; avg_dwell: number; history_days: number };
 type R = { id: string; table_id: string; guest_name: string; party_size: number; at_time: string };
 type W = { id: string; token: string; name: string; phone: string | null; party: number; quoted_min: number | null; status: "waiting" | "called"; joined_at: string; table_id: string | null };
 
-const STAGE = { free: ["free", "pill-ready"], ordered: ["ordered", "pill-pending"], eating: ["eating", "pill-preparing"], served: ["served", "pill-sky"], billed: ["bill out", "pill-gold"] } as const;
+/* "seated": a walk-in sat down, nothing ordered yet (table_pulse, 0131). A stage this screen does not know reads as
+   "in use" rather than throwing — an older screen met "seated" before it was deployed. */
+const STAGE = { free: ["free", "pill-ready"], seated: ["just seated", "pill-sky"], ordered: ["ordered", "pill-pending"], eating: ["eating", "pill-preparing"], served: ["served", "pill-sky"], billed: ["bill out", "pill-gold"] } as const;
 /** Minutes as a person says them: 25 min, 2h 10m, 3 days — never "34736 min". */
 const dur = (m: number) => m < 60 ? `${m} min` : m < 1440 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${Math.floor(m / 1440)} day${m >= 2880 ? "s" : ""}`;
 /** 20:30:00 → 8:30 pm */
@@ -40,9 +42,10 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
 }
 
 /** A section's title with one plain line under it, saying what the block is for. */
-function Head({ title, sub, end }: { title: ReactNode; sub: string; end?: ReactNode }) {
+function Head({ title, sub, end, icon: I, tone = "var(--color-tint)" }: { title: ReactNode; sub: string; end?: ReactNode; icon?: LucideIcon; tone?: string }) {
   return (
-    <div className="flex items-start gap-3 mb-3">
+    <div className="flex items-start gap-3 mb-4">
+      {I && <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center" style={{ color: tone, background: `color-mix(in srgb, ${tone} 15%, transparent)` }} aria-hidden><I size={19} /></span>}
       <div className="min-w-0 flex-1">
         <h2 className="text-[18px] font-extrabold leading-tight">{title}</h2>
         <p className="text-[13px] text-steel mt-0.5 leading-snug">{sub}</p>
@@ -61,8 +64,24 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
   const toast = useToast(); const [pending, start] = useTransition(); const { online } = useOffline();
   const [party, setParty] = useState(2); const [q, setQ] = useState<number | null | undefined>(undefined);
   const [form, setForm] = useState({ name: "", phone: "" }); const [seat, setSeat] = useState<W | null>(null);
+  /* What the host just did shows at once (2026-10-21, the owner: "Seat now, Table ready — nothing shows until I refresh"):
+     the card leaves on Seat or Left, turns Called on Table ready, and the table reads "just seated" — before the
+     write comes back through useLive. A write that fails puts it back. */
+  const [mine, setMine] = useState<{ gone: Record<string, true>; called: Record<string, true>; sat: Record<string, true> }>({ gone: {}, called: {}, sat: {} });
+  const mark = (k: "gone" | "called" | "sat", id: string, on = true) => setMine((m) => { const x = { ...m[k] }; if (on) x[id] = true; else delete x[id]; return { ...m, [k]: x }; });
+  const tables: T[] = pulse.tables.map((t) => mine.sat[t.id] && t.stage === "free" ? { ...t, stage: "seated", age: 0, mins_left: Math.max(15, pulse.avg_dwell) } : t);
+  const live: W[] = queue.filter((w) => !mine.gone[w.id]).map((w) => mine.called[w.id] && w.status === "waiting" ? { ...w, status: "called" } : w);
+  const act = (w: W, status: "called" | "seated" | "left", table?: T) => {
+    if (status === "called") mark("called", w.id); else mark("gone", w.id);
+    if (table) mark("sat", table.id);
+    if (!online) { void enqueue("walkin_set", { id: w.id, status, ...(table ? { table: table.id } : {}) }, `Queue · ${w.name} ${status}`); return; }
+    start(async () => {
+      const r = await setWalkin(w.id, status, table?.id);
+      if ("error" in r && r.error) { toast(r.error, "err"); if (status === "called") mark("called", w.id, false); else mark("gone", w.id, false); if (table) mark("sat", table.id, false); }
+    });
+  };
   useEffect(() => { let on = true; quote(party).then((m) => { if (on) setQ(m); }); return () => { on = false; }; }, [party, pulse]);
-  const busy = pulse.tables.filter((t) => t.stage !== "free");
+  const busy = tables.filter((t) => t.stage !== "free");
   /* The floor in three kinds. A free table with a booking still to come today is Reserved, not Free —
      seating a walk-in there is how a booked party ends up waiting. A table in use keeps its booking as
      a note ("next: Meera 8:30 pm"). */
@@ -71,27 +90,27 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
   // a booking still counts for half an hour after its time — the party may be running late
   const nextBooking = (id: string) => booked.find((r) => r.table_id === id && minsOf(r.at_time) >= nowMin - 30);
   const kindOf = (t: T): Exclude<Tab, "all"> => t.stage !== "free" ? "busy" : nextBooking(t.id) ? "reserved" : "free";
-  const counts = { all: pulse.tables.length, free: 0, reserved: 0, busy: 0 } as Record<Tab, number>;
-  pulse.tables.forEach((t) => { counts[kindOf(t)]++; });
+  const counts = { all: tables.length, free: 0, reserved: 0, busy: 0 } as Record<Tab, number>;
+  tables.forEach((t) => { counts[kindOf(t)]++; });
   const [tab, setTab] = useState<Tab>("all");
   const order = (t: T) => kindOf(t) === "busy" ? (t.age > STALE ? -1 : t.mins_left) : kindOf(t) === "reserved" ? 1e4 : 2e4 + t.capacity;
-  const shown = pulse.tables.filter((t) => tab === "all" || kindOf(t) === tab).sort((a, b) => order(a) - order(b));
+  const shown = tables.filter((t) => tab === "all" || kindOf(t) === tab).sort((a, b) => order(a) - order(b));
   const soon = busy.filter((t) => t.age <= STALE).sort((a, b) => a.mins_left - b.mins_left).slice(0, 4);
-  const STAGE_CLS: Record<T["stage"], string> = { free: "st-free", ordered: "st-new", eating: "st-cook", served: "st-eat", billed: "st-bill" };
+  const STAGE_CLS: Record<T["stage"], string> = { free: "st-free", seated: "st-new", ordered: "st-new", eating: "st-cook", served: "st-eat", billed: "st-bill" };
   /* The answer to "how long?", in words a host can say at the door: the free table that fits (the smallest
      one, never one held for a booking), or the wait, or why there is no figure. quote_wait answers null when
      no table seats the party, or when more parties of that size are waiting than there are tables for them. */
-  const fit = pulse.tables.filter((t) => kindOf(t) === "free" && t.capacity >= party).sort((a, b) => a.capacity - b.capacity)[0];
-  const bigEnough = pulse.tables.some((t) => t.capacity >= party);
+  const fit = tables.filter((t) => kindOf(t) === "free" && t.capacity >= party).sort((a, b) => a.capacity - b.capacity)[0];
+  const bigEnough = tables.some((t) => t.capacity >= party);
   const wait = q === undefined ? { tone: "st-new", big: "…", small: "Working out the wait" }
     : q === 0 ? { tone: "st-ready", big: "Seat now", small: fit ? `${fit.name} is free and seats ${fit.capacity}` : "A table that fits is free" }
       : q === null ? { tone: "st-cook", big: bigEnough ? "Long wait" : "No table fits", small: bigEnough ? "More parties this size are waiting than there are tables" : `No single table seats ${party} — put two together` }
         : { tone: "st-new", big: `About ${dur(q)}`, small: `until a table for ${party} is likely free` };
   const add = () => { if (!online) { void enqueue("walkin_add", { name: form.name, phone: form.phone, party }, `Queue · ${form.name}`); toast(`${form.name} added — will send when the line is back`); setForm({ name: "", phone: "" }); return; } start(async () => { const r = await addWalkin(form.name, form.phone, party); if ("error" in r) toast(r.error ?? "Could not add", "err"); else { toast(`${form.name} added · ~${r.quoted_min ?? "?"} min`); setForm({ name: "", phone: "" }); } }); };
-  const callNow = (w: W) => { if (!online) { void enqueue("walkin_set", { id: w.id, status: "called" }, `Queue · called ${w.name}`); return; } start(async () => { await setWalkin(w.id, "called"); }); };
+  const callNow = (w: W) => act(w, "called");
   const glance = [
-    { k: "free", Icon: Armchair, n: String(counts.free), of: `of ${pulse.tables.length}`, label: "Tables free to seat", tone: "var(--color-green)" },
-    { k: "wait", Icon: Users, n: String(queue.length), of: "", label: queue.length === 1 ? "Party waiting" : "Parties waiting", tone: "var(--color-blue)" },
+    { k: "free", Icon: Armchair, n: String(counts.free), of: `of ${tables.length}`, label: "Tables free to seat", tone: "var(--color-green)" },
+    { k: "wait", Icon: Users, n: String(live.length), of: "", label: live.length === 1 ? "Party waiting" : "Parties waiting", tone: "var(--color-blue)" },
     { k: "sit", Icon: Timer, n: dur(pulse.avg_dwell), of: "", label: "A sitting usually takes", tone: "var(--color-orange)" },
   ];
 
@@ -107,7 +126,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             <span className="h-9 w-9 sm:h-11 sm:w-11 shrink-0 rounded-[12px] grid place-items-center" style={{ color: tone, background: `color-mix(in srgb, ${tone} 15%, transparent)` }}><Icon size={19} aria-hidden /></span>
             <div className="min-w-0">
               {/* 2026-10-20 flap numbers: who is waiting breathes, what is free shuffles when it changes; a duration stays words */}
-              {k === "wait" ? <div className="py-1" data-glance-n={n}><FlapBreathe value={queue.length} pad={0} size="xs" tile="clamp(32px, 6vw, 40px)" say={`${n} ${label}`} /></div>
+              {k === "wait" ? <div className="py-1" data-glance-n={n}><FlapBreathe value={live.length} pad={0} size="xs" tile="clamp(32px, 6vw, 40px)" say={`${n} ${label}`} /></div>
                 : k === "free" ? <div className="flex items-end gap-1.5 flex-wrap" data-glance-n={n}><FlapShuffle value={counts.free} pad={0} size="xs" tile="clamp(32px, 6vw, 40px)" bare say={`${n} ${of} ${label}`} /><span className="font-sans text-[12px] sm:text-[13px] font-semibold text-steel">{of}</span></div>
                 : <div className="font-display num text-[22px] sm:text-[28px] leading-none truncate">{n}{of && <span className="font-sans text-[12px] sm:text-[13px] font-semibold text-steel"> {of}</span>}</div>}
               <div className="text-[12px] sm:text-[13px] text-steel mt-1 leading-tight">{label}</div>
@@ -120,7 +139,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
           answer to step 1. Right: who is waiting, each with one big next move. Side by side from lg. */}
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5 mb-8 items-start" data-pulse-top>
         <Card className="min-w-0 !rounded-[24px] @container" data-quote>
-          <Head title="Add a guest who is waiting" sub="Three steps — the wait is worked out for you from your own tables." />
+          <Head icon={UserPlus} title="Add a guest who is waiting" sub="Three steps — the wait is worked out for you from your own tables." />
 
           <Step n={1}>How many people?</Step>
           <div className="grid grid-cols-4 @[34rem]:grid-cols-8 gap-2" role="group" aria-label="Party size">
@@ -155,9 +174,9 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
         </Card>
 
         <Card className="min-w-0 !rounded-[24px]" data-queue>
-          <Head title={<>Waiting now <span className="ml-1 align-middle inline-grid place-items-center min-w-7 h-7 px-2 rounded-full bg-[var(--color-fill-2)] text-[14px] font-bold num">{queue.length}</span></>}
+          <Head icon={Users} tone="var(--color-blue)" title={<>Waiting now <span className="ml-1 align-middle inline-grid place-items-center min-w-7 h-7 px-2 rounded-full bg-[var(--color-fill-2)] text-[14px] font-bold num">{live.length}</span></>}
             sub="First come, first served. Tap Table ready when one frees up, then Seat them." />
-          {queue.length === 0 && (
+          {live.length === 0 && (
             <div className="rounded-[20px] border border-dashed border-[var(--color-separator)] px-5 py-8 text-center">
               <span className="mx-auto h-14 w-14 rounded-[18px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Users size={26} aria-hidden /></span>
               <div className="mt-3 text-[16px] font-bold">Nobody is waiting</div>
@@ -166,41 +185,47 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             </div>
           )}
           <div className="space-y-2.5">
-            {queue.map((w, i) => {
+            {live.map((w, i) => {
               const wa = waHref(w.phone, `Hi ${firstName(w.name)}, your table at ${restaurant} is ready. Please come to the host stand.${slug ? ` ${base}/queue/${slug}?t=${w.token}` : ""}`);
-              const fits = pulse.tables.filter((t) => t.stage === "free" && t.capacity >= w.party).sort((a, b) => a.capacity - b.capacity);
+              const fits = tables.filter((t) => t.stage === "free" && t.capacity >= w.party).sort((a, b) => a.capacity - b.capacity);
+              const called = w.status === "called";
+              /* one guest (2026-10-21, the owner: "messy"): their place and name with the state on the right; the party,
+                 the wait so far and what they were told as chips; then one row — the next move, Call, WhatsApp, Left —
+                 every button the same height. Called turns the card green. */
               return (
-                <div key={w.id} className={cn("@container rounded-[20px] border p-3.5 min-w-0 bg-[var(--color-bg)]", w.status === "called" ? "border-[var(--color-tint)] ring-2 ring-[var(--color-tint)]/30" : "border-[var(--color-separator)]")} data-walkin={w.status}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="h-14 w-14 shrink-0 rounded-[16px] bg-[var(--color-fill)] grid place-items-center leading-none" title={`Party of ${w.party}`}>
-                      <span className="font-display num text-[26px]">{w.party}</span><span className="text-[9.5px] font-bold uppercase tracking-wider text-steel -mt-1.5">{w.party === 1 ? "guest" : "guests"}</span>
+                <div key={w.id} className={cn("@container rounded-[20px] border p-3.5 min-w-0 transition-colors", called ? "border-[color-mix(in_srgb,var(--color-green)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-green)_7%,var(--color-bg))]" : "border-[var(--color-separator)] bg-[var(--color-bg)]")} data-walkin={w.status}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={cn("h-9 w-9 shrink-0 rounded-full grid place-items-center font-display num text-[16px]", called ? "bg-[var(--color-green)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill-2)]")} aria-label={`Number ${i + 1} in line`}>{i + 1}</span>
+                    <span className="font-extrabold text-[17px] truncate min-w-0 flex-1" data-walkin-name>{w.name}</span>
+                    <span className={cn("shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-bold", called ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")} data-walkin-state>
+                      {called ? <><BellRing size={13} aria-hidden /> Called</> : <><Hourglass size={13} aria-hidden /> Waiting</>}
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0"><span className="text-[11.5px] font-bold text-steel num shrink-0">#{i + 1}</span><span className="font-extrabold text-[17px] truncate">{w.name}</span></div>
-                      <div className="mt-0.5 text-[13px] font-semibold text-steel inline-flex items-center gap-1 num whitespace-nowrap"><Clock size={13} aria-hidden />waiting <span className="sr-only">{fmtSince(w.joined_at)}</span><FlapClock since={w.joined_at} hurry={w.quoted_min} late={w.quoted_min != null ? w.quoted_min + 10 : null} size="xs" tile="30px" bare />{w.quoted_min != null && <span className="font-normal"> · told {w.quoted_min} min</span>}</div>
-                    </div>
-                    {w.status === "called" && <span className="svc-chip lone st-ready !min-h-8 !text-[13px] !px-3 shrink-0"><BellRing size={14} aria-hidden /> Called</span>}
+                  </div>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold text-[var(--color-label-2)]">
+                    <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-fill)]"><Users size={14} aria-hidden /><span className="num">{w.party}</span> {w.party === 1 ? "guest" : "guests"}</span>
+                    <span className="inline-flex items-center gap-1.5 h-8 pl-2.5 pr-1 rounded-full bg-[var(--color-fill)] num"><Clock size={14} aria-hidden /><span className="sr-only">waiting {fmtSince(w.joined_at)}</span><FlapClock since={w.joined_at} hurry={w.quoted_min} late={w.quoted_min != null ? w.quoted_min + 10 : null} size="xs" tile="24px" bare /></span>
+                    {w.quoted_min != null && w.quoted_min > 0 && <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-fill)]"><Timer size={14} aria-hidden />told <span className="num">{w.quoted_min}</span> min</span>}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
-                    {w.status === "waiting"
-                      ? <button type="button" className="svc-btn go sm flex-1 !px-3" onClick={() => callNow(w)} data-table-ready><Bell size={18} aria-hidden /><Say w="table_ready" /></button>
-                      : <button type="button" className="svc-btn go sm flex-1" onClick={() => setSeat(seat?.id === w.id ? null : w)} aria-expanded={seat?.id === w.id} data-seat-walkin><Armchair size={18} aria-hidden /><Say w="seat_now" /></button>}
+                    {called
+                      ? <button type="button" className="svc-btn go sm flex-1 !px-3 !min-h-11" onClick={() => setSeat(seat?.id === w.id ? null : w)} aria-expanded={seat?.id === w.id} data-seat-walkin><Armchair size={18} aria-hidden /><Say w="seat_now" /></button>
+                      : <button type="button" className="svc-btn go sm flex-1 !px-3 !min-h-11" onClick={() => callNow(w)} data-table-ready><Bell size={18} aria-hidden /><Say w="table_ready" /></button>}
+                    {!called && <button type="button" onClick={() => setSeat(seat?.id === w.id ? null : w)} aria-label={`Seat ${w.name}`} aria-expanded={seat?.id === w.id} title="Seat at a table" className={cn(ACT, "max-sm:hidden")}><Armchair size={18} aria-hidden /><span className="hidden @[36rem]:inline">Seat</span></button>}
                     {w.phone && <a href={`tel:${w.phone}`} aria-label={`Call ${w.name}`} title="Call" className={ACT}><Phone size={18} aria-hidden /><span className="hidden @[36rem]:inline">Call</span></a>}
                     {/* "Your table is ready" on WhatsApp, with their place-in-line link. Sending it is calling them. */}
-                    {wa && <a href={wa} target="_blank" rel="noreferrer" aria-label={`Tell ${w.name} on WhatsApp their table is ready`} title="Table ready — WhatsApp" onClick={() => { if (w.status === "waiting" && online) start(async () => { await setWalkin(w.id, "called"); }); }}
+                    {wa && <a href={wa} target="_blank" rel="noreferrer" aria-label={`Tell ${w.name} on WhatsApp their table is ready`} title="Table ready — WhatsApp" onClick={() => { if (!called) act(w, "called"); }}
                       className={cn(ACT, "text-[var(--color-green)]")}><MessageCircle size={18} aria-hidden /><span className="hidden @[36rem]:inline">WhatsApp</span></a>}
-                    {w.status === "waiting" && <button type="button" onClick={() => setSeat(seat?.id === w.id ? null : w)} aria-label={`Seat ${w.name}`} aria-expanded={seat?.id === w.id} title="Seat at a table" className={cn(ACT, "max-sm:hidden")}><Armchair size={18} aria-hidden /><span className="hidden @[36rem]:inline">Seat</span></button>}
-                    <button type="button" aria-label={`${w.name} left`} title="Left — take them off the list" className={cn(ACT, "!bg-transparent text-steel hover:!bg-[var(--color-red-2)] hover:text-[var(--color-red)]")}
-                      onClick={() => { if (!online) { void enqueue("walkin_set", { id: w.id, status: "left" }, `Queue · ${w.name} left`); return; } start(async () => { await setWalkin(w.id, "left"); }); }}><X size={18} aria-hidden /><span className="hidden @[36rem]:inline">Left</span></button>
+                    <button type="button" aria-label={`${w.name} left`} title="Left — take them off the list" className={cn(ACT, "text-steel hover:!bg-[var(--color-red-2)] hover:text-[var(--color-red)]")}
+                      onClick={() => act(w, "left")}><X size={18} aria-hidden /><span className="hidden @[36rem]:inline">Left</span></button>
                   </div>
-                  {seat?.id === w.id && <div className="mt-3 pt-3 border-t border-[var(--color-separator)]">
+                  {seat?.id === w.id && <div className="mt-3 pt-3 border-t border-[var(--color-separator)]" data-seat-picker>
                     <div className="text-[13px] font-semibold text-steel mb-2">Pick a free table for {w.party}</div>
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-2">
                       {fits.map((t) => {
                         const r = nextBooking(t.id);
                         return (
-                          <button key={t.id} type="button" className={cn("min-h-14 px-2 py-1.5 rounded-[14px] flex flex-col items-center justify-center leading-tight transition-colors", r ? "bg-[var(--color-orange-2)] hover:brightness-105" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}
-                            onClick={() => { if (!online) { void enqueue("walkin_set", { id: w.id, status: "seated", table: t.id }, `Queue · ${w.name} seated`); setSeat(null); toast(`${w.name} seated at ${t.name}`); return; } start(async () => { await setWalkin(w.id, "seated", t.id); setSeat(null); toast(`${w.name} seated at ${t.name}`); }); }}>
+                          <button key={t.id} type="button" className={cn("min-h-14 px-2 py-1.5 rounded-[14px] flex flex-col items-center justify-center leading-tight transition-colors", r ? "bg-[var(--color-orange-2)] hover:brightness-105" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-seat-table={t.name}
+                            onClick={() => { setSeat(null); act(w, "seated", t); toast(`${w.name} seated at ${t.name}`); }}>
                             <span className="font-display text-[20px]">{t.name}</span>
                             <span className={cn("text-[11.5px] font-semibold", r ? "text-[var(--color-orange)]" : "text-steel")}>{r ? `booked ${clock(r.at_time)}` : `seats ${t.capacity}`}</span>
                           </button>
@@ -213,28 +238,32 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
               );
             })}
           </div>
-          {queue.length > 0 && <p className="mt-3 text-[12px] text-steel flex gap-1.5"><Info size={14} className="shrink-0 mt-px" aria-hidden />Table ready tells them (on WhatsApp too, if they gave a number). ✕ takes off someone who left.</p>}
+          {live.length > 0 && <p className="mt-3 text-[12px] text-steel flex gap-1.5"><Info size={14} className="shrink-0 mt-px" aria-hidden />Table ready tells them (on WhatsApp too, if they gave a number). ✕ takes off someone who left.</p>}
         </Card>
       </div>
 
       {/* the tables that free next — what a host quoting a wait looks at */}
-      <section className="mb-8" data-frees-next>
-        <Head title="Next tables to free up" sub="Use these when a guest asks how long." />
-        {soon.length === 0 ? <p className="text-[15px] text-steel">{busy.length ? "Only tables open for days — bill or close them below." : "Every table is free — seat straight away."}</p> : (
+      {/* the two floor sections are cards like the two above, each head with its icon (2026-10-21, the owner: "messy") */}
+      <Card className="mb-5 min-w-0 !rounded-[24px]" data-frees-next>
+        <Head icon={Timer} tone="var(--color-orange)" title="Next tables to free up" sub="Use these when a guest asks how long." />
+        {soon.length === 0 ? <div className="rounded-[18px] border border-dashed border-[var(--color-separator)] px-4 py-4 flex items-center gap-3" data-frees-empty>
+            <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]">{busy.length ? <AlertTriangle size={18} aria-hidden /> : <Check size={18} aria-hidden />}</span>
+            <p className="text-[14px] text-[var(--color-label-2)] leading-snug">{busy.length ? "Only tables open for days — bill or close them in Every table below." : "Every table is free — seat straight away."}</p>
+          </div> : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {soon.map((t) => (
               <div key={t.id} className={cn("rounded-[20px] border-2 p-3.5 min-w-0", STAGE_CLS[t.stage])} style={{ borderColor: "var(--st)", background: "var(--st-2)" }}>
                 <div className="flex items-center justify-between gap-1"><span className="font-display text-[28px] leading-none truncate">{t.name}</span><span className="text-[13px] font-bold text-steel inline-flex items-center gap-1 shrink-0"><Users size={14} aria-hidden />{t.capacity}</span></div>
                 <div className="mt-2 num text-[16px] font-extrabold" style={{ color: "var(--st-ink)" }}>{t.mins_left <= 0 ? "any minute" : `in ${dur(t.mins_left)}`}</div>
-                <div className="text-[12px] font-semibold text-steel mt-0.5">{STAGE[t.stage][0]}</div>
+                <div className="text-[12px] font-semibold text-steel mt-0.5">{(STAGE[t.stage] ?? ["in use"])[0]}</div>
               </div>
             ))}
           </div>
         )}
-      </section>
+      </Card>
 
-      <section className="min-w-0">
-        <Head title="Every table" sub="Free to seat, held for a booking, or in use — and when each one frees."
+      <Card className="min-w-0 !rounded-[24px]" data-every-table>
+        <Head icon={Armchair} tone="var(--color-green)" title="Every table" sub="Free to seat, held for a booking, or in use — and when each one frees."
           end={<span className="text-[12.5px] font-semibold text-steel num shrink-0 mt-1 hidden sm:block">{busy.length} in use · {pulse.seats_free_now} seats free</span>} />
         {/* Free · Reserved · In use as tabs, each with its count; the tables as tiles you can read
             from across the floor. In use is sorted by when it frees (a forgotten table first). */}
@@ -272,7 +301,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                   <span className="text-[13px] min-w-0"><span className="font-semibold truncate block">{r.guest_name}</span><span className="text-[var(--color-label-2)]">party of {r.party_size}</span></span>
                 </>}
                 {kind === "busy" && <>
-                  <span className="self-start inline-flex items-center h-6 px-2.5 rounded-full text-[11.5px] font-bold bg-[var(--color-fill-2)]" style={{ color: "var(--st-ink)" }}>{STAGE[t.stage][0]}</span>
+                  <span className="self-start inline-flex items-center h-6 px-2.5 rounded-full text-[11.5px] font-bold bg-[var(--color-fill-2)]" style={{ color: "var(--st-ink)" }}>{(STAGE[t.stage] ?? ["in use"])[0]}</span>
                   {stale
                     ? <span className="text-[12.5px] leading-snug text-[var(--color-orange)] font-semibold flex gap-1.5"><AlertTriangle size={14} className="shrink-0 mt-px" aria-hidden />Open {dur(t.age)} — bill or close it</span>
                     : <div>
@@ -289,7 +318,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             {tab === "free" ? "No table is free right now." : tab === "reserved" ? "No table is held for a booking today." : tab === "busy" ? "Every table is free." : "No tables yet — add them in Settings → Tables."}
           </div>}
         </motion.div>
-      </section>
+      </Card>
       {/* Join by QR moved to its own screen (/pulse/qr, 2026-10-20); `listed` stays a prop for the link's wording */}
       {!listed && <p className="mt-6 text-[12.5px] text-steel">Guests cannot join by QR yet — <Link href="/pulse/qr" className="font-semibold text-[var(--color-tint)] inline-flex min-h-11 items-center -my-3">see how to turn it on</Link>.</p>}
     </div>

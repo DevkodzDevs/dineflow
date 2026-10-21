@@ -23,7 +23,10 @@ ticks what they did, with their name and the time, and a missed day shows.
   (*out*, "Expense · Vegetables") and keeps its id, so `shift_expected` and the cash-up already know. A cash
   expense for an earlier day does not (that cash left an earlier drawer). `expense_void` (owner, manager, with a
   reason) puts a linked cash movement back (*in*, "Expense struck out · …"); the row stays, crossed through.
-- The form leads with 16 category chips (`CATEGORIES`) — "Other" opens a text box. GST "in it" is part of the
+- The form leads with 16 category tiles (`CATEGORIES`, `[data-cat-grid]` of `[data-cat-chip]`) — "Other" opens a text box.
+  Since 2026-10-21 (the owner: "messy") each is an icon tile in its own colour (`CAT_ICON`), laid out
+  `repeat(auto-fill,minmax(4.6rem,1fr))`: three across at 360, four on a phone, more on wider screens; the chosen one
+  wears a tint ring. Was 16 pills wrapping into six ragged rows. "Other" stays lit while a typed head is in the box. GST "in it" is part of the
   amount (it may come back as input credit); Reports and Tally take it apart. Excel downloads the listed month.
 - **Checklists**: `checklist_save` (owner, manager, supervisor) keeps up to 40 duties as `text[]`;
   `checklist_tick` writes today's (IST) `checklist_runs` row, keyed by duty position, with who and when, and sets

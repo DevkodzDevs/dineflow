@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check } from "lucide-react";
+import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { cn, Empty, Segmented, useToast } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
@@ -98,19 +98,24 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
       const theirs = !!c.assigned_to && c.assigned_to !== me;
       const canTake = c.status === "pending" && (!theirs || boss);
       const canDone = c.status === "in_progress" && (c.taken_by === me || c.assigned_to === me || boss || !c.taken_by);
-      const who = c.status === "in_progress" ? `${c.taken_by === me ? "You" : c.taken_name ?? "Someone"} · ${fmtSince(c.taken_at ?? c.created_at)}`
-        : c.assigned_to ? `Given to ${c.assigned_to === me ? "you" : c.assigned_name}` : `Waiting · ${fmtSince(c.created_at)}`;
+      const who = c.status === "in_progress" ? `${c.taken_by === me ? "You are on it" : `${c.taken_name ?? "Someone"} is on it`}`
+        : c.assigned_to ? `Given to ${c.assigned_to === me ? "you" : c.assigned_name}` : "Waiting for someone";
+      const since = fmtSince(c.status === "in_progress" ? c.taken_at ?? c.created_at : c.created_at);
       return (
         <motion.div key={t.id} {...motionProps} className={cn("svc-table", stClass("clean"))} data-table-card={t.name} data-state="clean" data-clean={c.status}>
           {callBadge(t)}
-          <div className="flex items-center gap-2 min-w-0 -my-1"><span className="tname">{t.name}</span>{seats}</div>
+          {/* the same build as every other table (2026-10-21, the owner: "messy"): name and seats, the state, who has it,
+              then the foot — how long, and one compact move with + beside it to seat the next party anyway */}
+          <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span>{seats}</div>
           <div className="tstate"><I size={19} aria-hidden /><Say w="cleaning" start /></div>
-          <div className="mt-1 text-[13px] font-semibold text-[var(--color-label-2)] truncate" data-clean-who>{who}</div>
+          <div className="mt-1 text-[13px] font-semibold text-[var(--color-label-2)] truncate num" data-clean-who>{who} · {since}</div>
           <div className="mt-auto pt-2 flex items-center gap-2 min-w-0">
-            {canTake ? <button type="button" disabled={pending} className="svc-btn st sm flex-1 min-w-0 !px-2" data-clean-take onClick={() => start(async () => { const r = await takeJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is yours`); })}><Say w="take_it" /></button>
-              : canDone ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0 !px-2" data-clean-done onClick={() => start(async () => { const r = await finishJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is clean`); })}><Check size={17} aria-hidden /><Say w="clean_done" /></button>
-              : <Link href="/cleaning" className="svc-btn quiet sm flex-1 min-w-0 !px-2 text-[13px]">See who</Link>}
-            <Link href={`/orders/new?table=${t.id}`} className="svc-btn quiet sm !w-11 !px-0 shrink-0" aria-label={`Take order at ${t.name} anyway`} title="Seat the next party now"><Plus size={19} aria-hidden /></Link>
+            <span className="flex items-center gap-1.5 min-w-0 w-full">
+              {canTake ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold bg-[var(--st)] text-[var(--color-bezel)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-take onClick={() => start(async () => { const r = await takeJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is yours`); })}><Sparkles size={15} aria-hidden /><Say w="take_it" /></button>
+                : canDone ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold bg-[var(--color-green)] text-[var(--color-on-tint)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-done onClick={() => start(async () => { const r = await finishJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is clean`); })}><Check size={16} aria-hidden /><Say w="clean_done" /></button>
+                : <Link href="/cleaning" className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center text-[13px] font-bold bg-[var(--color-fill-2)] before:absolute before:-inset-1 before:content-['']">See who</Link>}
+              <Link href={`/orders/new?table=${t.id}`} className="relative h-9 w-9 shrink-0 rounded-full grid place-items-center bg-[var(--color-fill-2)] hover:bg-[var(--color-fill)] before:absolute before:-inset-1 before:content-['']" aria-label={`Take order at ${t.name} anyway`} title="Seat the next party now"><Plus size={17} aria-hidden /></Link>
+            </span>
           </div>
         </motion.div>
       );

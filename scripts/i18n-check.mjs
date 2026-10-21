@@ -31,7 +31,7 @@ const opt = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : nu
 
 /* ── extraction ── */
 const DIRS = ["apps/web/app", "apps/web/components", "apps/web/lib", "packages/shared/src"];
-const EXCLUDE = /apps\/web\/app\/(legal|admin|api|dine|book|pay|record|get|checkin|kiosk|feedback|queue|screen|offline)\/|recipes\.ts$|lib\/(ai|marketing|company|dishPhotos|tally)\.ts$|lib\/i18n\/|components\/receipt\/|apps\/web\/app\/(page|robots|sitemap|manifest|not-found|global-error)\.tsx?$|\.test\.tsx?$|\.d\.ts$/;
+const EXCLUDE = /apps\/web\/app\/(legal|admin|api|dine|book|pay|record|get|checkin|kiosk|feedback|queue|screen|offline)\/|recipes\.ts$|lib\/(ai|marketing|company|dishPhotos|tally)\.ts$|lib\/i18n\/|lib\/assist\/|components\/receipt\/|apps\/web\/app\/(page|robots|sitemap|manifest|not-found|global-error)\.tsx?$|\.test\.tsx?$|\.d\.ts$/;
 const files = [];
 const walk = (d) => { for (const f of readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); if (f.isDirectory()) { if (!/node_modules|\.next/.test(f.name)) walk(p); } else if (/\.(tsx|ts)$/.test(f.name)) { const rel = path.relative(ROOT, p).split(path.sep).join("/"); if (!EXCLUDE.test(rel)) files.push(p); } } };
 DIRS.forEach((d) => walk(path.join(ROOT, d)));

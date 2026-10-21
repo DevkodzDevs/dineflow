@@ -169,21 +169,41 @@ function OwnerInbox({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => voi
   const inView = (i: Item, v: View) => (v === "all" ? true : v === "open" ? i.status !== "resolved" : i.status === v);
   const shown = sorted.filter((i) => inView(i, view) && (kind === "all" || i.kind === kind));
   const unread = items.filter((i) => unreadFor(i, true)).length;
-  const VIEWS: { key: View; label: string }[] = [{ key: "open", label: "Open" }, { key: "new", label: "New" }, { key: "in_progress", label: "Working on it" }, { key: "resolved", label: "Resolved" }, { key: "all", label: "All" }];
+  const VIEWS: { key: View; label: string; short: string }[] = [{ key: "open", label: "Open", short: "Open" }, { key: "new", label: "New", short: "New" }, { key: "in_progress", label: "Working on it", short: "On it" }, { key: "resolved", label: "Resolved", short: "Done" }, { key: "all", label: "All", short: "All" }];
   return (
     <div className="space-y-4" data-voice-inbox>
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Show" data-voice-views>
-        {VIEWS.map((v) => { const n = items.filter((i) => inView(i, v.key)).length; return (
-          <button key={v.key} type="button" aria-pressed={view === v.key} onClick={() => setView(v.key)} data-voice-view={v.key}
-            className={cn("chip [@media(pointer:coarse)]:!min-h-11", view === v.key && "on")}>{v.label}<b className="num opacity-70 ml-1">{n}</b></button>); })}
-        {/* 2026-10-20: new messages breathe until the owner opens them (Flap.tsx) */}
-        {unread > 0 && <span className="ml-auto inline-flex items-center gap-2.5 text-[13px] font-bold text-[var(--color-red)]" data-voice-unread><FlapBreathe value={unread} pad={0} size="xs" tile="26px" say={`${unread} new`} />new</span>}
-      </div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Kind" data-voice-kinds>
-        <button type="button" aria-pressed={kind === "all"} onClick={() => setKind("all")} className={cn("chip [@media(pointer:coarse)]:!min-h-11", kind === "all" && "on")}>Every kind</button>
-        {VOICE_KINDS.map((k) => { const Icon = ICON[k.key]; const n = items.filter((i) => i.kind === k.key && inView(i, view)).length; return (
-          <button key={k.key} type="button" aria-pressed={kind === k.key} onClick={() => setKind(k.key)} data-voice-kind-filter={k.key}
-            className={cn("chip [@media(pointer:coarse)]:!min-h-11", kind === k.key && "on")}><Icon size={14} aria-hidden style={kind === k.key ? undefined : { color: k.hue }} />{k.plural}<b className="num opacity-70 ml-1">{n}</b></button>); })}
+      {/* 2026-10-20 (the owner: "the filters should look modern and fit every screen"): one filter card — the status as
+          five equal segments (count over a short word), the kind as five equal icon tiles — instead of ten chips that
+          wrapped into five rows on a phone. Both rows stay one line from 1920 down to 360. */}
+      <div className="card !p-2 sm:!p-2.5 space-y-2" data-voice-filters>
+        <div className="grid grid-cols-5 gap-1 rounded-[16px] bg-[var(--color-fill)] p-1" role="group" aria-label="Show" data-voice-views>
+          {VIEWS.map((v) => { const n = items.filter((i) => inView(i, v.key)).length; const on = view === v.key; return (
+            <button key={v.key} type="button" aria-pressed={on} onClick={() => setView(v.key)} data-voice-view={v.key} title={v.label}
+              className={cn("!min-h-[52px] min-w-0 rounded-[12px] flex flex-col items-center justify-center gap-0.5 px-1 transition-colors",
+                on ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[var(--shadow-card)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>
+              <span className={cn("num text-[19px] leading-none font-bold", on && v.key === "new" && n > 0 && "text-[var(--color-red)]")}>{n}</span>
+              <span className="text-[11.5px] font-semibold leading-tight truncate max-w-full">{v.short}</span>
+            </button>); })}
+        </div>
+        {/* phones: one swipeable row of pills with the whole word; from sm, five equal tiles */}
+        <div className="grid grid-cols-5 gap-1.5 max-sm:flex max-sm:overflow-x-auto max-sm:snap-x max-sm:-mx-0.5 max-sm:px-0.5 max-sm:pt-2 max-sm:pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Kind" data-voice-kinds>
+          {[{ key: "all" as const, plural: "All kinds", short: "All", hue: "var(--color-label-2)" }, ...VOICE_KINDS.map((k) => ({ key: k.key, plural: k.plural, short: k.plural, hue: k.hue }))].map((k) => {
+            const Icon = k.key === "all" ? MessagesSquare : ICON[k.key]; const on = kind === k.key;
+            const n = items.filter((i) => (k.key === "all" || i.kind === k.key) && inView(i, view)).length;
+            return (
+              <button key={k.key} type="button" aria-pressed={on} onClick={() => setKind(k.key)} data-voice-kind-filter={k.key === "all" ? undefined : k.key} title={k.plural}
+                className={cn("!min-h-[64px] min-w-0 rounded-[14px] flex flex-col items-center justify-center gap-1 px-1 border transition-colors max-sm:!min-h-11 max-sm:shrink-0 max-sm:snap-start max-sm:flex-row max-sm:gap-2 max-sm:pl-1.5 max-sm:pr-3.5 max-sm:rounded-full",
+                  on ? "border-transparent text-[var(--color-label)]" : "border-[var(--color-separator)] text-[var(--color-label-2)] hover:bg-[var(--color-fill)]")}
+                style={on ? { background: `color-mix(in srgb, ${k.hue} 16%, transparent)`, boxShadow: `inset 0 0 0 1.5px color-mix(in srgb, ${k.hue} 55%, transparent)` } : undefined}>
+                <span className="relative grid place-items-center h-7 w-7 rounded-[9px]" style={{ background: `color-mix(in srgb, ${k.hue} 16%, transparent)`, color: k.hue }}>
+                  <Icon size={15} aria-hidden />
+                  {n > 0 && <b className="num absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full grid place-items-center text-[10.5px] bg-[var(--color-label)] text-[var(--color-on-label)]">{n}</b>}
+                </span>
+                <span className="text-[11.5px] font-semibold leading-tight truncate max-w-full max-sm:text-[13px] max-sm:overflow-visible max-sm:whitespace-nowrap">{k.short}</span>
+              </button>);
+          })}
+        </div>
+        {unread > 0 && <div className="flex items-center justify-center gap-2.5 pt-0.5 text-[13px] font-bold text-[var(--color-red)]" data-voice-unread>{/* new messages breathe until the owner opens them (Flap.tsx) */}<FlapBreathe value={unread} pad={0} size="xs" tile="26px" say={`${unread} new`} />new — tap one to read it</div>}
       </div>
       {items.length === 0
         ? <div className="card !p-8 text-center" data-voice-empty><span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><Inbox size={20} aria-hidden /></span>

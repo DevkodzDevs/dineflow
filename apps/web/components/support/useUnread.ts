@@ -15,8 +15,10 @@ const ask = (path: string) => {
   return p;
 };
 
-export function useSupportUnread(path: string) {
+/** `on` is false for everyone but the owner (2026-10-21): only the owner has Help & support, and asking anyway cost every
+ *  other login a database call on every screen change — and loaded the Supabase client into screens that needed none. */
+export function useSupportUnread(path: string, on = true) {
   const [n, setN] = useState(0);
-  useEffect(() => { let live = true; void ask(path).then((v) => { if (live) setN(v); }); return () => { live = false; }; }, [path]);
+  useEffect(() => { if (!on) return; let live = true; void ask(path).then((v) => { if (live) setN(v); }); return () => { live = false; }; }, [path, on]);
   return n;
 }

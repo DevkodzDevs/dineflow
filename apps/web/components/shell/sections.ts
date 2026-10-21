@@ -1,4 +1,4 @@
-import { HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck, QrCode, Tv, MessagesSquare, UserRoundCog, LifeBuoy, type LucideIcon } from "lucide-react";
+import { Armchair, HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck, QrCode, Tv, MessagesSquare, UserRoundCog, LifeBuoy, type LucideIcon } from "lucide-react";
 import { positionByKey, type Role } from "@dineflow/shared";
 
 /** A menu row. `key` names it (React, the phone bar's pins); `mod` is the module whose tick opens it when that is
@@ -40,6 +40,9 @@ export const ITEMS: Section[] = [
   { key: "tax", href: "/tax", label: "Tax & GST", Icon: Landmark },
   { key: "staff", href: "/staff", label: "Staff", Icon: Users },
   { key: "settings", href: "/settings", label: "Settings", Icon: Settings },
+  // 2026-10-21: every table and everything about one — a screen of the Orders module (last here: the phone bar fills
+  // from this order, and its defaults must not move); the menu shows it first under Guests & tables
+  { key: "tables", mod: "orders", href: "/tables", label: "Tables", Icon: Armchair },
 ];
 
 /**
@@ -112,6 +115,38 @@ export const endFor = (role: Role): Section[] => role === "owner"
  */
 const MY_DAY: Section = { key: "home", href: "/home", label: "My day", Icon: Sun };
 export const myDayFor = (role: Role): Section | null => (role === "owner" || role === "manager" ? null : MY_DAY);
+
+/**
+ * The menu's groups and their headings (2026-10-21, the owner: "rearrange every menu under a heading that suits it").
+ * One list for the sidebar and the phone's More sheet; each group lists its rows in the order shown. "Dining" had held
+ * eleven unrelated rows (tables, kitchen, money, the menu), "Manage" and "Insights & control" a mix of money, people and
+ * reports. A row lands where its job is; who sees it does not change (`modulesFor` and `freshFor` still decide). The
+ * first group has no heading (the day at a glance); Settings and the person's own rows stay the last group (`endFor`).
+ * `ITEMS`' own order is untouched — the phone bar fills from it.
+ */
+const MENU_GROUPS: { title: string | null; keys: string[] }[] = [
+  { title: null, keys: ["dashboard", "tomorrow", "scan"] },
+  { title: "Rooms & stays", keys: ["frontdesk", "rooms", "housekeeping", "guests", "facilities"] },
+  { title: "Guests & tables", keys: ["tables", "reservations", "pulse", "pulse-qr", "customers"] },
+  { title: "Orders & kitchen", keys: ["orders", "online-orders", "kitchen", "order-board", "billing"] },
+  { title: "Menu & stock", keys: ["menu", "inventory"] },
+  { title: "Team & work", keys: ["staff", "tasks", "cleaning", "work", "work-records", "labour", "payroll"] },
+  { title: "Money", keys: ["invoices", "expenses", "controls", "tax"] },
+  { title: "Reports & insights", keys: ["reports", "intelligence", "audit"] },
+  { title: "Business & growth", keys: ["chain", "channels", "proof", "neighbours"] },
+];
+/** The rows this person may open, under their headings: `rows` is everything they hold (modules and "fresh" links,
+ *  Settings left to the last group). A row no group names still shows, in a last "More" group, so a new section is
+ *  never lost from the menu. Empty groups are left out. */
+export const menuGroups = (rows: Section[], lead: Section[] = []): { title: string | null; items: Section[] }[] => {
+  const byKey = new Map(rows.filter((r) => r.key !== "settings").map((r) => [r.key, r]));
+  const placed = new Set<string>();
+  const out = MENU_GROUPS.map((g) => ({ title: g.title, items: g.keys.flatMap((k) => { const r = byKey.get(k); if (!r) return []; placed.add(k); return [r]; }) }));
+  out[0].items = [...lead, ...out[0].items];
+  const loose = [...byKey.values()].filter((r) => !placed.has(r.key));
+  if (loose.length) out.push({ title: "More", items: loose });
+  return out.filter((g) => g.items.length);
+};
 
 /** The module a section's link needs: its own key, or the section it lives inside. */
 export const modOf = (s: Section) => s.mod ?? s.key;

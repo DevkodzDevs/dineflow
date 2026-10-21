@@ -242,6 +242,9 @@ one), `split_order` (one into two) — all RPCs, all atomic.
   table is a merge). **Room** already lists only checked-in guests (`bookings.status = 'checked_in'`) — never a room
   that is only booked, never an empty one.
 
+- **The till's running-orders "x min ago" carries `suppressHydrationWarning`** (2026-10-22): rendered on the server and
+  again on the device, it can straddle a minute, and React logged #418 and redrew (`check51.mjs` caught it once).
+
 ## Verify
 
 ```
@@ -295,3 +298,45 @@ node fit.mjs             # nine dishes on the ticket at 7 real screen sizes (not
   signed-in token. It goes through `calmRefresher` (lib/liveRefresh.ts) and sets the token before joining.
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. The phone cart bar's count (`[data-cart-count]`) and each dish photo's `.qty` (now `.qty.qty-flap`, `[data-qty]`) are mini flap tiles that flip as dishes are added.
+
+- **The till's dish cards end the same at every width (2026-10-21, the owner: "the desktop like the phone"; "some have
+  Choose, some nothing").** The price with *from* above it (on a desktop the pill had squeezed it to "from …"), and one
+  compact pill: **Choose** for a dish with sizes or add-ons, **+ Add** (green tint) for a plain one; on the ticket, the
+  − / + stepper. The name keeps two lines (`min-h-[2.75em]`), so a row's prices line up. Below sm the whole card still
+  adds. Hooks `[data-choose]`, `[data-add]`, `[data-tile-price]`. shots39: 16 cards at 412 and 1440 — every one a pill
+  or stepper, no price cut, prices of each row level.
+
+- **The dish card, third pass (2026-10-21 — the owner: "not satisfied on desktop, laptop and iPad"; a phone showed
+  prices cut at a card's foot).** The foot row is gone. The move sits on the photo's lower edge, centred: **ADD** (or
+  **CHOOSE** for sizes / add-ons) as an outlined pill on the card colour, **− / +** once the dish is on the ticket (the
+  count stays on the photo, `FlapMini`). It is `.act`, placed by CSS at `top: calc(100cqw * 10 / 16)` — the card is a
+  size container (`container-type: inline-size`) and the photo is 16:10, so the edge is 62.5cqw down at any width.
+  Under the photo: veg mark and name (two lines at most), then the price (`from` before it), the prep time and
+  *customisable* (`[data-tile-price]`; `page.tsx` now reads `prep_minutes`). The whole card adds at every width
+  (the dish button's ::after); the pill and the stepper stand above it (z-2). The photo's flags (*Pantry short*, *n
+  left*, *Combo*) moved to its top-left. shots40: 412 / 834 / 1194 / 1440, dark and paper — every move on its photo
+  edge (±3px) and inside the card, no price cut; Add becomes − / + on the same edge.
+
+- **A dish name is one line** (2026-10-21, the owner: "no double lines"): the veg mark moved down beside the price, so the
+  name has the full width (`[data-tile-name]`), set a size down when long (≤ 16 letters 15px, ≤ 22 13.5px, else 12.5px) —
+  "Paneer butter masala" fits at 1440 — and past that an ellipsis with the whole name on hover (`title`). shots40: no name
+  on two lines and none cut, at 412 / 834 / 1194 / 1440.
+
+- **The cleaning table card on Orders** (2026-10-21, the owner: "messy"): built like the other table cards — name and
+  seats (no negative margin; the name had touched the dashed edge), the state, *Waiting for someone · 2h* / *You are on it
+  · 5 min* / *Given to …*, then one row: the move (*I'll take it*, *Done*, or *See who*) filling it and a round + to seat
+  the next party anyway. On a two-across phone card the time, the move and + had not fitted one row and + stood outside
+  the card. shots41: every control inside the card at 412 and 1440.
+
+- **Tables — a screen of its own (2026-10-21, the owner: "one more menu, Tables — click one and show its details
+  completely").** `/tables` (`app/(app)/tables/page.tsx` · `TablesClient.tsx`), the menu's first row under *Guests &
+  tables* (`ITEMS` key `tables`, `mod: "orders"` — whoever holds Orders sees it; appended last in `ITEMS` so the phone
+  bar's defaults do not move; `ROUTE_MODULE.tables = "orders"`). Four tiles (free of all, in use with seats, bookings
+  today, taken at tables today); chips by state (Free · In use · Bill out · Reserved · Cleaning) and a zone select; the
+  tables by zone (`[data-table-row]`, `[data-table-state]`) — a state is the open order (an unpaid bill = *Bill out*), else
+  an open cleaning job, else a booking still to come today (half an hour's grace), else free. A tap opens the table's
+  Sheet (`[data-table-detail]`): State · Zone · Seats · Table ordering; **Now** — order no., guest, since when and who
+  took it, each item with its state and amount, the running total or the bill out; **Cleaning**; **Bookings today** on
+  the table (time, guest, party, state, Call); **Today at this table** — bills, takings, the average sitting (paid −
+  order start) and the bills; the table's **ordering QR**; then *Take order* / *Add items* and *Bill* as the Sheet's
+  pinned footer. Every query is this property's by id. Live through `useLive`. shots45: 13 of 13 at 1440 / 834 / 412.

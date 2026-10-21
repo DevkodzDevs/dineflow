@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, Images, ImagePlus, ChevronDown, Wrench, Ban } from "lucide-react";
+import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, Images, ImagePlus, ChevronDown, Wrench, Ban, Loader2 } from "lucide-react";
 import { DishPhotoPicker, type DishPhoto } from "@/components/menu/DishPhotoPicker";
 import { DishGlyph, glyphFor } from "@/components/menu/DishGlyph";
 import { motion, AnimatePresence } from "framer-motion";
@@ -98,16 +98,25 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
         </>} />
       {/* the owner's tools, folded: they are used once a week, the switch on each dish every service */}
       {tools && (
-        <div className="-mt-2 flex flex-wrap gap-2" data-tools>
-          <Button variant="outline" onClick={() => setCatSheet(true)} title="Add, rename or remove categories"><Plus size={16} /> Categories</Button>
-          <Button variant="outline" onClick={() => setGroupsSheet(true)}><SlidersHorizontal size={16} /> Add-ons</Button>
-          <Button variant="outline" onClick={() => setImporting(true)} title="Photograph a printed menu and add its dishes"><Camera size={16} /> From photo</Button>
-          <Button variant="outline" onClick={() => setRecipesOpen(true)} title="Which foods take what from the pantry" data-recipes><FlaskConical size={16} /> Recipes</Button>
-          <Button variant="outline" loading={finding} data-find-photos title="Find a photo for every dish that has none" onClick={async () => {
-            setFinding(true);
-            try { const r = await autoPhotos(); if ("error" in r) toast(r.error!, "err"); else toast(r.found ? `Photos added to ${r.found} dish${r.found === 1 ? "" : "es"}${r.left ? ` · ${r.left} to choose by hand` : ""}` : r.left ? `No sure match for ${r.left} — open a dish to choose` : "Every dish has a photo"); }
-            finally { setFinding(false); }
-          }}><Images size={16} /> Find photos</Button>
+        /* five even tiles in a panel — icon, name, what it is for — two across on a phone, five on a desktop; were
+           five outline buttons wrapping in uneven rows (2026-10-21, the owner) */
+        <div className="-mt-2 rounded-[22px] p-2 bg-[var(--color-fill)] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2" data-tools>
+          {([
+            { k: "cats", Icon: Plus, hue: "--color-tint", label: "Categories", sub: "Add, rename, remove", on: () => setCatSheet(true) },
+            { k: "addons", Icon: SlidersHorizontal, hue: "--color-blue", label: "Add-ons", sub: "Extras and choices", on: () => setGroupsSheet(true) },
+            { k: "photo", Icon: Camera, hue: "--color-violet", label: "From photo", sub: "Read a printed menu", on: () => setImporting(true) },
+            { k: "recipes", Icon: FlaskConical, hue: "--color-orange", label: "Recipes", sub: "What each dish uses", on: () => setRecipesOpen(true) },
+            { k: "photos", Icon: Images, hue: "--color-cyan", label: finding ? "Finding…" : "Find photos", sub: "For dishes with none", on: async () => {
+              if (finding) return; setFinding(true);
+              try { const r = await autoPhotos(); if ("error" in r) toast(r.error!, "err"); else toast(r.found ? `Photos added to ${r.found} dish${r.found === 1 ? "" : "es"}${r.left ? ` · ${r.left} to choose by hand` : ""}` : r.left ? `No sure match for ${r.left} — open a dish to choose` : "Every dish has a photo"); }
+              finally { setFinding(false); }
+            } },
+          ] as const).map(({ k, Icon, hue, label, sub, on }) => (
+            <button key={k} type="button" onClick={() => void on()} disabled={k === "photos" && finding} data-tool={k} {...(k === "recipes" ? { "data-recipes": "" } : k === "photos" ? { "data-find-photos": "" } : {})}
+              className="min-w-0 !min-h-[4.5rem] rounded-[16px] bg-[var(--color-bg-2)] hover:bg-[var(--color-bg-3)] active:scale-[.98] transition flex items-center gap-3 px-3 py-2.5 text-left shadow-feather disabled:opacity-60">
+              <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center" style={{ background: `color-mix(in srgb, var(${hue}) 16%, transparent)`, color: `var(${hue})` }} aria-hidden>{k === "photos" && finding ? <Loader2 size={18} className="animate-spin" /> : <Icon size={18} />}</span>
+              <span className="min-w-0 leading-tight"><span className="block text-[14px] font-bold truncate">{label}</span><span className="block text-[11.5px] text-steel leading-snug line-clamp-2 mt-0.5">{sub}</span></span>
+            </button>))}
         </div>
       )}
       {/* the categories as chips with their picture and how many dishes; Sold out last, in red */}

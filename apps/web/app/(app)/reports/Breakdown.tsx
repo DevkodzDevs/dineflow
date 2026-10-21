@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { Card, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 
@@ -34,17 +35,8 @@ export function BreakdownView({ d }: { d: Breakdown | null }) {
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-[1.4fr_minmax(0,1fr)]">
         <Card>
-          <div className="flex items-baseline justify-between gap-3 mb-3"><h3 className="text-xl">Sales by hour</h3><span className="text-xs text-steel">when the money comes in · {d.days} day{d.days === 1 ? "" : "s"}</span></div>
-          {lit.length === 0 ? <p className="text-sm text-steel">No paid bills in this window.</p> : (
-            <div className="flex items-stretch gap-1 h-40">
-              {day.map((x) => (
-                <div key={x.h} className="flex-1 flex flex-col justify-end items-center gap-1 min-w-0" title={`${hh(Number(x.h))} · ${formatINR(Number(x.rev))} · ${x.bills} bills`}>
-                  <div className={cn("w-full rounded-t-md transition-all", Number(x.rev) === maxHour ? "bg-saffron" : "bg-ink/70")} style={{ height: `${Math.max(2, (Number(x.rev) / maxHour) * 100)}%` }} />
-                  <span className="text-[9px] text-steel num truncate">{hh(Number(x.h))}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 mb-3"><h3 className="text-xl">Sales by hour</h3><span className="text-xs text-steel">when the money comes in · {d.days} day{d.days === 1 ? "" : "s"}</span></div>
+          {lit.length === 0 ? <p className="text-sm text-steel">No paid bills in this window.</p> : <HourChart day={day} maxHour={maxHour} />}
         </Card>
         <Card>
           <h3 className="text-xl mb-3">By order type</h3>
@@ -84,6 +76,51 @@ export function BreakdownView({ d }: { d: Breakdown | null }) {
             {d.addons.length > 0 && <div className={cn(d.variants.length > 0 && "mt-3 pt-3 border-t border-line")}><div className="text-xs uppercase text-steel mb-1.5">Add-ons</div><ul className="text-sm space-y-1">{d.addons.slice(0, 6).map((a) => <li key={a.name} className="flex justify-between"><span className="truncate">+ {a.name}</span><span className="num">{a.n} · {formatINR(Number(a.rev))}</span></li>)}</ul></div>}
           </>)}
         </Card>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The hours as thin bars on one baseline, one hue: the hour you are reading full colour, the rest a tint of it, an hour
+ * with nothing a dot. Labels only on the clock's 3-hour marks (two-hour when the day is short) — 24 labels in a phone's
+ * width ran into one another. Tap, hover or tab to a bar and the line above reads it; it starts on the busiest hour.
+ */
+function HourChart({ day, maxHour }: { day: { h: number; rev: number; bills: number }[]; maxHour: number }) {
+  const peak = day.reduce((a, x) => (Number(x.rev) > Number(a.rev) ? x : a), day[0]);
+  const [sel, setSel] = useState<number>(Number(peak.h));
+  const cur = day.find((x) => Number(x.h) === sel) ?? peak;
+  const step = day.length <= 8 ? 1 : day.length <= 14 ? 2 : 3;
+  const isPeak = Number(cur.h) === Number(peak.h);
+  return (
+    <div data-hour-chart>
+      <div className="flex items-end justify-between gap-3 mb-6 min-h-[2.75rem]" aria-live="polite">
+        <div className="min-w-0">
+          <div className="text-[12px] font-semibold text-steel num">{hh(Number(cur.h))} – {hh((Number(cur.h) + 1) % 24)} · {cur.bills} bill{Number(cur.bills) === 1 ? "" : "s"}</div>
+          <div className="font-display num text-[22px] leading-tight" data-hour-readout>{formatINR(Number(cur.rev))}</div>
+        </div>
+        {isPeak ? <span className="shrink-0 rounded-full px-2.5 h-7 inline-flex items-center text-[12px] font-bold bg-[color-mix(in_srgb,var(--color-tint)_16%,transparent)] text-[var(--color-tint)]">Busiest hour</span>
+          : <button type="button" onClick={() => setSel(Number(peak.h))} className="shrink-0 rounded-full px-3 !min-h-9 text-[12px] font-bold bg-[var(--color-fill)] num">Busiest · {hh(Number(peak.h))}</button>}
+      </div>
+      <div className="relative h-36" role="group" aria-label="Sales by hour" onPointerLeave={(e) => { if (e.pointerType === "mouse") setSel(Number(peak.h)); }}>
+        {/* the top line is the busiest hour; the baseline is nothing */}
+        <div className="absolute inset-x-0 top-0 border-t border-dashed border-[var(--color-separator)]" aria-hidden />
+        <span className="absolute right-0 -top-2 -translate-y-full text-[10.5px] text-steel num" aria-hidden>{formatINR(maxHour, { whole: true })}</span>
+        <div className="absolute inset-x-0 bottom-0 border-t border-[var(--color-separator)]" aria-hidden />
+        <div className="absolute inset-0 flex items-stretch">
+          {day.map((x) => { const h = Number(x.h), v = Number(x.rev), on = h === Number(cur.h); return (
+            <button key={h} type="button" aria-pressed={on} aria-label={`${hh(h)} · ${formatINR(v)} · ${x.bills} bills`} data-hour={h}
+              onClick={() => setSel(h)} onFocus={() => setSel(h)} onPointerEnter={(e) => { if (e.pointerType === "mouse") setSel(h); }}
+              className="relative flex-1 min-w-0 h-full flex items-end justify-center !min-h-0 rounded-md focus-visible:outline-none focus-visible:bg-[var(--color-fill)]">
+              {on && <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-[var(--color-separator)]" aria-hidden />}
+              {v > 0
+                ? <span className="relative w-[62%] max-w-[18px] rounded-t-[4px] transition-[height,background-color] duration-200" style={{ height: `${Math.max(4, (v / maxHour) * 100)}%`, background: on ? "var(--color-tint)" : "color-mix(in srgb, var(--color-tint) 34%, transparent)" }} />
+                : <span className="relative mb-[-2px] h-1 w-1 rounded-full bg-[var(--color-separator)]" />}
+            </button>); })}
+        </div>
+      </div>
+      <div className="flex mt-1.5" aria-hidden>
+        {day.map((x) => <span key={x.h} className={cn("flex-1 min-w-0 flex justify-center text-[10.5px] num whitespace-nowrap overflow-visible", Number(x.h) === Number(cur.h) ? "font-bold text-[var(--color-label)]" : "text-steel")}>{Number(x.h) === Number(cur.h) || (Number(x.h) % step === 0 && (step === 1 || Math.abs(Number(x.h) - Number(cur.h)) > 1)) ? hh(Number(x.h)) : ""}</span>)}
       </div>
     </div>
   );

@@ -17,7 +17,7 @@ export default async function HK() {
     s.from("bookings").select("room_id, check_out, guests(full_name, vip)").eq("status", "checked_in"),
     s.from("housekeeping_tasks").select("id, kind, done_at, done_by, taken_at, rooms(number)").eq("status", "done").order("done_at", { ascending: false }).limit(10),
     // who has each task, and who a supervisor can give one to (0111)
-    s.from("profiles").select("id, full_name, role, position_title").eq("is_active", true).order("full_name"),
+    s.from("profiles").select("id, full_name, role, position_title, department, position").eq("is_active", true).order("full_name"),
   ]);
   const canInspect = ["owner", "manager", "supervisor", "supervisor_2"].includes(session.profile.role);
   const inspectRule = !!session.restaurant.hk_inspect_required;

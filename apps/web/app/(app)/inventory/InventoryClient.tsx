@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Plus, Trash2, Pencil, PackagePlus, AlertTriangle, History, ScanText, Loader2, Camera, CheckCircle2, Droplets, Truck, Search, ScanBarcode, Milk, Drumstick, Fish, Carrot, Apple, Wheat, CupSoda, Package, SprayCan, CircleCheck, CircleAlert, type LucideIcon } from "lucide-react";
+import { Boxes, Receipt, ClipboardList, Store, BookOpen, Plus, Trash2, Pencil, PackagePlus, AlertTriangle, History, ScanText, Loader2, Camera, CheckCircle2, Droplets, Truck, Search, ScanBarcode, Milk, Drumstick, Fish, Carrot, Apple, Wheat, CupSoda, Package, SprayCan, CircleCheck, CircleAlert, type LucideIcon } from "lucide-react";
 import { Button, Card, Field, Sheet, Empty, Pill, cn, FlapShuffle } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
@@ -16,6 +16,7 @@ type Led = { id: string; ingredient_id: string; qty: number; reason: string; sub
 type Pur = { id: string; supplier: string | null; invoice_no: string | null; total: number; purchased_at: string; po_id?: string | null };
 type IngRow = Ing & { barcode?: string | null; category?: string | null; brand?: string | null };
 type Tab = "stock" | "purchases" | "orders" | "suppliers" | "wastage" | "ledger";
+const TAB_ICON: Record<Tab, LucideIcon> = { stock: Boxes, purchases: Receipt, orders: ClipboardList, suppliers: Store, wastage: Trash2, ledger: BookOpen };
 type Lvl = "out" | "low" | "ok";
 /* the pantry's three colours (globals.css SIMPLE SERVICE): finished red, running low amber, enough green */
 const LVL: Record<Lvl, { w: Word; cls: string; Icon: LucideIcon; order: number }> = {
@@ -75,14 +76,20 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           <Link href="/inventory/leaks" className="svc-btn quiet sm"><Droplets size={17} aria-hidden /> Leak finder</Link>
           <button type="button" className="svc-btn go sm !px-5" onClick={() => setPurchase(true)} data-goods-arrived><Truck size={19} aria-hidden /><Say w="goods_arrived" /></button>
         </>} />
-      <div className="toolbar"><div className="toolbar-group">
-        {TABS.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={cn("rounded-full px-4 h-10 text-[14px] font-bold transition flex items-center gap-1.5", tab === t.key ? "bg-ink text-on-label" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>{t.label}{t.badge ? <span className={cn("num text-[11px] rounded-full px-1.5", tab === t.key ? "bg-white/20" : "bg-saffron/20 text-saffron")}>{t.badge}</span> : null}</button>
-        ))}
-        </div><div className="toolbar-group toolbar-end">
-          <Button variant="outline" className="[@media(pointer:coarse)]:!min-h-11" onClick={() => setEditing({ unit: "kg", reorder_level: 0, cost_per_unit: 0 })}><Plus size={16} /> Ingredient</Button>
-        </div>
+      {/* the six parts as one switch: a 3 × 2 grid of icon tiles on a phone, one row from sm — they were six pills
+          in a row that ran off the screen (2026-10-21). + Ingredient belongs to Stock, so it shows there only. */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 p-1 rounded-2xl bg-[var(--color-fill)]" role="tablist" aria-label="Pantry" data-pantry-tabs>
+        {TABS.map((t) => { const I = TAB_ICON[t.key]; const on = tab === t.key; return (
+          <button key={t.key} type="button" role="tab" aria-selected={on} onClick={() => setTab(t.key)} data-pantry-tab={t.key}
+            className={cn("relative min-w-0 !min-h-[3.5rem] sm:!min-h-11 rounded-xl px-1.5 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-[12.5px] sm:text-[13.5px] font-bold transition-colors",
+              on ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-feather" : "text-[var(--color-label-2)] hover:bg-[var(--color-fill)]")}>
+            <I size={17} className={cn("shrink-0", on && "text-[var(--color-tint)]")} aria-hidden /><span className="truncate max-w-full">{t.label}</span>
+            {t.badge ? <span className="num absolute top-1 right-1.5 sm:static min-w-[1.25rem] h-5 px-1 rounded-full grid place-items-center text-[11px] bg-[color-mix(in_srgb,var(--color-orange)_20%,transparent)] text-[var(--color-orange)]">{t.badge}</span> : null}
+          </button>); })}
       </div>
+      {tab === "stock" && <div className="flex justify-end">
+        <Button variant="outline" className="[@media(pointer:coarse)]:!min-h-11 max-sm:w-full" onClick={() => setEditing({ unit: "kg", reorder_level: 0, cost_per_unit: 0 })}><Plus size={16} /> Ingredient</Button>
+      </div>}
 
       {tab === "stock" && (ingredients.length === 0 ? (
         <Empty title="Pantry is empty" hint="Add ingredients like rice, oil, chicken, paneer. Then record a purchase or an opening balance." />

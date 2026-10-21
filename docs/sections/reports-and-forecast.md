@@ -176,3 +176,34 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
   when data arrives. They were blank cards, which read as broken (2026-10-12 whole-app review).
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Pulse: Parties waiting breathes, Tables free to seat shuffles (`[data-glance-n]`); "Seat now" spells the table (`FlapSpell`); a quoted wait under 100 min shows its minutes on tiles; each waiting party's time is a ticking `FlapClock` (amber at the quoted minutes, red 10 after).
+
+- **Sales by hour, redesigned (2026-10-21 — the owner: "messy").** With bills at midnight and 11pm the window was all 24
+  hours and every bar had its label — "12am1am2am…" ran into one another on a phone. Now (`HourChart` in `Breakdown.tsx`,
+  `[data-hour-chart]`): one hue, the hour being read full tint and the rest a tint of it, an empty hour a dot on the
+  baseline; labels only on the clock's 3-hour marks (2-hour when the day has ≤ 14 hours, every hour when ≤ 8) plus the
+  chosen hour, with its neighbours dropped so they never touch; a dashed top line with the busiest hour's value. Tap,
+  hover or tab to a bar (`[data-hour]`) and the line above reads it (`[data-hour-readout]`: hour range, bills, ₹); it
+  starts on the busiest hour, and a *Busiest · 8pm* pill jumps back. shots34 checks no two labels touch at 360–1440.
+
+- **Proof of business — the sharing head (2026-10-21).** *Who you have shared it with* was a 2xl title wrapping to two
+  lines beside a squeezed *New link* whose plus rendered as a dot. Now (`[data-links-head]`): a link icon, the title at 21px
+  with what a link is under it, and *New link* (`[data-new-link]`, `svc-btn go`) beside them — its own full row on a phone.
+  No links yet is a dashed box with Bank / Supplier credit / Landlord shown as who a link is for (`[data-links-empty]`).
+
+- **Pulse, the owner's 2026-10-21 round.**
+  - **Seat now left the table "free" (a real bug).** `walkin_set … 'seated'` marks the table occupied, but `table_pulse`
+    and `table_pulse_for` read a table's stage from its open order only, so a seated party with nothing ordered stayed
+    Free, was offered to the next party, and `quote_wait` counted it free now. **Migration 0131** adds stage
+    **seated**: no open order, a walk-in seated there in the last 3 hours, and no order started on that table since (an
+    order takes over; once it is paid the table is free again). `free_now` / `seats_free_now` count stage free only.
+    `dining_tables.status` is not used — orders closed without a bill leave it 'occupied'. `dry131.cjs`: 6 of 6,
+    rolled back. **0131 is written, not applied: apply it only after this code is live** — the screen before this
+    round read `STAGE[t.stage][0]` and throws on a stage it does not know. Now every lookup falls back to "in use".
+  - **What the host does shows at once.** Table ready turns the card Called, Seat now and Left take it off, and the
+    seated table reads *just seated* — local state (`mine`) ahead of the write; a failed write puts it back.
+  - **Waiting cards redesigned** (the owner: "messy"): place number, name and a Waiting / Called chip on one line;
+    party, the wait (`FlapClock`) and what they were told (only when > 0) as chips; one row of 44px actions — the next
+    move, Seat (from sm), Call, WhatsApp, Left. Called turns the card green. `[data-walkin-name]`, `[data-walkin-state]`,
+    `[data-seat-table]`.
+  - **Next tables to free up** and **Every table** are cards like the two above, each head with an icon tile (`Head`
+    takes `icon` and `tone`); "nothing freeing" is a dashed empty state. shots39: 16 of 16.

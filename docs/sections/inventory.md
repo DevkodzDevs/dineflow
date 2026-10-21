@@ -115,3 +115,32 @@ Then receive a small PO on a demo property and confirm the ledger and the level 
   low item carries a dot in its state's colour (`--st`) on the corner; the state itself is still the pill and the bar.
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Finished / Running low / Enough are shuffling flap counts (`[data-level-n]`), red / amber / green when they hold anything.
+
+- **The pantry switch and purchase orders, redesigned (2026-10-21 — the owner: "messy").**
+  - **A master saw every property's purchase orders, with no ingredient names.** `purchase_orders`, `purchase_order_items`
+    and `suppliers` let a platform admin read every property (RLS `… OR is_platform_admin()`); `ingredients` does not. So
+    the owner, signed in as master and acting as a resort, got all 20 orders ("18 waiting" = 8 drafts + 10 sent, across
+    two properties) and lines reading *10 —, 15 —*. `page.tsx` now awaits the session and asks every list for
+    `restaurant_id = session.restaurant.id`. Other pages that lean on RLS alone may show the same to a master.
+  - **The switch** (`[data-pantry-tabs]`, `[data-pantry-tab]`): a 3 × 2 grid of icon tiles on a phone, one row of six from
+    `sm` (were six pills running off the screen); the Orders count is a badge. *+ Ingredient* shows on Stock only.
+  - **Purchase orders** (`[data-po]`, `[data-po-status]`): a head of three counts — Drafts, Sent, On order (₹) — and
+    New order; then a card each, the way an OTA card is: status icon, supplier, PO no · lines · date, the total and a
+    status badge; the lines as chips (quantity + unit, then the name; four shown, *+n more*; *got n* when received short);
+    expected / received date, and *Back to draft* on a sent one; the actions as the footer strip (`CardStrip`: Send or
+    Resend on WhatsApp — a draft becomes sent — · Edit · Cancel · **Receive**). Open orders first, then received, cancelled
+    last (`PO_RANK`). shots35 checks names on every line, strips on open ones only, 360–1440.
+  - **Cards across, the owner's choice (2026-10-21):** from `lg` a 2 · 3 · 4 switch (`[data-po-cols]`, `Segmented`) beside
+    New order; **3 unless chosen**, kept on that device (`localStorage` `df-po-cols`, read after mount, every access in
+    try/catch). A tablet shows 2 across, a phone 1, and neither shows the switch. At 4 across a card under 19rem drops its
+    status icon and the total goes a size down (`@max-[19rem]`), so the supplier's name keeps its room. shots36: 18 of 18.
+  - **No empty card (2026-10-21, the owner: "this empty card design").** Cards in a row stretch to the tallest, so a
+    one-line order showed a blank gap and the closed ones had no foot. Now: the lines are a list (name · qty unit · ₹, three
+    shown, *+n more*) in a soft panel (`[data-po-lines]`) that takes the spare height, with *Items · n* and *Back to draft*
+    on its head; under it the track (`PoTrack`, `[data-po-track]`): Drafted → Sent → Due / Received, Cancelled in red, each
+    with its date; and **every card has the footer strip** — received and cancelled ones get **Order again**, which opens the
+    form on a copy with no id (supplier, note and lines kept, no date) and saves a new draft (`savePo` sends `po?.id ||
+    null`). A one-action strip keeps the four-action strip's height (`[&>*]:!h-14 @[26rem]:[&>*]:!h-11`), so the strips
+    of a row line up. Only the body of a cancelled card is dimmed, not its Order again. shots37: 8 of 8 (strips level at 2,
+    3 and 4 across, Order again saved PO-5 as a draft). A probe that inserts POs by number must move `counters` (`po`) on, or
+    the next real order collides with PO-1.

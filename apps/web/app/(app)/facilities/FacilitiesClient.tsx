@@ -1,8 +1,9 @@
 "use client";
 import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Plus, Waves, Flower2, Tent, Pencil, Clock, Users, CalendarPlus } from "lucide-react";
+import { Plus, Waves, Flower2, Tent, Pencil, Clock, Users, CalendarPlus, X } from "lucide-react";
 import { Button, Sheet, Field, Card, Pill } from "@/components/ui";
+import { Rail } from "@/components/ui/Rail";
 import { formatINR } from "@/lib/format";
 import { saveFacility, bookFacility, cancelFacilityBooking } from "./actions";
 
@@ -25,7 +26,15 @@ export function FacilitiesClient({ facilities, slots, inHouse }: { facilities: F
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-6">
-        <div className="flex justify-end"><Button onClick={() => setEdit({ kind: "activity", duration_minutes: 60, capacity: 1 })}><Plus size={16} /> Facility</Button></div>
+        {/* one row that earns its place (2026-10-21, the owner: "the button takes a whole row"): how many of each kind,
+            and + Facility beside them */}
+        <div className="flex items-center gap-2 min-w-0" data-fac-bar>
+          {/* the chips scroll on a phone; Rail adds its light round › when some are past the edge (2026-10-21, the owner) */}
+          <Rail wrapClassName="flex-1 min-w-0" className="rail-fade flex items-center gap-1.5 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" label="Kinds">
+            {grouped.map((g) => <span key={g.k} className={`shrink-0 inline-flex items-center gap-1.5 h-9 pl-1.5 pr-3 rounded-full text-[12.5px] font-bold ${KIND_TONE[g.k]}`}><span className="h-6 w-6 rounded-full grid place-items-center bg-[var(--color-bg-2)]"><KIcon k={g.k} size={13} /></span><span className="num">{g.items.length}</span> {g.k === "venue" ? "Venues" : g.k === "spa" ? "Spa" : "Activities"}</span>)}
+          </Rail>
+          <button type="button" className="svc-btn go sm !px-4 ml-auto shrink-0" onClick={() => setEdit({ kind: "activity", duration_minutes: 60, capacity: 1 })} data-new-facility><Plus size={17} strokeWidth={2.4} aria-hidden /> Facility</button>
+        </div>
         {grouped.map((g) => (
           <section key={g.k}><div className="flex items-center gap-2 mb-3"><span className={`h-7 w-7 rounded-lg grid place-items-center ${KIND_TONE[g.k]}`}><KIcon k={g.k} size={14} /></span><span className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{g.k === "venue" ? "Venues" : g.k === "spa" ? "Spa & wellness" : "Activities"}</span><span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{g.items.length}</span></div>
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))]">{g.items.map((f, i) => (
@@ -61,8 +70,26 @@ export function FacilitiesClient({ facilities, slots, inHouse }: { facilities: F
         ))}
         {facilities.length === 0 && <p className="text-sm text-steel">Add spa treatments, activities and venues. Bookings post straight to the guest's room folio.</p>}
       </div>
-      <Card className="h-fit lg:sticky lg:top-24"><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Schedule</div>
-        <ul className="space-y-2">{slots.map((s) => <li key={s.id} className="flex items-center gap-3 text-sm"><span className="num text-xs text-steel w-16">{new Date(s.starts_at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).replace(",", "")}</span><div className="flex-1 min-w-0"><div className="font-semibold truncate">{s.facilities?.name}</div><div className="text-xs text-steel truncate">{s.bookings ? `Room ${s.bookings.rooms?.number} · ${s.bookings.guests?.full_name}` : s.guest_name || "Walk-in"} · {s.people} pax</div></div>{s.bookings ? <Pill tone="gold">folio</Pill> : <Pill tone="pending">{formatINR(Number(s.amount))}</Pill>}<button onClick={() => start(async () => { const r = await cancelFacilityBooking(s.id); if ("error" in r) setErr(r.error!); })} className="text-xs text-steel hover:text-chili">×</button></li>)}{slots.length === 0 && <li className="text-sm text-steel">Nothing booked.</li>}</ul></Card>
+      {/* the schedule: a date tile (day, month, time), what and who, the amount and a real ✕ — the time ran into the
+          name in a 64px column (2026-10-21) */}
+      <Card className="h-fit lg:sticky lg:top-24" data-fac-schedule>
+        <div className="flex items-center gap-2.5 mb-3"><span className="h-9 w-9 rounded-[11px] grid place-items-center bg-[var(--color-blue-2)] text-[var(--color-blue)]" aria-hidden><CalendarPlus size={17} /></span><h3 className="text-lg leading-none">Schedule</h3><span className="ml-auto num text-[12.5px] font-semibold text-steel">{slots.length}</span></div>
+        {slots.length === 0 ? <p className="text-[13.5px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] px-3 py-4 text-center">Nothing booked.</p> : (
+          <ul className="divide-y divide-[var(--color-separator)]">{slots.map((s) => { const d = new Date(s.starts_at); const ist = (o: Intl.DateTimeFormatOptions) => d.toLocaleString("en-IN", { ...o, timeZone: "Asia/Kolkata" }); return (
+            <li key={s.id} className="flex items-center gap-3 py-2.5 min-w-0" data-fac-slot>
+              <span className="w-[3.25rem] shrink-0 rounded-[12px] bg-[var(--color-fill)] py-1.5 text-center leading-none" aria-label={ist({ day: "numeric", month: "long", hour: "numeric", minute: "2-digit" })}>
+                <span className="block font-display num text-[19px]">{ist({ day: "numeric" })}</span>
+                <span className="block text-[10.5px] font-bold uppercase text-steel mt-0.5">{ist({ month: "short" })}</span>
+                <span className="block text-[10.5px] font-semibold num text-[var(--color-label-2)] mt-1">{ist({ hour: "numeric", minute: "2-digit" }).replace(" ", "").toLowerCase()}</span>
+              </span>
+              <div className="flex-1 min-w-0 leading-tight">
+                <div className="text-[14px] font-semibold truncate">{s.facilities?.name}</div>
+                <div className="text-[12px] text-steel truncate mt-0.5">{s.bookings ? `Room ${s.bookings.rooms?.number} · ${s.bookings.guests?.full_name}` : s.guest_name || "Walk-in"} · <span className="num">{s.people}</span> pax</div>
+              </div>
+              {s.bookings ? <Pill tone="gold">folio</Pill> : <span className="shrink-0 num text-[13px] font-bold">{formatINR(Number(s.amount), { whole: true })}</span>}
+              <button type="button" aria-label={`Cancel ${s.facilities?.name ?? "booking"}`} onClick={() => start(async () => { const r = await cancelFacilityBooking(s.id); if ("error" in r) setErr(r.error!); })} className="shrink-0 h-11 w-11 -mr-2 grid place-items-center rounded-full text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)]"><X size={16} /></button>
+            </li>); })}</ul>)}
+      </Card>
 
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Edit facility" : "New facility"}>
         <form className="space-y-4" action={(fd) => start(async () => { const r = await saveFacility(fd); if ("error" in r) setErr(r.error!); else setEdit(null); })}>

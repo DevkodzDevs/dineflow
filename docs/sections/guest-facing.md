@@ -222,3 +222,16 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   `localStorage` (`df-queue:<slug>`, wrapped in try/catch — a private window just loses the convenience), so scanning
   the code or opening `/queue/<slug>` again shows the place, not an empty form; a seated or left place is forgotten.
   Under Leave the queue, `[data-queue-kept]` says so in one muted line. Leave the queue still calls `queue_leave`.
+
+- **The queue page keeps up and says it plainly (2026-10-21, the owner: "Table ready / Seat now show nothing until I
+  refresh").** It asked `queue_status` every 20 s; now every 4 s while on screen and at once when the guest comes back
+  to it (focus / visibility), never while hidden. A change to called or seated buzzes the phone once. Each state is one
+  centred card (`[data-queue-state]`): **waiting** — place and wait on the flaps, then parties waiting · table for, with
+  a live dot; **called** — a green card that pulses, a ringing bell, *You're up! Please come to the host stand*;
+  **seated** — a green card, a tick, *Your table's ready*, the table on the flaps (centred — it sat at the left), *Show
+  this to the host*. Animations `queue-pop`, `queue-ring`, `queue-call` (off under reduced motion). shots39: the page
+  went called → seated by itself in 1.2–1.6 s.
+
+- **No wait, no flap of words** (2026-10-21): with `minutes` 0 the estimate flap spelled "any minute" across nine tiles
+  and ran off the screen. The estimate is on the flaps only when there is one (its finished word is *now*, which fits);
+  with none, the place stands alone, centred, and the card says *Any minute now — stay close* (`[data-queue-soon]`).

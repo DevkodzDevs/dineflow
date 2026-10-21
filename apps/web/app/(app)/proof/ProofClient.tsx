@@ -113,9 +113,28 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
 
       {/* links */}
       <Card>
-        <div className="flex items-center justify-between mb-1"><h2 className="text-2xl">Who you have shared it with</h2><Button size="sm" onClick={() => setSheet(true)} className="no-print"><Plus size={15} /> New link</Button></div>
-        <p className="text-xs text-steel mb-4">Each link opens a read-only record with no login. It expires on its own, you can revoke it any time, and you see every time it was opened.</p>
-        {links.length === 0 ? <p className="text-sm text-steel">No links yet. A bank, a supplier asking for credit terms, or a landlord reviewing your rent — each gets their own link.</p> : (
+        {/* the head: an icon, the title and what a link is, and New link — beside them on a wide card, its own full
+            row on a phone (2026-10-21; the title wrapped to two big lines beside a squeezed button) */}
+        <div className="flex flex-wrap items-start gap-x-4 gap-y-3 mb-4" data-links-head>
+          <div className="flex items-start gap-3 min-w-0 flex-1 basis-[16rem]">
+            <span className="h-11 w-11 shrink-0 rounded-[12px] grid place-items-center bg-[color-mix(in_srgb,var(--color-blue)_16%,transparent)] text-[var(--color-blue)]" aria-hidden><Link2 size={19} /></span>
+            <div className="min-w-0">
+              <h2 className="text-[21px] leading-tight">Who you have shared it with</h2>
+              <p className="mt-1 text-[12.5px] text-steel leading-snug">Each link opens a read-only record with no login. It expires on its own, you can revoke it any time, and you see every time it was opened.</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setSheet(true)} className="no-print svc-btn go sm !px-4 shrink-0 max-sm:w-full" data-new-link><Plus size={17} strokeWidth={2.4} aria-hidden /> New link</button>
+        </div>
+        {links.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[var(--color-separator)] p-4" data-links-empty>
+            <p className="text-[13.5px] text-[var(--color-label-2)]">No links yet. A bank, a supplier asking for credit terms, or a landlord reviewing your rent — each gets their own link.</p>
+            <div className="mt-3 grid grid-cols-3 gap-2" aria-hidden>
+              {(["bank", "supplier", "landlord"] as const).map((k) => { const { l, Icon } = PURPOSE[k]; return (
+                <div key={k} className="min-w-0 rounded-xl bg-[var(--color-fill)] px-2 py-2.5 flex flex-col items-center gap-1.5 text-center">
+                  <Icon size={17} className="text-[var(--color-label-2)]" /><span className="text-[11.5px] font-semibold text-steel leading-tight">{l}</span>
+                </div>); })}
+            </div>
+          </div>) : (
           <div className="divide-y divide-line">
             {links.map((l) => {
               const P = PURPOSE[(l.purpose as keyof typeof PURPOSE)] ?? PURPOSE.other;

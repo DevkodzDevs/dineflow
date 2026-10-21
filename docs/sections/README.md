@@ -14,7 +14,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | If you are editing… | Read |
 | --- | --- |
 | `app/(app)/dashboard/**` | [dashboard.md](dashboard.md) |
-| `app/(app)/orders/**` (incl. `orders/new`, the till), `app/kiosk/**` | [orders-and-till.md](orders-and-till.md) |
+| `app/(app)/orders/**` (incl. `orders/new`, the till), `app/(app)/tables/**`, `app/kiosk/**` | [orders-and-till.md](orders-and-till.md) |
 | `app/(app)/kitchen/**` | [kitchen.md](kitchen.md) |
 | `app/(app)/menu/**`, `components/menu/**`, `lib/dishPhotos.ts` | [menu.md](menu.md) |
 | `app/(app)/billing/**`, `app/(app)/invoices/**` | [billing-and-invoices.md](billing-and-invoices.md) |
@@ -43,7 +43,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(app)/me/**` — My profile: each person's own details, sign-in and this device | [my-profile.md](my-profile.md) |
 | `app/(app)/home/**` — My day: where staff land; their work, checklists, attendance, leave and pay | [my-day.md](my-day.md) |
 | `app/legal/**`, `lib/company.ts` | [legal.md](legal.md) |
-| `app/api/**` | [api-routes.md](api-routes.md) |
+| `app/api/**`, `lib/assist/**` (Assist: topics, health check, documents) | [api-routes.md](api-routes.md) |
 
 ## Cross-cutting — read these when the change is not inside one screen
 
@@ -51,7 +51,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | --- | --- |
 | `app/globals.css`, `components/ui/**`, `lib/motion.ts`, `lib/say.ts`, `lib/service.ts` — any shared visual change, the Dining screens' colours and words; the themes; the whole app in Tamil / Hindi — `lib/i18n/**`, `public/i18n/**`, `scripts/i18n-check.mjs`, `docs/i18n-brief.md` | [design-system.md](design-system.md) |
 | `components/shell/**`, `app/(app)/layout.tsx`, the sidebar, module gating, **adding a `loading.tsx`**; installing — `lib/install.ts`, `components/InstallApp.tsx`, `public/manifest.json`; speed — `lib/useLive.ts`, `lib/liveRefresh.ts`, `lib/offline/**`, `next.config.ts`, `vercel.json` | [shell-and-nav.md](shell-and-nav.md) |
-| `supabase/migrations/**`, `supabase/pending/**`, RLS, any new table or RPC | [data-and-rls.md](data-and-rls.md) |
+| `supabase/migrations/**`, `supabase/pending/**`, RLS, any new table or RPC, `lib/scoped.ts` (the master's pinned reads) | [data-and-rls.md](data-and-rls.md) |
 | Anything, before you say it works | [testing-and-gates.md](testing-and-gates.md) |
 
 New section? Copy [`_TEMPLATE.md`](_TEMPLATE.md) and add a row above.

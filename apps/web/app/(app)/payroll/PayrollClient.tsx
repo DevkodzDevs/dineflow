@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Calculator, Lock, FileText, FileSpreadsheet, HandCoins, Check, Settings2, Wallet, IndianRupee } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calculator, Lock, FileText, FileSpreadsheet, HandCoins, Check, Settings2, Wallet, IndianRupee, Landmark, CalendarClock } from "lucide-react";
 import { Card, Empty, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveSettings, setPay, giveAdvance, buildMonth, setLine, finalise, payLine } from "./actions";
@@ -22,7 +22,9 @@ const cap = (s: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1).re
  * given, and the month's sheet — Work out → adjust bonus / other deductions on the draft → Finalise → Pay each line
  * (a Salaries expense) and print the payslip. Excel downloads the sheet with the employer's PF and ESI.
  */
-const cell = "max-lg:flex max-lg:items-center max-lg:justify-between max-lg:gap-2 max-lg:!p-0 max-lg:min-w-0 max-lg:before:content-[attr(data-label)] max-lg:before:text-[12px] max-lg:before:font-semibold max-lg:before:text-steel";
+/** below lg each figure is a small tile: its label (from data-label) on top, the figure under it, two across (2026-10-21) */
+const cell = "max-lg:flex max-lg:flex-col max-lg:items-start max-lg:justify-between max-lg:gap-1 max-lg:!px-3 max-lg:!py-2.5 max-lg:rounded-xl max-lg:bg-[var(--color-fill)] max-lg:min-w-0 max-lg:text-left max-lg:text-[15px] max-lg:font-bold max-lg:before:content-[attr(data-label)] max-lg:before:font-sans max-lg:before:text-[11.5px] max-lg:before:font-semibold max-lg:before:text-steel";
+const initials = (n: string) => n.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
 export function PayrollClient({ month, today, property, settings, people, advances, run, lines }: { month: string; today: string; property: string; settings: { pf: boolean; esi: boolean; offs: number; rule: boolean }; people: Person[]; advances: Advance[]; run: Run | null; lines: Line[] }) {
   const toast = useToast(); const [pending, start] = useTransition();
@@ -33,6 +35,8 @@ export function PayrollClient({ month, today, property, settings, people, advanc
   const [edits, setEdits] = useState<Record<string, { bonus: string; other: string }>>({});
   const final = run?.status === "final";
   const t = lines.reduce((a, l) => ({ gross: a.gross + Number(l.gross) + Number(l.bonus), base: a.base + Number(l.gross), bonus: a.bonus + Number(l.bonus), pf: a.pf + Number(l.pf_employee), esi: a.esi + Number(l.esi_employee), adv: a.adv + Number(l.advances), other: a.other + Number(l.other_deduction), net: a.net + Number(l.net), pfr: a.pfr + Number(l.pf_employer), esir: a.esir + Number(l.esi_employer) }), { gross: 0, base: 0, bonus: 0, pf: 0, esi: 0, adv: 0, other: 0, net: 0, pfr: 0, esir: 0 });
+  /** PF and ESI for a month are due by the 15th of the next */
+  const dueOn = new Date(shift(month, 1) + "-15T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   const owedAdv = (id: string) => advances.filter((a) => a.profile_id === id).reduce((s, a) => s + Number(a.amount), 0);
   const act = (p: Promise<{ error?: string } | { ok: true }>, ok: string) => start(async () => { const r = await p; if ("error" in r && r.error) toast(r.error, "err"); else toast(ok); });
 
@@ -118,7 +122,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
                     {/* who, and Save (top right on a card; the last column in the table) */}
                     <div className="flex items-center gap-3 min-w-0 @[62rem]:contents">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="h-10 w-10 shrink-0 rounded-full grid place-items-center text-[13px] font-extrabold bg-[var(--color-fill-2)]" aria-hidden>{p.full_name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</span>
+                        <span className="h-10 w-10 shrink-0 rounded-full grid place-items-center text-[13px] font-extrabold bg-[var(--color-fill-2)]" aria-hidden>{initials(p.full_name)}</span>
                         <div className="min-w-0">
                           <div className="font-bold truncate">{p.full_name}</div>
                           <div className="text-[12px] text-steel flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
@@ -162,30 +166,44 @@ export function PayrollClient({ month, today, property, settings, people, advanc
 
       {/* ── the month ── */}
       <Card className="min-w-0 !p-0 overflow-hidden" data-payroll-month>
-        <div className="p-4 flex flex-wrap items-center gap-2 border-b border-[var(--color-separator)]">
-          <Link href={`/payroll?m=${shift(month, -1)}`} className="h-11 w-11 grid place-items-center rounded-xl bg-[var(--color-fill)]" aria-label="Previous month"><ChevronLeft size={18} /></Link>
-          <div className="text-[18px] font-extrabold min-w-[10rem] text-center" data-payroll-month-name>{monthName(month)}</div>
-          <Link href={`/payroll?m=${shift(month, 1)}`} className={cn("h-11 w-11 grid place-items-center rounded-xl bg-[var(--color-fill)]", month >= today.slice(0, 7) && "pointer-events-none opacity-40")} aria-label="Next month"><ChevronRight size={18} /></Link>
-          {run && <span className={cn("rounded-full px-3 py-1 text-[12.5px] font-extrabold", final ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")} data-run-status>{final ? "Final" : "Draft"}</span>}
-          <span className="flex-1" />
-          {!final && <button type="button" disabled={pending} className="svc-btn go sm !px-4" data-build onClick={() => act(buildMonth(month), run ? "Worked out again" : "Worked out")}><Calculator size={17} aria-hidden /><Say w={run ? "work_out_again" : "work_out_pay"} /></button>}
-          {run && !final && lines.length > 0 && <button type="button" disabled={pending} className="svc-btn quiet sm !px-4" data-finalise onClick={() => { if (confirm(`Finalise ${monthName(month)}? Lines stop changing and advances are marked recovered.`)) act(finalise(run.id), "Finalised"); }}><Lock size={16} aria-hidden /><Say w="finalise" /></button>}
-          {lines.length > 0 && <button type="button" className="svc-btn quiet sm !px-4" onClick={() => void excel()} data-payroll-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>}
+        {/* the month: one navigator (◀ month + its state ▶), then the actions — on a phone the main one takes the
+            row and the others share the next, rather than three buttons wrapping wherever they fell (2026-10-21) */}
+        <div className="p-4 flex flex-wrap items-center gap-3 border-b border-[var(--color-separator)]">
+          <div className="flex items-center gap-1 rounded-2xl bg-[var(--color-fill)] p-1 max-sm:w-full sm:min-w-[19rem]" data-payroll-nav>
+            <Link href={`/payroll?m=${shift(month, -1)}`} className="h-11 w-11 shrink-0 grid place-items-center rounded-xl hover:bg-[var(--color-fill-2)]" aria-label="Previous month"><ChevronLeft size={19} /></Link>
+            <div className="flex-1 min-w-0 text-center">
+              <div className="text-[17px] font-extrabold leading-tight truncate" data-payroll-month-name>{monthName(month)}</div>
+              <div className={cn("mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] font-bold", !run ? "text-steel" : final ? "text-[var(--color-green)]" : "text-[var(--color-orange)]")}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", !run ? "bg-[var(--color-steel)]" : final ? "bg-[var(--color-green)]" : "bg-[var(--color-orange)]")} aria-hidden />
+                {run ? <span data-run-status>{final ? "Final" : "Draft"}</span> : <span>Not worked out</span>}
+              </div>
+            </div>
+            <Link href={`/payroll?m=${shift(month, 1)}`} className={cn("h-11 w-11 shrink-0 grid place-items-center rounded-xl hover:bg-[var(--color-fill-2)]", month >= today.slice(0, 7) && "pointer-events-none opacity-40")} aria-label="Next month"><ChevronRight size={19} /></Link>
+          </div>
+          <div className="flex flex-wrap gap-2 max-sm:w-full sm:ml-auto" data-payroll-actions>
+            {!final && <button type="button" disabled={pending} className="svc-btn go sm !px-4 max-sm:basis-full" data-build onClick={() => act(buildMonth(month), run ? "Worked out again" : "Worked out")}><Calculator size={17} aria-hidden /><Say w={run ? "work_out_again" : "work_out_pay"} /></button>}
+            {run && !final && lines.length > 0 && <button type="button" disabled={pending} className="svc-btn quiet sm !px-4 max-sm:flex-1" data-finalise onClick={() => { if (confirm(`Finalise ${monthName(month)}? Lines stop changing and advances are marked recovered.`)) act(finalise(run.id), "Finalised"); }}><Lock size={16} aria-hidden /><Say w="finalise" /></button>}
+            {lines.length > 0 && <button type="button" className="svc-btn quiet sm !px-4 max-sm:flex-1" onClick={() => void excel()} data-payroll-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>}
+          </div>
         </div>
         {!run ? <div className="p-6 text-[14px] text-steel">Not worked out yet. Set the rates above, then <b>Work out pay</b>.</div> : lines.length === 0 ? <div className="p-6 text-[14px] text-steel">Nobody has a pay rate yet.</div> : (<>
           <div className="overflow-x-auto"><table className="w-full text-[13.5px] lg:min-w-[900px] max-lg:block">
             <thead className="max-lg:hidden"><tr className="text-left text-steel text-[12px] border-b border-[var(--color-separator)]">{["Name", "Days", "Gross", "Bonus", "PF", "ESI", "Advance", "Other", "Net", ""].map((h, i) => <th key={i} className={cn("py-2 font-semibold", i === 0 ? "pl-4" : "text-right pr-3", i === 9 && "pr-4")}>{h}</th>)}</tr></thead>
             <tbody className="max-lg:grid max-lg:gap-3 max-lg:p-3 sm:max-lg:grid-cols-2">{lines.map((l) => { const e = edits[l.id] ?? { bonus: String(Number(l.bonus) || ""), other: String(Number(l.other_deduction) || "") }; const dirty = Number(e.bonus || 0) !== Number(l.bonus) || Number(e.other || 0) !== Number(l.other_deduction); return (
-              <tr key={l.id} className="border-b border-[var(--color-separator)] last:border-b-0 max-lg:grid max-lg:grid-cols-2 max-lg:gap-x-4 max-lg:gap-y-2 max-lg:min-w-0 max-lg:rounded-2xl max-lg:border-0 max-lg:bg-[var(--color-fill)] max-lg:p-4" data-line={l.name}>
-                <td className="py-2.5 pl-4 max-lg:col-span-2 max-lg:!p-0 max-lg:pb-1 min-w-0"><div className="font-bold">{l.name}</div><div className="text-[12px] text-steel">{l.basis === "monthly" ? `${inr(l.rate)}/month` : `${inr(l.rate)}/day`}</div></td>
-                <td className={cn("text-right pr-3 num", cell)} data-label="Days">{l.days_present}{l.basis === "monthly" && <span className="text-steel"> → {Number(l.paid_days)}</span>}</td>
+              <tr key={l.id} className="border-b border-[var(--color-separator)] last:border-b-0 max-lg:relative max-lg:grid max-lg:grid-cols-2 max-lg:gap-2 max-lg:min-w-0 max-lg:rounded-2xl max-lg:border-0 max-lg:bg-[var(--color-fill)] max-lg:p-3" data-line={l.name}>
+                <td className="py-2.5 pl-4 max-lg:col-span-2 max-lg:!p-0 max-lg:pb-1 max-lg:!pr-[7.5rem] min-w-0"><div className="flex items-center gap-2.5 min-w-0">
+                  <span className="lg:hidden h-10 w-10 shrink-0 rounded-full grid place-items-center text-[13px] font-extrabold bg-[var(--color-fill-2)]" aria-hidden>{initials(l.name)}</span>
+                  <div className="min-w-0"><div className="font-bold truncate max-lg:text-[15.5px]">{l.name}</div><div className="text-[12px] text-steel num">{l.basis === "monthly" ? `${inr(l.rate)}/month` : `${inr(l.rate)}/day`}</div></div></div></td>
+                {/* days: a column in the table; on a card, a pill top right — present → paid */}
+                <td className="text-right pr-3 num max-lg:absolute max-lg:top-3 max-lg:right-3 max-lg:!px-3 max-lg:!py-0 max-lg:h-8 max-lg:rounded-full max-lg:bg-[var(--color-fill)] max-lg:inline-flex max-lg:items-center max-lg:gap-1.5 max-lg:text-[13px] max-lg:font-bold max-lg:whitespace-nowrap max-lg:before:content-[attr(data-label)] max-lg:before:font-sans max-lg:before:text-[11.5px] max-lg:before:font-semibold max-lg:before:text-steel" data-label="Days">{l.days_present}{l.basis === "monthly" && <span className="text-steel"> → {Number(l.paid_days)}</span>}</td>
                 <td className={cn("text-right pr-3 num", cell)} data-label="Gross">{inr(l.gross)}</td>
-                <td className={cn("text-right pr-3", cell)} data-label="Bonus">{final ? <span className="num">{Number(l.bonus) ? inr(l.bonus) : "—"}</span> : <input inputMode="decimal" className="!w-24 !h-10 num text-right" value={e.bonus} placeholder="0" onChange={(x) => setEdits((all) => ({ ...all, [l.id]: { ...e, bonus: x.target.value.replace(/[^\d.]/g, "") } }))} aria-label={`${l.name}: bonus`} />}</td>
-                <td className={cn("text-right pr-3 num", cell)} data-label="PF">{Number(l.pf_employee) ? <>{inr(l.pf_employee)}{Number(l.pf_wage ?? 0) > 0 && <span className="block text-[11.5px] font-normal text-steel whitespace-nowrap" data-pf-wage>on {formatINR(Number(l.pf_wage), { whole: true })}</span>}</> : "—"}</td>
-                <td className={cn("text-right pr-3 num", cell)} data-label="ESI">{Number(l.esi_employee) ? inr(l.esi_employee) : "—"}</td>
-                <td className={cn("text-right pr-3 num", cell)} data-label="Advance">{Number(l.advances) ? inr(l.advances) : "—"}</td>
-                <td className={cn("text-right pr-3", cell)} data-label="Other">{final ? <span className="num">{Number(l.other_deduction) ? inr(l.other_deduction) : "—"}</span> : <input inputMode="decimal" className="!w-24 !h-10 num text-right" value={e.other} placeholder="0" onChange={(x) => setEdits((all) => ({ ...all, [l.id]: { ...e, other: x.target.value.replace(/[^\d.]/g, "") } }))} aria-label={`${l.name}: other deductions`} />}</td>
-                <td className={cn("text-right pr-3 num font-extrabold text-[15px] max-lg:col-span-2 max-lg:border-t max-lg:border-[var(--color-separator)] max-lg:!pt-2 max-lg:text-[17px]", cell)} data-label="Net pay" data-net>{inr(l.net)}</td>
+                <td className={cn("text-right pr-3", cell)} data-label="Bonus">{final ? <span className="num">{Number(l.bonus) ? inr(l.bonus) : "—"}</span> : <input inputMode="decimal" className="!w-24 !h-10 num text-right max-lg:!w-full max-lg:!h-10 max-lg:!min-h-10 max-lg:text-left max-lg:text-[15px]" value={e.bonus} placeholder="+ 0" onChange={(x) => setEdits((all) => ({ ...all, [l.id]: { ...e, bonus: x.target.value.replace(/[^\d.]/g, "") } }))} aria-label={`${l.name}: bonus`} />}</td>
+                <td className={cn("text-right pr-3 num", cell)} data-label="PF">{Number(l.pf_employee) ? <span>{inr(l.pf_employee)}{Number(l.pf_wage ?? 0) > 0 && <span className="block text-[11.5px] font-normal text-steel whitespace-nowrap" data-pf-wage>on {formatINR(Number(l.pf_wage), { whole: true })}</span>}</span> : <span className="text-steel">—</span>}</td>
+                <td className={cn("text-right pr-3 num", cell)} data-label="ESI">{Number(l.esi_employee) ? inr(l.esi_employee) : <span className="text-steel">—</span>}</td>
+                <td className={cn("text-right pr-3 num", cell)} data-label="Advance">{Number(l.advances) ? inr(l.advances) : <span className="text-steel">—</span>}</td>
+                <td className={cn("text-right pr-3", cell)} data-label="Other">{final ? <span className="num">{Number(l.other_deduction) ? inr(l.other_deduction) : "—"}</span> : <input inputMode="decimal" className="!w-24 !h-10 num text-right max-lg:!w-full max-lg:!h-10 max-lg:!min-h-10 max-lg:text-left max-lg:text-[15px]" value={e.other} placeholder="− 0" onChange={(x) => setEdits((all) => ({ ...all, [l.id]: { ...e, other: x.target.value.replace(/[^\d.]/g, "") } }))} aria-label={`${l.name}: other deductions`} />}</td>
+                {/* net: a tinted bar across the card */}
+                <td className="text-right pr-3 num font-extrabold text-[15px] max-lg:col-span-2 max-lg:flex max-lg:items-center max-lg:justify-between max-lg:gap-3 max-lg:!px-3.5 max-lg:!py-3 max-lg:rounded-xl max-lg:bg-[color-mix(in_srgb,var(--color-tint)_13%,transparent)] max-lg:text-[19px] max-lg:before:content-[attr(data-label)] max-lg:before:font-sans max-lg:before:text-[13px] max-lg:before:font-bold max-lg:before:text-[var(--color-tint)]" data-label="Net pay" data-net>{inr(l.net)}</td>
                 <td className="pr-4 py-2 max-lg:col-span-2 max-lg:!p-0 max-lg:has-[>div:empty]:hidden"><div className="flex flex-wrap justify-end gap-1.5">
                   {!final && dirty && <button type="button" disabled={pending} className="svc-btn go sm !px-3" onClick={() => act(setLine(l.id, Number(e.bonus || 0), Number(e.other || 0), l.note ?? ""), `${l.name} updated`)} data-save-line>Save</button>}
                   {final && !l.paid_at && <select disabled={pending} defaultValue="" onChange={(x) => { const m = x.target.value; if (m) act(payLine(l.id, m), `${l.name} paid — written down as a Salaries expense`); }} className="!w-auto !h-10 !min-h-10 text-[13px] font-bold" aria-label={`Pay ${l.name}`} data-pay><option value="" disabled>Pay…</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option></select>}
@@ -195,10 +213,30 @@ export function PayrollClient({ month, today, property, settings, people, advanc
               </tr>); })}</tbody>
             <tfoot className="max-lg:hidden"><tr className="border-t-2 border-[var(--color-separator)] font-extrabold"><td className="py-3 pl-4">Total · {lines.length}</td><td /><td className="text-right pr-3 num">{inr(t.gross)}</td><td /><td className="text-right pr-3 num">{inr(t.pf)}</td><td className="text-right pr-3 num">{inr(t.esi)}</td><td className="text-right pr-3 num">{inr(t.adv)}</td><td className="text-right pr-3 num">{inr(t.other)}</td><td className="text-right pr-3 num text-[16px]" data-net-total>{inr(t.net)}</td><td /></tr></tfoot>
           </table></div>
-          <div className="lg:hidden mx-3 mb-3 rounded-2xl border border-[var(--color-separator)] px-4 py-3 flex items-center justify-between gap-3 font-extrabold" data-net-total-phone><span>Total · {lines.length}<span className="block text-[12px] font-semibold text-steel num">Gross {inr(t.gross)}</span></span><span className="num text-[18px]">{inr(t.net)}</span></div>
-          {(run.pf || run.esi) && <div className="p-4 border-t border-[var(--color-separator)] grid sm:grid-cols-2 gap-2 text-[13.5px]" data-statutory>
-            {run.pf && <div className="rounded-2xl bg-[var(--color-fill)] px-4 py-3"><div className="font-bold">PF to deposit (EPFO)</div><div className="text-steel">{inr(t.pf)} from staff + {inr(t.pfr)} from you = <b className="text-[var(--color-label)] num">{inr(t.pf + t.pfr)}</b> · by the 15th</div></div>}
-            {run.esi && <div className="rounded-2xl bg-[var(--color-fill)] px-4 py-3"><div className="font-bold">ESI to deposit (ESIC)</div><div className="text-steel">{inr(t.esi)} from staff + {inr(t.esir)} from you = <b className="text-[var(--color-label)] num">{inr(t.esi + t.esir)}</b> · by the 15th</div></div>}
+          <div className="lg:hidden mx-3 mb-3 rounded-2xl ring-1 ring-inset ring-[var(--color-separator)] px-4 py-3 flex items-center justify-between gap-3" data-net-total-phone>
+            <span className="min-w-0"><span className="block text-[12px] font-semibold text-steel">Net pay · {lines.length} people</span><span className="block text-[12px] font-semibold text-steel num">Gross {inr(t.gross)}</span></span>
+            <span className="font-display num text-[22px] leading-none">{inr(t.net)}</span></div>
+          {/* PF and ESI owed: the total big, the date it is due, and the split — staff's share and yours — as a bar
+              with its legend (2026-10-21; was one sentence of sums) */}
+          {(run.pf || run.esi) && <div className="p-4 border-t border-[var(--color-separator)] grid sm:grid-cols-2 gap-3" data-statutory>
+            {([["pf", "PF to deposit", "EPFO", t.pf, t.pfr, run.pf], ["esi", "ESI to deposit", "ESIC", t.esi, t.esir, run.esi]] as const).filter((x) => x[5]).map(([k, title, office, staff, you]) => (
+              <div key={k} className="rounded-2xl bg-[var(--color-fill)] p-4 min-w-0" data-deposit={k}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="h-9 w-9 shrink-0 rounded-xl grid place-items-center bg-[color-mix(in_srgb,var(--color-blue)_16%,transparent)] text-[var(--color-blue)]" aria-hidden><Landmark size={17} /></span>
+                    <div className="min-w-0"><div className="text-[14.5px] font-bold leading-tight">{title}</div><div className="text-[12px] text-steel">{office}</div></div>
+                  </div>
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 h-7 text-[11.5px] font-bold bg-[var(--color-orange-2)] text-[var(--color-orange)] num"><CalendarClock size={13} aria-hidden />Due {dueOn}</span>
+                </div>
+                <div className="mt-3 font-display num text-[26px] leading-none" data-deposit-total>{inr(staff + you)}</div>
+                <div className="mt-3 flex h-2 gap-[2px] rounded-full overflow-hidden" aria-hidden>
+                  <span className="rounded-l-full bg-[var(--color-tint)]" style={{ flexGrow: staff || 0.0001 }} /><span className="rounded-r-full bg-[var(--color-blue)]" style={{ flexGrow: you || 0.0001 }} />
+                </div>
+                <div className="mt-2.5 grid grid-cols-2 gap-3 text-[12px] text-steel">
+                  <div className="min-w-0"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--color-tint)]" aria-hidden />From staff</span><b className="block text-[14px] text-[var(--color-label)] num">{inr(staff)}</b></div>
+                  <div className="min-w-0 text-right"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--color-blue)]" aria-hidden />From you</span><b className="block text-[14px] text-[var(--color-label)] num">{inr(you)}</b></div>
+                </div>
+              </div>))}
           </div>}
         </>)}
       </Card>

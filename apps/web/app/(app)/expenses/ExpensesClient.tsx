@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, FileSpreadsheet, Plus, Ban, Banknote, Smartphone, CreditCard, Landmark } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSpreadsheet, Plus, Ban, Banknote, Smartphone, CreditCard, Landmark, Carrot, ShoppingBasket, Fish, Milk, Flame, Zap, Droplets, Building2, Users, UtensilsCrossed, Wrench, SprayCan, Package, Megaphone, Truck, Ellipsis, type LucideIcon } from "lucide-react";
 import { Card, Empty, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { addExpense, voidExpense } from "./actions";
@@ -11,6 +11,8 @@ export type Expense = { id: string; spent_on: string; category: string; payee: s
 
 /** The usual heads for an Indian restaurant; anything else is typed in. */
 export const CATEGORIES = ["Vegetables", "Groceries", "Meat & fish", "Dairy", "Gas", "Electricity", "Water", "Rent", "Salaries", "Staff food", "Repairs", "Cleaning", "Packaging", "Marketing", "Transport", "Other"];
+/** each head its picture and its colour, so the one you want is found by eye before it is read */
+const CAT_ICON: Record<string, [LucideIcon, string]> = { Vegetables: [Carrot, "green"], Groceries: [ShoppingBasket, "orange"], "Meat & fish": [Fish, "red"], Dairy: [Milk, "sky"], Gas: [Flame, "orange"], Electricity: [Zap, "saffron"], Water: [Droplets, "cyan"], Rent: [Building2, "violet"], Salaries: [Users, "blue"], "Staff food": [UtensilsCrossed, "green"], Repairs: [Wrench, "steel"], Cleaning: [SprayCan, "cyan"], Packaging: [Package, "orange"], Marketing: [Megaphone, "violet"], Transport: [Truck, "blue"], Other: [Ellipsis, "steel"] };
 const METHODS = [["cash", "Cash", Banknote], ["upi", "UPI", Smartphone], ["card", "Card", CreditCard], ["bank", "Bank", Landmark]] as const;
 const inr = (n: number) => formatINR(Number(n));
 const day = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
@@ -67,9 +69,15 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
         <Card data-expense-form>
           <div className="text-[17px] font-extrabold mb-3">Add an expense</div>
           <div className="text-[12.5px] font-bold uppercase tracking-wide text-steel mb-2">For</div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Category">
-            {CATEGORIES.map((c) => <button key={c} type="button" aria-pressed={f.category === c} onClick={() => set("category", c)} data-cat-chip
-              className={cn("!min-h-11 rounded-full px-4 text-[14px] font-bold", f.category === c ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>{c}</button>)}
+          {/* icon tiles, as many across as fit (four on a phone, three on the narrowest) — not 16 pills wrapping raggedly */}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(4.6rem,1fr))] gap-2" role="group" aria-label="Category" data-cat-grid>
+            {CATEGORIES.map((c) => { const [I, hue] = CAT_ICON[c]; const on = f.category === c || (c === "Other" && !!f.category && !CATEGORIES.includes(f.category)); return (
+              <button key={c} type="button" aria-pressed={on} onClick={() => set("category", c)} data-cat-chip
+                className={cn("min-w-0 !min-h-[4.5rem] rounded-2xl px-1 py-2 flex flex-col items-center justify-center gap-1.5 ring-inset transition-[background-color,transform] duration-150 active:scale-[0.97]",
+                  on ? "ring-2 ring-[var(--color-tint)] bg-[color-mix(in_srgb,var(--color-tint)_14%,transparent)]" : "ring-1 ring-[var(--color-separator)] bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
+                <span className="h-8 w-8 rounded-[10px] grid place-items-center" style={{ background: `color-mix(in srgb, var(--color-${hue}) ${on ? 28 : 16}%, transparent)`, color: `var(--color-${hue})` }} aria-hidden><I size={17} strokeWidth={2.2} /></span>
+                <span className={cn("max-w-full text-center text-[12px] leading-[1.15] font-bold [text-wrap:balance]", on ? "text-[var(--color-label)]" : "text-[var(--color-label-2)]")}>{c}</span>
+              </button>); })}
           </div>
           {f.category === "Other" || (f.category && !CATEGORIES.includes(f.category)) ? <input className="mt-2" placeholder="What was it for?" value={f.category === "Other" ? "" : f.category} onChange={(e) => set("category", e.target.value || "Other")} maxLength={40} /> : null}
           <div className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">

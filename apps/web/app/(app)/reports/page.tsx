@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
+import { pinned } from "@/lib/scoped";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ReportsClient, type Summary, type KitchenSpeed, type HotelKpis, type AuditRow } from "./ReportsClient";
 import type { Breakdown } from "./Breakdown";
@@ -26,19 +27,22 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   // the empty answers do.
   // the same window as IST dates, for the reports that count by day (0105 report_extra)
   const to = todayIST(); const from = new Date(Date.parse(to) - (n - 1) * 86400000).toISOString().slice(0, 10);
-  const [session, { data: summary }, { data: closes }, { data: kitchen }, { data: rooms }, { data: audits }, { data: breakdown }, { data: extra }] = await Promise.all([
+  const past = (rid?: string) => { const q = s.from("night_audits").select("business_date, occupancy_pct, adr, revpar, room_revenue, no_shows, discrepancies"); return (rid ? q.eq("restaurant_id", rid) : q).order("business_date", { ascending: false }).limit(14); };
+  const [session, { data: summary }, { data: closes }, { data: kitchen }, { data: rooms }, audits0, { data: breakdown }, { data: extra }] = await Promise.all([
     requireSession(),
     s.rpc("report_summary", { p_days: n }),
     s.from("day_closes").select("business_date, orders_count, total_sales, cash, upi, card, other, notes")
       .order("business_date", { ascending: false }).limit(30),
     s.rpc("kitchen_speed", { p_days: n }),
     s.rpc("hotel_kpis", { p_days: n }),
-    s.from("night_audits").select("business_date, occupancy_pct, adr, revpar, room_revenue, no_shows, discrepancies").order("business_date", { ascending: false }).limit(14),
+    past(),
     // by category, hour, type and cashier; discounts, cancellations, sizes and add-ons — one call, already added up
     s.rpc("sales_breakdown", { p_days: n }),
     // payments, every dish, staff, cancellations, expenses, sales less expenses — owner, manager, supervisor only
     s.rpc("report_extra", { p_from: from, p_to: to }),
   ]);
+  // the master reads every property's night audits (lib/scoped.ts): only for it, ask again for this property
+  const { data: audits } = await pinned(session, audits0, past);
   // The rooms panels draw themselves from whether `rooms` came back with anything, so there is
   // nothing left here that needs to know the property type.
   return (

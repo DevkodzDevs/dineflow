@@ -189,3 +189,13 @@ and reaches the kitchen.
   `#1f0f00` on it reads 7.5:1 and the band is still Swiggy's colour. Zomato's white on #e23744 is 4.3:1 and stays.
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Online orders: the New tab's count breathes (red) while orders wait to be accepted (`[data-new-count]`).
+
+- **Delivery channel cards, redesigned (2026-10-21 — the owner: "messy").** Each order channel (`[data-oc]`) is now built
+  like an OTA card: its initial in the platform's colour (`OC_HUE`: Swiggy orange, Zomato red, ONDC violet, website
+  tint), name, commission · prep minutes · auto-accept, a Live / Draft badge; the webhook as one field (`[data-webhook]`)
+  with Copy inside it and the address's end kept in view; last order or *No orders received yet*; and the footer strip
+  (`CardStrip`: **Test order** · Push menu · Edit · Remove). Were outline buttons wrapping under a read-only input.
+
+- **A dish the channel sent that is not on the menu is a callout** (`[data-unmatched]`, 2026-10-21): an icon tile, *n
+  dish(es) not on your menu*, why it matters, and a red **Map now** pill (`[data-map-now]`) — was one wrapped line of
+  red text with an underlined link.

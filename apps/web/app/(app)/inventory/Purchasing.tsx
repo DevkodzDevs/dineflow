@@ -1,7 +1,7 @@
 "use client";
-import { useState, useTransition } from "react";
-import { Plus, Trash2, Send, PackageCheck, XCircle, MessageCircle, Sparkles, Pencil, Truck, Flame } from "lucide-react";
-import { Button, Card, Field, Sheet, Empty, Pill, StatTile, cn, useToast } from "@/components/ui";
+import { useEffect, useState, useTransition } from "react";
+import { Plus, Trash2, Send, PackageCheck, XCircle, MessageCircle, Sparkles, Pencil, Truck, Flame, Undo2, FilePenLine, Columns2, Columns3, Columns4, Repeat, type LucideIcon } from "lucide-react";
+import { Button, Card, Field, Sheet, Empty, Pill, StatTile, CardStrip, Segmented, cn, useToast, type StripAction } from "@/components/ui";
 import { formatINR, fmtDate } from "@/lib/format";
 import { savePo, setPoStatus, receivePo, suggestPo, saveSupplier, archiveSupplier, type PoLine } from "./actions";
 
@@ -11,7 +11,14 @@ export type PoItem = { id: string; ingredient_id: string; qty: number; unit_cost
 export type Po = { id: string; po_no: number; status: "draft" | "sent" | "received" | "cancelled"; expected_on: string | null; notes: string | null; total: number; created_at: string; sent_at: string | null; received_at: string | null; supplier_id: string | null; purchase_id: string | null; suppliers: { name: string; phone: string | null } | null; purchase_order_items: PoItem[] };
 export type Wastage = { days: number; total_cost: number; lines: number; by_reason: { reason: string; cost: number; lines: number }[]; by_ingredient: { name: string; unit: string; qty: number; cost: number }[]; recent: { name: string; unit: string; qty: number; reason: string; note: string | null; cost: number; at: string }[] } | null;
 
-const tone = (s: Po["status"]) => (s === "received" ? "ready" : s === "sent" ? "preparing" : s === "cancelled" ? "alert" : "pending") as "ready" | "preparing" | "alert" | "pending";
+/** each state its word, colour and picture — the card's icon and badge */
+const PO_STATUS: Record<Po["status"], { label: string; hue: string; Icon: LucideIcon }> = { draft: { label: "Draft", hue: "--color-label-2", Icon: FilePenLine }, sent: { label: "Sent", hue: "--color-orange", Icon: Send }, received: { label: "Received", hue: "--color-green", Icon: PackageCheck }, cancelled: { label: "Cancelled", hue: "--color-red", Icon: XCircle } };
+/** open orders first (what still needs doing), then received, cancelled last; newest first within each */
+const PO_RANK: Record<Po["status"], number> = { sent: 0, draft: 0, received: 1, cancelled: 2 };
+/** how many purchase orders across on a desktop — the owner picks 2, 3 or 4 (3 unless chosen; kept on this device) */
+type Cols = "2" | "3" | "4";
+const COLS_KEY = "df-po-cols";
+const COLS_CLASS: Record<Cols, string> = { "2": "lg:grid-cols-2", "3": "lg:grid-cols-3", "4": "lg:grid-cols-4" };
 const waTo = (phone: string | null, text: string) => { const d = (phone ?? "").replace(/\D/g, "").slice(-10); return `https://wa.me/${d.length === 10 ? "91" + d : ""}?text=${encodeURIComponent(text)}`; };
 
 /** The order as a message to the supplier: lines typed out, the way it would be dictated on the phone. */
@@ -27,44 +34,114 @@ export function PurchaseOrders({ orders, suppliers, ingredients, restaurant }: {
   const [pending, start] = useTransition(); const toast = useToast();
   const byId = Object.fromEntries(ingredients.map((i) => [i.id, i]));
   const open = orders.filter((o) => o.status === "draft" || o.status === "sent");
+  const drafts = open.filter((o) => o.status === "draft"), sent = open.filter((o) => o.status === "sent");
+  const [cols, setCols] = useState<Cols>("3");
+  useEffect(() => { try { const v = localStorage.getItem(COLS_KEY); if (v === "2" || v === "3" || v === "4") setCols(v); } catch {} }, []);
+  const pickCols = (v: Cols) => { setCols(v); try { localStorage.setItem(COLS_KEY, v); } catch {} };
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm text-steel">{open.length ? `${open.length} order${open.length === 1 ? "" : "s"} waiting to arrive.` : "Nothing on order. Draft one from the low-stock list in one press."}</p>
-        <Button onClick={() => setEditing("new")}><Plus size={16} /> New order</Button>
+      {/* the head: what is on order, counted — drafts, sent, its value — and New order (2026-10-21) */}
+      <div className="flex flex-wrap items-stretch gap-2" data-po-head>
+        <div className="grid grid-cols-3 gap-2 flex-1 min-w-[15rem]">
+          {([["Drafts", drafts.length, "--color-label-2"], ["Sent", sent.length, "--color-orange"], ["On order", null, "--color-tint"]] as const).map(([k, n, hue]) => (
+            <div key={k} className="min-w-0 rounded-2xl bg-[var(--color-fill)] px-3 py-2.5" data-po-count={k}>
+              <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-steel"><span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: `var(${hue})` }} aria-hidden />{k}</div>
+              <div className="mt-0.5 font-display num text-[19px] leading-tight truncate">{n ?? formatINR(open.reduce((t, o) => t + Number(o.total), 0), { whole: true })}</div>
+            </div>))}
+        </div>
+        {orders.length > 0 && <div className="hidden lg:block self-center" data-po-cols aria-label="Cards across"><Segmented<Cols> value={cols} onChange={pickCols}
+          options={([["2", Columns2], ["3", Columns3], ["4", Columns4]] as const).map(([v, I]) => ({ value: v, label: <span className="inline-flex items-center gap-1.5" title={`${v} across`}><I size={16} aria-hidden /><span className="num">{v}</span></span> }))} /></div>}
+        <button type="button" onClick={() => setEditing("new")} className="svc-btn go sm !px-5 max-sm:w-full sm:self-center" data-new-po><Plus size={17} strokeWidth={2.4} aria-hidden /> New order</button>
       </div>
       {orders.length === 0 ? <Empty title="No purchase orders yet" hint="An order says what to bring, at what price, by when. Send it on WhatsApp; receive it when the van comes and the stock lands." action={<Button onClick={() => setEditing("new")}>Draft the first</Button>} /> : (
-        <div className="space-y-2">
-          {orders.map((po) => (
-            <Card key={po.id}>
-              <div className="flex items-start gap-3 flex-wrap">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap"><span className="num font-semibold">PO-{po.po_no}</span><Pill tone={tone(po.status)}>{po.status}</Pill><span className="text-sm">{po.suppliers?.name ?? <span className="text-steel">no supplier</span>}</span></div>
-                  <div className="text-xs text-steel mt-0.5">{po.purchase_order_items.length} line{po.purchase_order_items.length === 1 ? "" : "s"} · {fmtDate(po.created_at)}{po.expected_on ? ` · expected ${fmtDate(po.expected_on)}` : ""}{po.received_at ? ` · received ${fmtDate(po.received_at)}` : ""}</div>
-                  <div className="text-xs text-steel mt-1 truncate">{po.purchase_order_items.map((l) => `${Number(l.qty)} ${byId[l.ingredient_id]?.unit ?? ""} ${byId[l.ingredient_id]?.name ?? "—"}${po.status === "received" && l.received_qty !== null && Number(l.received_qty) !== Number(l.qty) ? ` (got ${Number(l.received_qty)})` : ""}`).join(", ")}</div>
+        <ul className={cn("grid gap-3 md:grid-cols-2 [&>*]:min-w-0", COLS_CLASS[cols])} aria-label="Purchase orders" data-po-grid={cols}>
+          {[...orders].sort((a, b) => PO_RANK[a.status] - PO_RANK[b.status]).map((po) => {
+            const S = PO_STATUS[po.status]; const live = po.status === "draft" || po.status === "sent";
+            const items = po.purchase_order_items;
+            /* the card's footer strip: Send (WhatsApp; a draft becomes sent), Edit, Cancel, and Receive — the main move */
+            const acts: StripAction[] = live ? [
+              { key: "send", label: po.status === "draft" ? "Send" : "Resend", icon: <MessageCircle />, href: waTo(po.suppliers?.phone ?? null, poText(po, byId, restaurant)), external: true, aria: `Send PO-${po.po_no} on WhatsApp`, onClick: () => { if (po.status === "draft") start(async () => { await setPoStatus(po.id, "sent"); }); } },
+              { key: "edit", label: "Edit", icon: <Pencil />, aria: `Edit PO-${po.po_no}`, onClick: () => setEditing(po) },
+              { key: "cancel", label: "Cancel", icon: <XCircle />, tone: "red", disabled: pending, aria: `Cancel PO-${po.po_no}`, onClick: () => { if (confirm(`Cancel PO-${po.po_no}?`)) start(async () => { const r = await setPoStatus(po.id, "cancelled"); if ("error" in r) toast(r.error!, "err"); }); } },
+              { key: "receive", label: "Receive", icon: <PackageCheck />, tone: "go", aria: `Receive PO-${po.po_no}`, onClick: () => setReceiving(po) },
+            ] : [
+              /* a closed order still has a next move: the same order again, as a new draft */
+              { key: "again", label: "Order again", icon: <Repeat />, tone: "go", aria: `Order PO-${po.po_no} again`, onClick: () => setEditing({ ...po, id: "", status: "draft", expected_on: null }) },
+            ];
+            const more = items.length - 3;
+            return (
+            <li key={po.id} data-po={po.po_no} data-po-status={po.status} className="feather @container overflow-hidden flex flex-col min-w-0">
+              <div className={cn("p-4 flex flex-col gap-3 flex-1 min-w-0", po.status === "cancelled" && "opacity-60")}>
+                <div className="flex items-start gap-3 min-w-0">
+                  <span aria-hidden className="h-11 w-11 shrink-0 rounded-[12px] grid place-items-center @max-[19rem]:hidden" style={{ background: `color-mix(in srgb, var(${S.hue}) 16%, transparent)`, color: `var(${S.hue})` }}><S.Icon size={19} /></span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[15px] font-semibold truncate" data-supplier>{po.suppliers?.name ?? <span className="text-steel">No supplier</span>}</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] text-steel min-w-0">
+                      <span className="num font-semibold text-[var(--color-label-2)]">PO-{po.po_no}</span><span aria-hidden>·</span>
+                      <span>{items.length} line{items.length === 1 ? "" : "s"}</span><span aria-hidden>·</span><span>{fmtDate(po.created_at)}</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className={cn("font-display num text-[19px] leading-tight @max-[19rem]:text-[16.5px]", po.status === "cancelled" && "line-through")} data-po-total>{formatINR(Number(po.total))}</div>
+                    <span className="mt-1 inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11.5px] font-semibold whitespace-nowrap" style={{ background: `color-mix(in srgb, var(${S.hue}) 15%, transparent)`, color: `var(${S.hue})` }} data-status>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />{S.label}
+                    </span>
+                  </div>
                 </div>
-                <div className="num font-semibold">{formatINR(Number(po.total))}</div>
-                <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
-                  {(po.status === "draft" || po.status === "sent") && <>
-                    <a href={waTo(po.suppliers?.phone ?? null, poText(po, byId, restaurant))} target="_blank" rel="noreferrer" className="btn btn-outline !h-8 !text-xs" title="Send on WhatsApp" onClick={() => { if (po.status === "draft") start(async () => { await setPoStatus(po.id, "sent"); }); }}><MessageCircle size={13} /> {po.status === "draft" ? "Send" : "Resend"}</a>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(po)} aria-label="Edit"><Pencil size={14} /></Button>
-                    <Button size="sm" onClick={() => setReceiving(po)}><PackageCheck size={14} /> Receive</Button>
-                    <Button size="sm" variant="ghost" disabled={pending} onClick={() => { if (confirm(`Cancel PO-${po.po_no}?`)) start(async () => { const r = await setPoStatus(po.id, "cancelled"); if ("error" in r) toast(r.error!, "err"); }); }} aria-label="Cancel"><XCircle size={14} /></Button>
-                  </>}
-                  {po.status === "sent" && <Button size="sm" variant="ghost" disabled={pending} onClick={() => start(async () => { await setPoStatus(po.id, "draft"); })} title="Back to draft" aria-label="Back to draft">draft</Button>}
+                {/* what is on it, as a list in a soft panel that takes the card's spare height — so a one-line order
+                    beside a six-line one is a shorter list, not a gap (2026-10-21, the owner: "empty card"); three
+                    lines shown, the rest counted */}
+                <div className="flex-1 flex flex-col rounded-xl bg-[var(--color-fill)] px-1 pb-1 min-w-0" data-po-lines>
+                  <div className="flex items-center justify-between gap-2 min-h-8 px-2.5 text-[11px] font-semibold uppercase tracking-[.1em] text-steel">
+                    <span>Items · <span className="num">{items.length}</span></span>
+                    {po.status === "sent" && <button type="button" disabled={pending} onClick={() => start(async () => { await setPoStatus(po.id, "draft"); })} className="-mr-1.5 inline-flex items-center gap-1 !min-h-8 px-2 rounded-lg normal-case tracking-normal text-[12px] text-[var(--color-label-2)] hover:bg-[var(--color-fill)]" data-po-undo><Undo2 size={13} aria-hidden /> Back to draft</button>}
+                  </div>
+                  <ul className="rounded-[10px] bg-[var(--color-card)] divide-y divide-[var(--color-separator)] min-w-0">
+                    {items.slice(0, 3).map((l) => { const g = byId[l.ingredient_id]; const short = po.status === "received" && l.received_qty !== null && Number(l.received_qty) !== Number(l.qty); return (
+                      <li key={l.id} className="flex items-center gap-2 min-h-9 px-2.5 text-[12.5px] min-w-0">
+                        <span className="truncate flex-1 min-w-0">{g?.name ?? "Removed item"}</span>
+                        <span className="num shrink-0 text-[var(--color-label-2)]">{Number(l.qty)} {g?.unit ?? ""}{short && <b className="ml-1 text-[var(--color-orange)]">· got {Number(l.received_qty)}</b>}</span>
+                        {Number(l.unit_cost) > 0 && <span className="num shrink-0 w-[4.75rem] text-right font-semibold @max-[19rem]:hidden">{formatINR(Number(l.qty) * Number(l.unit_cost), { whole: true })}</span>}
+                      </li>); })}
+                  </ul>
+                  {more > 0 && <div className="px-2.5 pt-1.5 text-[12px] font-semibold text-steel">+{more} more</div>}
                 </div>
+                <PoTrack po={po} />
               </div>
-            </Card>
-          ))}
-        </div>
+              {/* one action (Order again) keeps the four-action strip's height at every width — they turn one row at 26rem */}
+              <CardStrip actions={acts} data-actions className={cn(acts.length === 1 && "[&>*]:!h-14 @[26rem]:[&>*]:!h-11")} />
+            </li>); })}
+        </ul>
       )}
-      <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing === "new" || !editing ? "New purchase order" : `Edit PO-${editing.po_no}`} wide>
-        {editing && <PoForm key={editing === "new" ? "new" : editing.id} po={editing === "new" ? null : editing} suppliers={suppliers} ingredients={ingredients} onDone={() => setEditing(null)} />}
+      {/* an order with no id is "Order again": the form opens on its lines and saves a new draft */}
+      <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing === "new" || !editing ? "New purchase order" : editing.id ? `Edit PO-${editing.po_no}` : `Order again · as PO-${editing.po_no}`} wide>
+        {editing && <PoForm key={editing === "new" ? "new" : editing.id || `again-${editing.po_no}`} po={editing === "new" ? null : editing} suppliers={suppliers} ingredients={ingredients} onDone={() => setEditing(null)} />}
       </Sheet>
       <Sheet open={!!receiving} onClose={() => setReceiving(null)} title={receiving ? `Receive PO-${receiving.po_no}` : ""} wide>
         {receiving && <ReceiveForm key={receiving.id} po={receiving} ingredients={ingredients} onDone={() => setReceiving(null)} />}
       </Sheet>
     </div>
+  );
+}
+
+/** where an order is: Drafted → Sent → Received (or Due, with its date; Cancelled in red) — three dots on one line */
+function PoTrack({ po }: { po: Po }) {
+  const st = po.status;
+  const steps: { k: string; on: boolean; d: string | null; bad?: boolean }[] = [
+    { k: "Drafted", on: true, d: po.created_at },
+    { k: "Sent", on: st === "sent" || st === "received" || !!po.sent_at, d: po.sent_at },
+    st === "cancelled" ? { k: "Cancelled", on: true, d: null, bad: true } : { k: st === "received" ? "Received" : "Due", on: st === "received", d: st === "received" ? po.received_at : po.expected_on },
+  ];
+  return (
+    <ol className="grid grid-cols-3 min-w-0" aria-label="Where this order is" data-po-track>
+      {steps.map((x, i) => { const hue = x.bad ? "var(--color-red)" : "var(--color-tint)"; return (
+        <li key={x.k} className="relative min-w-0 flex flex-col items-center text-center">
+          {i > 0 && <span aria-hidden className="absolute top-[5px] right-1/2 w-full h-[2px] rounded-full" style={{ background: x.on ? hue : "var(--color-separator)" }} />}
+          <span aria-hidden className="relative z-[1] h-3 w-3 rounded-full ring-[3px] ring-[var(--color-card)]" style={{ background: x.on ? hue : "var(--color-separator)" }} />
+          <span className={cn("mt-1.5 text-[11.5px] font-semibold leading-tight", x.on ? "text-[var(--color-label)]" : "text-steel")} style={x.bad ? { color: hue } : undefined}>{x.k}</span>
+          <span className="text-[11px] text-steel num leading-tight">{x.d ? fmtDate(x.d) : x.k === "Due" ? "no date" : "—"}</span>
+        </li>); })}
+    </ol>
   );
 }
 
@@ -115,9 +192,9 @@ function PoForm({ po, suppliers, ingredients, onDone }: { po: Po | null; supplie
       </div>
       <div className="flex justify-between items-center border-t border-line pt-3"><span className="text-sm text-steel">Total</span><span className="num text-xl font-semibold">{formatINR(total)}</span></div>
       <Button className="w-full" disabled={pending} onClick={() => start(async () => {
-        const r = await savePo({ id: po?.id ?? null, supplier_id: supplier || null, expected_on: expected || null, notes, lines: rows.map(toUnits) });
-        if ("error" in r) toast(r.error!, "err"); else { toast(po ? "Order updated" : "Order drafted — send it on WhatsApp when ready"); onDone(); }
-      })}>{po ? "Save changes" : "Save draft"}</Button>
+        const r = await savePo({ id: po?.id || null, supplier_id: supplier || null, expected_on: expected || null, notes, lines: rows.map(toUnits) });
+        if ("error" in r) toast(r.error!, "err"); else { toast(po?.id ? "Order updated" : "Order drafted — send it on WhatsApp when ready"); onDone(); }
+      })}>{po?.id ? "Save changes" : "Save draft"}</Button>
     </div>
   );
 }

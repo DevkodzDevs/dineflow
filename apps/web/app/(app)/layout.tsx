@@ -40,7 +40,7 @@ import { AssistLazy as Assist } from "@/components/assist/AssistLazy";
  */
 
 /** first path segment → module key; anything not listed is open to every signed-in person (e.g. /membership) */
-const ROUTE_MODULE: Record<string, string> = { dashboard: "dashboard", orders: "orders", "online-orders": "online-orders", kitchen: "kitchen", billing: "billing", invoices: "invoices", menu: "menu", inventory: "inventory", scan: "scan", tomorrow: "tomorrow", frontdesk: "frontdesk", rooms: "rooms", housekeeping: "housekeeping", guests: "guests", facilities: "facilities", reservations: "reservations", pulse: "pulse", channels: "channels", labour: "labour", proof: "proof", neighbours: "neighbours", reports: "reports", staff: "staff", settings: "settings", tax: "tax" };
+const ROUTE_MODULE: Record<string, string> = { dashboard: "dashboard", orders: "orders", tables: "orders", "online-orders": "online-orders", kitchen: "kitchen", billing: "billing", invoices: "invoices", menu: "menu", inventory: "inventory", scan: "scan", tomorrow: "tomorrow", frontdesk: "frontdesk", rooms: "rooms", housekeeping: "housekeeping", guests: "guests", facilities: "facilities", reservations: "reservations", pulse: "pulse", channels: "channels", labour: "labour", proof: "proof", neighbours: "neighbours", reports: "reports", staff: "staff", settings: "settings", tax: "tax" };
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const s = await requireSession();
   // An owner signing in on a temporary password gets no further than this until they change it —

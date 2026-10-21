@@ -5,8 +5,6 @@ import { CloudOff, RefreshCw, Check, AlertTriangle, RotateCcw, Trash2, ChevronUp
 import { onQueue } from "./sync";
 import { startSync, subscribe, flush, retryJob, discardJob, setOfflineOutlet } from "./sync";
 import type { Job } from "./db";
-import { cacheSet } from "./db";
-import { getClient } from "@/lib/supabase/lazy";
 
 type S = { online: boolean; pending: number; held: number; syncing: boolean; lastError: string | null; lastSyncAt: number | null; justSynced: number };
 const Ctx = createContext<S>({ online: true, pending: 0, held: 0, syncing: false, lastError: null, lastSyncAt: null, justSynced: 0 });
@@ -32,8 +30,13 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
     return () => navigator.serviceWorker.removeEventListener("message", onMsg);
   }, []);
   /**
-   * Warm the offline cache with what the POS and kitchen need, so a screen that was never opened on
-   * this device still has menu, tables and rooms when the connection drops.
+   * Warm the offline cache with the screens this person can open, so one never opened on this device still
+   * shows when the connection drops.
+   *
+   * It no longer copies six whole tables to the device first (2026-10-21): menu items, categories, tables, rooms,
+   * ingredients and labourers were written to IndexedDB for every login — a housekeeper's phone fetched the menu and
+   * the pantry, and the master's, inside one property, every property's rows — and nothing ever read them back
+   * (no screen used `useCached`). The screens above carry their own data.
    *
    * The warming must never compete with the screen someone is waiting for. This used to fire all
    * eleven screens at once the instant the app mounted — and a screen is a whole page render, so the
@@ -71,24 +74,9 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
     const WARMED = "df-warmed", EVERY = 30 * 60 * 1000;
     const due = () => { try { return Date.now() - Number(localStorage.getItem(WARMED) || 0) > EVERY; } catch { return true; } };
     const warm = async () => {
-      if (cancelled || !navigator.onLine || tooSlow() || !due()) return;
+      if (cancelled || !list.length || !navigator.onLine || tooSlow() || !due()) return;   // a role with no offline screen warms nothing
       try { localStorage.setItem(WARMED, String(Date.now())); } catch { /* private window: warm anyway */ }
-      try {
-        const sb = await getClient();
-        const [m, c, t, r, ing, lab] = await Promise.all([
-          sb.from("menu_items").select("id, name, price, is_veg, category_id, is_available").eq("is_active", true),
-          sb.from("categories").select("id, name, sort_order"),
-          sb.from("dining_tables").select("id, name, status, zone"),
-          sb.from("rooms").select("id, number, floor, status, room_type_id"),
-          sb.from("ingredients").select("id, name, unit, current_stock, reorder_level").eq("is_active", true),
-          sb.from("labourers").select("id, code, full_name, skill, daily_wage"),
-        ]);
-        if (cancelled) return;
-        if (m.data) await cacheSet("menu_items", m.data); if (c.data) await cacheSet("categories", c.data);
-        if (t.data) await cacheSet("tables", t.data); if (r.data) await cacheSet("rooms", r.data);
-        if (ing.data) await cacheSet("ingredients", ing.data); if (lab.data) await cacheSet("labourers", lab.data);
-      } catch { /* offline right now — nothing to warm */ }
-      // then the screens themselves, one at a time, into the service worker's cache
+      // the screens, one at a time, into the service worker's cache
       for (const u of list) {
         if (cancelled || !navigator.onLine || document.visibilityState !== "visible") return;
         try { await fetch(u, { credentials: "include" }); } catch { return; }

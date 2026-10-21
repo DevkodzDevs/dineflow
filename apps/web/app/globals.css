@@ -486,6 +486,14 @@ body:has(.deck-card) { background: #0a0a0d; }
 .am-alert .am-spark { animation: am-breathe 1.2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .am * { animation: none !important; } }
 
+/* Assist thinking (2026-10-21): a light runs along the line under the header while it works, and the live
+   thought line fades in word by word. Tokens only — the tint and its glow follow the theme. */
+.assist-scan { position: relative; height: 1px; background: var(--color-separator); overflow: hidden; }
+.assist-scan::after { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, var(--color-tint), transparent); animation: assist-scan 1.4s cubic-bezier(.45,0,.55,1) infinite; }
+@keyframes assist-scan { from { transform: translateX(-100%) } to { transform: translateX(250%) } }
+.assist-thought { -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%); mask-image: linear-gradient(90deg, transparent, #000 18%); }
+@media (prefers-reduced-motion: reduce) { .assist-scan::after { animation: none; opacity: .5; } }
+
 /* Assist: the composer is one field with the ring on its container, not the textarea */
 .assist-input, .assist-input:hover, .assist-input:focus { background: transparent !important; border: 0 !important; box-shadow: none !important; outline: none !important; padding: 8px 0 !important; min-height: 0 !important; border-radius: 0 !important; display: block; width: 100%; line-height: 24px; overflow-y: auto; }
 /* The page's scrollbar draws its thumb with a 3px border in the page background, which is what
@@ -1382,9 +1390,13 @@ a.svc-table:hover .svc-take, .svc-take:hover { background: var(--color-fill-2); 
 .svc-dish .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .svc-dish .pic[data-nophoto] { background: linear-gradient(160deg, var(--color-bg-3), var(--color-fill)); }
 .svc-dish .qty { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: 34px; height: 34px; padding: 0 8px; border-radius: 999px; background: var(--color-tint); color: var(--color-on-tint); display: grid; place-items: center; font-weight: 900; font-size: 17px; box-shadow: 0 4px 12px -4px rgb(0 0 0 / .5); }
-.svc-dish .flag { position: absolute; left: 8px; bottom: 8px; z-index: 1; max-width: calc(100% - 16px); height: 24px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; background: rgb(10 10 13 / .72); color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.svc-dish .flag { position: absolute; left: 8px; top: 8px; z-index: 1; max-width: calc(100% - 16px); height: 24px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; background: rgb(10 10 13 / .72); color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .svc-dish .flag.short { background: var(--color-orange); color: var(--color-bezel); }
 .svc-dish .stepper > .more { background: var(--color-tint); color: var(--color-on-tint); }
+/* the dish's move sits on the photo's lower edge (2026-10-21): the card is a size container, the photo is 16:10 of its
+   width, so its edge is 62.5cqw down at any width; the flags moved to the top-left to make room */
+.svc-dish { container-type: inline-size; }
+.svc-dish .act { position: absolute; z-index: 2; left: 50%; top: calc(100cqw * 10 / 16); transform: translate(-50%, -50%); }
 .svc-add { height: 42px; padding: 0 14px; border-radius: 13px; background: var(--color-fill-2); color: var(--color-label); display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; flex: none; transition: background var(--dur-fast), color var(--dur-fast); }
 .svc-add:hover { background: var(--color-tint); color: var(--color-on-tint); }
 @media (pointer: coarse) { .svc-add { height: 44px; } }
@@ -1639,11 +1651,12 @@ html[data-palette="royal"] .logo-well { background-image: none; }
    `--tabbar` is its real height (the 60px row + the bottom safe area) and 0 from md, where there is no bar: every
    bottom offset on a phone reads it — main's padding, the till's cart bar, the assistant's button, Settings' save
    bar. Change the row here, not in those. */
-:root { --tabbar-row: 60px; --tabbar: calc(var(--tabbar-row) + env(safe-area-inset-bottom, 0px)); }
+:root { --tabbar-row: 60px; --tabbar: calc(var(--tabbar-row) + env(safe-area-inset-bottom, 0px) + 3px); }
 @media (min-width: 768px) { :root { --tabbar: 0px; } }
 nav.tabbar {
-  background: var(--color-bg-2); border-top: 1px solid var(--color-separator);
-  box-shadow: 0 -10px 28px -20px rgb(0 0 0 / .7);
+  /* 2026-10-21, the owner: rounded, and standing 3px off the foot (the bottom-[3px] on the nav; --tabbar counts it) */
+  background: var(--color-bg-2); border: 1px solid var(--color-separator); border-radius: 12px;
+  box-shadow: 0 -10px 28px -20px rgb(0 0 0 / .7), 0 8px 22px -12px rgb(0 0 0 / .55);
   padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
 [data-theme="paper"] nav.tabbar { box-shadow: 0 -8px 24px -18px rgb(27 28 34 / .28); }
@@ -1693,8 +1706,40 @@ html[data-palette="royal"] nav.tabbar { border-top-color: rgb(184 145 58 / .35);
 @keyframes df-page { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
 @keyframes df-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes df-thumb { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
-.df-page { animation: df-page .16s cubic-bezier(.16, 1, .3, 1) both; }
-.df-rise { animation: df-rise .16s cubic-bezier(.16, 1, .3, 1) var(--d, 0ms) both; }
+.df-page { animation: df-page .16s cubic-bezier(.16, 1, .3, 1) backwards; }
+.df-rise { animation: df-rise .16s cubic-bezier(.16, 1, .3, 1) var(--d, 0ms) backwards; }
 .df-thumb { animation: df-thumb .14s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .df-page, .df-rise, .df-thumb { animation: none; } }
 
+
+/* ── a dialog's footer (2026-10-21) ─────────────────────────────────────────
+   Sheet marks the row of buttons its content ends with (markSheetFoot); here it is held at the foot of the dialog
+   while the fields scroll under it. The band is painted with shadows, not padding, so the row keeps its own size and
+   place, and a pinned button loses its own glow. */
+/* V (10px) is how far the band reaches above and below the row — under the 12–16px most dialogs leave above their
+   buttons, so at rest it never covers the last field; copies shifted sideways by S carry it out to both edges. */
+.sheet-body { --sheet-sx: 10px; --sheet-foot-b: max(20px, env(safe-area-inset-bottom)); }
+@media (min-width: 640px) { .sheet-body { --sheet-sx: 14px; } }
+.sheet-body [data-sheet-foot] {
+  --b: var(--color-bg-2); --l: var(--color-separator); --v: 10px; --dn: var(--sheet-foot-b);
+  position: sticky; bottom: var(--sheet-foot-b); z-index: 3;
+  box-shadow:
+    0 0 0 var(--v) var(--b), calc(-1 * var(--sheet-sx)) 0 0 var(--v) var(--b), var(--sheet-sx) 0 0 var(--v) var(--b),
+    0 var(--dn) 0 var(--dn) var(--b),
+    0 -1px 0 var(--v) var(--l), calc(-1 * var(--sheet-sx)) -1px 0 var(--v) var(--l), var(--sheet-sx) -1px 0 var(--v) var(--l) !important;
+}
+
+/* ── the guest's queue page (2026-10-21): the seated tick pops in once; "You're up" rings and its card glows, so the
+   one thing that changed is the thing that moves ─────────────────────────────────────────────────────────────── */
+@keyframes queue-pop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes queue-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 55%, transparent); } 100% { box-shadow: 0 0 0 18px transparent; } }
+@keyframes queue-glow { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 0%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-green) 22%, transparent); } }
+.queue-pop { animation: queue-pop .5s cubic-bezier(.16, 1, .3, 1) backwards; }
+.queue-ring { animation: queue-ring 1.4s ease-out infinite; }
+.queue-call { animation: queue-glow 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .queue-pop, .queue-ring, .queue-call { animation: none; } }
+
+/* the phone bar's open tab lifts out of it (2026-10-21): the green circle rises into place when a tab opens */
+@keyframes tabbar-lift { from { transform: translateY(14px) scale(.7); opacity: .3; } to { transform: none; opacity: 1; } }
+.tabbar-lift { animation: tabbar-lift .26s cubic-bezier(.16, 1, .3, 1) backwards; }
+@media (prefers-reduced-motion: reduce) { .tabbar-lift { animation: none; } }

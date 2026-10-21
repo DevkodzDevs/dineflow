@@ -89,7 +89,15 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
                       <span className="h-8 min-w-8 px-1.5 rounded-full bg-[var(--color-fill-2)] grid place-items-center font-display num text-[16px] shrink-0">{i.qty}</span>
                       <span className="flex-1 min-w-0 truncate">{i.name}{i.note ? <span className="text-[12px] font-normal text-steel"> · {i.note}</span> : null}</span>
                     </li>))}</ul>
-                  {o.unmatched.length > 0 && <div className="text-xs text-chili flex items-start gap-1"><AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{o.unmatched.length} item(s) not on your menu. <button onClick={() => setFix({ order: o, line: o.unmatched[0] })} className="underline font-semibold">Map now</button> so stock deducts correctly.</span></div>}
+                  {/* a dish the channel sent that is not on the menu: one callout — what, why, and the button to fix it (2026-10-21) */}
+                  {o.unmatched.length > 0 && <div className="flex items-center gap-3 rounded-[16px] p-2.5 pl-3 border border-[color-mix(in_srgb,var(--color-red)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-red)_8%,transparent)]" data-unmatched>
+                    <span className="h-9 w-9 shrink-0 rounded-[11px] grid place-items-center bg-[color-mix(in_srgb,var(--color-red)_16%,transparent)] text-[var(--color-red)]" aria-hidden><AlertTriangle size={17} /></span>
+                    <div className="min-w-0 flex-1 leading-tight">
+                      <div className="text-[13.5px] font-bold text-[var(--color-red)]"><span className="num">{o.unmatched.length}</span> {o.unmatched.length === 1 ? "dish" : "dishes"} not on your menu</div>
+                      <div className="text-[12px] text-[var(--color-label-2)] mt-0.5">Map {o.unmatched.length === 1 ? "it" : "them"} so the kitchen ticket and the stock are right.</div>
+                    </div>
+                    <button type="button" onClick={() => setFix({ order: o, line: o.unmatched[0] })} className="shrink-0 !min-h-10 h-10 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold bg-[var(--color-red)] text-white active:scale-[.97] transition" data-map-now><Link2 size={15} aria-hidden />Map now</button>
+                  </div>}
                   {/* what the guest paid big; what the aggregator kept and what arrives under it */}
                   <div className="mt-auto pt-3 border-t border-line flex items-end gap-3">
                     <div className="min-w-0"><div className="text-[13px] font-semibold text-steel">Total</div>

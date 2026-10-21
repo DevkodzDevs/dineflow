@@ -158,6 +158,10 @@ numbers are in testing-and-gates.md):
   each request a browser sends while another is running started a fresh instance. Both `vercel.json` files now
   set **`"fluid": true`** (Fluid compute: one warm instance serves many requests at once, and instances are
   kept warm longer). It takes effect on the next deploy; check Settings → Functions shows Fluid on.
+- **The offline warm-up copies no tables (2026-10-21).** It used to read menu items, categories, tables, rooms,
+  ingredients and labourers into IndexedDB for every login before warming screens — nothing ever read them back
+  (`useCached` had no caller), a housekeeper's phone fetched the menu and the pantry, and the master got every property's
+  rows. It now warms only the screens the person holds, and nothing at all for a role with none of them.
 - **The offline warm-up runs at most every 30 minutes per device** (`df-warmed` in localStorage,
   `lib/offline/OfflineProvider.tsx`). On every opening of the app it fetched up to eleven whole screens in the
   background, right when the person's own first taps were being sent.
@@ -267,7 +271,22 @@ still open over the bar (z-30). Tablet and desktop are unchanged.
 - **`FullLanguage`** (root layout, 2026-10-18) — the whole app in Tamil or Hindi; `LANG_BOOT` in `<head>` beside
   `THEME_BOOT`. See design-system.md, *The whole app in Tamil or Hindi*. `sw.js` caches `/i18n/` (the dictionaries,
   content-hashed) cache-first like `/_next/static/`.
-- **`Assist`** — the AI panel, lazy-loaded (`AssistLazy`). Talks to `api/assist`.
+- **Each login loads its own data (2026-10-21, the owner: "housekeeping loads only housekeeping").** What the shell
+  asks on every screen now follows the person's sections: the Help & support count (`support_unread`) only where Help is
+  shown — the owner (`useSupportUnread(path, on)`), which also keeps the Supabase client off other logins' screens;
+  Assist's 90-second snapshot reads only the parts the person's sections show (`reach()` in `lib/assist/data.ts` — a
+  housekeeper 2 queries of 8, an employee none); the offline warm-up, the bell (`kindsFor`) and the menus already
+  followed the modules. Measured (`roles50.mjs`, phone): browser→database calls after landing and one screen — owner 3,
+  housekeeper 0, waiter 0, chef 2 (printers); warm-up — housekeeper /rooms /housekeeping, waiter /orders /orders/new
+  /pulse, chef /kitchen /tomorrow /scan. Left as they were: `session_bundle` (one call; its late-ticket count is one
+  indexed count) and the Control room's room queries for a restaurant (empty, parallel, the owner's screen only).
+- **`Assist`** — the AI panel, lazy-loaded (`AssistLazy`). Talks to `api/assist` (NDJSON since 2026-10-21 — see
+  api-routes.md, *Assist*). The empty panel: *Check for problems* and *Make a PDF* (topic chips from `topics`, only
+  what the role holds), the insights, three suggestions, and the privacy line. A reply can carry a live thought line
+  (`.assist-thought`, then folded), step chips, finding cards (`[data-finding]`: level, area, what, Why, Fix, the fix
+  button and *Open <screen>*; a tapped fix turns to *Fixed*), PDF cards (`[data-assist-pdf]`: Download, and Share where
+  `navigator.canShare` takes files) and action buttons. While it works the header line runs a light (`.assist-scan`)
+  and *Stop* aborts the stream.
 - **`FlipRow` was deleted (2026-10-10).** It was imported by nothing — `StatTile` covers the screens
   that needed split-flap tiles. Do not bring back a third way to do the same thing.
 
@@ -551,3 +570,26 @@ board counts as pinned in Edit bar (it was filtered by modules and dropped).
   `data-install-plan=<android|windows|ios|desktop|installed>` and `data-install-primary=<apk|exe|browser|installed|installed-here>`
   on the panel root (`data-steps` keeps the browser plan). The Windows app adds ` DineFlowDesktop/<version>` to its user
   agent (`apps/desktop/main.cjs`) — in the next .exe build; until then `Electron/` does the same job.
+
+- **The menu's headings, rearranged (2026-10-21, the owner: "rearrange every menu under a heading that suits it").** The
+  groups are one list, `MENU_GROUPS` / `menuGroups(rows, lead)` in `sections.ts`, used by the sidebar and the phone's
+  More sheet alike (each had its own lists before). *Dining* had held eleven unrelated rows, *Manage* and *Insights &
+  control* a mix of money, people and reports. Now, in order: (no heading) My day / Control room · Tomorrow · Scan —
+  **Rooms & stays** (hotel, resort) Front desk · Rooms · Housekeeping · Guests · Facilities — **Guests & tables**
+  Reservations · Pulse · Join by QR · Customers — **Orders & kitchen** Orders · Online orders · Kitchen · Order board ·
+  Billing — **Menu & stock** Menu · Pantry — **Team & work** Staff · Checklists · Cleaning · Work · Work records · Labour ·
+  Payroll — **Money** Invoices · Expenses · Cash & controls · Tax & GST — **Reports & insights** Reports · Intelligence ·
+  Audit trail — **Business & growth** Outlets · Channels · Proof of business · Neighbours — then the last group as before
+  (Settings, My profile / Settings, Staff feedback / Feedback & complaints, Help & support). Who sees a row is unchanged
+  (`modulesFor`, `freshFor`); an empty group is left out; a row no group names lands in a last *More* group so a new
+  section is never lost. `ITEMS`' order is untouched — the phone bar still fills from it. The hairline count above is
+  now one per group shown (eight for a restaurant owner, nine for a hotel or resort). `lib/menu-groups.test.ts`: every
+  row a person may open appears exactly once, for seven roles × three property kinds. shots44.
+
+- **The phone bar, sample 2 "Lift" (2026-10-21 — five samples, `barsamples.mjs`; a mix of "Lift" with a centre + and Quick
+  actions was built, shown and dropped by the owner the same day).** The open tab's icon lifts out of the bar in a green
+  50px circle ringed 5px in the page colour (a notch), its label green under it (`.tabbar-lift` pops it into place; off
+  under reduced motion); the others are icon over label. The bar is rounded (`border-radius: 12px` — 24px at first, then 8, then the owner settled on 12, a hairline all
+  round) and stands **3px off the foot** and **2.5px in from each side** (`bottom-[3px] left-[2.5px] right-[2.5px]` on the nav; `--tabbar` adds the 3px, so every bottom offset
+  still clears it). Four tabs and More, pins up to four, as before. shots47: 4 of 4 (412 / 360, dark and paper — the
+  bar's foot 3px above the screen's, 12px corners, no +).

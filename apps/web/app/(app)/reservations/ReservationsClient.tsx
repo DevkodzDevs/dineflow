@@ -114,20 +114,25 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
           next seven days as a rail of day pills (seven across at every width — 47px each on a 412 phone), then the
           state chips and the Day · Month · Reviews switch on one bar (2026-10-20) */}
       <section className="feather !rounded-[24px] p-3 sm:p-4 mb-5 min-w-0" data-res-top>
+        {/* the month with the day arrows joined on the right, then the chosen day's line with Today beside it — on a
+            phone the summary ran under a Today button and two arrows on one row (2026-10-21, the owner: "messy") */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 text-[16px] sm:text-[18px] font-extrabold leading-tight" data-month-label>
-              <CalendarDays size={17} className="shrink-0 text-steel" aria-hidden /><span className="truncate">{monthLabel}</span>
-            </div>
-            <div className="mt-0.5 text-[12.5px] sm:text-[13px] font-semibold text-steel num truncate" data-day-summary>
-              {dayLabel}<span aria-hidden> · </span>{dayTables} table{dayTables === 1 ? "" : "s"}
-              {covers > 0 && <><span aria-hidden> · </span><span data-guests>{covers} guest{covers === 1 ? "" : "s"}</span></>}
-            </div>
+          <div className="flex items-center gap-1.5 text-[16px] sm:text-[18px] font-extrabold leading-tight min-w-0 flex-1" data-month-label>
+            <CalendarDays size={17} className="shrink-0 text-steel" aria-hidden /><span className="truncate">{monthLabel}</span>
           </div>
-          {day !== today && <Link href={`/reservations?date=${today}`} className="h-11 shrink-0 px-3.5 rounded-[14px] inline-flex items-center gap-1.5 text-[13.5px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" data-today-jump>
-            <Undo2 size={15} aria-hidden />Today</Link>}
-          <Link href={move(-1)} aria-label="Previous day" className="h-11 w-11 shrink-0 grid place-items-center rounded-[14px] bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"><ChevronLeft size={19} /></Link>
-          <Link href={move(1)} aria-label="Next day" className="h-11 w-11 shrink-0 grid place-items-center rounded-[14px] bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"><ChevronRight size={19} /></Link>
+          <div className="shrink-0 flex items-center rounded-[14px] bg-[var(--color-fill)] p-0.5" data-day-arrows>
+            <Link href={move(-1)} aria-label="Previous day" className="h-10 w-11 grid place-items-center rounded-[12px] hover:bg-[var(--color-fill-2)]"><ChevronLeft size={19} /></Link>
+            <span className="h-5 w-px bg-[var(--color-separator)]" aria-hidden />
+            <Link href={move(1)} aria-label="Next day" className="h-10 w-11 grid place-items-center rounded-[12px] hover:bg-[var(--color-fill-2)]"><ChevronRight size={19} /></Link>
+          </div>
+        </div>
+        <div className="mt-1.5 flex items-center gap-2 min-w-0">
+          <div className="min-w-0 flex-1 text-[12.5px] sm:text-[13px] font-semibold text-steel num truncate" data-day-summary>
+            {dayLabel}<span aria-hidden> · </span>{dayTables} table{dayTables === 1 ? "" : "s"}
+            {covers > 0 && <><span aria-hidden> · </span><span data-guests>{covers} guest{covers === 1 ? "" : "s"}</span></>}
+          </div>
+          {day !== today && <Link href={`/reservations?date=${today}`} className="relative shrink-0 h-8 px-3 rounded-full inline-flex items-center gap-1.5 text-[12.5px] font-bold bg-[color-mix(in_srgb,var(--color-tint)_14%,transparent)] text-[var(--color-tint)] before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-['']" data-today-jump>
+            <Undo2 size={14} aria-hidden />Today</Link>}
         </div>
 
         {/* the next seven days: the chosen one solid, today ringed in the tint, an empty day quieter; a busy day shows
@@ -137,12 +142,12 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
             const on = d.date === day; const isToday = d.date === today; const dt = new Date(`${d.date}T00:00:00Z`);
             return (
               <Link key={d.date} href={`/reservations?date=${d.date}`} aria-current={on ? "date" : undefined} data-day={d.date} data-busy={d.n > 0 || undefined}
-                className={cn("min-w-0 min-h-[70px] sm:min-h-[86px] rounded-[16px] sm:rounded-[18px] flex flex-col items-center justify-center gap-1 px-0.5 transition-colors",
+                className={cn("min-w-0 min-h-[62px] sm:min-h-[86px] rounded-[15px] sm:rounded-[18px] flex flex-col items-center justify-center gap-1 px-0.5 transition-colors",
                   on ? "bg-[var(--color-label)] text-[var(--color-on-label)] shadow-[var(--shadow-card)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]",
                   !on && isToday && "shadow-[inset_0_0_0_2px_var(--color-tint)]")}>
                 <span className={cn("text-[10px] sm:text-[11.5px] font-extrabold uppercase tracking-[.06em] leading-none max-w-full truncate", !on && (isToday ? "text-[var(--color-tint)]" : "text-steel"))}>
                   {isToday ? "Today" : dt.toLocaleDateString("en-IN", { weekday: "short", timeZone: "UTC" })}</span>
-                <span className={cn("font-display num text-[23px] sm:text-[30px] leading-none", !on && d.n === 0 && "text-[var(--color-label-2)]")}>{dt.getUTCDate()}</span>
+                <span className={cn("font-display num text-[21px] sm:text-[30px] leading-none", !on && d.n === 0 && "text-[var(--color-label-2)]")}>{dt.getUTCDate()}</span>
                 <span className="h-1.5 flex items-center gap-[3px] sm:hidden" aria-hidden>
                   {Array.from({ length: Math.min(d.n, 3) }, (_, i) => <span key={i} className={cn("h-1.5 w-1.5 rounded-full", on ? "bg-[var(--color-on-label)]" : "bg-[var(--color-tint)]")} />)}
                 </span>
