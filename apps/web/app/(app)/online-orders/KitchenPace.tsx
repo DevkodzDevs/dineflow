@@ -81,7 +81,7 @@ export function KitchenPace({ initial }: { initial: Pace }) {
             })}
           </div>
         </div>
-        <p className="px-4 pt-2.5 pb-3.5 text-[11.5px] text-[var(--color-label-2)] flex items-center gap-1.5"><Info size={13} className="shrink-0" /> Busy lasts an hour · a pause 30 min · table QR orders never stop</p>
+        <p className="px-4 pt-2.5 pb-3.5 text-[11.5px] text-[var(--color-label-2)] flex items-center gap-1.5"><Info size={13} className="shrink-0" /> Busy: 1 hour · pause: 30 min · table QR never stops</p>
       </div>
 
       <div className="hidden sm:block feather p-4 mb-5">
@@ -101,7 +101,7 @@ export function KitchenPace({ initial }: { initial: Pace }) {
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-[var(--color-label-2)] mt-2">Busy lasts an hour, a pause half an hour, then the kitchen is back to normal on its own. Table QR orders are never paused.</p>
+        <p className="text-[11px] text-[var(--color-label-2)] mt-2">Busy lasts 1 hour, a pause 30 min, then back to normal. Table QR orders never pause.</p>
       </div>
     </>
   );

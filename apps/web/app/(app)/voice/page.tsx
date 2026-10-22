@@ -23,9 +23,9 @@ export default async function VoicePage() {
     <>
       {owner
         ? <PageHeader eyebrow="From your team" title="Staff" accent="feedback"
-            sub="What your staff send you — complaints, feedback, ideas and thanks. Only you read these; your managers do not." />
+            sub="Complaints, ideas and thanks from staff. Only you see these." />
         : <PageHeader eyebrow="Straight to the owner" title="Feedback" accent="& complaints"
-            sub="Tell the owner what is going well, what is not, or what would help. Only the owner reads it — not your manager — and the answer comes back here." />}
+            sub="Tell the owner what helps or what's wrong. Only the owner reads it." />}
       <VoiceClient items={(data ?? []) as Item[]} owner={owner} name={session.profile.full_name} />
     </>
   );

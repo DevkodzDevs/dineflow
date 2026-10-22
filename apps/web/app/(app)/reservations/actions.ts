@@ -28,7 +28,7 @@ export async function saveOffer(fd: FormData) {
 }
 export async function deleteOffer(id: string) {
   const s = await createClient(); const r = await s.from("offers").delete().eq("id", id).select("id");
-  if (r.error?.code === "23503") return { error: "This offer is on past bills or bookings, so it cannot be deleted — switch it off instead." };
+  if (r.error?.code === "23503") return { error: "Used on past bills or bookings — switch it off instead of deleting." };
   const bad = wrote(r, "That offer could not be deleted."); if (bad) return bad; revalidatePath("/settings/storefront"); return { ok: true };
 }
 export async function replyReview(id: string, reply: string) {

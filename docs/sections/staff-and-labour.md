@@ -1,7 +1,7 @@
 # Staff and labour
 
 **Routes** `/staff` · `/labour` · `/attendance` (staff self-punch) · `/attend/[token]` (a labourer's own link, no sign-in)
-**Files** `app/(app)/staff/page.tsx` · `StaffClient.tsx` · `app/(app)/labour/LabourClient.tsx` ·
+**Files** `app/(app)/staff/page.tsx` · `StaffClient.tsx` · `StaffGrid.tsx` · `app/(app)/labour/LabourClient.tsx` ·
 both `actions.ts` · `staff/StaffPositions.tsx` · `packages/shared/src/positions.ts` · `staff/StaffAttendance.tsx` · `app/attend/actions.ts` · `lib/attendance.ts` ·
 `components/attendance/PunchPanel.tsx`
 **Reads** `profiles`, `invites`, `labourers`, `labour_attendance`, `labour_payments`, `staff_attendance`,
@@ -86,6 +86,33 @@ that. Probe: `staffrow.mjs`.
   truncating. A hairline row under them appears only for what needs saying — *Not signed in* (orange dot), *Off* (red
   dot), → their manager. Every value is `--color-label`; the hue is only in the circles and dots, so it reads in all
   five themes. The owner's own card has the same panel.
+- **People as cards or as a data grid (2026-10-22, the owner: "a datagrid; a row shows that person; the job-based list in
+  the grid; don't disturb the card design; desktop to iPad the grid, mobile the cards").** People has a **Cards · Table**
+  switch beside the search (`[data-staff-layout]`, `[data-staff-layout-pick=cards|table]`). The cards are exactly as they
+  were — their markup moved, unchanged, into `personCard(p, close?)` so the details sheet can show the same card. **The
+  default is CSS, not script**: until a device picks, the cards are `md:hidden` and the grid `hidden md:block`, so every
+  iPad (768 up) and laptop opens on the grid and a phone on the cards with nothing corrected after load; a pick is kept on
+  the device (`localStorage` `df-staff-layout`, read after mount). **The grid** (`StaffGrid.tsx`, `[data-staff-grid]`) is
+  grouped by job — a band per department (`[data-staff-group]`, its icon on its colour and a count), people under it by
+  level then name — with **Group by job** (`[data-staff-group-toggle]`) for one flat list; every column sorts
+  (`[data-sort]`); the department chips and the search filter it as they filter the cards. Columns come with the room the
+  grid has (container queries, so a laptop's 256px sidebar counts): Name (avatar with the state dot, the title under it)
+  and **Today** always — *Off*, *Not signed in*, *On duty · 9:05 am*, *Left · 6:10 pm*, *Not in today* from today's
+  `staff_attendance` (page.tsx passes it as `duty`); Department from 36rem; Level and Phone (a `tel:` link that does not
+  open the row) from 46; Access (the role, and how its sections were set — `howOf`) from 58; Staff code and Email from
+  78; Joined and Reports to from 90. **A row** (`[data-staff-row]`, click, Enter or Space) opens a sheet
+  (`[data-staff-detail]`): the person's card (its Call / Sign-in / Access close the sheet first, then open their own),
+  **Today**, **Can open** (their sections, or the role default trimmed to the property), and **Reports to / Their team**,
+  each person a tap that opens them. The search row sits under the view tabs below `lg` — beside them at 834 the search
+  shrank to its icon. Probe `staff67.mjs` (29). Read-only on manoooo as its General Manager, signed out after.
+- **The department chips are one compact rail from md (2026-10-22, the owner: "ultra modern, compact — desktop to iPad").**
+  They wrapped into two or three rows of bordered pills on a laptop or an iPad. `DeptRail` (end of `StaffClient.tsx`,
+  `[data-dept-rail]`, the scroller `[data-dept-chips="rail"]`) is one row in a soft track like the view switch above it: the
+  chosen chip raised on the card colour with a shadow, the rest plain words with their department icon on its colour and a
+  quiet count. Past the room it slides: the edge it continues past fades (a mask on the scroller) and a round arrow sits
+  there, only then (`[data-dept-prev]` / `[data-dept-next]`, 70% of the width a press); choosing a chip scrolls it into
+  view. Chips are 36px with a mouse and 44px on a touch screen (`pointer-coarse:`). Below md the old row stays as it was
+  (`[data-dept-chips="phone"]`); both share one `chips` list.
 - **A staff card's foot has Call (2026-10-20).** Anyone with a phone on the list, except yourself, gets **Call**
   (`tel:`, green phone, `[data-call]`) as the first section, before *Sign-in* and *Access* (or alone, on a card you do
   not manage). Equal sections with hairlines (`@container`): from 19.5rem of card the icon sits beside the word,

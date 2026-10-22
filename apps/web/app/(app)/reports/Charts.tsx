@@ -8,7 +8,7 @@ function Empty({ text }: { text: string }) {
 
 /** Split out so the charting library loads only when Reports is opened, not with the app shell. */
 export function SalesChart({ data }: { data: { day: string; total: number }[] }) {
-  if (!data.some((d) => Number(d.total) > 0)) return <Empty text="No paid bills in this window — the curve draws from the first settled bill." />;
+  if (!data.some((d) => Number(d.total) > 0)) return <Empty text="No paid bills in this period yet." />;
   return (
     <div className="h-56"><ResponsiveContainer>
       <AreaChart data={data}>

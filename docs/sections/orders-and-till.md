@@ -327,7 +327,17 @@ node fit.mjs             # nine dishes on the ticket at 7 real screen sizes (not
   · 5 min* / *Given to …*, then one row: the move (*I'll take it*, *Done*, or *See who*) filling it and a round + to seat
   the next party anyway. On a two-across phone card the time, the move and + had not fitted one row and + stood outside
   the card. shots41: every control inside the card at 412 and 1440.
+  **On a phone (2026-10-22, the owner: "not looking good" — the live card cut *Waiting for someone · 2d …* and wrapped its
+  button onto two lines):** below md the frame is a soft solid cyan (1.5px, the dashed ring read as broken on a small card;
+  iPad and desktop keep the dashes) and the who line is a row of its own (`[data-clean-who-phone]`): who has it in a few
+  words — *Nobody yet*, *You're on it*, *Ravi's on it*, *For you* — on the left, how long in a tinted pill (clock + *3d*)
+  on the right that never truncates. The moves never wrap: their words truncate inside, and under 400px the icon goes so
+  *I'll take it* fits a 360 card. Probe `shots68.mjs`.
 
+- **Tables: the filters on a phone (2026-10-22, the owner: "not looking good")** — below md the states are one sliding row
+  in a soft track (`[data-tables-filter="phone"]`, buttons `[data-table-filter]`): the chosen one raised on the card
+  colour, the rest a dot, the word and a quiet count, 44px chips; the zone select is a pill at its end (`[data-zone-pick]`).
+  They wrapped into two rows round the zone select. iPad and desktop keep the wrapping chips (`[data-tables-filter]`).
 - **Tables — a screen of its own (2026-10-21, the owner: "one more menu, Tables — click one and show its details
   completely").** `/tables` (`app/(app)/tables/page.tsx` · `TablesClient.tsx`), the menu's first row under *Guests &
   tables* (`ITEMS` key `tables`, `mod: "orders"` — whoever holds Orders sees it; appended last in `ITEMS` so the phone

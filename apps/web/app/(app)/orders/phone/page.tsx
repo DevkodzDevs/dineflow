@@ -6,7 +6,7 @@ export const metadata = { title: "Phone order" };
 export default function PhoneOrderPage() {
   return (
     <>
-      <SvcHead icon="orders" title="Phone order" sub="Type the caller's number — their name, address and last orders come up" />
+      <SvcHead icon="orders" title="Phone order" sub="Type the caller's number to see their details" />
       <PhoneClient />
     </>
   );

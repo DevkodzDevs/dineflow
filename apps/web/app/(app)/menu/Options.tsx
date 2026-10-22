@@ -19,7 +19,7 @@ export function OptionsEditor({ itemId, itemName, variants, groups, linked, onDo
   return (
     <div className="space-y-6">
       <section>
-        <div className="flex items-baseline justify-between gap-3 mb-2"><div className="text-xs font-semibold uppercase tracking-wide text-steel">Sizes</div><span className="text-[11px] text-steel">Half / Full, Small / Large — each at its own price</span></div>
+        <div className="flex items-baseline justify-between gap-3 mb-2"><div className="text-xs font-semibold uppercase tracking-wide text-steel">Sizes</div><span className="text-[11px] text-steel">Half / Full, Small / Large — each with a price</span></div>
         {rows.length === 0 && <p className="text-sm text-steel mb-2">Sold in one size, at the dish&apos;s price.</p>}
         <div className="space-y-2">
           {rows.map((r, i) => (
@@ -36,11 +36,11 @@ export function OptionsEditor({ itemId, itemName, variants, groups, linked, onDo
           <Button variant="outline" size="sm" onClick={() => setRows([...rows, { name: "", price: 0, is_default: rows.length === 0 }])}><Plus size={14} /> Size</Button>
           {rows.length === 0 && <Button variant="outline" size="sm" onClick={() => setRows([{ name: "Half", price: 0, is_default: false }, { name: "Full", price: 0, is_default: true }])}>Half / Full</Button>}
         </div>
-        {rows.length > 0 && <p className="text-[11px] text-steel mt-2">The tick marks the size rung up when nobody says which. The dish&apos;s own price is not used while it has sizes.</p>}
+        {rows.length > 0 && <p className="text-[11px] text-steel mt-2">Tick = default size. The dish&apos;s own price is ignored.</p>}
       </section>
       <section>
         <div className="flex items-baseline justify-between mb-2"><div className="text-xs font-semibold uppercase tracking-wide text-steel">Add-on groups</div><button type="button" onClick={onManageGroups} className="text-[11px] font-semibold underline text-steel">Manage groups</button></div>
-        {groups.length === 0 ? <p className="text-sm text-steel">No add-on groups yet. Create one — &ldquo;Extras&rdquo;, &ldquo;Choose your bread&rdquo; — then tick it here.</p> : (
+        {groups.length === 0 ? <p className="text-sm text-steel">No add-on groups yet. Create one (&ldquo;Extras&rdquo;), then tick it here.</p> : (
           <div className="space-y-1.5">{groups.map((g) => { const on = picked.includes(g.id); return (
             <button key={g.id} type="button" aria-pressed={on} onClick={() => setPicked(on ? picked.filter((x) => x !== g.id) : [...picked, g.id])}
               className={cn("w-full rounded-xl border px-3 py-2 flex items-center gap-2.5 text-left text-sm", on ? "border-saffron bg-saffron/10" : "border-line")}>
@@ -131,7 +131,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
           <div className="w-[5.5rem]"><Field label="Max"><input name="max_select" type="number" min={0} className="num" defaultValue={0} /></Field></div>
           <Button disabled={pending} aria-label="Add group"><Plus size={16} /></Button>
         </div>
-        <p className="text-[11px] text-steel mt-2">Min 1 · Max 1 is a required pick-one (&ldquo;Choose your bread&rdquo;). Min 0 · Max 0 is any number of optional extras.</p>
+        <p className="text-[11px] text-steel mt-2">Min 1 · Max 1 = must pick one. Min 0 · Max 0 = any extras.</p>
       </form>
     </div>
   );
@@ -141,7 +141,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
 export function ComboParts({ items, rows, onChange }: { items: { id: string; name: string }[]; rows: { menu_item_id: string; qty: number }[]; onChange: (rows: { menu_item_id: string; qty: number }[]) => void }) {
   return (
     <div className="rounded-xl bg-[var(--color-fill)] p-3 space-y-2">
-      <div className="text-[11px] text-steel">The kitchen ticket lists these, and the pantry draws each part&apos;s recipe. The combo is sold at the price above.</div>
+      <div className="text-[11px] text-steel">Kitchen gets each part; stock is used per part. Sold at the price above.</div>
       {rows.map((r, i) => (
         <div key={i} className="flex flex-wrap items-center gap-2">
           <select value={r.menu_item_id} onChange={(e) => onChange(rows.map((x, j) => (j === i ? { ...x, menu_item_id: e.target.value } : x)))}><option value="">Choose a dish</option>{items.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>

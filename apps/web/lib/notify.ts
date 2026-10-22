@@ -30,15 +30,15 @@ export const KINDS: { kind: NotifyKind; label: string; hint: string; href: strin
   { kind: "ready", label: "Food ready to serve", hint: "When the kitchen marks a ticket ready", href: "/orders", module: "orders" },
   { kind: "housekeeping", label: "Rooms to clean", hint: "A new housekeeping task", href: "/housekeeping", module: "housekeeping" },
   { kind: "call", label: "A table calls a waiter", hint: "Waiter, the bill or water — from the table's QR", href: "/orders", module: "orders" },
-  { kind: "clean", label: "Tables to clean", hint: "A table paid and left — whoever is free takes it on Cleaning", href: "/cleaning", module: "orders" },
+  { kind: "clean", label: "Tables to clean", hint: "A table paid and left — whoever is free cleans it", href: "/cleaning", module: "orders" },
   { kind: "assigned", label: "A job given to you", hint: "A supervisor gave you a table or a room to clean", href: "/cleaning", module: "" },
-  { kind: "roomdone", label: "Rooms cleaned", hint: "A room is finished — inspect it, or it is ready to sell", href: "/cleaning", module: "housekeeping" },
-  { kind: "job", label: "New jobs for your department", hint: "A repair, a guest request, a setup — raised for the people who do it", href: "/work", module: "" },
-  { kind: "jobdone", label: "Jobs finished", hint: "Something you raised is done, or a job in your department — who and how long", href: "/work", module: "" },
-  { kind: "taken", label: "Jobs taken", hint: "Who took a job in your department, and from when (supervisors)", href: "/work", module: "" },
-  { kind: "feedback", label: "A low rating", hint: "A guest gave three stars or fewer on the feedback QR", href: "/customers?tab=feedback", module: "customers" },
+  { kind: "roomdone", label: "Rooms cleaned", hint: "A room is done — check it or sell it", href: "/cleaning", module: "housekeeping" },
+  { kind: "job", label: "New jobs for your department", hint: "A repair, a guest request or a setup", href: "/work", module: "" },
+  { kind: "jobdone", label: "Jobs finished", hint: "Your request or your team's job is done", href: "/work", module: "" },
+  { kind: "taken", label: "Jobs taken", hint: "Who took a job in your team, and when", href: "/work", module: "" },
+  { kind: "feedback", label: "A low rating", hint: "A guest gave 3 stars or fewer", href: "/customers?tab=feedback", module: "customers" },
   // 0124: the staff's messages to the owner, and the owner's answers to them — everyone, no section needed
-  { kind: "voice", label: "Feedback & complaints", hint: "For the owner, a message from the staff; for anyone else, the owner's answer to theirs", href: "/voice", module: "" },
+  { kind: "voice", label: "Feedback & complaints", hint: "Staff messages to the owner, and the owner's replies", href: "/voice", module: "" },
   // 0127: a leave request for whoever decides it, and the decision for the person who asked
   { kind: "leave", label: "Leave", hint: "A leave request to decide, or the answer to yours", href: "/home", module: "" },
 ];
@@ -85,7 +85,7 @@ const NONE: Record<NotifyKind, boolean> = { online: false, reservation: false, b
 export const STATIONS: { id: StationId; label: string; hint: string; tone: ToneId; kinds: Record<NotifyKind, boolean> }[] = [
   { id: "front", label: "Front desk", hint: "Bookings, table bookings, online orders", tone: "bell", kinds: { ...NONE, booking: true, reservation: true, online: true, housekeeping: true, feedback: true, assigned: true, roomdone: true, job: true, jobdone: true, voice: true, leave: true } },
   { id: "kitchen", label: "Kitchen screen", hint: "Every ticket and online order, loud", tone: "ticket", kinds: { ...NONE, kot: true, online: true, job: true } },
-  { id: "till", label: "Till / waiters", hint: "Food ready, tables calling, bookings, online orders", tone: "chime", kinds: { ...NONE, ready: true, reservation: true, online: true, call: true, feedback: true, clean: true, assigned: true, job: true, jobdone: true, voice: true, leave: true } },
+  { id: "till", label: "Till / waiters", hint: "Food ready, table calls, bookings, online orders", tone: "chime", kinds: { ...NONE, ready: true, reservation: true, online: true, call: true, feedback: true, clean: true, assigned: true, job: true, jobdone: true, voice: true, leave: true } },
   { id: "phone", label: "Owner's phone", hint: "Everything, softly", tone: "pop", kinds: { ...ALL } },
   // 0111: a cleaner's phone or the housekeeping tablet — what to clean, and what is given to them
   { id: "cleaning", label: "Cleaning crew", hint: "Tables and rooms to clean, and jobs given to you", tone: "bell", kinds: { ...NONE, housekeeping: true, clean: true, assigned: true, job: true, jobdone: true, voice: true, leave: true } },

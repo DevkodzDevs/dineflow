@@ -1,6 +1,6 @@
 "use client";
 import { clsx } from "clsx";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls, useMotionValue, animate as animateValue } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { X, Check, ChevronDown, Search } from "lucide-react";
 import { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
@@ -169,6 +169,51 @@ function markSheetFoot(body: HTMLElement) {
 export function Sheet({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   const frame = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
+  /* Drag down to close, without stealing the scroll (2026-10-22, the owner: "dragging down should close it, but not disturb
+     the inner scroll"). The whole dialog used to be the drag handle, so a swipe meant to scroll a list moved the dialog
+     instead. Now: the grabber and the header drag it (framer, started from there only); the body scrolls as a body; and
+     only when the body is already at its top does a pull further down move the dialog (pullY, on the wrapper) and close
+     it past 110px. A pull is a downward, mostly vertical move that starts at the top — a sideways swipe on a chip rail, an
+     upward swipe, or a touch inside an inner list that has been scrolled leave the scroll alone. Touch events, not pointer
+     events: the browser cancels pointer events once it takes a pan, and preventDefault needs a non-passive listener. */
+  const dragControls = useDragControls();
+  const pullY = useMotionValue(0);
+  const closeRef = useRef(onClose); closeRef.current = onClose;
+  const startHeaderDrag = (e: React.PointerEvent) => { if ((e.target as HTMLElement).closest("button, a, input, select, textarea")) return; dragControls.start(e); };
+  useEffect(() => {
+    if (!open) return;
+    const el = body.current; if (!el) return;
+    let y0 = 0, x0 = 0, t0 = 0, armed = false, pulling = false, dy = 0;
+    const innerScrolled = (t: EventTarget | null) => {
+      for (let n = t as HTMLElement | null; n && n !== el; n = n.parentElement) {
+        const o = getComputedStyle(n).overflowY;
+        if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight + 1 && n.scrollTop > 0) return true;
+      }
+      return false;
+    };
+    const start = (e: TouchEvent) => { const p = e.touches[0]; y0 = p.clientY; x0 = p.clientX; t0 = e.timeStamp; dy = 0; pulling = false; armed = e.touches.length === 1 && el.scrollTop <= 0 && !innerScrolled(e.target); };
+    const move = (e: TouchEvent) => {
+      if (!armed) return;
+      const p = e.touches[0]; dy = p.clientY - y0; const dx = Math.abs(p.clientX - x0);
+      if (!pulling) {
+        if (dy > 8 && dy > dx * 1.5 && el.scrollTop <= 0) pulling = true;
+        else { if (dy < -4 || dx > 10) armed = false; return; }
+      }
+      e.preventDefault();
+      pullY.set(Math.max(0, dy) * 0.6);
+    };
+    const end = (e: TouchEvent) => {
+      if (!pulling) { armed = false; return; }
+      const speed = dy / Math.max(1, e.timeStamp - t0) * 1000;
+      armed = pulling = false;
+      if (dy * 0.6 > 110 || (speed > 700 && dy > 40)) closeRef.current();
+      else animateValue(pullY, 0, { type: "spring", stiffness: 420, damping: 36 });
+    };
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: false });
+    el.addEventListener("touchend", end); el.addEventListener("touchcancel", end);
+    return () => { el.removeEventListener("touchstart", start); el.removeEventListener("touchmove", move); el.removeEventListener("touchend", end); el.removeEventListener("touchcancel", end); pullY.set(0); };
+  }, [open, pullY]);
   /* the footer is found again whenever what is in the dialog changes (a step, a line added, a field shown) */
   useEffect(() => {
     if (!open) return;
@@ -208,10 +253,13 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
       {open && (
         <motion.div ref={frame} className="fixed inset-x-0 top-0 h-dvh z-50 flex items-end sm:items-center justify-center p-0 sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <div className="fixed inset-x-0 -top-[50vh] -bottom-[50vh] scrim" onClick={onClose} />
-          <motion.div role="dialog" aria-modal aria-label={title} variants={sheetV} initial="hidden" animate="show" exit="exit" drag="y" dragDirectionLock dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: .55 }} onDragEnd={(_, i) => { if (i.offset.y > 110 || i.velocity.y > 700) onClose(); }}
-            className={cn("relative material-thick w-full max-h-[calc(100%-12px)] sm:max-h-full flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-[var(--shadow-pop)] overflow-hidden", wide ? "sm:max-w-3xl" : "sm:max-w-lg")}>
-            <div className="sm:hidden grabber shrink-0" />
-            <div className="shrink-0 flex items-center justify-between gap-3 px-5 sm:px-6 pt-3 pb-3 sm:pt-5 border-b border-[var(--color-separator)]">
+          {/* the pull layer: as tall as the frame, so the dialog's max height still measures against the screen; clicks pass through to the scrim */}
+          <motion.div style={{ y: pullY }} className="relative w-full h-full flex items-end sm:items-center justify-center pointer-events-none">
+          <motion.div role="dialog" aria-modal aria-label={title} variants={sheetV} initial="hidden" animate="show" exit="exit" drag="y" dragListener={false} dragControls={dragControls} dragDirectionLock dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: .55 }} onDragEnd={(_, i) => { if (i.offset.y > 110 || i.velocity.y > 700) onClose(); }}
+            className={cn("pointer-events-auto relative material-thick w-full max-h-[calc(100%-12px)] sm:max-h-full flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-[var(--shadow-pop)] overflow-hidden", wide ? "sm:max-w-3xl" : "sm:max-w-lg")}>
+            {/* the handle: a drag starts here (the grabber and the header), never in the scrolling body */}
+            <div className="sm:hidden shrink-0 touch-none py-1 -my-1" onPointerDown={startHeaderDrag} data-sheet-grab><div className="grabber" /></div>
+            <div onPointerDown={startHeaderDrag} className="shrink-0 flex items-center justify-between gap-3 px-5 sm:px-6 pt-3 pb-3 sm:pt-5 border-b border-[var(--color-separator)] max-sm:touch-none">
               <h2 className="text-[22px] font-display leading-tight min-w-0 truncate">{title}</h2>
               <button onClick={onClose} aria-label="Close" className="sheet-close shrink-0 h-10 w-10 rounded-full bg-[var(--color-fill)] grid place-items-center text-[var(--color-label-2)] hover:bg-[var(--color-fill-2)] active:scale-95 transition"><X size={17} strokeWidth={2.5} /></button>
             </div>
@@ -219,6 +267,7 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
                 and scroll inside (2026-10-20): `flex-auto` takes its content's height as its starting size, where
                 `flex-1` (a 0% basis) leaves an engine to guess it in a column with no set height. */}
             <div ref={body} className="sheet-body flex-auto min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 pt-4 pb-[max(20px,env(safe-area-inset-bottom))]">{children}</div>
+          </motion.div>
           </motion.div>
         </motion.div>
       )}

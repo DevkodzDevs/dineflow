@@ -12,13 +12,13 @@ const dateOrNull = (v: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null
 export async function saveTaxProfile(fd: FormData) {
   // The screen says only the owner or a manager may change these; hold that here too, not just on the button.
   const session = await requireSession();
-  if (!["owner", "manager"].includes(session.profile.role)) return { error: "Only the owner or a manager can change the tax profile." };
+  if (!["owner", "manager"].includes(session.profile.role)) return { error: "Only the owner or a manager can change this." };
   const s = await createClient();
   const gstin = str(fd, "gstin").toUpperCase(), pan = str(fd, "pan").toUpperCase();
   // GSTIN: 2-digit state · 10-character PAN · entity number · Z · check character
-  if (gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin)) return { error: "That GSTIN is not in the 15-character format, e.g. 33ABCDE1234F1Z5." };
-  if (pan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) return { error: "That PAN is not in the 10-character format, e.g. ABCDE1234F." };
-  if (gstin && pan && gstin.slice(2, 12) !== pan) return { error: "Characters 3 to 12 of a GSTIN are the PAN. The two you entered do not match." };
+  if (gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin)) return { error: "GSTIN must be 15 characters, e.g. 33ABCDE1234F1Z5." };
+  if (pan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) return { error: "PAN must be 10 characters, e.g. ABCDE1234F." };
+  if (gstin && pan && gstin.slice(2, 12) !== pan) return { error: "GSTIN and PAN don't match — GSTIN characters 3 to 12 are the PAN." };
   const scheme = str(fd, "gst_scheme");
   if (!["regular", "composition", "unregistered"].includes(scheme)) return { error: "Choose a GST scheme." };
   if (scheme !== "unregistered" && !gstin) return { error: "A registered business needs its GSTIN here." };

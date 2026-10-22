@@ -28,7 +28,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
       const back = devices.find((d) => /back|rear|environment/i.test(d.label)) ?? devices[0];
       const controls = await reader.decodeFromVideoDevice(back?.deviceId, videoRef.current!, (res) => { if (res) { const text = res.getText(); controls.stop(); readerRef.current = null; handleCode(text, "barcode"); } });
       readerRef.current = controls;
-    } catch { setErr("Camera not available — allow camera access, or use Upload / type a code."); setMode("idle"); }
+    } catch { setErr("No camera — allow access, or Upload / type a code."); setMode("idle"); }
   };
   const stopCamera = () => { readerRef.current?.stop(); readerRef.current = null; const v = videoRef.current; (v?.srcObject as MediaStream | null)?.getTracks().forEach((t) => t.stop()); if (v) v.srcObject = null; };
   useEffect(() => { const code = new URLSearchParams(window.location.search).get("code"); if (code) handleCode(code, "manual"); return () => stopCamera(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -71,7 +71,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
             <video ref={videoRef} className={cn("absolute inset-0 h-full w-full object-cover", mode !== "camera" && "hidden")} muted playsInline autoPlay />
             {photo && mode === "result" && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-contain" />}
             {mode === "camera" && <><div className="absolute inset-x-[12%] inset-y-[18%] border-2 border-saffron/80 rounded-2xl [box-shadow:0_0_0_9999px_rgb(16_32_26/.35)]" /><motion.div className="absolute left-[12%] right-[12%] h-0.5 bg-saffron/90 shadow-[0_0_16px_rgb(232_163_61)]" animate={{ top: ["20%", "80%", "20%"] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} /><div className="absolute bottom-3 inset-x-0 text-center text-xs text-white/80">Barcodes & QR read automatically · tap <b>Capture</b> for photos</div></>}
-            {mode === "idle" && <div className="absolute inset-0 grid place-items-center text-center text-white/70 p-6"><div><ScanLine size={40} className="mx-auto mb-3 text-saffron" /><div className="font-display text-2xl text-white">Ready to scan</div><div className="text-sm mt-1">Barcode, DineFlow QR label, or a photo of the thing itself</div></div></div>}
+            {mode === "idle" && <div className="absolute inset-0 grid place-items-center text-center text-white/70 p-6"><div><ScanLine size={40} className="mx-auto mb-3 text-saffron" /><div className="font-display text-2xl text-white">Ready to scan</div><div className="text-sm mt-1">Barcode, QR label, or a photo of the item</div></div></div>}
             {busy && <div className="absolute inset-0 grid place-items-center bg-bezel/70 text-white"><div className="flex items-center gap-2 text-sm"><motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><RotateCcw size={16} /></motion.span>{busy}</div></div>}
           </div>
           <div className="p-3 flex flex-wrap gap-2 items-center">
@@ -79,7 +79,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
             <label className="btn-like inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-line bg-card text-sm font-semibold cursor-pointer hover:bg-porcelain"><Upload size={16} /> Upload photo<input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} /></label>
             <form className="basis-full sm:basis-auto sm:ml-auto flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (manual) handleCode(manual, "manual"); }}><input placeholder="Type code / room no." value={manual} onChange={(e) => setManual(e.target.value)} className="flex-1 min-w-0 sm:!w-44 sm:flex-none !py-2 num" /><Button variant="outline" size="md" aria-label="Look up"><Keyboard size={16} /></Button></form>
           </div>
-          {!aiEnabled && <p className="px-4 pb-3 text-xs text-steel">Running in <b>sample mode</b>: photos return an example result so you can try the whole flow. Reading real photos is not switched on for your account yet — DineFlow support can turn it on. Barcode and QR scanning are real either way.</p>}
+          {!aiEnabled && <p className="px-4 pb-3 text-xs text-steel">Running in <b>sample mode</b>: photos show a sample. Ask support for real photos. Barcode and QR are real.</p>}
           {err && <p className="px-4 pb-3 text-sm text-chili">{err}</p>}
         </div>
 
@@ -93,10 +93,10 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
       <aside className="space-y-4">
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">How it lands</div>
           <ul className="text-sm space-y-2 text-steel">
-            <li className="flex gap-2"><Boxes size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Vegetable / packet</b> → new product in Pantry with unit, category, price; pick 200 g / ½ kg / 1 kg and it's stocked. Scan the same barcode next time → adds stock in one tap.</span></li>
-            <li className="flex gap-2"><UtensilsCrossed size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Dish</b> → new item on the Menu with a suggested price and veg/non-veg.</span></li>
-            {propertyType !== "restaurant" && <li className="flex gap-2"><BedDouble size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Room door / key tag</b> → opens the room: who's in it, mark cleaning or ready.</span></li>}
-            <li className="flex gap-2"><HardHat size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Worker / ID card</b> → new labourer with name, ID type, last 4 digits, wage. Their badge QR then punches attendance.</span></li>
+            <li className="flex gap-2"><Boxes size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Vegetable / packet</b> → new Pantry item; pick 200 g / ½ kg / 1 kg. Next scan adds stock.</span></li>
+            <li className="flex gap-2"><UtensilsCrossed size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Dish</b> → new Menu item with a price and veg/non-veg.</span></li>
+            {propertyType !== "restaurant" && <li className="flex gap-2"><BedDouble size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Room door / key tag</b> → opens the room; mark it cleaning or ready.</span></li>}
+            <li className="flex gap-2"><HardHat size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Worker / ID card</b> → new worker. Their badge QR marks attendance.</span></li>
           </ul>
           <Link href="/labour?tab=labels" className="mt-2 inline-flex items-center min-h-10 text-xs font-semibold underline">Print QR labels for rooms, products, workers →</Link></Card>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Recent scans</div>
@@ -178,7 +178,7 @@ function AiCard({ ai, setAi, categories, onDone, onReset }: { ai: ScanResult; se
       </>)}
 
       {ai.kind === "room" && (<>
-        <p className="text-sm text-steel">Looks like <b className="text-ink">Room {ai.room_number ?? "?"}</b>. Type the number to open it, or print QR labels so doors scan instantly.</p>
+        <p className="text-sm text-steel">Looks like <b className="text-ink">Room {ai.room_number ?? "?"}</b>. Type the number, or print QR labels for doors.</p>
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); const n = (e.currentTarget.elements.namedItem("n") as HTMLInputElement).value; if (n) window.location.href = `/scan?code=${n}`; }}><input name="n" defaultValue={ai.room_number ?? ""} className="num !w-32" placeholder="104" /><Link href={`/rooms`}><Button variant="outline">Rooms</Button></Link><Link href="/labour?tab=labels"><Button variant="outline">Print labels</Button></Link></form>
       </>)}
 

@@ -73,6 +73,17 @@ pathname takes over as soon as it changes, or after 4 s if the navigation never 
 profile (`perfx.mjs nav,taps restaurant phone`, 4× CPU, 4G): live site first visit median 610 ms (p90 1,231), this
 build 393 ms (p90 581) — the difference is the code not yet deployed.
 
+**A tab-bar tap was a whole-page reload (found and fixed 2026-10-22, the owner: "a lightweight feel").** `useNavPath`
+lit the tapped item from a capture-phase click listener — before React's own handler — and a `useSyncExternalStore` change
+re-renders synchronously at the next microtask, still inside that click. On the phone's tab bar lighting a tab swaps its
+icon for the lifted one (`TabIcon`), so the element under the finger left the page before `<Link>` saw the click: React
+found no handler, nothing called `preventDefault`, and the browser loaded the whole document — every script, the layout
+and the data again — on **every tab-bar tap**. The sidebar, the rail, the More sheet and Back only recolour, so they were
+never hit. Now the store is set a tick later (`setTimeout(…, 0)`), and `TabIcon` is a module-level component (declared
+inside `BottomNav` it was a new type every render, remounting every icon). Probe `reload59.mjs`: a mark on `window` must
+survive each move — phone tab bar, More tiles, Back; tablet rail (touch); laptop menu — 13/16 before, **16/16** after.
+**Rule: never change what is under the pointer from inside a click listener that runs before React's.**
+
 **Taps answered from the device (2026-10-20, second pass — the owner: "every click opens with a delay").**
 - **Warm-up** (`useWarmMenus` in `IntentPrefetch.tsx`): while the device is in use (a tap or key in the last 2 min,
   tab visible, not Save-Data / 2G) the phone bar's tabs, then the menu, are fetched ahead one at a time when the
@@ -230,18 +241,26 @@ lit while the current page lives under it; the sheet closes on navigation. The o
 sideways-scrolling strip of every section — five fitted, nothing said it scrolled — and a phone
 had no way to sign out at all. Probe: `more.mjs` (hotel 390 dark, restaurant 375 paper).
 
-**The bar is docked, not floating (2026-10-20 — the owner: "fit it to the bottom, on iOS and Android, phone only").**
-`nav.tabbar` (`[data-tabbar]`, below md): `fixed inset-x-0 bottom-0`, square, a solid `--color-bg-2` surface with a
-hairline on top and a soft upward shadow (the TAB BAR block at the end of `globals.css`); it pads
-`env(safe-area-inset-bottom/left/right)` itself, so the iPhone home indicator and Android's gesture bar sit inside its
-colour. The item row is `--tabbar-row` (60px); **`--tabbar`** = that row + the bottom safe area, and 0 from md. Every
-bottom offset on a phone reads `--tabbar` — change the row there, not in these: `main`'s padding
-(`pb-[calc(var(--tabbar)+28px)]`, was `pb-28`), the till's cart bar (`[data-cart-bar]`, `--tabbar + 10px`, was
-`max(10px, safe) + 78px`), the assistant's button (`--tabbar + 12px`, was `+ 84px`; over the cart bar
-`--tabbar + 10px + 68px`), Settings' save bar (`--tabbar + 12px`, was `safe + 92px`). The chosen section's pill is
-`var(--color-tint)` at 16% (it was a fixed green that three theme overrides recoloured — those rules are gone) and the
-More sheet's chosen tiles the same at 14%. The whole-app-language label rule now targets `nav.tabbar`. Sheets (z-50)
-still open over the bar (z-30). Tablet and desktop are unchanged.
+**The bar is a floating capsule (2026-10-22 — the owner sent a picture: "like this image exactly").** It was docked
+(2026-10-20), then rounded with "Lift" (2026-10-21: the open icon rose out of the bar in a green circle, labels under
+every icon). Now `nav.tabbar` (`[data-tabbar]`, below md; the TAB BAR block in `globals.css`) is a capsule with fully
+round ends, `--tabbar-row` (64px — 56 on the first day, the owner asked for it a little taller) tall, floating `--tabbar-gap` — `max(12px, the bottom safe area)` — above the foot and
+12px in from each side; a solid `--color-bg-2` surface with a faint label-coloured edge and a soft drop shadow (graphite
+in the dark themes, white in paper, a gold edge in royal). **Icons only**: four sections, **More** (☰, `Menu`), and
+**the person's avatar** at the end — their initial in the tint, ringed in the ink colour — linking where the top bar's
+avatar does (`accountHref`: Settings for the owner, My profile for staff). Every icon is in the ink colour; the open one
+sits on a soft pill (`.tab-pill`, the label colour at 9%, `[data-tab-pill]`), and a press shrinks the icon (CSS). Names
+are each slot's `aria-label` and `title` (translated in Tamil and Hindi like any other), so the old two-line label rule
+for long Tamil names is gone. The open pill is 48px tall and up to 60 wide, icons 26px, the avatar 34px; each slot is ≥54 wide even at 360. Counts (late kitchen tickets, Help replies) stay red pills
+on the icon. **Don't put Tailwind's bare `group` on a slot**: globals.css has a `.group` card (background, border,
+shadow) and every slot came out boxed — the slots use the named `group/tab`.
+**`--tabbar`** = the capsule + its gap (0 from md). Every bottom offset on a phone reads it — change the row there, not
+in these: `main`'s padding (`pb-[calc(var(--tabbar)+28px)]`), the till's cart bar (`[data-cart-bar]`, `--tabbar + 10px`),
+the assistant's button (`--tabbar + 12px`; over the cart bar `--tabbar + 10px + 68px`), Settings' save bar
+(`--tabbar + 12px`). Sheets (z-50) still open over the bar (z-30). Tablet and desktop are unchanged. Probe `pill64.mjs`
+(43: 412/390/375/360 dark and 412 in the other four themes — floating, round, 6 named unboxed slots ≥44, icons only,
+one pill behind the open section, the avatar's link; the end of /orders clears it; a tap moves in place and the pill
+follows; More opens the sheet).
 
 ### The rest of the shell
 
@@ -280,6 +299,22 @@ still open over the bar (z-30). Tablet and desktop are unchanged.
   housekeeper 0, waiter 0, chef 2 (printers); warm-up — housekeeper /rooms /housekeeping, waiter /orders /orders/new
   /pulse, chef /kitchen /tomorrow /scan. Left as they were: `session_bundle` (one call; its late-ticket count is one
   indexed count) and the Control room's room queries for a restaurant (empty, parallel, the owner's screen only).
+- **Back, on every screen (2026-10-22, the owner: "a proper back button on every page, in a place that disturbs no
+  one, at every size").** `BackButton` (components/shell) is the first thing in the top bar — sticky, so always in
+  reach, never over the page: a round 36px icon on a phone (44px finger target, `tap-square`), "‹ Back" from `sm`;
+  Master control's header has the same, dark. It is not drawn on the person's home (`landingFor` — the Control room, or
+  My day for staff; `/admin` for the master). It goes to the screen you came from, never out of the app: a per-tab trail in
+  sessionStorage (`df-trail`, `step()` in lib/back.ts) — the browser's own back only when the Navigation API shows that
+  screen is the entry behind, else it opens it; nothing on the trail (a page opened straight) → one level up
+  (`parentOf`: /orders/new → /orders, a section → home), and going up replaces the trail's last screen so the next Back
+  climbs again. **Not `history.state`** — Next rewrites the entry's state on its own refreshes and the numbers drifted
+  (Back left the app; tried first). The pages' own back links went (bill, folio, help thread, invoice, payouts, the till,
+  an order, Settings → Screens and Table QR, Pulse QR); the kitchen TV board keeps its ✕ — it covers the top bar.
+  `lib/back.test.ts` fails if a staff screen draws its own Back again. Probe `back53.mjs`.
+  **On a phone, where Back shows, the DineFlow wordmark steps aside** (TopBar `backShown`; its flex space stays): at 360–412 the
+  two did not fit beside the icons and the wordmark ran under Install (caught by `back53.mjs` checking every item in the bar
+  against every other — the first version checked only Back against the buttons). On home, Back is not drawn and the
+  wordmark is there. Tables’ "x min ago" text carries `suppressHydrationWarning`, like the till’s (React #418).
 - **`Assist`** — the AI panel, lazy-loaded (`AssistLazy`). Talks to `api/assist` (NDJSON since 2026-10-21 — see
   api-routes.md, *Assist*). The empty panel: *Check for problems* and *Make a PDF* (topic chips from `topics`, only
   what the role holds), the insights, three suggestions, and the privacy line. A reply can carry a live thought line

@@ -26,7 +26,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   const names = Object.fromEntries((people ?? []).map((p) => [p.id, p.full_name]));
   return (
     <>
-      <PageHeader eyebrow="Who did what, and when" title="Audit" accent="trail" sub="Every void, cancel, discount, payment, stock adjustment, price change, access change and settings change — written by the database itself, so nothing on this screen can be edited or deleted from the app." />
+      <PageHeader eyebrow="Who did what, and when" title="Audit" accent="trail" sub="Voids, discounts, payments, prices, stock and settings changes. Locked: no edits or deletes." />
       <AuditClient events={(events ?? []) as Event[]} names={names} days={days} more={(events?.length ?? 0) === PAGE} error={error?.message ?? null} />
     </>
   );

@@ -92,7 +92,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
       </div>}
 
       {tab === "stock" && (ingredients.length === 0 ? (
-        <Empty title="Pantry is empty" hint="Add ingredients like rice, oil, chicken, paneer. Then record a purchase or an opening balance." />
+        <Empty title="Pantry is empty" hint="Add items like rice or oil, then record a purchase or opening stock." />
       ) : (<>
         {/* three big tiles: how many are finished, running low, enough — tap one to see only those */}
         <div className="grid grid-cols-3 gap-2.5 sm:gap-3" data-levels>
@@ -184,7 +184,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
         </div>
       </>))}
 
-      {tab === "purchases" && (purchases.length === 0 ? <Empty title="No purchases recorded" hint="Record a supplier bill and the stock lands in the pantry instantly — or draft an order under Orders and receive it when the van comes." /> : (
+      {tab === "purchases" && (purchases.length === 0 ? <Empty title="No purchases recorded" hint="Add a supplier bill and the stock goes straight into the pantry." /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {purchases.map((p) => (
             <Card key={p.id}><div className="flex justify-between"><div><div className="font-semibold">{p.supplier || "Supplier"}</div><div className="text-xs text-steel">{p.invoice_no ? `Inv ${p.invoice_no} · ` : ""}{fmtDate(p.purchased_at)}{p.po_id ? " · against an order" : ""}</div></div><div className="num font-semibold">{formatINR(Number(p.total))}</div></div></Card>
@@ -198,7 +198,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
 
       {tab === "ledger" && (
         <div className="feather divide-y divide-line">
-          {ledger.length === 0 && <p className="p-6 text-sm text-steel">Every stock change shows here — sales, purchases, wastage, adjustments.</p>}
+          {ledger.length === 0 && <p className="p-6 text-sm text-steel">Every stock change shows here.</p>}
           {ledger.map((l) => (
             <div key={l.id} className="flex items-center gap-3 px-4 py-3 text-sm">
               <span className={cn("num font-semibold w-24 text-right", Number(l.qty) < 0 ? "text-chili" : "text-ink")}>{Number(l.qty) > 0 ? "+" : ""}{Number(l.qty).toFixed(3)} {byId[l.ingredient_id]?.unit}</span>
@@ -305,7 +305,7 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
         <span className="h-12 w-12 rounded-2xl grid place-items-center shrink-0 bg-[var(--color-green-2)] text-[var(--color-green)]">{reading ? <Loader2 size={22} className="animate-spin" /> : <ScanText size={22} />}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-semibold">{reading ? "Reading the bill…" : readNote ? "Scan another bill" : "Scan the supplier bill"}</span>
-          <span className="block text-xs text-[var(--color-label-2)] mt-0.5">Snap a photo; the supplier, invoice number and items fill in for you to check.</span>
+          <span className="block text-xs text-[var(--color-label-2)] mt-0.5">Take a photo; the bill fills in for you to check.</span>
         </span>
         <span className="hidden sm:inline-flex shrink-0 items-center gap-1.5 h-10 px-4 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] text-sm font-semibold"><Camera size={15} /> Take photo</span>
         <input type="file" accept="image/*" capture="environment" className="sr-only !w-px !h-px !min-w-0 !p-0 !border-0" disabled={reading}
@@ -320,7 +320,7 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
             {readNote.sample && <Pill tone="gold">sample</Pill>}
           </div>
           <div className="px-4 py-3 space-y-3 text-xs">
-            <p className="text-[var(--color-label-2)]">Check each item below before adding.{readNote.sample ? " Sample mode: reading real bills is not switched on for your account yet — DineFlow support can turn it on." : ""}</p>
+            <p className="text-[var(--color-label-2)]">Check each item below before adding.{readNote.sample ? " Sample only: ask DineFlow support to turn on bill reading." : ""}</p>
             {readNote.unmatched.length > 0 && (
               <div>
                 <div className="flex items-center gap-1.5 font-semibold text-[var(--color-orange)]"><AlertTriangle size={13} className="shrink-0" /> Not in your pantry yet</div>

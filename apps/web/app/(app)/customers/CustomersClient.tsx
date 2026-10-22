@@ -54,7 +54,7 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
 
   return (
     <div className="space-y-5">
-      <SvcHead icon="customers" title="Customers" sub="People who come back — call or WhatsApp them in one tap"
+      <SvcHead icon="customers" title="Customers" sub="Your regulars — call or WhatsApp in one tap"
         actions={<button type="button" className="svc-btn go sm !px-5" onClick={() => setAdding(true)} data-add-customer><Plus size={19} aria-hidden /><Say w="add_customer" /></button>} />
 
       {(ov.soon?.length ?? 0) > 0 && (
@@ -88,7 +88,7 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
       {/* guests' private ratings from the feedback QR (0103) — chosen like a filter, shown in place of the cards */}
       {filter === "feedback" ? <FeedbackBoard items={feedback} q={q} restaurant={restaurant} /> : <>
       {customers.length === 0 ? (
-        <Empty title="No customers yet" hint="A phone number on an order or a bill becomes a customer here — visits, spend and points build up on their own." action={<Button onClick={() => setAdding(true)}>Add one by hand</Button>} />
+        <Empty title="No customers yet" hint="A phone number on an order or bill adds them here." action={<Button onClick={() => setAdding(true)}>Add one by hand</Button>} />
       ) : list.length === 0 ? <Empty title="Nobody matches" hint="Try another name, or clear the filter." /> : (<>
         {/* One card per guest: a coloured initial, the name (Regular when they have come three times) and
             the phone; visits, spend and the last visit in three boxes; Call and WhatsApp, big. A tap on the
@@ -202,7 +202,7 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
           {!loyalty.enabled && (
             <div className="flex items-start gap-3 rounded-2xl bg-[var(--color-fill)] px-3.5 py-3" data-loyalty-off>
               <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center bg-[var(--color-blue-2)] text-[var(--color-blue)]"><Info size={15} aria-hidden /></span>
-              <p className="min-w-0 text-[12.5px] leading-snug text-steel pt-1">Loyalty is switched off for this property, so nothing is earned on bills. Points given here still count once it is on — Settings → Payments.</p>
+              <p className="min-w-0 text-[12.5px] leading-snug text-steel pt-1">Loyalty is off, so bills earn no points. Turn it on in Settings → Payments.</p>
             </div>)}
           {/* give or take: the sign is a choice, the amount a plain number with quick picks, the reason full width, and
               the balance it leaves shown before Apply */}
@@ -210,7 +210,7 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
             <div className="flex items-center gap-3">
               <span className="h-10 w-10 shrink-0 rounded-xl grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><Gift size={18} aria-hidden /></span>
               <div className="min-w-0 flex-1"><div className="text-[15px] font-bold leading-tight">Give or take points</div>
-                <div className="text-[12.5px] text-steel">A gift, a goodwill gesture, or putting a mistake right</div></div>
+                <div className="text-[12.5px] text-steel">A gift, or to fix a mistake</div></div>
               <span className="shrink-0 num text-[12.5px] font-bold px-2.5 h-7 rounded-full grid place-items-center bg-[var(--color-bg-2)] ring-1 ring-[var(--color-separator)]" title="Their balance now">{Math.round(bal)} pts</span>
             </div>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
@@ -250,7 +250,7 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
             <div className="flex flex-col items-center text-center gap-2 rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-6" data-points-empty>
               <span className="h-10 w-10 rounded-full grid place-items-center bg-[var(--color-fill)] text-steel"><Coins size={18} aria-hidden /></span>
               <p className="text-[14px] font-semibold">No point movements yet.</p>
-              <p className="text-[12.5px] text-steel max-w-[34ch]">Points earned on bills, spent on them, or given here appear in this list.</p>
+              <p className="text-[12.5px] text-steel max-w-[34ch]">Points earned, spent or given show here.</p>
             </div>) : (
             <div className="divide-y divide-line rounded-xl border border-line text-sm">
               {hist.ledger.map((l, i) => (

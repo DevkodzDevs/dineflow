@@ -6,16 +6,16 @@ const VERSION = "21.0";
 export function AboutBody() {
   return (
     <div>
-      <PageHeader eyebrow={`Version ${VERSION}`} title="About" accent="DineFlow" sub="One system for a restaurant, a hotel or a resort: the floor, the kitchen, the rooms, the money, and the people, on one board." />
+      <PageHeader eyebrow={`Version ${VERSION}`} title="About" accent="DineFlow" sub="One app for your restaurant, hotel or resort." />
       <div className="flip-row mb-10"><Flip value={20} label="migrations" /><Flip value={24} label="sections" /><Flip value={8} label="test harnesses" tone="live" /><Flip value="0%" label="commission" /></div>
 
       <section className="grid lg:grid-cols-2 gap-6 mb-10">
         <div className="feather p-6"><div className="card-title"><h3>What it does</h3></div>
-          <p className="text-[15px] leading-relaxed text-[var(--color-label-2)]">Waiters take orders on their phones and the kitchen sees them the same second. The front desk posts dinner to the room. Every dish sold takes its recipe out of the pantry. Guests book a table or order online from a page you own, at no commission. The owner sees the day's money on one board, and at close the till is reconciled in sixty seconds.</p>
-          <p className="text-[15px] leading-relaxed text-[var(--color-label-2)] mt-3">It keeps working when the internet doesn't. Everything punched with no signal is stored on the device and sent when the line returns — exactly once.</p></div>
+          <p className="text-[15px] leading-relaxed text-[var(--color-label-2)]">Waiters order by phone; the kitchen sees it at once. Guests order online, no commission.</p>
+          <p className="text-[15px] leading-relaxed text-[var(--color-label-2)] mt-3">Works offline too. It sends everything once the internet is back.</p></div>
         <div className="feather p-6"><div className="card-title"><h3>Who sees what</h3></div>
-          <div className="group">{[["Master", "Which properties exist, and what each property has"], ["Owner", "Everything the master allowed; who works here; what each employee can open"], ["Employee", "Only their own sections — nothing else exists for them"]].map(([w, d]) => <div key={w} className="row"><span className="font-display text-lg w-24">{w}</span><span className="flex-1 text-[14px] text-[var(--color-label-2)]">{d}</span></div>)}</div>
-          <p className="text-[13px] text-[var(--color-label-3)] mt-3">Each layer looks only down. Nobody can grant more than they hold; the last owner cannot lock themselves out.</p></div>
+          <div className="group">{[["Master", "All properties and what each one has"], ["Owner", "Their property, staff and who opens what"], ["Employee", "Only their own sections"]].map(([w, d]) => <div key={w} className="row"><span className="font-display text-lg w-24">{w}</span><span className="flex-1 text-[14px] text-[var(--color-label-2)]">{d}</span></div>)}</div>
+          <p className="text-[13px] text-[var(--color-label-3)] mt-3">No one can give more access than they have.</p></div>
       </section>
 
       <section className="mb-10"><div className="card-title"><h2 className="text-2xl">Every section</h2></div>
@@ -23,20 +23,20 @@ export function AboutBody() {
       </section>
 
       <section className="grid lg:grid-cols-3 gap-4 mb-10">
-        {[["Pulse", "Honest wait times learned from your own service, and a walk-in queue guests join by QR and watch from their phone."], ["Tomorrow's brief", "Tomorrow's covers, prep sheet and market list, predicted from comparable days and the bookings already in. It grades itself next day."], ["Leak finder", "What the recipes say you should have against what you counted, in rupees, item by item."], ["Neighbours", "Five or more places in your district share what they pay, what's going spare, and who can cover a shift. Nobody's figures are ever shown alone."], ["Proof of business", "Every month sealed with a fingerprint chained to the one before. Share a link with a bank; it verifies live. Edit a sealed figure and every later month says so."], ["Assist", "The tile in the corner. It reads the screen you're on and the whole house, answers in plain words, and only ever acts after you tap Confirm."]].map(([t, d]) => <div key={t} className="feather p-5"><div className="font-display text-xl mb-1.5">{t}</div><p className="text-[14px] leading-relaxed text-[var(--color-label-2)]">{d}</p></div>)}
+        {[["Pulse", "Real wait times, and a walk-in queue guests join by QR."], ["Tomorrow's brief", "Tomorrow's guests, prep and shopping list, guessed from past days."], ["Leak finder", "Stock you should have vs stock you counted, in rupees."], ["Neighbours", "5+ local places share prices and spare stock. No one's figures shown alone."], ["Proof of business", "Each month's figures sealed. Share a link with your bank."], ["Assist", "Ask questions in plain words. It acts only after you tap Confirm."]].map(([t, d]) => <div key={t} className="feather p-5"><div className="font-display text-xl mb-1.5">{t}</div><p className="text-[14px] leading-relaxed text-[var(--color-label-2)]">{d}</p></div>)}
       </section>
 
       <section className="grid lg:grid-cols-2 gap-6 mb-10">
         <div className="feather p-6"><div className="card-title"><h3>How it keeps its promises</h3></div>
-          <ul className="space-y-2.5 text-[14px] text-[var(--color-label-2)]">{["Every one of the 20 database migrations is executed against a real PostgreSQL engine before it ships.", "Eight test harnesses prove tenancy, stock, GST maths, double-booking, chain tamper-detection, k-anonymity, replay safety and access rules.", "Resending an order or a payment after a dropped connection lands exactly once — the server de-duplicates by client id.", "Row Level Security in the database, not the app, decides what each signed-in person can see.", "Every link in both apps is checked against the routes that exist; every button against the functions that exist."].map((l) => <li key={l} className="flex gap-2.5"><span className="text-[var(--color-tint)] shrink-0">✓</span>{l}</li>)}</ul></div>
+          <ul className="space-y-2.5 text-[14px] text-[var(--color-label-2)]">{["All 20 database changes are tested on a real database first.", "8 test sets check stock, GST maths, double-booking and access.", "An order or payment resent after a dropped line counts once.", "The database itself decides what each person can see.", "Every link and button is checked before release."].map((l) => <li key={l} className="flex gap-2.5"><span className="text-[var(--color-tint)] shrink-0">✓</span>{l}</li>)}</ul></div>
         <div className="feather p-6"><div className="card-title"><h3>Guides</h3></div>
-          <div className="group">{[["STARTUP-GUIDE.md", "From an empty computer to a running property, thirty parts"], ["CONNECTIONS-GUIDE.md", "Every database and outside connection, key by key"], ["TEST-GUIDE.md", "A sixty-minute walk-through with what you should see"], ["BEGINNER-GUIDE.md", "The same in plain words"], ["SETUP-GUIDE.md", "Architecture and the full changelog"]].map(([f, d]) => <div key={f} className="row"><span className="num text-[13px] w-56">{f}</span><span className="flex-1 text-[13px] text-[var(--color-label-2)]">{d}</span></div>)}</div>
-          <p className="text-[13px] text-[var(--color-label-3)] mt-3">All of them live in the DineFlow folder you were given.</p></div>
+          <div className="group">{[["STARTUP-GUIDE.md", "From a blank computer to a running property"], ["CONNECTIONS-GUIDE.md", "Every database and outside connection, key by key"], ["TEST-GUIDE.md", "A one-hour test, step by step"], ["BEGINNER-GUIDE.md", "The same in plain words"], ["SETUP-GUIDE.md", "Architecture and the full changelog"]].map(([f, d]) => <div key={f} className="row"><span className="num text-[13px] w-56">{f}</span><span className="flex-1 text-[13px] text-[var(--color-label-2)]">{d}</span></div>)}</div>
+          <p className="text-[13px] text-[var(--color-label-3)] mt-3">All are in your DineFlow folder.</p></div>
       </section>
 
       <section className="feather p-6"><div className="card-title"><h3>Not built, on purpose</h3></div>
-        <p className="text-[14px] leading-relaxed text-[var(--color-label-2)]">A payment gateway of our own — bills settle by cash, by UPI when the guest scans the bill, by card machine or by room folio; owners who want cards paid on the phone add their own Razorpay keys in Settings and the same QR handles it · direct Swiggy and Zomato partner APIs (they need partner approval; the webhook path through UrbanPiper works today) · real-time OTA APIs (they need certification; two-way iCal is built) · the WhatsApp Business API (the share sheet is free and works now). Each has a working substitute.</p>
-        <p className="text-[12px] text-[var(--color-label-3)] mt-4">DineFlow · built for Tamil Nadu's restaurants, hotels and resorts · web, Android and iOS · works online and off.</p></section>
+        <p className="text-[14px] leading-relaxed text-[var(--color-label-2)]">Payments: your Razorpay keys, or cash, UPI and card · Swiggy/Zomato: via UrbanPiper · OTAs: two-way iCal · WhatsApp: the Share button.</p>
+        <p className="text-[12px] text-[var(--color-label-3)] mt-4">Built for Tamil Nadu · web, Android, iOS · works offline.</p></section>
     </div>
   );
 }

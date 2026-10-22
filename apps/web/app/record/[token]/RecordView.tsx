@@ -11,7 +11,7 @@ const mon = (d: string) => new Date(d).toLocaleDateString("en-IN", { month: "sho
 export function RecordView({ data: d }: { data: D | null }) {
   if (!d || d.error) {
     const t = d?.error === "expired" ? "This link has expired" : d?.error === "revoked" ? "This link was withdrawn" : "Link not found";
-    const s = d?.error === "expired" ? "Business records are shared for a limited time. Ask the property for a fresh link." : d?.error === "revoked" ? "The property revoked access to this record." : "Check the address, or ask the property to send the link again.";
+    const s = d?.error === "expired" ? "Shared records expire. Ask the property for a fresh link." : d?.error === "revoked" ? "The property revoked access to this record." : "Check the link, or ask the property to resend it.";
     return (
       <div className="min-h-dvh grid place-items-center p-8 text-center">
         <div><span className="h-14 w-14 rounded-2xl bg-porcelain-2 grid place-items-center mx-auto text-steel">{d?.error === "revoked" ? <Ban size={24} /> : <Clock size={24} />}</span>
@@ -44,8 +44,8 @@ export function RecordView({ data: d }: { data: D | null }) {
             {d.chain_intact ? <ShieldCheck size={22} className="shrink-0 mt-0.5" /> : <ShieldAlert size={22} className="shrink-0 mt-0.5 text-chili" />}
             <div className="text-sm">
               {d.chain_intact
-                ? <><b>These figures are sealed and unaltered.</b> Each month was fingerprinted when it closed and cryptographically chained to the month before it. Changing any past figure would break the chain, and this page would say so.</>
-                : <><b className="text-chili">Warning: the chain does not verify.</b> One or more months no longer match what was originally sealed. Treat these figures with caution and ask the property to explain.</>}
+                ? <><b>These figures are sealed and unaltered.</b> Each month was sealed at close and chained to the one before. Any later change would show here.</>
+                : <><b className="text-chili">Warning: the chain does not verify.</b> Some months no longer match their seal. Use with caution and ask the property why.</>}
               {d.head && <div className="num text-[11px] text-steel mt-1.5">Chain head {d.head}…</div>}
             </div>
           </div>
@@ -102,14 +102,14 @@ export function RecordView({ data: d }: { data: D | null }) {
                 <td className="py-2.5 text-right num text-[10px] text-steel">{p.hash}</td>
               </tr>))}</tbody>
           </table></div>
-          {!d.show_costs && <p className="text-xs text-steel mt-3">The property chose to share revenue only. Costs are not included in this record.</p>}
+          {!d.show_costs && <p className="text-xs text-steel mt-3">Revenue only — the property chose not to share costs.</p>}
         </Card>
 
         <Card className="!bg-porcelain-2">
           <div className="text-sm text-steel space-y-2">
-            <p><b className="text-ink">How to read this.</b> These figures come from the property&apos;s own point-of-sale, front desk and pantry records as they were entered day by day, not from a report typed up afterwards. Each closed month was sealed with a cryptographic fingerprint that includes the previous month&apos;s fingerprint, so the sequence cannot be quietly edited later.</p>
-            <p><b className="text-ink">What it is not.</b> It is not audited accounts, and it is not a credit score. Cash taken outside the system would not appear here. DineFlow neither assesses nor recommends this business — it only certifies that these numbers are the ones the property recorded at the time.</p>
-            <p className="num text-xs">Opened {new Date(d.opened_at).toLocaleString("en-IN")} · link expires {new Date(d.expires_at).toLocaleDateString("en-IN")} · the property is shown every time this page is opened.</p>
+            <p><b className="text-ink">How to read this.</b> Figures come from the property&apos;s own daily records. Each month is sealed and linked to the last, so none can be changed quietly.</p>
+            <p><b className="text-ink">What it is not.</b> Not audited accounts or a credit score; off-system cash won&apos;t show. DineFlow only certifies what was recorded.</p>
+            <p className="num text-xs">Opened {new Date(d.opened_at).toLocaleString("en-IN")} · link expires {new Date(d.expires_at).toLocaleDateString("en-IN")} · the property sees each time it&apos;s opened.</p>
           </div>
         </Card>
 

@@ -5,6 +5,7 @@ import { Plus, Minus, ShoppingBag, X, ArrowLeft, UtensilsCrossed, Check, Loader2
 import { clsx } from "clsx";
 import { defaultVariant, linePrice, lineKey, lineName, optionProblem, tilePrice, hasOptions, type Optioned, type Variant, type Addon } from "@dineflow/shared";
 import { formatINR } from "@/lib/format";
+import { DishImage } from "@/components/menu/DishImage";
 import { kioskOrder, kioskLeave } from "./actions";
 
 type Item = Optioned & { is_veg: boolean | null; category_id: string | null; image_url: string | null; description: string | null };
@@ -70,11 +71,11 @@ export function KioskClient({ name, logo, categories, items }: { name: string; l
     try { r = await kioskOrder({ name: guest, items: lines.map((l) => ({ menu_item_id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })) }); }
     catch {
       // after an update the old page cannot reach the new server: reload when the server is there (the basket goes)
-      setErr("The kiosk is updating — one moment, then please choose again.");
+      setErr("The kiosk is updating — wait a moment, then choose again.");
       void fetch(location.href, { method: "HEAD", cache: "no-store" }).then((x) => { if (x.ok) setTimeout(() => location.reload(), 1500); }).catch(() => {});
       return;
     }
-    if ("error" in r) { setErr(r.error ?? "Could not place the order — please ask at the counter."); return; }
+    if ("error" in r) { setErr(r.error ?? "Couldn't place the order — ask at the counter."); return; }
     setDone({ token: r.token ?? null, orderNo: r.orderNo ?? null, total }); setStep("done"); last.current = Date.now();
   });
 
@@ -111,7 +112,7 @@ export function KioskClient({ name, logo, categories, items }: { name: string; l
               {shown.map((it) => { const tp = tilePrice(it); const q = qtyOf(it.id); return (
                 <button key={it.id} type="button" onClick={() => tap(it)} data-kiosk-item className={clsx("!min-h-0 min-w-0 text-left rounded-[24px] bg-white overflow-hidden flex flex-col shadow-[0_0_0_1px_var(--color-separator)] active:scale-[.98] transition-transform", q > 0 && "!shadow-[0_0_0_3px_var(--color-tint)]")}>
                   <div className="relative aspect-[4/3] bg-[var(--color-fill)] grid place-items-center">
-                    {it.image_url ? <img src={it.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <UtensilsCrossed size={40} className="text-[var(--color-label-3)]" aria-hidden />}
+                    {it.image_url ? <DishImage src={it.image_url} w={500} className="absolute inset-0 h-full w-full object-cover" /> : <UtensilsCrossed size={40} className="text-[var(--color-label-3)]" aria-hidden />}
                     {q > 0 && <span className="absolute top-2.5 right-2.5 min-w-9 h-9 px-2 rounded-full grid place-items-center text-[16px] font-black" style={{ background: "var(--color-tint)", color: "var(--color-on-tint)" }}>{q}</span>}
                   </div>
                   <div className="p-3.5 flex flex-col gap-1.5 flex-1">
@@ -167,7 +168,7 @@ export function KioskClient({ name, logo, categories, items }: { name: string; l
           <div className="text-[clamp(96px,16vw,200px)] font-black leading-none tabular-nums" data-kiosk-token>{done.token ?? done.orderNo ?? "—"}</div>
           <div className="rounded-2xl bg-white px-6 py-4 shadow-[0_0_0_1px_var(--color-separator)]">
             <div className="text-[20px] font-extrabold">Pay {formatINR(done.total)} at the counter</div>
-            <div className="text-[14px] text-[var(--color-label-2)] mt-1">Taxes, if any, are added on the bill. Watch the screen for your number.</div>
+            <div className="text-[14px] text-[var(--color-label-2)] mt-1">Any taxes are added on the bill. Watch the screen for your number.</div>
           </div>
           <button type="button" onClick={reset} className="mt-4 !min-h-14 rounded-full px-8 text-[18px] font-extrabold bg-[var(--color-fill)]">New order</button>
         </div>

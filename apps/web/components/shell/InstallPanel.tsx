@@ -60,13 +60,13 @@ export function InstallPanel({ size = "md", url, others = "row" }: { size?: "md"
       break;
     case "ios-safari-only":
       body = <Card title="Open this page in Safari">
-        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">On iOS 16.3 or older only Safari can add apps to the Home Screen. Copy the address and paste it into Safari — or update the {name}.</p>
+        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">On iOS 16.3 or older, only Safari adds apps. Paste this address into Safari, or update the {name}.</p>
         <CopyRow url={address} />
       </Card>;
       break;
     case "inapp":
       body = <Card title="This window can't install apps">
-        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">The link opened inside another app — Instagram, Facebook, WhatsApp. Open it in Safari: tap <Glyph><MoreHorizontal size={13} /></Glyph> or the compass <Glyph><Compass size={13} /></Glyph>, then <b>Open in Safari</b> (or <b>Open in browser</b>). Or copy the address:</p>
+        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">This opened inside another app. Tap <Glyph><MoreHorizontal size={13} /></Glyph> or the compass <Glyph><Compass size={13} /></Glyph>, then <b>Open in Safari</b> (or <b>Open in browser</b>). Or copy the address:</p>
         <CopyRow url={address} />
       </Card>;
       break;
@@ -74,14 +74,14 @@ export function InstallPanel({ size = "md", url, others = "row" }: { size?: "md"
       body = <Card title="In Safari on this Mac — two clicks">
         <Steps>
           <Step n={1} icon={<AppWindow size={17} />}>In the menu bar: <b>File</b> → <b>Add to Dock…</b> <span className="text-[var(--color-label-2)]">(or Share <Glyph><Share size={13} /></Glyph> → Add to Dock)</span></Step>
-          <Step n={2} icon={<Check size={17} />}>Click <b>Add</b> — DineFlow sits in your Dock and Launchpad, in its own window</Step>
+          <Step n={2} icon={<Check size={17} />}>Click <b>Add</b> — DineFlow joins your Dock and Launchpad</Step>
         </Steps>
         <Hint>Needs macOS Sonoma or newer. No <b>Add to Dock</b>? Use Chrome or Edge.</Hint>
       </Card>;
       break;
     case "mac-old-safari":
       body = <Card title="This Safari can't add apps">
-        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">Adding to the Dock needs Safari 17 on macOS Sonoma or newer. Open this page in <b>Chrome</b> or <b>Edge</b> instead — copy the address:</p>
+        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">Needs Safari 17 on macOS Sonoma or newer. Copy this into <b>Chrome</b> or <b>Edge</b>:</p>
         <CopyRow url={address} />
       </Card>;
       break;
@@ -103,8 +103,8 @@ export function InstallPanel({ size = "md", url, others = "row" }: { size?: "md"
     case "open-in-edge":
       body = <>
         <Cta size={size} href={edgeHref(address)} icon={<Globe size={size === "lg" ? 22 : 20} />} title="Open in Microsoft Edge"
-          sub="Edge comes with Windows — it installs DineFlow in one click" data-open-edge />
-        <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{browserName(b)} can&apos;t install apps. Have Chrome? Open this page there instead:</p>
+          sub="Built into Windows. Installs in one click" data-open-edge />
+        <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{browserName(b)} can&apos;t install apps. Or copy this into Chrome:</p>
         <CopyRow url={address} />
       </>;
       break;
@@ -112,7 +112,7 @@ export function InstallPanel({ size = "md", url, others = "row" }: { size?: "md"
       body = <>
         <Cta size={size} href={chromeHref(address)} icon={<Globe size={size === "lg" ? 22 : 20} />} title="Open in Chrome"
           sub="Chrome installs DineFlow in one tap" data-open-chrome />
-        <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{b === "inapp" ? "This window, inside another app, can't install apps." : `${browserName(b)} can't install apps.`} Or copy the address into Chrome:</p>
+        <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{b === "inapp" ? "This in-app window can't install apps." : `${browserName(b)} can't install apps.`} Or copy the address into Chrome:</p>
         <CopyRow url={address} />
       </>;
       break;
@@ -178,7 +178,7 @@ function MenuSteps({ env: { device: d, browser: b } }: { env: Env }) {
   if (b === "edge") return <Card title="In Edge — two clicks">
     <Steps>
       <Step n={1} icon={<MoreHorizontal size={17} />}>Click <Glyph><MoreHorizontal size={13} /></Glyph> at the top right → <b>Apps</b> → <b>Install DineFlow</b></Step>
-      <Step n={2} icon={<Check size={17} />}>Click <b>Install</b> — it opens in its own window{d === "windows" ? ", and Edge offers to pin it to Start and the taskbar" : ""}</Step>
+      <Step n={2} icon={<Check size={17} />}>Click <b>Install</b> — it opens in its own window{d === "windows" ? "; pin it to Start or the taskbar" : ""}</Step>
     </Steps>
     <Hint>Or the <b>App available</b> icon <Glyph><AppWindow size={13} /></Glyph> at the right of the address bar.</Hint>
   </Card>;

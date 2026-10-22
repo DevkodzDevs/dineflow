@@ -7,5 +7,5 @@ export const dynamic = "force-dynamic";
 export default async function PrintersPage() {
   const s = await createClient(); const session = await requireSession();
   const { data } = await s.from("printers").select("*").order("kind");
-  return (<><PageHeader eyebrow="Hardware" title="Thermal" accent="printers" sub="58 mm or 80 mm kitchen and bill printers over Bluetooth, USB or the LAN." /><PrintersClient printers={data ?? []} restaurant={session.restaurant} /></>);
+  return (<><PageHeader eyebrow="Hardware" title="Thermal" accent="printers" sub="58 or 80 mm printers via Bluetooth, USB or LAN." /><PrintersClient printers={data ?? []} restaurant={session.restaurant} /></>);
 }

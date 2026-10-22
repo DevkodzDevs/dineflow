@@ -32,7 +32,7 @@ const UPI_APPS = [
 const loadScript = (src: string) => new Promise<void>((ok, fail) => {
   if (document.querySelector(`script[src="${src}"]`)) return ok();
   const s = document.createElement("script"); s.src = src; s.async = true;
-  s.onload = () => ok(); s.onerror = () => fail(new Error("Could not load the payment window. Check the connection and try again."));
+  s.onload = () => ok(); s.onerror = () => fail(new Error("The payment window didn't load. Check your connection and retry."));
   document.head.appendChild(s);
 });
 
@@ -77,7 +77,7 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
           start(async () => {
             const v = await fetch(`/api/pay/${token}/verify`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(res) }).then((r) => r.json());
             if (v.ok) await refresh();
-            else setErr(v.error ?? "The payment went through but could not be confirmed here. Show this screen at the counter.");
+            else setErr(v.error ?? "Paid, but not confirmed here yet. Show this screen at the counter.");
             setBusy(false);
           });
         },
@@ -100,7 +100,7 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
             {info.payments.map((p, i) => <li key={i} className="flex justify-between"><span className="uppercase">{p.method}{p.ref ? <span className="num text-[var(--color-label-2)]"> · {p.ref}</span> : null}</span><span className="num">{formatINR(Number(p.amount))}</span></li>)}
           </ul>
         )}
-        <p className="footnote mt-4">Keep this page as your receipt, or ask the counter for a printed tax invoice.</p>
+        <p className="footnote mt-4">Keep this page as your receipt, or ask for a printed tax invoice.</p>
       </motion.div>
       <ReviewBox token={token} />
     </Shell>
@@ -134,7 +134,7 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
         <div className="card p-5 mt-4 border-[var(--color-green)]">
           <div className="flex items-start gap-3">
             <Smartphone size={20} className="shrink-0 text-[var(--color-green)] mt-0.5" />
-            <div><b>Noted — thank you.</b><p className="text-sm text-[var(--color-label-2)] mt-1">The counter is confirming your UPI payment{ref ? <> (ref <span className="num">{ref}</span>)</> : null}. This page updates by itself once it is marked paid.</p></div>
+            <div><b>Noted — thank you.</b><p className="text-sm text-[var(--color-label-2)] mt-1">The counter is confirming your UPI payment{ref ? <> (ref <span className="num">{ref}</span>)</> : null}. This page updates once it&apos;s marked paid.</p></div>
           </div>
         </div>
       ) : counterOnly ? (
@@ -154,7 +154,7 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
             ) : (
               <div className="mt-4 flex items-center gap-4">
                 <QR value={`upi://pay?${upiQuery(info)}`} size={168} />
-                <p className="text-sm text-[var(--color-label-2)]">Open any UPI app on your phone and scan this. The amount is already set.</p>
+                <p className="text-sm text-[var(--color-label-2)]">Scan this with any UPI app — the amount is already filled in.</p>
               </div>
             )}
             {phone && (showQr
@@ -163,7 +163,7 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
             {(tapped || !phone) && (
               <div className="mt-4 pt-4 border-t border-[var(--color-separator)]">
                 <div className="text-sm font-semibold">Done paying?</div>
-                <p className="text-xs text-[var(--color-label-2)] mt-0.5">Let the counter know. The reference (UTR) from your UPI app helps them find it at once.</p>
+                <p className="text-xs text-[var(--color-label-2)] mt-0.5">Tell the counter. Your UPI reference (UTR) helps them find it fast.</p>
                 <div className="flex gap-2 mt-2">
                   <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="UTR / reference (optional)" className="num flex-1" inputMode="numeric" />
                   <Button loading={pending} onClick={() => start(async () => { const r = await claimPaid(token, ref.trim()); if ("error" in r) setErr(r.error!); else setClaimed(true); })}>I&apos;ve paid</Button>
@@ -175,11 +175,11 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
         <section className="card p-5 mt-4">
           <h2 className="text-xl flex items-center gap-2"><CreditCard size={18} /> Pay by card</h2>
           {info.gateway && gatewayReady ? (<>
-            <p className="text-sm text-[var(--color-label-2)] mt-1">Debit or credit card, netbanking or a wallet, in a secure window from Razorpay.</p>
+            <p className="text-sm text-[var(--color-label-2)] mt-1">Card, netbanking or wallet — in a secure Razorpay window.</p>
             <Button size="lg" className="w-full mt-4" loading={busy} onClick={payByCard}>Pay {formatINR(total)} by card</Button>
             <p className="footnote mt-2 flex items-center gap-1"><ShieldCheck size={12} /> Your card details go to Razorpay only. {info.restaurant.name} never sees them.</p>
           </>) : (
-            <p className="text-sm text-[var(--color-label-2)] mt-1">{info.gateway ? "Card payments on the phone are not switched on for this server yet. " : ""}The counter has a card machine. Show them this bill.</p>
+            <p className="text-sm text-[var(--color-label-2)] mt-1">{info.gateway ? "Card payment by phone isn't set up yet. " : ""}The counter has a card machine. Show them this bill.</p>
           )}
         </section>
       </>)}

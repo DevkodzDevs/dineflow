@@ -115,7 +115,7 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
-        <Column keyName="waiting" title="waiting" n={waiting.length} hint={"Nothing waiting. A table shows here the moment its bill is paid" + (hasRooms ? "; a room when its guest checks out." : ".")}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
+        <Column keyName="waiting" title="waiting" n={waiting.length} hint={"Nothing waiting. Paid tables show here" + (hasRooms ? "; rooms at check-out." : ".")}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
         <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody is cleaning right now."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{onIt.map(card)}</div></Column>
         {boss && board.inspect_required && <Column keyName="inspect" title="to_inspect" n={inspect.length} hint="No room is waiting for you to sign it off."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{inspect.map(inspectCard)}</div></Column>}
         <Column keyName="done" title="done_today" n={finished.length} hint="Nothing finished yet today."><Card className="!py-1 !px-4"><ul className="divide-y divide-[var(--color-separator)]">{finished.map(row)}</ul></Card></Column>
@@ -139,9 +139,9 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
         <Card className="!p-4" data-clean-settings>
           <label className="flex items-start gap-3 !min-h-11 cursor-pointer">
             <input type="checkbox" className="h-5 w-5 mt-0.5" checked={tablesOn} disabled={pending} data-switch="tables"
-              onChange={(e) => { const v = e.target.checked; setTablesOn(v); start(async () => { const r = await saveCleanSettings(v); if ("error" in r) { setTablesOn(!v); toast(r.error!, "err"); } else toast(v ? "Tables get a cleaning job when they are paid and left" : "Tables no longer get a cleaning job"); }); }} />
-            <span><span className="block text-[15px] font-bold">A cleaning job for every table that is paid and left</span>
-              <span className="block text-[12.5px] text-steel">Off for a counter where nobody sits. Rooms always get one at check-out.</span></span>
+              onChange={(e) => { const v = e.target.checked; setTablesOn(v); start(async () => { const r = await saveCleanSettings(v); if ("error" in r) { setTablesOn(!v); toast(r.error!, "err"); } else toast(v ? "Paid tables now get a cleaning job" : "Tables no longer get a cleaning job"); }); }} />
+            <span><span className="block text-[15px] font-bold">Clean every table after it is paid</span>
+              <span className="block text-[12.5px] text-steel">Turn off for a counter. Rooms always get one at check-out.</span></span>
           </label>
         </Card>)}
     </div>

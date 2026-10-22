@@ -77,7 +77,7 @@ export function InvoicesClient({ invoices, months, property }: { invoices: Invoi
             : <div className="feather p-8 text-center">
                 <span className="h-11 w-11 rounded-2xl bg-fill grid place-items-center mx-auto text-steel"><Receipt size={18} /></span>
                 <div className="mt-3 font-semibold">Pick an invoice</div>
-                <p className="text-sm text-steel mt-1">Tap any row to read it here — what it is made of, what is paid, what is still owed.</p>
+                <p className="text-sm text-steel mt-1">Tap a row to see its items, paid and still owed.</p>
               </div>}
         </aside>
       </div>

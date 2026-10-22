@@ -99,7 +99,7 @@ export function AuditClient({ events, names, days, more, error }: { events: Even
         )}
       </Card>
       {more && rows.length > 0 && <div className="text-center"><Link href={`/audit?days=${days}&before=${events[events.length - 1].id}`} className="btn btn-gray !h-11 px-5 inline-flex items-center text-sm font-semibold">Older</Link></div>}
-      <p className="text-[11.5px] text-steel flex items-center gap-1.5"><Settings2 size={12} /> Readable by the owner, managers and supervisors. Written by database triggers on every path — the till, the kitchen screen, the phone app, the Box and the server.</p>
+      <p className="text-[11.5px] text-steel flex items-center gap-1.5"><Settings2 size={12} /> Seen by owner, managers and supervisors. Logged from every screen and device.</p>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, Minus, Plus, Bike, ShoppingBag, UtensilsCrossed, BedDouble, Leaf, Drumstick, Users, CalendarDays } from "lucide-react";
 import { Button, Field, Segmented, Sheet, Select, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
+import { DishImage } from "@/components/menu/DishImage";
 import { slots as fetchSlots, reserve, placeOrder } from "../actions";
 import { OptionChooser } from "@/components/OptionChooser";
 import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
@@ -13,7 +14,7 @@ import { TableCalls } from "./TableCalls";
 
 /** As the storefront sends it: the add-on groups are carried once on the property, and a dish
  *  names the ones it offers by id. `resolve` below puts them back together for the screen. */
-type RawItem = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; image_url?: string | null; image_credit?: string | null; variants?: Variant[]; addon_group_ids?: string[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
+type RawItem = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; online?: boolean; image_url?: string | null; image_credit?: string | null; variants?: Variant[]; addon_group_ids?: string[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
 type Item = Omit<RawItem, "addon_group_ids"> & { addon_groups?: AddonGroup[] };
 /** One basket line: a dish with the size and extras it was chosen with. */
 type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
@@ -52,7 +53,11 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
     return d.menu.map((c) => ({ ...c, items: c.items.map(resolve) }));
   }, [d.menu, d.addon_groups]);
   const flat = useMemo(() => menu.flatMap((c) => c.items), [menu]);
-  const lines = cart.filter((l) => l.qty > 0);
+  /* 0132: a dish off online is not sold for delivery or takeaway — at the table it is; one the guest already added
+     leaves the basket when they switch to delivery or takeaway (the server would drop it anyway) */
+  const sells = (i: { available: boolean; online?: boolean }) => i.available && (omode === "dine_in" || i.online !== false);
+  useEffect(() => { setCart((c) => c.filter((l) => sells(l.item))); }, [omode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lines = cart.filter((l) => l.qty > 0 && sells(l.item));
   const sub = lines.reduce((t, l) => t + linePrice(l.item, l.variant, l.addons) * l.qty, 0);
   const bestOffer = d.offers.filter((o) => [omode === "dine_in" ? "dining" : "delivery", "both"].includes(o.scope) && sub >= Number(o.min_order)).sort((a, b) => Number(b.value) - Number(a.value))[0];
   const disc = bestOffer ? (bestOffer.kind === "flat_pct" ? Math.round((sub * Number(bestOffer.value)) / 100) : Math.min(Number(bestOffer.value), sub)) : 0;
@@ -77,7 +82,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
   const tableBanner = atTable && (
     <div className="mb-5 rounded-2xl border border-[var(--color-tint)] bg-[var(--color-green-2)] px-4 py-3 flex items-center gap-3">
       <UtensilsCrossed size={18} className="text-[var(--color-tint)] shrink-0" />
-      <div className="min-w-0"><div className="font-semibold">Ordering at Table {d.table!.name}</div><div className="text-xs text-[var(--color-label-2)]">Add what you would like and place the order — it goes to the kitchen and comes to your table. Pay at the table when you are done.</div></div>
+      <div className="min-w-0"><div className="font-semibold">Ordering at Table {d.table!.name}</div><div className="text-xs text-[var(--color-label-2)]">Place your order — it comes to your table. Pay when you&apos;re done.</div></div>
     </div>
   );
 
@@ -161,7 +166,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                     ))}
                   </div>
                 )}
-                {slot?.offer && <p className="text-sm mt-3 p-3 rounded-xl bg-[var(--color-champagne-2)]"><b>{slot.offer}</b> applies at {slot.time} — the discount is taken off your bill at the table.</p>}
+                {slot?.offer && <p className="text-sm mt-3 p-3 rounded-xl bg-[var(--color-champagne-2)]"><b>{slot.offer}</b> applies at {slot.time} — taken off your bill at the table.</p>}
               </div>
             </div>
 
@@ -182,7 +187,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                   onClick={() => start(async () => { const r = await reserve(slug, guest, date, slot.time, party, occasion, note, slot.offer_id); if ("error" in r) toast(r.error!, "err"); else setDone({ kind: "book", data: r.booking as Record<string, unknown> }); })}>
                   Confirm booking
                 </Button>
-                <p className="text-xs text-[var(--color-label-3)] mt-2 text-center">Free to book. No card needed. Cancel any time by calling the restaurant.</p>
+                <p className="text-xs text-[var(--color-label-3)] mt-2 text-center">Free to book, no card needed. Call the restaurant to cancel any time.</p>
                 <GuestNotice property={d.name} use="for this booking" className="mt-1" />
               </motion.div>
             )}</AnimatePresence>
@@ -202,7 +207,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                 <h2 className="text-xl mb-3">{c.name}</h2>
                 <div className="space-y-2">
                   {c.items.map((i) => (
-                    <div key={i.id} className={cn("card p-4 flex items-start gap-4", !i.available && "opacity-50")} data-dish-row>
+                    <div key={i.id} className={cn("card p-4 flex items-start gap-4", !sells(i) && "opacity-50")} data-dish-row>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">{i.is_veg ? <Leaf size={13} className="text-[var(--color-green)]" /> : <Drumstick size={13} className="text-[var(--color-red)]" />}<span className="font-semibold">{i.name}</span></div>
                         <div className="num text-sm text-[var(--color-label-2)] mt-0.5">{tilePrice(i).from ? "from " : ""}{formatINR(tilePrice(i).price)}{hasOptions(i) && <span className="ml-2 text-[11px] font-sans">customisable</span>}</div>
@@ -212,27 +217,26 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                       {i.image_url ? (
                         /* with a photo: the photo on the right, the add control riding its bottom edge */
                         <div className="relative shrink-0 w-[112px] sm:w-[128px] pb-4">
-                          {/* eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload */}
-                          <img src={i.image_url} alt={i.name} title={i.image_credit ?? undefined} loading="lazy" className="h-[104px] sm:h-[116px] w-full rounded-2xl object-cover bg-[var(--color-fill)]" data-dish-photo />
+                          <DishImage src={i.image_url} w={330} alt={i.name} title={i.image_credit ?? undefined} className="h-[104px] sm:h-[116px] w-full rounded-2xl object-cover bg-[var(--color-fill)]" data-dish-photo />
                           {/* a library photo carries its author and licence (CC BY / BY-SA): illustrative, and credited */}
                           {i.image_credit && <span className="absolute left-1.5 right-1.5 top-1.5 rounded-md bg-black/45 px-1 py-px text-[8.5px] leading-tight text-white/90 truncate" data-photo-credit>Illustrative · {i.image_credit.replace(/^Photo: /, "")}</span>}
                           <div className="absolute inset-x-2 bottom-0 flex justify-center">
-                            {i.available ? (qtyOf(i.id) ? (
+                            {sells(i) ? (qtyOf(i.id) ? (
                               <div className="flex items-center gap-1 bg-[var(--color-tint)] rounded-xl h-9 px-1 shadow-[var(--shadow-pop)]">
                                 <button onClick={() => add(i.id, -1)} className="h-7 w-7 grid place-items-center rounded-lg" aria-label={`One less ${i.name}`}><Minus size={14} /></button>
                                 <span className="num w-6 text-center font-bold text-sm">{qtyOf(i.id)}</span>
                                 <button onClick={() => add(i.id, 1)} className="h-7 w-7 grid place-items-center rounded-lg" aria-label={`One more ${i.name}`}><Plus size={14} /></button>
                               </div>
-                            ) : <Button size="sm" variant="tinted" className="!h-9 shadow-[var(--shadow-pop)] !bg-[var(--color-bg-2)]" onClick={() => add(i.id, 1)}>Add</Button>) : <span className="pill pill-served">sold out</span>}
+                            ) : <Button size="sm" variant="tinted" className="!h-9 shadow-[var(--shadow-pop)] !bg-[var(--color-bg-2)]" onClick={() => add(i.id, 1)}>Add</Button>) : <span className="pill pill-served" data-not-sold={i.available ? "online" : "out"}>{i.available ? "not online" : "sold out"}</span>}
                           </div>
                         </div>
-                      ) : i.available ? (qtyOf(i.id) ? (
+                      ) : sells(i) ? (qtyOf(i.id) ? (
                         <div className="flex items-center gap-1 bg-[var(--color-tint)] rounded-xl h-9 px-1 shrink-0">
                           <button onClick={() => add(i.id, -1)} className="h-7 w-7 grid place-items-center rounded-lg"><Minus size={14} /></button>
                           <span className="num w-6 text-center font-bold text-sm">{qtyOf(i.id)}</span>
                           <button onClick={() => add(i.id, 1)} className="h-7 w-7 grid place-items-center rounded-lg"><Plus size={14} /></button>
                         </div>
-                      ) : <Button size="sm" variant="tinted" onClick={() => add(i.id, 1)}>Add</Button>) : <span className="pill pill-served shrink-0">sold out</span>}
+                      ) : <Button size="sm" variant="tinted" onClick={() => add(i.id, 1)}>Add</Button>) : <span className="pill pill-served shrink-0" data-not-sold={i.available ? "online" : "out"}>{i.available ? "not online" : "sold out"}</span>}
                     </div>
                   ))}
                 </div>
@@ -295,7 +299,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
           </div>
           {omode === "delivery" && <Field label="Delivery address"><textarea rows={2} value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Door number, street, landmark" /></Field>}
           <Field label="Note for the kitchen"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Less spicy, no onion…" /></Field>
-          <p className="text-xs text-[var(--color-label-2)]">{atTable ? "Pay at the table when you are done — cash, UPI or card." : `Pay on ${omode === "delivery" ? "delivery" : "pickup"} — cash, UPI or card. The restaurant confirms within a few minutes.`}</p>
+          <p className="text-xs text-[var(--color-label-2)]">{atTable ? "Pay at the table — cash, UPI or card." : `Pay on ${omode === "delivery" ? "delivery" : "pickup"} — cash, UPI or card. The restaurant confirms within a few minutes.`}</p>
           <Button size="lg" className="w-full" loading={pending} disabled={!guest.full_name || !guest.phone || (!atTable && sub < Number(d.min_order)) || (omode === "delivery" && !addr)}
             onClick={() => start(async () => {
               const r = await placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null, atTable ? tableToken : null);
@@ -332,7 +336,7 @@ function Confirmation({ kind, data, name, slug }: { kind: "book" | "order"; data
             <div className="flex justify-between text-base font-bold pt-1.5 border-t border-[var(--color-separator)]"><span>To pay</span><span className="num">{formatINR(Number(d.total ?? 0))}</span></div>
           </>)}
         </div>
-        <p className="text-sm text-[var(--color-label-2)] mt-4">{kind === "book" ? "Show this number at the door. The restaurant has your booking on their screen already." : d.mode === "dine_in" ? (d.accepted ? `The kitchen has it${d.order_no ? ` as order #${d.order_no}` : ""}. It comes to Table ${d.table ?? ""}. Pay at the table when you are done.` : `The counter will confirm it in a moment and send it to the kitchen. It comes to Table ${d.table ?? ""}.`) : "The kitchen has it. Pay on delivery — cash, UPI or card."}</p>
+        <p className="text-sm text-[var(--color-label-2)] mt-4">{kind === "book" ? "Show this number at the door — they already have your booking." : d.mode === "dine_in" ? (d.accepted ? `The kitchen has it${d.order_no ? ` as order #${d.order_no}` : ""}. It comes to Table ${d.table ?? ""}. Pay at the table when you are done.` : `The counter will confirm it in a moment and send it to the kitchen. It comes to Table ${d.table ?? ""}.`) : "The kitchen has it. Pay on delivery — cash, UPI or card."}</p>
         <div className="flex gap-2 mt-5">
           {d.phone && <a href={`tel:${d.phone}`} className="flex-1"><Button variant="gray" className="w-full"><Phone size={15} /> Call</Button></a>}
           <Link href={`/dine/${slug}`} className="flex-1"><Button className="w-full">Done</Button></Link>

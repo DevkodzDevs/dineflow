@@ -20,7 +20,7 @@ export default async function KioskPage() {
   const [{ data: variants }, { data: groups }, { data: links }, { data: combos }] = await optionsFor(s, session, [v0, g0, l0, c0] as const);
   const mods = modulesFor(session.restaurant.property_type, session.profile.role, session.restaurant.enabled_modules ?? null, session.profile.allowed_modules ?? null);
   if (!mods.includes("orders")) return (
-    <div className="h-full grid place-items-center p-6 text-center"><div className="max-w-md"><div className="text-2xl font-extrabold">This login cannot take orders</div><p className="mt-2 text-[15px] text-[var(--color-label-2)]">Sign the kiosk tablet in with a staff login that has Orders.</p></div></div>
+    <div className="h-full grid place-items-center p-6 text-center"><div className="max-w-md"><div className="text-2xl font-extrabold">This login cannot take orders</div><p className="mt-2 text-[15px] text-[var(--color-label-2)]">Sign in with a staff login that has Orders.</p></div></div>
   );
   const menu = withOptions(items ?? [], (variants ?? []) as never, (groups ?? []) as never, links ?? [], combos ?? []);
   return <KioskClient name={session.restaurant.name} logo={(session.restaurant.logo_url as string | null) ?? null} categories={categories ?? []} items={menu as never} />;

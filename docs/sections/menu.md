@@ -55,6 +55,14 @@ Jigarthanda) — on manoooo, Mutton chukka already exists and shows as *already 
 
 **A dish with no recipe does not move stock**, and the card says so in red.
 
+**Online, per dish** (0132, 2026-10-22). For whoever may switch it (`canSetOnline`: owner, manager, chef, a supervisor with
+Online orders) each card carries its own button on the photo's top-right corner — a dark glass circle with a green globe, or
+an orange *Not online* pill — beside, not inside, the photo's button (a button cannot nest in a button); the camera hint
+steps left of it. The footer stays *Available* + Edit (the first version put a third square there and *Available* read
+"Av…"; and a NOT ONLINE tag on the bottom-left sat where *No recipe* lives). On a phone's row: a 44px globe square before the
+Sold-out switch, and the status reads *Not online* in orange. Off online is not Sold out: the till and table still sell it.
+See online-and-channels.md, *Dishes online*.
+
 ## Before you edit
 
 - **Toggles and deletes report a refusal** (`lib/wrote.ts`): availability, add-ons, deleting a dish (a dish on
@@ -156,6 +164,17 @@ per person per 10 minutes.
 
 **The till** already showed `image_url` (photo-first tiles once half the menu has photos); the guest
 storefront now does too — see guest-facing.md.
+
+**Every dish photo is drawn at the size it is shown (2026-10-22, the owner: "a lightweight feel").** A chosen photo is
+stored as Wikimedia's 960 px thumbnail (150–400 KB) or, under 640 px, the original file; the till, Menu, the website and the
+kiosk drew those into tiles 60–250 px wide. `components/menu/DishImage.tsx` asks for the smallest thumbnail Wikimedia
+serves that covers the spot (`photoAt` in `lib/dishPhotos.ts` — steps 250, 330, 500, 960, 1280; 320 and 400 answer 400):
+Menu's phone row 250, the till and the website card 330, Menu's card and the kiosk 500. A thumbnail is only ever made
+smaller; an original is asked for as a thumbnail too, and if that file does not come (narrower than the step, Wikimedia
+answering 429) the image falls back to the stored URL, so a tile never shows a broken picture. The property's own uploads
+are 900 px WebP already and are left alone. Measured (`img62.mjs`, phone, 13 real photos, cache off): the till
+**2,314 → 472 KB**, Menu **2,312 → 308 KB**; with every smaller thumbnail blocked, all 13 still drew (from the stored file).
+A new place that shows a dish photo uses `DishImage`, not a bare `<img src={image_url}>`.
 - **The recipe library stays on the server** (2026-10-18). `findStandardRecipe` and its 220 kB library were imported by
   `MenuClient` — most of the screen's JavaScript, ~0.9 s on a first visit. `page.tsx` now finds the plate for each of
   this property's dishes and passes `std: Record<itemId, StandardRecipe>`; the list, the recipes overview and the recipe

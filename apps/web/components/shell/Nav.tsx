@@ -2,8 +2,7 @@
 import Link from "next/link";
 import { useNavPath } from "./useNavPath";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LogOut, ShieldCheck, Menu, X, LayoutGrid, Fingerprint, type LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
+import { LogOut, ShieldCheck, Menu, X, Fingerprint, type LucideIcon } from "lucide-react";
 import { cn, Sheet, FlapMini } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
@@ -176,6 +175,25 @@ const PIN_KEY = "df-bar-pins";
 
 type MoreProps = { role: Role; type: PropertyType; dept?: string | null; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number; attend?: boolean };
 
+/* a count on a tab stays a red pill: a flap tile cannot be read at 18px (2026-10-20, design-system.md "Flap numbers") */
+const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num" data-tab-count={n}>{n > 99 ? "99+" : n}</span>;
+/* A tab's icon. Declared here, not inside BottomNav: a component made during render is a new type every render, so
+   React remounted every icon on each re-render of the bar (2026-10-22, the tab-bar full-reload hunt, useNavPath.ts). */
+/* The capsule's slot (2026-10-22, the owner's picture): a 60×48 place for the icon (narrower only on the smallest phones); the open one gets the soft pill
+   behind it (`.tab-pill`, globals.css). Every icon is in the ink colour — the pill alone says which is open, as in the
+   picture. A press shrinks the icon (CSS, no animation library in the tap's way). */
+function TabSlot({ active, children }: { active: boolean; children: React.ReactNode }) {
+  return (
+    <span className="relative h-12 w-[min(60px,100%)] grid place-items-center" aria-hidden>
+      {active && <span className="tab-pill df-thumb absolute inset-0 rounded-full" data-tab-pill />}
+      <span className="relative grid place-items-center transition-transform duration-150 group-active/tab:scale-[.88]">{children}</span>
+    </span>
+  );
+}
+function TabIcon({ active, Icon, n }: { active: boolean; Icon: LucideIcon; n: number }) {
+  return <TabSlot active={active}><Icon size={26} strokeWidth={active ? 2.25 : 2} />{count(n)}</TabSlot>;
+}
+
 /**
  * The phone's navigation: four sections and More. It used to be one sideways-scrolling strip of
  * every section — five fitted, nothing said it scrolled, so most of the app looked missing — and a
@@ -240,32 +258,33 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
   const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0) + (owner ? unread : 0);
   /* the foot's links: the menu's last group less the one the account row already is (/settings or /me) */
   const foot = endFor(role).filter((i) => i.href !== accountHref);
-  /* a count on a tab stays a red pill: a flap tile cannot be read at 18px (2026-10-20, design-system.md "Flap numbers") */
-  const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num" data-tab-count={n}>{n > 99 ? "99+" : n}</span>;
   /* the same headings as the sidebar (menuGroups); a "fresh" link already on the bar is not repeated here */
   const groups = menuGroups([...allowed, ...fresh.filter((i) => !bar.some((p) => p.key === i.key))], myDay ? [myDay] : []);
-  /* The bar (2026-10-21, the owner's pick — sample 2, "Lift", alone; a mix with a centre + was tried and dropped): the
-     open tab's icon lifts out of the bar in a green circle ringed in the page colour (a notch), its label green under
-     it; the bar has rounded corners and stands 3px off the foot and 2.5px in from each side (`nav.tabbar`, globals.css). Four tabs and More. */
-  const tab = (active: boolean) => cn("relative flex-1 min-w-0 flex flex-col items-center justify-end gap-1 pb-[7px] text-[10.5px] leading-none transition-colors", active ? "text-[var(--color-tint)] font-extrabold" : "text-[var(--color-label-2)] font-semibold");
-  const TabIcon = ({ active, Icon, n }: { active: boolean; Icon: LucideIcon; n: number }) => active
-    ? <span className="absolute left-0 right-0 -top-[22px] flex justify-center pointer-events-none" aria-hidden>
-        <span className="tabbar-lift relative h-[50px] w-[50px] rounded-full grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] shadow-[0_0_0_5px_var(--color-bg),0_12px_24px_-8px_color-mix(in_srgb,var(--color-tint)_75%,transparent)]"><Icon size={22} strokeWidth={2.4} />{count(n)}</span>
-      </span>
-    : <motion.span whileTap={{ scale: .85 }} className="relative h-7 w-11 grid place-items-center"><Icon size={21} strokeWidth={1.9} />{count(n)}</motion.span>;
+  /* The bar (2026-10-22, the owner's picture, "exactly"): a floating capsule (`nav.tabbar`, globals.css) of icons only —
+     four sections, More, and the person's avatar in a ring at the end (their settings, or My profile, as the top bar's
+     avatar). The names are each slot's aria-label and title. It replaced "Lift" (2026-10-21: the open icon lifted out of
+     a docked bar in a green circle, labels under every icon). */
+  const tab = "group/tab relative flex-1 min-w-0 h-full grid place-items-center text-[var(--color-label)]";
   const slot = ({ key, href, label, Icon }: Section) => { const active = isOn(path, href); return (
-    <Link key={key} href={href} aria-current={active ? "page" : undefined} className={tab(active)} data-tab={key}>
-      <TabIcon active={active} Icon={Icon} n={badge(key)} /><span className="truncate max-w-full px-0.5">{label}</span>
+    <Link key={key} href={href} aria-current={active ? "page" : undefined} aria-label={label} title={label} className={tab} data-tab={key}>
+      <TabIcon active={active} Icon={Icon} n={badge(key)} />
     </Link>); };
   const moreOn = open || onMore;
+  const meHref = accountHref ?? "/me";
+  const meOn = !open && isOn(path, meHref);
   return (
     <>
-      <nav aria-label="Sections" className="tabbar md:hidden fixed left-[2.5px] right-[2.5px] bottom-[3px] z-30" data-tabbar>
-        <div className="flex h-[var(--tabbar-row)] px-1">
+      <nav aria-label="Sections" className="tabbar md:hidden fixed z-30" data-tabbar>
+        <div className="flex h-full items-center">
           {bar.map(slot)}
-          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} className={tab(moreOn)} data-tab="more">
-            <TabIcon active={moreOn} Icon={LayoutGrid} n={moreBadge} /><span>More</span>
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} aria-label="More" title="More" className={tab} data-tab="more">
+            <TabIcon active={moreOn} Icon={Menu} n={moreBadge} />
           </button>
+          <Link href={meHref} aria-current={meOn ? "page" : undefined} aria-label={`${name} · ${accountHref ? "Settings" : "My profile"}`} title={name} className={tab} data-tab="me">
+            <TabSlot active={meOn}>
+              <span className="h-[34px] w-[34px] rounded-full grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] font-display text-[16px] leading-none ring-[2.5px] ring-[var(--color-label)]">{name.slice(0, 1)}</span>
+            </TabSlot>
+          </Link>
         </div>
       </nav>
 

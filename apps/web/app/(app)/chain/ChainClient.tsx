@@ -54,7 +54,7 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
       </div>
       <div className="text-[12px] text-steel -mt-2" aria-live="polite">Live{at && <> · updated {at.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kolkata" })}</>}</div>
 
-      {list.length <= 1 && <Empty title="One outlet so far" hint={owner ? "Open your next outlet below — its own tables, staff and bills, with this menu if you like. Switch between them from the top bar." : "Ask the owner to open the other outlets, or to let you switch to them."} />}
+      {list.length <= 1 && <Empty title="One outlet so far" hint={owner ? "Open your next outlet below. Switch outlets from the top bar." : "Ask the owner to let you switch outlets."} />}
 
       <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3" data-outlets>
         {list.map((o) => (
@@ -70,7 +70,7 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
             </div>
             {owner && o.membership !== "active" && o.membership !== "suspended" && (
               <div className="mx-4 mt-3 rounded-xl bg-[var(--color-orange-2)] px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1" data-outlet-activate>
-                <span className="text-[12.5px] font-semibold min-w-0 flex-1">Enter a membership key for this outlet, or ask DineFlow to match it to your others.</span>
+                <span className="text-[12.5px] font-semibold min-w-0 flex-1">Enter a membership key, or ask DineFlow to match your others.</span>
                 <button type="button" disabled={pending} onClick={() => work(o, "/membership")} className="svc-btn quiet sm !px-3 shrink-0" data-switch-on><KeyRound size={15} aria-hidden /><Say w="switch_on" /></button>
               </div>)}
             <div className="px-4 pt-3 flex items-baseline gap-2"><span className="font-display num text-[30px] leading-none" data-outlet-sales>{inr(o.sales)}</span><span className="text-[13px] text-steel">today · {o.bills} bill{o.bills === 1 ? "" : "s"}</span></div>
@@ -95,7 +95,7 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
         {owner && !isDemo && (
           <Card data-new-outlet>
             <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Plus size={18} aria-hidden /> Open a new outlet</div>
-            <p className="text-[13px] text-steel mb-3">Made from <b>{currentName}</b>: the same kind of property, sections, brand, GST rates and legal name; its own eight tables, staff, stock and bills. It starts on a trial (at most 7 days, and never longer than this outlet&apos;s own) — switch it on from its card with a membership key.</p>
+            <p className="text-[13px] text-steel mb-3">Copies <b>{currentName}</b>&apos;s brand, GST and sections. Own 8 tables, staff, bills. Trial: up to 7 days, not past this outlet&apos;s. Then add a membership key.</p>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Anna Nagar" maxLength={80} data-outlet-name />
             <label className="mt-3 flex items-center gap-3 !min-h-11"><input type="checkbox" checked={copy} onChange={(e) => setCopy(e.target.checked)} className="h-5 w-5" /> <span className="text-[14px] font-semibold">Copy this outlet&apos;s menu and prices</span></label>
             <button type="button" disabled={pending || name.trim().length < 2} className="svc-btn go w-full mt-3" data-create-outlet
@@ -105,7 +105,7 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
         {(owner || role === "manager") && list.length > 1 && (
           <Card data-push-menu>
             <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Send size={18} aria-hidden /> Send this menu to other outlets</div>
-            <p className="text-[13px] text-steel mb-3">From <b>{currentName}</b>. Dishes, sizes, add-ons and combos are matched by name: one already there is updated, a missing one is added, nothing is deleted.</p>
+            <p className="text-[13px] text-steel mb-3">From <b>{currentName}</b>. Matched by name: adds and updates, never deletes.</p>
             <div className="flex flex-wrap gap-2">
               {list.filter((o) => o.id !== current).map((o) => <button key={o.id} type="button" aria-pressed={targets.includes(o.id)} onClick={() => setTargets((t) => (t.includes(o.id) ? t.filter((x) => x !== o.id) : [...t, o.id]))}
                 className={cn("!min-h-11 rounded-full px-4 text-[14px] font-bold inline-flex items-center gap-1.5", targets.includes(o.id) ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)]")} data-push-target>{targets.includes(o.id) && <Check size={15} aria-hidden />}{o.name}</button>)}
@@ -120,8 +120,8 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
       {owner && list.length > 1 && (
         <Card data-chain-people>
           <div className="text-[17px] font-extrabold mb-1">Managers who can switch outlets</div>
-          <p className="text-[13px] text-steel mb-3">A manager or supervisor works in their own outlet; tick the others they may open from the top bar. Their role stays the same everywhere.</p>
-          {people.length === 0 ? <p className="text-sm text-steel">No managers or supervisors yet — add them under Staff.</p> : (
+          <p className="text-[13px] text-steel mb-3">Tick the other outlets each one may open. Their role stays the same.</p>
+          {people.length === 0 ? <p className="text-sm text-steel">No managers or supervisors yet — add them in Staff.</p> : (
             <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-steel text-xs"><th className="py-1.5 pr-3">Person</th>{list.map((o) => <th key={o.id} className="py-1.5 px-2 text-center font-semibold">{o.name}</th>)}</tr></thead>
               <tbody>{people.map((p) => <tr key={p.id} className="border-t border-line"><td className="py-2 pr-3"><div className="font-bold">{p.name}</div><div className="text-[12px] text-steel capitalize">{p.role}</div></td>
                 {list.map((o) => { const home = p.home === o.id; const on = home || p.outlets.includes(o.id); return <td key={o.id} className="py-2 px-2 text-center">

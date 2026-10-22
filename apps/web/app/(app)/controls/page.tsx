@@ -33,7 +33,7 @@ export default async function ControlsPage() {
   const names = Object.fromEntries((people ?? []).map((p) => [p.id, p.full_name]));
   return (
     <>
-      <PageHeader eyebrow="The drawer, the shifts, the exceptions" title="Cash" accent="& controls" sub="What the drawer should hold right now, every rupee moved in or out that was not a sale, how each shift closed, and what was voided or cancelled this week — with the reason and the name." />
+      <PageHeader eyebrow="The drawer, the shifts, the exceptions" title="Cash" accent="& controls" sub="Cash in the drawer, shift closes, and this week's voids — who and why." />
       <ControlsClient expected={(expected ?? null) as Expected | null} moves={(moves ?? []) as never} shifts={(shifts ?? []) as never} voids={(voids ?? []) as never} lines={(lines ?? []) as never} names={names} me={session.profile.full_name} />
     </>
   );

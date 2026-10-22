@@ -202,7 +202,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
             {lockedOut ? (
               <div className="text-xs text-[var(--color-red)] font-semibold flex items-start gap-1.5 mt-1">
                 <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                <span>Locked out. The owner can no longer sign in. Issue a new password.</span>
+                <span>Locked out — the owner can’t sign in. Issue a new password.</span>
               </div>
             ) : (
               <div className="text-xs text-steel flex items-center gap-2 flex-wrap">
@@ -228,7 +228,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-orange)]">
               <AlertTriangle size={12} /> {expired ? "Password expired" : "No password on file"}
             </div>
-            <p className="text-xs text-steel">Generate a new temporary password and share it with the owner.</p>
+            <p className="text-xs text-steel">Make a new temporary password for the owner.</p>
             <Button size="sm" disabled={pending} onClick={generate}>
               <KeyRound size={13} /> Generate password
             </Button>
@@ -255,7 +255,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
               <code className="font-sans text-base font-bold tracking-wider tabular-nums break-all flex-1 min-w-0">{newPw.password}</code>
               <CopyBtn text={`${newPw.email} / ${newPw.password}`} label="Copy" />
             </div>
-            <p className="text-xs text-steel">Share with the owner. They must change it at next sign-in.</p>
+            <p className="text-xs text-steel">Share with the owner. They change it at next sign-in.</p>
           </div>
         )}
       </div>

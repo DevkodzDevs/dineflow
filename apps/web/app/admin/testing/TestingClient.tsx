@@ -20,13 +20,13 @@ export type Run = { suite: string; status: "pass" | "warn" | "fail"; ms: number;
 export type Hist = { suite: string; status: "pass" | "warn" | "fail"; ms: number; ran_at: string; pass: number; warn: number; fail: number };
 
 const SUITES: { key: string; title: string; what: string; Icon: typeof Database; server: boolean; needsProperty?: boolean }[] = [
-  { key: "database", title: "Database", what: "Reachable and fast, migrations applied, row security on every table, required functions, triggers and indexes, data integrity.", Icon: Database, server: true },
-  { key: "functions", title: "Functions", what: "Every report and screen call answers for a property, and how long each takes.", Icon: FunctionSquare, server: true, needsProperty: true },
-  { key: "api", title: "API & connectivity", what: "Supabase REST, Auth and Storage; the app's own routes; the outside services it leans on; the keys the server needs.", Icon: Plug, server: true },
-  { key: "security", title: "Security", what: "Security headers, anonymous access refused on every tenant table, signed-out visits sent to sign in, no secret exposed.", Icon: ShieldCheck, server: true },
-  { key: "performance", title: "Speed", what: "Server time for each screen and database call against the Lighthouse budgets: under 600 ms good, over 1.5 s failing.", Icon: Gauge, server: true },
-  { key: "unit", title: "Code checks", what: "Money, dates, the bill, recipes and the till search — the pure functions, run in place.", Icon: Code2, server: true },
-  { key: "browser", title: "Screens & buttons", what: "Every screen loads in this browser at phone and laptop width: no crash, no sideways scroll, images arrive, buttons are named, links answer.", Icon: MonitorSmartphone, server: false },
+  { key: "database", title: "Database", what: "Connection, migrations, row security, functions, indexes, data checks.", Icon: Database, server: true },
+  { key: "functions", title: "Functions", what: "Every report and screen call works, and how fast.", Icon: FunctionSquare, server: true, needsProperty: true },
+  { key: "api", title: "API & connectivity", what: "Supabase, the app's routes, outside services and server keys.", Icon: Plug, server: true },
+  { key: "security", title: "Security", what: "Headers, no anonymous access, sign-in required, no secrets leaked.", Icon: ShieldCheck, server: true },
+  { key: "performance", title: "Speed", what: "Server time per screen and call: under 600 ms good, over 1.5 s failing.", Icon: Gauge, server: true },
+  { key: "unit", title: "Code checks", what: "Money, dates, bills, recipes and till search logic.", Icon: Code2, server: true },
+  { key: "browser", title: "Screens & buttons", what: "Every screen at phone and laptop width — no crash, no side scroll, links work.", Icon: MonitorSmartphone, server: false },
 ];
 
 const worst = (checks: Check[]): "pass" | "warn" | "fail" => checks.some((c) => c.status === "fail") ? "fail" : checks.some((c) => c.status === "warn") ? "warn" : "pass";
@@ -39,7 +39,7 @@ async function runBrowser(acting: boolean): Promise<Run> {
   const routes = acting
     ? ["/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/menu", "/inventory", "/invoices", "/reports", "/tomorrow", "/settings", "/intelligence", "/controls", "/audit"]
     : ["/admin", "/admin/compliance", "/admin/testing", "/get"];   // not /login: a signed-in master is sent on from it
-  if (!acting) checks.push({ name: "Property screens", status: "skip", detail: "open a property (Master control → Open) to load its screens here" });
+  if (!acting) checks.push({ name: "Property screens", status: "skip", detail: "open a property (Master control → Open) first" });
   const links = new Set<string>();
   for (const width of [412, 1280]) {
     for (const path of routes) {
@@ -141,7 +141,7 @@ export function TestingClient({ last, history = [], properties, acting }: { last
         <div className="min-w-0 flex-1">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Self-test</div>
           <h1 className="text-4xl">Is everything <em>working?</em></h1>
-          <p className="text-sm text-steel mt-1.5 max-w-xl">Seven suites check the app from inside, the way a monitoring service would. Nothing here changes a property&apos;s data.</p>
+          <p className="text-sm text-steel mt-1.5 max-w-xl">Seven suites check the app from inside. Nothing here changes a property&apos;s data.</p>
         </div>
         {/* a phone: the picker on its own line, the two buttons sharing the next — in one row Run all was squeezed to 46px */}
         <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:items-center sm:w-auto">
@@ -203,7 +203,7 @@ export function TestingClient({ last, history = [], properties, acting }: { last
             </div>
           </div>
         )}
-        {!acting && <div className="px-5 py-2.5 text-xs text-[var(--color-orange)] bg-[color-mix(in_srgb,var(--color-orange)_8%,transparent)] border-t border-[var(--color-separator)]">Speed and Screens reach a property&apos;s own screens only while Master control is inside one — press <b>Open</b> on a property, then come back.</div>}
+        {!acting && <div className="px-5 py-2.5 text-xs text-[var(--color-orange)] bg-[color-mix(in_srgb,var(--color-orange)_8%,transparent)] border-t border-[var(--color-separator)]">Speed and Screens need a property open — press <b>Open</b> on one, then come back.</div>}
       </Card>
 
       {/* ── needs attention: every warning and failure in one place, worst first ── */}

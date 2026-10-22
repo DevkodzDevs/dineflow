@@ -69,9 +69,9 @@ export function TallyTab({ month, company: company0, ledgers: ledgers0, canEdit 
             <button type="button" disabled={!data || loading} onClick={() => void file("daybook")} className="svc-btn quiet sm" data-tally-daybook><FileSpreadsheet size={17} aria-hidden /> Day book (.xlsx)</button>
           </div>
           <ol className="mt-4 list-decimal pl-5 text-[13.5px] text-steel space-y-1">
-            <li>First time only: in Tally, <b>Gateway of Tally → Import → Masters</b>, choose the Ledgers file. Ledgers you already have are left alone.</li>
-            <li>Every month: <b>Import → Vouchers</b>, choose the Vouchers file. One Sales voucher a day for dining (DF-S-date), one per stay or facility invoice (DF-R-number / DF-F-number) and one Payment voucher an expense (DF-E-…).</li>
-            <li>Check the day book in Tally against the Day book sheet here.</li>
+            <li>First time only: in Tally, <b>Gateway of Tally → Import → Masters</b>, pick the Ledgers file. Existing ledgers stay as they are.</li>
+            <li>Every month: <b>Import → Vouchers</b>, pick the Vouchers file. Dining: one a day (DF-S). Stays: one per invoice (DF-R/DF-F). Expenses: one each (DF-E).</li>
+            <li>Match Tally&apos;s day book with the Day book sheet.</li>
           </ol>
         </Card>
         <Card className="!p-0 overflow-hidden">
@@ -84,7 +84,7 @@ export function TallyTab({ month, company: company0, ledgers: ledgers0, canEdit 
 
       <Card className="min-w-0 self-start" data-tally-names>
         <div className="text-[17px] font-extrabold">Names in your Tally</div>
-        <p className="text-[13px] text-steel mt-1 mb-3">They must match the company and ledger names in Tally exactly. Blank keeps the name shown in grey.</p>
+        <p className="text-[13px] text-steel mt-1 mb-3">Must match Tally exactly. Blank uses the grey name.</p>
         <label className="block"><span className="text-[13px] font-semibold text-steel">Company (as in Tally)</span><input className="mt-1" value={company} disabled={!canEdit} onChange={(e) => setCompany(e.target.value)} maxLength={80} placeholder="Leave blank to import into the open company" /></label>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(Object.keys(DEFAULT_LEDGERS) as (keyof Ledgers)[]).map((k) => (

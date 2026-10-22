@@ -52,11 +52,11 @@ export function PasswordClient({ email, contactEmail, forced }:
           <div className="mt-7 space-y-4">
             <p className="text-sm text-[var(--color-label-2)]">
               {forced ? "You signed in with a temporary password. " : ""}
-              To set a new one, we send a six-digit code to the email address on this account.
+              We&apos;ll email you a 6-digit code to set a new one.
             </p>
             {contactEmail
               ? <p className="text-sm">The code goes to <span className="num font-semibold">{contactEmail}</span>.</p>
-              : <p className="text-sm text-[var(--color-orange)]">There is no contact address on this account yet. Ask Master control to add one before you can change your password.</p>}
+              : <p className="text-sm text-[var(--color-orange)]">No email on this account. Ask Master control to add one first.</p>}
             {sendErr && <p className="text-sm text-[var(--color-red)] bg-[var(--color-red-2)] rounded-xl px-3 py-2">{sendErr}</p>}
             <Button size="lg" className="w-full" disabled={pending || !contactEmail} onClick={send}>
               {pending ? "Sending the code" : "Send me the code"}
@@ -72,7 +72,7 @@ export function PasswordClient({ email, contactEmail, forced }:
             </p>
             {echoed && (
               <p className="text-sm bg-[var(--color-fill)] rounded-xl px-3 py-2">
-                Email is not set up on this server, so the code is shown here instead:{" "}
+                Email is off on this server. Your code:{" "}
                 <span className="num font-semibold tracking-[0.25em]">{echoed}</span>
               </p>
             )}
@@ -95,10 +95,10 @@ export function PasswordClient({ email, contactEmail, forced }:
           <form action={pAct} className="mt-7 space-y-4">
             {skipOtp ? (
               <p className="text-sm text-[var(--color-label-2)]">
-                You signed in with a temporary password. Choose your own now.
+                You used a temporary password. Choose your own now.
               </p>
             ) : (
-              <p className="text-sm text-[var(--color-green)]">Code accepted. Set your password within 15 minutes.</p>
+              <p className="text-sm text-[var(--color-green)]">Code OK. Set your password within 15 minutes.</p>
             )}
             <Field label="New password" hint="At least 8 characters">
               <PasswordInput name="password" required minLength={8} autoComplete="new-password" autoFocus />

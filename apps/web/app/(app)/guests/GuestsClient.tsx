@@ -153,12 +153,12 @@ function GuestDetail({ g }: { g: Guest }) {
       <Field label="Notes for the desk" hint={notes !== savedNotes ? "not saved yet" : undefined}>
         <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000}
           onBlur={() => { if (notes !== savedNotes) saveNote(notes); }}
-          placeholder="Travels with a driver who needs parking. Asked for the corner room last time and would again." />
+          placeholder="e.g. Has a driver, needs parking. Likes the corner room." />
       </Field>
 
       <div>
         <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1.5"><CalendarDays size={13} /> Every stay</div>
-        {bs.length === 0 ? <p className="text-sm text-steel">No stays yet — this guest was added without a booking.</p> : (
+        {bs.length === 0 ? <p className="text-sm text-steel">No stays yet — added without a booking.</p> : (
           <div className="rounded-2xl border border-line divide-y divide-line">
             {bs.map((b) => (
               /* the dates need ~12rem to stay off the pill, so on a phone the pill and the amount

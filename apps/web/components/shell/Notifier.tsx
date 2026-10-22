@@ -294,7 +294,7 @@ export function NotificationBell({ lateKots }: { lateKots: number }) {
               <div className="text-center px-6 py-8">
                 <span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><Bell size={20} /></span>
                 <div className="text-sm font-semibold mt-3">You are all caught up</div>
-                <p className="text-xs text-[var(--color-label-2)] mt-1">New orders, bookings and kitchen tickets appear here — with a sound — the moment they arrive.</p>
+                <p className="text-xs text-[var(--color-label-2)] mt-1">New orders, bookings and tickets show here, with a sound.</p>
               </div>
             )}
           </div>
@@ -345,7 +345,7 @@ export function NotificationSettings() {
             </button>
           ); })}
         </div>
-        {p.station === "custom" && <p className="text-xs text-steel mt-2">Custom — your own mix of tone and alerts. Pick a device above to start again from its defaults.</p>}
+        {p.station === "custom" && <p className="text-xs text-steel mt-2">Custom mix. Pick a device above to reset.</p>}
       </div>
 
       {/* tone */}
@@ -379,7 +379,7 @@ export function NotificationSettings() {
               <Switch on={p.kinds[k.kind]} onChange={(v) => set({ kinds: { ...p.kinds, [k.kind]: v }, station: "custom" })} name={k.label} />
             </label>
           ); })}
-          {kinds.length === 0 && <p className="px-3.5 py-3 text-sm text-steel">None of the sections that send alerts are switched on for you.</p>}
+          {kinds.length === 0 && <p className="px-3.5 py-3 text-sm text-steel">No alert sections are on for you.</p>}
         </div>
       </div>
 
@@ -389,9 +389,9 @@ export function NotificationSettings() {
         <span className="flex-1 min-w-[12rem]">
           <span className="block text-sm font-semibold">Show when DineFlow is in the background</span>
           <span className="block text-xs text-steel">
-            {perm === "unsupported" ? (ios ? "On iPhone, add DineFlow to the Home Screen first, then switch this on there." : "This browser cannot show system notifications.")
-              : perm === "denied" ? "Blocked for this site — allow notifications in the browser's site settings."
-                : "A system notification with the device's own sound, while another app or tab is in front."}
+            {perm === "unsupported" ? (ios ? "On iPhone, add DineFlow to the Home Screen first." : "This browser cannot show system notifications.")
+              : perm === "denied" ? "Blocked — allow notifications in browser settings."
+                : "Alerts you even when another app or tab is open."}
           </span>
         </span>
         {perm === "granted" ? <Switch on={p.system} onChange={(v) => set({ system: v })} name="System notifications" />
@@ -399,7 +399,7 @@ export function NotificationSettings() {
       </div>
 
       <button type="button" onClick={() => { unlockAudio(); playTone(p.tone, p.volume); }} className="btn btn-gray w-full !h-12 inline-flex items-center justify-center gap-2"><Play size={15} /> Play a test alert</button>
-      <p className="text-xs text-steel -mt-3">Each device keeps its own choice: set the kitchen screen to Ticket beep and the front desk to Desk bell. A browser plays sound only after the screen has been touched once since it opened.</p>
+      <p className="text-xs text-steel -mt-3">Each device keeps its own sound. Tap the screen once so it can play.</p>
     </div>
   );
 }

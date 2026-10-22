@@ -27,8 +27,8 @@ export function useDownloads() {
 
 type Kind = "android" | "windows";
 const META: Record<Kind, { title: string; ext: string; Icon: typeof Smartphone; note: string }> = {
-  android: { title: "Download for Android", ext: ".apk", Icon: Smartphone, note: "Open the file, allow this browser to install apps once, tap Install" },
-  windows: { title: "Download for Windows", ext: ".exe", Icon: Monitor, note: "Run it — it installs and opens by itself. On “Windows protected your PC”: More info → Run anyway" },
+  android: { title: "Download for Android", ext: ".apk", Icon: Smartphone, note: "Open the file, allow installs once, tap Install" },
+  windows: { title: "Download for Windows", ext: ".exe", Icon: Monitor, note: "Run it. If Windows warns: More info → Run anyway" },
 };
 const mb = (n: number | null) => (n ? `${(n / 1048576).toFixed(n > 10485760 ? 0 : 1)} MB` : null);
 

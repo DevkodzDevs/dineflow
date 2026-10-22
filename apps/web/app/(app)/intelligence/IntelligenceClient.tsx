@@ -21,8 +21,8 @@ export type Compare = { today: Day; yesterday: Day; last_week: Day; today_date: 
 
 const CLASS: Record<Dish["class"], { label: string; hint: string; tone: string }> = {
   star: { label: "Star", hint: "sells well, earns well — protect it", tone: "bg-[var(--color-green-2)] text-[var(--color-green)]" },
-  plowhorse: { label: "Plowhorse", hint: "sells well, earns little — a small price rise or a cheaper recipe", tone: "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]" },
-  puzzle: { label: "Puzzle", hint: "earns well, sells little — move it up the menu, tell the floor", tone: "bg-[color-mix(in_srgb,var(--color-sky,var(--color-tint))_16%,transparent)] text-[var(--color-label)]" },
+  plowhorse: { label: "Plowhorse", hint: "sells well, earns little — raise price or cut cost", tone: "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]" },
+  puzzle: { label: "Puzzle", hint: "earns well, sells little — promote it", tone: "bg-[color-mix(in_srgb,var(--color-sky,var(--color-tint))_16%,transparent)] text-[var(--color-label)]" },
   dog: { label: "Dog", hint: "sells little, earns little — rework or drop", tone: "bg-[var(--color-red-2)] text-[var(--color-red)]" },
   uncosted: { label: "No recipe", hint: "no plate cost without a recipe — add one in Menu", tone: "bg-[var(--color-fill)] text-[var(--color-label-2)]" },
   unsold: { label: "Not sold", hint: "nothing sold in this window", tone: "bg-[var(--color-fill)] text-[var(--color-label-3)]" },
@@ -61,7 +61,7 @@ function briefing(c: Compare | null, ex: Exceptions | null, eng: Engineering | n
     const stars = eng.items.filter((i) => i.class === "star").length, dogs = eng.items.filter((i) => i.class === "dog").length;
     if (eng.food_cost_pct != null) out.push({ tone: eng.food_cost_pct > 40 ? "warn" : "ok", text: `Food cost on costed dishes is ${eng.food_cost_pct}% of their sales; ${stars} star${stars === 1 ? "" : "s"}, ${dogs} dog${dogs === 1 ? "" : "s"}.` });
     const missing = eng.total_items - eng.with_recipe;
-    if (missing > 0) out.push({ tone: "info", text: `${missing} dish${missing === 1 ? " has" : "es have"} no recipe, so no plate cost — add recipes in Menu to place them.`, href: "/menu" });
+    if (missing > 0) out.push({ tone: "info", text: `${missing} dish${missing === 1 ? " has" : "es have"} no recipe — add recipes in Menu to see cost.`, href: "/menu" });
   }
   return out;
 }
@@ -81,7 +81,7 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-period>
         <Segmented value={String(days)} onChange={(v) => router.push(`/intelligence?days=${v}`)} className="w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none"
           options={[{ value: "7", label: "7 days" }, { value: "28", label: "28 days" }, { value: "90", label: "90 days" }]} />
-        <p className="text-xs text-steel min-w-0 sm:ml-auto">Dishes and exceptions over the window · the briefing is yesterday and today</p>
+        <p className="text-xs text-steel min-w-0 sm:ml-auto">Briefing covers yesterday and today</p>
       </div>
       {error && <p className="rounded-xl bg-[var(--color-red-2)] px-4 py-3 text-sm text-[var(--color-red)]">{error}</p>}
 
@@ -93,7 +93,7 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
       <Card data-briefing>
         <div className="flex items-start gap-3 mb-3">
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Sparkles size={16} /></span>
-          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Owner&apos;s briefing</h3><p className="text-xs text-steel mt-0.5">Yesterday against the same day last week, today so far, and anything out of its usual range. Every line opens the screen it came from.</p></div>
+          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Owner&apos;s briefing</h3><p className="text-xs text-steel mt-0.5">Yesterday vs last week, today so far, and anything unusual. Tap a line to open it.</p></div>
         </div>
         <ul className="divide-y divide-[var(--color-separator)]">
           {notes.map((n, i) => {
@@ -101,7 +101,7 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
             const row = <><span className={cn("h-7 w-7 shrink-0 rounded-lg grid place-items-center", n.tone === "warn" ? "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]" : n.tone === "ok" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><Icon size={14} /></span><span className="text-[14px] leading-snug min-w-0 flex-1">{n.text}</span></>;
             return <li key={i} className="py-2.5 first:pt-0 last:pb-0">{n.href ? <Link href={n.href} className="flex items-start gap-3 min-w-0 hover:opacity-80 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center">{row}</Link> : <div className="flex items-start gap-3 min-w-0">{row}</div>}</li>;
           })}
-          {notes.length === 0 && <li className="py-2 text-sm text-steel">Not enough data yet — the briefing starts once there are bills.</li>}
+          {notes.length === 0 && <li className="py-2 text-sm text-steel">No bills yet — the briefing starts after your first bill.</li>}
         </ul>
       </Card>
 
@@ -109,7 +109,7 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
       <Card data-menu-engineering>
         <div className="flex items-start gap-3 mb-4">
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><ChefHat size={16} /></span>
-          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Menu engineering · {days} days</h3><p className="text-xs text-steel mt-0.5">Each dish by how much it sells against the average dish, and how much it earns per plate. Plate cost is the recipe at today&apos;s ingredient prices — the only price the pantry keeps — so it moves with your purchases.</p></div>
+          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Menu engineering · {days} days</h3><p className="text-xs text-steel mt-0.5">How each dish sells and earns vs the average. Plate cost uses today&apos;s ingredient prices.</p></div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
           {(["star", "plowhorse", "puzzle", "dog"] as const).map((k) => (

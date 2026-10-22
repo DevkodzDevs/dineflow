@@ -1,11 +1,12 @@
 "use client";
-import { useState, useTransition, type ReactNode } from "react";
-import { Copy, UserPlus, KeyRound, Check, MailWarning, MailCheck, Mail, Hash, Users, Network, BookOpen, Briefcase, Search, Ticket, ShieldCheck, UserCheck, Building2, AlertCircle, Phone, CalendarDays, X, LayoutDashboard } from "lucide-react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { Copy, UserPlus, KeyRound, Check, MailWarning, MailCheck, Mail, Hash, Users, Network, BookOpen, Briefcase, Search, Ticket, ShieldCheck, UserCheck, Building2, AlertCircle, Phone, CalendarDays, X, LayoutDashboard, LayoutGrid, Rows3, Clock3, ChevronLeft, ChevronRight } from "lucide-react";
 import { SlidersHorizontal as AccessIcon } from "lucide-react";
 import { Button, Field, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, ROLE_DEFAULT, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
 import { createInvite, setAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition } from "./actions";
 import { PositionFields, TeamChart, PositionsGuide, Avatar, DeptIcon, ModuleChips, titleOf, deptOf, levelFor, DEPT_ORDER, deptHue } from "./StaffPositions";
+import { StaffGrid, type Duty } from "./StaffGrid";
 import { copyText } from "@/lib/clipboard";
 import { Say } from "@/components/ui/Say";
 
@@ -43,9 +44,9 @@ function Credentials({ title, loginId, password, staffCode, note }: { title: str
           ? <div><div className="text-[11px] uppercase tracking-wide text-steel">Temporary password</div>
               <div className="flex items-center gap-2"><span className="num font-semibold flex-1">{password}</span>
                 <Button size="sm" variant="ghost" onClick={() => copy(password, "Password")} aria-label="Copy password"><Copy size={14} /></Button></div></div>
-          : <div className="text-sm text-steel">They have already set their own password, so there is nothing left to show. Reset it if they are locked out.</div>}
+          : <div className="text-sm text-steel">They set their own password. Reset it if they are locked out.</div>}
       </div>
-      <p className="text-xs text-steel">{note ?? "Write it down or copy it now — it is readable for three days, and disappears the moment they choose their own password. They will be asked to change it the first time they sign in."}</p>
+      <p className="text-xs text-steel">{note ?? "Copy it now. It works for 3 days, until they set their own."}</p>
     </div>
   );
 }
@@ -79,7 +80,8 @@ function Fact({ icon, tint, caption, title, className, children, ...rest }: { ic
   );
 }
 
-export function StaffClient({ me, myRole, myModules, type, enabled, staff, invites, loginDomain, onDuty = 0 }: { me: string; myRole: Role; myModules: string[]; type: PropertyType; enabled: string[] | null; staff: Staff[]; invites: Invite[]; loginDomain: string; onDuty?: number }) {
+const LAYOUT_KEY = "df-staff-layout";
+export function StaffClient({ me, myRole, myModules, type, enabled, staff, invites, loginDomain, onDuty = 0, duty = [] }: { me: string; myRole: Role; myModules: string[]; type: PropertyType; enabled: string[] | null; staff: Staff[]; invites: Invite[]; loginDomain: string; onDuty?: number; duty?: Duty[] }) {
   // the ranks below mine — the only ones I may appoint anyone to
   const assignable = rolesIMayAssign(myRole);
   const [acc, setAcc] = useState<Staff | null>(null); const [role, setRole] = useState<Role>(assignable[assignable.length - 1] ?? "employee"); const [ticks, setTicks] = useState<string[] | null>(null); const [active, setActive] = useState(true); const [err, setErr] = useState<string | null>(null);
@@ -87,10 +89,25 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
   /* positions (0107): what each person is — department, title, level — as against the role that opens screens */
   const [accPos, setAccPos] = useState<Pos>(posOf(null));
   const [view, setView] = useState<"people" | "chart" | "guide">("people");
+  /* Cards or the grid (2026-10-22). "auto" until this device picks one: CSS shows the grid from md and the cards below it.
+     A pick is kept on the device (localStorage df-staff-layout), read after mount so the server render and the first
+     paint agree. `wide` only lights the right half of the switch while it is still on auto. */
+  const [layout, setLayout] = useState<"auto" | "cards" | "table">("auto");
+  const [wide, setWide] = useState<boolean | null>(null);
+  useEffect(() => {
+    try { const v = localStorage.getItem(LAYOUT_KEY); if (v === "cards" || v === "table") setLayout(v); } catch { /* none kept */ }
+    const mq = matchMedia("(min-width: 768px)"); const on = () => setWide(mq.matches); on();
+    mq.addEventListener("change", on); return () => mq.removeEventListener("change", on);
+  }, []);
+  const pickLayout = (v: "cards" | "table") => { setLayout(v); try { localStorage.setItem(LAYOUT_KEY, v); } catch { /* fine */ } };
+  const shownAs = layout !== "auto" ? layout : wide === null ? null : wide ? "table" : "cards";
+  /* a row of the grid opens the person: their card, today, the sections they open, who they report to and who reports to them */
+  const [detail, setDetail] = useState<Staff | null>(null);
   const [dept, setDept] = useState<string | null>(null);
   const [selfEdit, setSelfEdit] = useState<Staff | null>(null); const [selfPos, setSelfPos] = useState<Pos>(posOf(null)); const [selfErr, setSelfErr] = useState<string | null>(null);
   const depts = hierarchyFor(type).map((d) => ({ ...d, n: staff.filter((p) => deptOf(p) === d.key).length })).filter((d) => d.n > 0);
   const unplaced = staff.filter((p) => !deptOf(p)).length;
+  const chips: Chip[] = [{ key: null, label: "All", n: staff.length }, ...depts.map((d) => ({ key: d.key as string | null, label: d.label, n: d.n })), ...(unplaced ? [{ key: "none", label: "No position", n: unplaced }] : [])];
   const [q, setQ] = useState("");
   const needle = q.trim().toLowerCase(); const digits = needle.replace(/\D/g, "");
   const shown = staff.filter((p) => dept === null || (dept === "none" ? !deptOf(p) : deptOf(p) === dept))
@@ -118,7 +135,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
   /** The control room is the owner's to give, and only to a manager (constants.ts controlRoomFor). */
   const controlRoomSwitch = (list: string[] | null, r: Role, onToggle: () => void) => myRole === "owner" && r === "manager" ? (
     <div className={cn(SWITCH_GROUP, "mb-4")} data-control-room-switch>
-      <SwitchRow title="Control room" hint="The day's sales, the money and every department at once. Only you have it unless you give it to a manager here."
+      <SwitchRow title="Control room" hint="Today's sales, money and every team. Only you, unless shared."
         icon={<LayoutDashboard size={19} />} on={!!list?.includes("dashboard")} onToggle={onToggle} data={{ "data-control-room": "" }} /></div>) : null;
   const [open, setOpen] = useState(false); const [code, setCode] = useState<string | null>(null); const [pending, start] = useTransition();
   // adding someone outright, and the slip that comes back
@@ -167,6 +184,92 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
      initials on the department's colour with a dot for their state, the title, department and level, the role and
      any warnings as chips, the two actions along the foot — in a grid that is one column on a phone and four on a
      wide screen. Invites and the how-to sit under the cards. */
+  /** How a person's sections were set, in a word: the position's, the role's default, or n chosen (none for the owner). */
+  const howOf = (p: Staff) => p.role === "owner" ? null : p.position && sameModules(p.allowed_modules, posOpens(p)) ? "position access" : p.allowed_modules ? `${p.allowed_modules.length} sections${p.position ? " · custom" : ""}` : "default";
+  /** One person's card — the People view's card, and the same card at the top of a person's details (2026-10-22). `close`
+   *  shuts the details sheet before a foot action opens its own sheet. */
+  const personCard = (p: Staff, close?: () => void) => {
+      const mine = p.id !== me && canManage(myRole, p.role); const d = deptOf(p); const lv = levelFor(p, type); const hue = deptHue(d);
+      const dot = !p.is_active ? "var(--color-red)" : p.must_change_password ? "var(--color-orange)" : "var(--color-green)";
+      return (
+        /* one person: a card with their department's colour along the top */
+        <article key={p.id} data-person={p.id} className={cn("relative min-w-0 rounded-[24px] bg-[var(--color-bg-2)] border border-[var(--color-separator)] overflow-hidden flex flex-col transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-18px_rgb(0_0_0/0.5)]", !p.is_active && "opacity-70")}>
+          <span className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${hue}, color-mix(in srgb, ${hue} 25%, transparent))` }} aria-hidden />
+          <div className="p-4 pb-3 flex items-start gap-3.5 min-w-0">
+            <Avatar name={p.full_name} dept={d} size={52} dot={dot} />
+            <div className="min-w-0 flex-1">
+              <div className={cn("text-[16.5px] font-extrabold leading-tight truncate", !p.is_active && "line-through text-steel")}>{p.full_name}{p.id === me && <span className="text-[12px] text-steel font-semibold"> · you</span>}</div>
+              {/* their position (0107): the title, the department in its colour */}
+              <div className="text-[14px] font-semibold truncate mt-0.5" data-position-line>{titleOf(p)}{departmentByKey(d) && <span className="sr-only"> · {departmentByKey(d)!.label}</span>}</div>
+              <div className="mt-1 flex items-center gap-1.5 text-[12.5px] min-w-0">
+                {departmentByKey(d) ? <span className="inline-flex items-center gap-1 min-w-0 font-semibold" style={{ color: hue }}><DeptIcon dept={d} size={13} /><span className="truncate">{departmentByKey(d)!.label}</span></span> : <span className="text-steel">No position yet</span>}
+              </div>
+            </div>
+            {lv && <span className="shrink-0 rounded-full px-2 h-7 grid place-items-center text-[12px] font-black num bg-[var(--color-fill)]" title={`Level ${lv} · ${LEVELS[lv - 1].label}`} data-level-badge>L{lv}</span>}
+          </div>
+          {/* the facts (2026-10-20 — the owner: "not good, make it modern and tidy"): one soft panel instead of loose
+              chips and a loose line. Access across the top (the role, how it was set as a quiet pill); then Phone ·
+              Staff code and Email · Joined in two even columns; a hairline line under them only for what needs
+              saying — not signed in yet, switched off, who they report to. */}
+          {(() => {
+            const boss = p.reports_to ? staff.find((x) => x.id === p.reports_to) : null;
+            const how = howOf(p);
+            const mail = !p.contact_email ? { icon: <Mail size={14} />, tint: "var(--color-label-2)", text: "—", title: "No email on their record" }
+              : p.contact_verified_at ? { icon: <MailCheck size={14} />, tint: "var(--color-green)", text: "Verified", title: p.contact_email }
+              : { icon: <MailWarning size={14} />, tint: "var(--color-orange)", text: "Not verified", title: "Email not confirmed, so they can't reset their password" };
+            const notes = [
+              p.must_change_password && <span key="pw" title="Has not signed in and set their own password yet" className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--color-orange)]" aria-hidden />Not signed in</span>,
+              !p.is_active && <span key="off" className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--color-red)]" aria-hidden />Off</span>,
+              boss && <span key="boss" className="inline-flex items-center gap-1 min-w-0"><span aria-hidden>→</span><span className="truncate">{boss.full_name}</span></span>,
+            ].filter(Boolean);
+            return (
+              <div className="px-4 pb-4" data-state>
+                <div className="rounded-2xl bg-[var(--color-fill)] border border-[var(--color-separator)] p-3">
+                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-2.5">
+                    <div className="col-span-2 min-w-0 flex items-center gap-2.5" data-access>
+                      <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center" style={{ background: `color-mix(in srgb, ${hue} 18%, transparent)`, color: hue }} aria-hidden><ShieldCheck size={14} /></span>
+                      <span className="min-w-0 flex-1 leading-tight">
+                        <span className="block text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)]">Access</span>
+                        <span className="block mt-0.5 text-[13.5px] font-bold text-[var(--color-label)] truncate">{ROLE_LABEL[p.role]}</span>
+                      </span>
+                      {how && <span className="shrink-0 max-w-[55%] truncate h-6 px-2.5 rounded-full inline-flex items-center text-[11.5px] font-semibold text-[var(--color-label-2)] bg-[var(--color-bg-2)] border border-[var(--color-separator)]">{how}</span>}
+                    </div>
+                    <Fact icon={<Phone size={14} />} tint="var(--color-green)" caption="Phone" title={p.phone ?? undefined}><span className="num">{p.phone ? phoneOut(p.phone) : "—"}</span></Fact>
+                    <Fact icon={<Hash size={14} />} tint="var(--color-blue)" caption="Staff code"><span className="num">{p.staff_code ?? "—"}</span></Fact>
+                    <Fact icon={mail.icon} tint={mail.tint} caption="Email" title={mail.title} data-email-state={p.contact_email ? (p.contact_verified_at ? "verified" : "unverified") : "none"}>{mail.text}</Fact>
+                    <Fact icon={<CalendarDays size={14} />} tint="var(--color-violet)" caption="Joined">{p.joined_on ? new Date(p.joined_on + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—"}</Fact>
+                  </div>
+                  {notes.length > 0 && <div className="mt-2.5 pt-2.5 border-t border-[var(--color-separator)] flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] font-semibold text-[var(--color-label-2)] min-w-0">{notes}</div>}
+                </div>
+              </div>
+            );
+          })()}
+          {/* the foot (2026-10-20): Call — when they have a phone and are not me — then Sign-in and Access for someone I
+              manage, or the owner's own Your position. Equal sections, hairlines between; under 19.5rem of card the
+              icon goes over the word so three still fit a phone. */}
+          {(() => {
+            const acts: { key: string; label: string; icon: ReactNode; href?: string; onClick?: () => void; aria: string; data?: Record<string, string>; cls?: string }[] = [];
+            if (p.phone && p.id !== me) acts.push({ key: "call", label: "Call", icon: <Phone size={16} className="text-[var(--color-green)]" aria-hidden />, href: `tel:${p.phone.replace(/\s/g, "")}`, aria: `Call ${p.full_name} on ${p.phone}`, data: { "data-call": "" } });
+            if (mine) {
+              acts.push({ key: "login", label: "Sign-in", icon: <KeyRound size={16} aria-hidden />, onClick: () => { close?.(); showLogin(p); }, aria: `Sign-in details for ${p.full_name}`, cls: "text-[var(--color-label-2)] hover:text-[var(--color-label)]" });
+              acts.push({ key: "access", label: "Access", icon: <AccessIcon size={16} aria-hidden />, onClick: () => { close?.(); openAccess(p); }, aria: `Access for ${p.full_name}` });
+            } else if (p.id === me && myRole === "owner") acts.push({ key: "own", label: "Your position", icon: <Briefcase size={16} aria-hidden />, onClick: () => { close?.(); setSelfEdit(p); setSelfPos(posOf(p)); setSelfErr(null); }, aria: "Your position", data: { "data-own-position": "" } });
+            if (!acts.length) return <div className="mt-auto" />;
+            return (
+              <div className="@container mt-auto grid border-t border-[var(--color-separator)] divide-x divide-[var(--color-separator)]" style={{ gridTemplateColumns: `repeat(${acts.length}, minmax(0, 1fr))` }} data-actions>
+                {acts.map((a) => {
+                  const cls = cn("min-w-0 !min-h-12 !rounded-none px-1.5 py-1.5 inline-flex flex-col items-center justify-center gap-1 text-[12px] font-bold whitespace-nowrap hover:bg-[var(--color-fill)] disabled:opacity-40 focus-visible:!outline-offset-[-3px]",
+                    "@[19.5rem]:flex-row @[19.5rem]:gap-2 @[19.5rem]:text-[13.5px]", a.cls);
+                  const body = <>{a.icon}<span className="truncate max-w-full">{a.label}</span></>;
+                  return a.href
+                    ? <a key={a.key} href={a.href} aria-label={a.aria} title={a.aria} className={cls} {...a.data}>{body}</a>
+                    : <button key={a.key} type="button" disabled={a.key === "login" && pending} onClick={a.onClick} aria-label={a.aria} title={a.aria} className={cls} {...a.data}>{body}</button>;
+                })}
+              </div>);
+          })()}
+        </article>
+      );
+  };
   return (
     <div className="space-y-5" data-staff>
       {/* ── header ── */}
@@ -176,7 +279,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
           <div className="min-w-0 flex-1">
             <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-steel">Your team</div>
             <div role="heading" aria-level={1} className="font-display text-[40px] sm:text-[52px] leading-[1.02] mt-1">Staff</div>
-            <p className="text-[14.5px] text-[var(--color-label-2)] mt-2 max-w-xl">Who does what, who they report to, and what each person can open — from the General Manager to the newest trainee.</p>
+            <p className="text-[14.5px] text-[var(--color-label-2)] mt-2 max-w-xl">Who does what, who they report to, and what they can open.</p>
           </div>
           <div className="grid grid-cols-2 md:flex gap-2 shrink-0">
             <button type="button" className="svc-btn quiet sm !px-4" onClick={() => { setCode(null); setOpen(true); }} data-invite-open><Ticket size={17} aria-hidden /> <span className="sm:hidden">Invite</span><span className="hidden sm:inline">Invite with a code</span></button>
@@ -200,20 +303,31 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
       </section>
 
       {/* ── People · Team chart · Positions (0107) ── */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3">
-        <div className="grid grid-cols-3 rounded-full bg-[var(--color-fill)] p-1 md:w-auto w-full" role="tablist" aria-label="Staff view">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+        <div className="grid grid-cols-3 rounded-full bg-[var(--color-fill)] p-1 lg:w-auto w-full" role="tablist" aria-label="Staff view">
           {([["people", "people", Users], ["chart", "team_chart", Network], ["guide", "positions", BookOpen]] as const).map(([k, w, I]) => (
             <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setView(k)} data-staff-view={k}
               className={cn("!min-h-11 rounded-full px-3 sm:px-5 inline-flex items-center justify-center gap-2 text-[13.5px] sm:text-[14px] font-extrabold transition-colors whitespace-nowrap", view === k ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_4px_rgb(0_0_0/0.22)]" : "text-steel hover:text-[var(--color-label)]")}><I size={16} aria-hidden /><Say w={w} /></button>))}
         </div>
-        {view === "people" && <div className="relative md:flex-1 md:max-w-md min-w-0"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
-          <input className="!h-12 !rounded-full !pl-11 !pr-11" placeholder="Name, title, phone or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find someone" data-staff-search />
-          {q && <button type="button" onClick={() => setQ("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 !min-h-9 rounded-full grid place-items-center text-steel hover:bg-[var(--color-fill)]" aria-label="Clear"><X size={16} /></button>}</div>}
+        {view === "people" && <div className="flex items-center gap-2 lg:flex-1 min-w-0">
+          <div className="relative flex-1 md:max-w-md min-w-0"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
+            <input className="!h-12 !rounded-full !pl-11 !pr-11" placeholder="Name, title, phone or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find someone" data-staff-search />
+            {q && <button type="button" onClick={() => setQ("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 !min-h-9 rounded-full grid place-items-center text-steel hover:bg-[var(--color-fill)]" aria-label="Clear"><X size={16} /></button>}</div>
+          {/* Cards · Table (2026-10-22): the cards as they were, or the data grid; the default is the grid from an iPad up */}
+          <div className="ml-auto shrink-0 flex rounded-full bg-[var(--color-fill)] p-1" role="group" aria-label="Show staff as" data-staff-layout>
+            {([["cards", LayoutGrid, "Cards"], ["table", Rows3, "Table"]] as const).map(([k, I, label]) => (
+              <button key={k} type="button" onClick={() => pickLayout(k)} aria-pressed={shownAs === k} title={label} aria-label={`Show as ${label.toLowerCase()}`} data-staff-layout-pick={k}
+                className={cn("!min-h-10 h-10 min-w-11 px-3 rounded-full inline-flex items-center justify-center gap-1.5 text-[13px] font-extrabold transition-colors", shownAs === k ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_4px_rgb(0_0_0/0.22)]" : "text-steel hover:text-[var(--color-label)]")}>
+                <I size={16} aria-hidden /><span className="hidden sm:inline">{label}</span></button>))}
+          </div>
+        </div>}
       </div>
 
+      {/* the department chips: one compact rail from md (DeptRail, 2026-10-22); the phone keeps its own sliding row */}
+      {view === "people" && depts.length > 0 && <DeptRail chips={chips} value={dept} onPick={setDept} />}
       {view === "people" && depts.length > 0 && (
-        <div className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:![mask-image:none] [scrollbar-width:none]" role="group" aria-label="Department" data-dept-chips>
-          {[{ key: null as string | null, label: "All", n: staff.length }, ...depts.map((d) => ({ key: d.key as string | null, label: d.label, n: d.n })), ...(unplaced ? [{ key: "none" as string | null, label: "No position", n: unplaced }] : [])].map((d) => (
+        <div className="md:hidden rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:![mask-image:none] [scrollbar-width:none]" role="group" aria-label="Department" data-dept-chips="phone">
+          {chips.map((d) => (
             <button key={d.key ?? "all"} type="button" aria-pressed={dept === d.key} onClick={() => setDept(d.key)} className={cn("shrink-0 !min-h-11 rounded-full pl-2 pr-2 inline-flex items-center gap-2 text-[13.5px] font-bold border transition-colors", dept === d.key ? "bg-[var(--color-label)] text-[var(--color-on-label)] border-transparent" : "bg-[var(--color-bg-2)] border-[var(--color-separator)] hover:bg-[var(--color-fill)]")}>
               <span className="h-7 w-7 rounded-full grid place-items-center" style={d.key && d.key !== "none" ? { background: `color-mix(in srgb, ${deptHue(d.key)} 22%, transparent)`, color: deptHue(d.key) } : { background: "var(--color-fill)" }}>{d.key === null ? <Users size={14} aria-hidden /> : <DeptIcon dept={d.key === "none" ? null : d.key} size={14} />}</span>
               {d.label}<b className="num min-w-6 h-6 px-1.5 rounded-full grid place-items-center text-[12px] bg-[color-mix(in_srgb,currentColor_12%,transparent)]">{d.n}</b></button>))}
@@ -222,91 +336,17 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
       {view === "guide" && <PositionsGuide type={type} people={staff} />}
 
       <div className={cn("space-y-5", view !== "people" && "hidden")}>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4" data-people>
-          {shown.map((p) => {
-            const mine = p.id !== me && canManage(myRole, p.role); const d = deptOf(p); const lv = levelFor(p, type); const hue = deptHue(d);
-            const dot = !p.is_active ? "var(--color-red)" : p.must_change_password ? "var(--color-orange)" : "var(--color-green)";
-            return (
-              /* one person: a card with their department's colour along the top */
-              <article key={p.id} data-person={p.id} className={cn("relative min-w-0 rounded-[24px] bg-[var(--color-bg-2)] border border-[var(--color-separator)] overflow-hidden flex flex-col transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-18px_rgb(0_0_0/0.5)]", !p.is_active && "opacity-70")}>
-                <span className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${hue}, color-mix(in srgb, ${hue} 25%, transparent))` }} aria-hidden />
-                <div className="p-4 pb-3 flex items-start gap-3.5 min-w-0">
-                  <Avatar name={p.full_name} dept={d} size={52} dot={dot} />
-                  <div className="min-w-0 flex-1">
-                    <div className={cn("text-[16.5px] font-extrabold leading-tight truncate", !p.is_active && "line-through text-steel")}>{p.full_name}{p.id === me && <span className="text-[12px] text-steel font-semibold"> · you</span>}</div>
-                    {/* their position (0107): the title, the department in its colour */}
-                    <div className="text-[14px] font-semibold truncate mt-0.5" data-position-line>{titleOf(p)}{departmentByKey(d) && <span className="sr-only"> · {departmentByKey(d)!.label}</span>}</div>
-                    <div className="mt-1 flex items-center gap-1.5 text-[12.5px] min-w-0">
-                      {departmentByKey(d) ? <span className="inline-flex items-center gap-1 min-w-0 font-semibold" style={{ color: hue }}><DeptIcon dept={d} size={13} /><span className="truncate">{departmentByKey(d)!.label}</span></span> : <span className="text-steel">No position yet</span>}
-                    </div>
-                  </div>
-                  {lv && <span className="shrink-0 rounded-full px-2 h-7 grid place-items-center text-[12px] font-black num bg-[var(--color-fill)]" title={`Level ${lv} · ${LEVELS[lv - 1].label}`} data-level-badge>L{lv}</span>}
-                </div>
-                {/* the facts (2026-10-20 — the owner: "not good, make it modern and tidy"): one soft panel instead of loose
-                    chips and a loose line. Access across the top (the role, how it was set as a quiet pill); then Phone ·
-                    Staff code and Email · Joined in two even columns; a hairline line under them only for what needs
-                    saying — not signed in yet, switched off, who they report to. */}
-                {(() => {
-                  const boss = p.reports_to ? staff.find((x) => x.id === p.reports_to) : null;
-                  const how = p.role === "owner" ? null : p.position && sameModules(p.allowed_modules, posOpens(p)) ? "position access" : p.allowed_modules ? `${p.allowed_modules.length} sections${p.position ? " · custom" : ""}` : "default";
-                  const mail = !p.contact_email ? { icon: <Mail size={14} />, tint: "var(--color-label-2)", text: "—", title: "No email on their record" }
-                    : p.contact_verified_at ? { icon: <MailCheck size={14} />, tint: "var(--color-green)", text: "Verified", title: p.contact_email }
-                    : { icon: <MailWarning size={14} />, tint: "var(--color-orange)", text: "Not verified", title: "Their email is unconfirmed, so they cannot reset their own password yet" };
-                  const notes = [
-                    p.must_change_password && <span key="pw" title="Has not signed in and set their own password yet" className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--color-orange)]" aria-hidden />Not signed in</span>,
-                    !p.is_active && <span key="off" className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--color-red)]" aria-hidden />Off</span>,
-                    boss && <span key="boss" className="inline-flex items-center gap-1 min-w-0"><span aria-hidden>→</span><span className="truncate">{boss.full_name}</span></span>,
-                  ].filter(Boolean);
-                  return (
-                    <div className="px-4 pb-4" data-state>
-                      <div className="rounded-2xl bg-[var(--color-fill)] border border-[var(--color-separator)] p-3">
-                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-2.5">
-                          <div className="col-span-2 min-w-0 flex items-center gap-2.5" data-access>
-                            <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center" style={{ background: `color-mix(in srgb, ${hue} 18%, transparent)`, color: hue }} aria-hidden><ShieldCheck size={14} /></span>
-                            <span className="min-w-0 flex-1 leading-tight">
-                              <span className="block text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)]">Access</span>
-                              <span className="block mt-0.5 text-[13.5px] font-bold text-[var(--color-label)] truncate">{ROLE_LABEL[p.role]}</span>
-                            </span>
-                            {how && <span className="shrink-0 max-w-[55%] truncate h-6 px-2.5 rounded-full inline-flex items-center text-[11.5px] font-semibold text-[var(--color-label-2)] bg-[var(--color-bg-2)] border border-[var(--color-separator)]">{how}</span>}
-                          </div>
-                          <Fact icon={<Phone size={14} />} tint="var(--color-green)" caption="Phone" title={p.phone ?? undefined}><span className="num">{p.phone ? phoneOut(p.phone) : "—"}</span></Fact>
-                          <Fact icon={<Hash size={14} />} tint="var(--color-blue)" caption="Staff code"><span className="num">{p.staff_code ?? "—"}</span></Fact>
-                          <Fact icon={mail.icon} tint={mail.tint} caption="Email" title={mail.title} data-email-state={p.contact_email ? (p.contact_verified_at ? "verified" : "unverified") : "none"}>{mail.text}</Fact>
-                          <Fact icon={<CalendarDays size={14} />} tint="var(--color-violet)" caption="Joined">{p.joined_on ? new Date(p.joined_on + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—"}</Fact>
-                        </div>
-                        {notes.length > 0 && <div className="mt-2.5 pt-2.5 border-t border-[var(--color-separator)] flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] font-semibold text-[var(--color-label-2)] min-w-0">{notes}</div>}
-                      </div>
-                    </div>
-                  );
-                })()}
-                {/* the foot (2026-10-20): Call — when they have a phone and are not me — then Sign-in and Access for someone I
-                    manage, or the owner's own Your position. Equal sections, hairlines between; under 19.5rem of card the
-                    icon goes over the word so three still fit a phone. */}
-                {(() => {
-                  const acts: { key: string; label: string; icon: ReactNode; href?: string; onClick?: () => void; aria: string; data?: Record<string, string>; cls?: string }[] = [];
-                  if (p.phone && p.id !== me) acts.push({ key: "call", label: "Call", icon: <Phone size={16} className="text-[var(--color-green)]" aria-hidden />, href: `tel:${p.phone.replace(/\s/g, "")}`, aria: `Call ${p.full_name} on ${p.phone}`, data: { "data-call": "" } });
-                  if (mine) {
-                    acts.push({ key: "login", label: "Sign-in", icon: <KeyRound size={16} aria-hidden />, onClick: () => showLogin(p), aria: `Sign-in details for ${p.full_name}`, cls: "text-[var(--color-label-2)] hover:text-[var(--color-label)]" });
-                    acts.push({ key: "access", label: "Access", icon: <AccessIcon size={16} aria-hidden />, onClick: () => openAccess(p), aria: `Access for ${p.full_name}` });
-                  } else if (p.id === me && myRole === "owner") acts.push({ key: "own", label: "Your position", icon: <Briefcase size={16} aria-hidden />, onClick: () => { setSelfEdit(p); setSelfPos(posOf(p)); setSelfErr(null); }, aria: "Your position", data: { "data-own-position": "" } });
-                  if (!acts.length) return <div className="mt-auto" />;
-                  return (
-                    <div className="@container mt-auto grid border-t border-[var(--color-separator)] divide-x divide-[var(--color-separator)]" style={{ gridTemplateColumns: `repeat(${acts.length}, minmax(0, 1fr))` }} data-actions>
-                      {acts.map((a) => {
-                        const cls = cn("min-w-0 !min-h-12 !rounded-none px-1.5 py-1.5 inline-flex flex-col items-center justify-center gap-1 text-[12px] font-bold whitespace-nowrap hover:bg-[var(--color-fill)] disabled:opacity-40 focus-visible:!outline-offset-[-3px]",
-                          "@[19.5rem]:flex-row @[19.5rem]:gap-2 @[19.5rem]:text-[13.5px]", a.cls);
-                        const body = <>{a.icon}<span className="truncate max-w-full">{a.label}</span></>;
-                        return a.href
-                          ? <a key={a.key} href={a.href} aria-label={a.aria} title={a.aria} className={cls} {...a.data}>{body}</a>
-                          : <button key={a.key} type="button" disabled={a.key === "login" && pending} onClick={a.onClick} aria-label={a.aria} title={a.aria} className={cls} {...a.data}>{body}</button>;
-                      })}
-                    </div>);
-                })()}
-              </article>
-            );
-          })}
+        {/* Cards or the grid. Until someone picks on this device, CSS picks — cards on a phone, the grid from md (768, every
+            iPad) — so the first paint is right at every width with nothing to correct after load. */}
+        <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4", layout === "auto" ? "md:hidden" : layout === "table" && "hidden")} data-people>
+          {shown.map((p) => personCard(p))}
           {staff.length === 0 && <p className="p-6 text-sm text-steel">Nobody yet. Add staff, or send someone an invite code.</p>}
-          {staff.length > 0 && shown.length === 0 && <p className="p-6 text-sm text-steel sm:col-span-2">Nobody matches. Try another name, or clear the search.</p>}
+          {staff.length > 0 && shown.length === 0 && <p className="p-6 text-sm text-steel sm:col-span-2">Nobody found. Try another name.</p>}
+        </div>
+        <div className={cn(layout === "auto" ? "hidden md:block" : layout === "cards" && "hidden")}>
+          {staff.length === 0
+            ? <p className="p-6 text-sm text-steel rounded-[24px] border border-[var(--color-separator)] bg-[var(--color-bg-2)]">Nobody yet. Add staff, or send someone an invite code.</p>
+            : <StaffGrid people={shown} everyone={staff} type={type} me={me} duty={duty} howOf={howOf} phoneOut={phoneOut} onOpen={(p) => setDetail(p)} />}
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
@@ -317,11 +357,46 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
           </div>
           <div className="rounded-[22px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4 text-[13px] text-steel space-y-2 leading-relaxed">
             <div className="text-[13px] font-bold uppercase tracking-wide">Two ways in</div>
-            <p><b className="text-[var(--color-label)]">Add staff</b> when you hand someone their sign-in yourself — choose their position and the access follows.</p>
-            <p><b className="text-[var(--color-label)]">Invite with a code</b> when they have their own email: they open <b>/join</b> in the web or mobile app, enter the code and their details, and land straight in their screens.</p>
+            <p><b className="text-[var(--color-label)]">Add staff</b> to make their sign-in yourself. Access follows their position.</p>
+            <p><b className="text-[var(--color-label)]">Invite with a code</b> if they have email: they open <b>/join</b> and enter the code.</p>
           </div>
         </div>
       </div>
+      {/* A person, opened from a grid row (2026-10-22): the same card as the card view (its Call / Sign-in / Access close
+          this first), then today, the sections they open, who they report to and who reports to them — each a tap away. */}
+      <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail?.full_name ?? ""}>
+        {detail && (() => {
+          const p = staff.find((x) => x.id === detail.id) ?? detail;   // the list as the server last sent it
+          const day = duty.find((x) => x.profile_id === p.id);
+          const t = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
+          const opens = p.role === "owner" ? null : (p.allowed_modules ?? MODULES_BY_TYPE[type].filter((m) => m !== "dashboard" && ROLE_DEFAULT[p.role].includes(m) && (!enabled || enabled.includes(m) || (ALWAYS_ON as readonly string[]).includes(m))));
+          const boss = p.reports_to ? staff.find((x) => x.id === p.reports_to) : null;
+          const team = staff.filter((x) => x.reports_to === p.id);
+          const box = "rounded-2xl bg-[var(--color-fill)] border border-[var(--color-separator)] p-3.5";
+          const who = (x: Staff) => (
+            <button key={x.id} type="button" onClick={() => setDetail(x)} className="w-full min-w-0 flex items-center gap-3 rounded-xl px-2 py-1.5 text-left hover:bg-[var(--color-bg-2)]" data-staff-detail-person={x.id}>
+              <Avatar name={x.full_name} dept={deptOf(x)} size={34} /><span className="min-w-0 flex-1 leading-tight"><span className="block text-[14px] font-bold truncate">{x.full_name}</span><span className="block text-[12px] text-[var(--color-label-2)] truncate">{titleOf(x)}</span></span>
+            </button>);
+          return (
+            <div className="space-y-3.5" data-staff-detail={p.id}>
+              {personCard(p, () => setDetail(null))}
+              <div className={cn(box, "flex items-center gap-3")} data-staff-detail-today>
+                <span className="h-9 w-9 shrink-0 rounded-full grid place-items-center" style={{ background: `color-mix(in srgb, ${day?.in_at && !day.out_at ? "var(--color-green)" : "var(--color-label-3)"} 18%, transparent)`, color: day?.in_at && !day.out_at ? "var(--color-green)" : "var(--color-label-2)" }} aria-hidden><Clock3 size={17} /></span>
+                <span className="min-w-0 leading-tight"><span className="block text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)]">Today</span>
+                  <span className="block mt-0.5 text-[14px] font-semibold">{day?.in_at ? (day.out_at ? `Worked ${t(day.in_at)} – ${t(day.out_at)}` : `On duty since ${t(day.in_at)}`) : "Not in today"}</span></span>
+              </div>
+              <div className={box} data-staff-detail-opens>
+                <div className="text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)] mb-2">Can open</div>
+                {opens === null ? <p className="text-[13.5px] font-semibold">Everything — the owner</p>
+                  : opens.length ? <ModuleChips modules={opens} /> : <p className="text-[13.5px] text-[var(--color-label-2)]">Work and checklists only</p>}
+              </div>
+              {(boss || team.length > 0) && <div className={box} data-staff-detail-team>
+                {boss && <><div className="text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)] mb-1">Reports to</div>{who(boss)}</>}
+                {team.length > 0 && <><div className={cn("text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)] mb-1", boss && "mt-3")}>Their team · {team.length}</div>{team.map(who)}</>}
+              </div>}
+            </div>);
+        })()}
+      </Sheet>
       <Sheet open={!!acc} onClose={() => setAcc(null)} title={acc ? `Access · ${acc.full_name}` : ""} wide>
         {acc && (
           <div className="space-y-5">
@@ -339,25 +414,25 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
                         : acc.id !== me && <button type="button" className="svc-btn go sm !px-4" data-use-position-access onClick={() => { setRole(want); setTicks(opens); }}>Use these</button>}
                     </div>
                     {opens && <ModuleChips modules={opens} className="mt-2" />}
-                    {!matches && <p className="text-[12px] text-steel mt-2">Their sections differ from the position&apos;s — that is fine when they cover more or less. <b>Use these</b> sets them to the position&apos;s.</p>}
+                    {!matches && <p className="text-[12px] text-steel mt-2">Different from their position. <b>Use these</b> sets them to the position&apos;s.</p>}
                   </div>);
               })()}</div>
             <Field label="Role" hint={ROLE_HINT[role]}>
               <select value={role} onChange={(e) => { setRole(e.target.value as Role); setTicks(null); }} disabled={acc.id === me}>{assignable.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
             </Field>
-            {myRole !== "owner" && <p className="text-xs text-steel -mt-2">You can only give someone a level below your own, and only the sections you hold yourself.</p>}
-            {role === "owner" ? <p className="text-sm text-steel">An owner has everything the master allowed this property. Nothing to tick.</p> : (<>
+            {myRole !== "owner" && <p className="text-xs text-steel -mt-2">You can only give a lower level and sections you have.</p>}
+            {role === "owner" ? <p className="text-sm text-steel">An owner has full access. Nothing to tick.</p> : (<>
               {controlRoomSwitch(ticks, role, () => toggle("dashboard"))}
               <div className="grid sm:grid-cols-2 gap-x-6">
                 {MODULE_GROUPS.map((g) => { const keys = g.keys.filter((k) => ceiling(role).includes(k.key)); if (!keys.length) return null; return (
                   <div key={g.title} className="mb-4 min-w-0"><div className="eyebrow mb-2">{g.title}</div><div className={SWITCH_GROUP}>{keys.map((k) => <SwitchRow key={k.key} title={k.label} hint={k.hint} on={isOn(k.key)} onToggle={() => toggle(k.key)} />)}</div></div>); })}
               </div></>)}
-            {acc.id !== me && <div className={SWITCH_GROUP}><SwitchRow title="Active" hint="Off means they can't sign in until you turn it back on." on={active} onToggle={() => setActive(!active)} /></div>}
+            {acc.id !== me && <div className={SWITCH_GROUP}><SwitchRow title="Active" hint="Off means they can't sign in." on={active} onToggle={() => setActive(!active)} /></div>}
             {err && <p className="text-sm text-chili">{err}</p>}
             <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setAccess(acc.id, role, role === "owner" ? null : ticks, active); if ("error" in r) { setErr(r.error!); return; } if (!samePos(accPos, posOf(acc))) { const x = await savePos(acc.id, accPos); if ("error" in x) { setErr(x.error!); return; } } setAcc(null); })} data-save-access>Save</Button><Button variant="gray" onClick={() => setAcc(null)}>Cancel</Button></div>
             <div className="pt-1 border-t border-line">
               <Button variant="ghost" size="sm" disabled={pending} onClick={() => { const p = acc; setAcc(null); resetPw(p); }}><KeyRound size={14} /> Reset their password</Button>
-              <p className="text-xs text-steel mt-1">Gives them a new temporary password to sign in with once, then set their own. Use it when someone is locked out.</p>
+              <p className="text-xs text-steel mt-1">For when they are locked out: gives a one-time password.</p>
             </div>
           </div>
         )}
@@ -368,13 +443,13 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
           <div className="space-y-4">
             <Credentials title={made.title} loginId={made.login_id} password={made.temp_password} staffCode={made.staff_code} />
             {made.verify && (otpDone ? (
-              <div className="feather p-4 flex items-center gap-2 text-sm"><Check size={16} className="text-mint" /> <span><b>{made.verify.email}</b> confirmed. They can reset their own password from now on.</span></div>
+              <div className="feather p-4 flex items-center gap-2 text-sm"><Check size={16} className="text-mint" /> <span><b>{made.verify.email}</b> confirmed. They can now reset their own password.</span></div>
             ) : (
               <div className="feather p-4 space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-wide text-steel">Confirm their email</div>
                 {made.verify.mailed
-                  ? <p className="text-sm text-steel">A 6-digit code went to <b>{made.verify.email}</b>. Enter it here while they have their phone out — until it is confirmed, a lost password cannot be reset by them.{made.verify.echoed && <> <span className="num">(dev: {made.verify.echoed})</span></>}</p>
-                  : <p className="text-sm text-chili">The code could not be sent: {made.verify.mailError} You can confirm the address later from the staff list.</p>}
+                  ? <p className="text-sm text-steel">A 6-digit code went to <b>{made.verify.email}</b>. Enter it now. Until then, they can't reset a lost password.{made.verify.echoed && <> <span className="num">(dev: {made.verify.echoed})</span></>}</p>
+                  : <p className="text-sm text-chili">The code could not be sent: {made.verify.mailError} Confirm it later from the staff list.</p>}
                 <div className="flex gap-2">
                   <input className="num flex-1 tracking-[0.3em]" inputMode="numeric" maxLength={6} value={otp} placeholder="000000"
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} />
@@ -394,7 +469,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               </div>
             ))}
             <div className="group"><div className="row"><div className="flex-1"><div className="text-[15px]">What happens next</div>
-              <div className="text-[13px] text-steel">They open the app, sign in with this ID and password, and are asked to set their own straight away. The temporary one stops working after three days. Their sections are already set — change them any time with Access.</div></div></div></div>
+              <div className="text-[13px] text-steel">They sign in with this and set their own password. It stops working after 3 days.</div></div></div></div>
             <Button className="w-full" onClick={() => { setAdd(false); setMade(null); }}><Check size={16} /> Done</Button>
           </div>
         ) : (
@@ -418,12 +493,12 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               {addPos.position && <div className="mt-3 rounded-2xl bg-[color-mix(in_srgb,var(--color-tint)_9%,transparent)] border border-[color-mix(in_srgb,var(--color-tint)_25%,transparent)] p-3" data-position-preset>
                 <p className="text-[13px]">Suggested access for a <b>{positionByKey(addPos.position)?.title}</b>: <b>{ROLE_LABEL[addRole]}</b>{posTicks(addPos.position, addRole) ? ", opening:" : " — everything the role allows."}</p>
                 {posTicks(addPos.position, addRole) && <ModuleChips modules={posTicks(addPos.position, addRole)!} className="mt-2" />}
-                <p className="text-[12px] text-steel mt-2">Already ticked below. Change any section for this one person — the position stays the same.</p>
+                <p className="text-[12px] text-steel mt-2">Ticked below. Change any for this person only.</p>
               </div>}</div>
             <Field label="Role" hint={ROLE_HINT[addRole]}>
               <select value={addRole} onChange={(e) => { setAddRole(e.target.value as Role); setAddTicks(null); }}>{assignable.filter((r) => r !== "owner").map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
             </Field>
-            <Field label="Their email" hint="Required — password reset codes go here, and nothing is ever delivered to the login ID.">
+            <Field label="Their email" hint="Required. Password reset codes go here.">
               <input name="contact_email" type="email" required placeholder="ravi@example.com" />
             </Field>
             <Field label="Phone" hint="10 digits.">
@@ -457,7 +532,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
       <Sheet open={open} onClose={() => setOpen(false)} title="Invite with a code">
         {!code ? (
           <form className="space-y-4" action={(fd) => start(async () => { const r = await createInvite(String(fd.get("role"))); if ("code" in r) setCode(r.code!); })}>
-            <Field label="Role" hint="They land in the sections this role starts with; set them exactly once they've joined."><select name="role" defaultValue={assignable[assignable.length - 1]}>{assignable.filter((r) => r !== "owner").map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></Field>
+            <Field label="Role" hint="Sets their starting sections. Adjust after they join."><select name="role" defaultValue={assignable[assignable.length - 1]}>{assignable.filter((r) => r !== "owner").map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></Field>
             <Button className="w-full" disabled={pending}>Generate code</Button>
           </form>
         ) : (
@@ -466,6 +541,54 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             <Button variant="outline" onClick={() => copyText(code)}><Copy size={16} /> Copy</Button></div>
         )}
       </Sheet>
+    </div>
+  );
+}
+
+type Chip = { key: string | null; label: string; n: number };
+/**
+ * The department chips from md up — iPad and desktop (2026-10-22, the owner: "ultra modern, compact"). They wrapped into
+ * two or three rows of bordered pills; now they are one row in a soft track, like the People · Team chart · Positions
+ * switch above: the chosen one raised on the card colour, the rest plain words with their department's icon and a quiet
+ * count. A row longer than the room slides — faded at the edge it continues past, with a round arrow there (only then) —
+ * and choosing a chip brings it into view. 36px with a mouse, 44px on a touch screen. The phone keeps its own row.
+ */
+function DeptRail({ chips, value, onPick }: { chips: Chip[]; value: string | null; onPick: (k: string | null) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ l: false, r: false });
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const f = () => setEdge({ l: el.scrollLeft > 2, r: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
+    f(); el.addEventListener("scroll", f, { passive: true }); const ro = new ResizeObserver(f); ro.observe(el);
+    return () => { el.removeEventListener("scroll", f); ro.disconnect(); };
+  }, [chips.length]);
+  useEffect(() => {   // the chosen chip in view
+    const el = ref.current, b = el?.querySelector<HTMLElement>('[aria-pressed="true"]'); if (!el || !b) return;
+    const l = b.offsetLeft - 44, r = b.offsetLeft + b.offsetWidth + 44;
+    if (l < el.scrollLeft) el.scrollTo({ left: Math.max(0, l), behavior: "smooth" });
+    else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth, behavior: "smooth" });
+  }, [value]);
+  const by = (d: number) => { const el = ref.current; if (el) el.scrollBy({ left: d * el.clientWidth * 0.7, behavior: "smooth" }); };
+  const mask = edge.l && edge.r ? "linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 36px), transparent)"
+    : edge.l ? "linear-gradient(90deg, transparent, #000 36px)" : edge.r ? "linear-gradient(90deg, #000 calc(100% - 36px), transparent)" : "none";
+  const arrow = "shrink-0 h-9 w-9 !min-h-9 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:!min-h-11 rounded-full grid place-items-center bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_4px_rgb(0_0_0/0.22)] hover:brightness-110";
+  return (
+    <div className="hidden md:flex items-center gap-1 min-w-0 rounded-full bg-[var(--color-fill)] p-1" data-dept-rail>
+      {edge.l && <button type="button" onClick={() => by(-1)} className={arrow} aria-label="Earlier departments" data-dept-prev><ChevronLeft size={17} aria-hidden /></button>}
+      <div ref={ref} className="flex-1 min-w-0 flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ maskImage: mask, WebkitMaskImage: mask }} role="group" aria-label="Department" data-dept-chips="rail">
+        {chips.map((d) => {
+          const on = value === d.key, hue = d.key && d.key !== "none" ? deptHue(d.key) : null;
+          return (
+            <button key={d.key ?? "all"} type="button" aria-pressed={on} onClick={() => onPick(d.key)}
+              className={cn("shrink-0 h-9 !min-h-9 pointer-coarse:h-11 pointer-coarse:!min-h-11 rounded-full pl-1.5 pr-3 inline-flex items-center gap-2 text-[13px] font-bold whitespace-nowrap transition-[background-color,color,box-shadow] duration-150",
+                on ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_4px_rgb(0_0_0/0.22)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[color-mix(in_srgb,var(--color-bg-2)_55%,transparent)]")}>
+              <span className="h-6 w-6 shrink-0 rounded-full grid place-items-center" style={hue ? { background: `color-mix(in srgb, ${hue} 20%, transparent)`, color: hue } : { background: "var(--color-bg-2)", color: "var(--color-label-2)" }} aria-hidden>
+                {d.key === null ? <Users size={13} /> : <DeptIcon dept={d.key === "none" ? null : d.key} size={13} />}</span>
+              {d.label}<b className={cn("num text-[11.5px] font-bold", on ? "text-[var(--color-label-2)]" : "text-[var(--color-label-3)]")}>{d.n}</b>
+            </button>);
+        })}
+      </div>
+      {edge.r && <button type="button" onClick={() => by(1)} className={arrow} aria-label="More departments" data-dept-next><ChevronRight size={17} aria-hidden /></button>}
     </div>
   );
 }

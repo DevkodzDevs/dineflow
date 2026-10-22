@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { QrCode, Copy, ExternalLink, Printer, Share2, ScanLine, UserPlus, BellRing, ArrowLeft, Activity, DoorOpen, Settings } from "lucide-react";
+import { QrCode, Copy, ExternalLink, Printer, Share2, ScanLine, UserPlus, BellRing, Activity, DoorOpen, Settings } from "lucide-react";
 import { QR, qrDataUrl } from "@/components/QR";
 import { Card, useToast } from "@/components/ui";
 import { SvcHead } from "@/components/ui/Service";
@@ -22,9 +22,9 @@ async function printPoster(url: string, name: string) {
 }
 
 const STEPS = [
-  { Icon: ScanLine, title: "Scan at the door", text: "With the phone's own camera — no app to install, no sign-in." },
-  { Icon: UserPlus, title: "Add name and party size", text: "They see their place in the line and the wait, and it moves up live." },
-  { Icon: BellRing, title: "You tap Table ready", text: "On Pulse. Their phone shows it at once — and on WhatsApp if they gave a number." },
+  { Icon: ScanLine, title: "Scan at the door", text: "With the phone camera. No app, no sign-in." },
+  { Icon: UserPlus, title: "Add name and party size", text: "They see their place and wait time, live." },
+  { Icon: BellRing, title: "You tap Table ready", text: "On Pulse. Their phone shows it — WhatsApp too, if given." },
 ];
 
 /**
@@ -40,15 +40,14 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
     const r = await shareText({ title: `Join the queue · ${restaurant}`, text: `Join the waiting list at ${restaurant}`, url: joinUrl });
     if (r === "unavailable") void copy();
   };
-  const back = <Link href="/pulse" className="svc-btn quiet sm"><ArrowLeft size={18} aria-hidden /><span>Back to Pulse</span></Link>;
 
   if (!listed || !slug) return (
     <div>
-      <SvcHead icon="qr" title="Join by QR" sub="Guests scan a code at the door and join the waiting list from their own phone" actions={back} />
+      <SvcHead icon="qr" title="Join by QR" sub="Guests scan at the door to join the waiting list" />
       <Card className="!rounded-[24px] max-w-2xl mx-auto text-center !p-8" data-joinqr-off>
         <span className="mx-auto h-16 w-16 rounded-[20px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><QrCode size={30} aria-hidden /></span>
         <h2 className="mt-4 text-[22px] font-extrabold">Join by QR is off</h2>
-        <p className="mt-2 text-[14px] text-steel leading-relaxed">The queue page is part of your public storefront. Turn on <b>Listed publicly</b> in Storefront settings and the code appears here, ready to print.</p>
+        <p className="mt-2 text-[14px] text-steel leading-relaxed">Turn on <b>Listed publicly</b> in Storefront settings to get the code.</p>
         <Link href="/settings/storefront" className="svc-btn go sm mt-5 inline-flex"><Settings size={18} aria-hidden /><span>Open Storefront settings</span></Link>
       </Card>
     </div>
@@ -56,7 +55,7 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
 
   return (
     <div>
-      <SvcHead icon="qr" title="Join by QR" sub="Guests scan this at the door and join the waiting list from their own phone" actions={back} />
+      <SvcHead icon="qr" title="Join by QR" sub="Guests scan this at the door to join the waiting list" />
       {/* Left: the code itself, large, with the moves on it (copy, open, share, print). Right: how a guest uses it and
           where to put it. Stacked under lg; the code is never wider than the screen. */}
       <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-5 items-start">
@@ -81,7 +80,7 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
         <div className="space-y-5 min-w-0">
           <Card className="!rounded-[24px]">
             <h2 className="text-[18px] font-extrabold">How guests use it</h2>
-            <p className="text-[13px] text-steel mt-0.5">Three steps on their phone. Nothing for them to download.</p>
+            <p className="text-[13px] text-steel mt-0.5">Three steps on their phone. Nothing to download.</p>
             <ol className="mt-4 space-y-3">
               {STEPS.map(({ Icon, title, text }, i) => (
                 <li key={title} className="flex gap-3.5 items-start rounded-[18px] bg-[var(--color-fill)] p-3.5">
@@ -99,7 +98,7 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
               <span className="h-12 w-12 shrink-0 rounded-[14px] grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><DoorOpen size={22} aria-hidden /></span>
               <div className="min-w-0">
                 <h2 className="text-[16px] font-extrabold leading-tight">Where to put it</h2>
-                <p className="text-[13px] text-steel mt-1 leading-snug">Print the poster for the door, the host stand and the waiting bench. A guest who scans it joins the same list you see on Pulse.</p>
+                <p className="text-[13px] text-steel mt-1 leading-snug">At the door, host stand and waiting bench. Scans join your Pulse list.</p>
               </div>
             </div>
             <Link href="/pulse" className="mt-4 svc-btn quiet sm w-full"><Activity size={18} aria-hidden /><span>See who is waiting on Pulse</span></Link>

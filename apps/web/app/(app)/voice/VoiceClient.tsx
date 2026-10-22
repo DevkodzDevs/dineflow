@@ -101,7 +101,7 @@ function Composer({ name }: { name: string }) {
       <div className="mt-5">{step(3, "Tell the owner")}
         <input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={120} placeholder="A short title — e.g. Split shifts every day" aria-label="Title" data-voice-subject />
         <textarea className="mt-2" rows={5} value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} aria-label="Your message"
-          placeholder="What happened, or what would help? Say it in your own words." data-voice-body />
+          placeholder="What happened, or what would help?" data-voice-body />
         <div className="mt-1 text-right text-[11.5px] text-steel num">{body.length}/2000</div>
       </div>
 
@@ -109,7 +109,7 @@ function Composer({ name }: { name: string }) {
         <span className="h-9 w-9 rounded-xl grid place-items-center shrink-0 bg-[var(--color-bg-2)] text-steel">{anon ? <EyeOff size={17} aria-hidden /> : <Eye size={17} aria-hidden />}</span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-bold">Send without my name</span>
-          <span className="block text-[12px] text-steel leading-snug">{anon ? "The owner sees “Anonymous” — not your name or your job. The answer still comes back to you here." : <>The owner sees it is from <b className="text-[var(--color-label)]">{name}</b>.</>}</span>
+          <span className="block text-[12px] text-steel leading-snug">{anon ? "The owner sees “Anonymous”. You still get the answer here." : <>The owner sees it is from <b className="text-[var(--color-label)]">{name}</b>.</>}</span>
         </span>
         <Switch on={anon} onChange={setAnon} name="Send without my name" />
       </label>
@@ -155,7 +155,7 @@ function Mine({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void }) {
       <div className="flex items-baseline justify-between gap-2 mb-3"><h2 className="text-[17px] font-extrabold">What I sent</h2><span className="text-[12.5px] text-steel num">{items.length}</span></div>
       {items.length === 0
         ? <div className="card !p-6 text-center" data-voice-empty><span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><MessagesSquare size={20} aria-hidden /></span>
-            <p className="mt-3 text-[15px] font-bold">Nothing sent yet</p><p className="mt-1 text-[13px] text-steel">What you send shows here, with the owner&apos;s answer.</p></div>
+            <p className="mt-3 text-[15px] font-bold">Nothing sent yet</p><p className="mt-1 text-[13px] text-steel">What you send and the owner&apos;s answer show here.</p></div>
         : <div className="grid gap-3">{items.map((i) => <Row key={i.id} item={i} owner={false} onOpen={onOpen} />)}</div>}
     </section>
   );
@@ -208,7 +208,7 @@ function OwnerInbox({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => voi
       {items.length === 0
         ? <div className="card !p-8 text-center" data-voice-empty><span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><Inbox size={20} aria-hidden /></span>
             <p className="mt-3 text-[16px] font-bold">Nothing from your team yet</p>
-            <p className="mt-1 text-[13px] text-steel max-w-[46ch] mx-auto">When someone on your staff sends a complaint, feedback, an idea or thanks, it lands here — and only you see it.</p></div>
+            <p className="mt-1 text-[13px] text-steel max-w-[46ch] mx-auto">Staff complaints, ideas and thanks land here. Only you see them.</p></div>
         : shown.length === 0
           ? <div className="card !p-6 text-center text-[14px] text-steel">Nothing here — choose another filter above.</div>
           : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{shown.map((i) => <Row key={i.id} item={i} owner onOpen={onOpen} />)}</div>}
@@ -274,7 +274,7 @@ function Thread({ item, owner }: { item: Item; owner: boolean }) {
 
       <div className="rounded-2xl bg-[var(--color-fill)] p-2.5">
         <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} aria-label={owner ? "Your answer" : "Add to this"} data-voice-reply
-          placeholder={owner ? (item.anonymous ? "Answer them — they will read it here, even without their name" : `Answer ${item.author_name ?? "them"} — they will read it here`) : "Add to this — the owner reads it"} />
+          placeholder={owner ? (item.anonymous ? "Answer them — they will see it here" : `Answer ${item.author_name ?? "them"} — they will read it here`) : "Add to this — the owner reads it"} />
         {err && <p className="mt-2 text-[13.5px] font-semibold text-chili" role="alert">{err}</p>}
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="text-[11.5px] text-steel num">{text.length}/2000</span>

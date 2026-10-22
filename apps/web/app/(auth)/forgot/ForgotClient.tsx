@@ -34,12 +34,12 @@ export function ForgotClient() {
         <>
           <h1 className="text-4xl">Check your email</h1>
           <p className="text-steel mt-2">
-            If <span className="num">{loginId}</span> is a DineFlow account with a contact address on
-            it, a six-digit code is on its way. It expires in 10 minutes.
+            If <span className="num">{loginId}</span> has an email on file, a 6-digit code is on its way.
+            It expires in 10 minutes.
           </p>
           {rState?.echoed && (
             <p className="text-sm bg-[var(--color-fill)] rounded-xl px-3 py-2 mt-4">
-              Email is not set up on this server, so the code is shown here instead:{" "}
+              Email is off here, so your code is:{" "}
               <span className="num font-semibold tracking-[0.25em]">{rState.echoed}</span>
             </p>
           )}
@@ -69,10 +69,10 @@ export function ForgotClient() {
         <>
           <h1 className="text-4xl">Forgot your password</h1>
           <p className="text-steel mt-2">
-            Enter your login ID. We send a code to the email address recorded for your property.
+            Enter your login ID. We email your property a code.
           </p>
           <form action={rAct} className="mt-7 space-y-4">
-            <Field label="Login ID" hint="The DineFlow id you sign in with, like dine-htl-mano-00001">
+            <Field label="Login ID" hint="Your DineFlow ID, like dine-htl-mano-00001">
               <input name="login_id" value={loginId} onChange={(e) => setLoginId(e.target.value)}
                 required autoFocus autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 className="num" placeholder="dine-htl-mano-00001" />

@@ -16,62 +16,62 @@ export function Guide({ propertyType }: { propertyType: string }) {
     <div className="space-y-4">
       <div className="card p-6">
         <H>Read this first</H>
-        <P>Rates, thresholds and dates below follow the notifications in force at the time of writing, including the GST Council's rate changes effective 22 September 2025. They change by notification. Nothing here replaces your Chartered Accountant; it exists so that you know what to ask, and so the numbers you hand over are already in the shape a return needs.</P>
+        <P>Rules as of the 22 Sep 2025 GST rate changes; they can change. Your CA has the final word.</P>
         <P>Portals: <Portal href="https://www.gst.gov.in">GST</Portal> · <Portal href="https://www.incometax.gov.in">Income tax</Portal> · <Portal href="https://foscos.fssai.gov.in">FSSAI (FoSCoS)</Portal> · <Portal href="https://einvoice1.gst.gov.in">e-Invoice</Portal> · <Portal href="https://unifiedportal-emp.epfindia.gov.in">EPFO</Portal> · <Portal href="https://www.esic.gov.in">ESIC</Portal></P>
       </div>
 
       <div className="card p-6">
         <H>1 · Registering for GST</H>
-        <P>Registration is compulsory once aggregate turnover in a financial year crosses ₹20 lakh for services (₹10 lakh in the special-category states of the north-east and hills). Restaurants that also sell packaged goods count both. Register voluntarily below the threshold if your customers want input credit or if you supply to companies.<Ref>Sec 22, 23, 24 CGST Act</Ref></P>
-        <P>Two schemes exist. <b>Regular</b>: you charge GST on every bill, file monthly or quarterly, and may claim input credit where the rate allows it. <b>Composition</b>: available up to ₹1.5 crore turnover; restaurants pay a flat 5% of turnover, cannot charge GST to customers, cannot claim input credit, cannot supply outside the state, and issue a <i>bill of supply</i> rather than a tax invoice.<Ref>Sec 10 · Rule 5 to 7</Ref></P>
-        <P>Orders through Swiggy, Zomato and similar platforms: since 1 January 2022 the platform itself pays the GST on restaurant services made through it, and you show those sales as supplies through an e-commerce operator, not as your own taxable sales.<Ref>Sec 9(5) · Notification 17/2021-CT(R)</Ref></P>
+        <P>Register once yearly turnover passes ₹20 lakh (₹10 lakh in north-east and hill states), packaged goods included. Below that it's optional.<Ref>Sec 22, 23, 24 CGST Act</Ref></P>
+        <P>Two schemes. <b>Regular</b>: GST on every bill, file monthly or quarterly, claim input credit where allowed. <b>Composition</b>: up to ₹1.5 crore turnover; flat 5% of turnover, no GST on bills, no input credit, no sales outside the state; issue a <i>bill of supply</i>, not a tax invoice.<Ref>Sec 10 · Rule 5 to 7</Ref></P>
+        <P>Swiggy, Zomato and similar apps pay GST on their orders (since 1 Jan 2022). Show them as e-commerce sales.<Ref>Sec 9(5) · Notification 17/2021-CT(R)</Ref></P>
       </div>
 
       <div className="card p-6">
         <H>2 · The rates that apply to you</H>
         <div className="table-wrap"><table className="w-full text-sm"><thead className="text-xs uppercase tracking-wide text-[var(--color-label-2)] border-b border-[var(--color-separator)]"><tr><th className="text-left py-2">Supply</th><th className="text-left py-2">SAC</th><th className="text-right py-2">Rate</th><th className="text-left py-2 pl-4">Input credit</th></tr></thead>
           <tbody>{GST_RATES.map((r, i) => <tr key={i} className="border-b border-[var(--color-separator)]/60"><td className="py-2 pr-3">{r.what}{r.note && <div className="text-xs text-[var(--color-label-3)]">{r.note}</div>}</td><td className="py-2 num">{r.sac || "—"}</td><td className="py-2 text-right num">{r.rate === null ? "n/a" : `${r.rate}%`}</td><td className="py-2 pl-4">{r.rate === null ? "—" : r.itc ? "Yes" : "No"}</td></tr>)}</tbody></table></div>
-        <P>The rate is split equally: 5% is 2.5% CGST + 2.5% SGST (UTGST in a Union Territory without a legislature). Both halves print separately on the bill. IGST arises only on an inter-state supply, which a restaurant or hotel serving guests on its premises does not make: the place of supply is where the premises are.<Ref>Sec 8, 9 · Sec 12(3) IGST Act</Ref></P>
-        {hotel && <P>For a hotel the room tariff decides the rate for the whole property: if any room is priced above ₹7,500 a night, the restaurant inside becomes 18% with credit. Declared tariff was replaced by the value actually charged; a seasonal price above ₹7,500 moves the rate for that supply.<Ref>Notification 20/2019-CT(R) as amended</Ref></P>}
-        <P>Alcohol is outside GST entirely and carries state VAT and excise. A bar keeps a separate VAT registration and the liquor lines never enter the GST return.</P>
+        <P>5% is 2.5% CGST + 2.5% SGST (UTGST in some Union Territories), printed separately. No IGST: guests are served in your state.<Ref>Sec 8, 9 · Sec 12(3) IGST Act</Ref></P>
+        {hotel && <P>If any room is charged over ₹7,500 a night, even seasonally, the hotel's restaurant is 18% with credit.<Ref>Notification 20/2019-CT(R) as amended</Ref></P>}
+        <P>Alcohol pays state VAT and excise, not GST — keep it off the GST return. A bar needs VAT registration.</P>
       </div>
 
       <div className="card p-6">
         <H>3 · What every bill must show</H>
-        <P>A registered regular dealer issues a <b>tax invoice</b> for each supply. DineFlow prints these on every paid bill and on the invoices it generates:</P>
+        <P>A regular dealer issues a <b>tax invoice</b>. DineFlow prints these on every paid bill and invoice:</P>
         <ul className="text-sm text-[var(--color-label-2)] space-y-1 list-disc pl-5">{INVOICE_MUST_SHOW.map((x, i) => <li key={i}>{x}</li>)}</ul>
-        <P>Restaurant service is SAC <span className="num">{SAC.restaurant}</span>, accommodation is <span className="num">{SAC.accommodation}</span>. A composition dealer prints a <b>bill of supply</b> instead, without any tax line, carrying the words: <i>&ldquo;{COMPOSITION_NOTE}&rdquo;</i>.<Ref>Rule 46, 49</Ref></P>
-        <P>A registered guest who wants input credit needs their GSTIN on the invoice; Billing asks for it when you raise the tax invoice. Keep the serial numbers unbroken through the year.<Ref>Rule 46(b)</Ref></P>
-        <P><b>e-Invoicing</b> applies once turnover in any year since 2017-18 crossed ₹5 crore: each B2B invoice is registered on the Invoice Registration Portal and carries its IRN and QR. B2C bills are unaffected.<Ref>Rule 48(4) · Notification 10/2023-CT</Ref></P>
+        <P>Restaurant service is SAC <span className="num">{SAC.restaurant}</span>, accommodation is <span className="num">{SAC.accommodation}</span>. A composition dealer prints a <b>bill of supply</b> with no tax line, saying: <i>&ldquo;{COMPOSITION_NOTE}&rdquo;</i>.<Ref>Rule 46, 49</Ref></P>
+        <P>For input credit, the guest's GSTIN goes on the invoice (Billing asks). No gaps in invoice numbers.<Ref>Rule 46(b)</Ref></P>
+        <P><b>e-Invoicing</b>: if turnover passed ₹5 crore in any year since 2017-18, register each B2B invoice on the IRP (it gets an IRN and QR). Not for B2C bills.<Ref>Rule 48(4) · Notification 10/2023-CT</Ref></P>
       </div>
 
       <div className="card p-6">
         <H>4 · Returns and when they fall due</H>
-        <P><b>Regular, monthly</b> (the default): GSTR-1 by the 11th of the next month with every sale, B2B invoice by invoice; GSTR-3B by the 20th with the tax paid. <b>Regular, quarterly</b> (QRMP, allowed up to ₹5 crore): GSTR-1 by the 13th after the quarter, GSTR-3B by the 22nd (southern and western states) or 24th, with monthly tax by challan by the 25th. <b>Composition</b>: CMP-08 by the 18th after each quarter, and GSTR-4 for the year by 30 June.<Ref>Sec 37, 39 · Rule 59, 61, 62</Ref></P>
-        <P><b>Annual</b>: GSTR-9 by 31 December, optional below ₹2 crore turnover; GSTR-9C, the self-certified reconciliation with the audited accounts, above ₹5 crore.<Ref>Sec 44 · Rule 80</Ref></P>
-        <P>The Calendar tab lists each of these for your scheme with its date, and the Returns tab gives the figures for the month in the rows GSTR-1 and GSTR-3B want. Late filing costs ₹50 a day (₹20 for a nil return) plus 18% interest on tax paid late.<Ref>Sec 47, 50</Ref></P>
+        <P><b>Regular, monthly</b> (default): GSTR-1 (all sales) by the 11th of next month; GSTR-3B (tax paid) by the 20th. <b>Regular, quarterly</b> (QRMP, up to ₹5 crore): GSTR-1 by the 13th after the quarter; GSTR-3B by the 22nd (south and west states) or 24th; monthly tax by challan by the 25th. <b>Composition</b>: CMP-08 by the 18th after each quarter; GSTR-4 for the year by 30 June.<Ref>Sec 37, 39 · Rule 59, 61, 62</Ref></P>
+        <P><b>Annual</b>: GSTR-9 by 31 December (optional below ₹2 crore). Above ₹5 crore, also GSTR-9C, matched to audited accounts.<Ref>Sec 44 · Rule 80</Ref></P>
+        <P>Dates are in Calendar, GSTR-1 and GSTR-3B figures in Returns. Late: ₹50 a day (₹20 for nil) plus 18% interest on late tax.<Ref>Sec 47, 50</Ref></P>
       </div>
 
       <div className="card p-6">
         <H>5 · Income tax, the audit and your CA</H>
-        <P>A <b>tax audit</b> under section 44AB is compulsory when turnover crosses ₹1 crore, raised to ₹10 crore where cash receipts and cash payments are each under 5% of the total. Your CA files Form 3CA (companies) or 3CB (others) together with the particulars in Form 3CD by 30 September; the return itself then falls due on 31 October. Without an audit the return is due 31 July.<Ref>Sec 44AB, 139(1)</Ref></P>
-        <P>Businesses under ₹2 crore (₹3 crore where cash receipts are within 5%) may opt for <b>presumptive tax</b> at 8% of turnover (6% for digital receipts), which removes the audit and the books requirement; it is rarely right for a restaurant with real margins, but ask.<Ref>Sec 44AD</Ref></P>
-        <P><b>Advance tax</b> is paid in four instalments, 15 June, 15 September, 15 December and 15 March, cumulatively 15%, 45%, 75% and 100% of the year's estimate, once the year's liability exceeds ₹10,000.<Ref>Sec 208, 211</Ref></P>
-        <P><b>TDS</b> you may have to deduct: 10% on rent above ₹6 lakh a year (section 194-I), 1% or 2% on contractor bills (194C), and on salaries above the slab (192). Deposit by the 7th of the next month and file the quarterly statement.<Ref>Sec 192, 194C, 194-I</Ref></P>
-        <P>The Profile tab holds your CA's name, firm, ICAI membership number and contact, so anyone at the counter knows who to call, and the Documents tab keeps the signed 3CD and the ITR acknowledgement where they can be found.</P>
+        <P>A <b>tax audit</b> (section 44AB) is a must above ₹1 crore turnover (₹10 crore if cash in and out are each under 5%). Your CA files Form 3CA/3CB with 3CD by 30 Sep; return due 31 Oct. No audit: return due 31 July.<Ref>Sec 44AB, 139(1)</Ref></P>
+        <P>Under ₹2 crore (₹3 crore if cash receipts are within 5%), you may choose <b>presumptive tax</b>: 8% of turnover (6% for digital), no audit, no books. Rarely suits a restaurant — ask your CA.<Ref>Sec 44AD</Ref></P>
+        <P><b>Advance tax</b> (if the year's tax is over ₹10,000): 15%, 45%, 75%, 100% by 15 Jun, 15 Sep, 15 Dec, 15 Mar.<Ref>Sec 208, 211</Ref></P>
+        <P><b>TDS</b> to deduct: 10% on rent over ₹6 lakh a year (194-I), 1% or 2% on contractors (194C), salaries above the slab (192). Pay by the 7th of next month; file quarterly.<Ref>Sec 192, 194C, 194-I</Ref></P>
+        <P>Your CA's details go in Profile. Keep the signed 3CD and ITR receipt in Documents.</P>
       </div>
 
       <div className="card p-6">
         <H>6 · Records, and how long to keep them</H>
         <P>Keep for {RECORD_KEEPING.years}.<Ref>{RECORD_KEEPING.ref}</Ref></P>
         <ul className="text-sm text-[var(--color-label-2)] space-y-1 list-disc pl-5">{RECORD_KEEPING.keep.map((x, i) => <li key={i}>{x}</li>)}</ul>
-        <P>Proof of business seals each month's figures with a hash so a bank, a buyer or an officer can verify them later; Reports and the Pantry hold the sales and stock registers.</P>
+        <P>Proof of business locks each month's figures. Sales register: Reports. Stock register: Pantry.</P>
       </div>
 
       <div className="card p-6">
         <H>7 · Licences beyond tax</H>
-        <P><b>FSSAI</b>: every food business holds a registration (turnover under ₹12 lakh) or a state or central licence above it, renewed before expiry, its number printed on bills. <b>Shops &amp; Establishments</b> registration with the state labour department once you employ anyone. <b>Trade licence</b> from the corporation, yearly. <b>Fire NOC</b> for hotels and larger dining rooms. <b>Liquor licence</b> from state excise if you serve alcohol. <b>Professional tax</b> where your state levies it (Tamil Nadu: half-yearly, to the local body).</P>
-        <P><b>EPF</b> applies from 20 employees, 12% each side on basic pay, deposited by the 15th. <b>ESI</b> from 10 employees where wages are up to ₹21,000 a month, 0.75% employee and 3.25% employer, also by the 15th. The Documents tab tracks each certificate's expiry and warns you sixty days ahead.</P>
+        <P><b>FSSAI</b>: registration under ₹12 lakh turnover, licence above; renew on time, print the number on bills. <b>Shops &amp; Establishments</b> registration once you hire anyone. <b>Trade licence</b> from the corporation, yearly. <b>Fire NOC</b> for hotels and larger dining rooms. <b>Liquor licence</b> from state excise if you serve alcohol. <b>Professional tax</b> where your state charges it (Tamil Nadu: half-yearly).</P>
+        <P><b>EPF</b> from 20 staff: 12% each side on basic pay, by the 15th. <b>ESI</b> from 10 staff on pay up to ₹21,000 a month: 0.75% staff, 3.25% you, by the 15th. Documents warns 60 days before a certificate expires.</P>
       </div>
     </div>
   );

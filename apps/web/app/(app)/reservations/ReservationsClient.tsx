@@ -107,7 +107,7 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
 
   return (
     <>
-      <SvcHead icon="reservations" title="Reservations" sub="Who is coming to eat — tap Seat now when they arrive"
+      <SvcHead icon="reservations" title="Reservations" sub="Who is coming — tap Seat now when they arrive"
         actions={<button type="button" className="svc-btn go sm !px-5" onClick={() => { setW((x) => ({ ...x, date: day })); setWalkIn(true); }} data-new-booking><Plus size={19} aria-hidden /><Say w="new_booking" /></button>} />
 
       {/* one panel for "which day, and what to show": the month and the chosen day's numbers with the day arrows, the
@@ -177,17 +177,17 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
       </section>
 
       {tab === "day" ? (
-        list.length === 0 ? <Empty title="No bookings for this day" hint="Take one on the phone with New booking, or switch the storefront on in Settings → Storefront and guests book themselves." action={<Link href="/settings/storefront"><Button variant="gray">Set up the storefront</Button></Link>} /> : (
+        list.length === 0 ? <Empty title="No bookings for this day" hint="Tap New booking, or turn on the storefront so guests book online." action={<Link href="/settings/storefront"><Button variant="gray">Set up the storefront</Button></Link>} /> : (
           <div className="grid gap-3 md:grid-cols-2 min-[100rem]:grid-cols-3" data-bookings>
             <AnimatePresence>{shown.map((r, i) => card(r, i))}</AnimatePresence>
-            {shown.length === 0 && <p className="text-[15px] text-steel py-6 md:col-span-2">{only ? "Nobody in this group right now." : "Everyone has been and gone — nobody left to arrive."}</p>}
+            {shown.length === 0 && <p className="text-[15px] text-steel py-6 md:col-span-2">{only ? "Nobody in this group right now." : "Everyone has come — nobody left to arrive."}</p>}
           </div>
         )
       ) : tab === "month" ? (
         /* the month grid: which days are busy; tap one and it opens on Day */
         <div className="min-w-0" onClick={(e) => { if ((e.target as HTMLElement).closest("a")) setTab("day"); }}><Calendar day={day} month={month} today={today} /></div>
       ) : (
-        reviews.length === 0 ? <Empty title="No reviews yet" hint="Guests can leave one after they visit. A reply from you shows publicly under it." /> : (
+        reviews.length === 0 ? <Empty title="No reviews yet" hint="Guests review after a visit. Your reply is public." /> : (
           <div className="space-y-3">{reviews.map((v) => (
             <Card key={v.id}>
               <div className="flex items-center gap-2"><Pill tone={v.rating >= 4 ? "ready" : v.rating >= 3 ? "preparing" : "alert"}><Star size={11} fill="currentColor" /> {v.rating}</Pill>
@@ -202,7 +202,7 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
 
       <Sheet open={!!seating} onClose={() => setSeating(null)} title={`Seat ${seating?.guest_name ?? ""}`}>
         <div className="space-y-4">
-          <p className="text-sm text-[var(--color-label-2)]">Pick a table — it turns occupied on the floor, and you can take their order straight away. {seating ? `${seating.party_size} people.` : ""}</p>
+          <p className="text-sm text-[var(--color-label-2)]">Pick a table — then you can take their order. {seating ? `${seating.party_size} people.` : ""}</p>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {tables.map((t) => (
               <button key={t.id} disabled={t.status === "occupied"} onClick={() => seating && act(seating, "seated", t.id)}
@@ -232,10 +232,10 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
       <Sheet open={!!replyTo} onClose={() => setReplyTo(null)} title="Reply publicly">
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <p className="text-sm text-[var(--color-label-2)] flex-1">Your reply appears under the review on your public page. Keep it short and human.</p>
+            <p className="text-sm text-[var(--color-label-2)] flex-1">Shows under the review on your public page. Keep it short.</p>
             {ai && <AiButton label="Draft it" busy={drafting} onClick={() => { setDrafting(true); void draftReviewReply(replyTo!.id).then((r) => { if ("error" in r) toast(r.error!, "err"); else setReply(r.reply); }).finally(() => setDrafting(false)); }} />}
           </div>
-          <textarea rows={4} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Thank you for coming — sorry the biryani was late that evening, we have added a second cook on weekends." />
+          <textarea rows={4} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Thank you for coming — sorry the biryani was late." />
           <Button className="w-full" loading={pending} disabled={!reply} onClick={() => start(async () => { await replyReview(replyTo!.id, reply); setReplyTo(null); toast("Reply posted"); })}>Post reply</Button>
         </div>
       </Sheet>

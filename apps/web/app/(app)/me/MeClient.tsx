@@ -62,17 +62,17 @@ export function MeClient({ me, day }: { me: Me | null; day: Day | null }) {
         </div>
       ) : (
         <Card className="!p-5" data-me-acting>
-          <Head icon={<ShieldCheck size={18} />} title="You are in Master control" sub="Master control has no staff profile in this property. The look, language and alerts below are this device's." />
+          <Head icon={<ShieldCheck size={18} />} title="You are in Master control" sub="No staff profile here. Settings below are for this device." />
         </Card>
       )}
       <Card data-me-prefs>
-        <Head icon={<Palette size={18} />} title="This device" sub="How DineFlow looks and speaks on this phone, tablet or till. Guest pages are always bright." />
+        <Head icon={<Palette size={18} />} title="This device" sub="Look and language on this device. Guest pages stay bright." />
         <ThemePicker />
         <div className="mt-6 mb-2 text-[13px] font-semibold text-[var(--color-label-2)]">Language</div>
         <LangPicker />
       </Card>
       <Card data-me-alerts>
-        <Head icon={<BellRing size={18} />} title="Alerts on this device" sub="Pick what this device is, its tone, and what it rings for." />
+        <Head icon={<BellRing size={18} />} title="Alerts on this device" sub="Pick the device, its tone and what it rings for." />
         <NotificationSettings />
       </Card>
     </div>
@@ -129,7 +129,7 @@ function Profile({ me }: { me: Me }) {
                 <span className="block text-[13.5px] font-semibold truncate">{f.value}</span></span>
             </div>))}
         </div>
-        <p className="mt-2 text-[12px] text-steel">Your access, position, team and staff code are set by the owner — ask them to change these.</p>
+        <p className="mt-2 text-[12px] text-steel">The owner sets these. Ask them to change them.</p>
       </div>
 
       {/* what I keep: my details, saved together */}
@@ -176,7 +176,7 @@ function Profile({ me }: { me: Me }) {
             </div>
           </div>
         </div>
-        {!me.ready && <p className="mt-3 text-[12.5px] text-steel">Your phone and email can be kept now; the rest opens once this update reaches the database.</p>}
+        {!me.ready && <p className="mt-3 text-[12.5px] text-steel">You can save phone and email now. The rest comes soon.</p>}
         {err && <p className="mt-3 text-[14px] font-semibold text-chili" role="alert" data-me-error>{err}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2 justify-end">
           {dirty && <button type="button" onClick={() => { setD(saved); setErr(null); }} className="svc-btn quiet sm !px-4" data-me-undo><Undo2 size={16} aria-hidden /> Undo</button>}
@@ -191,13 +191,13 @@ function Profile({ me }: { me: Me }) {
 function EmailState({ email, verified, editing, onVerified }: { email: string; verified: boolean; editing: boolean; onVerified: () => void }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [sent, setSent] = useState<string | null>(null); const [code, setCode] = useState(""); const [err, setErr] = useState<string | null>(null);
-  if (editing) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="editing">Save first — then we send a code to the new address to prove it is yours.</p>;
-  if (!email) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="none">With an email you can reset your own password when you forget it.</p>;
+  if (editing) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="editing">Save first. Then we send a code to check it.</p>;
+  if (!email) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="none">Add an email to reset a forgotten password.</p>;
   if (verified) return <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[var(--color-green)]" data-me-email-state="verified"><MailCheck size={14} aria-hidden /> Verified — your password resets go here</p>;
   return (
     <div className="mt-2 rounded-2xl bg-[var(--color-orange-2)] p-3" data-me-email-state="unverified">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[color-mix(in_srgb,var(--color-orange)_78%,var(--color-label))] flex-1 min-w-[12rem]"><Mail size={14} aria-hidden /> Not verified yet — you cannot reset your own password until it is</span>
+        <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[color-mix(in_srgb,var(--color-orange)_78%,var(--color-label))] flex-1 min-w-[12rem]"><Mail size={14} aria-hidden /> Not verified — you can't reset your password yet</span>
         <button type="button" disabled={pending} className="btn btn-gray !h-11 !px-4 !rounded-full text-[13.5px] font-semibold" data-me-send-code
           onClick={() => start(async () => { setErr(null); const r = await sendMyCode(); if ("error" in r) { setErr(r.error ?? "Could not send."); return; } setSent(r.sent_to); toast(r.echoed ? `Code (mail is not set up here): ${r.echoed}` : `Code sent to ${r.sent_to}`); })}>
           {sent ? "Send again" : "Send a code"}</button>
@@ -243,20 +243,20 @@ function Security({ me }: { me: Me }) {
   const toast = useToast(); const [pending, start] = useTransition();
   return (
     <Card data-me-security>
-      <Head icon={<KeyRound size={18} />} title="Sign-in & security" sub="Keep your password to yourself — everything you do is recorded under your name." />
+      <Head icon={<KeyRound size={18} />} title="Sign-in & security" sub="Keep your password secret. All you do is saved under your name." />
       <div className="divide-y divide-[var(--color-separator)]">
         <div className="flex items-center gap-3 py-3 min-w-0">
           <span className="min-w-0 flex-1"><span className="block text-[12px] font-bold uppercase tracking-[.08em] text-steel">Sign-in ID</span>
             <span className="block text-[14.5px] font-semibold [overflow-wrap:anywhere]" data-me-login>{me.login || "—"}</span></span>
         </div>
         <div className="flex items-center gap-3 py-3 min-w-0">
-          <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-bold">Password</span><span className="block text-[12.5px] text-steel">Change it whenever you like — we email you a code first.</span></span>
+          <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-bold">Password</span><span className="block text-[12.5px] text-steel">Change it any time. We email you a code first.</span></span>
           <a href="/account/password" className="btn btn-gray !h-11 !px-4 !rounded-full shrink-0 inline-flex items-center gap-1 text-[14px] font-semibold" data-me-password>Change <ChevronRight size={15} className="-mr-1" /></a>
         </div>
         <div className="flex items-center gap-3 py-3 min-w-0">
-          <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-bold">Other devices</span><span className="block text-[12.5px] text-steel">Lost a phone, or signed in on someone else&apos;s? Sign out everywhere but here.</span></span>
+          <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-bold">Other devices</span><span className="block text-[12.5px] text-steel">Lost a phone? Sign out everywhere except here.</span></span>
           <button type="button" disabled={pending} className="btn btn-gray !h-11 !px-4 !rounded-full shrink-0 inline-flex items-center gap-1.5 text-[14px] font-semibold" data-me-signout-others
-            onClick={() => { if (!confirm("Sign out of every other device? This one stays signed in.")) return; start(async () => { const r = await signOutOthers(); toast("error" in r ? r.error! : "Signed out on every other device", "error" in r ? "err" : undefined); }); }}>
+            onClick={() => { if (!confirm("Sign out all other devices? This one stays in.")) return; start(async () => { const r = await signOutOthers(); toast("error" in r ? r.error! : "Signed out on every other device", "error" in r ? "err" : undefined); }); }}>
             <MonitorSmartphone size={16} aria-hidden /> Sign out others</button>
         </div>
       </div>

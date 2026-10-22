@@ -26,9 +26,9 @@ export function ScreensClient({ base, name, slug, initialKey }: { base: string; 
         <div className="flex items-start gap-3">
           <span className="h-11 w-11 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)]"><Tv size={20} aria-hidden /></span>
           <div className="min-w-0"><div className="text-[17px] font-extrabold">TV screen by the counter</div>
-            <p className="text-[13.5px] text-steel mt-0.5">Your menu with photos and prices, and the parcel token numbers — <b>Preparing</b> and <b>Ready, please collect</b>. Open the link in the TV&apos;s browser (or a Fire TV / Chromecast browser) and leave it running.</p></div>
+            <p className="text-[13.5px] text-steel mt-0.5">Menu, prices and parcel tokens — <b>Preparing</b> and <b>Ready, please collect</b>. Open the link in the TV&apos;s browser and leave it on.</p></div>
         </div>
-        {!key ? <p className="mt-4 text-[14px] text-steel flex items-center gap-2"><Lock size={15} aria-hidden /> Only the owner or a manager can see the screen link.</p> : <>
+        {!key ? <p className="mt-4 text-[14px] text-steel flex items-center gap-2"><Lock size={15} aria-hidden /> Only the owner or a manager sees this link.</p> : <>
           <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="What the screen shows">
             {SHOW.map(([k, label]) => <button key={k} type="button" aria-pressed={show === k} onClick={() => setShow(k)} className={cn("!min-h-11 rounded-full px-4 text-[13.5px] font-extrabold", show === k ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)]")}>{label}</button>)}
           </div>
@@ -37,10 +37,10 @@ export function ScreensClient({ base, name, slug, initialKey }: { base: string; 
             <button type="button" className="svc-btn go sm !px-4" onClick={() => copy(tv!)}><Copy size={16} aria-hidden /> Copy link</button>
             <a href={tv!} target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4"><ExternalLink size={16} aria-hidden /> Open</a>
             <button type="button" disabled={pending} className="svc-btn quiet sm !px-4" data-rotate-screen
-              onClick={() => { if (!confirm("Make a new link? Every screen using the old one stops until you open the new link on it.")) return; start(async () => { const r = await screenKey(true); if ("error" in r) toast(r.error!, "err"); else { setKey(r.key!); toast("New link made — the old one no longer works"); } }); }}>
+              onClick={() => { if (!confirm("Make a new link? Screens on the old link will stop.")) return; start(async () => { const r = await screenKey(true); if ("error" in r) toast(r.error!, "err"); else { setKey(r.key!); toast("New link made — the old one no longer works"); } }); }}>
               <RefreshCw size={16} aria-hidden /> New link</button>
           </div>
-          <p className="mt-2 text-[12.5px] text-steel">Keep this link to your own screens. A parcel or delivery order gets a token number by itself each day, starting from 1.</p>
+          <p className="mt-2 text-[12.5px] text-steel">Use it only on your screens. Tokens restart at 1 each day.</p>
         </>}
       </Card>
 
@@ -48,19 +48,19 @@ export function ScreensClient({ base, name, slug, initialKey }: { base: string; 
         <div className="flex items-start gap-3">
           <span className="h-11 w-11 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)]"><Tablet size={20} aria-hidden /></span>
           <div className="min-w-0"><div className="text-[17px] font-extrabold">Self-order kiosk</div>
-            <p className="text-[13.5px] text-steel mt-0.5">A tablet at the entrance where guests pick dishes themselves, get a token and pay at the counter. The order reaches the kitchen like any parcel order.</p></div>
+            <p className="text-[13.5px] text-steel mt-0.5">Guests order on a tablet, get a token and pay at the counter.</p></div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/kiosk" className="svc-btn go sm !px-4" data-open-kiosk><Tablet size={16} aria-hidden /> Open kiosk on this device</Link>
         </div>
-        <p className="mt-2 text-[12.5px] text-steel">Sign the tablet in with a staff login that can take orders. To leave the kiosk, hold the top-left corner for two seconds and enter this tablet's sign-in password.</p>
+        <p className="mt-2 text-[12.5px] text-steel">Use a staff login that takes orders. Exit: hold top-left 2 seconds, enter the password.</p>
       </Card>
 
       <Card className="min-w-0" data-feedback-card>
         <div className="flex items-start gap-3">
           <span className="h-11 w-11 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)]"><Star size={20} aria-hidden /></span>
           <div className="min-w-0"><div className="text-[17px] font-extrabold">Feedback QR</div>
-            <p className="text-[13.5px] text-steel mt-0.5">Guests rate their visit in one tap. Only you see it (Customers → Feedback); three stars or fewer alert the floor straight away.</p></div>
+            <p className="text-[13.5px] text-steel mt-0.5">Guests rate you in one tap. 3 stars or less alerts staff at once.</p></div>
         </div>
         {!fb ? <p className="mt-4 text-[14px] text-steel">Set your storefront link first — <Link href="/settings/storefront" className="underline">Storefront & offers</Link>.</p> : (
           <div className="mt-4 flex flex-col sm:flex-row items-center gap-4">
@@ -72,7 +72,7 @@ export function ScreensClient({ base, name, slug, initialKey }: { base: string; 
                 <a href={fb} target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4"><ExternalLink size={16} aria-hidden /> Open</a>
                 <button type="button" className="svc-btn go sm !px-4" onClick={() => printCard(name, fb)}><Printer size={16} aria-hidden /> Print card</button>
               </div>
-              <p className="text-[12.5px] text-steel">Table QR codes already carry a &ldquo;Rate us&rdquo; link for that table.</p>
+              <p className="text-[12.5px] text-steel">Table QR codes already have a &ldquo;Rate us&rdquo; link.</p>
             </div>
           </div>)}
       </Card>

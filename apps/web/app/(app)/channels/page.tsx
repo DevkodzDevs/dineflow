@@ -22,6 +22,6 @@ export default async function Channels() {
     // the page no longer waits to learn what kind of property it is before it can start
     s.rpc("availability", { p_from: from, p_to: to }),
   ]);
-  return (<><PageHeader eyebrow="Where your orders and bookings come from" title="Channels" accent="& sync" sub="Aggregators for food, OTAs for rooms, and your own commission-free booking page." />
+  return (<><PageHeader eyebrow="Where your orders and bookings come from" title="Channels" accent="& sync" sub="Food apps, room sites and your own no-commission page." />
     <ChannelsClient base={base} ota={ota ?? []} orderChannels={chans ?? []} types={types ?? []} log={log ?? []} avail={(avail ?? []) as never} restaurant={session.restaurant as never} /></>);
 }

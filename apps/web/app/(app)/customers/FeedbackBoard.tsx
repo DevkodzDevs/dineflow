@@ -56,7 +56,7 @@ export function FeedbackBoard({ items, q, restaurant }: { items: Feedback[]; q: 
         <Link href="/settings/screens" className="ml-auto shrink-0 !min-h-11 rounded-full px-4 inline-flex items-center gap-1.5 text-[13px] font-bold text-steel hover:bg-[var(--color-fill)]"><QrCode size={15} aria-hidden /> Feedback QR</Link>
       </div>
 
-      {items.length === 0 ? <Empty title="No feedback yet" hint="Print the feedback QR (Settings → Screens & feedback) for the tables and the counter. Guests at a table can also rate from the table's own QR." />
+      {items.length === 0 ? <Empty title="No feedback yet" hint="Print the feedback QR from Settings → Screens & feedback." />
         : list.length === 0 ? <Empty title="Nothing here" hint="Try another filter." /> : (
         <div className="grid gap-3 lg:grid-cols-2" data-feedback-list>
           {list.map((f) => (

@@ -94,7 +94,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
         {s.isAdmin && s.actingAs && <MasterBanner property={s.restaurant.name} />}
-        <TopBar membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} outlets={s.outlets} />
+        <TopBar home={`/${landingFor(s.profile.role, mods, s.profile.position ?? null)}`} membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} outlets={s.outlets} />
         {children}
       </div></main>
       <BottomNav role={s.profile.role} type={s.restaurant.property_type} dept={dept} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}

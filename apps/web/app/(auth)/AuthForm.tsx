@@ -33,7 +33,7 @@ export function AuthForm({ mode, action, pendingApproval }:
       <h1 className="text-4xl">{pendingApproval ? "Waiting for approval" : copy.title}</h1>
       <p className="text-steel mt-2">
         {pendingApproval
-          ? "You have joined, but the owner has not switched your account on yet. Ask them to open Staff and activate you, then sign in again."
+          ? "You're in, but not active yet. Ask the owner to activate you in Staff."
           : copy.sub}
       </p>
       <form action={act} className="mt-8 space-y-4">
@@ -50,14 +50,14 @@ export function AuthForm({ mode, action, pendingApproval }:
           <Field label={ptype === "restaurant" ? "Restaurant name" : ptype === "hotel" ? "Hotel name" : "Resort name"}><input name="restaurant" required placeholder={ptype === "restaurant" ? "Annapoorna Mess" : ptype === "hotel" ? "Hotel Tamizh Residency" : "Kanyakumari Bay Resort"} /></Field>
         </>)}
         {mode === "join" && (
-          <Field label="DineFlow code" hint="The code on your property, like dine-res-mano-00001. An invite code from your manager also works.">
+          <Field label="DineFlow code" hint="Your property code, like dine-res-mano-00001, or an invite code">
             <input name="code" required className="num" placeholder="dine-res-mano-00001" maxLength={40} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
           </Field>
         )}
         {/* On sign-in this is the DineFlow id, not a mailbox, so it is not typed as an email field —
             a browser would otherwise refuse dine-htl-mano-00001 before the form was ever submitted. */}
         {mode === "login"
-          ? <Field label="Login ID" hint="The DineFlow id from Master control, or your email">
+          ? <Field label="Login ID" hint="Your DineFlow ID or email">
               <input name="email" required autoFocus autoComplete="username" autoCapitalize="none"
                 autoCorrect="off" spellCheck={false} className="num" placeholder="dine-htl-mano-00001" />
             </Field>

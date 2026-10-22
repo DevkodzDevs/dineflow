@@ -1,9 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronLeft, LogIn, LogOut, Plus, Printer, UtensilsCrossed } from "lucide-react";
+import { LogIn, LogOut, Plus, Printer, UtensilsCrossed } from "lucide-react";
 import { Button, Card, Pill, cn } from "@/components/ui";
 import { PrinterOutput } from "@/components/receipt/PrinterOutput";
 import { formatINR, PAYMENT_METHODS, type PaymentMethod } from "@dineflow/shared";
@@ -28,7 +27,6 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
     <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_344px] lg:grid-cols-[minmax(0,1fr)_372px] xl:grid-cols-[minmax(0,1fr)_400px] items-start">
       <div className="no-print min-w-0">
         <div className="flex items-start gap-3 mb-5">
-          <Link href="/frontdesk" className="h-10 w-10 shrink-0 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
           <div className="flex-1 min-w-0"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Booking #{b.booking_no} · {b.source?.replace("_", " ")}</div><h1 className="text-3xl leading-tight">Room {b.rooms?.number} <em>{b.guests?.full_name}</em></h1></div>
           <span className="shrink-0 mt-1"><Pill tone={tone}>{b.status.replace("_", " ")}</Pill></span>
         </div>
@@ -72,7 +70,7 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
                 <input type="number" className="num" placeholder="Amount" value={extra.amount || ""} onChange={(e) => setExtra({ ...extra, amount: Number(e.target.value) })} />
                 <Button variant="outline" className="w-full" disabled={pending || !extra.description || !extra.amount} onClick={() => start(async () => { const r = await addCharge(b.id, extra.kind, extra.description, extra.amount); if ("error" in r) return setErr(r.error!); setErr(null); setExtra({ kind: "extra", description: "", amount: 0 }); })}><Plus size={15} /> Post</Button></div></Card>
             <Card><h3 className="text-lg mb-3 flex items-center gap-2"><UtensilsCrossed size={16} /> Charge a restaurant order</h3>
-              {openOrders.length === 0 ? <p className="text-sm text-steel">No open restaurant orders. Room-service orders placed from the POS appear here.</p> : (
+              {openOrders.length === 0 ? <p className="text-sm text-steel">No open orders. Room service from the POS shows here.</p> : (
                 <ul className="space-y-2">{openOrders.map((o) => { const amt = o.order_items.filter((i) => i.status !== "cancelled").reduce((s, i) => s + i.qty * Number(i.price_snapshot), 0); return <li key={o.id} className="flex items-center justify-between text-sm"><span>Order #{o.order_no} · <span className="num">{formatINR(amt)}</span></span><Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await postOrderToRoom(o.id, b.id); if ("error" in r) setErr(r.error!); })}>Post to room</Button></li>; })}</ul>
               )}</Card>
           </div>
@@ -82,7 +80,7 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
             <div className="mt-3 space-y-2">{pays.map((p, i) => <div key={i} className="grid grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)] gap-2"><select value={p.method} onChange={(e) => setPays(pays.map((x, j) => (j === i ? { ...x, method: e.target.value as PaymentMethod } : x)))}>{PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m.toUpperCase()}</option>)}</select><input type="number" className="num" value={p.amount || ""} onChange={(e) => setPays(pays.map((x, j) => (j === i ? { ...x, amount: Number(e.target.value) } : x)))} /><input placeholder="Ref" value={p.ref} onChange={(e) => setPays(pays.map((x, j) => (j === i ? { ...x, ref: e.target.value } : x)))} /></div>)}
               <Button size="sm" variant="outline" onClick={() => setPays([...pays, { method: "cash", amount: Math.max(0, Number(t.balance) - paid), ref: "" }])}><Plus size={14} /> Split</Button></div>
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
-            <Button size="lg" variant="ink" className="w-full mt-4" disabled={pending || paid + 0.01 < Number(t.balance)} onClick={() => { if (confirm("Check out and mark room for cleaning?")) start(async () => { const r = await checkOut(b.id, pays); if ("error" in r) setErr(r.error!); else router.push(r.invoiceId ? `/invoices/${r.invoiceId}` : "/frontdesk"); }); }}><LogOut size={16} /> Check out & issue final invoice</Button><p className="text-xs text-steel mt-2">One tax invoice: room nights, restaurant orders, spa/activities, extras, advance and payments — printable and shareable.</p></Card>
+            <Button size="lg" variant="ink" className="w-full mt-4" disabled={pending || paid + 0.01 < Number(t.balance)} onClick={() => { if (confirm("Check out and mark room for cleaning?")) start(async () => { const r = await checkOut(b.id, pays); if ("error" in r) setErr(r.error!); else router.push(r.invoiceId ? `/invoices/${r.invoiceId}` : "/frontdesk"); }); }}><LogOut size={16} /> Check out & issue final invoice</Button><p className="text-xs text-steel mt-2">One tax invoice for the whole stay, food, extras and payments.</p></Card>
         )}
         {b.status === "checked_out" && <div className="mt-4 flex gap-2"><Button disabled={pending} onClick={() => start(async () => { const r = await stayInvoice(b.id); if ("id" in r) router.push(`/invoices/${r.id}`); })}><FileText size={16} /> Final tax invoice</Button><Button variant="outline" onClick={() => window.print()}><Printer size={16} /> Print folio</Button></div>}
       </div>

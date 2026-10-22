@@ -121,6 +121,6 @@ export async function GET(req: Request) {
       report.push({ channel: ch.label, error: msg });
     }
   }
-  if (channels.length === 0) report.push({ note: "No iCal feeds configured yet. Add an OTA channel and paste their calendar link." });
+  if (channels.length === 0) report.push({ note: "No calendar links yet. Add an OTA channel and paste its link." });
   return NextResponse.json({ ok: true, report });
 }

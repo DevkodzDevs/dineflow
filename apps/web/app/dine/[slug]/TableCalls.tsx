@@ -35,7 +35,7 @@ export function TableCalls({ slug, token, table }: { slug: string; token: string
           const st = stateOf(k);
           return (
             <button key={k} type="button" disabled={pending} data-call-kind={k} data-state={st ?? "none"}
-              onClick={() => start(async () => { const r = await callTable(slug, token, k); if ("error" in r) setMsg({ text: r.error!, err: true }); else { setMsg({ text: r.call?.again ? "Already with the staff — they will be with you shortly" : `${done} — someone will be with you shortly` }); load(); } })}
+              onClick={() => start(async () => { const r = await callTable(slug, token, k); if ("error" in r) setMsg({ text: r.error!, err: true }); else { setMsg({ text: r.call?.again ? "Already asked — someone will be with you shortly" : `${done} — someone will be with you shortly` }); load(); } })}
               className={cn("min-h-[84px] rounded-[18px] flex flex-col items-center justify-center gap-1.5 px-1 text-[13.5px] font-bold transition-colors",
                 st === "open" ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : st === "done" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
               {st === "done" ? <Check size={24} aria-hidden /> : <Icon size={24} aria-hidden />}

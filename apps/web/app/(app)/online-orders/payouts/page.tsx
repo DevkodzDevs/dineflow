@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { todayIST } from "@/lib/format";
@@ -21,7 +19,6 @@ export default async function PayoutsPage() {
   return (
     <>
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/online-orders" className="h-11 w-11 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back to online orders"><ChevronLeft size={18} /></Link>
         <div><div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel">Online orders</div><h1 className="text-3xl">Payouts</h1></div>
       </div>
       <PayoutsClient channels={channels ?? []} rows={(rows ?? []) as Settlement[]} today={todayIST()} />

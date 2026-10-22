@@ -129,7 +129,7 @@ export async function toggleAvailable(id: string, value: boolean) {
 }
 export async function deleteMenuItem(id: string) {
   const s = await createClient(); const r = await s.from("menu_items").delete().eq("id", id).select("id");
-  if (r.error?.code === "23503") return { error: "This dish is on past orders, so it cannot be deleted — switch it off instead." };
+  if (r.error?.code === "23503") return { error: "This dish is on past orders. Switch it off instead." };
   const bad = wrote(r, "That dish could not be deleted."); if (bad) return bad; return ok();
 }
 /** Give a dish the library's standard recipe for one plate. Ingredients the pantry lacks are created on the
@@ -290,7 +290,7 @@ export async function findPhotos(name: string, category?: string | null) {
   const { findDishPhotos } = await import("@/lib/dishPhotos");
   return { ok: true as const, photos: await findDishPhotos(name, category, 8) };
 }
-const photoSchema = z.object({ url: z.string().url().max(600).refine((u) => /^https:\/\/(upload|thumb)\.wikimedia\.org\//.test(u) || u.includes("/storage/v1/object/public/menu/"), "That photo is not from Wikimedia or this menu's own uploads"),
+const photoSchema = z.object({ url: z.string().url().max(600).refine((u) => /^https:\/\/(upload|thumb)\.wikimedia\.org\//.test(u) || u.includes("/storage/v1/object/public/menu/"), "Use a Wikimedia photo or one uploaded here"),
   credit: z.string().max(200).nullable().optional(), source: z.string().url().max(600).nullable().optional() });
 /** Put a photo on a dish (or take it off with null). Only a Wikimedia file or the property's own upload. */
 export async function setDishPhoto(id: string, photo: { url: string; credit?: string | null; source?: string | null } | null) {
@@ -329,12 +329,12 @@ export async function uploadDishPhoto(fd: FormData): Promise<{ url?: string; err
   const session = await requireSession(); const s = await createClient();
   const file = fd.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo first." };
-  if (file.size > 1_572_864) return { error: "That photo is over 1.5 MB even after shrinking — try another." };
+  if (file.size > 1_572_864) return { error: "Photo is over 1.5 MB — try another." };
   const b = new Uint8Array(await file.arrayBuffer());
   const type = b[0] === 0xff && b[1] === 0xd8 ? "image/jpeg" : b[0] === 0x89 && b[1] === 0x50 ? "image/png" : b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50 ? "image/webp" : null;
   if (!type) return { error: "Use a JPG, PNG or WebP photo." };
   const path = `${session.restaurant.id}/dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${type === "image/jpeg" ? "jpg" : type.slice(6)}`;
   const up = await s.storage.from("menu").upload(path, b, { contentType: type, cacheControl: "31536000", upsert: false });
-  if (up.error) return { error: /row-level security|unauthori[sz]ed|403/i.test(up.error.message) ? "Your role cannot add menu photos — ask a manager or the chef." : up.error.message };
+  if (up.error) return { error: /row-level security|unauthori[sz]ed|403/i.test(up.error.message) ? "Only a manager or chef can add menu photos." : up.error.message };
   return { url: s.storage.from("menu").getPublicUrl(path).data.publicUrl };
 }

@@ -106,7 +106,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
         })}
         {orphans.length > 0 && (
           <PrintedTicket status="SPLIT"><Ticket top="slot" no={order.order_no} title={order.split_from ? "Split from another bill" : "Lines"} tone="served"
-            footer={<div className="text-[11px] text-steel">These lines were cooked on the ticket of the order they were split from.</div>}>
+            footer={<div className="text-[11px] text-steel">Cooked on the ticket of the original order.</div>}>
             {orphans.map((i) => <Line key={i.id} i={i} />)}
           </Ticket></PrintedTicket>
         )}
@@ -137,7 +137,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
             </div>
             {mode === "move" && (
               <div className="mt-3 space-y-2">
-                <p className="text-xs text-steel">The whole order goes to another table; this one is freed if nothing else is running on it.</p>
+                <p className="text-xs text-steel">Moves the whole order to another table.</p>
                 <div className="flex gap-2">
                   <select value={toTable} onChange={(e) => setToTable(e.target.value)} className="flex-1"><option value="">Choose a table</option>{tables.filter((t) => t.id !== order.table_id).map((t) => <option key={t.id} value={t.id}>{t.name}{t.status !== "free" ? ` · ${t.status}` : ""}</option>)}</select>
                   <Button disabled={pending || !toTable} onClick={() => start(async () => { const r = await moveOrder(order.id, toTable); if ("error" in r) fail(r.error!); else { toast("Moved"); setMode(null); } })}>Move</Button>
@@ -146,7 +146,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
             )}
             {mode === "merge" && (
               <div className="mt-3 space-y-2">
-                <p className="text-xs text-steel">This order&apos;s lines and tickets join the other one, and it is billed there. This order closes as merged.</p>
+                <p className="text-xs text-steel">Joins this order into another. It is billed there.</p>
                 {open.length === 0 ? <p className="text-xs text-steel">No other open order to join.</p> : (
                   <div className="flex gap-2">
                     <select value={intoOrder} onChange={(e) => setIntoOrder(e.target.value)} className="flex-1"><option value="">Choose an order</option>{open.map((o) => <option key={o.id} value={o.id}>#{o.order_no} · {o.dining_tables?.name ?? "no table"}</option>)}</select>
@@ -157,9 +157,9 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
             )}
             {mode === "split" && (
               <div className="mt-3 space-y-2">
-                <p className="text-xs text-steel">Pick how many of each line go to a second bill on the same table — two of the three beers, say. The rest stay here.</p>
+                <p className="text-xs text-steel">Pick items for a second bill. The rest stay here.</p>
                 <div className="flex items-center justify-between text-sm"><span className="text-steel">{picked.length} line{picked.length === 1 ? "" : "s"} chosen</span><span className="num font-semibold">{formatINR(pickedTotal)}</span></div>
-                {allPicked && <p className="text-xs text-chili">That is everything — leave at least one line on this bill.</p>}
+                {allPicked && <p className="text-xs text-chili">Leave at least one item on this bill.</p>}
                 <Button className="w-full" disabled={pending || picked.length === 0 || allPicked} onClick={() => start(async () => {
                   const r = await splitOrder(order.id, picked.map(([id, qty]) => ({ id, qty })));
                   if ("error" in r) fail(r.error!); else { toast(`Order #${r.orderNo} split off`); router.push(`/orders/${r.orderId}`); }
@@ -173,11 +173,11 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
         {!isOpen && <div className="mt-4"><Pill tone="served">{order.status}</Pill></div>}
       </Card>
       <ReasonDialog open={cancelling?.kind === "order"} onClose={() => setCancelling(null)} title={`Cancel order #${order.order_no}?`}
-        hint="Every dish on it is cancelled. Dishes the kitchen has already started keep their stock draw. The reason is kept with the order."
+        hint="All dishes are cancelled. Stock already used stays used."
         chips={["Guest left without eating", "Wrong table", "Duplicate order", "Kitchen could not make it", "Guest complaint"]} confirmLabel="Cancel the order"
         onConfirm={async (reason) => { const r = await cancelOrder(order.id, reason); if ("error" in r) return { error: r.error }; router.push("/orders"); }} />
       <ReasonDialog open={cancelling?.kind === "line"} onClose={() => setCancelling(null)} title={cancelling?.kind === "line" ? `Cancel ${cancelling.item.qty}× ${cancelling.item.name_snapshot}?` : ""}
-        hint={cancelling?.kind === "line" && cancelling.item.status !== "pending" ? "The kitchen has started this one — only a manager can take it off, and the stock already used stays used." : "The dish comes off the ticket and the bill."}
+        hint={cancelling?.kind === "line" && cancelling.item.status !== "pending" ? "Already cooking. Only a manager can cancel; used stock stays used." : "The dish comes off the ticket and the bill."}
         chips={["Guest changed mind", "Wrong item punched", "Out of stock", "Duplicate", "Took too long"]} confirmLabel="Cancel the dish"
         onConfirm={async (reason) => { if (cancelling?.kind !== "line") return; const r = await cancelLine(cancelling.item.id, reason); if ("error" in r) return { error: r.error }; }} />
     </div>

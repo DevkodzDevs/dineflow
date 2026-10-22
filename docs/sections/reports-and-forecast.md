@@ -65,6 +65,10 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   Every block has a title and one plain line saying what it is for. Top to bottom:
   - `SvcHead` ("Who is waiting at the door, and which table frees up next") with a **Join by QR** button
     (`data-joinqr-link`) → `/pulse/qr`.
+  - **On a phone (2026-10-22, the owner: "not looking good")** the full-width Join by QR bar and three cramped tiles are one
+    card (`[data-pulse-glance="phone"]`): *The floor now* with **Join by QR** as a pill on its right (the header's button is
+    hidden below md — `SvcHead actionsClassName`), then three slim columns with hairlines — *Tables free* (the shuffling flap
+    at 30px, /14), *Waiting* (the breathing flap), *Avg sitting* (1h 30m). iPad and desktop keep the tiles and the header button.
   - **Three glance tiles** (`[data-pulse-glance]`, 3-up at every width): tables free to seat (of all — Free
     excludes Reserved), parties waiting, how long a sitting usually takes (`avg_dwell`).
   - `[data-pulse-top]`, side by side from `lg`: **Add a guest who is waiting** (`[data-quote]`, an `@container`) as

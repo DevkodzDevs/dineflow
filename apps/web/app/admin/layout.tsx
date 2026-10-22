@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AdminNav } from "./AdminNav";
 import { DeckScroll } from "@/components/shell/DeckScroll";
 import { TouchSelect } from "@/components/ui/TouchSelect";
+import { BackButton } from "@/components/shell/BackButton";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const a = await requireAdmin();
   // the Support tab's badge: requests whose latest word is the property's and is unread (0096)
@@ -16,6 +17,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           As a single row it ran 13px off a 390px phone and took the sign-out button with it. */}
       <header className="ink-panel">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4 flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-3">
+          {/* Back on every Master control page but the list itself (2026-10-22) */}
+          <Suspense fallback={null}><BackButton home="/admin" tone="dark" /></Suspense>
           <span className="h-10 w-10 rounded-xl bg-champagne grid place-items-center text-on-label shrink-0"><ShieldCheck size={18} /></span>
           <div className="min-w-0 flex-1 md:flex-none">
             <div className="font-display text-lg leading-tight truncate">DineFlow <em className="text-champagne">Master control</em></div>

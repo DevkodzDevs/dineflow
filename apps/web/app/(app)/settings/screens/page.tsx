@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { headers } from "next/headers";
-import { ChevronLeft } from "lucide-react";
 import { requireSession } from "@/lib/auth";
 import { screenKey } from "../actions";
 import { ScreensClient } from "./ScreensClient";
@@ -17,7 +15,6 @@ export default async function ScreensPage() {
   return (
     <>
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/settings" className="h-11 w-11 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
         <div><div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel">Self-service</div><h1 className="text-3xl">Screens & feedback</h1></div>
       </div>
       <ScreensClient base={base} name={session.restaurant.name} slug={session.restaurant.booking_slug ?? null} initialKey={"key" in r ? r.key! : null} />

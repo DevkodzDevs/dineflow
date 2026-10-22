@@ -42,7 +42,7 @@ export function LoginIdField({ value, onChange, name, type, ownerName }:
   }, [value, problem]);
 
   const hint = value.trim() === ""
-    ? "Leave this blank and a numbered DineFlow code is assigned automatically."
+    ? "Leave blank to get a numbered DineFlow code."
     : typedOwnDomain
       ? "You typed a full address, so it is used as it is."
       : "@dineflow.cloud is added for you.";

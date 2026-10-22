@@ -32,19 +32,19 @@ export function IosGuide({ ipad = false, browser = "safari" }: Props) {
           screen: <ScreenBrowser ipad={ipad} at={at} menu={menu} /> }
       : { title: "Tap the Share button",
           text: at === "chrome"
-            ? <>In Chrome&apos;s address bar at the <b>top</b> — the square with an arrow pointing up, at its right end.</>
+            ? <>At the right of the address bar, <b>top</b> — a square with an up arrow.</>
             : ipad
-              ? <>In Safari&apos;s toolbar at the <b>top right</b> of the screen — the square with an arrow pointing up.</>
-              : <>In Safari&apos;s bar at the <b>bottom</b> of the screen — the square with an arrow pointing up. Don&apos;t see it? Tap <b>More</b> <MoreHorizontal size={14} className="inline align-[-2px]" /> first, then <b>Share</b>.</>,
+              ? <>At the <b>top right</b> — a square with an up arrow.</>
+              : <>In the bar at the <b>bottom</b> — a square with an up arrow. Not there? Tap <b>More</b> <MoreHorizontal size={14} className="inline align-[-2px]" /> first, then <b>Share</b>.</>,
           screen: <ScreenBrowser ipad={ipad} at={at} menu={menu} /> },
     { title: "Choose “Add to Home Screen”",
-      text: <>A menu slides up. <b>Scroll down a little</b> past the apps — it is in the list with Copy and Add Bookmark.</>,
+      text: <>A menu slides up. <b>Scroll down</b> — it is near Copy and Add Bookmark.</>,
       screen: <ScreenShareSheet /> },
     { title: "Tap “Add”",
-      text: <>If you see <b>Open as Web App</b>, keep it <b>on</b> — that is what makes it open full screen, like an app. Then tap <b>Add</b> at the top right.</>,
+      text: <>Keep <b>Open as Web App</b> <b>on</b> if you see it. Then tap <b>Add</b> at the top right.</>,
       screen: <ScreenAdd /> },
     { title: "Done — open it from your Home Screen",
-      text: <>DineFlow is now with your other apps. Open it from that icon from now on — not from {app}.</>,
+      text: <>From now on, open DineFlow from its icon — not from {app}.</>,
       screen: <ScreenHome /> },
   ];
   const [i, setI] = useState(0);
@@ -230,7 +230,7 @@ function ScreenAdd() {
         {/* the switch, on — leave it that way */}
         <span className="relative h-6 w-10 rounded-full bg-[var(--color-tint)]"><span className="absolute right-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow" /></span>
       </div>
-      <p className="mx-4 mt-2 text-[11px] text-[var(--color-label-2)]">Keep this on — DineFlow opens full screen, without Safari around it.</p>
+      <p className="mx-4 mt-2 text-[11px] text-[var(--color-label-2)]">Keep this on so DineFlow opens full screen.</p>
     </div>
   );
 }

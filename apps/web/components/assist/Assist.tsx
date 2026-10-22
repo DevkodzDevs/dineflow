@@ -101,7 +101,7 @@ export function Assist() {
         show();
       }
       if (buf.trim()) { try { take(JSON.parse(buf) as AssistEvent); } catch { /* ignore */ } }
-      cur = { ...cur, content: cur.content.trim() || (cur.docs?.length ? "Your document is ready." : cur.failed ? cur.content : "I couldn't put that into words — try asking another way.") };
+      cur = { ...cur, content: cur.content.trim() || (cur.docs?.length ? "Your document is ready." : cur.failed ? cur.content : "I couldn't answer that — try asking another way.") };
       show();
     } catch (e) {
       if (!ac.signal.aborted) setMsgs([...next, { ...cur, content: e instanceof Error ? e.message : "I couldn't reach the server.", failed: true }]);
@@ -168,7 +168,7 @@ export function Assist() {
                     <div className="flex flex-wrap gap-1.5">
                       {topics.length > 1 && <button onClick={() => ask("Make a complete PDF report of this month — every section I can see.")} className="h-9 px-3 rounded-full text-[13px] font-semibold bg-[var(--color-tint)] text-[var(--color-on-tint)]">Everything</button>}
                       {topics.map((t) => <button key={t.key} data-topic={t.key} onClick={() => ask(`Make a PDF of this month's ${t.label.toLowerCase()} with full details.`)} className="h-9 px-3 rounded-full text-[13px] bg-[var(--color-fill)] hover:brightness-110">{t.label}</button>)}
-                      {!topics.length && <span className="text-[13px] text-[var(--color-label-2)]">Ask in your own words — for example &ldquo;PDF of last month&apos;s sales&rdquo;.</span>}
+                      {!topics.length && <span className="text-[13px] text-[var(--color-label-2)]">Try &ldquo;PDF of last month&apos;s sales&rdquo;.</span>}
                     </div>
                   </div>}
                   {ins.length > 0 && <div className="space-y-2">
@@ -183,7 +183,7 @@ export function Assist() {
                     <p className="text-[12px] text-[var(--color-label-2)] font-display tracking-wide">Worth asking here</p>
                     {suggest.map((s) => <button key={s} onClick={() => ask(s)} className="block w-full text-left rounded-2xl border border-[var(--color-separator)] px-4 py-3 text-[14px] hover:bg-[var(--color-fill)] transition">{s}</button>)}
                   </div>
-                  <p className="flex items-start gap-2 text-[12px] leading-snug text-[var(--color-label-3)] px-1" data-assist-privacy><Lock size={13} className="shrink-0 mt-0.5" />Private by design: Assist reads only the sections your role opens, and never sees passwords, keys, payment secrets or Master control.</p>
+                  <p className="flex items-start gap-2 text-[12px] leading-snug text-[var(--color-label-3)] px-1" data-assist-privacy><Lock size={13} className="shrink-0 mt-0.5" />Private: Assist sees only your role&apos;s screens — never passwords, keys or Master control.</p>
                 </>)}
                 {msgs.map((m, i) => (
                   <div key={i} className={cn(m.role === "user" ? "max-w-[88%] ml-auto" : "max-w-full")} data-assist-msg={m.role}>

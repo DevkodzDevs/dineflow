@@ -34,7 +34,7 @@ export async function sendMyCode() {
   const { data, error } = await s.rpc("staff_request_contact_otp", { p_user: user.id });
   if (error) return { error: error.message };
   const r = data as { throttled: boolean; code?: string; sent_to: string; name?: string; property?: string };
-  if (r.throttled) return { error: "A code went out moments ago — wait a minute before asking for another." };
+  if (r.throttled) return { error: "Code just sent. Wait a minute to ask again." };
   const sent = await sendContactVerification(r.sent_to, r.code!, r.name ?? "there", r.property ?? "your property");
   if (!sent.ok) return { error: sent.error };
   return { ok: true as const, sent_to: r.sent_to, echoed: sent.echoed };

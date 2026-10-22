@@ -73,7 +73,7 @@ export function DemoDialog({ open, onClose }: { open: boolean; onClose: () => vo
             <Clock size={13} /> <span>Expires in 8 hours. All data is erased after that.</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-steel">
-            <Sparkles size={13} /> <span>Comes with a sample menu, orders, rooms and bookings so every screen has something to show.</span>
+            <Sparkles size={13} /> <span>Sample menu, orders, rooms and bookings included.</span>
           </div>
           {err && <p className="text-sm text-chili">{err}</p>}
           <Button size="lg" className="w-full" loading={pending} onClick={go}>

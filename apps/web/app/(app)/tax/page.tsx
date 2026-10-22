@@ -24,7 +24,7 @@ export default async function TaxPage({ searchParams }: { searchParams: Promise<
   ]);
   return (
     <>
-      <PageHeader eyebrow="Tax, audit & documents" title="Tax" accent="& GST" sub="What to file, when, and the numbers to file it with. Built for the Indian rules; confirm anything that matters with your CA." />
+      <PageHeader eyebrow="Tax, audit & documents" title="Tax" accent="& GST" sub="What to file, when, and the numbers. Check with your CA." />
       <TaxClient tab={tab} month={month} fy={fy} today={today} restaurant={session.restaurant as never} role={session.profile.role}
         filings={(filings ?? []) as never} docs={(docs ?? []) as never} summary={(summary ?? null) as never} summaryError={sumErr?.message ?? null} staffCount={staff ?? 0} />
     </>

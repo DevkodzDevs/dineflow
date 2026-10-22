@@ -17,13 +17,13 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
         <div className="glass p-8">
           <div className="flex items-center gap-3"><span className="h-11 w-11 rounded-2xl bg-ink text-on-label grid place-items-center"><Crown size={20} /></span><div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{name}</div><h1 className="text-3xl">{locked ? "Membership login" : "Membership"}</h1></div></div>
           <div className="hairline-gold my-6" />
-          {state === "trial" && <p className="text-sm text-steel">Your <b className="text-ink">7-day trial</b> has {trialDays} day{trialDays === 1 ? "" : "s"} left. Activate now and nothing changes for your team — same logins, same data.</p>}
-          {state === "expired" && <p className="text-sm text-steel">The temporary trial login for <b className="text-ink">{name}</b> has ended. Enter the membership key from DineFlow to continue — all your menus, rooms, stock and history are safe.</p>}
+          {state === "trial" && <p className="text-sm text-steel">Your <b className="text-ink">7-day trial</b> has {trialDays} day{trialDays === 1 ? "" : "s"} left. Activate now — same logins, same data.</p>}
+          {state === "expired" && <p className="text-sm text-steel">The temporary trial login for <b className="text-ink">{name}</b> has ended. Enter your key to continue. Your data is safe.</p>}
           {state === "suspended" && <p className="text-sm text-chili">This account is suspended. Contact DineFlow support.</p>}
           {state === "active" && <p className="text-sm text-steel leading-relaxed"><Check size={16} className="text-mint inline -mt-0.5 mr-1.5" />Active · <b className="text-ink capitalize">{plan}</b> plan{endsAt && <> · renews by <span className="num whitespace-nowrap">{endsAt.slice(0, 10)}</span></>}</p>}
           {state !== "suspended" && (isOwner ? (
             <form className="mt-6 space-y-4" action={(fd) => start(async () => { const r = await redeemKey(fd); setMsg("error" in r ? { text: r.error! } : { ok: true, text: `Activated the ${r.plan} plan. Welcome aboard.` }); })}>
-              <Field label="Membership key" hint="Format XXXX-XXXX-XXXX, issued by DineFlow master control."><input name="code" required placeholder="A1B2-C3D4-E5F6" className="num uppercase tracking-[0.2em] text-lg" /></Field>
+              <Field label="Membership key" hint="Format XXXX-XXXX-XXXX, from DineFlow."><input name="code" required placeholder="A1B2-C3D4-E5F6" className="num uppercase tracking-[0.2em] text-lg" /></Field>
               {msg && <p className={cn("text-sm", msg.ok ? "text-mint" : "text-chili")}>{msg.text}</p>}
               <Button size="lg" className="w-full" disabled={pending}><KeyRound size={16} /> {pending ? "Checking…" : state === "active" ? "Extend membership" : "Activate membership"}</Button>
             </form>
@@ -37,7 +37,7 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
           <p className="text-xs text-steel mt-4">
             Get a key: {COMPANY.phone ? <>WhatsApp <span className="num">{COMPANY.phone}</span> · </> : null}
             <a href={`mailto:${COMPANY.supportEmail}`} className="underline">{COMPANY.supportEmail}</a>
-            {" "}— online payment (Razorpay) arrives in the next version.
+            {" "}— online payment coming soon.
           </p>
           <div className="mt-6 flex justify-between items-center">
             {!locked ? <Link href="/dashboard" className="text-sm font-semibold underline inline-flex items-center min-h-10">Back to control room</Link> : <span />}

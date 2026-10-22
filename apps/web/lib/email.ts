@@ -38,13 +38,13 @@ export async function sendContactVerification(to: string, code: string, name: st
     "",
     `Your confirmation code is ${code}`,
     "",
-    "Give this code to whoever is setting you up. It expires in 15 minutes.",
-    "Confirming it means you can reset your own password later — codes will come here.",
+    "Give it to whoever is setting you up. It expires in 15 minutes.",
+    "Once confirmed, your password reset codes will come here.",
     "",
     `If you have no connection to ${propertyName}, ignore this message; nothing happens without the code.`,
   ].join("\n");
   return send(to, `${code} is your DineFlow confirmation code`, text, code,
-    "Email is not set up on this server, so the confirmation code could not be sent. Their account and sign-in are ready to use — only the address is unconfirmed. DineFlow support can switch email on.");
+    "Email is off, so no code was sent. Their sign-in works; only the address is unconfirmed.");
 }
 
 export async function sendPasswordCode(to: string, code: string, propertyName: string): Promise<SendResult> {
@@ -52,9 +52,9 @@ export async function sendPasswordCode(to: string, code: string, propertyName: s
     `Your DineFlow verification code is ${code}`,
     "",
     `It lets you set a new password for ${propertyName}.`,
-    "The code expires in 10 minutes and can be used once.",
+    "It expires in 10 minutes and works once.",
     "",
-    "If you did not ask for this, ignore this message and tell whoever manages your account.",
+    "Didn't ask for this? Ignore it and tell whoever runs your account.",
   ].join("\n");
   return send(to, `${code} is your DineFlow verification code`, text, code);
 }
@@ -71,7 +71,7 @@ async function send(to: string, subject: string, text: string, code: string, unc
   if (!emailConfigured()) {
     return {
       ok: false,
-      error: unconfigured ?? "Email is not set up yet, so the code could not be sent. Ask Master control to change the password for you.",
+      error: unconfigured ?? "Email is off, so no code was sent. Ask Master control to change your password.",
     };
   }
 

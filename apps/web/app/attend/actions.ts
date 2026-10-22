@@ -17,7 +17,7 @@ type R = { error: string } | { ok: true; name?: string; event?: string; at?: str
 
 async function run(token: string | null, fn: (sub: NonNullable<Awaited<ReturnType<typeof subjectFromToken>>>) => Promise<unknown>): Promise<R> {
   const sub = await who(token);
-  if (!sub) return { error: token ? "This attendance link is not valid any more — ask for a new one" : "Sign in first" };
+  if (!sub) return { error: token ? "This link has expired — ask for a new one" : "Sign in first" };
   if ("error" in sub) return { error: sub.error };
   try { const r = (await fn(sub)) as R; if ("ok" in r) bump(); return r; }
   catch (e) { return { error: (e as Error).message }; }

@@ -26,7 +26,7 @@ export function StaffLeave({ rows, names, me }: { rows: LeaveRow[]; names: Recor
         <span className="h-10 w-10 rounded-xl grid place-items-center bg-[var(--color-cyan-2)] text-[var(--color-cyan)]"><Plane size={19} aria-hidden /></span>
         <div className="min-w-0 flex-1"><div className="text-[16px] font-bold">Leave requests</div><div className="text-[12.5px] text-steel">{waiting.length ? `${waiting.length} waiting for your answer` : "Nothing waiting"}</div></div>
       </div>
-      {waiting.length === 0 && decided.length === 0 && <p className="px-5 pb-5 text-[13.5px] text-steel">When someone asks for leave on their My day, it lands here.</p>}
+      {waiting.length === 0 && decided.length === 0 && <p className="px-5 pb-5 text-[13.5px] text-steel">Leave requests from My day show here.</p>}
       <ul>
         {waiting.map((r) => (
           <li key={r.id} className="px-4 sm:px-5 py-3.5 border-t border-[var(--color-separator)]" data-leave-request={r.id}>

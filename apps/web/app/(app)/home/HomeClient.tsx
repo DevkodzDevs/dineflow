@@ -108,7 +108,7 @@ export function HomeClient({ home }: { home: Home }) {
 
   return (
     <div className="space-y-5" data-home>
-      {home.locked && <p className="rounded-2xl bg-[var(--color-fill)] px-4 py-3 text-[13.5px] text-steel" data-home-locked>That section is not part of your job here — this is your day. Ask the owner if you need it.</p>}
+      {home.locked && <p className="rounded-2xl bg-[var(--color-fill)] px-4 py-3 text-[13.5px] text-steel" data-home-locked>That page is not part of your job. Ask the owner if you need it.</p>}
 
       {/* who and when: the greeting, the job, today's date and where the day stands */}
       <section className="feather !rounded-[26px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 min-w-0" data-home-hello>
@@ -177,7 +177,7 @@ export function HomeClient({ home }: { home: Home }) {
         </Tile>
 
         <Tile k="messages" hue="var(--color-tint)" Icon={MessagesSquare} title="Messages" figure={<FlapShuffle value={home.unread} pad={0} size="xs" tile="40px" bare say={`${home.unread} new`} />} unit={home.unread === 1 ? "new answer" : "new answers"}
-          sub="The owner's answers to your feedback and complaints" href="/voice"
+          sub="Owner's replies to your feedback" href="/voice"
           badge={home.unread > 0 && <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-red)]" aria-hidden />} />
       </div>
 
@@ -190,7 +190,7 @@ export function HomeClient({ home }: { home: Home }) {
       {/* ── the full views ─────────────────────────────────────────────────────────────────────── */}
       <Sheet open={open === "work"} onClose={() => setOpen(null)} title="My work" wide>
         <div className="space-y-2" data-home-work>
-          {home.jobs.length === 0 && <p className="text-[14px] text-steel py-6 text-center">Nothing on you right now. New jobs for your team are on Work.</p>}
+          {home.jobs.length === 0 && <p className="text-[14px] text-steel py-6 text-center">No jobs for you now. Team jobs are on Work.</p>}
           {home.jobs.map((j) => (
             <div key={j.id} className="rounded-2xl bg-[var(--color-fill)] p-3.5 flex items-start gap-3 min-w-0">
               <span className={cn("mt-1 h-2.5 w-2.5 shrink-0 rounded-full", j.status === "in_progress" ? "bg-[var(--color-blue)]" : "bg-[var(--color-label-3)]")} aria-hidden />
@@ -230,7 +230,7 @@ function ListsView({ home, done, setDone }: { home: Home; done: Record<string, R
     setDone((d) => ({ ...d, [id]: on ? { ...was, [String(i)]: { name: "You", at: new Date().toISOString() } } : Object.fromEntries(Object.entries(was).filter(([k]) => k !== String(i))) }));
     start(async () => { const r = await tick(id, i, on); if ("error" in r) { toast(r.error!, "err"); setDone((d) => ({ ...d, [id]: was })); } else setDone((d) => ({ ...d, [id]: r.run.done })); });
   };
-  if (!home.lists.length) return <p className="text-[14px] text-steel py-6 text-center">No lists for you yet. The owner or a manager sets them up on Checklists.</p>;
+  if (!home.lists.length) return <p className="text-[14px] text-steel py-6 text-center">No lists yet. Your manager adds them.</p>;
   return (
     <div className="space-y-4" data-home-lists>
       {home.lists.map((l) => (
@@ -271,7 +271,7 @@ function AttendanceView({ home, present, hours }: { home: Home; present: number;
             </div>);
         })}
       </div>
-      <p className="text-[12.5px] text-steel">Green: you were in (in and out times). Blue: approved leave. A wrong day? Tell your manager — they correct it on Staff → attendance.</p>
+      <p className="text-[12.5px] text-steel">Green: present. Blue: leave. A day wrong? Tell your manager.</p>
       {home.attend && <Link href="/attendance" className="svc-btn go w-full"><Fingerprint size={18} aria-hidden /> My attendance — punch in or out</Link>}
     </div>
   );
@@ -344,7 +344,7 @@ function SalaryView({ home, present, daysInMonth, estimate, owed }: { home: Home
         <div className="rounded-2xl bg-[var(--color-fill)] p-3.5"><div className="text-[12px] text-steel">Your rate</div><div className="mt-1 font-display num text-[22px] leading-none">{home.pay ? formatINR(home.pay.amount, { whole: true }) : "—"}</div><div className="mt-1 text-[12px] text-steel">{home.pay ? (home.pay.basis === "monthly" ? "a month" : "a day") : "not set yet"}</div></div>
         <div className="rounded-2xl bg-[var(--color-fill)] p-3.5"><div className="text-[12px] text-steel">So far this month</div><div className="mt-1 font-display num text-[22px] leading-none">{estimate != null ? formatINR(estimate, { whole: true }) : "—"}</div><div className="mt-1 text-[12px] text-steel">{present} of {daysInMonth} days · an estimate</div></div>
       </div>
-      <p className="text-[12.5px] text-steel">The month&apos;s pay is worked out by the owner from attendance, then PF/ESI and any advance come off — the payslip below is the final word.</p>
+      <p className="text-[12.5px] text-steel">Pay is from attendance, minus PF/ESI and advances. Your payslip is final.</p>
       {owed > 0 && (
         <section><div className="text-[13px] font-bold text-steel mb-2">Advances to come off your pay · {formatINR(owed, { whole: true })}</div>
           <div className="space-y-1.5">{home.advances.map((a, i) => <div key={i} className="flex items-center gap-2 rounded-xl bg-[var(--color-fill)] px-3.5 py-2.5 text-[13.5px]"><span className="flex-1 min-w-0 truncate">{dmy(a.given_on)}{a.note ? ` · ${a.note}` : ""}</span><b className="num">{formatINR(a.amount, { whole: true })}</b></div>)}</div>

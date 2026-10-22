@@ -25,6 +25,6 @@ export async function publishLink(input: { platform: "android" | "windows"; vers
   await requireAdmin(); const s = await createClient();
   const size = input.sizeMb && input.sizeMb > 0 ? Math.round(input.sizeMb * 1048576) : null;
   const { error } = await s.rpc("app_release_publish_link", { p_platform: input.platform, p_version: input.version, p_url: input.url.trim(), p_file_name: null, p_size_bytes: size, p_notes: input.notes || null });
-  if (error) return { error: /app_release_publish_link|function .* does not exist|schema cache/i.test(error.message) ? "Publishing by link is not set up yet — migration 0129 has to be applied first." : error.message };
+  if (error) return { error: /app_release_publish_link|function .* does not exist|schema cache/i.test(error.message) ? "Links need migration 0129 — apply it first." : error.message };
   revalidatePath("/admin/app-files"); return { ok: true as const };
 }

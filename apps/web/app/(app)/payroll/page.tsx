@@ -26,7 +26,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
   const r = session.restaurant;
   return (
     <>
-      <PageHeader eyebrow="Staff pay" title="Payroll" sub="Days present from attendance × each person's rate, less advances — and, when switched on, PF and ESI with the employer's share. Finalise the month, pay each person, print payslips." />
+      <PageHeader eyebrow="Staff pay" title="Payroll" sub="Days present × rate, less advances and PF/ESI if on. Then pay and print payslips." />
       <PayrollClient month={month} today={today} property={r.name}
         settings={{ pf: !!r.payroll_pf, esi: !!r.payroll_esi, offs: Number(r.payroll_paid_offs ?? 4), rule: r.payroll_wage_rule !== false }}
         people={((staff ?? []) as { id: string; full_name: string; role: string }[]).map((p) => ({ ...p, pay: ((pay ?? []) as Person["pay"][]).find((x) => x?.profile_id === p.id) ?? null })) as Person[]}

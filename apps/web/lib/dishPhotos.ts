@@ -121,3 +121,26 @@ export async function findDishPhotos(dish: string, context?: string | null, limi
      article that only shares one ("Lanzhou beef noodles"); an article that is the dish still wins */
   return out.sort((a, b) => b.score - a.score).slice(0, limit);
 }
+
+/**
+ * A dish photo at the size it is shown (2026-10-22, the owner: "a lightweight feel"). A chosen photo is stored as
+ * Wikimedia's 960 px thumbnail, 150–400 KB, and the till, the menu, the website and the kiosk drew that file into tiles
+ * 60–250 px wide — a till of 30 dishes fetched ~7 MB on a phone. Wikimedia serves thumbnails only at fixed widths (250,
+ * 330, 500, 960, 1280; 320 or 400 answer 400), so this asks for the smallest one at least `w` px wide. A thumbnail is
+ * only ever made smaller. An original Commons file (a JPEG, PNG, WebP or GIF the picker kept because it was under 640 px)
+ * is asked for as a thumbnail too — it can be narrower than the step, and then Wikimedia answers an error, so the photo
+ * goes through `DishImage`, which falls back to the stored URL. The property's own upload (900 px WebP already) and
+ * anything else come back as they are.
+ */
+const STEPS = [250, 330, 500, 960, 1280];
+const THUMB = /^(https:\/\/(?:upload|thumb)\.wikimedia\.org\/.+\/thumb\/.+\/)(\d+)px-([^/?#]+)(.*)$/;
+const ORIGINAL = /^(https:\/\/upload\.wikimedia\.org\/wikipedia\/[a-z]+\/)([0-9a-f]\/[0-9a-f]{2}\/)([^/?#]+\.(?:jpe?g|png|webp|gif))([?#].*)?$/i;
+export function photoAt<T extends string | null | undefined>(url: T, w: number): T {
+  if (!url) return url;
+  const want = STEPS.find((s) => s >= w) ?? STEPS[STEPS.length - 1];
+  const m = THUMB.exec(url);
+  if (m) return (Number(m[2]) <= want ? url : `${m[1]}${want}px-${m[3]}${m[4]}`) as T;
+  const o = ORIGINAL.exec(url);
+  if (o) return `${o[1]}thumb/${o[2]}${o[3]}/${want}px-${o[3]}${o[4] ?? ""}` as T;
+  return url;
+}

@@ -123,7 +123,7 @@ export function ScreenClient({ k, initial, show }: { k: string; initial: Feed; s
       <header className="flex items-center gap-[1vw] shrink-0">
         {feed.logo && <img src={feed.logo} alt="" className="h-[clamp(36px,3.4vw,72px)] w-[clamp(36px,3.4vw,72px)] rounded-[.8vw] object-cover" />}
         <div className="min-w-0 flex-1 text-[clamp(22px,2.4vw,52px)] font-black tracking-tight truncate">{feed.name}</div>
-        {lost && <div className="text-[clamp(14px,1.2vw,24px)] font-bold" style={{ color: "var(--color-red)" }} data-screen-lost>Reconnecting… (if this stays, open the new screen link from Settings)</div>}
+        {lost && <div className="text-[clamp(14px,1.2vw,24px)] font-bold" style={{ color: "var(--color-red)" }} data-screen-lost>Reconnecting… (stuck? open the new screen link from Settings)</div>}
         <Clock />
       </header>
       <main className={clsx("flex-1 min-h-0 grid grid-rows-[minmax(0,1fr)] gap-[1.4vw]", show === "both" ? "grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)]" : "grid-cols-1")}>

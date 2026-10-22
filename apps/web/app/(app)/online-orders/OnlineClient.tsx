@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, X, Bike, Clock, Link2, AlertTriangle, Bell, Flame, PackageCheck, BadgeCheck, Banknote, ExternalLink, MapPin } from "lucide-react";
+import { Check, X, Bike, Clock, Link2, AlertTriangle, Bell, Flame, PackageCheck, BadgeCheck, Banknote, ExternalLink, MapPin, Globe } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { Button, Card, Sheet, cn, Empty, FlapBreathe } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
@@ -23,7 +23,7 @@ const TAB_OF = (s: string): Tab => (s === "new" ? "new" : s === "ready" ? "ready
  * before the aggregator gives up), Cooking, Ready — and one card per order with the channel's colour
  * on top, the dishes with their counts, the total big, and one big button: Accept, Food ready, Picked up.
  */
-export function OnlineClient({ orders, channels, menu, ai = false }: { orders: OO[]; channels: { id: string; kind: string; label: string; is_live: boolean }[]; menu: { id: string; name: string; price: number }[]; ai?: boolean }) {
+export function OnlineClient({ orders, channels, menu, ai = false }: { orders: OO[]; channels: { id: string; kind: string; label: string; is_live: boolean }[]; menu: { id: string; name: string; price: number; online_available?: boolean }[]; ai?: boolean }) {
   const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   const [fix, setFix] = useState<{ order: OO; line: string } | null>(null);
   const [rejecting, setRejecting] = useState<OO | null>(null);
@@ -40,16 +40,18 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
   // a new order: a sound, and the New tab comes forward
   useEffect(() => { if (newCount > prev.current) { try { new Audio("data:audio/wav;base64,UklGRl9vAAA=").play(); } catch { /* muted */ } setTab("new"); } prev.current = newCount; }, [newCount]);
   const [, tick] = useState(0); useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
+  // dishes switched off online (0132): an aggregator keeps its own menu and can still send one — say so on the card
+  const offOnline = new Set(menu.filter((m) => m.online_available === false).map((m) => m.id));
   const today = orders.filter((o) => o.status !== "rejected");
   const shown = live.filter((o) => TAB_OF(o.status) === tab);
   const accept = (o: OO) => start(async () => {
     const r = await acceptOnline(o.id); if ("error" in r) return setErr(r.error!);
-    try { await printKot({ kotNo: o.display_id ?? o.external_id, when: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: `${o.order_channels?.label ?? "Online"} · ${o.customer_name ?? ""}`, items: o.items.map((i) => ({ name: i.name, qty: i.qty, note: i.note })) }); } catch { setErr("Accepted — but the kitchen ticket did not print. Check the printer, then print it from the order."); }
+    try { await printKot({ kotNo: o.display_id ?? o.external_id, when: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: `${o.order_channels?.label ?? "Online"} · ${o.customer_name ?? ""}`, items: o.items.map((i) => ({ name: i.name, qty: i.qty, note: i.note })) }); } catch { setErr("Accepted, but the kitchen ticket did not print. Check the printer."); }
   });
   const TABS: { k: Tab; w: "new" | "cooking" | "ready"; Icon: typeof Bell }[] = [{ k: "new", w: "new", Icon: Bell }, { k: "cook", w: "cooking", Icon: Flame }, { k: "ready", w: "ready", Icon: PackageCheck }];
   return (
     <div className="space-y-5">
-      {channels.length === 0 && <Card className="!bg-champagne-2 flex items-start gap-3"><Link2 size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>No channels connected yet.</b> Add one on the <Link href="/channels" className="underline font-semibold">Channels</Link> page and give the aggregator your webhook URL. Until Swiggy/Zomato approve your integration you can point your own website or an UrbanPiper-style middleware at the same URL.</div></Card>}
+      {channels.length === 0 && <Card className="!bg-champagne-2 flex items-start gap-3"><Link2 size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>No channels connected yet.</b> Add one on the <Link href="/channels" className="underline font-semibold">Channels</Link> page and give the aggregator your webhook URL.</div></Card>}
       <div className="grid grid-cols-3 gap-2 sm:max-w-xl" role="tablist" aria-label="Online orders" data-online-tabs>
         {TABS.map(({ k, w, Icon }) => {
           const c = n(k); const on = tab === k;
@@ -64,7 +66,7 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
           );
         })}
       </div>
-      {shown.length === 0 ? <Empty title={tab === "new" ? "No new online orders" : tab === "cook" ? "Nothing cooking for delivery" : "Nothing waiting for a rider"} hint="New orders pop up here — with a sound — the second the aggregator sends them." /> : (
+      {shown.length === 0 ? <Empty title={tab === "new" ? "No new online orders" : tab === "cook" ? "Nothing cooking for delivery" : "Nothing waiting for a rider"} hint="New orders pop up here with a sound." /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"><AnimatePresence>
           {shown.map((o) => {
             const kind = o.order_channels?.kind ?? "other"; const total = Number(o.gross);
@@ -90,6 +92,11 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
                       <span className="flex-1 min-w-0 truncate">{i.name}{i.note ? <span className="text-[12px] font-normal text-steel"> · {i.note}</span> : null}</span>
                     </li>))}</ul>
                   {/* a dish the channel sent that is not on the menu: one callout — what, why, and the button to fix it (2026-10-21) */}
+                  {(() => { const offs = o.items.filter((i) => i.menu_item_id && offOnline.has(i.menu_item_id)); return offs.length > 0 && o.status === "new" && (
+                    <div className="flex items-start gap-2.5 rounded-[16px] p-2.5 pl-3 text-[13.5px] bg-[color-mix(in_srgb,var(--color-orange)_12%,transparent)]" data-off-online>
+                      <Globe size={16} aria-hidden className="shrink-0 mt-0.5 text-[var(--color-orange)]" />
+                      <span className="min-w-0"><b>Off online:</b> {offs.map((i) => i.name).join(", ")}. Reject, or accept if you can make it.</span>
+                    </div>); })()}
                   {o.unmatched.length > 0 && <div className="flex items-center gap-3 rounded-[16px] p-2.5 pl-3 border border-[color-mix(in_srgb,var(--color-red)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-red)_8%,transparent)]" data-unmatched>
                     <span className="h-9 w-9 shrink-0 rounded-[11px] grid place-items-center bg-[color-mix(in_srgb,var(--color-red)_16%,transparent)] text-[var(--color-red)]" aria-hidden><AlertTriangle size={17} /></span>
                     <div className="min-w-0 flex-1 leading-tight">
@@ -128,19 +135,19 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
       </div>
       <Sheet open={!!fix} onClose={() => setFix(null)} title={`Map "${fix?.line ?? ""}"`}>
         <div className="flex items-start gap-3 mb-3">
-          <p className="text-sm text-steel flex-1">Pick the dish on your menu that this aggregator line means. Future orders match automatically and deduct stock.</p>
+          <p className="text-sm text-steel flex-1">Pick the menu dish this is. Next time it matches by itself.</p>
           {ai && <AiButton label="Find it" busy={hinting} onClick={() => { setHinting(true); void suggestDishMap([fix!.line]).then((r) => { if ("error" in r) setErr(r.error!); else setHint(r.matches?.[0] ?? null); }).finally(() => setHinting(false)); }} />}
         </div>
         {hint && hint.line === fix?.line && (
           <div className="mb-3 rounded-xl border border-[var(--color-tint)]/40 bg-[var(--color-green-2)] p-3 text-sm flex items-center gap-3">
-            <span className="flex-1 min-w-0">{hint.menu_item_id ? <>Looks like <b>{hint.name}</b> <span className="num text-xs text-steel">· {hint.confidence}% sure</span></> : <>Nothing on the menu is this dish — add it in Menu first.</>}</span>
+            <span className="flex-1 min-w-0">{hint.menu_item_id ? <>Looks like <b>{hint.name}</b> <span className="num text-xs text-steel">· {hint.confidence}% sure</span></> : <>Not on your menu — add it in Menu first.</>}</span>
             {hint.menu_item_id && <Button size="sm" disabled={pending} onClick={() => run(mapDish(hint.menu_item_id!, fix!.order.order_channels?.kind ?? "other", fix!.line), () => { setHint(null); setFix(null); })}>Map it</Button>}
           </div>
         )}
         <div className="space-y-2">{menu.map((m) => <button key={m.id} className="feather feather-lift w-full text-left p-3 flex justify-between" disabled={pending} onClick={() => run(mapDish(m.id, fix!.order.order_channels?.kind ?? "other", fix!.line), () => setFix(null))}><span>{m.name}</span><span className="num text-steel">{formatINR(Number(m.price))}</span></button>)}</div>
       </Sheet>
       <ReasonDialog open={!!rejecting} onClose={() => setRejecting(null)} title={rejecting ? `Reject ${rejecting.display_id ?? rejecting.external_id}?` : ""}
-        hint="The aggregator tells the guest. This cannot be undone here." chips={["Item unavailable", "Kitchen too busy", "Closing soon", "Too far to deliver"]} confirmLabel="Reject order"
+        hint="The app tells the guest. You can't undo this." chips={["Item unavailable", "Kitchen too busy", "Closing soon", "Too far to deliver"]} confirmLabel="Reject order"
         onConfirm={async (reason) => { const r = await rejectOnline(rejecting!.id, reason); if ("error" in r) return { error: r.error }; }} />
     </div>
   );

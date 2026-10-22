@@ -38,12 +38,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     if (status === "authorized") {
       try { status = (await razorpay<{ status?: string }>(g.gw, `/payments/${pid}/capture`, { method: "POST", body: JSON.stringify({ amount: p.amount, currency: "INR" }) })).status; }
       catch { status = (await razorpay<{ status?: string }>(g.gw, `/payments/${pid}`)).status; }
-      if (status === "authorized") return NextResponse.json({ error: "Your payment went through. The bill will show as paid in a minute — please wait, or show this screen at the counter." }, { status: 502 });
+      if (status === "authorized") return NextResponse.json({ error: "Payment went through. It shows as paid in a minute, or show this screen at the counter." }, { status: 502 });
     }
     if (status !== "captured") return NextResponse.json({ error: `Payment is ${status ?? "not complete"}` }, { status: 400 });
     method = methodOf(p.method);
   } catch {
-    return NextResponse.json({ error: "Your payment went through. The bill will show as paid in a minute — please wait, or show this screen at the counter." }, { status: 502 });
+    return NextResponse.json({ error: "Payment went through. It shows as paid in a minute, or show this screen at the counter." }, { status: 502 });
   }
   const r = await settle(token, method, pid);
   if ("error" in r) return NextResponse.json({ error: r.error }, { status: 500 });

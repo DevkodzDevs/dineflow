@@ -62,7 +62,7 @@ export function GetClient({ pageUrl }: { pageUrl: string }) {
           <img src="/apple-touch-icon.png" alt="" width={72} height={72} className="h-[72px] w-[72px] rounded-[20px] shadow-[0_10px_28px_-12px_rgb(0_0_0/.55)]" />
           <h1 className="font-display text-[34px] sm:text-[40px] mt-5 tracking-wide leading-none">Install DineFlow</h1>
           <p className="text-[15px] text-[var(--color-label-2)] mt-3 max-w-[34rem] leading-relaxed">
-            The restaurant and hotel app, on every phone, tablet and computer. It opens from its own icon, full screen — like any app.
+            The restaurant and hotel app for any phone, tablet or computer.
           </p>
           <ul className="mt-4 flex flex-wrap justify-center gap-2 text-[12.5px] font-semibold text-[var(--color-label-2)]">
             <Fact icon={<Store size={13} />}>No app store</Fact>
@@ -125,13 +125,12 @@ function Gated({ url }: { url: string }) {
         <div className="min-w-0">
           <div className="text-sm font-semibold">Only you can open this address</div>
           <p className="text-[13px] leading-relaxed text-[var(--color-label-2)] mt-1">
-            <b className="text-[var(--color-label)]">{host}</b> is behind Vercel&apos;s Deployment Protection. It works for you because your
-            browser is signed in to Vercel — but a waiter&apos;s phone gets a <b className="text-[var(--color-label)]">Vercel sign-in screen</b>,
-            not DineFlow. Install it now and that screen is what the app opens to, every time.
+            <b className="text-[var(--color-label)]">{host}</b> is behind Vercel&apos;s Deployment Protection. Staff phones get a
+            <b className="text-[var(--color-label)]"> Vercel sign-in screen</b>, not DineFlow — and an app installed now opens to it.
           </p>
           <p className="text-[13px] leading-relaxed text-[var(--color-label-2)] mt-2.5">
             Turn it off first: <b className="text-[var(--color-label)]">Vercel → your project → Settings → Deployment Protection → Vercel
-            Authentication → Disabled</b>, then reload this page. The banner goes away when a stranger&apos;s phone could get in.
+            Authentication → Disabled</b>, then reload. This banner goes once any phone can get in.
           </p>
         </div>
       </div>
@@ -150,8 +149,8 @@ function OtherDevices({ skip, files }: { skip: InstallKind | null; files: Downlo
     { kind: "windows", el: files?.windows
       ? <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note={`Download the .exe on it${files.windows.version ? ` · v${files.windows.version}` : ""}${mb(files.windows.size)}`} href={files.windows.url} file={files.windows.file} />
       : <Other icon={<Monitor size={16} />} title="Windows PC or laptop" note="Open the link in Edge → App available → Install" /> },
-    { kind: "ios", el: <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open the link in Safari → Share → Add to Home Screen" /> },
-    { kind: "desktop", el: <Other icon={<Laptop size={16} />} title="Mac, Chromebook or other computer" note="Chrome or Edge: the install icon in the address bar · Safari on a Mac: File → Add to Dock" /> },
+    { kind: "ios", el: <Other icon={<Apple size={16} />} title="iPhone or iPad" note="Open in Safari → Share → Add to Home Screen" /> },
+    { kind: "desktop", el: <Other icon={<Laptop size={16} />} title="Mac, Chromebook or other computer" note="Chrome or Edge: install icon in the address bar · Mac Safari: File → Add to Dock" /> },
   ];
   return (
     <details className="mt-5 group rounded-2xl border border-[var(--color-separator)]" data-devices>

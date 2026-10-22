@@ -22,7 +22,7 @@ export function DiscoverClient({ initial, q: q0, city: c0, mode: m0 }: { initial
       <header className="ink-panel"><div className="max-w-5xl mx-auto px-5 py-10">
         <div className="eyebrow text-white/50">DineFlow</div>
         <h1 className="font-display text-4xl md:text-5xl text-white mt-2">Eat out, order in, <em>stay over</em></h1>
-        <p className="text-white/60 mt-2 max-w-lg">Book a table with an offer, order food to your door, or find a room — straight from the places themselves, with no commission in between.</p>
+        <p className="text-white/60 mt-2 max-w-lg">Book a table with an offer, order food or find a room — direct, no commission.</p>
         <div className="material mt-6 flex items-center gap-2 px-4 py-2">
           <Search size={18} className="text-[var(--color-label-3)]" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a place, a cuisine, or a dish" className="!bg-transparent !border-0 !shadow-none !px-0 flex-1" />
@@ -37,7 +37,7 @@ export function DiscoverClient({ initial, q: q0, city: c0, mode: m0 }: { initial
         </div>
 
         {list.length === 0 ? (
-          <div className="card p-12 text-center"><p className="text-lg font-semibold">Nothing here yet</p><p className="text-sm text-[var(--color-label-2)] mt-1.5 max-w-sm mx-auto">{pending ? "Looking…" : "No place matches that. Try a different search, or ask the property to switch on its storefront in Settings."}</p></div>
+          <div className="card p-12 text-center"><p className="text-lg font-semibold">Nothing here yet</p><p className="text-sm text-[var(--color-label-2)] mt-1.5 max-w-sm mx-auto">{pending ? "Looking…" : "No match. Try another search, or turn on the storefront in Settings."}</p></div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             <AnimatePresence mode="popLayout">
@@ -72,7 +72,7 @@ export function DiscoverClient({ initial, q: q0, city: c0, mode: m0 }: { initial
           </div>
         )}
       </main>
-      <footer className="text-center text-xs text-[var(--color-label-3)] py-10">Powered by DineFlow · every booking goes straight to the property</footer>
+      <footer className="text-center text-xs text-[var(--color-label-3)] py-10">Powered by DineFlow · bookings go straight to the property</footer>
     </div>
   );
 }

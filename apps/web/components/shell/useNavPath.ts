@@ -21,7 +21,12 @@ const listen = () => {
     if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
     const u = new URL(a.href, location.href);
     if (u.origin !== location.origin || u.pathname === location.pathname || u.pathname.startsWith("/api")) return;
-    set(u.pathname);
+    /* A tick later, never inside this listener (2026-10-22). This runs before React's own click handler, and a store
+       update re-renders synchronously at the next microtask — still inside the click. On the phone's tab bar lighting
+       a tab swaps its icon for the lifted one, so the element under the finger left the page before <Link> saw the
+       click: React found no handler and the browser loaded the whole document (measured: every tab-bar tap was a full
+       reload, the laptop's sidebar — which only recolours — was not). */
+    setTimeout(() => set(u.pathname), 0);
   }, true);
 };
 

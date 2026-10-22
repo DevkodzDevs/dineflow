@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronLeft, Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink, X } from "lucide-react";
+import { Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink, X } from "lucide-react";
 import { Button, Field, Card, cn, Pill } from "@/components/ui";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod } from "@dineflow/shared";
@@ -133,7 +133,6 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
     <div className="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
       <div className="no-print">
         <div className="flex items-center gap-3 mb-6">
-          <Link href="/billing" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card" aria-label="Back"><ChevronLeft size={18} /></Link>
           <div><div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel">Order #{order.order_no}</div><h1 className="text-3xl">{where}</h1></div>
         </div>
         {!bill ? (
@@ -197,7 +196,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
                     : "No delivery was recorded, so the promise stands."}
                 </p>
                 <p className={cn("text-xs font-semibold mt-1.5", kept ? "text-[var(--color-tint)]" : "text-[var(--color-red)]")}>
-                  {kept ? `Kept — ${order.promise_pct}% added to the food.` : "Missed — the food is free and nothing is charged for the promise."}
+                  {kept ? `Kept — ${order.promise_pct}% added to the food.` : "Missed — the food is free."}
                 </p>
                 <button type="button" onClick={() => setKeptOverride(!kept)}
                   className="mt-2.5 text-xs font-semibold underline text-steel hover:text-[var(--color-label)]">
@@ -255,7 +254,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
               const r = await settleBill(bill.id, settled); if ("error" in r) setErr(r.error!);   // the action's answer is the re-rendered bill — no second render
             })}>Mark paid{!online && " (offline)"}</Button>
             <button type="button" className="mt-3 text-xs text-steel hover:text-chili w-full" disabled={pending} onClick={() => setVoiding(true)} data-void-bill>Void bill and edit order</button>
-            <ReasonDialog open={voiding} onClose={() => setVoiding(false)} title={`Void bill ${bill.bill_no}?`} hint="The bill is cancelled and the order goes back to the floor to be edited and billed again. The reason and your name stay on it."
+            <ReasonDialog open={voiding} onClose={() => setVoiding(false)} title={`Void bill ${bill.bill_no}?`} hint="Cancels the bill and reopens the order. Your name and reason are kept."
               chips={["Wrong table", "Item missed", "Discount missed", "Guest changed order", "Billed twice"]} confirmLabel="Void the bill"
               onConfirm={async (reason) => { const r = await voidBill(bill.id, reason); if ("error" in r) return { error: r.error }; }} />
           </Card>
@@ -292,7 +291,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
                     </div>
                   </>) : (<>
                     <div className="font-display num text-[36px] leading-none mt-5">{formatINR(totals.total)}</div>
-                    <p className="mt-2.5 text-[13px] text-steel max-w-[19rem] leading-snug">Opens this bill on their phone — they pay by UPI or card there. It is printed on the bill too.</p>
+                    <p className="mt-2.5 text-[13px] text-steel max-w-[19rem] leading-snug">They scan to pay by UPI or card. It is on the printed bill too.</p>
                     {upiChosen && !hasVpa && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-left" data-upi-missing><b>Want the exact amount in the QR?</b> Add your UPI ID in <Link href="/settings" className="underline">Settings → Payments</Link> and this turns into a UPI code for the amount.</p>}
                   </>)}
                 </div>

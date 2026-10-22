@@ -26,7 +26,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader eyebrow="We are here to help" title="Help" accent="& support"
-        sub="Raise a complaint, report a problem, ask a question or share an idea — it goes straight to the DineFlow team, and every reply comes back here." />
+        sub="Ask, report a problem or share an idea. Replies come here." />
       <SupportClient requests={(data ?? []) as Req[]} me={session.userId ?? ""} name={session.profile.full_name} role={session.profile.role}
         property={session.restaurant.name} prefill={{ kind: sp.kind ?? null, from: sp.from ?? null }} />
     </>

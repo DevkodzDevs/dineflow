@@ -6,7 +6,7 @@ import { cn } from "../ui";
 import { copyText, shareText } from "@/lib/clipboard";
 import { waShareHref } from "@/lib/install";
 
-const TEXT = "Install the DineFlow app — this link shows the right way for your phone or computer:";
+const TEXT = "Install the DineFlow app on your phone or computer:";
 
 /**
  * Getting the install page onto another device: the other phone's camera, a WhatsApp from the owner to a
@@ -26,7 +26,7 @@ export function SendInstallLink({ url }: { url: string }) {
         <div className="rounded-xl bg-white p-2 shrink-0"><QR value={url} size={104} /></div>
         <div className="min-w-0">
           <div className="text-[14px] font-semibold leading-tight">Scan with the other phone</div>
-          <p className="text-[13px] text-[var(--color-label-2)] mt-1 leading-snug">Point its camera here — this page opens there, with the right button for that phone.</p>
+          <p className="text-[13px] text-[var(--color-label-2)] mt-1 leading-snug">Point its camera here to open the install page.</p>
         </div>
       </div>
       <div className={cn("grid gap-2", canShare ? "grid-cols-3" : "grid-cols-2")}>

@@ -43,7 +43,7 @@ export async function lookupCode(code: string) {
 export async function createProductFromScan(p: { name: string; unit: string; category?: string | null; brand?: string | null; barcode?: string | null; pack_qty?: number | null; cost_per_unit?: number; reorder_level?: number; qty?: number; reason?: "purchase" | "opening"; note?: string }) {
   const s = await createClient(); const { data: { user } } = await s.auth.getUser();
   const { data: ing, error } = await s.from("ingredients").insert({ name: p.name, unit: p.unit, category: p.category ?? null, brand: p.brand ?? null, barcode: p.barcode || null, pack_qty: p.pack_qty ?? null, cost_per_unit: p.cost_per_unit ?? 0, reorder_level: p.reorder_level ?? 0 }).select("id").single();
-  if (error) return { error: error.message.includes("duplicate") ? "A product with this barcode already exists — scan it again to add stock." : error.message };
+  if (error) return { error: error.message.includes("duplicate") ? "This barcode is already saved. Scan again to add stock." : error.message };
   if (p.qty && p.qty > 0) {
     const { error: se } = await s.from("stock_ledger").insert({ ingredient_id: ing.id, qty: p.qty, reason: p.reason ?? "purchase", note: p.note ?? "from scan", created_by: user?.id });
     if (se) return { error: `The product is saved, but its stock was not recorded (${se.message}). Scan it again to add the stock.` };

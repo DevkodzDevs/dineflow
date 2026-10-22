@@ -68,7 +68,7 @@ export function FacilitiesClient({ facilities, slots, inHouse }: { facilities: F
                 })()}
               </motion.div>))}</div></section>
         ))}
-        {facilities.length === 0 && <p className="text-sm text-steel">Add spa treatments, activities and venues. Bookings post straight to the guest's room folio.</p>}
+        {facilities.length === 0 && <p className="text-sm text-steel">Add spa, activities and venues. Bookings go on the guest's room bill.</p>}
       </div>
       {/* the schedule: a date tile (day, month, time), what and who, the amount and a real ✕ — the time ran into the
           name in a 64px column (2026-10-21) */}

@@ -26,10 +26,10 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
         <form action={(fd) => start(async () => { const x = await saveStorefront(fd); toast("error" in x ? x.error! : "Storefront saved", "error" in x ? "err" : "ok"); })} className="space-y-5">
           <Card>
             <h2 className="text-xl mb-1">What guests can do</h2>
-            <p className="text-xs text-[var(--color-label-2)] mb-4">Switch off anything you are not ready for. Nothing appears publicly until <b>Listed</b> is on.</p>
+            <p className="text-xs text-[var(--color-label-2)] mb-4">Turn off what you're not ready for. Hidden until <b>Listed</b> is on.</p>
             <div className="space-y-3">
               {([["listed", "is_listed", "Listed publicly", "Appears at /dine and can be found by search", Globe],
-                 ["dining", "dining_enabled", "Table booking", "Guests pick a time slot; it lands on your Reservations screen", UtensilsCrossed],
+                 ["dining", "dining_enabled", "Table booking", "Guests pick a time; it shows in Reservations", UtensilsCrossed],
                  ["delivery", "delivery_enabled", "Delivery", "Orders arrive on your Online orders screen", Bike],
                  ["takeaway", "takeaway_enabled", "Takeaway", "Same, but the guest collects", ShoppingBag]] as const).map(([k, name, title, hint, I]) => (
                 <label key={k} className={cn("card p-4 flex items-center gap-3 cursor-pointer transition-colors", on[k] && "!border-[color-mix(in_srgb,var(--color-green)_45%,transparent)]")}>
@@ -55,7 +55,7 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
 
           <Card>
             <h2 className="text-xl mb-1">Table booking</h2>
-            <p className="text-xs text-[var(--color-label-2)] mb-4">Slots are generated between these hours. Seats per slot defaults to the total capacity of your tables.</p>
+            <p className="text-xs text-[var(--color-label-2)] mb-4">Slots run between these hours. Seats default to all your tables.</p>
             <div className="grid sm:grid-cols-4 gap-3">
               <Field label="Opens"><input name="opens_at" type="time" className="num" defaultValue={r.opens_at?.slice(0, 5)} /></Field>
               <Field label="Closes"><input name="closes_at" type="time" className="num" defaultValue={r.closes_at?.slice(0, 5)} /></Field>
@@ -78,8 +78,8 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
 
         <Card>
           <div className="flex items-center justify-between mb-1"><h2 className="text-xl">Offers</h2><Button size="sm" onClick={() => setOffer({ kind: "flat_pct", scope: "both", value: 15, is_active: true })}><Plus size={15} /> New offer</Button></div>
-          <p className="text-xs text-[var(--color-label-2)] mb-4">These show as chips on your page and on the search list. A time-limited one becomes a “happy hour” badge on those slots.</p>
-          {offers.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">No offers yet. A 15% early-evening discount fills tables that would otherwise sit empty.</p> : (
+          <p className="text-xs text-[var(--color-label-2)] mb-4">Shown on your page and in search. Timed ones show as “happy hour”.</p>
+          {offers.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">No offers yet. Try 15% off early evening to fill tables.</p> : (
             <div className="space-y-2">{offers.map((o) => (
               <div key={o.id} className="card p-3 flex items-center gap-3">
                 <span className="h-9 w-9 rounded-xl bg-[var(--color-champagne-2)] grid place-items-center shrink-0"><Percent size={16} /></span>
@@ -101,7 +101,7 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
         <div className="flex gap-2 mt-3"><Button size="sm" variant="gray" className="flex-1" onClick={() => { copyText(url); toast("Link copied"); }}><Copy size={14} /> Copy</Button>
           <a href={url} target="_blank" rel="noreferrer" className="flex-1"><Button size="sm" className="w-full"><ExternalLink size={14} /> Open</Button></a></div>
         {r.rating && <p className="text-sm mt-4">★ {r.rating} from {r.rating_count} review{r.rating_count === 1 ? "" : "s"}</p>}
-        <p className="text-xs text-[var(--color-label-2)] mt-3 text-left">Print the QR for your counter and table tents. Every booking and order through it costs you <b>0% commission</b>, against 18–25% on an aggregator.</p>
+        <p className="text-xs text-[var(--color-label-2)] mt-3 text-left">Print this QR for your tables. <b>0% commission</b>, vs 18–25% on apps.</p>
       </Card>
 
       <Sheet open={!!offer} onClose={() => setOffer(null)} title={offer?.id ? "Edit offer" : "New offer"}>

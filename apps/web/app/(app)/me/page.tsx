@@ -69,7 +69,7 @@ export default async function MePage() {
   };
   return (
     <>
-      <PageHeader eyebrow="Your account" title="My profile" sub="Your details, your sign-in and how this device looks — only you change these." actionsInline actions={signOut} />
+      <PageHeader eyebrow="Your account" title="My profile" sub="Your details, sign-in and look. Only you can change these." actionsInline actions={signOut} />
       <MeClient me={me} day={day} />
     </>
   );

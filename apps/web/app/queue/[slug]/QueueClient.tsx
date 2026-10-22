@@ -61,7 +61,7 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
       <div className="eyebrow">{name}</div>
       {!s ? (<>
         <h1 className="text-[34px] mt-1">Join the queue</h1>
-        <p className="text-[var(--color-label-2)] mt-2">Put your name down and watch your place from here. No app, nothing to download.</p>
+        <p className="text-[var(--color-label-2)] mt-2">Add your name and watch your place here — no app needed.</p>
         <div className="stack mt-6">
           <input placeholder="Your name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input placeholder="Phone (optional, so we can call you)" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -90,7 +90,7 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
           <p className="mt-1 text-[14px] text-[var(--color-label-2)]">Your table for <span className="num">{s.party}</span> is being made ready, {s.name.split(" ")[0]}.</p>
         </section>
         <button onClick={leave} className="btn btn-gray w-full mt-8">Leave the queue</button>
-        <p className="mt-3 text-center text-[13px] text-[var(--color-label-2)]" data-queue-kept>Going back keeps your place — scan the code or open this page again to see it.</p>
+        <p className="mt-3 text-center text-[13px] text-[var(--color-label-2)]" data-queue-kept>Leaving keeps your place — rescan or reopen this page to check.</p>
       </>) : (<>
         {/* waiting: the place and the wait on the flaps, then the line in one card, live */}
         <h1 className="text-[32px] mt-1 leading-tight">You're in the queue</h1>
@@ -106,7 +106,7 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
           <div className="col-span-2 flex items-center justify-center gap-2 text-[12.5px] font-semibold text-[var(--color-label-2)]"><span className="h-2 w-2 rounded-full bg-[var(--color-green)] animate-pulse" aria-hidden />Live — this page updates itself</div>
         </div>
         <button onClick={leave} className="btn btn-gray w-full mt-8">Leave the queue</button>
-        <p className="mt-3 text-center text-[13px] text-[var(--color-label-2)]" data-queue-kept>Going back keeps your place — scan the code or open this page again to see it.</p>
+        <p className="mt-3 text-center text-[13px] text-[var(--color-label-2)]" data-queue-kept>Leaving keeps your place — rescan or reopen this page to check.</p>
       </>)}
     </main>
   );

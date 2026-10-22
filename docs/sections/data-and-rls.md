@@ -546,6 +546,11 @@ owner, manager, supervisor, supervisor_2 and chef in their own folder only; sele
 folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothing else changed
 (`dry88.cjs`: same payload size without it, anon still has execute).
 
+- **0132 `online_availability` — applied 2026-10-22** (dry run 12/12 first): `menu_items.online_available`, `set_online_available`
+  (owner, manager, chef, or a supervisor holding Online orders; a direct table write still needs Menu — guard_menu_item_write),
+  `dine_storefront` + `online`, `dine_order` sells an off-online dish only `dine_in`. Additive; the old app ignores it.
+- **0131 moved to `supabase/pending/` (2026-10-22)** — it was in `migrations/`, so the next `migrate.mjs` (run for 0132) would
+  have applied it before its client; apply it by hand after the deploy, as 0120/0121 were.
 - **0131 `pulse_seated_walkins` — written and dry-run (6 of 6, rolled back), NOT applied (2026-10-21).** Replaces
   `table_pulse` and `table_pulse_for` (stage *seated*; see reports-and-forecast.md). Apply after the code that knows
   *seated* is deployed: `DATABASE_URL=… node scripts/migrate.mjs`, then `notify pgrst, 'reload schema'`.

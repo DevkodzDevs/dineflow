@@ -46,13 +46,13 @@ export function LogoUpload({ restaurantId, initial, name }: { restaurantId: stri
   const take = async (file: File | undefined) => {
     setErr(null); setInfo(null);
     if (!file) return;
-    if (!OK_TYPES.includes(file.type)) { setErr(file.type === "image/svg+xml" ? "SVG cannot be used — save the logo as PNG instead." : "Use a PNG, JPG or WebP image."); return; }
-    if (file.size > RAW_MAX) { setErr(`That image is ${kb(file.size)} — the limit is 5 MB. Choose a smaller one.`); return; }
+    if (!OK_TYPES.includes(file.type)) { setErr(file.type === "image/svg+xml" ? "SVG won't work — save the logo as PNG." : "Use a PNG, JPG or WebP image."); return; }
+    if (file.size > RAW_MAX) { setErr(`That image is ${kb(file.size)} — the limit is 5 MB.`); return; }
     setBusy("up");
     try {
       const s = await shrink(file);
-      if (Math.min(s.srcW, s.srcH) < MIN_EDGE) { setErr(`That image is only ${s.srcW} × ${s.srcH} px — use one at least 256 px across so it stays sharp.`); return; }
-      if (s.blob.size > SEND_MAX) { setErr("That image is still over 1 MB after shrinking — try a simpler one."); return; }
+      if (Math.min(s.srcW, s.srcH) < MIN_EDGE) { setErr(`Too small (${s.srcW} × ${s.srcH} px) — use at least 256 px across.`); return; }
+      if (s.blob.size > SEND_MAX) { setErr("Still over 1 MB after shrinking — try a simpler image."); return; }
       const fd = new FormData(); fd.set("id", restaurantId);
       fd.set("file", new File([s.blob], `logo.${s.blob.type.split("/")[1]}`, { type: s.blob.type }));
       const r = await uploadLogo(fd);

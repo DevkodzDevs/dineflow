@@ -94,11 +94,11 @@ export function RowActions({ name, code, pending, openId, onDetails, onAccess, o
           {code && <div className={styles.headCode}>{code}</div>}
         </div>
         <Item icon={<Info size={15} />} label="Details"
-          hint="The full record: logins, tax registration, what it holds" onClick={onDetails} />
+          hint="Logins, tax registration and what it holds" onClick={onDetails} />
         <Item icon={<SlidersHorizontal size={15} />} label="Access"
           hint="Which parts of the app this property can open" onClick={onAccess} />
         <Item icon={<Settings2 size={15} />} label="Manage"
-          hint="Membership, keys, passwords and the contact address" onClick={onManage} />
+          hint="Membership, keys, passwords, contact email" onClick={onManage} />
         <Item icon={<Trash2 size={15} />} label="Delete property"
           hint="Removes it, everything in it and its logins" onClick={onDelete} danger />
       </div>

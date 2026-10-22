@@ -58,7 +58,7 @@ export function ControlsClient({ expected, moves, shifts, voids, lines, names, m
         <Card data-cash-form>
           <div className="flex items-start gap-3 mb-4">
             <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Wallet size={16} /></span>
-            <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Move cash</h3><p className="text-xs text-steel mt-0.5">A float top-up, a supplier paid from the drawer, a deposit taken to the bank. It is counted into what the drawer should hold, so the shift close comes out right.</p></div>
+            <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Move cash</h3><p className="text-xs text-steel mt-0.5">Cash added to or taken from the drawer. Counted in the shift close.</p></div>
           </div>
           <Segmented value={kind} onChange={(v) => { setKind(v); setReason(""); setErr(null); }} className="w-full" options={[{ value: "in", label: <span className="inline-flex items-center gap-1.5"><ArrowDownToLine size={14} /> Cash in</span> }, { value: "out", label: <span className="inline-flex items-center gap-1.5"><ArrowUpFromLine size={14} /> Cash out</span> }]} />
           <div className="mt-4 space-y-3">
@@ -101,9 +101,9 @@ export function ControlsClient({ expected, moves, shifts, voids, lines, names, m
       <Card data-shifts>
         <div className="flex items-start gap-3 mb-3">
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Banknote size={16} /></span>
-          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Shift closes</h3><p className="text-xs text-steel mt-0.5">Expected is cash sales plus cash in minus cash out; counted is what was in the drawer less the float. The last 30.</p></div>
+          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Shift closes</h3><p className="text-xs text-steel mt-0.5">Last 30. Expected = cash sales + cash in − cash out. Counted excludes the float.</p></div>
         </div>
-        {shifts.length === 0 ? <p className="text-sm text-steel">No shift has been closed yet — Billing → Close shift.</p> : (
+        {shifts.length === 0 ? <p className="text-sm text-steel">No shifts closed yet. Close one in Billing.</p> : (
           <div className="feather overflow-x-auto table-wrap"><table className="w-full text-sm min-w-[640px]">
             <thead><tr><th className="text-left px-4 py-3">Day</th><th className="text-left px-3 py-3">Closed</th><th className="text-right px-3 py-3">Sales</th><th className="text-right px-3 py-3">Expected cash</th><th className="text-right px-3 py-3">Counted</th><th className="text-right px-3 py-3">Variance</th><th className="text-left px-4 py-3">By · note</th></tr></thead>
             <tbody>{shifts.map((s) => { const v = s.variance == null ? null : Number(s.variance); const exp = Number(s.expected?.cash_drawer ?? s.expected?.cash ?? 0); return (

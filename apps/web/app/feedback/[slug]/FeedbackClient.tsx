@@ -39,7 +39,7 @@ export function FeedbackClient({ slug, table, place }: { slug: string; table: st
         <div className="rounded-[24px] bg-white border border-[var(--color-separator)] p-7 text-center" data-feedback-done>
           <div className="mx-auto h-16 w-16 rounded-full grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]"><Check size={32} strokeWidth={3} aria-hidden /></div>
           <div className="mt-4 text-[22px] font-extrabold">Thank you!</div>
-          <p className="mt-1.5 text-[15px] text-[var(--color-label-2)]">{rating >= 4 ? "We are glad you enjoyed it. See you again soon." : "We are sorry it was not right. The manager reads every note" + (phone ? " and will call you." : ".")}</p>
+          <p className="mt-1.5 text-[15px] text-[var(--color-label-2)]">{rating >= 4 ? "We are glad you enjoyed it. See you again soon." : "Sorry it wasn't right. The manager reads every note" + (phone ? " and will call you." : ".")}</p>
         </div>
       ) : (
         <div className="rounded-[24px] bg-white border border-[var(--color-separator)] p-5 sm:p-7" data-feedback-form>
@@ -76,7 +76,7 @@ export function FeedbackClient({ slug, table, place }: { slug: string; table: st
               className="mt-5 w-full !min-h-14 rounded-2xl text-[17px] font-extrabold flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--color-tint)", color: "var(--color-on-tint, #fff)" }}>
               {pending && <Loader2 size={18} className="animate-spin" aria-hidden />}Send feedback
             </button>
-            <GuestNotice property={place.name} use="to read your feedback and, if you leave a number, to call you back" className="mt-4" />
+            <GuestNotice property={place.name} use="to read your feedback and call you back if you leave a number" className="mt-4" />
           </>}
         </div>
       )}

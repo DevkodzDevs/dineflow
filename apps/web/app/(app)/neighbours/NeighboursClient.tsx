@@ -35,26 +35,26 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
   const overpaying = prices.filter((p) => p.delta_pct > 3);
 
   const Stream = ({ on, label, peers, children }: { on: boolean; label: string; peers: number; children: React.ReactNode }) => {
-    if (!on) return <Card className="!bg-porcelain-2 text-center py-10"><Lock size={20} className="mx-auto text-steel" /><p className="font-semibold mt-2">{label} is switched off</p><p className="text-sm text-steel mt-1 max-w-md mx-auto">This stream is a two-way street: you see the neighbourhood only while you contribute to it. Nothing identifies you, and you can switch it off again at any time.</p><Button className="mt-4" onClick={() => setSetup(true)}>Turn it on</Button></Card>;
-    if (peers < status.min_contributors) return <Card className="!bg-champagne-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>Not enough neighbours yet — {peers} of {status.min_contributors}.</b> Pooled figures stay hidden until at least {status.min_contributors} properties contribute, otherwise you could work out a specific neighbour&apos;s business from the numbers. This fills in as DineFlow spreads in {status.district ?? "your district"}.</div></Card>;
+    if (!on) return <Card className="!bg-porcelain-2 text-center py-10"><Lock size={20} className="mx-auto text-steel" /><p className="font-semibold mt-2">{label} is switched off</p><p className="text-sm text-steel mt-1 max-w-md mx-auto">Share to see your area. You stay anonymous; stop any time.</p><Button className="mt-4" onClick={() => setSetup(true)}>Turn it on</Button></Card>;
+    if (peers < status.min_contributors) return <Card className="!bg-champagne-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>Not enough neighbours yet — {peers} of {status.min_contributors}.</b> Figures show once {status.min_contributors} properties share, so no one can be singled out.</div></Card>;
     return <>{children}</>;
   };
 
   return (
     <>
       <PageHeader eyebrow={`Private network · ${status.district ?? "set your area"}`} title="Neigh" accent="bours"
-        sub="Every DineFlow property near you, pooled anonymously. Nobody else can build this, because nobody else has the whole district in one system."
+        sub="Anonymous figures from DineFlow places near you."
         actions={<Button variant="outline" onClick={() => setSetup(true)}><ShieldCheck size={16} /> Sharing & privacy</Button>} />
 
-      {syncedAt !== undefined && syncedAt !== null && <p className="text-xs text-steel mb-4">Running on the Box · district figures last brought down {new Date(syncedAt).toLocaleString("en-IN")}. They refresh every minute the internet is up.</p>}
+      {syncedAt !== undefined && syncedAt !== null && <p className="text-xs text-steel mb-4">Running on the Box · area figures from {new Date(syncedAt).toLocaleString("en-IN")}. Refreshes every minute when online.</p>}
       {msg && <div className="feather p-3 mb-4 text-sm flex items-center gap-2 border-mint"><Check size={15} className="text-mint" /> {msg}</div>}
       {err && <p className="text-sm text-chili mb-4">{err}</p>}
 
       {!status.located && (
-        <Card className="!bg-chili-2 flex items-start gap-3 mb-5"><MapPin size={18} className="shrink-0 mt-0.5" /><div className="text-sm flex-1"><b>Set your district first.</b> Neighbours are matched by distance, so the network needs to know roughly where you are. Nothing more precise than a district is required.</div><Button size="sm" onClick={() => setSetup(true)}>Set it</Button></Card>
+        <Card className="!bg-chili-2 flex items-start gap-3 mb-5"><MapPin size={18} className="shrink-0 mt-0.5" /><div className="text-sm flex-1"><b>Set your district first.</b> Neighbours are matched by distance. Only your district is needed.</div><Button size="sm" onClick={() => setSetup(true)}>Set it</Button></Card>
       )}
       {!joined && status.located && (
-        <Card className="!bg-champagne-2 flex items-start gap-3 mb-5"><Users size={18} className="shrink-0 mt-0.5" /><div className="text-sm flex-1"><b>You haven&apos;t joined yet.</b> Choose which streams to share — each one is separate, and you can take price data without offering labour, or any other combination.</div><Button size="sm" onClick={() => setSetup(true)}>Choose</Button></Card>
+        <Card className="!bg-champagne-2 flex items-start gap-3 mb-5"><Users size={18} className="shrink-0 mt-0.5" /><div className="text-sm flex-1"><b>You haven&apos;t joined yet.</b> Pick what to share — each one is separate.</div><Button size="sm" onClick={() => setSetup(true)}>Choose</Button></Card>
       )}
 
       {/* a phone: the four sections as an even 2×2 of tiles (they wrapped two-and-two at odd widths) */}
@@ -71,9 +71,9 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
             <StatTile label="Contributing nearby" value={String(status.peers_prices)} sub={`within ${s.radius_km ?? 40} km`} delay={0.1} />
             <StatTile label="Yearly, at this rate" value={formatINR(excess * 52)} sub="the case for switching supplier" delay={0.15} />
           </div>
-          {prices.length === 0 ? <Empty title="Nothing to compare yet" hint="Record a few purchases with prices in Pantry, and the comparison appears here within a day." action={<Link href="/inventory"><Button>Open Pantry</Button></Link>} /> : (
+          {prices.length === 0 ? <Empty title="Nothing to compare yet" hint="Add a few purchases with prices in Pantry. Shows here in a day." action={<Link href="/inventory"><Button>Open Pantry</Button></Link>} /> : (
             <Card>
-              <p className="text-xs text-steel mb-4">Only what you <b>pay suppliers</b> is pooled. What you charge guests is never shared with anyone. Each row needs at least {status.min_contributors} properties before it appears.</p>
+              <p className="text-xs text-steel mb-4">Only what you <b>pay suppliers</b> is shared, never your menu prices. A row shows once {status.min_contributors} properties share it.</p>
               <div className="overflow-x-auto table-wrap"><table className="w-full text-sm min-w-[680px]">
                 <thead className="text-xs uppercase tracking-wide text-steel border-b border-line"><tr><th className="text-left py-2">Item</th><th className="text-right py-2">You pay</th><th className="text-right py-2">Area median</th><th className="text-right py-2">Range</th><th className="text-right py-2">Difference</th><th className="text-right py-2">Per week</th></tr></thead>
                 <tbody>{prices.map((p, i) => {
@@ -89,7 +89,7 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
                     </motion.tr>);
                 })}</tbody>
               </table></div>
-              {excess > 0 && <p className="text-sm mt-4 p-3 rounded-xl bg-chili-2 text-ink">Matching the area median on the red rows would save about <b className="num">{formatINR(excess)}</b> a week. Show a supplier this table before your next negotiation.</p>}
+              {excess > 0 && <p className="text-sm mt-4 p-3 rounded-xl bg-chili-2 text-ink">Paying the area median on red rows saves about <b className="num">{formatINR(excess)}</b> a week. Show this to your supplier.</p>}
             </Card>
           )}
         </Stream>
@@ -99,10 +99,10 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
       {t === "surplus" && (
         <Stream on={!!s.share_surplus} label="The surplus board" peers={0}>
           <div className="flex justify-between items-center mb-4">
-            <p className="text-sm text-steel max-w-xl">Stock that will spoil before you use it is worth more to a kitchen 6 km away than to your bin. Sellers stay anonymous until someone claims; then both sides get a phone number.</p>
+            <p className="text-sm text-steel max-w-xl">Sell spare stock nearby before it spoils. Phone numbers swap only after a claim.</p>
             <Button onClick={() => setPostSheet(true)}><Plus size={16} /> List surplus</Button>
           </div>
-          {surplus.length === 0 ? <Empty title="Board is empty" hint="List something that is about to expire, or check back before service." /> : (
+          {surplus.length === 0 ? <Empty title="Board is empty" hint="List stock about to expire, or check back later." /> : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {surplus.map((l, i) => {
                 const days = l.best_before ? Math.ceil((new Date(l.best_before).getTime() - Date.now()) / 86400000) : null;
@@ -135,10 +135,10 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
       {t === "labour" && (
         <Stream on={!!s.share_labour} label="Standby hands" peers={0}>
           <div className="flex justify-between items-center mb-4">
-            <p className="text-sm text-steel max-w-xl">Your workers already carry a badge and an attendance record here. Anyone free today can be offered to a neighbour who is short-handed — and you can find one the same way on a busy Saturday.</p>
+            <p className="text-sm text-steel max-w-xl">Lend a free worker to a neighbour, or find help when short.</p>
             <Button onClick={() => setOfferSheet(true)}><Plus size={16} /> Offer someone</Button>
           </div>
-          {standby.length === 0 ? <Empty title="Nobody on standby today" hint="Offer a worker who has no shift, or check here when you are short." /> : (
+          {standby.length === 0 ? <Empty title="Nobody on standby today" hint="Offer a worker with no shift, or look here when short." /> : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {standby.map((w, i) => (
                 <motion.div key={w.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
@@ -165,7 +165,7 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
               ))}
             </div>
           )}
-          <p className="text-xs text-steel mt-4">You are agreeing a day&apos;s work between two businesses. Wages, and anything else the law requires, remain between the worker and whoever they work for that day — DineFlow only makes the introduction.</p>
+          <p className="text-xs text-steel mt-4">Pay and legal duties lie with that day&apos;s employer. DineFlow only introduces you.</p>
         </Stream>
       )}
 
@@ -173,7 +173,7 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
       {t === "signal" && (
         <Stream on={!!s.share_demand} label="The area signal" peers={status.peers_demand}>
           {!demand?.available ? (
-            <Card className="!bg-champagne-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>Signal not available yet.</b> {demand?.reason === "too few neighbours" ? `${demand.peers} of ${demand.need} properties nearby are sharing. ` : ""}It needs enough neighbours and a few weeks of area history before it can tell a festival from a quiet Tuesday.</div></Card>
+            <Card className="!bg-champagne-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>Signal not available yet.</b> {demand?.reason === "too few neighbours" ? `${demand.peers} of ${demand.need} properties nearby are sharing. ` : ""}It needs more neighbours and a few weeks of area history.</div></Card>
           ) : (
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
               <Card glow>
@@ -187,8 +187,8 @@ export function NeighboursClient({ tab, today, status, prices, surplus, standby,
               </Card>
               <Card>
                 <h3 className="text-xl">Why this matters</h3>
-                <p className="text-sm text-steel mt-2 leading-relaxed">Your own history can only tell you what normally happens. The neighbourhood tells you what is happening <i>now</i> — a temple festival, a wedding season, a bandh, a tourist inflow — usually a day or two before it shows in your own numbers.</p>
-                <p className="text-sm text-steel mt-3 leading-relaxed">The <Link href="/tomorrow" className="underline font-semibold text-ink">Tomorrow brief</Link> already uses this signal, at half weight and capped at ±20%, so a strange night next door can nudge your prep but never take it over.</p>
+                <p className="text-sm text-steel mt-2 leading-relaxed">Your history shows what is normal. Your area shows what is happening <i>now</i> — a festival, a wedding, a bandh — often a day early.</p>
+                <p className="text-sm text-steel mt-3 leading-relaxed">The <Link href="/tomorrow" className="underline font-semibold text-ink">Tomorrow brief</Link> uses this at half weight, capped at ±20%.</p>
                 <Link href="/tomorrow"><Button variant="outline" className="mt-4">See tomorrow&apos;s brief</Button></Link>
               </Card>
             </div>
@@ -228,19 +228,19 @@ function SetupForm({ status, restaurant, onDone, onError }: { status: Status; re
   return (
     <div className="space-y-4">
       <Card className="!bg-sky-2 flex items-start gap-3"><ShieldCheck size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-        <b>The rules, plainly.</b> Every stream is separate and off by default. Your property is never named in pooled figures. No number appears until at least {status.min_contributors} properties contributed to it. <b>Your menu prices are never shared</b> — only what you pay suppliers. Switch anything off and your past contributions stop being used.</div></Card>
+        <b>The rules.</b> All off by default. Your name never shows, and no figure shows until {status.min_contributors} properties share. <b>Menu prices are never shared.</b> Turn one off and your old data stops being used.</div></Card>
       <div className="grid gap-3">
-        <Row k="prices" title="What things cost" gives="the prices you pay suppliers, anonymised" takes="the area median for every item you buy, and what you are overpaying" />
-        <Row k="surplus" title="Surplus board" gives="stock you list as spare" takes="cheap stock from nearby kitchens before it is wasted" />
+        <Row k="prices" title="What things cost" gives="the prices you pay suppliers, anonymised" takes="area prices for what you buy, and where you overpay" />
+        <Row k="surplus" title="Surplus board" gives="stock you list as spare" takes="cheap stock from nearby kitchens" />
         <Row k="labour" title="Standby hands" gives="workers you mark free today" takes="ID-verified help when you are short-handed" />
-        <Row k="demand" title="Area signal" gives="your daily cover count, as a number only" takes="a festival or a quiet spell spotted before it reaches your own figures" />
+        <Row k="demand" title="Area signal" gives="your daily cover count, as a number only" takes="early warning of busy or quiet days" />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <Field label="District"><input value={loc.district} onChange={(e) => setLoc({ ...loc, district: e.target.value })} placeholder="Kanyakumari" /></Field>
         <Field label="Pincode"><input className="num" value={loc.pincode} onChange={(e) => setLoc({ ...loc, pincode: e.target.value })} placeholder="629702" /></Field>
         <Field label="Radius (km)"><input type="number" className="num" value={v.radius} onChange={(e) => setV({ ...v, radius: Number(e.target.value) })} /></Field>
       </div>
-      <Field label="How neighbours see you" hint="Shown only on surplus and standby listings, never on pooled figures"><input value={loc.alias} onChange={(e) => setLoc({ ...loc, alias: e.target.value })} placeholder="A resort near the beach" /></Field>
+      <Field label="How neighbours see you" hint="Shown on surplus and standby listings only"><input value={loc.alias} onChange={(e) => setLoc({ ...loc, alias: e.target.value })} placeholder="A resort near the beach" /></Field>
       <Button className="w-full" disabled={pending} onClick={() => start(async () => {
         const a = await saveLocation({ district: loc.district, pincode: loc.pincode });
         if ("error" in a) return onError(a.error!);
@@ -268,7 +268,7 @@ function PostForm({ ingredients, onDone, onError }: { ingredients: { id: string;
         <Field label="Best before"><input type="date" className="num" value={f.best_before} onChange={(e) => setF({ ...f, best_before: e.target.value })} /></Field>
         <Field label="Asking price (₹)" hint="Leave 0 to give it away"><input type="number" className="num" value={f.price || ""} onChange={(e) => setF({ ...f, price: Number(e.target.value) })} /></Field>
       </div>
-      <Field label="Note"><input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Opened this morning, kept chilled. Collect before 6pm." /></Field>
+      <Field label="Note"><input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Kept chilled. Collect by 6pm." /></Field>
       <Button className="w-full" disabled={pending || !f.item || !f.qty} onClick={() => start(async () => { const r = await postSurplus({ ingredient_id: f.id || null, item: f.item, qty: f.qty, unit: f.unit, best_before: f.best_before || null, price: f.price, note: f.note }); if ("error" in r) onError(r.error!); else onDone(); })}>List it</Button>
     </div>
   );
@@ -286,7 +286,7 @@ function OfferForm({ labourers, today, onDone, onError }: { labourers: { id: str
         <Field label="To"><input type="time" className="num" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></Field>
       </div>
       <Field label="Note"><input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Has own transport. Speaks Tamil and Malayalam." /></Field>
-      <p className="text-xs text-steel">Only their first name and skill are visible until a neighbour books them. Ask the worker before offering them.</p>
+      <p className="text-xs text-steel">Only first name and skill show until booked. Ask the worker first.</p>
       <Button className="w-full" disabled={pending || !f.id} onClick={() => start(async () => { const r = await offerStandby(f.id, f.date, f.from, f.to, f.note); if ("error" in r) onError(r.error!); else onDone(); })}>Offer for that day</Button>
     </div>
   );

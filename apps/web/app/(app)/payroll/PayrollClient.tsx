@@ -65,20 +65,20 @@ export function PayrollClient({ month, today, property, settings, people, advanc
           {/* ── the switches ── */}
           <Card className="min-w-0" data-payroll-settings>
             <div className="flex items-center gap-2 text-[17px] font-extrabold mb-3"><Settings2 size={18} aria-hidden /> How pay is worked out</div>
-            {([["pf", "PF", "12% from the person and 12% from you, on pay up to ₹15,000. Required from 20 staff."], ["esi", "ESI", "0.75% from the person and 3.25% from you, for pay up to ₹21,000 a month. Required from 10 staff."]] as const).map(([k, label, hint]) => (
+            {([["pf", "PF", "12% staff + 12% you, on pay up to ₹15,000. Needed from 20 staff."], ["esi", "ESI", "0.75% staff + 3.25% you, pay up to ₹21,000/month. Needed from 10 staff."]] as const).map(([k, label, hint]) => (
               <label key={k} className="flex items-start gap-3 py-2 !min-h-11 cursor-pointer"><input type="checkbox" className="h-5 w-5 mt-0.5" checked={cfg[k]} onChange={(e) => setCfg((c) => ({ ...c, [k]: e.target.checked }))} data-switch={k} />
                 <span><span className="block text-[15px] font-bold">Include {label}</span><span className="block text-[12.5px] text-steel">{hint}</span></span></label>))}
-            <label className="flex items-center justify-between gap-3 py-2"><span><span className="block text-[15px] font-bold">Paid weekly offs a month</span><span className="block text-[12.5px] text-steel">Added to days present for people paid by the month</span></span>
+            <label className="flex items-center justify-between gap-3 py-2"><span><span className="block text-[15px] font-bold">Paid weekly offs a month</span><span className="block text-[12.5px] text-steel">Added to days present for monthly-paid staff</span></span>
               <input type="number" min={0} max={8} className="!w-20 num text-center" value={cfg.offs} onChange={(e) => setCfg((c) => ({ ...c, offs: Math.max(0, Math.min(8, Number(e.target.value) || 0)) }))} /></label>
             {cfg.pf && <label className="flex items-start gap-3 py-2 !min-h-11 cursor-pointer"><input type="checkbox" className="h-5 w-5 mt-0.5" checked={cfg.rule} onChange={(e) => setCfg((c) => ({ ...c, rule: e.target.checked }))} data-switch="rule" />
-              <span><span className="block text-[15px] font-bold">The 50% wage rule</span><span className="block text-[12.5px] text-steel">Labour codes, from 21 Nov 2025: PF is worked on at least half of each person&apos;s pay, even when their basic + DA is less. Confirm with your CA how it applies to you.</span></span></label>}
+              <span><span className="block text-[15px] font-bold">The 50% wage rule</span><span className="block text-[12.5px] text-steel">From 21 Nov 2025, PF is on at least half of pay. Check with your CA.</span></span></label>}
             <button type="button" disabled={pending} className="svc-btn quiet sm w-full mt-2" data-save-payroll-settings onClick={() => act(saveSettings(cfg.pf, cfg.esi, cfg.offs, cfg.rule), "Saved — work the month out again to use it")}><Check size={16} aria-hidden /><Say w="save" /></button>
           </Card>
 
           {/* ── advances ── */}
           <Card className="min-w-0" data-advances>
             <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Wallet size={18} aria-hidden /> Advances</div>
-            <p className="text-[12.5px] text-steel mb-3">Money given ahead of pay; it comes off the next month worked out. Cash leaves the drawer now.</p>
+            <p className="text-[12.5px] text-steel mb-3">Paid now from the drawer; cut from next month&apos;s pay.</p>
             <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-2">
               <select value={adv.who} onChange={(e) => setAdv((a) => ({ ...a, who: e.target.value }))} aria-label="Who">{people.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}</select>
               <input inputMode="decimal" className="num" placeholder="₹" value={adv.amount} onChange={(e) => setAdv((a) => ({ ...a, amount: e.target.value.replace(/[^\d.]/g, "") }))} data-advance-amount />
@@ -101,7 +101,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[17px] font-extrabold"><IndianRupee size={18} aria-hidden /> Pay rates</div>
-            <p className="text-[12.5px] text-steel mt-0.5 max-w-[46rem]">Everyone with a rate is on the month&apos;s sheet. Days present come from attendance (Staff → attendance, or punching in).</p>
+            <p className="text-[12.5px] text-steel mt-0.5 max-w-[46rem]">Everyone with a pay rate is here. Days come from attendance.</p>
           </div>
           {people.length > 0 && <span className="shrink-0 rounded-full px-3 h-8 inline-flex items-center text-[12.5px] font-bold bg-[var(--color-fill)] num" data-rates-count>{people.filter((p) => p.pay).length} of {people.length} on the sheet</span>}
         </div>
@@ -151,7 +151,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
                     {(cfg.pf || cfg.esi) && <div className="flex flex-wrap items-center gap-2 min-w-0 @[62rem]:contents">
                       {cfg.pf && <div className="flex items-center gap-2 min-w-0">
                         <label className={pill(r.pf)}><input type="checkbox" checked={r.pf} onChange={(e) => set({ pf: e.target.checked })} />PF</label>
-                        <label className={cn("relative block w-[6.5rem] shrink-0 transition-opacity", !r.pf && "opacity-40")} title="The share of pay that is basic + DA — PF is worked on it">
+                        <label className={cn("relative block w-[6.5rem] shrink-0 transition-opacity", !r.pf && "opacity-40")} title="Basic + DA share of pay — PF is on this">
                           <input inputMode="numeric" disabled={!r.pf} className="!h-11 !min-h-11 num !pl-3 !pr-[3.6rem]" value={r.basic} onChange={(e) => set({ basic: e.target.value.replace(/[^\d.]/g, "").slice(0, 5) })} aria-label={`${p.full_name}: basic + DA percent`} data-basic-pct />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-steel pointer-events-none" aria-hidden>% basic</span>
                         </label>
@@ -240,7 +240,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
           </div>}
         </>)}
       </Card>
-      <p className="text-[12.5px] text-steel">PF is 12% + 12% of each person&apos;s basic + DA (the Basic % beside their rate){cfg.rule ? ", never under half their pay (the 50% wage rule)," : ""} up to ₹15,000 a month. Labourers paid by the day are under Labour.</p>
+      <p className="text-[12.5px] text-steel">PF is 12% + 12% of basic + DA{cfg.rule ? ", at least half of pay," : ""} up to ₹15,000 a month. Day labourers are under Labour.</p>
     </div>
   );
 }

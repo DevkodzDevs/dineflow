@@ -28,7 +28,7 @@ export function MoreReports({ x }: { x: Extra | null }) {
           {[["Sales before tax", Number(x.net.sales), ""], ["Expenses before GST", Number(x.net.expenses), "text-chili"], ["What is left", left, left >= 0 ? "text-mint" : "text-chili"]].map(([k, v, c]) => (
             <div key={k as string} className="rounded-2xl bg-[var(--color-fill)] px-4 py-3 min-w-0"><div className="text-[12.5px] font-bold text-steel">{k}</div><div className={cn("font-display num text-[26px] leading-tight truncate", c as string)}>{formatINR(v as number)}</div></div>))}
         </div>
-        <p className="mt-2 text-[12.5px] text-steel">Ingredient cost is not taken off here — it shows in the tiles above. GST paid on expenses: {formatINR(Number(x.net.expense_gst))} (may come back as input credit).</p>
+        <p className="mt-2 text-[12.5px] text-steel">Ingredient cost is in the tiles above, not here. GST paid on expenses: {formatINR(Number(x.net.expense_gst))} (may come back as input credit).</p>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">

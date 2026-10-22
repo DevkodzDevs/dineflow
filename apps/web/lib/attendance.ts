@@ -160,7 +160,7 @@ export async function selfiePunch(sub: Subject, fd: FormData) {
   if (!m.methods.includes("selfie")) return { error: "Selfie + location attendance is turned off" };
   if (m.lat == null || m.lng == null) return { error: "The owner has not set the property's location yet" };
   const lat = Number(fd.get("lat")), lng = Number(fd.get("lng")), acc = Math.round(Number(fd.get("accuracy")) || 0);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return { error: "Your location did not come through — allow location and try again" };
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return { error: "No location — allow location and try again" };
   const photo = fd.get("photo");
   if (!(photo instanceof File) || photo.size === 0) return { error: "Take a selfie first" };
   if (photo.size > 1_500_000) return { error: "That photo is too large" };

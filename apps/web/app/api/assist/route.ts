@@ -114,9 +114,9 @@ export async function POST(req: Request) {
   const { path, messages, mode } = body;
   const session = await requireSession(); const s = await createClient();
   // each chat turn is a paid call on our key: a cap per person, and on what they can send
-  if (mode !== "insights" && !allow(`assist:${session.profile.id ?? session.restaurant.id}`, 30, 10 * 60_000)) return NextResponse.json({ error: "Assist needs a short break — try again in a few minutes." }, { status: 429 });
+  if (mode !== "insights" && !allow(`assist:${session.profile.id ?? session.restaurant.id}`, 30, 10 * 60_000)) return NextResponse.json({ error: "Too many questions. Try again in a few minutes." }, { status: 429 });
   const tooLong = (messages ?? []).some((m) => typeof m?.content !== "string" || m.content.length > 2000);
-  if (tooLong) return NextResponse.json({ error: "That message is too long for Assist — keep it under 2,000 characters." }, { status: 413 });
+  if (tooLong) return NextResponse.json({ error: "Too long. Keep it under 2,000 characters." }, { status: 413 });
   const mods = modulesOf(session);
   // the panel says which screen it is on; a screen the person cannot open gets no facts of its own (a waiter's panel
   // claiming /billing used to be handed the till) — it reads like the home screen instead
@@ -149,11 +149,11 @@ type Ctx = { s: Awaited<ReturnType<typeof createClient>>; session: Session };
 
 /** A failure in words a waiter can act on — never a stack or a key. */
 function say(e: unknown) {
-  if (e instanceof Anthropic.RateLimitError) return "I'm getting a lot of questions right now — give me a minute and ask again.";
-  if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) return "My connection to Claude isn't set up right. The owner should raise it with DineFlow support.";
-  if (e instanceof Anthropic.APIConnectionError) return "I couldn't reach Claude just now. Check the internet and try again.";
+  if (e instanceof Anthropic.RateLimitError) return "I'm busy right now. Ask again in a minute.";
+  if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) return "My link to Claude isn't set up. The owner should tell DineFlow support.";
+  if (e instanceof Anthropic.APIConnectionError) return "Couldn't reach Claude. Check the internet and try again.";
   if (e instanceof Anthropic.APIError) return `Claude had a problem answering (${e.status ?? "no status"}). Try again in a moment.`;
-  return "Something went wrong on my side. Try asking again.";
+  return "Something went wrong. Ask again.";
 }
 
 /** What a period means to a person, and the dates it covers. */

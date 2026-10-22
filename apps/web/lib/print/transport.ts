@@ -12,14 +12,14 @@ const BT_SERVICES = ["000018f0-0000-1000-8000-00805f9b34fb", "e7810a71-73ae-499d
 
 export async function printBluetooth(bytes: Uint8Array, key = "default") {
   const nav = navigator as Navigator & { bluetooth?: { requestDevice: (o: unknown) => Promise<BluetoothDevice> } };
-  if (!nav.bluetooth) throw new Error("This browser has no Bluetooth. Use Chrome on Android/Windows, or choose Network/Browser printing.");
+  if (!nav.bluetooth) throw new Error("No Bluetooth here. Use Chrome, or pick Network/Browser printing.");
   let ch = btCache.get(key);
   if (!ch || !ch.service.device.gatt?.connected) {
     const dev = await nav.bluetooth.requestDevice({ filters: BT_SERVICES.map((s) => ({ services: [s] })).concat([{ namePrefix: "Print" }, { namePrefix: "POS" }, { namePrefix: "BT" }] as never), optionalServices: BT_SERVICES });
     const gatt = await dev.gatt!.connect();
     let found: BluetoothRemoteGATTCharacteristic | undefined;
     for (const s of BT_SERVICES) { try { const svc = await gatt.getPrimaryService(s); const cs = await svc.getCharacteristics(); found = cs.find((c) => c.properties.write || c.properties.writeWithoutResponse); if (found) break; } catch { /* next */ } }
-    if (!found) throw new Error("Paired, but no printable characteristic found on this device.");
+    if (!found) throw new Error("Paired, but this device can't print.");
     ch = found; btCache.set(key, ch);
   }
   for (const part of chunk(bytes)) { const buf = part.buffer.slice(part.byteOffset, part.byteOffset + part.byteLength) as ArrayBuffer; await (ch.properties.writeWithoutResponse ? ch.writeValueWithoutResponse(buf) : ch.writeValue(buf)); await new Promise((r) => setTimeout(r, 20)); }
@@ -27,7 +27,7 @@ export async function printBluetooth(bytes: Uint8Array, key = "default") {
 
 export async function printUsb(bytes: Uint8Array, key = "default") {
   const nav = navigator as Navigator & { usb?: { requestDevice: (o: unknown) => Promise<USBDevice> } };
-  if (!nav.usb) throw new Error("This browser has no WebUSB. Use Chrome on desktop/Android.");
+  if (!nav.usb) throw new Error("USB printing needs Chrome on a computer or Android.");
   let dev = usbCache.get(key);
   if (!dev) { dev = await nav.usb.requestDevice({ filters: [{ classCode: 7 }, { vendorId: 0x04b8 }, { vendorId: 0x0519 }, { vendorId: 0x0416 }, { vendorId: 0x0483 }, { vendorId: 0x1fc9 }] }); usbCache.set(key, dev); }
   if (!dev.opened) await dev.open();

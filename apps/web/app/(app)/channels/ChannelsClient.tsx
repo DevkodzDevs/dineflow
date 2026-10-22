@@ -21,7 +21,7 @@ const OC_HUE: Record<string, string> = { swiggy: "--color-orange", zomato: "--co
 const OTA_NAME: Record<string, string> = { booking_com: "Booking.com", airbnb: "Airbnb", makemytrip: "MakeMyTrip", agoda: "Agoda", expedia: "Expedia" };
 /** what a sync did, in a sentence: the route answers one report line per feed it read */
 const syncSaid = (rep: { added?: number; error?: string; note?: string }[]): [string, "ok" | "err" | "info"] => {
-  if (rep.some((x) => x.note)) return ["Nothing to read yet — add their calendar link with Edit", "info"];
+  if (rep.some((x) => x.note)) return ["No calendar link yet — add it with Edit", "info"];
   const bad = rep.find((x) => x.error); if (bad) return [`Sync failed: ${bad.error}`, "err"];
   const n = rep.reduce((t, x) => t + (x.added ?? 0), 0);
   return [n ? `Synced · ${n} new booking${n === 1 ? "" : "s"}` : "Synced · nothing new", "ok"];
@@ -89,8 +89,8 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
 
       {tab === "food" && (<div className="space-y-4">
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-          <b>How this works.</b> Each channel gets its own webhook address. Give that URL to whoever sends you orders and they appear on the <Link href="/online-orders" className="tap underline font-semibold">Online orders</Link> screen, print a KOT and deduct stock like any other order.
-          Swiggy and Zomato only hand out direct API access to approved partners, so most restaurants connect through a middleware (UrbanPiper, Petpooja Connect and similar) or start with their own website. Paste the URL there and it works today; swap in direct credentials the day you get them.</div></Card>
+          <b>How this works.</b> Each channel has its own link. Give it to the sender; orders show in <Link href="/online-orders" className="tap underline font-semibold">Online orders</Link> like any other.
+          Swiggy and Zomato go through UrbanPiper or Petpooja Connect. Paste the link there.</div></Card>
         <div className="flex justify-end"><Button onClick={() => setEditOc({ kind: "swiggy", commission_pct: 22, prep_minutes: 20 })}><Plus size={16} /> Add channel</Button></div>
         {/* each delivery channel the way an OTA card is (2026-10-21 — the owner: "messy"): its initial in the
             platform's colour, name, commission and prep time, Live / Draft; the webhook as one field with Copy inside
@@ -139,7 +139,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
           </li>); })}
           {orderChannels.length === 0 && <li className="text-sm text-steel">No delivery channels yet.</li>}</ul>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Test it right now</div>
-          <p className="text-sm text-steel">Press <b>Test order</b> on any channel above and watch it appear on the Online orders screen. From outside the app the same thing looks like this:</p>
+          <p className="text-sm text-steel">Press <b>Test order</b> on a channel; it shows in Online orders. From outside the app:</p>
           <pre className="mt-2 text-[11px] num bg-porcelain-2 rounded-xl p-3 !whitespace-pre-wrap [overflow-wrap:anywhere]">{`curl -X POST '${base}/api/webhooks/aggregator/<token>' \\
   -H 'content-type: application/json' \\
   -d '{"id":"TEST-1","customer_name":"Ravi","total":560,
@@ -148,8 +148,8 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
 
       {tab === "rooms" && (<div className="space-y-4">
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-          <b>Two ways to stop double-bookings.</b> <b>iCal</b> works today with Airbnb, Booking.com, Agoda and MakeMyTrip Connect: paste their calendar link into "their feed", and paste your DineFlow link into their site. DineFlow reads their calendars every night at 2:30 am and whenever you press Sync now — check each site for its own timing.
-          <b> API</b> mode (live rates and instant confirmation) needs a certified connection with each OTA or a channel-manager partner; the fields are here so you can switch over without changing anything else.</div></Card>
+          <b>Two ways to stop double-bookings.</b> <b>iCal</b> (Airbnb, Booking.com, Agoda, MakeMyTrip): swap calendar links both ways. Syncs at 2:30 am and on Sync now.
+          <b> API</b> mode (live rates) needs a certified OTA or channel-manager link.</div></Card>
         {/* The OTAs as cards, one per channel (they were rows of one list, each with four loose buttons).
             The grid sizes itself from its own width (@container): one card across below a 64rem list (a
             phone, an iPad upright) — so three channels never leave one alone — and from 64rem (an iPad on
@@ -222,12 +222,12 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
               {/* the actions as the card's footer strip, edge to edge, one equal section each */}
               <CardStrip actions={acts} data-actions />
             </li>); })}
-            {ota.length === 0 && <li className="feather p-6 text-center"><div className="mx-auto h-11 w-11 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Globe size={18} /></div><p className="mt-3 text-sm text-steel">No OTA channels yet. Add Booking.com, Airbnb or any iCal calendar to keep your rooms from double-booking.</p></li>}
+            {ota.length === 0 && <li className="feather p-6 text-center"><div className="mx-auto h-11 w-11 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Globe size={18} /></div><p className="mt-3 text-sm text-steel">No OTA channels yet. Add one to stop double-bookings.</p></li>}
           </ul>
         </section>
         <Card><div className="flex items-center gap-2"><Globe size={16} /><b>Your own booking page</b><Pill tone="ready">0% commission</Pill></div>
           <div className="mt-2 flex gap-2 min-w-0"><input readOnly className="num text-xs min-w-0" value={bookingUrl} /><Button size="sm" variant="outline" onClick={() => copy(bookingUrl)}><Copy size={14} /></Button><a href={bookingUrl} target="_blank" rel="noreferrer"><Button size="sm"><ExternalLink size={14} /> Open</Button></a></div>
-          <p className="text-xs text-steel mt-2">Put this link in your Google Business profile, Instagram bio and WhatsApp. Bookings land straight in Front desk with no commission.</p></Card>
+          <p className="text-xs text-steel mt-2">Share on Google, Instagram, WhatsApp. Bookings go to Front desk.</p></Card>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Sync log</div><ul className="text-sm space-y-1">{log.map((l) => <li key={l.id} className="flex gap-2"><span className="num text-xs text-steel w-28">{new Date(l.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span><Pill tone={l.ok ? "ready" : "alert"}>{l.direction}</Pill><span className="flex-1">{l.message}</span></li>)}{log.length === 0 && <li className="text-steel">Nothing yet.</li>}</ul></Card>
       </div>)}
 
@@ -243,7 +243,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <Field label="Outlet id at the platform"><input name="outlet_ref" className="num" defaultValue={editOc?.outlet_ref ?? ""} /></Field>
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOc?.commission_pct ?? 22} /></Field>
             <Field label="Prep time (min)"><input name="prep_minutes" type="number" className="num" defaultValue={editOc?.prep_minutes ?? 20} /></Field></div>
-          <Field label="Partner API base (optional)" hint="Fill once you have direct or middleware credentials"><input name="api_base" defaultValue={editOc?.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
+          <Field label="Partner API base (optional)" hint="Only if you have partner credentials"><input name="api_base" defaultValue={editOc?.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
           <Field label="API key (optional)" hint={editOc?.has_api_key ? "A key is saved. Leave this blank to keep it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOc?.has_api_key ? "Saved" : "••••••"} /></Field>
           <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="auto_accept" defaultChecked={editOc?.auto_accept} /> Auto-accept matched orders</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_live" defaultChecked={editOc?.is_live} /> Live</label></div>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
@@ -302,7 +302,7 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
           <span className="h-10 w-10 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-[var(--color-tint)]"><Wand2 size={18} /></span>
           <div className="flex-1 min-w-[12rem]">
             <div className="text-[15px] font-semibold">{moves.length ? `Suggested rates for ${moves.length} night${moves.length === 1 ? "" : "s"}` : "Rates look right for the next 14 nights"}</div>
-            <div className="text-xs text-steel">{moves.length ? `${ups} up, ${moves.length - ups} down — from how full each night already is.` : "Suggestions appear when a night fills up or sits empty close in."}</div>
+            <div className="text-xs text-steel">{moves.length ? `${ups} up, ${moves.length - ups} down — from how full each night already is.` : "Tips show when a night is nearly full or empty."}</div>
           </div>
           {moves.length > 0 && <Button disabled={pending} onClick={() => onApply(sel, moves.map((d) => ({ date: d.stay_date, rate: hints[d.stay_date]!.rate })))}>Use suggested rates</Button>}
         </div>
@@ -399,7 +399,7 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
         )}
         {days.length > 14 && <div className="mt-3 flex justify-center"><Button variant="outline" size="sm" onClick={() => setAll(!all)}>{all ? "Show the next 14 nights" : `Show all ${days.length} nights`}</Button></div>}
       </div>
-      <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Bulk update — these rates go out to every connected channel</div>
+      <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Bulk update — sent to every channel</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
           <Field label="From"><input type="date" className="num" value={bulk.from} onChange={(e) => setBulk({ ...bulk, from: e.target.value })} /></Field>
           <Field label="To"><input type="date" className="num" value={bulk.to} onChange={(e) => setBulk({ ...bulk, to: e.target.value })} /></Field>

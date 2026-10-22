@@ -33,7 +33,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
   return (
     <>
       <PageHeader eyebrow="Your trading history, in a form a bank will read" title="Proof of" accent="business"
-        sub="Every month you trade, DineFlow seals the figures and chains them together. Share them with a link only you control."
+        sub="Each month's figures, sealed. Share them by your own link."
         actions={<div className="flex gap-2 no-print">
           <Button variant="outline" onClick={() => window.print()}><Printer size={16} /> Print</Button>
           <Button onClick={() => setSheet(true)}><Link2 size={16} /> Share a record</Button>
@@ -43,15 +43,15 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
       {err && <p className="text-sm text-chili mb-4">{err}</p>}
 
       {periods.length === 0 ? (
-        <Empty title="No months sealed yet" hint="A month can be sealed once it has ended. Press below and DineFlow seals every closed month you have traded."
+        <Empty title="No months sealed yet" hint="A month is sealed after it ends. Tap below to seal them."
           action={<Button disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(`${r.sealed} month(s) sealed.`); })}>Seal my trading history</Button>} />
       ) : (<>
         {/* verification banner — the whole point of the feature */}
         <Card className={cn("flex flex-wrap sm:flex-nowrap items-start gap-3 mb-5", v?.intact ? "!bg-mint-2 border-mint" : "!bg-chili-2 border-chili")}>
           {v?.intact ? <ShieldCheck size={20} className="shrink-0 mt-0.5" /> : <ShieldAlert size={20} className="shrink-0 mt-0.5 text-chili" />}
           <div className="text-sm flex-1 min-w-[12rem]">
-            {v?.intact ? <><b>{v.periods} months sealed and verified.</b> Each month&apos;s figures were fingerprinted when the month closed and chained to the one before it. Nothing has been altered since.</>
-              : <><b className="text-chili">The chain is broken.</b> {v?.broken.map((b) => `${mon(b.period)}: ${b.reason}`).join(" · ")}. A reader of your record will be shown this too — that is what makes an intact chain worth something.</>}
+            {v?.intact ? <><b>{v.periods} months sealed and verified.</b> Nothing has been changed since sealing.</>
+              : <><b className="text-chili">The chain is broken.</b> {v?.broken.map((b) => `${mon(b.period)}: ${b.reason}`).join(" · ")}. Anyone with your link will see this too.</>}
             {v?.head && <div className="num text-[11px] text-steel mt-1.5 break-all">Head fingerprint {v.head.slice(0, 32)}…</div>}
           </div>
           <Button size="sm" variant="outline" className="shrink-0 ml-auto" disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(r.sealed ? `${r.sealed} new month(s) sealed.` : "Already up to date."); })}>Seal new months</Button>
@@ -67,7 +67,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
         {/* the chart a lender actually wants */}
         <Card className="mb-4">
           <h2 className="text-2xl mb-1">Month by month</h2>
-          <p className="text-xs text-steel mb-5">Rooms, dining and delivery, separated. Sealed figures, not a live query.</p>
+          <p className="text-xs text-steel mb-5">Rooms, dining and delivery, from sealed figures.</p>
           <div className="flex items-end gap-1.5 h-48 overflow-x-auto pb-1">
             {periods.map((p, i) => (
               <motion.div key={p.period} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }} className="flex-1 min-w-[26px] flex flex-col items-center gap-1 group">
@@ -120,14 +120,14 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
             <span className="h-11 w-11 shrink-0 rounded-[12px] grid place-items-center bg-[color-mix(in_srgb,var(--color-blue)_16%,transparent)] text-[var(--color-blue)]" aria-hidden><Link2 size={19} /></span>
             <div className="min-w-0">
               <h2 className="text-[21px] leading-tight">Who you have shared it with</h2>
-              <p className="mt-1 text-[12.5px] text-steel leading-snug">Each link opens a read-only record with no login. It expires on its own, you can revoke it any time, and you see every time it was opened.</p>
+              <p className="mt-1 text-[12.5px] text-steel leading-snug">View-only, no login. It expires, or revoke it any time.</p>
             </div>
           </div>
           <button type="button" onClick={() => setSheet(true)} className="no-print svc-btn go sm !px-4 shrink-0 max-sm:w-full" data-new-link><Plus size={17} strokeWidth={2.4} aria-hidden /> New link</button>
         </div>
         {links.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[var(--color-separator)] p-4" data-links-empty>
-            <p className="text-[13.5px] text-[var(--color-label-2)]">No links yet. A bank, a supplier asking for credit terms, or a landlord reviewing your rent — each gets their own link.</p>
+            <p className="text-[13.5px] text-[var(--color-label-2)]">No links yet. Make one each for your bank, supplier or landlord.</p>
             <div className="mt-3 grid grid-cols-3 gap-2" aria-hidden>
               {(["bank", "supplier", "landlord"] as const).map((k) => { const { l, Icon } = PURPOSE[k]; return (
                 <div key={k} className="min-w-0 rounded-xl bg-[var(--color-fill)] px-2 py-2.5 flex flex-col items-center gap-1.5 text-center">
@@ -158,7 +158,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
         )}
       </Card>
 
-      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Lock size={13} className="mt-0.5 shrink-0" /> This record is yours. DineFlow does not send it anywhere, does not score you, and does not show it to lenders unless you create a link and hand it over yourself.</p>
+      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Lock size={13} className="mt-0.5 shrink-0" /> Only you share this record. DineFlow never sends it to anyone.</p>
 
       <Sheet open={sheet} onClose={() => setSheet(false)} title="Share your business record">
         <NewLink periods={periods} onDone={(t, label) => { setSheet(false); copyText(`${base}/record/${t}`); setMsg(`"${label}" created and copied to the clipboard.`); }} onError={setErr} />
@@ -188,7 +188,7 @@ function NewLink({ periods, onDone, onError }: { periods: P[]; onDone: (token: s
       <Field label="Link expires in"><div className="flex gap-2">{[7, 30, 90, 180].map((d) => <button key={d} onClick={() => setF({ ...f, days: d })} className={cn("chip", f.days === d && "on")}>{d} days</button>)}</div></Field>
       <label className={cn("feather p-3 flex gap-3 cursor-pointer text-sm", f.showCosts && "border-mint")}>
     <input type="checkbox" checked={f.showCosts} onChange={(e) => setF({ ...f, showCosts: e.target.checked })} className="mt-0.5" />
-        <span><b>Include supplier and wage costs</b><br /><span className="text-steel text-xs">A lender assessing margin will want these. A supplier negotiating with you probably should not see them.</span></span>
+        <span><b>Include supplier and wage costs</b><br /><span className="text-steel text-xs">Good for a bank. Best hidden from a supplier.</span></span>
       </label>
       <Button className="w-full" disabled={pending} onClick={() => start(async () => { const r = await createLink(f); if ("error" in r) onError(r.error!); else onDone(r.link!.token, f.label); })}>Create link</Button>
     </div>

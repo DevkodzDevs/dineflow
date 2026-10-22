@@ -18,7 +18,7 @@ export async function requestReset(_: unknown, fd: FormData) {
   // Mail that is not set up is said up front, for every id alike. It used to be said only after a
   // real account had been found — so the error itself told a stranger which ids exist.
   if (!emailConfigured() && !otpEcho()) {
-    return { error: "Email is not set up on this server, so a code cannot be sent. Ask Master control to change the password for you." };
+    return { error: "Email is off, so no code can be sent. Ask Master control to reset it." };
   }
 
   let db;

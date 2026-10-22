@@ -24,7 +24,7 @@ export async function setRoomStatus(id: string, status: "available" | "cleaning"
 }
 export async function deleteRoom(id: string) {
   const s = await createClient(); const r = await s.from("rooms").delete().eq("id", id).eq("status", "available").select("id");
-  if (r.error?.code === "23503") return { error: "This room has bookings on record, so it cannot be deleted — mark it out of service instead." };
+  if (r.error?.code === "23503") return { error: "This room has bookings, so it can't be deleted. Mark it out of service." };
   const bad = wrote(r, "Only a free room can be deleted."); if (bad) return bad; bump(); return { ok: true };
 }
 export async function saveRoomType(fd: FormData) {

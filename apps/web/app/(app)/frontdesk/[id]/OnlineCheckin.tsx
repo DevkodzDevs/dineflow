@@ -34,10 +34,10 @@ export function OnlineCheckin({ token, base, at, pre, guest, phone, property, ch
           <div className="min-w-0"><div className="text-[11px] text-steel">ID to check</div><div className="font-semibold truncate">{pre.id_type} ••{pre.id_last4}</div></div>
           <div className="min-w-0"><div className="text-[11px] text-steel">Nationality</div><div className="font-semibold truncate">{pre.nationality || "—"}</div></div>
           <div className="min-w-0"><div className="text-[11px] text-steel">Requests</div><div className="font-semibold text-[13px] leading-snug">{pre.requests || "—"}</div></div>
-          {pre.nationality && pre.nationality.trim().toLowerCase() !== "indian" && <p className="col-span-full text-xs text-[var(--color-orange)]">Foreign national — check the passport and visa and file Form C within 24 hours of arrival.</p>}
+          {pre.nationality && pre.nationality.trim().toLowerCase() !== "indian" && <p className="col-span-full text-xs text-[var(--color-orange)]">Foreign guest — check passport and visa; file Form C within 24 hours.</p>}
         </div>
       ) : (
-        <p className="mt-2 text-sm text-steel">Send the guest a link to fill in their details before they arrive, or hand them this screen on a tablet.</p>
+        <p className="mt-2 text-sm text-steel">Send the guest a link, or hand them this screen on a tablet.</p>
       )}
       <div className="mt-3 grid gap-2 grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))]">
         {wa && <a href={wa} target="_blank" rel="noreferrer" className={`${btn} bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110`}><MessageCircle size={16} className="shrink-0" /> {at ? "Send again" : "Send on WhatsApp"}</a>}

@@ -165,9 +165,9 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
         sub={board.length ? `${board.length} ticket${board.length > 1 ? "s" : ""} · tap the big button when you start, and again when the food is ready` : "All clear — new tickets appear here by themselves"}
         actions={<>
           <span className="h-11 px-4 rounded-full bg-[var(--color-fill)] inline-flex items-center justify-center gap-2 text-[15px] font-bold num" data-clock><Clock size={16} aria-hidden />{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
-          <Link href="/kitchen/board" title="The customer-facing board: what is being prepared and what is ready to collect" className="h-11 px-4 rounded-full inline-flex items-center justify-center gap-2 text-[15px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors"><Tv size={16} aria-hidden /> Order board</Link>
+          <Link href="/kitchen/board" title="Guest screen: orders cooking and ready to collect" className="h-11 px-4 rounded-full inline-flex items-center justify-center gap-2 text-[15px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors"><Tv size={16} aria-hidden /> Order board</Link>
         </>} />
-      {stale > 0 && <p className="-mt-3 mb-4 text-[13px] font-semibold text-chili" title="Older than a day and never marked ready — they are not on the board">{stale} older ticket{stale > 1 ? "s" : ""} still open from earlier</p>}
+      {stale > 0 && <p className="-mt-3 mb-4 text-[13px] font-semibold text-chili" title="Over a day old, never marked ready — not on the board">{stale} older ticket{stale > 1 ? "s" : ""} still open from earlier</p>}
 
       {known.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-4" data-stations>
@@ -299,7 +299,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
           );
         })}
       </div>
-      <p className="mt-4 text-[12px] text-steel">Keys <span className="num font-semibold">1</span>–<span className="num font-semibold">9</span> move tickets on in order, <span className="num font-semibold">R</span> brings back the last one picked up. A bump bar or keyboard plugged into this screen works the same way.</p>
+      <p className="mt-4 text-[12px] text-steel">Keys <span className="num font-semibold">1</span>–<span className="num font-semibold">9</span> move tickets on in order, <span className="num font-semibold">R</span> brings back the last one. A bump bar works too.</p>
     </div>
   );
 }

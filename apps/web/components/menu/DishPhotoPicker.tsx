@@ -47,7 +47,7 @@ export function DishPhotoPicker({ name, category, value, onChange, autoPick = fa
       const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } }, audio: false });
       streamRef.current = st; setLive(true);
       requestAnimationFrame(() => { if (videoRef.current) { videoRef.current.srcObject = st; void videoRef.current.play(); } });
-    } catch { setErr("The camera is blocked or not there — allow it in the browser, or upload a photo instead."); }
+    } catch { setErr("Camera blocked or missing. Allow it, or upload a photo."); }
   };
   const snap = async () => {
     const v = videoRef.current; if (!v || !v.videoWidth) return;
@@ -138,14 +138,14 @@ export function DishPhotoPicker({ name, category, value, onChange, autoPick = fa
           </div>
         </div>
       )}
-      {found && found.length === 0 && !busy && <p className="text-[13px] text-[var(--color-label-2)]">No photo found for this name — try the dish&apos;s common name, or upload your own.</p>}
+      {found && found.length === 0 && !busy && <p className="text-[13px] text-[var(--color-label-2)]">No photo found. Try a common name, or upload your own.</p>}
       {err && <p className="text-[13px] text-[var(--color-red)]">{err}</p>}
 
       <div className="grid grid-cols-2 gap-2" data-own-photo>
         <Button type="button" variant="outline" size="sm" loading={uploading && !live} onClick={() => { void takePhoto(); }} data-take-photo><Camera size={14} /> Take a photo</Button>
         <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()} data-upload><Upload size={14} /> Upload</Button>
       </div>
-      <p className="text-[11px] text-[var(--color-label-3)]">Found photos are free to use and credited (Wikimedia Commons). Your own photos are shrunk before they upload.</p>
+      <p className="text-[11px] text-[var(--color-label-3)]">Found photos are free to use (Wikimedia Commons).</p>
     </div>
     </div>
       <input ref={fileRef} type="file" accept="image/*" hidden style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} />

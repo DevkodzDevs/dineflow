@@ -78,7 +78,7 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
   };
   const starters = () => start(async () => {
     for (const s of STARTERS) { const r = await saveList(null, s.name, s.shift, s.items); if ("error" in r) { toast(r.error!, "err"); return; } }
-    toast("Opening and Closing lists added — edit them to fit");
+    toast("Opening and Closing lists added");
   });
 
   return (
@@ -101,7 +101,7 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
           Your lists — the ones for everyone{myTags.length ? <> and for <ForWhom tags={myTags} look={look} /></> : "."}
         </p>)}
 
-      {active.length === 0 ? <Empty title="No checklists yet" hint={editor ? "Add the Opening and Closing lists most kitchens use, then change them to fit yours." : "Nothing for your job yet. Ask the owner or a manager to set up your opening and closing lists."} /> : shown.length === 0 ? <Empty title="No lists for this choice" hint="Choose another one above, or write one with New list." /> : (
+      {active.length === 0 ? <Empty title="No checklists yet" hint={editor ? "Add ready-made Opening and Closing lists, then edit them." : "Nothing for your job yet. Ask your manager to add lists."} /> : shown.length === 0 ? <Empty title="No lists for this choice" hint="Pick another above, or tap New list." /> : (
         <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3" data-lists>
           {shown.map((l) => {
             const done = doneOf(l); const n = Object.keys(done).length; const all = n >= l.items.length; const { label, Icon } = SHIFT[l.shift];
@@ -199,7 +199,7 @@ function ListEditor({ list, teams, jobs, positions, people, look, preset, onDone
                 </button>); })}
             </div>
           </div>))}
-        <p className="mt-2 text-[12px] text-steel">Pick any mix — a person sees this list when their team, job or position is picked. The owner, managers and supervisors see every list.</p>
+        <p className="mt-2 text-[12px] text-steel">Seen by the picked teams, jobs and positions. Owner, managers and supervisors see all.</p>
       </div>
 
       <label className="block"><span className="text-[13px] font-semibold text-steel">Duties — one a line <span className="num">({items.length}/40)</span></span>
@@ -209,7 +209,7 @@ function ListEditor({ list, teams, jobs, positions, people, look, preset, onDone
       <button type="button" disabled={pending} className="svc-btn go w-full" data-save-list
         onClick={() => start(async () => { setErr(null); const r = await saveList(list?.id ?? null, name, shift, items, active, keysOf(tags, "d"), keysOf(tags, "j"), keysOf(tags, "p")); if ("error" in r) setErr(r.error!); else { toast("Saved"); onDone(); } })}>
         <Check size={18} aria-hidden /><Say w="save_list" /></button>
-      {list && <p className="text-[12.5px] text-steel">Ticks are kept by position: reorder duties on a day nobody has started, or today&apos;s ticks will sit against the new order.</p>}
+      {list && <p className="text-[12.5px] text-steel">Reorder only before anyone starts today, or ticks will shift.</p>}
     </div>
   );
 }

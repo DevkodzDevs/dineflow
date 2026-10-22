@@ -314,7 +314,7 @@ export function Overview({
       {/* ── band: the three ledgers. A flex row rather than a grid: the rota is only drawn when
          somebody else is on the books, and a three-column grid holding two cards leaves a hole. ── */}
       <div className="board-row">
-        <Ranked title="Selling today" rows={dishes} href="/reports" empty="Nothing sold yet — the first order of the day lands here." />
+        <Ranked title="Selling today" rows={dishes} href="/reports" empty="Nothing sold yet today." />
         <div className="feather p-5 flex flex-col min-w-0">
           <Head title="Settled" href="/billing" label="Billing" />
           {tx.length === 0 ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">No bills settled yet today.</p> : (

@@ -18,10 +18,10 @@ export type Full = { ticket: T; property: { id: string; name: string; type: stri
 const ROLE: Record<string, string> = { owner: "Owner", manager: "Manager", supervisor: "Supervisor", cashier: "Cashier", waiter: "Waiter", chef: "Chef", housekeeping: "Housekeeping", frontdesk: "Front desk", master: "Master control" };
 /* replies a support person reaches for most — a tap puts the words in the box, ready to edit */
 const QUICK = [
-  "Thank you — we are looking into it now and will update you here.",
-  "Could you send a screenshot of the screen as it looks now?",
-  "This is fixed. Please pull down to refresh (or close and reopen the app) and try again.",
-  "We have noted this as a feature request — thank you for the idea.",
+  "Thanks — we're looking into it and will update you here.",
+  "Could you send a screenshot of the screen now?",
+  "Fixed. Pull down to refresh (or reopen the app) and try again.",
+  "Noted as a feature request — thanks for the idea.",
 ];
 const dur = (a: string, b: string) => { const m = Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000); if (m < 60) return `${m} min`; const h = Math.floor(m / 60); return h < 24 ? `${h}h ${m % 60}m` : `${Math.floor(h / 24)}d ${h % 24}h`; };
 const digits = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "").replace(/^0+/, "");
@@ -103,7 +103,7 @@ export function TicketDesk({ full, urls }: { full: Full; urls: Record<string, st
                             </a>
                             {/* a screenshot that shows more than it should (a guest's details) can be taken off — the property is told */}
                             <button type="button" disabled={pending} aria-label={`Remove screenshot ${i + 1}`} title="Remove this screenshot" data-drop-shot
-                              onClick={() => { if (confirm("Remove this screenshot? It is deleted, and the property sees that it was removed.")) act(() => dropFile(t.id, m.id, path)); }}
+                              onClick={() => { if (confirm("Delete this screenshot? The property will see it was removed.")) act(() => dropFile(t.id, m.id, path)); }}
                               className="absolute -top-2 -right-2 h-8 w-8 !min-h-0 !min-w-0 rounded-full bg-[var(--color-bg-2)] ring-1 ring-[var(--color-separator)] shadow-sm grid place-items-center text-[var(--color-red)] hover:bg-[var(--color-red-2)]"><X size={14} /></button>
                           </div>
                         ) : null)}
@@ -124,7 +124,7 @@ export function TicketDesk({ full, urls }: { full: Full; urls: Record<string, st
               </div>
             )}
             <textarea rows={4} value={body} onChange={(e) => setBody(e.target.value.slice(0, 5000))} aria-label={mode === "reply" ? "Reply" : "Internal note"}
-              placeholder={mode === "reply" ? `Write to ${t.raised_name ?? "the property"} — they see this on Help & support` : "Only Master control sees a note — what you checked, what you found, what is next"} />
+              placeholder={mode === "reply" ? `Write to ${t.raised_name ?? "the property"} — they see this on Help & support` : "Only Master control sees notes — what you checked, what's next"} />
             <div className="flex flex-wrap items-center gap-2">
               {previews.map((x, i) => (
                 <div key={x} className="relative h-14 w-14 rounded-xl overflow-hidden ring-1 ring-[var(--color-separator)]">
@@ -180,7 +180,7 @@ export function TicketDesk({ full, urls }: { full: Full; urls: Record<string, st
               </div>
               <div className={cn("rounded-xl p-3 flex items-start gap-2.5 text-[12.5px] leading-snug", t.allow_access ? "bg-[var(--color-green-2)]" : "bg-[var(--color-fill)]")} data-consent-state={t.allow_access ? "allowed" : "not"}>
                 {t.allow_access ? <ShieldCheck size={16} className="shrink-0 text-[var(--color-tint)] mt-px" /> : <ShieldAlert size={16} className="shrink-0 text-[var(--color-orange)] mt-px" />}
-                <span>{t.allow_access ? <><b>They allowed access</b> for this request. Everything done inside is logged.</> : <><b>Access not allowed.</b> Ask in a reply before you open the property.</>}</span>
+                <span>{t.allow_access ? <><b>They allowed access</b> for this request. All you do inside is logged.</> : <><b>Access not allowed.</b> Ask in a reply before you open the property.</>}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Link href={`/admin/${p.id}`} className="btn btn-gray !h-11 !text-[13px] !px-3"><ExternalLink size={15} /> Property</Link>

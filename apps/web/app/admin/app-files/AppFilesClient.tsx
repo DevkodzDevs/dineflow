@@ -21,11 +21,11 @@ const versionIn = (name: string) => name.match(/(\d+\.\d+(?:\.\d+){0,2})/)?.[1] 
 /** What Storage's refusal means, in words the owner can act on. */
 function why(status: number, body: string): string {
   if (status === 413 || /maximum allowed size|too large|exceeded/i.test(body))
-    return "The file is larger than your Supabase upload limit (50 MB on the Free plan) — put it on Cloudflare R2 and paste its link below, or raise Supabase → Storage → Settings → “Upload file size limit”.";
-  if (/bucket not found/i.test(body)) return "App files storage is not set up yet — migration 0128 has to be applied first.";
-  if (/mime|content type|not supported/i.test(body)) return "Supabase refused this kind of file. An Android file must be an .apk and a Windows file an .exe.";
-  if (status === 403 || /row-level security|unauthori[sz]ed|policy/i.test(body)) return "Only Master control can upload app files — sign in again as Master control.";
-  if (/already exists|duplicate/i.test(body)) return "A file with this name is already uploaded — give it a new version number.";
+    return "Over Supabase's 50 MB limit. Put it on Cloudflare R2 and paste its link below.";
+  if (/bucket not found/i.test(body)) return "File storage needs migration 0128 — apply it first.";
+  if (/mime|content type|not supported/i.test(body)) return "Wrong file type. Android needs an .apk, Windows an .exe.";
+  if (status === 403 || /row-level security|unauthori[sz]ed|policy/i.test(body)) return "Only Master control can upload. Sign in again as Master control.";
+  if (/already exists|duplicate/i.test(body)) return "That version is already uploaded — use a new number.";
   return `Upload failed (${status || "no connection"}). Check the internet and try again.`;
 }
 
@@ -35,7 +35,7 @@ async function send(file: File, path: string, contentType: string, onProgress: (
   const sb = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, ""), key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
   const { data } = await (await getClient()).auth.getSession();
   const token = data.session?.access_token;
-  if (!token) throw new Error("You are signed out — sign in as Master control and try again.");
+  if (!token) throw new Error("Signed out. Sign in as Master control and try again.");
   await new Promise<void>((resolve, reject) => {
     const x = new XMLHttpRequest();
     x.open("POST", `${sb}/storage/v1/object/app-files/${path.split("/").map(encodeURIComponent).join("/")}`);
@@ -80,7 +80,7 @@ function Card({ kind, rows, ready }: { kind: Kind; rows: Release[]; ready: boole
       <div className="p-5 flex items-center gap-3 border-b border-[var(--color-separator)]">
         <span className="h-11 w-11 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-tint)] shrink-0"><k.Icon size={20} aria-hidden /></span>
         <div className="min-w-0 flex-1"><div className="text-[17px] font-bold">{k.title} <span className="text-[var(--color-label-2)] font-semibold">({k.ext})</span></div>
-          <div className="text-[12.5px] text-[var(--color-label-2)] truncate">{cur ? <>v{cur.version} · {cur.external_url ? "link" : "uploaded"} · {mb(cur.size_bytes)} · {when(cur.created_at)}</> : "Nothing uploaded yet — the install screens use the file built on this machine, or show “coming soon”."}</div></div>
+          <div className="text-[12.5px] text-[var(--color-label-2)] truncate">{cur ? <>v{cur.version} · {cur.external_url ? "link" : "uploaded"} · {mb(cur.size_bytes)} · {when(cur.created_at)}</> : "Nothing uploaded. Install screens use the local build or show “coming soon”."}</div></div>
         {cur && <a href={cur.url} download={cur.file_name} className="h-10 px-3.5 rounded-xl inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] shrink-0" data-app-file-current><Download size={15} aria-hidden /> Test download</a>}
       </div>
 
@@ -155,7 +155,7 @@ function LinkForm({ kind, rows, ready, onDone }: { kind: Kind; rows: Release[]; 
   });
   return (
     <div className="grid gap-2 border-t border-[var(--color-separator)] pt-3" data-app-file-link>
-      {kind === "windows" && <p className="text-[12.5px] text-[var(--color-label-2)]">Bigger than 50 MB? Put it on Cloudflare R2 and paste its public link here.</p>}
+      {kind === "windows" && <p className="text-[12.5px] text-[var(--color-label-2)]">Over 50 MB? Put it on Cloudflare R2 and paste its link.</p>}
       {!open
         ? <button type="button" disabled={!ready} onClick={() => setOpen(true)} className="justify-self-start h-11 px-3.5 rounded-xl inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] disabled:opacity-50" data-app-file-link-open><Link2 size={15} aria-hidden /> or paste a download link</button>
         : <div className="grid gap-3">
@@ -181,14 +181,14 @@ function LinkForm({ kind, rows, ready, onDone }: { kind: Kind; rows: Release[]; 
 export function AppFilesClient({ rows, ready }: { rows: Release[]; ready: boolean }) {
   return (
     <div className="mt-6 grid gap-4">
-      {!ready && <p className="card p-4 text-[13.5px] text-[var(--color-orange)]" data-app-files-not-ready>App files storage is not set up yet — migration 0128 has to be applied before files can be uploaded.</p>}
+      {!ready && <p className="card p-4 text-[13.5px] text-[var(--color-orange)]" data-app-files-not-ready>File storage needs migration 0128 before you can upload.</p>}
       <div className="grid gap-4 lg:grid-cols-2" data-app-files>
         <Card kind="android" rows={rows.filter((r) => r.platform === "android")} ready={ready} />
         <Card kind="windows" rows={rows.filter((r) => r.platform === "windows")} ready={ready} />
       </div>
       <div className="card p-4 text-[13px] text-[var(--color-label-2)] grid gap-1" data-app-files-help>
         <b className="text-[var(--color-label)]">One-time Supabase setting.</b>
-        <span>Supabase limits every upload to 50 MB (fixed on the Free plan), and the Windows app is about 78 MB. Put that file on <b>Cloudflare R2</b> (free) and use <b>or paste a download link</b> on the Windows card — the steps are in docs/install-builds.md. On a paid Supabase plan you can instead raise <b>Storage → Settings → Upload file size limit</b> to 100 MB and upload it here. The Android app (under 1 MB) uploads without either.</span>
+        <span>Supabase Free caps uploads at 50 MB; the Windows app is about 78 MB. Put it on <b>Cloudflare R2</b> (free) and use <b>or paste a download link</b> (steps: docs/install-builds.md). On a paid plan, raise <b>Storage → Settings → Upload file size limit</b> to 100 MB. Android (under 1 MB) uploads as is.</span>
       </div>
     </div>
   );

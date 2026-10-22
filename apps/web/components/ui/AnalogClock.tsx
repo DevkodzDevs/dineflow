@@ -15,7 +15,23 @@ const IST = 330 * 60 * 1000; // the business day is Asia/Kolkata, which has no d
  * hands standing at twelve. The second hand ticks with a short transition; at midnight, when its
  * angle drops back, the transition is skipped so it does not sweep backwards round the dial.
  * Before mount there are no hands (no server/client mismatch); they fade in.
+ *
+ * Light on a phone (2026-10-22, the owner: "a lightweight feel"). The face — bezel, 60 marks — is drawn once (FACE) and
+ * never re-rendered with the seconds. The second hand is its own small SVG laid over the face and turned as a box, so its
+ * tick is a compositor transition; turned as a shape inside one SVG it restyled and repainted the main thread for a
+ * fifth of every second (measured in a trace of an idle Control room). The cap sits on top in a third layer.
  */
+const FACE = (<>
+  <circle cx="50" cy="50" r="49" className="ac-bezel" />
+  <circle cx="50" cy="50" r="46" className="ac-face" />
+  {Array.from({ length: 60 }, (_, i) => {
+    const a = (i * 6 * Math.PI) / 180, sin = Math.sin(a), cos = Math.cos(a);
+    if (i % 5) return <circle key={i} cx={50 + 41.5 * sin} cy={50 - 41.5 * cos} r="0.75" className="ac-dot" />;
+    const quarter = i % 15 === 0, r1 = quarter ? 33.5 : 36;
+    return <line key={i} x1={50 + r1 * sin} y1={50 - r1 * cos} x2={50 + 42 * sin} y2={50 - 42 * cos} className="ac-tick" strokeWidth={quarter ? 3.4 : 2.2} />;
+  })}
+</>);
+const LAYER = "absolute inset-0 h-full w-full overflow-visible";
 export function AnalogClock({ className }: { className?: string }) {
   const [s, setS] = useState<{ t: number; jump: boolean } | null>(null);
   useEffect(() => {
@@ -40,23 +56,18 @@ export function AnalogClock({ className }: { className?: string }) {
   const at = (deg: number) => ({ transform: `rotate(${deg}deg)` });
 
   return (
-    <svg viewBox="0 0 100 100" className={cn("analog-clock", className)} role="img" aria-label={label} data-time={s ? `${hh}:${String(mm).padStart(2, "0")}` : undefined}>
-      <circle cx="50" cy="50" r="49" className="ac-bezel" />
-      <circle cx="50" cy="50" r="46" className="ac-face" />
-      {Array.from({ length: 60 }, (_, i) => {
-        const a = (i * 6 * Math.PI) / 180, sin = Math.sin(a), cos = Math.cos(a);
-        if (i % 5) return <circle key={i} cx={50 + 41.5 * sin} cy={50 - 41.5 * cos} r="0.75" className="ac-dot" />;
-        const quarter = i % 15 === 0, r1 = quarter ? 33.5 : 36;
-        return <line key={i} x1={50 + r1 * sin} y1={50 - r1 * cos} x2={50 + 42 * sin} y2={50 - 42 * cos} className="ac-tick" strokeWidth={quarter ? 3.4 : 2.2} />;
-      })}
-      <g className={cn("ac-hands", s && "on")}>
-        <g className="ac-hand" data-hand="hour" style={at(hour)}><line x1="50" y1="57" x2="50" y2="28" className="ac-hour" /></g>
-        <g className="ac-hand" data-hand="minute" style={at(minute)}><line x1="50" y1="59" x2="50" y2="14.5" className="ac-min" /></g>
-        <g className={cn("ac-hand ac-sec", !s?.jump && "ticks")} data-hand="second" style={at(second)}>
-          <line x1="50" y1="64" x2="50" y2="20" /><circle cx="50" cy="18" r="3.4" />
+    <span className={cn("analog-clock relative", className)} role="img" aria-label={label} data-time={s ? `${hh}:${String(mm).padStart(2, "0")}` : undefined}>
+      <svg viewBox="0 0 100 100" className={LAYER} aria-hidden>
+        {FACE}
+        <g className={cn("ac-hands", s && "on")}>
+          <g className="ac-hand" data-hand="hour" style={at(hour)}><line x1="50" y1="57" x2="50" y2="28" className="ac-hour" /></g>
+          <g className="ac-hand" data-hand="minute" style={at(minute)}><line x1="50" y1="59" x2="50" y2="14.5" className="ac-min" /></g>
         </g>
-        <circle cx="50" cy="50" r="2.4" className="ac-cap" />
-      </g>
-    </svg>
+      </svg>
+      <svg viewBox="0 0 100 100" className={cn(LAYER, "ac-hands ac-sec", s && "on", !s?.jump && "ticks")} data-hand="second" style={at(second)} aria-hidden>
+        <line x1="50" y1="64" x2="50" y2="20" /><circle cx="50" cy="18" r="3.4" />
+      </svg>
+      <svg viewBox="0 0 100 100" className={cn(LAYER, "ac-hands", s && "on")} aria-hidden><circle cx="50" cy="50" r="2.4" className="ac-cap" /></svg>
+    </span>
   );
 }

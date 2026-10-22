@@ -2,6 +2,9 @@ import { aiEnabled } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { SvcHead } from "@/components/ui/Service";
 import { OnlineClient } from "./OnlineClient";
+import { OnlineDishes, type OnlineDish } from "./OnlineDishes";
+import { canSetOnline } from "@/lib/online";
+import { modulesFor } from "@dineflow/shared";
 import { KitchenPace } from "./KitchenPace";
 import { requireSession } from "@/lib/auth";
 import Link from "next/link";
@@ -16,8 +19,11 @@ export default async function OnlineOrders() {
     requireSession(),
     s.from("online_orders").select("*, order_channels(kind, label, prep_minutes)").gte("placed_at", new Date(Date.now() - 2 * 86400000).toISOString()).order("placed_at", { ascending: false }),
     s.from("order_channels").select("id, kind, label, is_live"),
-    s.from("menu_items").select("id, name, price").eq("is_active", true).order("name"),
+    // every dish, with both switches: the order cards map names to them, the Dishes online sheet switches them (0132)
+    s.from("menu_items").select("id, name, price, is_veg, is_available, online_available, categories(name)").eq("is_active", true).order("name"),
   ]);
-  return (<><SvcHead icon="online" title="Online orders" sub="Swiggy, Zomato and your website — accept them quickly; the kitchen gets the same ticket as a table"
-    actions={["owner", "manager"].includes(session.profile.role) ? <Link href="/online-orders/payouts" className="svc-btn quiet sm !px-5" data-payouts-link><Landmark size={18} aria-hidden /> Payouts</Link> : undefined} /><KitchenPace initial={{ rush_extra_min: Number(session.restaurant.rush_extra_min ?? 0), rush_until: (session.restaurant.rush_until as string | null) ?? null, online_paused_until: (session.restaurant.online_paused_until as string | null) ?? null }} /><OnlineClient ai={aiEnabled()} orders={(orders ?? []) as never} channels={channels ?? []} menu={menu ?? []} /></>);
+  const mods = modulesFor(session.restaurant.property_type, session.profile.role, session.restaurant.enabled_modules ?? null, session.profile.allowed_modules ?? null);
+  const dishes: OnlineDish[] = ((menu ?? []) as unknown as (Omit<OnlineDish, "category"> & { categories: { name: string } | { name: string }[] | null })[]).map((m) => ({ ...m, category: (Array.isArray(m.categories) ? m.categories[0]?.name : m.categories?.name) ?? null }));
+  return (<><SvcHead icon="online" title="Online orders" sub="Swiggy, Zomato and your website. Accept fast; the kitchen gets a ticket."
+    actions={["owner", "manager"].includes(session.profile.role) ? <Link href="/online-orders/payouts" className="svc-btn quiet sm !px-5" data-payouts-link><Landmark size={18} aria-hidden /> Payouts</Link> : undefined} /><KitchenPace initial={{ rush_extra_min: Number(session.restaurant.rush_extra_min ?? 0), rush_until: (session.restaurant.rush_until as string | null) ?? null, online_paused_until: (session.restaurant.online_paused_until as string | null) ?? null }} /><div className="mb-5"><OnlineDishes dishes={dishes} canEdit={canSetOnline(session.profile.role, mods)} /></div><OnlineClient ai={aiEnabled()} orders={(orders ?? []) as never} channels={channels ?? []} menu={dishes} /></>);
 }

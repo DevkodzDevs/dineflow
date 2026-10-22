@@ -21,7 +21,7 @@ export default async function AppFilesPage() {
     <div>
       <div className="eyebrow">Platform</div>
       <h1 className="text-[34px] md:text-[48px] mt-1">App <em>files</em></h1>
-      <p className="text-sm text-[var(--color-label-2)] mt-2 max-w-2xl">The Android app and the Windows app that every install screen offers as a one-click download. Drop a new file on its card and press Upload — staff get the new one within a minute. Nothing to set on Vercel, nothing to deploy.</p>
+      <p className="text-sm text-[var(--color-label-2)] mt-2 max-w-2xl">The Android and Windows apps staff install. Drop a file on its card and press Upload — live in a minute.</p>
       <AppFilesClient rows={rows} ready={!error} />
     </div>
   );

@@ -41,7 +41,7 @@ export async function saveChannel(fd: FormData) {
 }
 export async function deleteChannel(id: string) {
   const s = await createClient(); const r = await s.from("order_channels").delete().eq("id", id).select("id");
-  if (r.error?.code === "23503") return { error: "This channel has orders on record, so it cannot be removed — switch it off instead." };
+  if (r.error?.code === "23503") return { error: "This channel has past orders. Switch it off instead." };
   const bad = wrote(r, "That channel could not be removed."); if (bad) return bad; revalidatePath("/channels"); return { ok: true };
 }
 
@@ -84,4 +84,16 @@ export async function setRush(extra: number, forMin: number, pause: boolean) {
   if (error) return { error: error.message };
   revalidatePath("/online-orders");
   return { ok: true as const, pace: data as { rush_extra_min: number; rush_until: string | null; online_paused_until: string | null } };
+}
+
+/** Dishes on or off online (0132) — separate from Sold out: off online, a dish is still sold at the till and the table.
+ *  set_online_available checks the caller itself: owner, manager, chef, or a supervisor holding Online orders. */
+export async function setOnlineAvailable(ids: string[], on: boolean) {
+  const clean = [...new Set(ids)].filter((x) => /^[0-9a-f-]{36}$/.test(x)).slice(0, 500);
+  if (!clean.length) return { error: "Pick a dish first." };
+  const s = await createClient();
+  const { data, error } = await s.rpc("set_online_available", { p_ids: clean, p_on: on });
+  if (error) return { error: error.code === "42501" ? "Only the chef, a manager or an online supervisor can change this." : error.message };
+  ["/online-orders", "/menu"].forEach((p) => revalidatePath(p));
+  return { ok: true as const, changed: Number(data ?? 0) };
 }

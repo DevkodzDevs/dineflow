@@ -108,11 +108,18 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
               then the foot — how long, and one compact move with + beside it to seat the next party anyway */}
           <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span>{seats}</div>
           <div className="tstate"><I size={19} aria-hidden /><Say w="cleaning" start /></div>
-          <div className="mt-1 text-[13px] font-semibold text-[var(--color-label-2)] truncate num" data-clean-who>{who} · {since}</div>
+          <div className="max-md:hidden mt-1 text-[13px] font-semibold text-[var(--color-label-2)] truncate num" data-clean-who>{who} · {since}</div>
+          {/* a phone (2026-10-22, the owner: "not looking good" — the live card cut "Waiting for someone · 2d …" and wrapped
+              its button): who has it in a few words on the left, how long in a tinted pill on the right that never truncates */}
+          <div className="md:hidden mt-2 flex items-center gap-1.5 min-w-0" data-clean-who-phone>
+            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-[var(--color-label-2)]" title={who}>
+              {c.status === "in_progress" ? (c.taken_by === me ? "You're on it" : `${(c.taken_name ?? "Someone").split(" ")[0]}'s on it`) : c.assigned_to ? `For ${c.assigned_to === me ? "you" : (c.assigned_name ?? "").split(" ")[0]}` : "Nobody yet"}</span>
+            <span className="shrink-0 h-6 px-2 rounded-full inline-flex items-center gap-1 text-[12px] font-bold num" style={{ background: "color-mix(in srgb, var(--st) 16%, transparent)", color: "var(--st-ink)" }}><Clock size={12} aria-hidden />{since}</span>
+          </div>
           <div className="mt-auto pt-2 flex items-center gap-2 min-w-0">
             <span className="flex items-center gap-1.5 min-w-0 w-full">
-              {canTake ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold bg-[var(--st)] text-[var(--color-bezel)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-take onClick={() => start(async () => { const r = await takeJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is yours`); })}><Sparkles size={15} aria-hidden /><Say w="take_it" /></button>
-                : canDone ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold bg-[var(--color-green)] text-[var(--color-on-tint)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-done onClick={() => start(async () => { const r = await finishJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is clean`); })}><Check size={16} aria-hidden /><Say w="clean_done" /></button>
+              {canTake ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold whitespace-nowrap overflow-hidden bg-[var(--st)] text-[var(--color-bezel)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-take onClick={() => start(async () => { const r = await takeJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is yours`); })}><Sparkles size={15} aria-hidden className="shrink-0 max-[399.98px]:hidden" /><span className="min-w-0 truncate"><Say w="take_it" /></span></button>
+                : canDone ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold whitespace-nowrap overflow-hidden bg-[var(--color-green)] text-[var(--color-on-tint)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-done onClick={() => start(async () => { const r = await finishJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is clean`); })}><Check size={16} aria-hidden className="shrink-0 max-[399.98px]:hidden" /><span className="min-w-0 truncate"><Say w="clean_done" /></span></button>
                 : <Link href="/cleaning" className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center text-[13px] font-bold bg-[var(--color-fill-2)] before:absolute before:-inset-1 before:content-['']">See who</Link>}
               <Link href={`/orders/new?table=${t.id}`} className="relative h-9 w-9 shrink-0 rounded-full grid place-items-center bg-[var(--color-fill-2)] hover:bg-[var(--color-fill)] before:absolute before:-inset-1 before:content-['']" aria-label={`Take order at ${t.name} anyway`} title="Seat the next party now"><Plus size={17} aria-hidden /></Link>
             </span>
@@ -204,7 +211,7 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
           </section>
         )}
         {only && <button type="button" onClick={() => setOnly(null)} className="svc-btn quiet sm w-full sm:w-auto">Show every table</button>}
-        {tables.length === 0 && <Empty title="No tables set up" hint="Add tables in Settings, or take a parcel order right away." action={<Link href="/orders/new?type=takeaway" className="svc-btn go sm"><ShoppingBag size={18} /> Parcel / Takeaway</Link>} />}
+        {tables.length === 0 && <Empty title="No tables set up" hint="Add tables in Settings, or take a parcel order." action={<Link href="/orders/new?type=takeaway" className="svc-btn go sm"><ShoppingBag size={18} /> Parcel / Takeaway</Link>} />}
       </>) : (
         <section data-open-orders>
           {orders.length === 0

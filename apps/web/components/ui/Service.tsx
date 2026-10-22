@@ -18,7 +18,8 @@ export function StateChip({ s, n, onClick, on, className }: { s: Svc | "late"; n
 
 /** The head of a Dining screen: its picture in a square, the title, one plain sentence; actions on the right. */
 const HEAD_ICON: Record<string, LucideIcon> = { tables: Armchair, cleaning: SprayCan, work: ListTodo, orders: ClipboardList, kitchen: Flame, billing: Receipt, reservations: CalendarCheck, pulse: Activity, qr: QrCode, online: Bike, customers: HeartHandshake, menu: UtensilsCrossed, pantry: Boxes };
-export function SvcHead({ icon, title, sub, actions, className }: { icon: keyof typeof HEAD_ICON | string; title: ReactNode; sub?: ReactNode; actions?: ReactNode; className?: string }) {
+/** `actionsClassName` places the actions per screen (2026-10-22: Pulse moves Join by QR into its glance card on a phone). */
+export function SvcHead({ icon, title, sub, actions, className, actionsClassName }: { icon: keyof typeof HEAD_ICON | string; title: ReactNode; sub?: ReactNode; actions?: ReactNode; className?: string; actionsClassName?: string }) {
   const I = HEAD_ICON[icon] ?? UtensilsCrossed;
   return (
     <div className={cn("mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3", className)} data-svc-head>
@@ -26,7 +27,7 @@ export function SvcHead({ icon, title, sub, actions, className }: { icon: keyof 
         <span className="ico" aria-hidden><I size={24} /></span>
         <div className="min-w-0"><h1 className="truncate">{title}</h1>{sub && <p>{sub}</p>}</div>
       </div>
-      {actions && <div className="flex items-center gap-2 flex-wrap max-sm:w-full max-sm:[&>*]:flex-1">{actions}</div>}
+      {actions && <div className={cn("flex items-center gap-2 flex-wrap max-sm:w-full max-sm:[&>*]:flex-1", actionsClassName)}>{actions}</div>}
     </div>
   );
 }

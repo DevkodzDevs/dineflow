@@ -35,7 +35,7 @@ export function PayoutsClient({ channels, rows, today }: { channels: { id: strin
   const name = (id: string) => channels.find((c) => c.id === id)?.label ?? "Channel";
   const short = rows.filter((r) => gapOf(r) < -1);
 
-  if (!channels.length) return <Empty title="No channels yet" hint="Add Swiggy or Zomato under Channels first; their orders carry the payout this screen checks." />;
+  if (!channels.length) return <Empty title="No channels yet" hint="Add Swiggy or Zomato in Channels first." />;
   return (
     <div className="space-y-5 max-w-[1200px]">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
@@ -77,7 +77,7 @@ export function PayoutsClient({ channels, rows, today }: { channels: { id: strin
             <div className={cn("feather !rounded-[18px] px-4 py-3", short.length && "!border-[var(--color-red)]")}><div className="text-[12px] font-bold text-steel">Short</div><div className={cn("font-display num text-[24px]", short.length ? "text-chili" : "")} data-short-total>{short.length ? inr(-short.reduce((a, r) => a + gapOf(r), 0)) : "None"}</div></div>
           </div>
           <Card className="!p-0 overflow-hidden" data-payout-list>
-            {rows.length === 0 ? <p className="p-4 text-sm text-steel">Nothing written down yet. Swiggy and Zomato send a weekly statement with the UTR — note each one here.</p> : rows.map((r) => { const g = gapOf(r); return (
+            {rows.length === 0 ? <p className="p-4 text-sm text-steel">None yet. Note each weekly Swiggy or Zomato payout and its UTR here.</p> : rows.map((r) => { const g = gapOf(r); return (
               <div key={r.id} className="px-4 py-3 border-b border-[var(--color-separator)] last:border-b-0 flex items-center gap-3 min-w-0" data-payout={r.id}>
                 <div className="min-w-0 flex-1">
                   <div className="text-[15px] font-bold truncate">{name(r.channel_id)} · {d(r.period_from)}–{d(r.period_to)}</div>

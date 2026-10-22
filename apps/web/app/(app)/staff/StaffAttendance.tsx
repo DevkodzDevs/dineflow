@@ -49,7 +49,7 @@ export function StaffAttendance({ today, staff, att, methods, canMark, property 
         {badge && <div className="space-y-3 text-center">
           <div className="grid place-items-center rounded-2xl bg-white p-4"><QR value={`df:staff:${badge.staff_code}`} size={200} /></div>
           <div className="font-semibold">{badge.full_name} · <span className="num">{badge.staff_code}</span></div>
-          <p className="text-xs text-steel">{property}. Scan on the Scan page — first scan punches in, the next punches out.</p>
+          <p className="text-xs text-steel">{property}. Scan on the Scan page: once to clock in, again to clock out.</p>
           <Button variant="outline" className="w-full" onClick={() => window.print()}>Print</Button>
         </div>}
       </Sheet>

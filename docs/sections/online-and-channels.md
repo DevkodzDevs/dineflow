@@ -123,6 +123,21 @@ and the OTA sync read the key as owner / service role. The OTA sync also resolve
 refuses one that resolves to a private address (`lib/netguard.ts` — `10.0.0.5.nip.io` passed the old
 text-only check).
 
+**Dishes online** (0132, 2026-10-22 — the owner: "set which dishes are available online, by the chef, the manager and the
+online-orders supervisors"). `menu_items.online_available` (default true) is separate from `is_available` (Sold out):
+off online, Swiggy, Zomato and the website stop selling a dish; the till and the table QR still do. Sold out still stops it
+everywhere. `OnlineDishes.tsx` is a card under Kitchen pace ("Dishes online · N off online · M sold out", `[data-online-dishes]`)
+opening a sheet: search, All / Off online / Sold out chips, every dish under its category with a switch
+(`[data-online-dish]`, `data-online="true|false|sold"`; sold-out rows are shown, not switched — "turn on in Menu"), and
+*Turn all on*. Writes go through `set_online_available(ids, on)` (security definer, checks the caller): **the owner, a
+manager, a chef, or a supervisor of either rank holding Online orders** — `canSetOnline` (lib/online.ts, tested against the
+migration's text) decides whether the screen shows switches; anyone else (a cashier) sees the list read-only with the
+reason (`[data-online-locked]`). A chef, who does not hold Online orders, switches it from Menu (menu.md). The website:
+`dine_storefront` carries `online` per dish; for delivery and takeaway an off-online dish shows *not online* with no Add
+(`[data-not-sold="online"]`) and leaves the basket on switching mode; `dine_order` skips it except `dine_in`. An aggregator
+keeps its own menu and can still send one: a new order's card says *Off online: X. Reject, or accept if you can make it.*
+(`[data-off-online]`). Probe `online56.mjs` (16), dry run `dry132.cjs` (12).
+
 ## Before you edit
 
 - **Payouts (`/online-orders/payouts`, 0105; owner or manager — a *Payouts* button in the header).** Pick the

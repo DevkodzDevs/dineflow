@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ImagePlus, X, Send, Loader2, CheckCircle2, RotateCcw, ShieldCheck, Star, CircleCheck, Sparkles } from "lucide-react";
+import { ImagePlus, X, Send, Loader2, CheckCircle2, RotateCcw, ShieldCheck, Star, CircleCheck, Sparkles } from "lucide-react";
 import { Button, Card, Switch, cn } from "@/components/ui";
 import { kindOf, ticketNo, stamp, when, topicLabel, daysLeft, eventText, CONTACT, SHOT_MAX } from "@/lib/support";
 import { kindIcon } from "@/components/support/icons";
@@ -51,7 +51,6 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
   return (
     <div className="space-y-5" data-thread={t.ticket_no}>
       <div className="flex items-center gap-3 min-w-0">
-        <Link href="/help" aria-label="Back to Help & support" className="h-11 w-11 shrink-0 rounded-2xl bg-[var(--color-fill)] grid place-items-center hover:bg-[var(--color-fill-2)] transition-colors"><ChevronLeft size={18} /></Link>
         <div className="min-w-0 flex-1">
           <div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[var(--color-label-3)] num">{ticketNo(t.ticket_no)} · Help & support</div>
           <h1 className="text-[24px] sm:text-[30px] font-display leading-[1.25] pb-0.5 truncate" title={t.subject}>{t.subject}</h1>
@@ -61,7 +60,7 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
       {sent && (
         <div className="rounded-2xl p-4 flex items-start gap-3 bg-[var(--color-green-2)]" data-sent>
           <CircleCheck size={20} className="shrink-0 text-[var(--color-tint)] mt-px" />
-          <div className="text-[13.5px] leading-snug"><b>Sent — {ticketNo(t.ticket_no)}.</b> The DineFlow team has it now, and every reply will appear below{CONTACT.hours ? ` (${CONTACT.hours})` : ""}.{t.kind === "privacy" && <> A privacy & consent request is answered within {CONTACT.grievanceDays} days.</>}</div>
+          <div className="text-[13.5px] leading-snug"><b>Sent — {ticketNo(t.ticket_no)}.</b> Our team has it. Replies show below{CONTACT.hours ? ` (${CONTACT.hours})` : ""}.{t.kind === "privacy" && <> A privacy & consent request is answered within {CONTACT.grievanceDays} days.</>}</div>
         </div>
       )}
 
@@ -160,7 +159,7 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
           {manage && !closed && (
             <label className="feather flex items-start gap-3 p-4 cursor-pointer" data-access>
               <ShieldCheck size={18} className="shrink-0 mt-0.5 text-[var(--color-tint)]" />
-              <span className="flex-1 min-w-0"><span className="block text-[13.5px] font-semibold leading-snug">DineFlow may open the property</span><span className="block text-[12px] text-[var(--color-label-2)] mt-0.5 leading-snug">{t.allow_access ? "Allowed for this request — everything done inside is logged." : "Not allowed. Switch on if they need to look inside."}</span></span>
+              <span className="flex-1 min-w-0"><span className="block text-[13.5px] font-semibold leading-snug">DineFlow may open the property</span><span className="block text-[12px] text-[var(--color-label-2)] mt-0.5 leading-snug">{t.allow_access ? "Allowed. Everything they do is logged." : "Not allowed. Turn on if they need to look."}</span></span>
               <Switch on={t.allow_access} onChange={(v) => act(() => setRequestAccess(t.id, v))} name="DineFlow may open the property for this request" />
             </label>
           )}

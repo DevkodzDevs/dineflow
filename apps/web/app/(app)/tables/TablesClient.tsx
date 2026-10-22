@@ -62,7 +62,7 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
 
   return (
     <div className="space-y-5">
-      <SvcHead icon="tables" title="Tables" sub="Every table, live — tap one to see everything about it"
+      <SvcHead icon="tables" title="Tables" sub="All tables, live — tap one for details"
         actions={canEdit ? <>
           <Link href="/settings/table-qr" className="svc-btn quiet sm"><QrCode size={17} aria-hidden /> Table QR codes</Link>
           <Link href="/settings#tables" className="svc-btn quiet sm"><Settings2 size={17} aria-hidden /> Set up tables</Link>
@@ -78,8 +78,22 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
           </Card>))}
       </div>
 
-      {/* by state, and by zone when there is more than one */}
-      <div className="flex flex-wrap items-center gap-2" data-tables-filter>
+      {/* On a phone (2026-10-22, the owner: "not looking good"): the states are one sliding row in a soft track — the chosen
+          one raised on the card colour, the rest a dot, the word and a quiet count — with the zone as a pill at its end,
+          instead of chips wrapping into two rows round the zone select. 44px to the finger. iPad and desktop: below. */}
+      <div className="md:hidden flex items-center gap-2" data-tables-filter="phone">
+        <div className="rail-fade flex-1 min-w-0 flex gap-1 overflow-x-auto rounded-full bg-[var(--color-fill)] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Show tables">
+          {(["all", "free", "use", "bill", "reserved", "clean"] as const).map((k) => { const n = k === "all" ? tables.length : counts[k] ?? 0; if (k !== "all" && k !== "free" && !n) return null; const on = filter === k; return (
+            <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={on} data-table-filter={k}
+              className={cn("shrink-0 h-11 !min-h-11 pl-3 pr-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold whitespace-nowrap transition-[background-color,color,box-shadow] duration-150",
+                on ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_4px_rgb(0_0_0/0.22)]" : "text-[var(--color-label-2)]")}>
+              {k !== "all" && <span className="h-2 w-2 rounded-full shrink-0" style={{ background: `var(${ST[k].hue})` }} aria-hidden />}{k === "all" ? "All" : ST[k].label}
+              <span className={cn("num text-[11.5px] font-bold", on ? "text-[var(--color-label-2)]" : "text-[var(--color-label-3)]")}>{n}</span></button>); })}
+        </div>
+        {zones.length > 1 && <select value={zone} onChange={(e) => setZone(e.target.value)} aria-label="Zone" className="!w-auto max-w-[40%] shrink-0 !h-[52px] !min-h-[52px] !rounded-full !pl-4 text-[13px] font-semibold" data-zone-pick>
+          <option value="all">Every zone</option>{zones.map((z) => <option key={z} value={z}>{z}</option>)}</select>}
+      </div>
+      <div className="max-md:hidden flex flex-wrap items-center gap-2" data-tables-filter>
         {(["all", "free", "use", "bill", "reserved", "clean"] as const).map((k) => { const n = k === "all" ? tables.length : counts[k] ?? 0; if (k !== "all" && k !== "free" && !n) return null; const on = filter === k; return (
           <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={on} className={cn("!min-h-10 h-10 px-3.5 rounded-full inline-flex items-center gap-2 text-[13px] font-bold transition-colors", on ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
             {k !== "all" && <span className="h-2 w-2 rounded-full" style={{ background: `var(${ST[k].hue})` }} aria-hidden />}{k === "all" ? "All" : ST[k].label}<span className={cn("num text-[11.5px] min-w-5 h-5 px-1.5 rounded-full grid place-items-center", on ? "bg-[color-mix(in_srgb,var(--color-on-label)_18%,transparent)]" : "bg-[var(--color-fill-2)]")}>{n}</span></button>); })}
@@ -101,7 +115,7 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
                   </div>
                   <span className="self-start inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11.5px] font-bold" style={{ color: `var(${ST[s].hue})`, background: `color-mix(in srgb, var(${ST[s].hue}) 15%, transparent)` }}>
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} aria-hidden />{ST[s].label}</span>
-                  <div className="text-[12.5px] font-semibold text-[var(--color-label-2)] min-w-0 truncate num">
+                  <div className="text-[12.5px] font-semibold text-[var(--color-label-2)] min-w-0 truncate num" suppressHydrationWarning>
                     {o ? <>{formatINR(amountOf(o), { whole: true })} · {o.order_items.filter((i) => i.status !== "cancelled").length} items · {fmtSince(o.created_at)}</>
                       : c ? <>{c.taken_by ? `${names[c.taken_by] ?? "Someone"} on it` : "Waiting"} · {fmtSince(c.created_at)}</>
                       : nb ? <>{nb.guest_name} · {clock(nb.at_time)} · {nb.party_size}</> : "Ready to seat"}
@@ -146,7 +160,7 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
             <div className="px-3.5 py-3 flex flex-wrap items-center gap-x-3 gap-y-1 bg-[var(--color-fill)]">
               <span className="font-bold num">Order #{o.order_no}</span>
               {o.customer_name && <span className="text-[13px] text-[var(--color-label-2)] truncate">{o.customer_name}</span>}
-              <span className="ml-auto text-[12.5px] text-steel num inline-flex items-center gap-1"><Clock size={13} aria-hidden />since {hm(o.created_at)} · {fmtSince(o.created_at)}</span>
+              <span className="ml-auto text-[12.5px] text-steel num inline-flex items-center gap-1" suppressHydrationWarning><Clock size={13} aria-hidden />since {hm(o.created_at)} · {fmtSince(o.created_at)}</span>
               {o.created_by && <span className="w-full text-[12px] text-steel">Taken by {names[o.created_by] ?? "—"}</span>}
             </div>
             <ul className="divide-y divide-[var(--color-separator)]">
@@ -166,7 +180,7 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
 
       {/* cleaning */}
       {clean && <section><H Icon={SprayCan}>Cleaning</H>
-        <div className="rounded-2xl bg-[color-mix(in_srgb,var(--color-cyan)_10%,transparent)] px-3.5 py-3 text-[13.5px] flex items-center gap-2"><SprayCan size={16} className="text-[var(--color-cyan)]" aria-hidden />{clean.status === "in_progress" ? `${clean.taken_by ? names[clean.taken_by] ?? "Someone" : "Someone"} is cleaning it` : "Waiting for someone to clean it"}<span className="ml-auto text-steel num text-[12.5px]">{fmtSince(clean.created_at)}</span></div>
+        <div className="rounded-2xl bg-[color-mix(in_srgb,var(--color-cyan)_10%,transparent)] px-3.5 py-3 text-[13.5px] flex items-center gap-2"><SprayCan size={16} className="text-[var(--color-cyan)]" aria-hidden />{clean.status === "in_progress" ? `${clean.taken_by ? names[clean.taken_by] ?? "Someone" : "Someone"} is cleaning it` : "Waiting for someone to clean it"}<span className="ml-auto text-steel num text-[12.5px]" suppressHydrationWarning>{fmtSince(clean.created_at)}</span></div>
       </section>}
 
       {/* bookings today */}

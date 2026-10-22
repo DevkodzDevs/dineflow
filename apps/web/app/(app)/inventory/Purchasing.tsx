@@ -53,7 +53,7 @@ export function PurchaseOrders({ orders, suppliers, ingredients, restaurant }: {
           options={([["2", Columns2], ["3", Columns3], ["4", Columns4]] as const).map(([v, I]) => ({ value: v, label: <span className="inline-flex items-center gap-1.5" title={`${v} across`}><I size={16} aria-hidden /><span className="num">{v}</span></span> }))} /></div>}
         <button type="button" onClick={() => setEditing("new")} className="svc-btn go sm !px-5 max-sm:w-full sm:self-center" data-new-po><Plus size={17} strokeWidth={2.4} aria-hidden /> New order</button>
       </div>
-      {orders.length === 0 ? <Empty title="No purchase orders yet" hint="An order says what to bring, at what price, by when. Send it on WhatsApp; receive it when the van comes and the stock lands." action={<Button onClick={() => setEditing("new")}>Draft the first</Button>} /> : (
+      {orders.length === 0 ? <Empty title="No purchase orders yet" hint="What to bring, at what price, by when. Send on WhatsApp." action={<Button onClick={() => setEditing("new")}>Draft the first</Button>} /> : (
         <ul className={cn("grid gap-3 md:grid-cols-2 [&>*]:min-w-0", COLS_CLASS[cols])} aria-label="Purchase orders" data-po-grid={cols}>
           {[...orders].sort((a, b) => PO_RANK[a.status] - PO_RANK[b.status]).map((po) => {
             const S = PO_STATUS[po.status]; const live = po.status === "draft" || po.status === "sent";
@@ -208,7 +208,7 @@ function ReceiveForm({ po, ingredients, onDone }: { po: Po; ingredients: Ing[]; 
   const short = po.purchase_order_items.filter((l) => (got[l.id]?.received_qty ?? 0) < Number(l.qty));
   return (
     <div className="space-y-4">
-      <p className="text-sm text-steel">Tick off what came in the van, at the price on the invoice. Stock lands the moment you save; anything short stays on record against the order.</p>
+      <p className="text-sm text-steel">Tick what came, at the invoice price. Save adds the stock; shortfalls stay on the order.</p>
       <div className="grid grid-cols-2 gap-3"><Field label="Supplier invoice no."><input value={inv} onChange={(e) => setInv(e.target.value)} /></Field><Field label="Received on"><input type="date" className="num" value={on} onChange={(e) => setOn(e.target.value)} /></Field></div>
       <div className="space-y-2">
         <div className="grid grid-cols-[minmax(0,1fr)_70px_90px_90px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Asked</span><span>Received</span><span>Cost/unit</span></div>
@@ -237,8 +237,8 @@ export function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
   const [pending, start] = useTransition(); const toast = useToast();
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3"><p className="text-sm text-steel">Who you buy from. A purchase or an order names one, and the price history says what each of them charged.</p><Button onClick={() => setEditing({})}><Plus size={16} /> Supplier</Button></div>
-      {suppliers.length === 0 ? <Empty title="No suppliers yet" hint="Add the vegetable vendor, the dairy, the dry-goods wholesaler." action={<Button onClick={() => setEditing({})}>Add the first</Button>} /> : (
+      <div className="flex items-center justify-between gap-3"><p className="text-sm text-steel">Who you buy from, and what each one charged.</p><Button onClick={() => setEditing({})}><Plus size={16} /> Supplier</Button></div>
+      {suppliers.length === 0 ? <Empty title="No suppliers yet" hint="Add your vegetable, dairy and grocery suppliers." action={<Button onClick={() => setEditing({})}>Add the first</Button>} /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {suppliers.map((s) => (
             <Card key={s.id}>
@@ -265,7 +265,7 @@ export function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
 
 /* ═══════ wastage ═══════ */
 export function WastageView({ w }: { w: Wastage }) {
-  if (!w || w.lines === 0) return <Empty title="No wastage recorded" hint="When something is thrown away, log it under Adjust → Wastage with the reason. This page then says what it costs and why." />;
+  if (!w || w.lines === 0) return <Empty title="No wastage recorded" hint="Log thrown-away stock under Adjust → Wastage." />;
   const max = Math.max(...w.by_reason.map((r) => Number(r.cost)), 1);
   return (
     <div className="space-y-5">

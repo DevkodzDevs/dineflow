@@ -121,7 +121,7 @@ function PhonePanel({ title, items, tone }: { title: string; items: O[]; tone: "
         <div className="mt-3.5 rounded-2xl border border-dashed border-white/12 px-4 py-6 text-center">
           <span className={cn("mx-auto h-11 w-11 rounded-2xl grid place-items-center", ready ? "bg-[rgb(73_199_133/.14)] text-[#49c785]" : "bg-white/[.06] text-white/50")}>{ready ? <BellRing size={20} /> : <ChefHat size={20} />}</span>
           <div className="text-[14px] font-semibold text-white/80 mt-2.5">{ready ? "Nothing ready yet" : "No orders cooking"}</div>
-          <div className="text-[12px] text-white/45 mt-1">{ready ? "Numbers appear here the moment the kitchen marks them ready." : "New orders show here as soon as they reach the kitchen."}</div>
+          <div className="text-[12px] text-white/45 mt-1">{ready ? "Numbers show here when the kitchen marks them ready." : "New orders show here when they reach the kitchen."}</div>
         </div>
       )}
     </section>

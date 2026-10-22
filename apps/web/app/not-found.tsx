@@ -90,8 +90,7 @@ export default function NotFound() {
 
         <motion.p variants={rise} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           className="text-steel mt-3 text-[15px] leading-relaxed">
-          Nothing lives at this address. It may have been renamed, or the link that brought you here
-          is out of date.
+          Nothing here. The page may have moved, or the link is old.
         </motion.p>
 
         {path && (

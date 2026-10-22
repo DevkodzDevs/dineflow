@@ -132,7 +132,7 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
           <span className="flex-1" />
           <button type="button" disabled={!list.length} onClick={() => void excel()} className="svc-btn quiet sm !px-4" data-expense-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>
         </div>
-        {list.length === 0 ? <Empty title="No expenses this month" hint="Add the first one above — a vegetable bill, the gas cylinder, the electricity." /> : (
+        {list.length === 0 ? <Empty title="No expenses this month" hint="Add one above — vegetables, gas, electricity." /> : (
           <div className="divide-y divide-[var(--color-separator)]">
             {list.map((e) => (
               <div key={e.id} data-expense={e.id} className={cn("py-3 flex items-center gap-3 min-w-0", e.voided_at && "opacity-55")}>

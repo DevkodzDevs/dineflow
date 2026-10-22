@@ -27,7 +27,7 @@ export default async function StaffPage() {
   const onDuty = (att ?? []).filter((a) => a.in_at && !a.out_at).length;
   const names = Object.fromEntries((staff ?? []).map((p) => [p.id as string, p.full_name as string]));
   const leaveRows = ((leave.data ?? []) as LeaveRow[]).sort((a, b) => Number(b.status === "requested") - Number(a.status === "requested"));
-  return (<><StaffClient onDuty={onDuty} me={session.userId} myRole={session.profile.role} myModules={myModules} type={session.restaurant.property_type} enabled={session.restaurant.enabled_modules ?? null} staff={(staff ?? []) as never} invites={invites ?? []} loginDomain={(dom as string) ?? "dineflow.cloud"} />
+  return (<><StaffClient onDuty={onDuty} me={session.userId} myRole={session.profile.role} myModules={myModules} type={session.restaurant.property_type} enabled={session.restaurant.enabled_modules ?? null} duty={(att ?? []) as never} staff={(staff ?? []) as never} invites={invites ?? []} loginDomain={(dom as string) ?? "dineflow.cloud"} />
     <StaffAttendance today={today} staff={(staff ?? []) as never} att={att ?? []} methods={methods} canMark={["owner", "manager", "supervisor"].includes(session.profile.role)} property={session.restaurant.name} />
     {decides && <StaffLeave rows={leaveRows} names={names} me={session.userId} />}</>);
 }

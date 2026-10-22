@@ -64,7 +64,9 @@ API is refused too. Probe `ctl.mjs` (26), dry run `dry117.cjs` (11).
   globals.css switches every animation off under `prefers-reduced-motion`, which would leave CSS-driven
   hands standing at twelve. It ticks from the time in India (UTC+5:30, no daylight saving) once a
   second, in step with the real second, and re-reads it when the tab comes back. No hands before
-  mount, so the server render cannot disagree with the client. Probe: `clock.mjs`.
+  mount, so the server render cannot disagree with the client. Probe: `clock.mjs`. Since 2026-10-22 the face is drawn
+  once and the second hand is its own layer turned as a box, so the tick costs the main thread nothing
+  (design-system.md, *Motion that never stops*).
 
 - **On a phone the flip tiles size from the row, not the screen height rule.** `.flip-row .flip`
   takes `--tile: clamp(64px, (100vw - 56px) / 3.6, 112px)` under 480px, with a fixed 12px gap. A

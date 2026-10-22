@@ -108,10 +108,10 @@ export const ROLE_LABEL: Record<Role, string> = {
 };
 /** A line of help under each role in the Staff screen, so the ladder explains itself. */
 export const ROLE_HINT: Record<Role, string> = {
-  owner: "The property is theirs. Every section, including Settings.",
-  manager: "Runs the place day to day. Everything except Settings.",
-  supervisor: "Runs a shift or a department, and the team under it.",
-  supervisor_2: "Runs a team inside a department. Manages employees only.",
+  owner: "Owns the place. Sees everything, including Settings.",
+  manager: "Runs the day. Everything except Settings.",
+  supervisor: "Runs a shift or department and its team.",
+  supervisor_2: "Runs a team in a department. Manages employees only.",
   employee: "Does the work. Manages nobody.",
   cashier: "Till, bills and invoices.", waiter: "Takes orders on the floor.", chef: "The kitchen screen and the menu.",
   store: "Pantry, stock and the buy list.", frontdesk: "Arrivals, rooms and guests.", housekeeping: "Room turnaround.",
@@ -125,7 +125,7 @@ export type PlanPreset = "basic" | "premium" | "advanced" | "all";
 export const PLAN_PRESETS: { key: PlanPreset; label: string; hint: string; modules: string[] }[] = [
   { key: "basic", label: "Basic", hint: "Orders, billing, menu, kitchen and reports",
     modules: ["orders", "billing", "menu", "kitchen", "reports", "scan", "inventory"] },
-  { key: "premium", label: "Premium", hint: "Basic + reservations, online orders, invoices, tax, staff",
+  { key: "premium", label: "Premium", hint: "Basic + bookings, online orders, invoices, tax, staff",
     modules: ["orders", "billing", "menu", "kitchen", "reports", "scan", "inventory",
               "reservations", "pulse", "online-orders", "customers", "channels", "invoices", "tax", "staff", "labour", "tomorrow"] },
   { key: "advanced", label: "Advanced", hint: "Everything the property type supports",

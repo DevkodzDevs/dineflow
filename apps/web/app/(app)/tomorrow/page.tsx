@@ -32,10 +32,10 @@ export default async function Tomorrow({ searchParams }: { searchParams: Promise
         <Empty
           title={nobody ? "No property open on this login" : "No brief for this day yet"}
           hint={nobody
-            ? "Tomorrow's brief is built for one property, and this sign-in did not resolve to one. Open a property from Master control, then come back."
+            ? "Open a property from Master control, then come back."
             : failed
               ? `Tomorrow's brief could not be built: ${failed.message}`
-              : "Once a few days of orders are on the books, tomorrow's covers, prep list and shopping list appear here."}
+              : "After a few days of orders, tomorrow's plan shows here."}
           action={<Link href={nobody ? "/admin" : "/dashboard"}><Button variant="outline">{nobody ? "Go to master control" : "Back to today"}</Button></Link>}
         />
       </>

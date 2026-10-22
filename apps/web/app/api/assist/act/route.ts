@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     case "walkin_left": {
       if (!/^[0-9a-f-]{36}$/.test(arg)) return NextResponse.json({ error: "bad id" }, { status: 400 });
       const { error } = await s.rpc("walkin_set", { p_id: arg, p_status: "left", p_table: null });
-      return error ? NextResponse.json({ error: error.message }, { status: 400 }) : NextResponse.json({ done: "Marked as left. The wait quoted to everyone behind them is shorter now." });
+      return error ? NextResponse.json({ error: error.message }, { status: 400 }) : NextResponse.json({ done: "Marked as left. The wait for others is shorter now." });
     }
     case "reservation_no_show": {
       if (!/^[0-9a-f-]{36}$/.test(arg)) return NextResponse.json({ error: "bad id" }, { status: 400 });

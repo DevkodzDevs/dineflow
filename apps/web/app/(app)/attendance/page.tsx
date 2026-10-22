@@ -26,8 +26,8 @@ export default async function MyAttendancePage() {
 function NotReady() {
   return (
     <div className="mx-auto max-w-[460px] feather p-6 text-center" data-not-ready>
-      <h1 className="text-xl font-semibold">Phone attendance is not switched on for this server</h1>
-      <p className="mt-2 text-sm text-[var(--color-label-2)]">It is not switched on for your account yet — DineFlow support can turn it on. Use your badge at the scanner, or ask your manager to mark you.</p>
+      <h1 className="text-xl font-semibold">Phone attendance is not on yet</h1>
+      <p className="mt-2 text-sm text-[var(--color-label-2)]">Use your badge at the scanner, or ask your manager to mark you.</p>
     </div>
   );
 }

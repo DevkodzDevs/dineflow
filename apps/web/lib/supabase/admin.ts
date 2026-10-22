@@ -20,7 +20,7 @@ export function adminClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
     throw new Error(
-      "Password reset is not available here yet — ask Master control to issue a new temporary password.",
+      "Password reset is off. Ask Master control for a new temporary password.",
     );
   }
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });

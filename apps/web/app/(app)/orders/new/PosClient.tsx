@@ -3,13 +3,14 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { dishMatch } from "@/lib/tillSearch";
 import { motion, AnimatePresence } from "framer-motion";
-import { Minus, Plus, Search, ChevronLeft, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils } from "lucide-react";
+import { Minus, Plus, Search, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils } from "lucide-react";
 import { Button, Sheet, cn, useToast, FlapMini } from "@/components/ui";
 import { Say, CatIcon } from "@/components/ui/Say";
 import { SVC_ICON, stClass } from "@/components/ui/Service";
 import { catIcon } from "@/lib/say";
 import { orderState, SVC_WORD } from "@/lib/service";
 import { formatINR, fmtSince } from "@/lib/format";
+import { DishImage } from "@/components/menu/DishImage";
 import { Rail } from "@/components/ui/Rail";
 import { placeOrder, parseOrder, phoneCard, setDelivery } from "../actions";
 import { lookupCustomer } from "../../billing/actions";
@@ -257,7 +258,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       }
     } catch {
       // never block an order because a printer is off — but say so: a kitchen with no screen would never see it
-      toast("The kitchen ticket did not print — the order is saved. Check the printer, then reprint it from the order.", "err");
+      toast("Order saved, but the ticket didn't print. Check the printer and reprint.", "err");
     }
 
     if (!online) {
@@ -392,7 +393,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                       {free.map((t) => <button key={t.id} type="button" onClick={() => { pickTable(t); setPickOpen(false); }} aria-pressed={tableId === t.id} data-free-table={t.name}
                         className={cn("h-11 px-1 rounded-xl text-[14px] font-bold border truncate", tableId === t.id ? "bg-ink text-on-label border-ink" : "border-line hover:bg-[var(--color-fill)]")}>{t.name}</button>)}
                     </div>
-                  : <p className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[13px] font-semibold" data-no-free-table>No table is free right now — every one is in use, held for a booking or being cleaned.</p>}
+                  : <p className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[13px] font-semibold" data-no-free-table>No free table — all in use, booked or being cleaned.</p>}
                 {hidden > 0 && <p className="mt-1.5 text-[12px] text-steel" data-hidden-tables>Free tables only · {hidden} in use, booked or being cleaned</p>}
               </div>);
           })()}
@@ -430,7 +431,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
 
       <div className="mt-4 flex items-center gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel flex-1">Ticket{count ? ` · ${count} item${count === 1 ? "" : "s"}` : ""}</span>
-        <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} title="Starters now, mains when the table is ready: every course after the first is held until the kitchen fires it"
+        <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} title="Starters now; later courses wait until the kitchen fires them"
           className={cn("h-9 rounded-full px-2.5 text-[11.5px] font-semibold flex items-center gap-1 transition", coursing ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)]")}><ListOrdered size={12} /> Courses {coursing ? "on" : "off"}</button>
         {lines.length > 0 && <button type="button" onClick={clearTicket} className="h-9 px-2 -mr-1 text-[13px] font-semibold text-steel hover:text-[var(--color-red)]">Clear</button>}
       </div>
@@ -500,7 +501,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <ul className="mt-1 space-y-0.5 text-steel">
               {shortfalls.map(({ item, qty, cover }) => <li key={item.id}>{item.name} · {qty} ordered, {cover!.portions} covered{cover!.short[0] ? ` (${cover!.short[0].name} is out)` : ""}</li>)}
             </ul>
-            <p className="mt-1.5 text-steel">Send it anyway if the shelf says otherwise — the count is only as good as the last delivery someone logged.</p>
+            <p className="mt-1.5 text-steel">Send anyway if the shelf has it — the count may be out of date.</p>
           </div>
         )}
         {coursing && courses.length > 1 && <p className="text-[11px] text-steel mb-2">Course 1 goes now. {courses.filter((c) => c > 1).map((c) => `Course ${c}`).join(" and ")} will wait on the kitchen screen until fired.</p>}
@@ -536,7 +537,6 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             stays under the top bar as the dishes scroll; on a phone the steps and the search take
             their own full-width lines under it. */}
         <div data-till-head className="flex flex-wrap items-center gap-x-3 gap-y-3 mb-3 lg:flex-nowrap lg:sticky lg:top-[var(--till-top,24px)] lg:z-10 lg:bg-[var(--color-bg)] lg:shadow-[0_-14px_0_var(--color-bg)] lg:-mt-2 lg:pt-2 lg:pb-3 lg:mb-1">
-          <Link href="/orders" className="h-12 w-12 shrink-0 grid place-items-center rounded-2xl bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" aria-label="Back"><ChevronLeft size={22} /></Link>
           <div className="min-w-0 flex-1 lg:flex-none">
             <div className="text-[11px] font-bold uppercase tracking-[.14em] text-steel leading-none">New order</div>
             <h1 className="font-display text-[28px] md:text-[32px] leading-none mt-1 truncate" data-till-title>{title ?? <Say w={typeWord} start />}</h1>
@@ -551,7 +551,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
           </div>
           {/* the search is what yields, not the title */}
           <div className="relative min-w-0 basis-full order-3 lg:order-none lg:basis-auto lg:flex-1 lg:max-w-xl lg:ml-auto" data-till-search><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
-            <input ref={searchRef} className="!h-14 !rounded-[18px] !pl-12 !pr-16 !text-[16px]" placeholder="Find a dish — name, or initials like “cb”" aria-label="Search dishes — a name, a word, or initials; Enter adds the first" value={q} onChange={(e) => setQ(e.target.value)}
+            <input ref={searchRef} className="!h-14 !rounded-[18px] !pl-12 !pr-16 !text-[16px]" placeholder="Find a dish — name, or initials like “cb”" aria-label="Search dishes; Enter adds the first" value={q} onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && visible[0]) { e.preventDefault(); tap(visible[0]); setQ(""); } else if (e.key === "Escape") { setQ(""); (e.target as HTMLInputElement).blur(); } }} />
             {q ? <button type="button" onClick={() => { setQ(""); searchRef.current?.focus(); }} aria-label="Clear the search" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 !min-h-0 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)]"><X size={17} /></button>
               : <kbd className="hidden lg:grid absolute right-3 top-1/2 -translate-y-1/2 h-6 min-w-6 px-1.5 place-items-center rounded-md border border-line text-[11px] text-steel pointer-events-none" aria-hidden>/</kbd>}
@@ -593,7 +593,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <form className={cn("feather flex items-center gap-2 p-2 pl-3.5", !online && "opacity-60")} onSubmit={(e) => { e.preventDefault(); void takeOrder(said); }}>
               <Sparkles size={16} className="text-[var(--color-tint)] shrink-0" />
               <input value={said} onChange={(e) => setSaid(e.target.value)} disabled={!online || reading} className="!border-0 !bg-transparent !shadow-none !px-1 flex-1 min-w-0"
-                placeholder={online ? "Say or type the order — “two chicken biryani, one Jain, and a lime soda for table 4”" : "Taking orders by voice needs a connection"} />
+                placeholder={online ? "Say or type — “2 chicken biryani, 1 lime soda, table 4”" : "Taking orders by voice needs a connection"} />
               {canHear && <button type="button" onClick={hear} disabled={!online || reading} aria-label={hearing ? "Stop listening" : "Speak the order"}
                 className={cn("h-10 w-10 rounded-xl grid place-items-center shrink-0 transition", hearing ? "bg-[var(--color-red)] text-white" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)]")}>{hearing ? <MicOff size={16} /> : <Mic size={16} />}</button>}
               <Button type="submit" size="sm" disabled={!online || reading || !said.trim()}>{reading ? <><Loader2 size={14} className="animate-spin" /> Reading…</> : "Add to ticket"}</Button>
@@ -647,8 +647,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                     <button type="button" onClick={() => tap(it)} className="!min-h-0 text-left flex flex-col flex-1 min-w-0 after:absolute after:inset-0 after:content-['']" aria-label={`${it.name} — add one`}>
                       <span className="pic" data-nophoto={!it.image_url || undefined}>
                         {it.image_url
-                          // eslint-disable-next-line @next/next/no-img-element -- owner-supplied URLs from any host; next/image would need every one allow-listed
-                          ? <img src={it.image_url} alt="" loading="lazy" decoding="async" />
+                          ? <DishImage src={it.image_url} w={330} />
                           : <span className="absolute inset-0 grid place-items-center text-[var(--color-label-3)]"><CatIcon name={catIcon(catName(it.category_id))} size={34} /></span>}
                         {qty > 0 && <span className="qty qty-flap num" data-qty={qty}><FlapMini value={qty} tile="32px" tone="live" say={`${qty} on the ticket`} /></span>}
                         {c?.portions === 0 ? <span className="flag short"><AlertTriangle size={12} aria-hidden />Pantry short</span>
@@ -690,7 +689,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       {(() => { const ln = lines.find((l) => l.key === noteFor); const parts = (ln?.note ?? "").split(" · ").filter(Boolean); return (
         <Sheet open={!!ln} onClose={() => setNoteFor(null)} title={ln ? `Request · ${lineName(ln.item, ln.variant)}` : "Request"}>
           {ln && <div className="space-y-4" data-line-note>
-            <p className="text-[13px] text-steel -mt-1">For this dish only. It prints under the dish on the kitchen ticket.</p>
+            <p className="text-[13px] text-steel -mt-1">This dish only. Prints under it on the ticket.</p>
             <div className="flex flex-wrap gap-2">
               {LINE_NOTES.map((n) => { const on = parts.includes(n); return (
                 <button key={n} type="button" aria-pressed={on} onClick={() => setNote(ln.key, (on ? parts.filter((x) => x !== n) : [...parts, n]).join(" · "))} className={cn("chip", on && "on")}>{n}</button>); })}
@@ -704,7 +703,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         </Sheet>); })()}
       <Sheet open={askNote} onClose={() => setAskNote(false)} title="Cooking request">
         <div className="space-y-4" data-note-sheet>
-          <p className="text-[13px] text-steel -mt-1">One note for the whole ticket. It prints in capitals at the top of the kitchen ticket.</p>
+          <p className="text-[13px] text-steel -mt-1">For the whole order. Prints in capitals at the top of the ticket.</p>
           <div>
             <textarea autoFocus rows={3} maxLength={200} value={ticketNote} onChange={(e) => setTicketNote(e.target.value)}
               placeholder="All mild · no onion · serve everything together" className="w-full resize-none !text-[15px] leading-snug" />

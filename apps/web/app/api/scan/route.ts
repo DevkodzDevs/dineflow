@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "not signed in" }, { status: 401 });
   // every scan is a paid vision call on our key: bounded per person, and bounded in size
-  if (!allow(`scan:${user.id}`, 40, 10 * 60_000)) return NextResponse.json({ error: "That is a lot of scans in a few minutes — wait a moment and try again." }, { status: 429 });
+  if (!allow(`scan:${user.id}`, 40, 10 * 60_000)) return NextResponse.json({ error: "Too many scans. Wait a moment and try again." }, { status: 429 });
   const key = process.env.ANTHROPIC_API_KEY;
   const { image, hint = "auto" } = await req.json();
   if (typeof image !== "string" || image.length > 8_000_000) return NextResponse.json({ error: "That photo is too large — try again closer up." }, { status: 413 });
@@ -44,9 +44,9 @@ export async function POST(req: Request) {
   // tried end to end. The card is marked "sample" in the UI; add the key for real recognition.
   if (!key) {
     const samples: Record<string, Record<string, unknown>> = {
-      ingredient: { kind: "ingredient", name: "Tomato", confidence: 0.35, unit: "kg", estimated_qty: 0.25, category: "vegetable", price_estimate_inr: 40, notes: "Sample result — reading real photos is not switched on for your account yet — DineFlow support can turn it on", demo: true },
-      dish: { kind: "dish", name: "Chicken biryani", confidence: 0.35, is_veg: false, price_estimate_inr: 280, description: "Rice, chicken, whole spices", notes: "Sample result — reading real photos is not switched on for your account yet — DineFlow support can turn it on", demo: true },
-      room: { kind: "room", name: "Room 104", confidence: 0.35, room_number: "104", notes: "Sample result — reading real photos is not switched on for your account yet — DineFlow support can turn it on", demo: true },
+      ingredient: { kind: "ingredient", name: "Tomato", confidence: 0.35, unit: "kg", estimated_qty: 0.25, category: "vegetable", price_estimate_inr: 40, notes: "Sample result. Ask DineFlow support to turn on real photos.", demo: true },
+      dish: { kind: "dish", name: "Chicken biryani", confidence: 0.35, is_veg: false, price_estimate_inr: 280, description: "Rice, chicken, whole spices", notes: "Sample result. Ask DineFlow support to turn on real photos.", demo: true },
+      room: { kind: "room", name: "Room 104", confidence: 0.35, room_number: "104", notes: "Sample result. Ask DineFlow support to turn on real photos.", demo: true },
       labour: { kind: "labour", name: "Murugan", confidence: 0.35, labour: { full_name: "Murugan", phone: "", id_type: "Aadhaar", id_last4: "7781", skill: "gardener" }, notes: "Sample result — only the last 4 ID digits are ever stored", demo: true },
     };
     const pick = samples[hint] ?? samples.ingredient;

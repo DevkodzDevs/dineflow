@@ -23,7 +23,7 @@ export async function cancelBooking(id: string) {
   const { data: b, error } = await s.from("bookings").update({ status: "cancelled" }).eq("id", id).eq("status", "reserved").select("room_id").maybeSingle();
   if (error) return { error: error.message };
   // it used to answer ok when nothing matched — a booking already checked in looked cancelled
-  if (!b) return { error: "Only a reserved booking can be cancelled — this one has moved on." };
+  if (!b) return { error: "Only a reserved booking can be cancelled." };
   if (b.room_id) await s.from("rooms").update({ status: "available" }).eq("id", b.room_id).eq("status", "reserved");
   bump(); return { ok: true };
 }

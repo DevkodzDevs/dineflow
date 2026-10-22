@@ -59,7 +59,7 @@ export async function saveTable(fd: FormData) {
 }
 export async function deleteTable(id: string) {
   const s = await createClient(); const r = await s.from("dining_tables").delete().eq("id", id).select("id");
-  if (r.error?.code === "23503") return { error: "This table has orders on record, so it cannot be deleted." };
+  if (r.error?.code === "23503") return { error: "This table has orders, so it can't be deleted." };
   const bad = wrote(r, "That table could not be deleted."); if (bad) return bad; bump(); return { ok: true };
 }
 

@@ -96,9 +96,9 @@ function Overview({ r, scheme, lab, summary, month, overdue, upcoming, expiring,
           <dd className="min-w-0">{r.ca_name ? <><span className="block">{r.ca_name}{r.ca_firm && <span className="text-[var(--color-label-2)]">, {r.ca_firm}</span>}</span>{r.ca_phone && <a href={`tel:${r.ca_phone.replace(/\s/g, "")}`} className="num text-[var(--color-label-2)] hover:text-[var(--color-label)]">{r.ca_phone}</a>}</> : <span className="text-[var(--color-label-3)]">—</span>}</dd>
         </dl>
         {missing.length > 0 && <p className="text-sm mt-4 text-[var(--color-orange)]">Still to fill in: {missing.join(", ")}. <Link href="/tax?tab=profile" className="underline">Open the profile</Link>.</p>}
-        {!r.gstin?.trim() && <p className="text-xs mt-3 text-[var(--color-orange)]">No GSTIN is saved, so no CGST or SGST is added to any bill or invoice — collecting tax without a registration is not allowed. Add the GSTIN in the profile if this property is registered.</p>}
-        {r.gst_scheme === "composition" && <p className="text-xs mt-3 text-[var(--color-label-2)]">On the composition scheme this property issues a bill of supply and charges no tax to the guest; the levy is paid out of its own takings through CMP-08.</p>}
-        {r.property_type !== "restaurant" && <p className="text-xs mt-3 text-[var(--color-label-2)]">Each night is taxed on what that night was sold for: {r.room_gst_rate ?? 5}% at or below ₹{Number(r.room_gst_threshold ?? 7500).toLocaleString("en-IN")}, {r.room_gst_rate_high ?? 18}% above it. Confirm the rates with your CA before you file.</p>}
+        {!r.gstin?.trim() && <p className="text-xs mt-3 text-[var(--color-orange)]">No GSTIN saved, so bills carry no GST. Registered? Add it in the profile.</p>}
+        {r.gst_scheme === "composition" && <p className="text-xs mt-3 text-[var(--color-label-2)]">Composition: bill of supply, no tax to guests. You pay it via CMP-08.</p>}
+        {r.property_type !== "restaurant" && <p className="text-xs mt-3 text-[var(--color-label-2)]">Room GST per night: {r.room_gst_rate ?? 5}% up to ₹{Number(r.room_gst_threshold ?? 7500).toLocaleString("en-IN")}, {r.room_gst_rate_high ?? 18}% above. Check with your CA.</p>}
       </Card>
 
       <Card>
@@ -110,20 +110,20 @@ function Overview({ r, scheme, lab, summary, month, overdue, upcoming, expiring,
             <Stat label="Bills · stays" value={`${dt?.count ?? 0} · ${st?.count ?? 0}`} />
           </div>
         ) : <p className="text-sm text-[var(--color-label-2)]">No figures for this month yet.</p>}
-        <p className="footnote mt-3">From paid bills and stay invoices. {scheme === "composition" ? "Under composition you pay 5% of turnover; the tax columns show what was collected, which should be nil." : "These are the figures GSTR-3B table 3.1(a) asks for."}</p>
+        <p className="footnote mt-3">From paid bills and stay invoices. {scheme === "composition" ? "You pay 5% of turnover. Tax collected should be nil." : "For GSTR-3B table 3.1(a)."}</p>
       </Card>
 
       <Card>
         <div className="card-title"><h3>Coming up</h3><Link href={`/tax?tab=calendar`} className="more">Calendar →</Link></div>
         {overdue.length > 0 && <div className="flex items-center gap-2 rounded-xl bg-[var(--color-red-2)] text-[var(--color-red)] px-3 py-2 text-sm mb-3"><AlertTriangle size={15} /> {overdue.length} return{overdue.length === 1 ? "" : "s"} overdue and not marked filed.</div>}
-        {upcoming.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">Nothing due in this financial year that is not already filed.</p> : (
+        {upcoming.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">Nothing left to file this year.</p> : (
           <ul className="space-y-2 text-sm">{upcoming.map((c) => <li key={c.form + c.period} className="flex items-center justify-between gap-3"><span className="min-w-0 truncate"><b>{c.form}</b> <span className="text-[var(--color-label-2)]">{c.period}</span></span><span className={cn("num shrink-0", daysBetween(today, c.due) <= 7 && "text-[var(--color-orange)]")}>{day(c.due)}</span></li>)}</ul>
         )}
       </Card>
 
       <Card>
         <div className="card-title"><h3>Documents</h3><Link href={`/tax?tab=documents`} className="more">All {docsCount} →</Link></div>
-        {expiring.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">{docsCount === 0 ? "Nothing on file yet. Start with the GST certificate, PAN and FSSAI licence." : "Nothing expires in the next sixty days."}</p> : (
+        {expiring.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">{docsCount === 0 ? "Nothing yet. Start with GST certificate, PAN, FSSAI." : "Nothing expires in the next sixty days."}</p> : (
           <ul className="space-y-2 text-sm">{expiring.map((d, i) => { const left = daysBetween(today, d.expires_on!); return <li key={i} className="flex items-center justify-between gap-3"><span className="min-w-0 truncate">{d.title}</span><Pill tone={left < 0 ? "alert" : left <= 14 ? "preparing" : "pending"}>{left < 0 ? `expired ${-left}d ago` : `${left}d left`}</Pill></li>; })}</ul>
         )}
       </Card>
@@ -158,24 +158,24 @@ function Returns({ r, lab, month, today, summary, error, go, monthly, status, on
       </div>
       {error && <p className="text-sm text-[var(--color-red)]">Could not build the summary: {error}</p>}
       <Card>
-        <div className="card-title"><h3>Outward supplies</h3><span className="footnote">All sales · GSTR-3B table 3.1(a). In GSTR-1 the B2B invoices below go in table 4, the rest in table 7.</span></div>
+        <div className="card-title"><h3>Outward supplies</h3><span className="footnote">GSTR-3B 3.1(a). GSTR-1: B2B in table 4, rest in table 7.</span></div>
         {rows.length > 0 && <div className="table-wrap"><table className="w-full text-sm"><thead className="text-xs uppercase tracking-wide text-[var(--color-label-2)] border-b border-[var(--color-separator)]"><tr><th className="text-left py-2">SAC</th><th className="text-left py-2">Supply</th><th className="text-right py-2">Rate</th><th className="text-right py-2">Nos.</th><th className="text-right py-2">Taxable</th><th className="text-right py-2">{lab.central}</th><th className="text-right py-2">{lab.state}</th><th className="text-right py-2">Value</th></tr></thead>
           <tbody>
             {rows.map((x, i) => <tr key={i} className="border-b border-[var(--color-separator)]/60"><td className="py-2 num">{x.sac}</td><td className="py-2">{x.kind === "dining" ? "Restaurant service" : "Accommodation"}</td><td className="py-2 text-right num">{x.rate}%</td><td className="py-2 text-right num">{x.count}</td><td className="py-2 text-right num">{n2(x.taxable)}</td><td className="py-2 text-right num">{n2(x.cgst)}</td><td className="py-2 text-right num">{n2(x.sgst)}</td><td className="py-2 text-right num">{n2(x.total)}</td></tr>)}
             {rows.length > 0 && <tr className="font-semibold"><td className="py-2" colSpan={3}>Total</td><td className="py-2 text-right num">{t("count")}</td><td className="py-2 text-right num">{n2(t("taxable"))}</td><td className="py-2 text-right num">{n2(t("cgst"))}</td><td className="py-2 text-right num">{n2(t("sgst"))}</td><td className="py-2 text-right num">{n2(t("total"))}</td></tr>}
           </tbody></table></div>}
         {rows.length === 0 && <p className="py-3 text-sm text-[var(--color-label-2)]">No paid bills or stay invoices in this month.</p>}
-        <p className="footnote mt-3">Rate is derived from the tax actually charged on each bill, so a bill raised under an earlier rate lands in its own row. Alcohol, if sold, is outside GST and is not here. {lab.state === "UTGST" && "Your state half is UTGST because the property is in a Union Territory."}</p>
+        <p className="footnote mt-3">Rate is the tax each bill charged. Alcohol is outside GST, so not here. {lab.state === "UTGST" && "State half is UTGST (Union Territory)."}</p>
       </Card>
       <Card>
         <div className="card-title"><h3>B2B · invoices carrying the guest's GSTIN</h3><span className="footnote">GSTR-1 table 4, invoice by invoice</span></div>
-        {(summary?.b2b ?? []).length === 0 ? <p className="text-sm text-[var(--color-label-2)]">None this month. When a company guest wants input credit, raise the tax invoice from Billing and enter their GSTIN; it appears here.</p> : (
+        {(summary?.b2b ?? []).length === 0 ? <p className="text-sm text-[var(--color-label-2)]">None this month. Add a guest's GSTIN on a Billing invoice.</p> : (
           <div className="table-wrap"><table className="w-full text-sm"><thead className="text-xs uppercase tracking-wide text-[var(--color-label-2)] border-b border-[var(--color-separator)]"><tr><th className="text-left py-2">Recipient GSTIN</th><th className="text-left py-2">Name</th><th className="text-right py-2">Nos.</th><th className="text-right py-2">Taxable</th><th className="text-right py-2">{lab.central}</th><th className="text-right py-2">{lab.state}</th><th className="text-right py-2">Value</th></tr></thead>
             <tbody>{summary!.b2b.map((b, i) => <tr key={i} className="border-b border-[var(--color-separator)]/60"><td className="py-2 num">{b.gstin}</td><td className="py-2">{b.name ?? "—"}</td><td className="py-2 text-right num">{b.count}</td><td className="py-2 text-right num">{n2(b.taxable)}</td><td className="py-2 text-right num">{n2(b.cgst)}</td><td className="py-2 text-right num">{n2(b.sgst)}</td><td className="py-2 text-right num">{n2(b.total)}</td></tr>)}</tbody></table></div>
         )}
       </Card>
       {monthly.length > 0 && <Card>
-        <div className="card-title"><h3>Filed for {monthLabel(month)}?</h3>{monthly[0]?.period !== month && <span className="footnote">Quarterly filer: the quarter this month belongs to</span>}</div>
+        <div className="card-title"><h3>Filed for {monthLabel(month)}?</h3>{monthly[0]?.period !== month && <span className="footnote">Quarterly filer: this month's quarter</span>}</div>
         <div className="grid sm:grid-cols-2 gap-3">{monthly.map((c) => <FileRow key={c.form + c.period} c={c} st={status(c)} onFile={onFile} pending={pending} today={today} />)}</div>
       </Card>}
     </div>
@@ -259,7 +259,7 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
     <div className="space-y-4">
       <div className="flex items-center gap-2"><h3 className="text-xl">On file</h3><Button className="ml-auto" onClick={() => setEdit({ kind: "gst_reg", title: kindOf("gst_reg")?.label })}><Plus size={15} /> Add a document</Button></div>
       {essentials.length > 0 && <Card><div className="card-title"><h3>Not on file yet</h3></div><div className="flex flex-wrap gap-2">{essentials.map((k) => <button key={k.key} className="chip" onClick={() => setEdit({ kind: k.key, title: k.label })}>+ {k.label}</button>)}</div></Card>}
-      {docs.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">Nothing here yet. Add the number, the dates and a link to where the signed copy lives — DigiLocker, Drive, or your CA's portal — so anyone at the counter can find it when an officer asks.</p> : (
+      {docs.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">Nothing yet. Add each licence's number, dates and a link to the copy.</p> : (
         <div className="grid md:grid-cols-2 gap-3">{docs.map((d) => { const k = kindOf(d.kind); const left = d.expires_on ? daysBetween(today, d.expires_on) : null; return (
           /* the card's actions are its footer strip, edge to edge (CardStrip): Open copy on a soft
              green when there is a link, Edit, Remove in red — they were three small text links */
@@ -289,8 +289,8 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
           <Field label="Title"><input name="title" value={edit?.title ?? ""} onChange={(e) => setEdit({ ...edit, title: e.target.value })} required placeholder="e.g. FSSAI state licence 2025-30" /></Field>
           <div className="grid grid-cols-2 gap-3"><Field label="Number"><input name="number" className="num" defaultValue={edit?.number ?? ""} /></Field><Field label="Issued by"><input name="issuer" defaultValue={edit?.issuer ?? ""} placeholder="FSSAI · Commercial Taxes Dept · Corporation" /></Field></div>
           <div className="grid grid-cols-2 gap-3"><Field label="Issued on"><input name="issued_on" type="date" className="num" defaultValue={edit?.issued_on ?? ""} /></Field><Field label="Expires on" hint="Leave blank for a document that does not expire"><input name="expires_on" type="date" className="num" defaultValue={edit?.expires_on ?? ""} /></Field></div>
-          <Field label="Period" hint="For a return or a yearly filing: FY 2025-26, 2026-08, Q1 2026-27"><input name="period" className="num" defaultValue={edit?.period ?? ""} /></Field>
-          <Field label="Link to the signed copy" hint="DigiLocker, Google Drive, your CA's portal — anywhere the PDF lives"><input name="url" defaultValue={edit?.url ?? ""} placeholder="https://…" /></Field>
+          <Field label="Period" hint="For returns: FY 2025-26, 2026-08, Q1 2026-27"><input name="period" className="num" defaultValue={edit?.period ?? ""} /></Field>
+          <Field label="Link to the signed copy" hint="DigiLocker, Google Drive or your CA's portal"><input name="url" defaultValue={edit?.url ?? ""} placeholder="https://…" /></Field>
           <Field label="Notes"><input name="notes" defaultValue={edit?.notes ?? ""} /></Field>
           <Button className="w-full" disabled={pending}>Save</Button>
         </form>
@@ -307,11 +307,11 @@ function Profile({ r, role, pending, onSave }: { r: Rest; role: string; pending:
       <Card>
         <div className="card-title"><h3><Landmark size={18} className="inline mr-2 -mt-1" />GST registration</h3></div>
         <div className="space-y-4">
-          <Field label="Scheme" hint={scheme === "composition" ? "You pay 5% of turnover, cannot charge GST on bills, and print a bill of supply. Set the dining GST rate in Settings to 0." : scheme === "unregistered" ? "Below the threshold, or not yet registered. Bills print without tax lines." : "You charge GST on every bill and file GSTR-1 and GSTR-3B."}>
+          <Field label="Scheme" hint={scheme === "composition" ? "You pay 5% of turnover; no GST on bills. Set dining GST to 0 in Settings." : scheme === "unregistered" ? "Not registered. Bills print with no tax." : "GST on every bill. File GSTR-1 and GSTR-3B."}>
             <select name="gst_scheme" value={scheme} onChange={(e) => setScheme(e.target.value)}><option value="regular">Regular</option><option value="composition">Composition (Sec 10)</option><option value="unregistered">Not registered</option></select></Field>
-          {scheme === "regular" && <Field label="Filing period" hint="Quarterly (QRMP) may be chosen up to ₹5 crore turnover"><select name="gst_period" defaultValue={r.gst_monthly === false ? "quarterly" : "monthly"}><option value="monthly">Monthly</option><option value="quarterly">Quarterly (QRMP)</option></select></Field>}
-          <Field label="GSTIN" hint="15 characters. The state code and the PAN are read from it."><input name="gstin" className="num uppercase" defaultValue={r.gstin ?? ""} placeholder="33ABCDE1234F1Z5" maxLength={15} /></Field>
-          <Field label="Legal name" hint="As on the certificate, if it differs from the name on the sign"><input name="legal_name" defaultValue={r.legal_name ?? ""} placeholder={r.name} /></Field>
+          {scheme === "regular" && <Field label="Filing period" hint="Quarterly (QRMP) allowed up to ₹5 crore turnover"><select name="gst_period" defaultValue={r.gst_monthly === false ? "quarterly" : "monthly"}><option value="monthly">Monthly</option><option value="quarterly">Quarterly (QRMP)</option></select></Field>}
+          <Field label="GSTIN" hint="15 characters. State code and PAN come from it."><input name="gstin" className="num uppercase" defaultValue={r.gstin ?? ""} placeholder="33ABCDE1234F1Z5" maxLength={15} /></Field>
+          <Field label="Legal name" hint="As on the certificate, if not the shop name"><input name="legal_name" defaultValue={r.legal_name ?? ""} placeholder={r.name} /></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="PAN"><input name="pan" className="num uppercase" defaultValue={r.pan ?? ""} placeholder="ABCDE1234F" maxLength={10} /></Field>
             <Field label="State"><select name="gst_state_code" defaultValue={r.gst_state_code ?? ""}><option value="">From the GSTIN</option>{Object.entries(GST_STATES).map(([c, s]) => <option key={c} value={c}>{c} · {s.name}</option>)}</select></Field>

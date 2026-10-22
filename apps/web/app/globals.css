@@ -477,6 +477,10 @@ body:has(.deck-card) { background: #0a0a0d; }
 @keyframes am-breathe { 0%, 100% { transform: scale(1); opacity: .92 } 50% { transform: scale(1.12); opacity: 1 } }
 .am .am-halo { animation: am-halo 3.2s ease-in-out infinite; }
 @keyframes am-halo { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
+/* idle, in layers (Mark.tsx, 2026-10-22): the same breathing on boxes, not on shapes inside an SVG, so it runs on the
+   compositor — the SVG-shape version restyled and repainted the main thread every frame on every screen */
+.am-idle .am-halo-l { animation: am-halo 3.2s ease-in-out infinite; }
+.am-idle .am-spark-l { transform-origin: 50% 50%; animation: am-breathe 3.2s ease-in-out infinite; }
 .am-thinking .am-tile { transform-origin: 16px 16px; animation: am-flip .9s cubic-bezier(.32,.72,0,1) infinite; }
 @keyframes am-flip { 0% { transform: perspective(60px) rotateX(0) } 45% { transform: perspective(60px) rotateX(-88deg) } 55% { transform: perspective(60px) rotateX(88deg) } 100% { transform: perspective(60px) rotateX(0) } }
 .am-thinking .am-spark { animation: am-spin 1.8s linear infinite; }
@@ -847,7 +851,9 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
 .analog-clock .ac-sec circle { fill: var(--color-red); }
 .analog-clock .ac-cap { fill: var(--color-red); stroke: var(--color-bg-2); stroke-width: 1; }
 .analog-clock .ac-hand { transform-box: view-box; transform-origin: 50px 50px; }
-.analog-clock .ac-sec.ticks { transition: transform .22s cubic-bezier(.4, 2.1, .55, 1); }
+/* the second hand is its own SVG box over the face (AnalogClock.tsx), so this transition runs on the compositor */
+.analog-clock .ac-sec { transform-origin: 50% 50%; }
+.analog-clock .ac-sec.ticks { transition: transform .22s cubic-bezier(.4, 2.1, .55, 1), opacity .3s; }
 .analog-clock .ac-hands { opacity: 0; transition: opacity .3s; }
 .analog-clock .ac-hands.on { opacity: 1; }
 
@@ -1362,6 +1368,9 @@ button.svc-chip[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--st-ink,
 .svc-table.st-free { background: transparent; border-style: dashed; border-color: var(--color-line-2); }
 .svc-table.st-hold { border-style: dashed; }
 .svc-table.st-clean { border-style: dashed; }
+/* a phone (2026-10-22, the owner: "not looking good"): the table being cleaned is a solid soft cyan frame, as on Tables —
+   the heavy dashed ring read as broken on a small card. Free tables keep their dashed outline. */
+@media (max-width: 767.98px) { .svc-table.st-clean { border-style: solid; border-width: 1.5px; border-color: color-mix(in srgb, var(--st) 55%, transparent); } }
 .svc-table.st-ready { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-green) 16%, transparent); }
 a.svc-table:hover { transform: translateY(-2px); }
 .svc-table .tname { font-family: var(--font-display); font-size: 34px; line-height: 1; letter-spacing: .005em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1510,10 +1519,8 @@ html[data-lang-all] :is(.svc-btn, .btn) { line-height: 1.25; }
    xl) ran 88px off a 1440 screen in Tamil, whose words are longer: in a whole-app language a rail may shrink, and
    slides as it does on a phone */
 html[data-lang-all] .rail-fade { flex-shrink: 1 !important; min-width: 0; }
-/* the phone's bottom bar: a Tamil or Hindi section name ("கட்டுப்பாட்டு அறை") is twice the English, and one
-   truncated line left "கட்டுப்பா…" — two short lines instead. Selected by the bar's class: its aria-label is
-   itself translated */
-html[data-lang-all] nav.tabbar a > span:last-child { white-space: normal; overflow: hidden; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 10px; line-height: 1.15; text-align: center; }
+/* (the phone's bottom bar had a two-line rule here for long Tamil and Hindi labels; since 2026-10-22 the bar is icons
+   only — its names are aria-labels and titles, which the whole-app language translates) */
 
 /* ═══ BRIGHT — colourful on a light page ══════════════════════════════════
    html[data-palette="bright"] on top of data-theme="paper" (tokens at the top of the file). Every rule that paints
@@ -1651,17 +1658,23 @@ html[data-palette="royal"] .logo-well { background-image: none; }
    `--tabbar` is its real height (the 60px row + the bottom safe area) and 0 from md, where there is no bar: every
    bottom offset on a phone reads it — main's padding, the till's cart bar, the assistant's button, Settings' save
    bar. Change the row here, not in those. */
-:root { --tabbar-row: 60px; --tabbar: calc(var(--tabbar-row) + env(safe-area-inset-bottom, 0px) + 3px); }
+/* 2026-10-22, the owner's picture ("like this image exactly"): a floating capsule — fully round ends, icons only, a soft
+   lighter pill behind the open section, the person's avatar in a ring at the end. It floats `--tabbar-gap` above the
+   foot (or the home indicator, whichever is higher) and 12px in from each side; --tabbar is still everything a phone's
+   bottom offsets must clear (the capsule + its gap), so main's padding, the cart bar, the assistant's button and the
+   save bar follow it unchanged. Solid card colour in every theme: graphite in the dark ones, white in paper. */
+:root { --tabbar-row: 64px;   /* 56 → 64 (2026-10-22, the owner: "slightly taller"); the pill is 48 tall, ~3/4 of it, as in the picture */ --tabbar-gap: max(12px, env(safe-area-inset-bottom, 0px)); --tabbar: calc(var(--tabbar-row) + var(--tabbar-gap)); }
 @media (min-width: 768px) { :root { --tabbar: 0px; } }
 nav.tabbar {
-  /* 2026-10-21, the owner: rounded, and standing 3px off the foot (the bottom-[3px] on the nav; --tabbar counts it) */
-  background: var(--color-bg-2); border: 1px solid var(--color-separator); border-radius: 12px;
-  box-shadow: 0 -10px 28px -20px rgb(0 0 0 / .7), 0 8px 22px -12px rgb(0 0 0 / .55);
-  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: var(--tabbar-gap);
+  height: var(--tabbar-row); padding: 0 6px; border-radius: 999px;
+  background: var(--color-bg-2); border: 1px solid color-mix(in srgb, var(--color-label) 9%, transparent);
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / .6), 0 2px 6px rgb(0 0 0 / .25);
 }
-[data-theme="paper"] nav.tabbar { box-shadow: 0 -8px 24px -18px rgb(27 28 34 / .28); }
-/* the colourful, bright and royal blocks paint cards and panels; the bar keeps its card colour, solid, in each */
-html[data-palette="royal"] nav.tabbar { border-top-color: rgb(184 145 58 / .35); }
+[data-theme="paper"] nav.tabbar { border-color: var(--color-separator); box-shadow: 0 10px 28px -12px rgb(27 28 34 / .28), 0 1px 3px rgb(27 28 34 / .08); }
+/* the open section's pill: the label colour at 9% on the capsule (a lighter grey on graphite, a light grey on white) */
+nav.tabbar .tab-pill { background: color-mix(in srgb, var(--color-label) 9%, transparent); }
+html[data-palette="royal"] nav.tabbar { border-color: rgb(184 145 58 / .35); }
 
 /* ═══ FLAP NUMBERS (2026-10-20) ═════════════════════════════════════════
    components/ui/Flap.tsx — the six approved split-flap designs on the app's own .flip tile:
@@ -1690,11 +1703,12 @@ html[data-palette="royal"] nav.tabbar { border-top-color: rgb(184 145 58 / .35);
    of room kept round it so it fits its slot; red with .alert. Still, as a steady ring, under reduce-motion. */
 .flap-breathe { position: relative; display: inline-grid; place-items: center; padding: 6px; margin: -6px; --glow: var(--color-tint); }
 .flap-breathe.alert { --glow: var(--color-red); }
-.flap-breathe.on .flip { animation: flapGlow 2.2s ease-out infinite; }
-@keyframes flapGlow {
-  0% { box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 0 0 0 color-mix(in srgb, var(--glow) 60%, transparent); }
-  70%, 100% { box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 0 0 7px color-mix(in srgb, var(--glow) 0%, transparent); } }
-@media (prefers-reduced-motion: reduce) { .flap-breathe.on .flip { animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--glow) 55%, transparent); } }
+/* The ring is the tile's ::after, moved by opacity and transform only (2026-10-22): animating box-shadow repainted the
+   page on the main thread every frame for as long as a tile was lit. It still swells out of the edge and fades, inside
+   the 6px of room (a 5px ring, from 94% to full size). */
+.flap-breathe.on .flip::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: 0 0 0 5px color-mix(in srgb, var(--glow) 60%, transparent); animation: flapGlow 2.2s ease-out infinite; }
+@keyframes flapGlow { 0% { opacity: .9; transform: scale(.94); } 70%, 100% { opacity: 0; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .flap-breathe.on .flip { box-shadow: 0 0 0 2px color-mix(in srgb, var(--glow) 55%, transparent); } .flap-breathe.on .flip::after { animation: none; opacity: 0; } }
 /* the till's count on a dish photo: the mini tile itself is the badge (it was a tint circle with the number) */
 .svc-dish .qty.qty-flap { min-width: 0; height: auto; padding: 0; background: none; box-shadow: none; }
 
@@ -1716,17 +1730,28 @@ html[data-palette="royal"] nav.tabbar { border-top-color: rgb(184 145 58 / .35);
    Sheet marks the row of buttons its content ends with (markSheetFoot); here it is held at the foot of the dialog
    while the fields scroll under it. The band is painted with shadows, not padding, so the row keeps its own size and
    place, and a pinned button loses its own glow. */
-/* V (10px) is how far the band reaches above and below the row — under the 12–16px most dialogs leave above their
-   buttons, so at rest it never covers the last field; copies shifted sideways by S carry it out to both edges. */
-.sheet-body { --sheet-sx: 10px; --sheet-foot-b: max(20px, env(safe-area-inset-bottom)); }
-@media (min-width: 640px) { .sheet-body { --sheet-sx: 14px; } }
+/* The bar, second version (2026-10-22, the owner: "the dialog footer is not good looking"). The first painted a band with
+   box-shadows reaching 10px above the row — where a dialog left only 4px above its buttons the band lay over the last row
+   (Dishes online, one dish: its price cut in half), and the flat band read as a block stuck on. Now the row keeps its own
+   box and a ::before behind it is the bar: frosted, a hairline and a soft shadow on top, edge to edge (the body's side
+   padding, --sheet-sx) and down to the dialog's foot (its bottom padding, --sheet-foot-b). A 22px margin above the row
+   leaves the bar's 14px reach clear of whatever is above it at rest; scrolled, the fields slide under the glass. The row
+   itself — one button or several — is not restyled. */
+.sheet-body { --sheet-sx: 20px; --sheet-foot-b: max(20px, env(safe-area-inset-bottom)); }
+@media (min-width: 640px) { .sheet-body { --sheet-sx: 24px; } }
 .sheet-body [data-sheet-foot] {
-  --b: var(--color-bg-2); --l: var(--color-separator); --v: 10px; --dn: var(--sheet-foot-b);
-  position: sticky; bottom: var(--sheet-foot-b); z-index: 3;
-  box-shadow:
-    0 0 0 var(--v) var(--b), calc(-1 * var(--sheet-sx)) 0 0 var(--v) var(--b), var(--sheet-sx) 0 0 var(--v) var(--b),
-    0 var(--dn) 0 var(--dn) var(--b),
-    0 -1px 0 var(--v) var(--l), calc(-1 * var(--sheet-sx)) -1px 0 var(--v) var(--l), var(--sheet-sx) -1px 0 var(--v) var(--l) !important;
+  /* bottom: 0, not the padding: a sticky inset is measured inside the scroller's padding, so `bottom: 20px` on top of the
+     body's 20px bottom padding lifted the row 20px into the content at rest and left 40px under it (measured) */
+  position: sticky; bottom: 0; z-index: 3; isolation: isolate;
+  margin-top: 22px !important; box-shadow: none !important;
+}
+.sheet-body [data-sheet-foot]::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  top: -14px; bottom: calc(-1 * var(--sheet-foot-b)); left: calc(-1 * var(--sheet-sx)); right: calc(-1 * var(--sheet-sx));
+  background: color-mix(in srgb, var(--color-bg-2) 86%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
+  border-top: 1px solid var(--color-separator);
+  box-shadow: 0 -14px 28px -22px rgb(0 0 0 / .55);
 }
 
 /* ── the guest's queue page (2026-10-21): the seated tick pops in once; "You're up" rings and its card glows, so the
@@ -1738,8 +1763,3 @@ html[data-palette="royal"] nav.tabbar { border-top-color: rgb(184 145 58 / .35);
 .queue-ring { animation: queue-ring 1.4s ease-out infinite; }
 .queue-call { animation: queue-glow 2.2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .queue-pop, .queue-ring, .queue-call { animation: none; } }
-
-/* the phone bar's open tab lifts out of it (2026-10-21): the green circle rises into place when a tab opens */
-@keyframes tabbar-lift { from { transform: translateY(14px) scale(.7); opacity: .3; } to { transform: none; opacity: 1; } }
-.tabbar-lift { animation: tabbar-lift .26s cubic-bezier(.16, 1, .3, 1) backwards; }
-@media (prefers-reduced-motion: reduce) { .tabbar-lift { animation: none; } }

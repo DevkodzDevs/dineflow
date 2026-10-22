@@ -122,7 +122,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
               different gap above each. */}
           <div className="mt-5 pt-4 border-t border-line no-print" data-adjust>
             <div className="flex items-start justify-between gap-3 mb-3">
-              <span className="text-xs font-semibold text-steel leading-snug">Know something the numbers don&apos;t? Adjust — the prep and the buy list follow.</span>
+              <span className="text-xs font-semibold text-steel leading-snug">Know better? Adjust — prep and buy list follow.</span>
               {covers !== forecast.predicted_covers && <button type="button" onClick={() => setCovers(forecast.predicted_covers)} data-reset
                 className="shrink-0 text-xs font-semibold text-[var(--color-tint)] !min-h-0 h-9 -my-2.5 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:-my-3.5 px-2 rounded-lg hover:bg-[var(--color-fill)] inline-flex items-center">Reset to {forecast.predicted_covers}</button>}
             </div>
@@ -160,7 +160,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
       {cold && (
         <Card className="!bg-champagne-2 flex items-start gap-3 mb-5">
           <Info size={18} className="shrink-0 mt-0.5" />
-          <div className="text-sm"><b>Still learning.</b> The brief needs about four weeks of trading before it predicts well. Until then it only counts what your bookings guarantee, and it will tell you honestly how sure it is. Nothing here is an instruction — edit anything before you act on it.</div>
+          <div className="text-sm"><b>Still learning.</b> It needs about four weeks of sales to predict well. Edit anything before you act on it.</div>
         </Card>
       )}
 
@@ -168,7 +168,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
         {/* ── prep ── */}
         <Card>
           <div className="flex items-center gap-2 mb-1"><ChefHat size={17} /><h2 className="text-2xl">Prep for the kitchen</h2></div>
-          <p className="text-xs text-steel mb-4">Portions include your {forecast.buffer_pct}% buffer. The chef writes back what was actually made — that is what teaches tomorrow&apos;s brief.</p>
+          <p className="text-xs text-steel mb-4">Portions include your {forecast.buffer_pct}% buffer. Chef: write what you actually made.</p>
           {dishes.length === 0 ? <Empty title="Nothing to prep yet" hint="Once dishes start selling, this fills itself in." /> : (
             <div className="divide-y divide-line">
               {dishes.slice(0, 18).map((d, i) => (
@@ -184,13 +184,13 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
               ))}
             </div>
           )}
-          {dishes.length > 0 && <Button variant="outline" className="mt-4 no-print" disabled={pending} onClick={() => start(async () => { const a = await saveForecast(date, covers); if ("error" in a) { setMsg(null); return setErr(a.error!); } const b = await saveChefNotes(date, made); if ("error" in b) { setMsg(null); return setErr(b.error!); } setErr(null); setMsg("Saved. Tomorrow the brief compares this against what actually sold."); })}><Check size={15} /> Save tonight&apos;s brief</Button>}
+          {dishes.length > 0 && <Button variant="outline" className="mt-4 no-print" disabled={pending} onClick={() => start(async () => { const a = await saveForecast(date, covers); if ("error" in a) { setMsg(null); return setErr(a.error!); } const b = await saveChefNotes(date, made); if ("error" in b) { setMsg(null); return setErr(b.error!); } setErr(null); setMsg("Saved. Tomorrow we check it against sales."); })}><Check size={15} /> Save tonight&apos;s brief</Button>}
         </Card>
 
         {/* ── market list ── */}
         <Card>
           <div className="flex items-center gap-2 mb-1"><ShoppingBasket size={17} /><h2 className="text-2xl">Buy in the morning</h2></div>
-          <p className="text-xs text-steel mb-4">What the pantry is short of after tomorrow&apos;s cooking, and anything that has slipped to its reorder level — topped up to twice the level. Tick what you actually bought and it goes straight into stock.</p>
+          <p className="text-xs text-steel mb-4">What you&apos;ll run out of, plus low stock (filled to 2× reorder). Ticked items go into stock.</p>
           {purchase.length === 0 ? (
             <div className="feather p-6 text-center bg-mint-2 border-mint"><Check size={22} className="mx-auto text-ink" /><p className="font-semibold mt-2">Pantry covers tomorrow</p><p className="text-xs text-steel mt-1">Nothing to buy on today&apos;s numbers.</p></div>
           ) : (<>
@@ -223,8 +223,8 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
       {/* ── how honest has this been? ── */}
       <Card className="mt-4">
         <div className="flex items-center gap-2 mb-1"><Target size={17} /><h2 className="text-2xl">Was it right?</h2></div>
-        <p className="text-xs text-steel mb-4">Every brief is graded the next day against what actually sold. Judge it before you trust it.</p>
-        {!score?.days ? <p className="text-sm text-steel">No graded days yet — save a brief tonight and check back tomorrow evening.</p> : (
+        <p className="text-xs text-steel mb-4">Each brief is checked next day against what sold.</p>
+        {!score?.days ? <p className="text-sm text-steel">Nothing yet — save a brief tonight, check tomorrow.</p> : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               <StatTile label="Average accuracy" value={score.accuracy != null ? `${score.accuracy}%` : "—"} sub={`over ${score.days} graded days`} tone={(score.accuracy ?? 0) >= 80 ? "good" : undefined} />
@@ -250,7 +250,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
         )}
       </Card>
 
-      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Sparkles size={13} className="mt-0.5 shrink-0" /> This is a suggestion built from your own history and bookings, not a rule. Weather, a wedding hall next door or a bandh will beat any forecast — use the Quiet/Busy buttons when you know something it doesn&apos;t.</p>
+      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Sparkles size={13} className="mt-0.5 shrink-0" /> A guess from your sales and bookings. Know better? Tap Quiet or Busy.</p>
     </>
   );
 }

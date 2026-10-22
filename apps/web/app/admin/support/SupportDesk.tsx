@@ -63,7 +63,7 @@ export function SupportDesk({ rows, error }: { rows: Row[]; error: string | null
       <div className="aurora">
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Help & support</div>
         <h1 className="text-4xl">{rows.filter(live).length} open <em>request{rows.filter(live).length === 1 ? "" : "s"}</em></h1>
-        <p className="text-sm text-[var(--color-label-2)] mt-1.5 max-w-2xl">Complaints, problems, questions, ideas, billing and privacy & consent requests from every property — with who raised them, where they were, and the screenshots they sent.</p>
+        <p className="text-sm text-[var(--color-label-2)] mt-1.5 max-w-2xl">Requests from every property — who raised them, from where, with screenshots.</p>
       </div>
       {error && <p className="rounded-xl bg-[var(--color-red-2)] px-4 py-3 text-sm text-[var(--color-red)]">{error}</p>}
 
@@ -94,7 +94,7 @@ export function SupportDesk({ rows, error }: { rows: Row[]; error: string | null
       </div>
 
       {shown.length === 0 ? (
-        <div className="feather p-10 text-center text-sm text-[var(--color-label-2)]" data-desk-empty>{rows.length ? "No request matches." : "No requests yet. When a property raises one from Help & support, it lands here."}</div>
+        <div className="feather p-10 text-center text-sm text-[var(--color-label-2)]" data-desk-empty>{rows.length ? "No request matches." : "No requests yet. They arrive here from Help & support."}</div>
       ) : (
         <ul className="space-y-2" data-desk-list>
           {shown.map((r) => {

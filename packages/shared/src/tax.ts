@@ -35,29 +35,29 @@ export const SAC = {
 
 /** The rate schedule for hospitality. `itc` says whether input tax credit may be claimed. */
 export const GST_RATES: { sac: string; what: string; rate: number | null; itc: boolean; note?: string }[] = [
-  { sac: SAC.restaurant, what: "Restaurant, café, cloud kitchen, canteen", rate: 5, itc: false, note: "2.5% CGST + 2.5% SGST/UTGST. No input tax credit on purchases." },
-  { sac: SAC.restaurant, what: "Restaurant inside a hotel where any room is above ₹7,500 a night", rate: 18, itc: true, note: "The hotel's tariff decides the restaurant's rate." },
+  { sac: SAC.restaurant, what: "Restaurant, café, cloud kitchen, canteen", rate: 5, itc: false, note: "2.5% CGST + 2.5% SGST/UTGST. No input tax credit." },
+  { sac: SAC.restaurant, what: "Hotel restaurant, any room above ₹7,500 a night", rate: 18, itc: true, note: "The hotel's tariff decides the restaurant's rate." },
   { sac: SAC.catering, what: "Outdoor catering", rate: 5, itc: false },
   { sac: SAC.accommodation, what: "Hotel or resort room up to ₹7,500 a night", rate: 5, itc: false, note: "Was 12% before 22 September 2025." },
   { sac: SAC.accommodation, what: "Hotel or resort room above ₹7,500 a night", rate: 18, itc: true },
-  { sac: "", what: "Alcohol for human consumption", rate: null, itc: false, note: "Outside GST altogether; state VAT and excise apply instead." },
+  { sac: "", what: "Alcohol for human consumption", rate: null, itc: false, note: "Not under GST; state VAT and excise apply." },
 ];
 
 /** Rule 46 of the CGST Rules: what a tax invoice must show. */
 export const INVOICE_MUST_SHOW = [
   "Name, address and GSTIN of the supplier",
-  "A consecutive serial number, unique for the financial year (letters, numerals, - and / only)",
+  "Serial number, unique in the financial year (letters, digits, - and / only)",
   "Date of issue",
-  "Name, address and GSTIN of the recipient, when the recipient is registered (a B2B supply)",
-  "HSN code of goods or SAC of services — 996331 for restaurant service, 996311 for accommodation",
+  "Buyer's name, address and GSTIN, if registered (B2B)",
+  "HSN or SAC code — 996331 restaurant, 996311 rooms",
   "Description of the goods or services",
   "Quantity and unit for goods",
   "Taxable value after any discount",
-  "Rate of tax — CGST and SGST/UTGST shown separately, or IGST for an inter-state supply",
-  "Amount of tax — again, CGST and SGST/UTGST separately",
-  "Place of supply, with the state name, when it differs from the supplier's state",
+  "Tax rate — CGST and SGST/UTGST apart, or IGST if inter-state",
+  "Tax amount — CGST and SGST/UTGST apart",
+  "Place of supply and its state, if not the supplier's state",
   "Whether tax is payable under reverse charge",
-  "Signature or digital signature of the supplier or an authorised person",
+  "Signature or digital signature of supplier or authorised person",
 ];
 
 /** Rule 49: a composition dealer issues a bill of supply, not a tax invoice, and must print this line. */
@@ -108,17 +108,17 @@ export const fyStartYear = (fy: string) => Number(fy.slice(0, 4));
 /** Statutory documents a hospitality business keeps, and whether each one expires. */
 export const DOC_KINDS: { key: string; label: string; expires: boolean; hint: string }[] = [
   { key: "gst_reg", label: "GST registration certificate (REG-06)", expires: false, hint: "Download from gst.gov.in → Services → User Services → View/Download Certificate." },
-  { key: "pan", label: "PAN card of the business", expires: false, hint: "Proprietor's PAN for a proprietorship; the firm's or company's PAN otherwise." },
-  { key: "fssai", label: "FSSAI licence or registration", expires: true, hint: "Every food business needs one. Renew before it lapses; the number must be printed on bills." },
-  { key: "trade_licence", label: "Trade licence (municipal)", expires: true, hint: "Issued by the corporation or municipality; renewed yearly." },
-  { key: "shop_estab", label: "Shops & Establishments registration", expires: true, hint: "State labour department; needed once you employ anyone." },
-  { key: "fire_noc", label: "Fire safety NOC", expires: true, hint: "Fire service certificate; hotels and larger restaurants need it renewed." },
+  { key: "pan", label: "PAN card of the business", expires: false, hint: "Proprietor's PAN, or the firm's or company's PAN." },
+  { key: "fssai", label: "FSSAI licence or registration", expires: true, hint: "Every food business needs one. Renew on time; print the number on bills." },
+  { key: "trade_licence", label: "Trade licence (municipal)", expires: true, hint: "From the municipality; renew every year." },
+  { key: "shop_estab", label: "Shops & Establishments registration", expires: true, hint: "Labour department; needed once you have staff." },
+  { key: "fire_noc", label: "Fire safety NOC", expires: true, hint: "From the fire service; hotels and big restaurants renew it." },
   { key: "bar_licence", label: "Bar / liquor licence (FL-3 or equivalent)", expires: true, hint: "State excise. Only if you serve alcohol." },
-  { key: "audit_3cd", label: "Tax audit report (Form 3CA/3CB with 3CD)", expires: false, hint: "Signed by your CA when the audit under section 44AB applies." },
+  { key: "audit_3cd", label: "Tax audit report (Form 3CA/3CB with 3CD)", expires: false, hint: "Signed by your CA, if a section 44AB audit applies." },
   { key: "itr_ack", label: "Income-tax return acknowledgement (ITR-V)", expires: false, hint: "One per financial year." },
-  { key: "gstr_filing", label: "GST return filing acknowledgement", expires: false, hint: "The ARN or acknowledgement for a GSTR-1, 3B, 4, 9 or CMP-08." },
+  { key: "gstr_filing", label: "GST return filing acknowledgement", expires: false, hint: "ARN or acknowledgement for GSTR-1, 3B, 4, 9 or CMP-08." },
   { key: "bank_stmt", label: "Bank statements", expires: false, hint: "Monthly, for the books and for the audit." },
-  { key: "other", label: "Other", expires: false, hint: "Lease, partnership deed, PF/ESI registration, pollution consent, music licence…" },
+  { key: "other", label: "Other", expires: false, hint: "Lease, partnership deed, PF/ESI, pollution consent, music licence…" },
 ];
 
 export type CalendarItem = {
@@ -152,47 +152,47 @@ export function statutoryCalendar(o: { fy: string; scheme: GstScheme | string; s
     if (o.monthlyGst !== false) {
       for (const { y, m } of months) {
         const n = next(y, m);
-        out.push({ form: "GSTR-1", period: monthKey(y, m), due: iso(n.y, n.m, 11), title: "GSTR-1 · outward supplies", what: "Every sale of the month, B2B invoice by invoice, B2C in total.", portal: GST_PORTAL, ref: "Sec 37 CGST Act · Rule 59" });
-        out.push({ form: "GSTR-3B", period: monthKey(y, m), due: iso(n.y, n.m, 20), title: "GSTR-3B · summary return and payment", what: "Tax on the month's sales, less input credit if any, paid with the return.", portal: GST_PORTAL, ref: "Sec 39 · Rule 61" });
+        out.push({ form: "GSTR-1", period: monthKey(y, m), due: iso(n.y, n.m, 11), title: "GSTR-1 · outward supplies", what: "All the month's sales: B2B by invoice, B2C in total.", portal: GST_PORTAL, ref: "Sec 37 CGST Act · Rule 59" });
+        out.push({ form: "GSTR-3B", period: monthKey(y, m), due: iso(n.y, n.m, 20), title: "GSTR-3B · summary return and payment", what: "Pay the month's tax, less any input credit.", portal: GST_PORTAL, ref: "Sec 39 · Rule 61" });
       }
     } else {
       for (const q of quarters) {
         const n = next(q.endY, q.endM);
-        out.push({ form: "GSTR-1", period: `${q.q} ${o.fy}`, due: iso(n.y, n.m, 13), title: "GSTR-1 · quarterly (QRMP)", what: "The quarter's sales. B2B invoices may be pushed monthly through the IFF.", portal: GST_PORTAL, ref: "Rule 59(2)" });
-        out.push({ form: "GSTR-3B", period: `${q.q} ${o.fy}`, due: iso(n.y, n.m, qrmp3b), title: "GSTR-3B · quarterly (QRMP)", what: "Tax for months 1 and 2 goes by challan PMT-06 by the 25th; the return settles the quarter.", portal: GST_PORTAL, ref: "Rule 61" });
+        out.push({ form: "GSTR-1", period: `${q.q} ${o.fy}`, due: iso(n.y, n.m, 13), title: "GSTR-1 · quarterly (QRMP)", what: "The quarter's sales. B2B invoices can go monthly via IFF.", portal: GST_PORTAL, ref: "Rule 59(2)" });
+        out.push({ form: "GSTR-3B", period: `${q.q} ${o.fy}`, due: iso(n.y, n.m, qrmp3b), title: "GSTR-3B · quarterly (QRMP)", what: "Pay months 1 and 2 by challan PMT-06 by the 25th; this settles the quarter.", portal: GST_PORTAL, ref: "Rule 61" });
       }
     }
-    out.push({ form: "GSTR-9", period: `FY ${o.fy}`, due: iso(y1, 12, 31), title: "GSTR-9 · annual return", what: "Reconciles the year's monthly returns. Optional below ₹2 crore turnover.", portal: GST_PORTAL, ref: "Sec 44 · Rule 80", optional: true });
-    out.push({ form: "GSTR-9C", period: `FY ${o.fy}`, due: iso(y1, 12, 31), title: "GSTR-9C · reconciliation statement", what: "Self-certified reconciliation with the audited accounts. Only above ₹5 crore turnover.", portal: GST_PORTAL, ref: "Sec 44 · Rule 80(3)", optional: true });
+    out.push({ form: "GSTR-9", period: `FY ${o.fy}`, due: iso(y1, 12, 31), title: "GSTR-9 · annual return", what: "Sums up the year's returns. Optional below ₹2 crore turnover.", portal: GST_PORTAL, ref: "Sec 44 · Rule 80", optional: true });
+    out.push({ form: "GSTR-9C", period: `FY ${o.fy}`, due: iso(y1, 12, 31), title: "GSTR-9C · reconciliation statement", what: "Matches returns to audited accounts. Only above ₹5 crore turnover.", portal: GST_PORTAL, ref: "Sec 44 · Rule 80(3)", optional: true });
   }
   if (o.scheme === "composition") {
     for (const q of quarters) {
       const n = next(q.endY, q.endM);
-      out.push({ form: "CMP-08", period: `${q.q} ${o.fy}`, due: iso(n.y, n.m, 18), title: "CMP-08 · quarterly statement and payment", what: "5% of the quarter's turnover (2.5% CGST + 2.5% SGST), paid with the statement.", portal: GST_PORTAL, ref: "Sec 10 · Rule 62" });
+      out.push({ form: "CMP-08", period: `${q.q} ${o.fy}`, due: iso(n.y, n.m, 18), title: "CMP-08 · quarterly statement and payment", what: "Pay 5% of the quarter's turnover (2.5% CGST + 2.5% SGST).", portal: GST_PORTAL, ref: "Sec 10 · Rule 62" });
     }
-    out.push({ form: "GSTR-4", period: `FY ${o.fy}`, due: iso(y1, 6, 30), title: "GSTR-4 · annual return (composition)", what: "The year's turnover and tax, after the four CMP-08 statements.", portal: GST_PORTAL, ref: "Sec 39(2) · Rule 62" });
+    out.push({ form: "GSTR-4", period: `FY ${o.fy}`, due: iso(y1, 6, 30), title: "GSTR-4 · annual return (composition)", what: "The year's turnover and tax, after four CMP-08s.", portal: GST_PORTAL, ref: "Sec 39(2) · Rule 62" });
   }
 
   // income tax applies to every business, registered for GST or not
-  out.push({ form: "ADV-TAX", period: `Q1 ${o.fy}`, due: iso(y0, 6, 15), title: "Advance tax · 1st instalment (15%)", what: "If the year's income-tax liability exceeds ₹10,000.", portal: IT_PORTAL, ref: "Sec 208, 211 Income-tax Act" });
+  out.push({ form: "ADV-TAX", period: `Q1 ${o.fy}`, due: iso(y0, 6, 15), title: "Advance tax · 1st instalment (15%)", what: "If the year's income tax is over ₹10,000.", portal: IT_PORTAL, ref: "Sec 208, 211 Income-tax Act" });
   out.push({ form: "ADV-TAX", period: `Q2 ${o.fy}`, due: iso(y0, 9, 15), title: "Advance tax · 2nd instalment (45% cumulative)", what: "Cumulative to 45% of the estimated year.", portal: IT_PORTAL, ref: "Sec 211" });
   out.push({ form: "ADV-TAX", period: `Q3 ${o.fy}`, due: iso(y0, 12, 15), title: "Advance tax · 3rd instalment (75% cumulative)", what: "Cumulative to 75%.", portal: IT_PORTAL, ref: "Sec 211" });
   out.push({ form: "ADV-TAX", period: `Q4 ${o.fy}`, due: iso(y1, 3, 15), title: "Advance tax · 4th instalment (100%)", what: "The balance of the year's estimate.", portal: IT_PORTAL, ref: "Sec 211" });
-  out.push({ form: "TAX-AUDIT", period: `FY ${o.fy}`, due: iso(y1, 9, 30), title: "Tax audit report · Form 3CA/3CB with 3CD", what: "Mandatory above ₹1 crore turnover (₹10 crore where cash receipts and payments are each within 5%). Filed by your CA.", portal: IT_PORTAL, ref: "Sec 44AB", optional: true });
-  out.push({ form: "ITR", period: `FY ${o.fy}`, due: iso(y1, 10, 31), title: "Income-tax return · audited business", what: "31 October when a tax audit applies; 31 July otherwise.", portal: IT_PORTAL, ref: "Sec 139(1)" });
+  out.push({ form: "TAX-AUDIT", period: `FY ${o.fy}`, due: iso(y1, 9, 30), title: "Tax audit report · Form 3CA/3CB with 3CD", what: "Above ₹1 crore turnover (₹10 crore if cash in and out are each within 5%). CA files it.", portal: IT_PORTAL, ref: "Sec 44AB", optional: true });
+  out.push({ form: "ITR", period: `FY ${o.fy}`, due: iso(y1, 10, 31), title: "Income-tax return · audited business", what: "31 October with a tax audit; 31 July without.", portal: IT_PORTAL, ref: "Sec 139(1)" });
 
   // people: TDS, provident fund, state insurance, professional tax
   const tds = [{ p: `Q1 ${o.fy}`, y: y0, m: 7, d: 31 }, { p: `Q2 ${o.fy}`, y: y0, m: 10, d: 31 }, { p: `Q3 ${o.fy}`, y: y1, m: 1, d: 31 }, { p: `Q4 ${o.fy}`, y: y1, m: 5, d: 31 }];
-  for (const t of tds) out.push({ form: "TDS", period: t.p, due: iso(t.y, t.m, t.d), title: "TDS return · 24Q (salary) / 26Q (rent, contractors)", what: "Only if you deduct tax at source — on rent above ₹50,000 a month, contractor bills, or salaries above the slab. Monthly deposits by the 7th.", portal: IT_PORTAL, ref: "Sec 192, 194C, 194I · Rule 31A", optional: true });
+  for (const t of tds) out.push({ form: "TDS", period: t.p, due: iso(t.y, t.m, t.d), title: "TDS return · 24Q (salary) / 26Q (rent, contractors)", what: "If you deduct TDS: rent over ₹50,000 a month, contractors, salaries. Deposit by the 7th.", portal: IT_PORTAL, ref: "Sec 192, 194C, 194I · Rule 31A", optional: true });
   if (o.hasStaff !== false) {
     for (const { y, m } of months) {
       const n = next(y, m);
-      out.push({ form: "PF", period: monthKey(y, m), due: iso(n.y, n.m, 15), title: "EPF contribution and ECR", what: "Applies from 20 employees. 12% employee + 12% employer on basic pay.", portal: EPFO, ref: "EPF Act 1952", optional: true });
-      out.push({ form: "ESI", period: monthKey(y, m), due: iso(n.y, n.m, 15), title: "ESI contribution", what: "Applies from 10 employees where wages are up to ₹21,000 a month. 0.75% employee + 3.25% employer.", portal: ESIC, ref: "ESI Act 1948", optional: true });
+      out.push({ form: "PF", period: monthKey(y, m), due: iso(n.y, n.m, 15), title: "EPF contribution and ECR", what: "From 20 staff. 12% employee + 12% employer on basic pay.", portal: EPFO, ref: "EPF Act 1952", optional: true });
+      out.push({ form: "ESI", period: monthKey(y, m), due: iso(n.y, n.m, 15), title: "ESI contribution", what: "From 10 staff, wages up to ₹21,000 a month. 0.75% employee + 3.25% employer.", portal: ESIC, ref: "ESI Act 1948", optional: true });
     }
   }
   if (o.stateCode === "33") {
-    out.push({ form: "PT", period: `H1 ${o.fy}`, due: iso(y0, 9, 30), title: "Professional tax · first half (Tamil Nadu)", what: "Half-yearly, to the local body, for the business and each employee above the slab.", portal: "https://tnurbanepay.tn.gov.in", ref: "TN Tax on Professions Act 1992", optional: true });
+    out.push({ form: "PT", period: `H1 ${o.fy}`, due: iso(y0, 9, 30), title: "Professional tax · first half (Tamil Nadu)", what: "Half-yearly to the local body, for you and staff above the slab.", portal: "https://tnurbanepay.tn.gov.in", ref: "TN Tax on Professions Act 1992", optional: true });
     out.push({ form: "PT", period: `H2 ${o.fy}`, due: iso(y1, 3, 31), title: "Professional tax · second half (Tamil Nadu)", what: "Half-yearly, to the local body.", portal: "https://tnurbanepay.tn.gov.in", ref: "TN Tax on Professions Act 1992", optional: true });
   }
   return out.sort((a, b) => a.due.localeCompare(b.due) || a.form.localeCompare(b.form));
@@ -200,7 +200,7 @@ export function statutoryCalendar(o: { fy: string; scheme: GstScheme | string; s
 
 /** Records the CGST Act requires a registered business to keep, and for how long. */
 export const RECORD_KEEPING = {
-  years: "72 months from the due date of the annual return for that year — in practice six years, longer if any notice or appeal is open",
+  years: "six years (72 months) after the annual return's due date; longer during a notice or appeal",
   ref: "Sec 35 and 36 CGST Act · Rule 56",
-  keep: ["Sales register — every bill and invoice, in serial order", "Purchase register with supplier GSTINs, for input credit and for GSTR-2B matching", "Stock register: opening, receipts, issues, closing, wastage (the Pantry does this)", "Cash book and bank statements", "Tax paid: challans, and the returns with their acknowledgements", "Advance receipts and their adjustments", "Credit and debit notes"],
+  keep: ["Sales register — every bill and invoice, in serial order", "Purchase register with supplier GSTINs (for input credit and GSTR-2B)", "Stock register: opening, in, out, closing, wastage (Pantry keeps it)", "Cash book and bank statements", "Tax paid: challans, and returns with acknowledgements", "Advance receipts and their adjustments", "Credit and debit notes"],
 };

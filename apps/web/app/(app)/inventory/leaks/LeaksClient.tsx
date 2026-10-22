@@ -23,14 +23,14 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
   return (
     <div>
       <Link href="/inventory" className="tap inline-flex items-center gap-1 text-sm text-steel mb-3"><ChevronLeft size={16} /> Pantry</Link>
-      <PageHeader eyebrow="Recipes versus the shelf" title="Leak finder" sub="Every dish sold takes its recipe out of stock. When a count comes in lower, that gap is the leak: over-portioning, spoilage nobody logged, or hands in the store." actions={<Button onClick={() => setCounting(true)}><ClipboardCheck size={16} /> Count stock now</Button>} />
+      <PageHeader eyebrow="Recipes versus the shelf" title="Leak finder" sub="Stock missing after a count, beyond what recipes used." actions={<Button onClick={() => setCounting(true)}><ClipboardCheck size={16} /> Count stock now</Button>} />
       <div className="flip-row mb-8">
         <Flip value={Math.round(report.lost_value / 100) / 10} label="k ₹ lost" tone={report.lost_value > 0 ? "alert" : "live"} />
         <Flip value={leaks.length} label="leaking" />
         <Flip value={report.uncounted} label="never counted" tone={report.uncounted > 0 ? undefined : "live"} />
         <Flip value={Math.round(report.logged_wastage_value / 100) / 10} label="k ₹ logged waste" />
       </div>
-      {report.uncounted === report.items.length && <Card className="mb-6"><p className="text-[15px]">Nothing has been counted yet, so there is nothing to compare. <b>Count stock now</b> takes about two minutes for a small pantry, and from then on this page tells you exactly where the money goes.</p></Card>}
+      {report.uncounted === report.items.length && <Card className="mb-6"><p className="text-[15px]">Nothing counted yet. Tap <b>Count stock now</b> to start — it takes about 2 minutes.</p></Card>}
       <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
         <div className="min-w-0">
           <div className="card-title"><h3>Where it's going</h3><span className="more">last {report.since_days} days or since last count</span></div>
@@ -51,14 +51,14 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
           <ol className="space-y-3 text-[14px] text-steel list-decimal pl-4">
             <li>Count the shelf. The ledger is set to what you counted.</li>
             <li>From then on, every sale deducts its recipe.</li>
-            <li>Next count, the gap between recipe and shelf is the leak, in rupees.</li>
+            <li>Next count, any shortfall is the leak, in rupees.</li>
             <li>Log wastage when it happens; logged waste is not a leak.</li>
           </ol>
-          <p className="text-xs text-steel mt-4">Count the five dearest items weekly — chicken, mutton, fish, ghee, paneer — and the rest monthly. That catches most of the money.</p>
+          <p className="text-xs text-steel mt-4">Count costly items (chicken, mutton, fish, ghee, paneer) weekly, the rest monthly.</p>
         </Card>
       </div>
       <Sheet open={counting} onClose={() => setCounting(false)} title="Count stock" wide>
-        <p className="text-sm text-steel mb-4">Type what is actually on the shelf. Leave blank to skip an item.</p>
+        <p className="text-sm text-steel mb-4">Type what is on the shelf. Leave blank to skip.</p>
         <div className="group">
           {ingredients.map((g) => <div key={g.id} className="row"><span className="flex-1">{g.name}<span className="block text-xs text-steel">system says {Number(g.current_stock).toFixed(2)} {g.unit}</span></span><input type="number" inputMode="decimal" step="any" placeholder={g.unit} className="num !w-32 !text-right" value={vals[g.id] ?? ""} onChange={(e) => setVals({ ...vals, [g.id]: e.target.value })} /></div>)}
         </div>

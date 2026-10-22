@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, Images, ImagePlus, ChevronDown, Wrench, Ban, Loader2 } from "lucide-react";
+import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, Images, ImagePlus, ChevronDown, Wrench, Ban, Loader2, Globe, GlobeLock } from "lucide-react";
 import { DishPhotoPicker, type DishPhoto } from "@/components/menu/DishPhotoPicker";
 import { DishGlyph, glyphFor } from "@/components/menu/DishGlyph";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,20 +11,22 @@ import { Say, CatIcon } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import { catIcon } from "@/lib/say";
 import { formatINR } from "@/lib/format";
+import { DishImage } from "@/components/menu/DishImage";
 import { fmtQty, type StandardRecipe } from "@dineflow/shared";
 import { saveCategory, saveMenuItem, toggleAvailable, deleteMenuItem, saveRecipe, deleteCategory, applyStandardRecipe, suggestDish, suggestRecipe, setCategoryStation, setDishPhoto, autoPhotos, autoRecipes } from "./actions";
+import { setOnlineAvailable } from "../online-orders/actions";
 import { AiButton } from "@/components/ui/AiButton";
 import { OptionsEditor, GroupsManager, ComboParts } from "./Options";
 import { MenuImport } from "./MenuImport";
 import type { VariantRow, GroupRow, LinkRow, ComboRow } from "@/lib/menuOptions";
 
 type Cat = { id: string; name: string; sort_order: number; station?: string | null };
-type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; prep_minutes: number; description: string | null; station?: string | null; is_combo?: boolean; image_url?: string | null; image_credit?: string | null; image_source?: string | null };
+type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; online_available?: boolean; prep_minutes: number; description: string | null; station?: string | null; is_combo?: boolean; image_url?: string | null; image_credit?: string | null; image_source?: string | null };
 type Ing = { id: string; name: string; unit: string };
 type Rec = { menu_item_id: string; ingredient_id: string; qty: number };
 
-export function MenuClient({ categories, items, ingredients, recipes, std = {}, ai = false, stations = [], variants = [], groups = [], links = [], combos = [] }:
-  { categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; std?: Record<string, StandardRecipe>; ai?: boolean; stations?: string[]; variants?: VariantRow[]; groups?: GroupRow[]; links?: LinkRow[]; combos?: ComboRow[] }) {
+export function MenuClient({ categories, items, ingredients, recipes, std = {}, ai = false, stations = [], variants = [], groups = [], links = [], combos = [], canOnline = false }:
+  { canOnline?: boolean; categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; std?: Record<string, StandardRecipe>; ai?: boolean; stations?: string[]; variants?: VariantRow[]; groups?: GroupRow[]; links?: LinkRow[]; combos?: ComboRow[] }) {
   const [cat, setCat] = useState<string>("all");
   const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<Partial<Item> | null>(null);
@@ -88,6 +90,18 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
   const soldOut = items.filter((i) => !i.is_available).length;
   const [tools, setTools] = useState(false);
   const toggle = (it: Item, v: boolean) => start(async () => { const r = await toggleAvailable(it.id, v); if ("error" in r) toast(r.error!, "err"); });
+  /* Online (0132): off online, a dish is still sold at the till and the table — only Swiggy, Zomato and the website stop.
+     The chef, a manager or an online supervisor (canOnline, lib/online.ts) switches it here or in Online orders. */
+  const [onl, setOnl] = useState<Record<string, boolean>>({});
+  const isOnline = (it: Item) => onl[it.id] ?? it.online_available !== false;
+  const toggleOnline = (it: Item, v: boolean) => { setOnl((m) => ({ ...m, [it.id]: v })); start(async () => { const r = await setOnlineAvailable([it.id], v); if ("error" in r) { setOnl((m) => ({ ...m, [it.id]: !v })); toast(r.error!, "err"); } else toast(v ? `${it.name} is online again` : `${it.name} is off online — still sold in the restaurant`); }); };
+  const onlineBtn = (it: Item, size: string) => canOnline && (
+    <button type="button" onClick={() => toggleOnline(it, !isOnline(it))} disabled={!it.is_available} aria-pressed={isOnline(it)} data-online-toggle={isOnline(it) ? "on" : "off"}
+      aria-label={`${isOnline(it) ? "Take off online" : "Sell online"} — ${it.name}`} title={!it.is_available ? "Sold out everywhere" : isOnline(it) ? "Online — tap to take it off Swiggy, Zomato and the website" : "Off online — tap to sell online again"}
+      className={cn(size, "shrink-0 grid place-items-center transition-colors disabled:opacity-40", isOnline(it) ? "bg-[color-mix(in_srgb,var(--color-green)_14%,transparent)] text-[var(--color-green)]" : "bg-[color-mix(in_srgb,var(--color-orange)_20%,transparent)] text-[var(--color-orange)]")}>
+      {isOnline(it) ? <Globe size={18} aria-hidden /> : <GlobeLock size={18} aria-hidden />}
+    </button>
+  );
 
   return (
     <div className="space-y-5">
@@ -130,8 +144,8 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
       </Rail>
 
       {visible.length === 0 ? (
-        cat === "soldout" ? <Empty title="Nothing is sold out" hint="Every dish is on — switch one off from its card when the kitchen runs out." /> :
-        <Empty title="No dishes yet" hint="Add your first dish, then map its ingredients so stock drops automatically." action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
+        cat === "soldout" ? <Empty title="Nothing is sold out" hint="All dishes are on. Switch one off from its card." /> :
+        <Empty title="No dishes yet" hint="Add a dish, then its recipe so stock updates itself." action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
       ) : (<>
         {/* A phone: a list, one row per dish — the photo, the name, the price and its state, and the switch at
             the end of the row. A tap on the name opens the dish (its sizes, add-ons and recipe are in there). */}
@@ -144,8 +158,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
                 <button type="button" onClick={() => setPhotoFor(it)} aria-label={`${it.image_url ? "Change" : "Add"} the photo — ${it.name}`} data-photo
                   className="relative h-16 w-16 shrink-0 !min-h-0 rounded-[14px] overflow-hidden bg-[linear-gradient(160deg,var(--color-bg-3),var(--color-fill))] grid place-items-center">
                   {it.image_url
-                    // eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload
-                    ? <img src={it.image_url} alt="" loading="lazy" className={cn("h-full w-full object-cover", !it.is_available && "grayscale opacity-60")} />
+                    ? <DishImage src={it.image_url} w={120} className={cn("h-full w-full object-cover", !it.is_available && "grayscale opacity-60")} />
                     : <DishGlyph name={it.name} category={catName(it.category_id)} veg={it.is_veg} size={26} />}
                   <span className="absolute left-1 top-1"><VegBadge veg={it.is_veg} /></span>
                 </button>
@@ -153,12 +166,13 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
                   <span className="block font-bold text-[15.5px] leading-snug truncate">{it.name}</span>
                   <span className="mt-0.5 flex items-baseline gap-2 min-w-0">
                     <span className="font-display num text-[20px] leading-none shrink-0">{vs.length > 0 && <span className="font-sans text-[11px] text-steel">from </span>}{formatINR(lo, { whole: true })}</span>
-                    <span className={cn("text-[12.5px] font-bold truncate", it.is_available ? "text-[var(--color-green)]" : "text-[var(--color-red)]")}><Say w={it.is_available ? "available" : "sold_out"} start /></span>
+                    <span className={cn("text-[12.5px] font-bold truncate", it.is_available ? "text-[var(--color-green)]" : "text-[var(--color-red)]")}>{it.is_available && !isOnline(it) ? <span className="text-[var(--color-orange)]" data-not-online>Not online</span> : <Say w={it.is_available ? "available" : "sold_out"} start />}</span>
                   </span>
                   <span className="mt-1 flex items-center gap-1.5 text-[12px] text-steel min-w-0"><Clock size={11} className="shrink-0" />{it.prep_minutes} min<span aria-hidden>·</span>
                     {mapped > 0 ? <span className="text-[var(--color-green)] truncate">{mapped} ingredient{mapped === 1 ? "" : "s"}</span>
                       : <span className="inline-flex items-center gap-1.5 min-w-0 font-semibold text-[color-mix(in_srgb,var(--color-orange)_76%,var(--color-label))]" data-no-recipe><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-orange)] shadow-[0_0_0_3px_var(--color-orange-2)]" aria-hidden /><span className="truncate">No recipe</span></span>}</span>
                 </button>
+                {onlineBtn(it, "h-11 w-11 rounded-[14px]")}
                 <Switch on={it.is_available} onChange={(v) => toggle(it, v)} name={`${it.name} available`} />
               </div>
             );
@@ -185,16 +199,23 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
                 <button type="button" onClick={() => setPhotoFor(it)} aria-label={`${it.image_url ? "Change" : "Add"} the photo — ${it.name}`} title={it.image_url ? (it.image_credit ?? "Change the photo") : "Add a photo"} data-photo
                   className="relative block w-full aspect-[4/3] !min-h-0 rounded-[19px] overflow-hidden isolate">
                   {it.image_url
-                    // eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload
-                    ? <img src={it.image_url} alt={it.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/dish:scale-[1.04]" />
+                    ? <DishImage src={it.image_url} w={500} alt={it.name} className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/dish:scale-[1.04]" />
                     : <span className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-[radial-gradient(120%_90%_at_50%_30%,color-mix(in_srgb,var(--color-label)_7%,var(--color-bg-3)),var(--color-bg-3)_70%)]">
                         <span className="h-16 w-16 rounded-full grid place-items-center bg-[color-mix(in_srgb,var(--color-label)_7%,transparent)] ring-1 ring-[var(--color-separator)] text-[var(--color-label-2)] transition-transform duration-300 group-hover/dish:scale-105"><Glyph size={30} strokeWidth={1.5} aria-hidden /></span>
                         <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-label-3)] group-hover/dish:text-[var(--color-label-2)]"><ImagePlus size={13} aria-hidden /> Add a photo</span>
                       </span>}
                   <span className="absolute left-2.5 top-2.5 z-[1]"><VegBadge veg={it.is_veg} /></span>
-                  {it.image_url && <span className="absolute right-2.5 top-2.5 z-[1] h-9 w-9 rounded-full grid place-items-center bg-[rgb(10_10_13/.5)] text-white backdrop-blur-sm opacity-0 group-hover/dish:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity" aria-hidden><Camera size={16} /></span>}
+                  {it.image_url && <span className={cn("absolute top-2.5 z-[1] h-9 w-9 rounded-full grid place-items-center bg-[rgb(10_10_13/.5)] text-white backdrop-blur-sm opacity-0 group-hover/dish:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity", canOnline && it.is_available ? "right-[3.4rem]" : "right-2.5")} aria-hidden><Camera size={16} /></span>}
                   {!it.is_available && <span className="absolute inset-0 z-[2] grid place-items-center bg-[rgb(10_10_13/.55)]"><span className="h-9 px-4 rounded-full bg-[var(--color-red)] text-white text-[13px] font-extrabold tracking-[.08em] inline-flex items-center gap-1.5"><Ban size={15} aria-hidden /> SOLD OUT</span></span>}
                 </button>
+                {/* online (0132): its own button over the photo's corner — a button cannot sit inside the photo's button */}
+                {canOnline && it.is_available && (
+                  <button type="button" onClick={() => toggleOnline(it, !isOnline(it))} aria-pressed={isOnline(it)} data-online-toggle={isOnline(it) ? "on" : "off"}
+                    aria-label={`${isOnline(it) ? "Take off online" : "Sell online"} — ${it.name}`} title={isOnline(it) ? "Online — tap to take it off Swiggy, Zomato and the website" : "Off online — tap to sell online again"}
+                    className={cn("tap-square absolute right-2.5 top-2.5 z-[3] h-9 rounded-full inline-flex items-center justify-center gap-1.5 backdrop-blur-sm transition-colors", isOnline(it) ? "w-9 bg-[rgb(10_10_13/.5)] text-[var(--color-green)] hover:bg-[rgb(10_10_13/.7)]" : "px-3 bg-[var(--color-orange)] text-white text-[12px] font-extrabold")}>
+                    {isOnline(it) ? <Globe size={17} aria-hidden /> : <><GlobeLock size={15} aria-hidden /><span data-not-online>Not online</span></>}
+                  </button>
+                )}
                 {/* No recipe (2026-10-20, the owner's second word on it: "the design and the placing"): a compact frosted
                     badge on the photo's bottom-left corner — the veg mark has the top-left, the camera the top-right — so
                     it takes no row and every card in a row stays the same height. Dark glass with white text reads over
@@ -202,7 +223,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
                     a sparkle when the library already has a standard plate for it. A tap opens the recipe; on touch an
                     invisible ::before makes the target 44px without the badge looking bigger. */}
                 {!mapped && (
-                  <button type="button" onClick={() => setRecipeFor(it)} aria-label={`Recipe — ${it.name}`} title={std[it.id] ? "No recipe yet — a standard one is ready, tap to add it" : "No recipe yet — this dish moves no stock until you map what it takes"} data-no-recipe
+                  <button type="button" onClick={() => setRecipeFor(it)} aria-label={`Recipe — ${it.name}`} title={std[it.id] ? "No recipe yet — tap to add the ready one" : "No recipe yet — this dish moves no stock"} data-no-recipe
                     className="absolute left-2.5 bottom-2.5 z-[3] !min-h-0 h-[26px] pl-2 pr-2.5 rounded-full inline-flex items-center gap-1.5 text-[11.5px] font-semibold tracking-[.01em] text-white bg-[rgb(10_10_13/.55)] backdrop-blur-md ring-1 ring-white/15 shadow-[0_4px_14px_-6px_rgb(0_0_0/.6)] hover:bg-[rgb(10_10_13/.7)] active:scale-[.96] transition before:absolute before:-inset-[9px] before:content-[''] [@media(pointer:fine)]:before:hidden">
                     <span className="h-2 w-2 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--color-orange)_72%,white)] shadow-[0_0_0_3px_rgb(255_190_90/.22)]" aria-hidden />
                     No recipe
@@ -261,7 +282,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
             <select name="category_id" defaultValue={editing?.category_id ?? ""} onChange={(e) => setDishCat(e.target.value || null)}><option value="">— none —</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           </Field>
           {stations.length > 0 && (
-            <Field label="Kitchen station" hint="Leave on the category's station unless this dish is made somewhere else">
+            <Field label="Kitchen station" hint="Change only if this dish is made elsewhere">
               <select name="station" defaultValue={editing?.station ?? ""}><option value="">— same as its category —</option>{stations.map((s) => <option key={s} value={s}>{s}</option>)}</select>
             </Field>
           )}
@@ -362,7 +383,7 @@ function RecipesOverview({ items, categories, recipeMap, ingredients, std, onEdi
     <div className="space-y-4" data-recipes-overview>
       <div className="rounded-2xl bg-[var(--color-fill)] p-3.5">
         <div className="text-[15px] font-semibold" data-recipes-summary>{withRecipe} of {rows.length} dishes move the pantry</div>
-        <p className="text-xs text-[var(--color-label-2)] mt-1 leading-relaxed">A dish with a recipe takes its ingredients out of stock the moment it is sent to the kitchen (or when cooking starts — Settings → Kitchen).{ready > 0 && <> <b>{ready}</b> can be set up from the library in one press.</>}{byHand > 0 && <> <b>{byHand}</b> need mapping by hand.</>}</p>
+        <p className="text-xs text-[var(--color-label-2)] mt-1 leading-relaxed">A recipe takes stock out when the dish is sent or cooked.{ready > 0 && <> <b>{ready}</b> can be set up from the library in one press.</>}{byHand > 0 && <> <b>{byHand}</b> need mapping by hand.</>}</p>
         {ready > 0 && <Button className="mt-3 w-full" loading={busy} onClick={() => { void setupAll(); }} data-setup-recipes><Sparkles size={16} /> Set up {ready} dish{ready === 1 ? "" : "es"} from the library</Button>}
       </div>
       {groups.map(({ c, rows: g }) => (
@@ -438,7 +459,7 @@ function RecipeEditor({ item, ingredients, initial, std, onDone, ai = false }: {
     <div className="space-y-3">
       {standard}
       <div className="flex items-start gap-3">
-        <p className="text-sm text-steel flex-1">Per 1 plate of <b>{item.name}</b>. Starting a ticket in the kitchen subtracts these amounts from the pantry.</p>
+        <p className="text-sm text-steel flex-1">Per 1 plate of <b>{item.name}</b>. Cooking takes these from stock.</p>
         {ai && <AiButton label="Propose" busy={proposing} onClick={() => { void propose(); }} />}
       </div>
       {rows.map((r, i) => (

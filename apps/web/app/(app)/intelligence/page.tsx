@@ -25,7 +25,7 @@ export default async function IntelligencePage({ searchParams }: { searchParams:
   return (
     <>
       <PageHeader eyebrow="DineFlow Intelligence" title="Intelligence" accent="& exceptions"
-        sub="What the numbers say, from the rows themselves: which dishes earn, what is being given away, and where the cash went. Rule-based — nothing here is guessed." />
+        sub="Which dishes earn, what is given away, where cash went. No guesses." />
       <IntelligenceClient days={days} engineering={(eng ?? null) as Engineering | null} exceptions={(ex ?? null) as Exceptions | null} compare={(cmp ?? null) as Compare | null} error={error} />
     </>
   );

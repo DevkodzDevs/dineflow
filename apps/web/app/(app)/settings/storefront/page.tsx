@@ -11,6 +11,6 @@ export default async function Page() {
   const s = await createClient(); const session = await requireSession(); const h = await headers();
   const base = process.env.NEXT_PUBLIC_CLOUD_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
   const { data: offers } = await s.from("offers").select("*").order("created_at", { ascending: false });
-  return (<><PageHeader eyebrow="Your public page" title="Store" accent="front" sub="Where guests find you, book a table, and order in — with no commission to anyone." />
+  return (<><PageHeader eyebrow="Your public page" title="Store" accent="front" sub="Guests find you, book and order here — no commission." />
     <StorefrontSettings base={base} r={session.restaurant as never} offers={offers ?? []} ai={aiEnabled()} /></>);
 }

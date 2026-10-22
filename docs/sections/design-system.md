@@ -75,8 +75,10 @@ and `quiet` (not announced as it changes); there is no second tile. The pure par
 **Sizes (after the first browser pass, the same day).** At 17–26px the board's proportions squeezed a lone digit into
 a narrow black capsule and the breathing rings were drawn over the digit. Now every small flap — `size="xs"` or given a
 `tile` — wears `.flip.compact` and is never under **30px** (`MIN_TILE`, so digits are ~19px): cards .8em wide, digits 64% of
-the tile at 600, a tile at least .8 of its height wide. The breathing glow is a `box-shadow` outside the tile's border
-(`flapGlow`), never over the digits, with 6px of room kept round it. Sizes by place: kitchen column counts and both board
+the tile at 600, a tile at least .8 of its height wide. The breathing glow is a ring outside the tile's border — the
+tile's `::after` with a 5px `box-shadow`, swelling from 94% to full size while it fades (`flapGlow` moves only opacity and
+transform since 2026-10-22; animating the `box-shadow` itself repainted the page every frame) — never over the digits,
+with 6px of room kept round it. Sizes by place: kitchen column counts and both board
 counts 40px (34 on a phone), KOT age 34, Pulse glance clamp(32–40px), a waiting party's clock 30, the dish-photo `.qty`
 32, Pantry levels clamp(34–48px), Cleaning 34, checklist % 34, booking times 32. **Tab-bar and bell counts stay red
 pills** — a flap cannot be read at 18px, and anything bigger would cover the icon.
@@ -169,6 +171,44 @@ like Colourful light — `<html data-theme="paper" data-palette="royal">`, `look
   even colour without touching that screen's code. The printer-slot shadow on a ticket preview is a printed material
   and keeps its shading. `langtheme.mjs` checks every section: no surface blends two colours.
 - The phone bar's chosen-section pill, written as the dark theme's green, takes each colourful theme's own tint.
+
+## Words on screen: short and plain (2026-10-22)
+
+The owner: "too much text — short and sweet, crisp, easy for all categories of people". Every string of 50+ characters
+was rewritten (819 of them, in 143 files): a hint, subtitle, empty state or help line is **one plain sentence, aim ≤ 60
+characters, never over 90**; a long explanation keeps only what a person must know — numbers, deadlines, money, legal and
+tax rules, data-loss warnings, what a button does. Active voice, common words, no "please note"/"simply"/"in order to",
+no repeating the heading. Measured: 173,977 → 144,033 characters of on-screen English; the long strings 77,274 → 33,912;
+29 screens' visible text −21% (Neighbours −42%, Proof −40%, About −37%, Scan −35%). Left as they were on purpose: AI
+prompts and schema descriptions, the bill-of-supply wording printed on receipts, the support page's grievance line,
+messages to guests (WhatsApp), and data. **Write new copy the same way.** All 645 changed strings were re-translated
+(Tamil, Hindi) and merged; coverage 100%. The old translations stay in the dictionaries (the engine also matches server
+text the scan does not see), so don't prune them blindly.
+
+**Second pass, same day** (the owner asked whether it was complete — it was not): staff lines still over 90 characters,
+Assist's health-check causes and fixes, server messages, the guest pages (booking, ordering, queue, feedback, pay,
+check-in, record, install), Master control and the emails — 190 more strings. Long text left by area: Master control
+5,901 → 2,858 characters, guest pages 5,157 → 3,271, emails 706 → 467, Assist/API 16,225 → 13,627 (what remains is the
+model's own prompts). Left over 90 on purpose: the tax guide's paragraphs (each holds three or four legal rules), the
+legal pages, AI prompts, `.select()` column lists, and theme gradients. 41 more strings re-translated; coverage 100%.
+
+## Motion that never stops runs on the compositor (2026-10-22)
+
+The owner asked for "a lightweight feel". A trace of an idle screen on a phone profile (412, 4× slower CPU — `trace60.mjs`)
+found the main thread restyling and repainting **~24 times a second with nobody touching anything**, on every screen: the
+Assist mark's idle breathing (`am-breathe`, `am-halo`) animated shapes *inside* an SVG, and the browser cannot hand those
+to the compositor. Every tap then waited behind that work. Rule, for anything that loops or ticks on its own:
+
+- **Move only `opacity` and `transform`, and only on a box** — an element, a pseudo-element, or a whole outer `<svg>`.
+  Never a `<path>`/`<circle>`/`<g>` inside an SVG, never `box-shadow`, `filter`, `background-position`, colour or size.
+- Split an SVG into stacked SVGs when one part must move (the Assist mark at idle: glow box, tile, spark, hinge line —
+  `components/assist/Mark.tsx`; the clock: face, second hand, cap — `AnalogClock.tsx`). A ring that pulses is a
+  pseudo-element with a fixed `box-shadow` that scales and fades (`flapGlow` on `.flap-breathe`).
+- A one-off (a flip, an entrance, a short "thinking" state) may stay as it is; it ends.
+
+Measured after (`trace60.mjs`, idle 4 s, `IDLEAT=/orders`): style/paint passes **~97 → 4**, the same screen with every
+animation switched off 0. `idle61.mjs` lists every running animation and repeating timer per screen; anything new marked
+FOREVER must follow the rule above.
 
 ## The whole app in Tamil or Hindi (2026-10-18)
 
@@ -409,7 +449,10 @@ link is exempt from the *width* rule (WCAG 2.5.5) but not from the height rule.
   in the ink colour, a red second hand (`--color-red`) with a disc near its tip and a red cap. So the
   face is white with a black ring in paper, graphite with a light ring in dark. Hands rotate about
   `50px 50px` in the view box (`transform-box: view-box`); only the second hand has a transition — a
-  small overshoot tick, dropped for the one update a day when its angle resets. Size it with classes
+  small overshoot tick, dropped for the one update a day when its angle resets. **Since 2026-10-22 it is three layers in a
+  `span.analog-clock`**: the face and the hour and minute hands (the 60 marks are `FACE`, drawn once, not every second),
+  the second hand as its own SVG turned as a box about its centre (so the tick is a compositor transition), and the cap on
+  top. A transition on a shape *inside* an SVG ran on the main thread for a fifth of every second. Size it with classes
   on the component (`h-16 w-16 md:h-[76px] md:w-[76px]` on the dashboard).
 - **`Ticket` (the KOT paper) has a `top`**: `"tear"` (the torn edge, the default — the kitchen board
   uses only this) or `"slot"` (it comes out of a printer slot: no torn edge, the machine's shadow
@@ -634,9 +677,24 @@ Then look at it, in both themes, at 1440 and 412.
   `components/ui/index.tsx`): from `.sheet-body`'s last element down through last children, the first that is a
   button / link-button or a row made only of them, inside a box at least half the content's height. It is marked
   `data-sheet-foot` (again whenever the content changes, a `MutationObserver`), and `globals.css` makes it sticky at the
-  foot with a band of the dialog's own colour (`--color-bg-2`, every theme) and a hairline, painted as box-shadows so
-  the row keeps its size — 10px above the row, so at rest it never covers the last field, and out to both edges and the
-  home-bar inset. A dialog that ends with something else (a photo picker, a hint) keeps its buttons in the flow, so
+  foot. **The bar, second version (2026-10-22, the owner: "the dialog footer is not good looking"):** a `::before` behind
+  the row (the row itself, one button or several, is not restyled) — frosted `--color-bg-2` at 86% with a 16px blur, a
+  hairline and a soft shadow on top, 14px above the row, out to both edges (`--sheet-sx`, the body's side padding) and
+  down to the dialog's foot (`--sheet-foot-b`); a 22px margin above the row keeps the bar 8px clear of the last field
+  at rest. **`bottom: 0`, not the padding**: a sticky inset is measured inside the scroller's padding, so the first
+  version's `bottom: 20px` on top of the body's 20px bottom padding lifted the row 20px into the content at rest (Dishes
+  online with one dish: its price cut in half under the bar) and left 40px under it when scrolled — now 20px. The first
+  version's box-shadow band also reached 10px above a row that some dialogs put only 4px below their content. Probe
+  `dialog57.mjs` (28: seven dialogs × 1440/412 × dark/paper — clear at rest, inside scrolled both ways, 20px under the
+  row). **Drag down to close, without stealing the scroll (2026-10-22, the owner).** The whole dialog used to be framer's
+  drag handle, so on a phone a swipe meant to scroll a list moved the dialog. Now `drag="y"` has `dragListener={false}`
+  and starts only from the grabber (`[data-sheet-grab]`, `touch-none`) and the header (not its buttons); the body scrolls
+  as a body; and when the body is already at its top, a downward, mostly vertical pull (touch events — the browser cancels
+  pointer events once it pans — on a non-passive listener) moves a pull layer around the dialog (`pullY`) and closes past
+  110px or a quick flick, else springs back. A touch inside an inner list that is scrolled, an upward swipe, or a sideways
+  swipe (a chip rail) leave the scroll alone. The pull layer is as tall as the frame (the dialog's max height still
+  measures against the screen) and `pointer-events: none`, so a click outside still reaches the scrim. Probe `drag58.mjs`
+  (real `Input.dispatchTouchEvent` at 412). A dialog that ends with something else (a photo picker, a hint) keeps its buttons in the flow, so
   **end a dialog with its buttons** — the labourer dialog's QR moved above Save · Deactivate for this. shots38: 32
   dialogs (both property kinds, 412 and 1440) on top and whole, header kept at the end of the scroll, 30 with a footer
   that holds (the two without are Menu's photo dialogs).
