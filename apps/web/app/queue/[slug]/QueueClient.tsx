@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, BellRing, CheckCircle2, Users, Hourglass } from "lucide-react";
+import { ChevronLeft, BellRing, CheckCircle2, Users, Hourglass, Vibrate, VibrateOff, ArrowUp } from "lucide-react";
+import { buzz, canBuzz } from "@/lib/buzz";
+import { playTone, unlockAudio } from "@/lib/notify";
 import { getClient } from "@/lib/supabase/lazy";
 import { Flip, Countdown } from "@/components/ui";
 import { GuestNotice } from "@/components/legal/GuestNotice";
@@ -13,6 +15,9 @@ type S = { token: string; name: string; party: number; status: "waiting" | "call
 const KEPT = (slug: string) => `df-queue:${slug}`;
 const keep = (slug: string, token: string | null) => { try { if (token) localStorage.setItem(KEPT(slug), token); else localStorage.removeItem(KEPT(slug)); } catch {} };
 const kept = (slug: string) => { try { return localStorage.getItem(KEPT(slug)); } catch { return null; } };
+/** Buzz on every update — on unless this device turned it off. */
+const ALERTS = "df-queue-buzz";
+const alertsOn = () => { try { return localStorage.getItem(ALERTS) !== "off"; } catch { return true; } };
 
 /** The guest's page: join with a name and party size, then watch your place move up. It asks every 4 s while it is
  *  on screen and at once when the guest comes back to it — Table ready and Seat now reached it up to 20 s late, or
@@ -31,9 +36,36 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
     document.addEventListener("visibilitychange", back); window.addEventListener("focus", back);
     return () => { alive = false; clearInterval(i); document.removeEventListener("visibilitychange", back); window.removeEventListener("focus", back); };
   }, [token, status]);
-  // called or seated: the phone buzzes once, so a guest with it in a pocket knows
-  const was = useRef(status);
-  useEffect(() => { if (was.current && was.current !== status && (status === "called" || status === "seated")) { try { navigator.vibrate?.([140, 70, 140]); } catch {} } was.current = status; }, [status]);
+  /* Every update buzzes the phone and says what changed in a line at the top (2026-10-23, the owner: "vibration for
+     each update"): moved up a place — a double pulse; called — a long triple, a chime and the tab's title; seated — a
+     double and a chime. Android vibrates once the page has been touched; an iPhone gets a haptic tick where iOS allows
+     it (lib/buzz.ts), and the chime. A hidden page asks nothing, so a locked phone hears it when it is opened. */
+  const [alerts, setAlerts] = useState(true); const [touched, setTouched] = useState(true); const [canBuzzHere, setCanBuzz] = useState(true);
+  const [update, setUpdate] = useState<{ text: string; tone: "up" | "called" | "seated"; n: number } | null>(null);
+  useEffect(() => {
+    setAlerts(alertsOn()); setCanBuzz(canBuzz());
+    const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (ua && !ua.hasBeenActive) { setTouched(false); const t = () => { setTouched(true); unlockAudio(); }; window.addEventListener("pointerdown", t, { once: true }); return () => window.removeEventListener("pointerdown", t); }
+    const t = () => unlockAudio(); window.addEventListener("pointerdown", t, { passive: true }); return () => window.removeEventListener("pointerdown", t);
+  }, []);
+  const was = useRef<{ status?: string; place?: number }>({ status, place: s?.place });
+  useEffect(() => {
+    const prev = was.current; was.current = { status, place: s?.place };
+    if (!s || !prev.status) return;
+    let u: { text: string; tone: "up" | "called" | "seated" } | null = null;
+    if (prev.status !== status && status === "called") u = { text: "You're up — please come to the host stand", tone: "called" };
+    else if (prev.status !== status && status === "seated") u = { text: s.table ? `Table ${s.table} is ready for you` : "Your table is ready", tone: "seated" };
+    else if (status === "waiting" && prev.place && s.place < prev.place) u = { text: s.place === 1 ? "You're next in line" : `You moved up — now number ${s.place}`, tone: "up" };
+    if (!u) return;
+    setUpdate((x) => ({ ...u!, n: (x?.n ?? 0) + 1 }));
+    if (!alertsOn()) return;
+    buzz(u.tone === "up" ? "moved" : u.tone);
+    if (u.tone !== "up") playTone(u.tone === "called" ? "rush" : "chime", 85);
+  }, [status, s?.place]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!update || update.tone === "called") return; const t = setTimeout(() => setUpdate(null), 8000); return () => clearTimeout(t); }, [update]);
+  // the tab says it too, for a guest who has switched to another tab
+  useEffect(() => { if (status !== "called") return; const base = document.title; document.title = "🔔 You're up! · " + (name ?? ""); return () => { document.title = base; }; }, [status, name]);
+  const toggleAlerts = () => { const on = !alerts; setAlerts(on); try { localStorage.setItem(ALERTS, on ? "on" : "off"); } catch {} setTouched(true); unlockAudio(); if (on) buzz("sent"); };
   useEffect(() => { if (s?.token) history.replaceState(null, "", `?t=${s.token}`); }, [s?.token]);
   // a place this device already holds here comes back (2026-10-20: going Back never leaves the queue)
   useEffect(() => {
@@ -52,6 +84,7 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
 
   if (!name) return <main className="min-h-dvh grid place-items-center p-6"><p className="text-[var(--color-label-2)]">This place isn't taking a queue right now.</p></main>;
   const queued = !!s && (s.status === "waiting" || s.status === "called");
+
   return (
     <main className="min-h-dvh max-w-md mx-auto px-5 pt-4 pb-8">
       <button type="button" onClick={back} data-queue-back aria-label={queued ? "Back — your place in the queue is kept" : "Back"}
@@ -59,6 +92,12 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
         <ChevronLeft size={20} aria-hidden /> Back
       </button>
       <div className="eyebrow">{name}</div>
+      {queued && update && (
+        <div key={update.n} role="status" aria-live="assertive" data-queue-update={update.tone}
+          className={`queue-update mt-3 rounded-[16px] px-4 py-3 flex items-center gap-2.5 text-[14.5px] font-bold ${update.tone === "up" ? "bg-[var(--color-blue-2)] text-[var(--color-blue)]" : "bg-[var(--color-green-2)] text-[var(--color-green)]"}`}>
+          {update.tone === "up" ? <ArrowUp size={18} aria-hidden /> : update.tone === "called" ? <BellRing size={18} aria-hidden /> : <CheckCircle2 size={18} aria-hidden />}{update.text}
+        </div>
+      )}
       {!s ? (<>
         <h1 className="text-[34px] mt-1">Join the queue</h1>
         <p className="text-[var(--color-label-2)] mt-2">Add your name and watch your place here — no app needed.</p>
@@ -89,7 +128,14 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
           <p className="mt-2 text-[18px] font-bold text-[var(--color-label)]">Please come to the host stand.</p>
           <p className="mt-1 text-[14px] text-[var(--color-label-2)]">Your table for <span className="num">{s.party}</span> is being made ready, {s.name.split(" ")[0]}.</p>
         </section>
-        <button onClick={leave} className="btn btn-gray w-full mt-8">Leave the queue</button>
+        {/* buzz on every update: on by default; on a phone not yet touched (reopened from the QR) one tap arms it */}
+        <button type="button" onClick={toggleAlerts} data-queue-alerts={alerts ? (touched ? "on" : "arm") : "off"} aria-pressed={alerts}
+          className={`mt-4 w-full min-h-11 rounded-[14px] px-4 py-2.5 flex items-center gap-2.5 text-left text-[13.5px] font-semibold border transition ${alerts && !touched ? "border-[var(--color-orange)] bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "border-[var(--color-separator)] bg-[var(--color-bg-2)] text-[var(--color-label-2)]"}`}>
+          {alerts ? <Vibrate size={18} aria-hidden className={touched ? "text-[var(--color-green)]" : ""} /> : <VibrateOff size={18} aria-hidden />}
+          <span className="flex-1">{!alerts ? "Buzz alerts are off — tap to turn on" : !touched ? "Tap here once so your phone can buzz when your place changes" : canBuzzHere ? "Your phone buzzes on every update" : "Alerts on — this phone can't vibrate, you'll hear a chime"}</span>
+          <span className={`h-6 px-2 rounded-full grid place-items-center text-[11px] font-bold ${alerts ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)]"}`}>{alerts ? "On" : "Off"}</span>
+        </button>
+        <button onClick={leave} className="btn btn-gray w-full mt-6">Leave the queue</button>
         <p className="mt-3 text-center text-[13px] text-[var(--color-label-2)]" data-queue-kept>Leaving keeps your place — rescan or reopen this page to check.</p>
       </>) : (<>
         {/* waiting: the place and the wait on the flaps, then the line in one card, live */}
@@ -105,7 +151,14 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
           {(s.minutes ?? 0) <= 0 && <div className="col-span-2 rounded-[14px] px-3 py-2.5 text-center text-[15px] font-bold text-[var(--color-green)] bg-[color-mix(in_srgb,var(--color-green)_10%,transparent)]" data-queue-soon>Any minute now — stay close</div>}
           <div className="col-span-2 flex items-center justify-center gap-2 text-[12.5px] font-semibold text-[var(--color-label-2)]"><span className="h-2 w-2 rounded-full bg-[var(--color-green)] animate-pulse" aria-hidden />Live — this page updates itself</div>
         </div>
-        <button onClick={leave} className="btn btn-gray w-full mt-8">Leave the queue</button>
+        {/* buzz on every update: on by default; on a phone not yet touched (reopened from the QR) one tap arms it */}
+        <button type="button" onClick={toggleAlerts} data-queue-alerts={alerts ? (touched ? "on" : "arm") : "off"} aria-pressed={alerts}
+          className={`mt-4 w-full min-h-11 rounded-[14px] px-4 py-2.5 flex items-center gap-2.5 text-left text-[13.5px] font-semibold border transition ${alerts && !touched ? "border-[var(--color-orange)] bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "border-[var(--color-separator)] bg-[var(--color-bg-2)] text-[var(--color-label-2)]"}`}>
+          {alerts ? <Vibrate size={18} aria-hidden className={touched ? "text-[var(--color-green)]" : ""} /> : <VibrateOff size={18} aria-hidden />}
+          <span className="flex-1">{!alerts ? "Buzz alerts are off — tap to turn on" : !touched ? "Tap here once so your phone can buzz when your place changes" : canBuzzHere ? "Your phone buzzes on every update" : "Alerts on — this phone can't vibrate, you'll hear a chime"}</span>
+          <span className={`h-6 px-2 rounded-full grid place-items-center text-[11px] font-bold ${alerts ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)]"}`}>{alerts ? "On" : "Off"}</span>
+        </button>
+        <button onClick={leave} className="btn btn-gray w-full mt-6">Leave the queue</button>
         <p className="mt-3 text-center text-[13px] text-[var(--color-label-2)]" data-queue-kept>Leaving keeps your place — rescan or reopen this page to check.</p>
       </>)}
     </main>

@@ -10,6 +10,8 @@ import { formatINR, todayIST } from "@/lib/format";
 import { waDate } from "@/lib/wa";
 import { cn, Sheet, Switch, useToast } from "@/components/ui";
 import { KINDS, STATIONS, TONES, kindsFor, deptSees, loadPrefs, savePrefs, playTone, unlockAudio, stationPrefs, type NotifyKind, type NotifyPrefs, type StationId, type ToneId } from "@/lib/notify";
+import { buzz } from "@/lib/buzz";
+import { CallAlert, type LiveCall } from "./CallAlert";
 
 type Item = { id: string; kind: NotifyKind; title: string; sub: string; href: string; at: number; read: boolean };
 type Ctx = {
@@ -64,7 +66,8 @@ function describe(kind: NotifyKind, r: Row): { title: string; sub: string } {
     case "jobdone": { const m = mins(r.taken_at, r.done_at); return { title: `Done · ${str(r.label ?? r.title)}`, sub: [r.title ? str(r.place) : "", r.who ? `${str(r.who)}${m ? ` · ${m} min` : ""}` : "", str(r.note ?? "")].filter(Boolean).join(" — ") || "Finished just now" }; }
     case "taken": return { title: `${str(r.who ?? "Someone")} took ${str(r.label ?? r.title)}`, sub: `Started ${hm(r.taken_at)}${r.title && r.place ? ` · ${str(r.place)}` : ""}` };
     case "assigned": return { title: `Given to you · ${r.title ? str(r.title) : r.room_id ? `Room ${str(r.place)}` : str(r.place) || "a job"}`, sub: r.title ? [str(r.place), str(r.details)].filter(Boolean).join(" — ") || "A job for you" : str(r.notes).startsWith("Failed inspection") ? str(r.notes) : r.room_id ? "A room to clean" : "A table to clean" };
-    case "call": return { title: r.kind === "bill" ? "A table wants the bill" : r.kind === "water" ? "A table wants water" : "A table is calling a waiter", sub: "See which on Orders" };
+    // 2026-10-23: the table and its zone, looked up when the call arrives — "A table…" made a waiter open Orders to find out which
+    case "call": { const t = str(r.table) || "A table"; return { title: r.kind === "bill" ? `${t} wants the bill` : r.kind === "water" ? `${t} wants water` : `${t} is calling a waiter`, sub: [str(r.zone), `asked ${hm(r.created_at)}`].filter(Boolean).join(" · ") }; }
     case "feedback": return { title: `Low rating · ${str(r.rating)}★`, sub: [str(r.comment).slice(0, 80), (r.tags as string[] | null)?.join(", ")].filter(Boolean).join(" — ") || "Read it under Customers → Feedback" };
     // 0124: `ev` is set where the event is heard — "new" and "reply" reach the owner, "answer" the person who sent it
     case "voice": {
@@ -129,13 +132,20 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
     const k = str(id); if (!k) return null; if (names.current.has(k)) return names.current.get(k)!;
     try { const c = await getClient(); const { data } = await c.from("profiles").select("full_name").eq("id", k).maybeSingle(); const n = (data as { full_name?: string } | null)?.full_name ?? null; if (n) names.current.set(k, n); return n; } catch { return null; }
   }, []);
+  /* a table's name and zone, once per table (a call row carries only its id) */
+  const tables = useRef(new Map<string, { name: string; zone: string | null }>());
+  const tableOf = useCallback(async (id: unknown) => {
+    const k = str(id); if (!k) return null; if (tables.current.has(k)) return tables.current.get(k)!;
+    try { const c = await getClient(); const { data } = await c.from("dining_tables").select("name, zone").eq("id", k).maybeSingle(); const t = data as { name: string; zone: string | null } | null; if (t) tables.current.set(k, t); return t; } catch { return null; }
+  }, []);
+  const [calls, setCalls] = useState<LiveCall[]>([]);
   const announce = useCallback((kind: NotifyKind, row: Row) => {
     const p = live.current.prefs; if (!p || !p.kinds[kind]) return;
     const key = `${kind}:${str(row.id)}`; if (seen.current.has(key)) return; seen.current.add(key);
     const { title, sub } = describe(kind, row); const href = KINDS.find((k) => k.kind === kind)!.href;
     setFeed((f) => [{ id: key, kind, title, sub, href, at: Date.now(), read: false }, ...f].slice(0, 40));
     if (p.on) playTone(p.tone, p.volume);
-    live.current.toast(sub ? `${title} — ${sub}` : title, "info");
+    if (kind !== "call") live.current.toast(sub ? `${title} — ${sub}` : title, "info"); // a call has its own card (CallAlert)
     if (p.system && typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
       const opts = { body: sub, tag: key, icon: "/icon-192.png", badge: "/icon-192.png", data: { url: href } };
       void (async () => {
@@ -165,7 +175,19 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
       ins("kots", "kot");
       // room tasks are not filtered by RLS: only Housekeeping (and the owner, managers, a supervisor with no department) hears them (0116)
       ins("housekeeping_tasks", "housekeeping", (r) => r.kind !== "maintenance" && deptSees(role, dept, "room", null) && !(me && r.assigned_to === me && kinds.includes("assigned")));
-      ins("service_calls", "call");
+      /* a table's call (0103): named, then shown as a call card (CallAlert) on every device that hears calls; when anyone
+         answers it, the row's UPDATE takes the card off every other device too (2026-10-23) */
+      if (kinds.includes("call")) {
+        on("service_calls", "INSERT", (r) => void tableOf(r.table_id).then((t) => {
+          const row = { ...r, table: t?.name ?? null, zone: t?.zone ?? null };
+          announce("call", row);
+          if (live.current.prefs?.kinds.call && r.status !== "done") {
+            setCalls((cs) => cs.some((c) => c.id === str(r.id)) ? cs : [{ id: str(r.id), table_id: str(r.table_id), kind: str(r.kind), table: row.table, zone: row.zone, at: str(r.created_at) || new Date().toISOString() }, ...cs]);
+            buzz("called");
+          }
+        }));
+        on("service_calls", "UPDATE", (r) => { if (r.status === "done") setCalls((cs) => cs.filter((c) => c.id !== str(r.id))); });
+      }
       ins("guest_feedback", "feedback", (r) => Number(r.rating) <= 3);
       ins("table_cleanings", "clean");
       // a job given to this person (0111): a table or a room, just now, still waiting — keyed by when, so a second
@@ -228,7 +250,7 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
       ch.subscribe();
     })(), 1500); // after the screen paints, like useLive
     return () => { gone = true; clearTimeout(t); if (sb && ch) void sb.removeChannel(ch); };
-  }, [kinds, announce, drop, nameOf, me, role, dept]);
+  }, [kinds, announce, drop, nameOf, tableOf, me, role, dept]);
 
   const markAllRead = useCallback(() => setFeed((f) => f.map((i) => ({ ...i, read: true }))), []);
   const value: Ctx = { feed, unread: feed.filter((i) => !i.read).length, markAllRead, prefs, setPrefs, kinds, propertyType, openSettings: () => setSettings(true) };
@@ -236,6 +258,7 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
     <NotifyCtx.Provider value={value}>
       {children}
       <Sheet open={settings} onClose={() => setSettings(false)} title="Notifications on this device"><NotificationSettings /></Sheet>
+      {calls.length > 0 && <CallAlert calls={calls} onGone={(ids) => setCalls((cs) => cs.filter((c) => !ids.includes(c.id)))} />}
     </NotifyCtx.Provider>
   );
 }

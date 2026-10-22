@@ -235,3 +235,38 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
 - **No wait, no flap of words** (2026-10-21): with `minutes` 0 the estimate flap spelled "any minute" across nine tiles
   and ran off the screen. The estimate is on the flaps only when there is one (its finished word is *now*, which fits);
   with none, the place stands alone, centred, and the card says *Any minute now — stay close* (`[data-queue-soon]`).
+
+- **The storefront's cover (2026-10-23, the owner: "a modern cover, by restaurant, resort or hotel").** `StoreCover.tsx`:
+  with a photo (`photos[0]`) the photo drifts slowly (`.cover-drift`); without one, a drawn scene for `d.type`
+  (`coverKind`; unknown → hotel if it has rooms, else restaurant) — a restaurant's table under pendant lamps with a
+  steaming plate, a hotel tower lit against a city at dusk with the moon, a resort's palms on a setting sun over the sea.
+  Sky as a CSS gradient, ground as a 2400-wide SVG anchored bottom (`xMidYMax slice`): a phone sees its middle, 1920 nearly
+  all of it, so what matters sits between x 900 and 1500. Its colours are the art's own `--cv-*` (`.store-cover[data-kind]`
+  in globals.css), seeded, so server and browser draw the same picture. On top: a glass Back (44px) and a kind pill; at
+  the foot the name, tagline and glass chips — rating, cuisines, price for two **in whole rupees**, open now with a live
+  dot (`[data-store-facts]`). `.store-cover-shade` darkens the foot and the left for the text. On a phone the page slides
+  up over the cover's bottom edge (`main -mt-5 rounded-t-[26px]`). store.mjs: 43 checks, the three kinds × five widths.
+- **Table calls, redesigned (2026-10-23).** Three tiles of 118px, each its own hue (waiter green, bill blue, water cyan):
+  idle · **Sent · n min** with a ring (`.call-ring`) · **On the way**. A tap buzzes (lib/buzz.ts), sends, and opens a
+  dialog (`[data-call-dialog][data-phase=sending|sent|again|done|error]`): what was asked, the table, when, and three steps
+  — Request sent ✓, Staff alerted ✓, On the way (live, turns ✓ when a waiter answers). While it is open the page asks every
+  5 s (else 15); a request turning done buzzes and says so inline. A second tap while open says *Already on it* and sends
+  nothing (`again`). After 5 minutes unanswered: *wave to any of the staff*. calls.mjs: answered from the staff side, the
+  dialog turned "on the way" in 0.3–0.9 s with no refresh.
+- **Dish cards (2026-10-23).** `DishCard` + `AddControl` in StorefrontClient: the Indian food mark (green square + dot /
+  red square + triangle), *Combo* / *Customisable* tags, the name in the body face (a `div role=heading` — `h3` takes the
+  condensed display face), the price in whole rupees (`formatINR(…, { whole: true })` — a menu price), two lines of
+  description; the photo 128/140px on the right with **ADD** (44px tall) riding its foot, the − n + stepper 44×44 buttons;
+  without a photo Add sits under the text. Two columns from `md`. A dish not sold now is dimmed (its photo greyscale).
+- **The queue buzzes on every update (2026-10-23, the owner).** Moved up a place → a double pulse and a blue line *You
+  moved up — now number n* (*You're next in line* at 1); called → a long triple buzz, the `rush` tone, a green line and the
+  tab title *🔔 You're up!*; seated → a double buzz and a chime (`[data-queue-update]`). `[data-queue-alerts]` turns it off
+  per device (`localStorage df-queue-buzz`); on a phone not yet touched (reopened from the QR, where the browser blocks
+  vibrate) it asks for one tap. **iPhones have no `navigator.vibrate`**: lib/buzz.ts ticks a switch-style checkbox's label
+  instead (a haptic since iOS 18 — best effort, iOS may ignore it outside a tap; never on iOS 17 or older), and the chime is
+  the dependable signal there. A hidden or locked page asks nothing, so it buzzes when it is opened — only Web Push would
+  reach a pocket, and there is none.
+- **The chosen party chip lagged (2026-10-23).** `[data-theme="paper"] .chip:hover` outranked `.chip.on`, and a phone keeps
+  :hover after a tap, so the size just chosen stayed grey with white ink until the next tap elsewhere. Paper's chip rules
+  are `.chip:not(.on)` now (the bright palette met the same trap — design-system.md). calls.mjs checks it with the mouse
+  still on the chip.

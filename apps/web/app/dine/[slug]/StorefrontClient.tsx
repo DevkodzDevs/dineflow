@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, Minus, Plus, Bike, ShoppingBag, UtensilsCrossed, BedDouble, Leaf, Drumstick, Users, CalendarDays } from "lucide-react";
+import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, Minus, Plus, Bike, ShoppingBag, UtensilsCrossed, BedDouble, Users, CalendarDays, Building2, TreePalm } from "lucide-react";
 import { Button, Field, Segmented, Sheet, Select, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DishImage } from "@/components/menu/DishImage";
@@ -11,6 +11,7 @@ import { OptionChooser } from "@/components/OptionChooser";
 import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
 import { GuestNotice } from "@/components/legal/GuestNotice";
 import { TableCalls } from "./TableCalls";
+import { StoreCover, coverKind } from "./StoreCover";
 
 /** As the storefront sends it: the add-on groups are carried once on the property, and a dish
  *  names the ones it offers by id. `resolve` below puts them back together for the screen. */
@@ -20,14 +21,18 @@ type Item = Omit<RawItem, "addon_group_ids"> & { addon_groups?: AddonGroup[] };
 type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
 type Cat = { id: string; name: string; items: RawItem[] };
 type Offer = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; code: string | null };
-type D = { table?: { id: string; name: string; zone: string } | null; slug: string; name: string; type: string; tagline: string | null; addon_groups?: AddonGroup[]; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
+type D = { table?: { id: string; name: string; zone: string } | null; slug: string; name: string; type: string; tagline: string | null; addon_groups?: AddonGroup[]; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; online_paused?: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
 type Slot = { time: string; left: number; full: boolean; offer_id: string | null; offer: string | null; offer_pct: number | null };
+
+const KIND_WORD = { restaurant: "Restaurant", hotel: "Hotel", resort: "Resort" } as const;
+const KIND_ICON = { restaurant: UtensilsCrossed, hotel: Building2, resort: TreePalm } as const;
 
 const today = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
 
 export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null, busy = null }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order"; tableToken?: string | null; busy?: { paused_until: string | null; extra_min: number } | null }) {
   /* Reached from the code on a table: the menu is for ordering at that table and nothing else — no booking tab, no delivery, no address. */
   const atTable = !!(tableToken && d.table);
+  const kind = coverKind(d.type, d.rooms); const KindIcon = KIND_ICON[kind];
   const toast = useToast();
   const [mode, setMode] = useState<"book" | "order">(tableToken && d.table ? "order" : d.dining ? tab : "order");
   const [pending, start] = useTransition();
@@ -88,23 +93,35 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
 
   return (
     <div className="min-h-dvh bg-[var(--color-bg)] pb-32">
-      {/* hero */}
-      <div className="relative h-52 md:h-72 bg-gradient-to-br from-[var(--color-champagne)] to-[var(--color-ink)]">
-        {d.photos?.[0] && <img src={d.photos[0]} alt="" className="h-full w-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-[rgb(13_28_23/.85)] to-transparent" />
-        <Link href="/dine" aria-label="Back" className="absolute top-4 left-4 h-11 w-11 rounded-full material grid place-items-center"><ChevronLeft size={18} /></Link>
-        <div className="absolute bottom-4 inset-x-0 px-5 max-w-4xl mx-auto text-white">
-          <h1 className="font-display text-3xl md:text-4xl">{d.name}</h1>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-white/75">
-            {d.rating && <span className="flex items-center gap-1"><Star size={13} fill="currentColor" className="text-[var(--color-tint-2)]" /> {d.rating} <span className="text-white/50">({d.rating_count})</span></span>}
-            <span>{d.cuisines?.join(" · ")}</span>
-            {d.price_for_two && <span className="num">{formatINR(d.price_for_two)} for two</span>}
-            <span className={cn("flex items-center gap-1", d.open_now ? "text-[var(--color-tint-2)]" : "text-[var(--color-red)]")}><Clock size={12} /> {d.open_now ? "Open now" : "Closed"} · {d.opens_at.slice(0, 5)}–{d.closes_at.slice(0, 5)}</span>
+      {/* hero: the property's photo, or a drawn cover for its kind (StoreCover, 2026-10-23) — glass controls on top,
+          the name and the facts on glass chips at the foot; the page slides up over its bottom edge on a phone */}
+      <header className="store-hero relative h-[17rem] md:h-80 overflow-hidden text-white" data-store-hero={kind}>
+        <StoreCover kind={kind} photo={d.photos?.[0]} />
+        <div className="absolute inset-0 store-cover-shade" />
+        <div className="absolute top-0 inset-x-0 max-w-4xl mx-auto px-4 pt-4 flex items-center justify-between gap-3">
+          <Link href="/dine" aria-label="Back" className="h-11 w-11 rounded-full cover-glass grid place-items-center text-white active:scale-95 transition"><ChevronLeft size={20} /></Link>
+          <span className="cover-glass h-9 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[12.5px] font-semibold" data-store-kind><KindIcon size={14} aria-hidden /> {KIND_WORD[kind]}</span>
+        </div>
+        <div className="absolute bottom-0 inset-x-0 max-w-4xl mx-auto px-5 pb-10 sm:pb-6">
+          <h1 className="font-display text-[36px] md:text-5xl leading-[1.02] [text-shadow:0_2px_18px_rgb(0_0_0/.45)]">{d.name}</h1>
+          {d.tagline && <p className="mt-1 text-[14px] text-white/80 line-clamp-1">{d.tagline}</p>}
+          <div className="mt-3 flex flex-wrap gap-1.5 text-[12.5px] font-semibold" data-store-facts>
+            {d.rating ? <span className="cover-glass h-8 px-2.5 rounded-full inline-flex items-center gap-1"><Star size={13} fill="currentColor" className="text-[var(--cv-star)]" aria-hidden /><span className="num">{d.rating}</span><span className="text-white/65 font-medium num">({d.rating_count})</span></span> : null}
+            {d.cuisines?.length ? <span className="cover-glass h-8 px-2.5 rounded-full inline-flex items-center min-w-0 max-w-full"><span className="truncate">{d.cuisines.join(" · ")}</span></span> : null}
+            {d.price_for_two ? <span className="cover-glass h-8 px-2.5 rounded-full inline-flex items-center"><span className="num">{formatINR(d.price_for_two, { whole: true })}</span>&nbsp;for two</span> : null}
+            <span className="cover-glass h-8 px-2.5 rounded-full inline-flex items-center gap-1.5">
+              <span className={cn("h-2 w-2 rounded-full", d.open_now ? "bg-[var(--cv-open)] animate-pulse" : "bg-[var(--cv-closed)]")} aria-hidden />
+              {d.open_now ? "Open now" : "Closed"}<span className="text-white/65 font-medium num">· {d.opens_at.slice(0, 5)}–{d.closes_at.slice(0, 5)}</span>
+            </span>
           </div>
         </div>
-      </div>
+      </header>
 
-      <main className="max-w-4xl mx-auto px-5 py-5">
+      <main className="relative max-w-4xl mx-auto px-5 py-5 -mt-5 sm:mt-0 rounded-t-[26px] sm:rounded-none bg-[var(--color-bg)]">
+        {/* the property has switched online orders off, or paused them (0133): said before anyone fills a basket; a guest at
+            a table (the QR) still orders */}
+        {d.online_paused && !d.table && <div className="mb-4 rounded-2xl border border-[color-mix(in_srgb,var(--color-orange)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-orange)_10%,var(--color-bg-2))] px-4 py-3 flex items-center gap-3 text-[14px] font-semibold" data-online-paused>
+          <Clock size={18} className="shrink-0 text-[var(--color-orange)]" aria-hidden />Not taking online orders right now. Please check back soon.</div>}
         {/* Phone: address and phone as one contact card, each a full-width row with its own action
             (directions, call). Side by side they both wrapped mid-line. Wider screens keep the line. */}
         {d.address && (
@@ -203,42 +220,10 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
             {!tableToken && busy?.paused_until && <div className="mb-5 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 text-sm"><b>Not taking online orders right now.</b> Back at {new Date(busy.paused_until).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })} — the menu is here to look at.</div>}
             {!tableToken && !busy?.paused_until && (busy?.extra_min ?? 0) > 0 && <div className="mb-5 rounded-2xl bg-[rgb(255_179_64/.14)] text-[var(--color-orange)] px-4 py-3 text-sm"><b>The kitchen is busy.</b> Orders are taking about {busy!.extra_min} minutes longer than usual.</div>}
             {menu.map((c) => c.items.length > 0 && (
-              <section key={c.id} className="mb-6">
-                <h2 className="text-xl mb-3">{c.name}</h2>
-                <div className="space-y-2">
-                  {c.items.map((i) => (
-                    <div key={i.id} className={cn("card p-4 flex items-start gap-4", !sells(i) && "opacity-50")} data-dish-row>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">{i.is_veg ? <Leaf size={13} className="text-[var(--color-green)]" /> : <Drumstick size={13} className="text-[var(--color-red)]" />}<span className="font-semibold">{i.name}</span></div>
-                        <div className="num text-sm text-[var(--color-label-2)] mt-0.5">{tilePrice(i).from ? "from " : ""}{formatINR(tilePrice(i).price)}{hasOptions(i) && <span className="ml-2 text-[11px] font-sans">customisable</span>}</div>
-                        {i.is_combo && (i.components?.length ?? 0) > 0 && <p className="text-xs text-[var(--color-label-2)] mt-1">Comes with {i.components!.map((c) => `${c.qty}× ${c.name}`).join(", ")}</p>}
-                        {i.description && <p className="text-xs text-[var(--color-label-2)] mt-1">{i.description}</p>}
-                      </div>
-                      {i.image_url ? (
-                        /* with a photo: the photo on the right, the add control riding its bottom edge */
-                        <div className="relative shrink-0 w-[112px] sm:w-[128px] pb-4">
-                          <DishImage src={i.image_url} w={330} alt={i.name} title={i.image_credit ?? undefined} className="h-[104px] sm:h-[116px] w-full rounded-2xl object-cover bg-[var(--color-fill)]" data-dish-photo />
-                          {/* a library photo carries its author and licence (CC BY / BY-SA): illustrative, and credited */}
-                          {i.image_credit && <span className="absolute left-1.5 right-1.5 top-1.5 rounded-md bg-black/45 px-1 py-px text-[8.5px] leading-tight text-white/90 truncate" data-photo-credit>Illustrative · {i.image_credit.replace(/^Photo: /, "")}</span>}
-                          <div className="absolute inset-x-2 bottom-0 flex justify-center">
-                            {sells(i) ? (qtyOf(i.id) ? (
-                              <div className="flex items-center gap-1 bg-[var(--color-tint)] rounded-xl h-9 px-1 shadow-[var(--shadow-pop)]">
-                                <button onClick={() => add(i.id, -1)} className="h-7 w-7 grid place-items-center rounded-lg" aria-label={`One less ${i.name}`}><Minus size={14} /></button>
-                                <span className="num w-6 text-center font-bold text-sm">{qtyOf(i.id)}</span>
-                                <button onClick={() => add(i.id, 1)} className="h-7 w-7 grid place-items-center rounded-lg" aria-label={`One more ${i.name}`}><Plus size={14} /></button>
-                              </div>
-                            ) : <Button size="sm" variant="tinted" className="!h-9 shadow-[var(--shadow-pop)] !bg-[var(--color-bg-2)]" onClick={() => add(i.id, 1)}>Add</Button>) : <span className="pill pill-served" data-not-sold={i.available ? "online" : "out"}>{i.available ? "not online" : "sold out"}</span>}
-                          </div>
-                        </div>
-                      ) : sells(i) ? (qtyOf(i.id) ? (
-                        <div className="flex items-center gap-1 bg-[var(--color-tint)] rounded-xl h-9 px-1 shrink-0">
-                          <button onClick={() => add(i.id, -1)} className="h-7 w-7 grid place-items-center rounded-lg"><Minus size={14} /></button>
-                          <span className="num w-6 text-center font-bold text-sm">{qtyOf(i.id)}</span>
-                          <button onClick={() => add(i.id, 1)} className="h-7 w-7 grid place-items-center rounded-lg"><Plus size={14} /></button>
-                        </div>
-                      ) : <Button size="sm" variant="tinted" onClick={() => add(i.id, 1)}>Add</Button>) : <span className="pill pill-served shrink-0" data-not-sold={i.available ? "online" : "out"}>{i.available ? "not online" : "sold out"}</span>}
-                    </div>
-                  ))}
+              <section key={c.id} className="mb-7">
+                <div className="flex items-baseline gap-2 mb-3"><h2 className="text-xl">{c.name}</h2><span className="text-[12.5px] font-semibold text-[var(--color-label-3)] num">{c.items.length} {c.items.length === 1 ? "dish" : "dishes"}</span></div>
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  {c.items.map((i) => <DishCard key={i.id} i={i} sells={sells(i)} qty={qtyOf(i.id)} onAdd={() => add(i.id, 1)} onLess={() => add(i.id, -1)} />)}
                 </div>
               </section>
             ))}
@@ -311,6 +296,66 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
       {/* the question a dish asks: size, extras, how many */}
       <OptionChooser item={chooser} withNote={false} onClose={() => setChooser(null)} onAdd={(v, a, q) => { if (chooser) put(chooser, v, a, q); }} />
     </div>
+  );
+}
+
+/** The Indian food mark: a green square with a dot is vegetarian, a red one with a triangle is not. */
+const FoodMark = ({ veg }: { veg: boolean }) => (
+  <span role="img" aria-label={veg ? "Vegetarian" : "Non-vegetarian"} className="h-[15px] w-[15px] shrink-0 rounded-[3px] border-[1.5px] grid place-items-center bg-[var(--color-bg-2)]" style={{ borderColor: veg ? "var(--color-green)" : "var(--color-red)" }}>
+    {veg ? <span className="h-[7px] w-[7px] rounded-full bg-[var(--color-green)]" /> : <span className="h-0 w-0 border-x-[4px] border-x-transparent border-b-[7px] border-b-[var(--color-red)]" />}
+  </span>
+);
+
+/** − n + on a dish, or Add: 44px tall, the buttons 44 wide, so a thumb lands on them. */
+function AddControl({ name, qty, onAdd, onLess, custom }: { name: string; qty: number; onAdd: () => void; onLess: () => void; custom: boolean }) {
+  return qty ? (
+    <div className="flex items-center h-11 rounded-[14px] bg-[var(--color-tint)] text-[var(--color-on-tint)] shadow-[0_10px_22px_-12px_color-mix(in_srgb,var(--color-tint)_80%,transparent)]" data-dish-stepper>
+      <button type="button" onClick={onLess} className="h-11 w-11 grid place-items-center rounded-[14px] active:scale-90 transition" aria-label={`One less ${name}`}><Minus size={16} strokeWidth={2.6} /></button>
+      <span className="num w-7 text-center font-bold text-[15px]" aria-live="polite">{qty}</span>
+      <button type="button" onClick={onAdd} className="h-11 w-11 grid place-items-center rounded-[14px] active:scale-90 transition" aria-label={`One more ${name}`}><Plus size={16} strokeWidth={2.6} /></button>
+    </div>
+  ) : (
+    <button type="button" onClick={onAdd} aria-label={`Add ${name}${custom ? " — choose options" : ""}`} data-dish-add
+      className="relative h-11 min-w-[104px] px-5 rounded-[14px] bg-[var(--color-bg-2)] border border-[color-mix(in_srgb,var(--color-tint)_35%,transparent)] text-[var(--color-tint)] text-[14px] font-extrabold tracking-[.06em] shadow-[0_10px_24px_-14px_rgb(0_0_0/.45)] active:scale-95 transition hover:bg-[var(--color-green-2)]">
+      ADD<Plus size={12} strokeWidth={3} className="absolute top-1.5 right-2" aria-hidden />
+    </button>
+  );
+}
+
+/** A dish on the storefront (2026-10-23, the owner's "ultra modern" card): the food mark and tags, the name on two lines
+ *  at most, the price in whole rupees, the description; the photo on the right with Add riding its foot, or Add on its
+ *  own when there is no photo. A dish not sold now is dimmed and says why. */
+function DishCard({ i, sells, qty, onAdd, onLess }: { i: Item; sells: boolean; qty: number; onAdd: () => void; onLess: () => void }) {
+  const tp = tilePrice(i); const custom = hasOptions(i);
+  const notSold = <span className="pill pill-served" data-not-sold={i.available ? "online" : "out"}>{i.available ? "not online" : "sold out"}</span>;
+  return (
+    <article className={cn("relative flex gap-3.5 rounded-[22px] bg-[var(--color-bg-2)] border border-[var(--color-separator)] p-3.5 sm:p-4 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-lift)]", qty > 0 && "border-[color-mix(in_srgb,var(--color-tint)_45%,transparent)]", !sells && "opacity-60")} data-dish-row>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <FoodMark veg={i.is_veg} />
+          {i.is_combo && <span className="h-5 px-2 rounded-full text-[10.5px] font-bold uppercase tracking-wide bg-[var(--color-violet-2)] text-[var(--color-violet)] inline-flex items-center">Combo</span>}
+          {custom && <span className="h-5 px-2 rounded-full text-[10.5px] font-bold uppercase tracking-wide bg-[var(--color-orange-2)] text-[var(--color-orange)] inline-flex items-center">Customisable</span>}
+        </div>
+        {/* a div, not an h3: headings take the condensed display face, and a dish name reads better in the body face */}
+        <div role="heading" aria-level={3} className="mt-2 text-[16.5px] font-bold leading-snug text-[var(--color-label)] line-clamp-2">{i.name}</div>
+        <div className="mt-1 flex items-baseline gap-1">
+          {tp.from && <span className="text-[12px] font-semibold text-[var(--color-label-2)]">from</span>}
+          <span className="num text-[18px] font-bold text-[var(--color-label)]">{formatINR(tp.price, { whole: true })}</span>
+        </div>
+        {i.is_combo && (i.components?.length ?? 0) > 0 && <p className="mt-1 text-[12.5px] text-[var(--color-label-2)] line-clamp-2">Comes with {i.components!.map((c) => `${c.qty}× ${c.name}`).join(", ")}</p>}
+        {i.description && <p className="mt-1.5 text-[13px] leading-snug text-[var(--color-label-2)] line-clamp-2">{i.description}</p>}
+        {!i.image_url && <div className="mt-auto pt-3">{sells ? <AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /> : notSold}</div>}
+      </div>
+      {i.image_url && (
+        /* with a photo: the photo on the right, the add control riding its bottom edge */
+        <div className="relative shrink-0 w-[128px] sm:w-[140px] pb-5 self-start">
+          <DishImage src={i.image_url} w={330} alt={i.name} title={i.image_credit ?? undefined} className={cn("h-[124px] sm:h-[132px] w-full rounded-[18px] object-cover bg-[var(--color-fill)]", !sells && "grayscale")} data-dish-photo />
+          {/* a library photo carries its author and licence (CC BY / BY-SA): illustrative, and credited */}
+          {i.image_credit && <span className="absolute left-1.5 top-1.5 max-w-[calc(100%-12px)] rounded-full bg-black/45 backdrop-blur-sm px-1.5 py-px text-[8.5px] leading-tight text-white/90 truncate" data-photo-credit>Illustrative · {i.image_credit.replace(/^Photo: /, "")}</span>}
+          <div className="absolute inset-x-0 bottom-0 flex justify-center">{sells ? <AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /> : notSold}</div>
+        </div>
+      )}
+    </article>
   );
 }
 
