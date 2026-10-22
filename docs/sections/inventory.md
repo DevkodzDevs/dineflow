@@ -144,3 +144,16 @@ Then receive a small PO on a demo property and confirm the ledger and the level 
     of a row line up. Only the body of a cancelled card is dimmed, not its Order again. shots37: 8 of 8 (strips level at 2,
     3 and 4 across, Order again saved PO-5 as a draft). A probe that inserts POs by number must move `counters` (`po`) on, or
     the next real order collides with PO-1.
+
+## Stock as a grid, an item's details, and the supplier cards (2026-10-23)
+
+- **Cards or a table** (the owner: "a grid, a row opens the product in a dialog, the cards untouched; the grid from an iPad
+  up, cards on a phone; a default I can set"). A ViewSwitch beside + Ingredient; until a default is pinned, CSS shows the grid
+  from md and the phone list / cards below it (`df-view:pantry`). `PantryGrid` (end of InventoryClient.tsx,
+  `[data-pantry-table]`): Item, State, In stock with its bar, Reorder at, Cost / unit, Value, Category, Barcode — columns by
+  the grid's own width — every column sorts, and + (Add stock) and the bin (Waste) sit at the row's end. **A row opens
+  `ItemDetail`** (`[data-item-detail]`): how it stands, the amount against its reorder level, cost, value, pack, barcode,
+  the last six stock moves, the price history, and Add stock · Waste · Edit (each closes it and opens its own sheet).
+- **Supplier cards** (the owner: "modern"): built like an OTA channel card — the initial on its own hue, the name and what
+  they bring (the notes), the lead time as a pill, a soft panel with the phone and the GSTIN that never wraps a line, and
+  Call · WhatsApp · Edit along the foot (`CardStrip`).

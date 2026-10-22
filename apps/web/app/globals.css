@@ -448,7 +448,9 @@ body:has(.deck-card) { background: #0a0a0d; }
 [data-theme="paper"] .material { background: color-mix(in srgb, #ffffff 94%, transparent); border-color: rgb(23 23 28 / .08); }
 [data-theme="paper"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), [data-theme="paper"] select, [data-theme="paper"] textarea { background-color: #f5f2ec; border-color: rgb(23 23 28 / .06); }
 [data-theme="paper"] input:focus, [data-theme="paper"] select:focus, [data-theme="paper"] textarea:focus { background-color: #ffffff; }
-[data-theme="paper"] .chip { background: rgb(23 23 28 / .06); } [data-theme="paper"] .chip:hover { background: rgb(23 23 28 / .10); }
+/* not the chosen chip (2026-10-23): this pair outranked `.chip.on`, and a phone keeps :hover after a tap — the chip just
+   chosen showed grey with white ink until the next tap elsewhere ("the highlight works slowly", party size on /queue) */
+[data-theme="paper"] .chip:not(.on) { background: rgb(23 23 28 / .06); } [data-theme="paper"] .chip:not(.on):hover { background: rgb(23 23 28 / .10); }
 [data-theme="paper"] .btn-gray { background: rgb(23 23 28 / .07); } [data-theme="paper"] .btn-gray:hover { background: rgb(23 23 28 / .12); }
 [data-theme="paper"] .btn-filled { color: var(--color-on-tint); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), 0 8px 20px -12px color-mix(in srgb, var(--color-tint) 70%, transparent); }
 [data-theme="paper"] .switch { background: rgb(23 23 28 / .16); } [data-theme="paper"] .switch::after { box-shadow: 0 2px 6px rgb(0 0 0 / .25); }
@@ -703,7 +705,11 @@ select { padding-right: 50px; text-overflow: ellipsis; white-space: nowrap; curs
 select:disabled { opacity: .45; cursor: not-allowed; }
 @supports (appearance: base-select) {
   select, ::picker(select) { appearance: base-select; }
-  select { display: flex; align-items: center; }
+  select { display: flex; align-items: center;
+    /* a long choice ("Engineering & maintenance") ran on under the arrow chip (2026-10-23): in a flex select the text does
+       not shrink and ellipsis does not apply, and overflow: hidden clips only at the padding edge — clip at the content
+       box, which ends where the 50px arrow room begins (measured in Chrome: seltest) */
+    overflow: clip; overflow-clip-margin: content-box; }
   select::picker-icon { display: none; }   /* the chip in the background is the icon */
   select:open { background-color: var(--color-bg-2); border-color: color-mix(in srgb, var(--color-tint) 60%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-tint) 18%, transparent); }
   ::picker(select) { border: .5px solid var(--color-separator); border-radius: 16px; background: var(--color-bg-3); color: var(--color-label);
@@ -1104,22 +1110,46 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
    (.rail-only) opens the whole menu as a drawer: the aside goes fixed at its own spot and widens to
    256 over the page, the spacer keeps the rail's 76px in the row so nothing underneath moves, and
    a scrim takes the click that closes it. */
+/* Since 2026-10-23 the look is the device's choice (lib/sidebar.ts — six looks, and a fold to icons): html[data-sidebar] is
+   set in <head> before the first paint — the chosen look, else "rail" under 1280 and "full" from 1280, exactly as before.
+   The icon looks (rail, dock, float-rail) keep the drawer: ☰ opens the whole menu over the page and the spacer holds the
+   rail's width. Nothing here applies under 768px: a phone has the bottom bar. */
 .rail-only, .nav-spacer, .nav-scrim { display: none; }
-@media (min-width: 768px) and (max-width: 1279.98px) {
-  aside.ink-panel { width: 76px !important; padding-left: 12px !important; padding-right: 12px !important;
+@media (min-width: 768px) {
+  /* ── the icon looks ── */
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel { width: 76px !important; padding-left: 12px !important; padding-right: 12px !important;
     transition: width var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
-  aside.ink-panel .rail-only { display: grid; margin-left: auto; margin-right: auto; }
-  aside.ink-panel:not([data-open]) .rail-hide { display: none !important; }
-  aside.ink-panel:not([data-open]) nav a { justify-content: center; padding-left: 0 !important; padding-right: 0 !important; }
-  aside.ink-panel:not([data-open]) nav a > svg { width: 22px; height: 22px; }
-  aside.ink-panel:not([data-open]) .nav-group:not(:last-child)::after { margin: 10px 8px 12px; }   /* a 36px line under the icons */
-  aside.ink-panel[data-open] { position: fixed !important; left: 0; top: 0; z-index: 60; width: 272px !important;
+  html[data-sidebar="dock"] aside.ink-panel { width: 96px !important; padding-left: 8px !important; padding-right: 8px !important; }
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel .rail-only { display: grid; margin-left: auto; margin-right: auto; }
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) .rail-hide { display: none !important; }
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) nav a { justify-content: center; padding-left: 0 !important; padding-right: 0 !important; }
+  html:is([data-sidebar="rail"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) nav a > span > svg { width: 21px; height: 21px; }
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) .nav-group:not(:last-child)::after { margin: 10px 8px 12px; }
+  /* icons and words: the icon over a small word, two lines at most */
+  html[data-sidebar="dock"] aside.ink-panel:not([data-open]) nav a { flex-direction: column; height: auto !important; min-height: 56px; gap: 4px; padding-top: 7px !important; padding-bottom: 7px !important; }
+  html[data-sidebar="dock"] aside.ink-panel:not([data-open]) nav a .nav-label { display: -webkit-box !important; -webkit-line-clamp: 2; -webkit-box-orient: vertical; flex: none; width: 100%;
+    white-space: normal; overflow: hidden; text-align: center; font-size: 10.5px; line-height: 1.15; font-weight: 600; }  /* the drawer over the page, for every icon look */
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel[data-open] { position: fixed !important; left: 0; top: 0; z-index: 60; width: 272px !important; height: 100dvh !important; margin: 0 !important; border-radius: 0 !important;
     padding-left: 16px !important; padding-right: 16px !important; box-shadow: 24px 0 60px -12px rgb(0 0 0 / .6); }
-  aside.ink-panel[data-open] .rail-only { margin-left: 0; }
-  aside.ink-panel[data-open] + .nav-spacer { display: block; width: 76px; flex-shrink: 0; }
-  .nav-scrim { display: block; position: fixed; inset: 0; z-index: 55; background: rgb(0 0 0 / .45);
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel[data-open] .rail-only { margin-left: 0; }
+  html:is([data-sidebar="rail"], [data-sidebar="float-rail"]) aside.ink-panel[data-open] + .nav-spacer { display: block; width: 76px; flex-shrink: 0; }
+  html[data-sidebar="float-rail"] aside.ink-panel[data-open] + .nav-spacer { width: 88px; }
+  html[data-sidebar="dock"] aside.ink-panel[data-open] + .nav-spacer { display: block; width: 96px; flex-shrink: 0; }
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) .nav-scrim { display: block; position: fixed; inset: 0; z-index: 55; background: rgb(0 0 0 / .45);
     backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); cursor: pointer; animation: fade-in var(--dur) var(--ease-out); }
+  /* ── compact: narrower, tighter rows, smaller headings ── */
+  html[data-sidebar="compact"] aside.ink-panel { width: 212px !important; padding-left: 12px !important; padding-right: 12px !important; }
+  html[data-sidebar="compact"] aside.ink-panel nav a { height: 36px !important; gap: 10px; font-size: 13px; }
+  html[data-sidebar="compact"] aside.ink-panel .nav-group > div:first-child { font-size: 10.5px; padding-bottom: 6px; }
+  html[data-sidebar="compact"] aside.ink-panel .nav-group:not(:last-child)::after { margin: 9px 10px 10px; }
+  /* ── floating: the menu on a rounded card beside the page, the whole menu or icons ── */
+  html:is([data-sidebar="floating"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) { margin: 12px 0 12px 12px; top: 12px !important; height: calc(100dvh - 24px) !important; border-radius: 26px;
+    box-shadow: 0 18px 50px -22px rgb(0 0 0 / .6), inset 0 0 0 1px rgb(255 255 255 / .07); }
+  html[data-sidebar="floating"] aside.ink-panel { width: 248px !important; }
 }
+/* the fold key: from 768 up, every look, at the foot over the account */
+.sb-fold { display: none; }
+@media (min-width: 768px) { .sb-fold { display: flex; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 /* ═══ TABLES ════════════════════════════════════════════════════════════
    One look for every table: a quiet header that sticks, hairline rows, numbers right and tabular,
@@ -1394,7 +1424,29 @@ a.svc-table:hover .svc-take, .svc-take:hover { background: var(--color-fill-2); 
 
 /* a dish on the till: its photo, the veg mark and name, the price big, one Add */
 .svc-dish { position: relative; display: flex; flex-direction: column; border-radius: 20px; overflow: hidden; background: var(--color-bg-2); border: .5px solid var(--color-separator); box-shadow: var(--shadow-card); min-width: 0; }
-.svc-dish[data-on] { outline: 2px solid var(--color-tint); outline-offset: -2px; }
+/* a dish on the ticket wears a ring drawn over everything (2026-10-23, the owner: "the selected border cuts the photo"): an
+   inset outline painted under the photo, which hid it along the top and the rounded corners */
+.svc-dish[data-on]::after { content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 2px var(--color-tint), inset 0 0 0 3px color-mix(in srgb, var(--color-bg-2) 60%, transparent); }
+/* the move on a dish (2026-10-23, the owner: "Choose and Add — compact, modern"): a solid round + in the tint, ringed in the
+   card colour so it reads as notched into the card's photo edge; a dish with choices adds a slim Choose pill beside it. On a
+   phone the owner kept the old pills: ADD with its word, CHOOSE alone (the card's tap adds there too). */
+.dish-pair { display: inline-flex; align-items: center; gap: 6px; }
+.dish-plus, .dish-chip { position: relative; min-height: 0 !important; border-radius: 999px; transition: transform .15s var(--ease-out), background-color .15s; }
+.dish-plus::before, .dish-chip::before { content: ""; position: absolute; inset: -4px; }   /* 44px to a finger */
+.dish-plus { height: 38px; width: 38px; display: grid; place-items: center; background: var(--color-tint); color: var(--color-on-tint);
+  box-shadow: 0 0 0 3px var(--color-bg-2), 0 8px 18px -8px rgb(0 0 0 / .6); }
+.dish-plus:hover { filter: brightness(1.08); } .dish-plus:active, .dish-chip:active { transform: scale(.92); }
+.dish-plus .dish-plus-word { display: none; }
+.dish-chip { height: 32px; padding: 0 12px 0 10px; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--color-label);
+  background: var(--color-bg-2); box-shadow: inset 0 0 0 1px var(--color-separator), 0 0 0 3px var(--color-bg-2), 0 8px 18px -8px rgb(0 0 0 / .6); }
+.dish-chip:hover { background: color-mix(in srgb, var(--color-tint) 10%, var(--color-bg-2)); }
+@media (max-width: 767.98px) {
+  .dish-pair .dish-plus { display: none; }
+  .dish-plus.solo, .dish-chip { height: 40px; width: auto; min-width: 6.5rem; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 13.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; background: var(--color-bg-2); color: var(--color-tint);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-tint) 45%, transparent), 0 10px 22px -12px rgb(0 0 0 / .7); }
+  .dish-plus.solo .dish-plus-word { display: inline; }
+}
 .svc-dish .pic { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; background: var(--color-fill); overflow: hidden; }
 .svc-dish .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .svc-dish .pic[data-nophoto] { background: linear-gradient(160deg, var(--color-bg-3), var(--color-fill)); }
@@ -1763,3 +1815,43 @@ html[data-palette="royal"] nav.tabbar { border-color: rgb(184 145 58 / .35); }
 .queue-ring { animation: queue-ring 1.4s ease-out infinite; }
 .queue-call { animation: queue-glow 2.2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .queue-pop, .queue-ring, .queue-call { animation: none; } }
+
+/* ── the guest storefront (2026-10-23, the owner: "a modern cover for a restaurant, a hotel, a resort") ────────────────
+   A property with no photo gets a drawn cover for its kind (StoreCover.tsx). The art has its own palette — it is a
+   picture, the same in every theme, like the receipt's paper — named here so the drawing only says var(--cv-*). */
+.store-cover { --cv-shade: rgb(8 6 12 / .78); background: linear-gradient(180deg, var(--cv-sky-1) 0%, var(--cv-sky-2) 55%, var(--cv-sky-3) 100%); }
+.store-cover[data-kind="restaurant"] { --cv-sky-1: #1b1311; --cv-sky-2: #3a1d13; --cv-sky-3: #84401d; --cv-glow: #ffb766; --cv-lamp: #ffd08c; --cv-ink: #150d0a; --cv-plate: #f6ecdb; --cv-plate-2: #e2cfb2; --cv-food: #c4561f; --cv-food-2: #e79a3c; --cv-leaf: #4f8a3c; }
+.store-cover[data-kind="hotel"] { --cv-sky-1: #0a1230; --cv-sky-2: #252a5e; --cv-sky-3: #8a4f7c; --cv-glow: #f8ead0; --cv-lamp: #ffd27a; --cv-ink: #0b0f26; --cv-ink-2: #161b3e; --cv-plate: #c9a86a; }
+.store-cover[data-kind="resort"] { --cv-sky-1: #2b1f55; --cv-sky-2: #b4466c; --cv-sky-3: #f4a04e; --cv-glow: #ffd970; --cv-lamp: #fff1c2; --cv-ink: #1c1531; --cv-sea: #1e4c6b; --cv-sea-2: #2f7d91; }
+.store-cover-shade { background: linear-gradient(0deg, var(--cv-shade) 0%, rgb(8 6 12 / .55) 40%, rgb(8 6 12 / .12) 74%, transparent 92%), linear-gradient(90deg, rgb(8 6 12 / .38) 0%, transparent 62%); }
+@keyframes cover-drift { from { transform: scale(1.02); } to { transform: scale(1.1) translate(-1.5%, -1%); } }
+@keyframes cover-steam { 0% { transform: translateY(6px); opacity: 0; } 35% { opacity: .75; } 100% { transform: translateY(-22px); opacity: 0; } }
+@keyframes cover-twinkle { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+@keyframes cover-sway { 0%, 100% { transform: rotate(-1.4deg); } 50% { transform: rotate(1.4deg); } }
+@keyframes cover-wave { from { transform: translateX(0); } to { transform: translateX(-120px); } }
+@keyframes cover-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.cover-drift { animation: cover-drift 26s ease-in-out infinite alternate; transform-origin: 60% 40%; }
+.cover-steam { animation: cover-steam 3.4s ease-out infinite; transform-box: fill-box; }
+.cover-twinkle { animation: cover-twinkle 3.2s ease-in-out infinite; }
+.cover-sway { animation: cover-sway 6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.cover-wave { animation: cover-wave 9s linear infinite; }
+.cover-float { animation: cover-float 7s ease-in-out infinite; }
+.cover-glass { background: rgb(255 255 255 / .14); border: 1px solid rgb(255 255 255 / .22); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); }
+
+/* the table's QR (TableCalls.tsx): a tile that was asked for rings in its own hue until someone is on the way */
+@keyframes call-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--hue) 45%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
+@keyframes call-ripple { 0% { transform: scale(.8); opacity: .55; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes call-in { 0% { transform: translateY(14px) scale(.98); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.call-ring { animation: call-ring 1.6s ease-out infinite; }
+.call-ripple { animation: call-ripple 2s ease-out infinite; }
+.call-in { animation: call-in .38s cubic-bezier(.16, 1, .3, 1) both; }
+
+/* the queue page says each change in a line that slides in (QueueClient.tsx) */
+@keyframes queue-update { 0% { transform: translateY(-10px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.queue-update { animation: queue-update .35s cubic-bezier(.16, 1, .3, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .cover-drift, .cover-steam, .cover-twinkle, .cover-sway, .cover-wave, .cover-float, .call-ring, .call-ripple, .call-in, .queue-update { animation: none; }
+  .cover-steam { opacity: .5; }
+}
+/* the hero's own lights, on the dark cover in every theme */
+.store-hero { --cv-star: #ffc94a; --cv-open: #5ee39a; --cv-closed: #ff7a6b; }

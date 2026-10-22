@@ -702,3 +702,18 @@ Then look at it, in both themes, at 1440 and 412.
 
 - **`CardStrip` passes `onClick` to a link action too** (2026-10-21) — a WhatsApp *Send* on a purchase order is an `href`
   that also marks the draft sent.
+
+## Lists that switch between cards and a grid, and how many across (2026-10-23)
+
+`components/ui/ViewSwitch.tsx`: `useViewPref(key, valid)` keeps what is chosen now and this device's default
+(`localStorage df-view:<key>`, read after mount); `ViewSwitch` is round segments in a soft track (the shown one raised) and,
+with `onKeep`, a **pin** that makes the shown choice the default (filled when it is). A screen whose default is cards on a
+phone and the grid from md decides that with CSS (`md:hidden` / `hidden md:block`) until a choice exists — the first paint is
+right at every width. Used by Customers (cards/table), Pantry (cards/table, pin), Attendance and OTA channels (1 · 2 · 3
+across, pin; three by default). Staff keeps its own switch (StaffClient). 40px with a mouse, 44 on touch.
+
+- **A long choice in a select is cut before the arrow** (2026-10-23 — "Engineering & maintenance" ran under the chip). In the
+  `appearance: base-select` mode the select is a flex box: its text does not shrink, ellipsis does not apply, and
+  `overflow: hidden` clips only at the padding edge. `overflow: clip; overflow-clip-margin: content-box` clips at the content
+  box, which ends where the 50px arrow room begins (tested in Chrome before it went in).
+- **Back is an icon only** (2026-10-23) — shell-and-nav.md.

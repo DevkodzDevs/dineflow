@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useNavPath } from "./useNavPath";
+import { ProfileCard } from "./ProfileCard";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LogOut, ShieldCheck, Menu, X, Fingerprint, type LucideIcon } from "lucide-react";
+import { LogOut, ShieldCheck, Menu, X, Fingerprint, PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-react";
+import { ICON_LOOKS, chosenSidebar, currentSidebar, defaultSidebar, toggleFold } from "@/lib/sidebar";
 import { cn, Sheet, FlapMini } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
@@ -28,7 +30,7 @@ function Group({ title, items, path, className }: { title?: string; items: NavIt
             {active && <span className="absolute inset-0 rounded-[10px] bg-white/[.12] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/.12)]" />}
             {active && <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-[var(--color-tint)] shadow-[0_0_14px_color-mix(in_srgb,var(--color-tint)_80%,transparent)]" />}
             <span className="relative shrink-0"><Icon size={17} strokeWidth={active ? 2.2 : 1.8} />{badge ? <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-red)] ring-2 ring-[#121216]" aria-hidden /> : null}</span>
-            <span className="relative rail-hide flex-1 min-w-0 truncate">{label}</span>
+            <span className="relative rail-hide nav-label flex-1 min-w-0 truncate">{label}</span>
             {badge ? <span className="relative rail-hide shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--color-red)] text-white text-[11px] font-bold grid place-items-center num">{badge}</span> : null}
           </Link>
         );
@@ -102,10 +104,19 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
   useEffect(() => {
     if (!open) return;
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    const wide = () => { if (window.innerWidth >= 1280) setOpen(false); };
-    window.addEventListener("keydown", esc); window.addEventListener("resize", wide);
-    return () => { window.removeEventListener("keydown", esc); window.removeEventListener("resize", wide); };
+    // the drawer belongs to the icon looks: any other look (a resize past 1280 on the default, or a new choice) closes it
+    const wide = () => { if (!ICON_LOOKS.includes(currentSidebar())) setOpen(false); };
+    window.addEventListener("keydown", esc); window.addEventListener("resize", wide); window.addEventListener("df-sidebar", wide);
+    return () => { window.removeEventListener("keydown", esc); window.removeEventListener("resize", wide); window.removeEventListener("df-sidebar", wide); };
   }, [open]);
+  /* The look (lib/sidebar.ts). With no choice on this device the default follows the width — rail under 1280, the full
+     menu from 1280 — so a window dragged across 1280, or an iPad turned, still gets its own; a choice holds at any width. */
+  const [folded, setFolded] = useState(false);
+  useEffect(() => {
+    const sync = () => { if (!chosenSidebar()) document.documentElement.setAttribute("data-sidebar", defaultSidebar(window.innerWidth)); setFolded(ICON_LOOKS.includes(currentSidebar())); };
+    sync(); window.addEventListener("resize", sync); window.addEventListener("df-sidebar", sync);
+    return () => { window.removeEventListener("resize", sync); window.removeEventListener("df-sidebar", sync); };
+  }, []);
   const mods = modulesFor(type, role, enabled, personal);
   const allowed = ITEMS.filter((i) => mods.includes(modOf(i)));
   const unread = useSupportUnread(path, endFor(role).some((i) => i.key === "help"));
@@ -150,6 +161,14 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
         {/* only when the owner has turned on a way to punch from one's own phone (fingerprint or selfie) */}
         {attend && <Link href="/attendance" title="My attendance" className={cn("mb-2 flex items-center gap-3 h-[42px] px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/attendance") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}><Fingerprint size={17} className="shrink-0" /><span className="rail-hide">My attendance</span></Link>}
         {isAdmin && <Link href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
+        {/* the fold (2026-10-23): the open looks fold to icons, the icon looks unfold to the one they came from; kept on this
+            device. From 768 up (.sb-fold), at every look — a phone has the bottom bar. */}
+        <button type="button" onClick={() => { setOpen(false); toggleFold(); }} aria-pressed={folded} data-sb-fold
+          title={folded ? "Expand the menu" : "Collapse the menu to icons"} aria-label={folded ? "Expand the menu" : "Collapse the menu to icons"}
+          className="sb-fold mb-2 w-full items-center justify-center gap-2.5 h-10 px-3 rounded-[12px] text-[13px] font-semibold text-white/55 hover:text-white hover:bg-white/[.06] transition-colors [@media(pointer:coarse)]:min-h-11">
+          {folded ? <PanelLeftOpen size={18} aria-hidden className="shrink-0" /> : <PanelLeftClose size={18} aria-hidden className="shrink-0" />}
+          <span className="rail-hide flex-1 text-left truncate">{folded ? "Expand menu" : "Collapse menu"}</span>
+        </button>
         {/* p-[7px] plus the 1px border puts the card at exactly 52px across — the width the rail
             leaves once it collapses, so the avatar alone still sits square inside it */}
         <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[.04] p-[7px]">
@@ -272,6 +291,7 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
   const moreOn = open || onMore;
   const meHref = accountHref ?? "/me";
   const meOn = !open && isOn(path, meHref);
+  const [card, setCard] = useState(false);
   return (
     <>
       <nav aria-label="Sections" className="tabbar md:hidden fixed z-30" data-tabbar>
@@ -280,14 +300,16 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
           <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} aria-label="More" title="More" className={tab} data-tab="more">
             <TabIcon active={moreOn} Icon={Menu} n={moreBadge} />
           </button>
-          <Link href={meHref} aria-current={meOn ? "page" : undefined} aria-label={`${name} · ${accountHref ? "Settings" : "My profile"}`} title={name} className={tab} data-tab="me">
-            <TabSlot active={meOn}>
+          {/* the avatar opens the profile card (2026-10-23), as the top bar's does; Edit my profile and Settings are in it */}
+          <button type="button" onClick={() => setCard(true)} aria-haspopup="dialog" aria-label={`${name} · your profile`} title={name} className={tab} data-tab="me">
+            <TabSlot active={meOn || card}>
               <span className="h-[34px] w-[34px] rounded-full grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] font-display text-[16px] leading-none ring-[2.5px] ring-[var(--color-label)]">{name.slice(0, 1)}</span>
             </TabSlot>
-          </Link>
+          </button>
         </div>
       </nav>
 
+      <ProfileCard open={card} onClose={() => setCard(false)} accountHref={accountHref} />
       <Sheet open={open} onClose={() => setOpen(false)} title="Menu">
         <div className="space-y-5" ref={sheetRef} data-more>
           <div className={cn("flex items-center gap-2 rounded-2xl p-2.5 pl-3.5", editing ? "bg-[var(--color-green-2)]" : "bg-[var(--color-fill)]")}>

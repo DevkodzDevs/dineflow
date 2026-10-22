@@ -11,6 +11,7 @@ import { NotificationBell } from "./Notifier";
 import { InstallButton } from "./InstallSheet";
 import { OutletSwitcher } from "./OutletSwitcher";
 import { BackButton } from "./BackButton";
+import { ProfileCard } from "./ProfileCard";
 import type { Outlet } from "@/lib/auth";
 
 export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHref, outlets = [], home = "/dashboard" }: { home?: string; membership: string; daysLeft: number; alerts: number; name: string; boxSync?: { cursor: string | null; note: string | null } | null; accountHref?: string | null; outlets?: Outlet[] }) {
@@ -23,7 +24,7 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
      hairline under it (.topbar[data-stuck] in globals.css); at rest it is the floating card. A
      zero-height marker just above it says when it has reached the top. */
   const mark = useRef<HTMLDivElement>(null); const [stuck, setStuck] = useState(false);
-  const [mac, setMac] = useState(false);
+  const [mac, setMac] = useState(false); const [card, setCard] = useState(false);
   useEffect(() => { setMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)); }, []);
   useEffect(() => {
     const el = mark.current; if (!el) return;
@@ -57,11 +58,12 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
       <LangButton />
       <ThemeButton />
       <NotificationBell lateKots={alerts} />
-      {/* the circle opens Settings for whoever may; for everyone else, their own profile (/me, 2026-10-20) */}
-      {accountHref
-        ? <Link href={accountHref} title={`${name} · your settings`} aria-label={`${name} · your settings`} className="tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</Link>
-        : <Link href="/me" title={`${name} · my profile`} aria-label={`${name} · my profile`} data-my-profile className="tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</Link>}
+      {/* the circle opens the profile card first (2026-10-23, the owner): who they are, their position, since when — with
+          Edit my profile, and Settings for whoever may. It went straight to Settings (or /me) before. */}
+      <button type="button" onClick={() => setCard(true)} title={`${name} · your profile`} aria-label={`${name} · your profile`} aria-haspopup="dialog" data-my-profile
+        className="tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</button>
     </motion.header>
+    <ProfileCard open={card} onClose={() => setCard(false)} accountHref={accountHref} />
     </>
   );
 }

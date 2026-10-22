@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
-import { Plus, Trash2, Send, PackageCheck, XCircle, MessageCircle, Sparkles, Pencil, Truck, Flame, Undo2, FilePenLine, Columns2, Columns3, Columns4, Repeat, type LucideIcon } from "lucide-react";
+import { Plus, Trash2, Send, PackageCheck, XCircle, MessageCircle, Sparkles, Pencil, Truck, Flame, Undo2, FilePenLine, Columns2, Columns3, Columns4, Repeat, Phone, type LucideIcon } from "lucide-react";
 import { Button, Card, Field, Sheet, Empty, Pill, StatTile, CardStrip, Segmented, cn, useToast, type StripAction } from "@/components/ui";
 import { formatINR, fmtDate } from "@/lib/format";
 import { savePo, setPoStatus, receivePo, suggestPo, saveSupplier, archiveSupplier, type PoLine } from "./actions";
@@ -232,6 +232,8 @@ function ReceiveForm({ po, ingredients, onDone }: { po: Po; ingredients: Ing[]; 
 }
 
 /* ═══════ suppliers ═══════ */
+/** a supplier's initial sits on one of the board's hues, picked by the name so it never changes */
+const SUP_HUES = ["--color-green", "--color-blue", "--color-orange", "--color-violet", "--color-cyan", "--color-red"];
 export function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
   const [editing, setEditing] = useState<Partial<Supplier> | null>(null);
   const [pending, start] = useTransition(); const toast = useToast();
@@ -240,12 +242,29 @@ export function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
       <div className="flex items-center justify-between gap-3"><p className="text-sm text-steel">Who you buy from, and what each one charged.</p><Button onClick={() => setEditing({})}><Plus size={16} /> Supplier</Button></div>
       {suppliers.length === 0 ? <Empty title="No suppliers yet" hint="Add your vegetable, dairy and grocery suppliers." action={<Button onClick={() => setEditing({})}>Add the first</Button>} /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {suppliers.map((s) => (
-            <Card key={s.id}>
-              <div className="flex items-start gap-2"><Truck size={16} className="text-steel mt-0.5 shrink-0" /><div className="min-w-0 flex-1"><div className="font-semibold truncate">{s.name}</div><div className="text-xs text-steel">{[s.phone, s.gstin ? `GSTIN ${s.gstin}` : null, `${s.lead_days} day lead`].filter(Boolean).join(" · ")}</div>{s.notes && <div className="text-xs text-steel mt-1 line-clamp-2">{s.notes}</div>}</div>
-                <div className="flex gap-1">{s.phone && <a href={waTo(s.phone, `Hello ${s.name}, `)} target="_blank" rel="noreferrer" className="inline-grid h-8 w-8 place-items-center rounded-lg text-steel hover:text-mint" aria-label="WhatsApp"><MessageCircle size={15} /></a>}<Button size="sm" variant="ghost" onClick={() => setEditing(s)} aria-label="Edit"><Pencil size={15} /></Button></div></div>
-            </Card>
-          ))}
+          {/* A supplier card (2026-10-23, the owner: "modern") built like an OTA channel card: the initial on its own hue, the
+              name and what they bring (the notes), the lead time as a pill; a soft panel with the phone and the GSTIN that never
+              wraps a line; and Call · WhatsApp · Edit along the foot. */}
+          {suppliers.map((s) => { const hue = SUP_HUES[(s.name.charCodeAt(0) || 0) % SUP_HUES.length]; const ph = s.phone?.replace(/\D/g, "") ?? ""; return (
+            <div key={s.id} className="feather !rounded-[22px] overflow-hidden flex flex-col min-w-0" data-supplier={s.id}>
+              <div className="p-4 pb-3 flex items-start gap-3 min-w-0">
+                <span className="h-12 w-12 shrink-0 rounded-[15px] grid place-items-center font-display text-[22px]" style={{ background: `color-mix(in srgb, var(${hue}) 18%, var(--color-bg-2))`, color: `color-mix(in srgb, var(${hue}) 85%, var(--color-label))`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(${hue}) 35%, transparent)` }} aria-hidden>{s.name.trim().slice(0, 1).toUpperCase()}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[16px] font-extrabold leading-tight truncate" title={s.name}>{s.name}</div>
+                  <div className="text-[12.5px] text-[var(--color-label-2)] truncate mt-0.5" title={s.notes ?? undefined}>{s.notes || "Supplier"}</div>
+                </div>
+                <span className="shrink-0 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11.5px] font-bold bg-[var(--color-fill)] text-[var(--color-label-2)] num" title="Lead time"><Truck size={12} aria-hidden />{s.lead_days}d</span>
+              </div>
+              <div className="mx-4 mb-4 rounded-2xl bg-[var(--color-fill)] border border-[var(--color-separator)] px-3 py-2.5 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+                <div className="min-w-0"><div className="text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)]">Phone</div><div className="text-[13px] font-semibold num truncate mt-0.5">{ph.length === 10 ? `${ph.slice(0, 5)} ${ph.slice(5)}` : s.phone || "—"}</div></div>
+                <div className="min-w-0"><div className="text-[10.5px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)]">GSTIN</div><div className="text-[13px] font-semibold num truncate mt-0.5" title={s.gstin ?? undefined}>{s.gstin || "—"}</div></div>
+              </div>
+              <CardStrip actions={[
+                ...(s.phone ? [{ key: "call", label: "Call", icon: <Phone size={16} aria-hidden />, href: `tel:${ph}`, aria: `Call ${s.name}` } as StripAction,
+                  { key: "wa", label: "WhatsApp", icon: <MessageCircle size={16} aria-hidden />, href: waTo(s.phone, `Hello ${s.name}, `), external: true, tone: "go", aria: `WhatsApp ${s.name}` } as StripAction] : []),
+                { key: "edit", label: "Edit", icon: <Pencil size={15} aria-hidden />, onClick: () => setEditing(s), aria: `Edit ${s.name}` },
+              ]} />
+            </div>); })}
         </div>
       )}
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? "Edit supplier" : "New supplier"}>

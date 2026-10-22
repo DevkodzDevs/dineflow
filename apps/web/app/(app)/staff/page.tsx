@@ -11,7 +11,7 @@ export default async function StaffPage() {
   const s = await createClient(); const session = await requireSession(); const today = todayIST();
   // 0127: who decides leave — the owner, managers, and a supervisor for their own team (RLS narrows them)
   const decides = ["owner", "manager", "supervisor", "supervisor_2"].includes(session.profile.role);
-  const [{ data: staff }, { data: invites }, { data: dom }, { data: att }, leave] = await Promise.all([
+  const [{ data: staff }, { data: invites }, { data: dom }, { data: att }, leave, { data: away }] = await Promise.all([
     // filtered as well as trusted to RLS: a screen that lists people should say which people it means
     s.from("profiles").select("id, full_name, email, phone, contact_email, contact_verified_at, staff_code, role, is_active, created_at, allowed_modules, must_change_password, position, position_title, department, reports_to, joined_on")
       .eq("restaurant_id", session.profile.restaurant_id).order("created_at"),
@@ -20,6 +20,8 @@ export default async function StaffPage() {
     s.rpc("staff_login_domain", { p_rid: session.profile.restaurant_id }),
     s.from("staff_attendance").select("profile_id, in_at, out_at, hours, method_in").eq("work_date", today),
     decides ? s.from("staff_leave").select("id, profile_id, from_date, to_date, days, kind, reason, status, decision_note, created_at").order("created_at", { ascending: false }).limit(40) : Promise.resolve({ data: null }),
+    // who is on approved leave today: shown as away on Attendance by itself (2026-10-23) — what 0135 lets this person see
+    s.from("staff_leave").select("profile_id, kind, to_date").eq("status", "approved").lte("from_date", today).gte("to_date", today),
   ]);
   const methods = (session.restaurant.attendance_methods as string[] | undefined) ?? ["manual", "qr"];
   // what the person doing the managing holds themselves — they can only pass on what is in here
@@ -28,6 +30,9 @@ export default async function StaffPage() {
   const names = Object.fromEntries((staff ?? []).map((p) => [p.id as string, p.full_name as string]));
   const leaveRows = ((leave.data ?? []) as LeaveRow[]).sort((a, b) => Number(b.status === "requested") - Number(a.status === "requested"));
   return (<><StaffClient onDuty={onDuty} me={session.userId} myRole={session.profile.role} myModules={myModules} type={session.restaurant.property_type} enabled={session.restaurant.enabled_modules ?? null} duty={(att ?? []) as never} staff={(staff ?? []) as never} invites={invites ?? []} loginDomain={(dom as string) ?? "dineflow.cloud"} />
-    <StaffAttendance today={today} staff={(staff ?? []) as never} att={att ?? []} methods={methods} canMark={["owner", "manager", "supervisor"].includes(session.profile.role)} property={session.restaurant.name} />
+    <StaffAttendance today={today} staff={(staff ?? []) as never} att={att ?? []} methods={methods} canMark={["owner", "manager", "supervisor"].includes(session.profile.role)} property={session.restaurant.name}
+      // the register: the owner and managers; a supervisor (either rank) only when the owner gave them Staff — they are on
+      // this page because of that tick, so the role is the test here
+      canRegister={["owner", "manager", "supervisor", "supervisor_2"].includes(session.profile.role)} leaveToday={(away ?? []) as never} />
     {decides && <StaffLeave rows={leaveRows} names={names} me={session.userId} />}</>);
 }

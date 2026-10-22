@@ -94,7 +94,7 @@ that. Probe: `staffrow.mjs`.
   iPad (768 up) and laptop opens on the grid and a phone on the cards with nothing corrected after load; a pick is kept on
   the device (`localStorage` `df-staff-layout`, read after mount). **The grid** (`StaffGrid.tsx`, `[data-staff-grid]`) is
   grouped by job — a band per department (`[data-staff-group]`, its icon on its colour and a count), people under it by
-  level then name — with **Group by job** (`[data-staff-group-toggle]`) for one flat list; every column sorts
+  level then name — with **Group by job** (`[data-staff-group-toggle]`) — **off at first since 2026-10-23** (the owner), so the grid opens as one flat list and the toggle groups it; every column sorts
   (`[data-sort]`); the department chips and the search filter it as they filter the cards. Columns come with the room the
   grid has (container queries, so a laptop's 256px sidebar counts): Name (avatar with the state dot, the title under it)
   and **Today** always — *Off*, *Not signed in*, *On duty · 9:05 am*, *Left · 6:10 pm*, *Not in today* from today's
@@ -280,3 +280,22 @@ lib/notify.ts); a new request reaches whoever decides it. There are no balances 
 year. See [my-day.md](my-day.md).
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. "On duty today" on the Staff summary is a shuffling flap count.
+
+## Attendance: how many across, the register, leave by itself, and leave up the ladder (2026-10-23)
+
+- **One, two or three across** (three by default; the pin keeps another on this device, `df-view:attendance-cols`).
+- **On leave by itself**: anyone with approved leave today shows *On leave · Casual (till …)* in violet — nobody marks it;
+  Present stays there for someone who came in anyway. page.tsx reads today's approved leave (what 0135 lets them see).
+- **The register** (*Register* tab, `[data-att-register]`) — the owner, managers, and a supervisor the owner gave Staff to: a
+  row per person, a column per day of the month — **P** present, **L** approved leave, **A** absent (a past day with no punch
+  and no leave, from the day they joined), today tinted — with the month's P · L · A at the end, the months either side, and
+  a CSV of what is shown. Read a month at a time (`attendanceMonth` in actions.ts).
+- **Leave goes up the ladder (0135)**: `_leave_decides` — the owner anyone's; a manager anyone below a manager (not another
+  manager's); a supervisor (either rank) only staff below both supervisor ranks in their own team (not another supervisor's);
+  anyone a person reports to, when they rank below them. It decides `leave_decide` and what `staff_leave`'s policy shows, so
+  the bell follows it. Dry run `dry135.cjs` (18).
+- **Add staff asks for an emergency contact** (0134): name and number, optional; `staff_set_emergency` — the rule of
+  `staff_set_position` (a supervisor or above, someone below them; the owner anyone); 6–15 digits. The person can change it
+  on My profile (0125's own columns). Dry run `dry134.cjs` (9).
+- **Note**: `staff_attendance` is readable by everyone on the property (`staff_attendance_read`); the register is shown only to
+  the people above, but the rows themselves are not narrowed — unchanged, worth a look.

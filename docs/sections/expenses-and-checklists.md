@@ -90,3 +90,8 @@ node batch2.mjs     # 40 checks on a throwaway demo — see testing-and-gates.md
   all three lists with Everyone / Kitchen / Front office chips; a front-desk sign-in sees Opening and Front desk only.
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Each checklist card shows its done % on flap tiles (`[data-list-pct]`), counting up as duties are ticked.
+
+- **Checklist cards line up** (2026-10-23, the owner: "one card to another not aligned"): every card in a row is the row's
+  height (flex column, the items grow) with the week at its foot; the head is the shift's icon, the name in two lines before
+  it cuts, the shift and the count, and **one progress ring** (SVG, `[data-list-pct]`) — it replaced the flap % and the bar
+  under it; the week's dots carry the day letters, today ringed.

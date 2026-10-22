@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { Check, Sunrise, Moon, Clock3, Pencil, Plus, Sparkles, Users, Briefcase, BadgeCheck } from "lucide-react";
-import { Card, Empty, Sheet, cn, useToast, FlapPercent } from "@/components/ui";
+import { Card, Empty, Sheet, cn, useToast } from "@/components/ui";
 import { tick, saveList } from "./actions";
 import { Say } from "@/components/ui/Say";
 import { DeptIcon, deptHue } from "../staff/StaffPositions";
@@ -106,19 +106,25 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
           {shown.map((l) => {
             const done = doneOf(l); const n = Object.keys(done).length; const all = n >= l.items.length; const { label, Icon } = SHIFT[l.shift];
             return (
-              <Card key={l.id} className="min-w-0 !p-0 overflow-hidden" data-list={l.name}>
-                <div className="px-4 pt-4 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className={cn("h-10 w-10 shrink-0 rounded-xl grid place-items-center", all ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)]")}>{all ? <Check size={20} strokeWidth={3} aria-hidden /> : <Icon size={19} aria-hidden />}</span>
-                    <div className="min-w-0 flex-1"><div className="text-[17px] font-extrabold truncate">{l.name}</div><div className="text-[12.5px] text-steel">{label} · <span className="num" data-progress>{n}/{l.items.length}</span>{all ? " · all done" : ""}</div></div>
-                    {/* 2026-10-20: how far along, counted up on flap tiles when a duty is ticked (Flap.tsx) */}
-                    <span className="shrink-0" data-list-pct><FlapPercent value={(n / Math.max(1, l.items.length)) * 100} size="xs" tile="34px" bare bar={false} say={`${n} of ${l.items.length} done`} /></span>
-                    {editor && <button type="button" onClick={() => setEdit(l)} className="h-11 w-11 shrink-0 grid place-items-center rounded-xl text-steel hover:bg-[var(--color-fill)]" aria-label={`Edit ${l.name}`}><Pencil size={17} /></button>}
+              /* A checklist card (2026-10-23, the owner: "one card to another not aligned"): every card in a row is the row's
+                 height and keeps its week at the foot; the head is the shift's icon, the name (two lines before it cuts),
+                 the shift and the count, and one ring for how far along — it replaced the flap % and the bar under it. */
+              <Card key={l.id} className="min-w-0 !p-0 overflow-hidden flex flex-col h-full" data-list={l.name}>
+                <div className="px-4 pt-4 pb-3.5">
+                  <div className="flex items-start gap-3">
+                    <span className={cn("h-11 w-11 shrink-0 rounded-[14px] grid place-items-center", all ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}>{all ? <Check size={20} strokeWidth={3} aria-hidden /> : <Icon size={19} aria-hidden />}</span>
+                    <div className="min-w-0 flex-1 pt-0.5"><div className="text-[16.5px] font-extrabold leading-snug line-clamp-2 [overflow-wrap:anywhere]">{l.name}</div><div className="text-[12.5px] text-steel mt-0.5">{label} · <span className="num" data-progress>{n}/{l.items.length}</span>{all ? " · all done" : ""}</div></div>
+                    {(() => { const p = n / Math.max(1, l.items.length); return (
+                      <span className="relative h-12 w-12 shrink-0" data-list-pct role="img" aria-label={`${n} of ${l.items.length} done`}>
+                        <svg viewBox="0 0 36 36" className="h-12 w-12 -rotate-90" aria-hidden><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-fill-2)" strokeWidth="3.5" />
+                          <circle cx="18" cy="18" r="15.5" fill="none" stroke={all ? "var(--color-green)" : "var(--color-orange)"} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${p * 97.4} 97.4`} style={{ transition: "stroke-dasharray .4s var(--ease-out)" }} opacity={p ? 1 : 0} /></svg>
+                        <span className="absolute inset-0 grid place-items-center text-[11.5px] font-extrabold num">{Math.round(p * 100)}%</span>
+                      </span>); })()}
+                    {editor && <button type="button" onClick={() => setEdit(l)} className="h-10 w-10 pointer-coarse:h-11 pointer-coarse:w-11 -mr-1.5 shrink-0 grid place-items-center rounded-full text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]" aria-label={`Edit ${l.name}`}><Pencil size={16} /></button>}
                   </div>
-                  <div className="mt-2.5 min-w-0"><ForWhom tags={tagsOf(l)} look={look} /></div>
-                  <div className="mt-3 h-2 rounded-full bg-[var(--color-fill)] overflow-hidden"><div className="h-full rounded-full transition-all" style={{ width: `${(n / Math.max(1, l.items.length)) * 100}%`, background: all ? "var(--color-green)" : "var(--color-orange)" }} /></div>
+                  <div className="mt-3 min-w-0"><ForWhom tags={tagsOf(l)} look={look} /></div>
                 </div>
-                <ul className="border-t border-[var(--color-separator)]">
+                <ul className="flex-1 border-t border-[var(--color-separator)]">
                   {l.items.map((it, i) => { const d = done[String(i)]; return (
                     <li key={i}><button type="button" onClick={() => toggle(l, i)} aria-pressed={!!d} data-duty
                       className="!min-h-14 w-full flex items-center gap-3 px-4 py-2 text-left border-b border-[var(--color-separator)] last:border-b-0 hover:bg-[var(--color-fill)]">
@@ -127,10 +133,15 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
                         {d && <span className="block text-[12px] text-steel">{d.name} · {hhmm(d.at)}</span>}</span>
                     </button></li>); })}
                 </ul>
-                <div className="px-4 py-3 flex items-center gap-2 border-t border-[var(--color-separator)]" aria-label="The last seven days">
-                  <span className="text-[12px] font-bold text-steel mr-1">Week</span>
+                <div className="mt-auto px-4 py-3 flex items-center gap-3 border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_40%,transparent)]" aria-label="The last seven days">
+                  <span className="text-[11.5px] font-bold uppercase tracking-[.08em] text-steel">Week</span>
+                  <span className="ml-auto flex items-end gap-2.5">
                   {week.map((d) => { const r = runs.find((x) => x.checklist_id === l.id && x.run_date === d); const k = d === today ? n : r ? Object.keys(r.done).length : 0; const full = k >= l.items.length;
-                    return <span key={d} title={`${d}: ${k}/${l.items.length}`} className={cn("h-3 w-3 rounded-full", full ? "bg-[var(--color-green)]" : k > 0 ? "bg-[var(--color-orange)]" : "bg-[var(--color-fill-2)]", d === today && "ring-2 ring-offset-2 ring-offset-[var(--color-bg-2)] ring-[var(--color-label-3)]")} />; })}
+                    return <span key={d} title={`${d}: ${k}/${l.items.length}`} className="flex flex-col items-center gap-1">
+                      <span className={cn("h-3 w-3 rounded-full", full ? "bg-[var(--color-green)]" : k > 0 ? "bg-[var(--color-orange)]" : "bg-[var(--color-fill-2)]", d === today && "ring-2 ring-offset-2 ring-offset-[var(--color-bg-2)] ring-[var(--color-label-3)]")} />
+                      <span className={cn("text-[9.5px] font-bold leading-none", d === today ? "text-[var(--color-label)]" : "text-[var(--color-label-3)]")} aria-hidden>{new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "narrow" })}</span>
+                    </span>; })}
+                  </span>
                 </div>
               </Card>);
           })}

@@ -112,8 +112,16 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   const setNote = (key: string, note: string) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, note } : l)));
   const cycleCourse = (key: string) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, course: l.course >= 3 ? 1 : l.course + 1 } : l)));
   const courses = [...new Set(lines.map((l) => (coursing ? l.course : 1)))].sort();
-  /** Tapping a tile: a dish that asks a question opens it; the rest go straight on the ticket. */
-  const tap = (it: Item) => (hasOptions(it) ? setChooser({ item: it }) : putLine(it, null, [], 1));
+  /** Tapping a tile — or + — puts the dish straight on the ticket (2026-10-23, the owner: "a tap on the card adds it; only
+   *  Choose opens the choices"): a dish in sizes goes in its default size with no add-ons. Only a dish whose add-ons must be
+   *  chosen (a group with a minimum) still opens its choices, so nothing half-ordered reaches the kitchen. */
+  const tap = (it: Item) => {
+    if (!hasOptions(it)) return putLine(it, null, [], 1);
+    if (optionProblem(it, [])) return setChooser({ item: it });
+    putLine(it, defaultVariant(it), [], 1);
+  };
+  /** Choose: the dish's sizes and add-ons, always. */
+  const choose = (it: Item) => setChooser({ item: it });
   /* From the call screen (/orders/phone, ?from=phone): the caller, their address and, for "Same again", the dishes
      of an earlier order in their sizes — add-ons are asked again. Read once and cleared, so a reload starts clean. */
   useEffect(() => {
@@ -659,12 +667,16 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                             the price — and a size down for a long name, so "Paneer butter masala" fits; past that, an ellipsis
                             and the whole name on hover */}
                         <span className={cn("block font-bold leading-snug truncate min-w-0", it.name.length <= 16 ? "text-[15px]" : it.name.length <= 22 ? "text-[13.5px]" : "text-[12.5px]")} title={it.name} data-tile-name>{it.name}</span>
-                        <span className="mt-auto flex items-center flex-wrap gap-x-1.5 gap-y-0.5 min-w-0" data-tile-price>
+                        {/* the same three lines on every card (2026-10-23, the owner: "the empty space looks awkward — even card
+                            heights"): the price row never wraps, and the prep / customisable line is always there (blank when
+                            there is nothing to say), so no card has a gap between its name and its price */}
+                        <span className="flex items-center gap-1.5 min-w-0" data-tile-price>
                           <VegMark veg={it.is_veg} big />
                           {tp.from && <span className="text-[11.5px] font-semibold text-steel">from</span>}
                           <span className="font-display num text-[20px] leading-tight">{formatINR(tp.price, { whole: true })}</span>
-                          {(it.prep_minutes || asks) && <span className="text-[11.5px] font-semibold text-steel truncate min-w-0">{it.prep_minutes ? <>· <span className="num">{it.prep_minutes}</span> min</> : null}{asks ? <>{it.prep_minutes ? " " : ""}· customisable</> : null}</span>}
                         </span>
+                        <span className="block h-4 text-[11.5px] leading-4 font-semibold text-steel truncate min-w-0" data-tile-meta>
+                          {it.prep_minutes ? <><span className="num">{it.prep_minutes}</span> min</> : null}{asks ? <>{it.prep_minutes ? " · " : ""}customisable</> : null}</span>
                       </span>
                     </button>
                     <div className="act">
@@ -673,9 +685,14 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                             <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`} className="less !rounded-full !h-9 !w-9 !min-h-9"><Minus size={16} /></button>
                             <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="more !rounded-full !h-9 !w-9 !min-h-9"><Plus size={17} /></button>
                           </div>
-                        : <button type="button" onClick={() => tap(it)} aria-label={asks ? `Choose options for ${it.name}` : `Add ${it.name}`} title={asks ? "Choose" : "Add"} data-choose={asks || undefined} data-add={!asks || undefined}
-                            className="!min-h-0 h-10 min-w-[6.5rem] px-4 inline-flex items-center justify-center gap-1.5 rounded-full text-[13.5px] font-extrabold uppercase tracking-[.04em] bg-[var(--color-bg-2)] text-[var(--color-tint)] ring-1 ring-[color-mix(in_srgb,var(--color-tint)_45%,transparent)] shadow-[0_10px_22px_-12px_rgb(0_0_0/.7)] hover:bg-[color-mix(in_srgb,var(--color-tint)_12%,var(--color-bg-2))] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']">
-                            {asks ? <SlidersHorizontal size={15} aria-hidden /> : <Plus size={16} strokeWidth={2.8} aria-hidden />}<Say w={asks ? "choose" : "add"} /></button>}
+                        /* the move (2026-10-23, the owner: "compact, modern"): Add is a solid round + in the tint; a dish with
+                           choices gets a slim "Choose" pill beside a +, so the card's tap adds and Choose opens the choices */
+                        : asks
+                          ? <div className="dish-pair">
+                              <button type="button" onClick={() => choose(it)} aria-label={`Choose options for ${it.name}`} title="Choose size and add-ons" data-choose className="dish-chip"><SlidersHorizontal size={14} aria-hidden /><Say w="choose" /></button>
+                              <button type="button" onClick={() => tap(it)} aria-label={`Add ${it.name}`} title="Add" data-add className="dish-plus"><Plus size={18} strokeWidth={2.8} aria-hidden /></button>
+                            </div>
+                          : <button type="button" onClick={() => tap(it)} aria-label={`Add ${it.name}`} title="Add" data-add className="dish-plus solo"><Plus size={18} strokeWidth={2.8} aria-hidden /><span className="dish-plus-word"><Say w="add" /></span></button>}
                     </div>
                   </div>
                 );

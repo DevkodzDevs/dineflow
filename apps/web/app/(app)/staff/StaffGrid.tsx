@@ -37,7 +37,7 @@ export function StaffGrid<P extends GridPerson>({ people, everyone, type, me, du
   people: P[]; everyone: P[]; type: PropertyType; me: string; duty: Duty[];
   howOf: (p: P) => string | null; phoneOut: (raw: string) => string; onOpen: (p: P) => void;
 }) {
-  const [group, setGroup] = useState(true);
+  const [group, setGroup] = useState(false);   // off at first (2026-10-23, the owner); the toggle groups by job
   const [sort, setSort] = useState<{ key: Key; dir: 1 | -1 } | null>(null);
   const dutyOf = useMemo(() => new Map(duty.map((d) => [d.profile_id, d])), [duty]);
   const nameOf = useMemo(() => new Map(everyone.map((p) => [p.id, p.full_name])), [everyone]);

@@ -8,6 +8,7 @@ import { LangPicker } from "@/components/ui/Say";
 import { NotificationSettings } from "@/components/shell/Notifier";
 import { DeptIcon, deptHue } from "../staff/StaffPositions";
 import { saveMyProfile, sendMyCode, verifyMyCode, signOutOthers, type MyDetails } from "./actions";
+import { SidebarPicker } from "@/components/shell/SidebarPicker";
 
 export type Me = {
   full_name: string; login: string; role: string; roleKey: string; title: string | null; dept: string | null; deptLabel: string | null;
@@ -32,7 +33,7 @@ const LANGS: { key: string; own: string; en: string }[] = [
   { key: "ur", own: "اردو", en: "Urdu" }, { key: "bn", own: "বাংলা", en: "Bengali" }, { key: "mr", own: "मराठी", en: "Marathi" },
   { key: "gu", own: "ગુજરાતી", en: "Gujarati" }, { key: "or", own: "ଓଡ଼ିଆ", en: "Odia" }, { key: "pa", own: "ਪੰਜਾਬੀ", en: "Punjabi" },
 ];
-const hueOf = (tone: string | null, dept: string | null) => TONES.find((t) => t.key === tone)?.hue ?? deptHue(dept);
+export const hueOf = (tone: string | null, dept: string | null) => TONES.find((t) => t.key === tone)?.hue ?? deptHue(dept);
 const initials = (name: string) => name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
 const hm = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const same = (a: MyDetails, b: MyDetails) => JSON.stringify({ ...a, languages: [...a.languages].sort() }) === JSON.stringify({ ...b, languages: [...b.languages].sort() });
@@ -70,6 +71,7 @@ export function MeClient({ me, day }: { me: Me | null; day: Day | null }) {
         <ThemePicker />
         <div className="mt-6 mb-2 text-[13px] font-semibold text-[var(--color-label-2)]">Language</div>
         <LangPicker />
+        <SidebarPicker />
       </Card>
       <Card data-me-alerts>
         <Head icon={<BellRing size={18} />} title="Alerts on this device" sub="Pick the device, its tone and what it rings for." />

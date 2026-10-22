@@ -4,7 +4,7 @@ import { Copy, UserPlus, KeyRound, Check, MailWarning, MailCheck, Mail, Hash, Us
 import { SlidersHorizontal as AccessIcon } from "lucide-react";
 import { Button, Field, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, ROLE_DEFAULT, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
-import { createInvite, setAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition } from "./actions";
+import { createInvite, setAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency } from "./actions";
 import { PositionFields, TeamChart, PositionsGuide, Avatar, DeptIcon, ModuleChips, titleOf, deptOf, levelFor, DEPT_ORDER, deptHue } from "./StaffPositions";
 import { StaffGrid, type Duty } from "./StaffGrid";
 import { copyText } from "@/lib/clipboard";
@@ -483,6 +483,9 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             if ("error" in r) { setAddErr(r.error!); return; }
             // their position goes on once the person exists; a failure here leaves the sign-in made and says so
             if (addPos.department || addPos.position || addPos.title || addPos.reportsTo || addPos.joinedOn) { const x = await savePos(r.user_id, addPos); if ("error" in x) setAddErr(`Added — but the position was not saved: ${x.error}`); }
+            // the emergency contact goes on the same way (0134); a failure leaves the sign-in made and says so
+            const eName = String(fd.get("emergency_name") ?? "").trim(), ePhone = String(fd.get("emergency_phone") ?? "").trim();
+            if (eName || ePhone) { const x = await setEmergency(r.user_id, eName, ePhone); if ("error" in x) setAddErr(`Added — but the emergency contact was not saved: ${x.error}`); }
             setOtp(""); setOtpDone(false); setOtpErr(null);
             setMade({ title: `${r.full_name} · ${ROLE_LABEL[r.role as Role]}`, staff_code: r.staff_code, login_id: r.login_id, temp_password: r.temp_password,
                       verify: { userId: r.user_id, email: r.contact_email, mailed: r.mailed, mailError: r.mailError, echoed: r.echoed } });
@@ -505,6 +508,16 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               <input name="phone" inputMode="numeric" maxLength={10} pattern="[0-9]{10}" placeholder="9876543210"
                 onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/\D/g, "").slice(0, 10); }} />
             </Field>
+            {/* who to call if something happens to them (2026-10-23, 0134) — on file from the first day; they can change it on My profile */}
+            <div className="grid gap-3 sm:grid-cols-2" data-add-emergency>
+              <Field label="Emergency contact" hint="Name and how they are related. Optional.">
+                <input name="emergency_name" maxLength={60} placeholder="Lakshmi · mother" />
+              </Field>
+              <Field label="Emergency number" hint="Optional.">
+                <input name="emergency_phone" type="tel" inputMode="tel" maxLength={20} placeholder="98400 67890" className="num"
+                  onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9 +()-]/g, ""); }} />
+              </Field>
+            </div>
             <Field label="Login ID" hint={`Leave blank and one is made from their name. The @${loginDomain} part is added for you — it is what they type to sign in, not a mailbox.`}>
               <div className="flex items-center gap-2"><input name="login_id" className="flex-1" placeholder="made from their name" /><span className="text-sm text-steel shrink-0">@{loginDomain}</span></div>
             </Field>

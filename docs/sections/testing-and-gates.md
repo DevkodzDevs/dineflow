@@ -398,3 +398,15 @@ of a second." Measured first, on the live site and on a local production build (
   browser — look there first.
 - **Online orders: the Swiggy header is white on Swiggy's orange (#fc8019, 2.55:1) in every theme.** The probe skips
   the two aggregator brand colours so it does not mask a theme regression; the header itself still needs darker ink.
+
+- **2026-10-23**: `round69.mjs` (38) drives the owner's eighteen on a throwaway resort demo with four `demo_user()` staff and
+  three customers: Back an icon only (36px at 1440 and 412); Set up tables → Settings#tables; the customer and pantry grids by
+  default, a row opening its dialog, the pantry pin kept; the sidebar's default, fold, all six looks (width, floating offset, no
+  sideways scroll), 834 icons, 412 untouched; the till (a tap adds, Choose opens, the ring over the photo, even cards, the
+  phone's pills); Group by job off; Attendance three across, two pinned and kept, the register; the profile card; the
+  emergency fields; the long select clipped; OTA across; online orders off → on (a real write, on the demo); Top dishes.
+  **The seeded manoooo staff logins (2026-10-18) have expired** — 3-day temporary passwords; they land on /account/password.
+  Do not change them on the live database: use a demo with `demo_user()` staff, or the app's own grace (`temp_access_until`,
+  set and put back). **`dropdemos.cjs` went missing from the scratchpad on 2026-10-23** and was rebuilt (demos only:
+  `demo_expires_at` set). **`pnpm lint` lints any `apps/web/.next-*` folder** (only .next is ignored): a second session's
+  `next dev` distDir gave 1616 errors; `.next-dev` (2026-09-20) is still there, nobody's.

@@ -170,3 +170,7 @@ pnpm --filter @dineflow/web typecheck
 - **Printers → "kick the drawer" does something now** (0087): `openDrawer()` sends ESC p to every
   bill printer with the switch on, after a cash settlement and after a cash in/out on Cash & controls.
   Browser printing cannot kick a drawer.
+
+- **A link can open a section** (2026-10-23): `/settings#tables` opens Tables (Tables' *Set up tables*); the tab is read from
+  the hash after mount and on every hash change, and a tab chosen here writes it back (replaceState), so Back and a shared
+  link land on the same section.

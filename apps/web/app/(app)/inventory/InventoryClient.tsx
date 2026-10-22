@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Boxes, Receipt, ClipboardList, Store, BookOpen, Plus, Trash2, Pencil, PackagePlus, AlertTriangle, History, ScanText, Loader2, Camera, CheckCircle2, Droplets, Truck, Search, ScanBarcode, Milk, Drumstick, Fish, Carrot, Apple, Wheat, CupSoda, Package, SprayCan, CircleCheck, CircleAlert, type LucideIcon } from "lucide-react";
-import { Button, Card, Field, Sheet, Empty, Pill, cn, FlapShuffle } from "@/components/ui";
+import { Boxes, Receipt, ClipboardList, Store, BookOpen, Plus, Trash2, Pencil, PackagePlus, AlertTriangle, History, ScanText, Loader2, Camera, CheckCircle2, Droplets, Truck, Search, ScanBarcode, Milk, Drumstick, Fish, Carrot, Apple, Wheat, CupSoda, Package, SprayCan, CircleCheck, CircleAlert, ArrowUp, ArrowDown, ArrowUpDown, ChevronRight, LayoutGrid, Rows3, type LucideIcon } from "lucide-react";
+import { Button, Card, Field, Sheet, Empty, Pill, cn, FlapShuffle, useToast } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import type { Word } from "@/lib/say";
@@ -11,6 +11,7 @@ import { UNITS, INGREDIENT_CATEGORIES, WASTE_REASONS } from "@dineflow/shared";
 import { saveIngredient, archiveIngredient, moveStock, recordPurchase, ingredientPrices, readSupplierBill, type PriceHistory, type BillLine } from "./actions";
 import { photoToDataUrl } from "@/lib/photo";
 import { PurchaseOrders, Suppliers, WastageView, type Ing, type Supplier, type Po, type Wastage } from "./Purchasing";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 
 type Led = { id: string; ingredient_id: string; qty: number; reason: string; sub_reason?: string | null; note: string | null; created_at: string };
 type Pur = { id: string; supplier: string | null; invoice_no: string | null; total: number; purchased_at: string; po_id?: string | null };
@@ -50,6 +51,12 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
   const [purchase, setPurchase] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  /* Stock as cards or a grid (2026-10-23): until a default is set on this device, CSS shows the grid from md (every iPad)
+     and the cards below it; the pin keeps the shown one as this device's default (df-view:pantry). A grid row opens the item. */
+  const lay = useViewPref("pantry", ["cards", "table"] as const); const toast = useToast();
+  const layout = lay.chosen ?? "auto";
+  const shownAs = lay.chosen ?? (lay.wide === null ? null : lay.wide ? "table" : "cards");
+  const [detail, setDetail] = useState<IngRow | null>(null);
   const byId = useMemo(() => Object.fromEntries(ingredients.map((i) => [i.id, i])), [ingredients]);
   const low = ingredients.filter((i) => Number(i.current_stock) <= Number(i.reorder_level));
   const value = ingredients.reduce((t, i) => t + Number(i.current_stock) * Number(i.cost_per_unit), 0);
@@ -87,7 +94,9 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
             {t.badge ? <span className="num absolute top-1 right-1.5 sm:static min-w-[1.25rem] h-5 px-1 rounded-full grid place-items-center text-[11px] bg-[color-mix(in_srgb,var(--color-orange)_20%,transparent)] text-[var(--color-orange)]">{t.badge}</span> : null}
           </button>); })}
       </div>
-      {tab === "stock" && <div className="flex justify-end">
+      {tab === "stock" && <div className="flex items-center justify-end gap-2">
+        {ingredients.length > 0 && <ViewSwitch label="Show stock as" data="pantry" shown={shownAs} onPick={lay.pick} saved={lay.saved} onKeep={(v) => { lay.keep(v); toast(v === "table" ? "The table is your default here" : "Cards are your default here"); }}
+          options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} />}
         <Button variant="outline" className="[@media(pointer:coarse)]:!min-h-11 max-sm:w-full" onClick={() => setEditing({ unit: "kg", reorder_level: 0, cost_per_unit: 0 })}><Plus size={16} /> Ingredient</Button>
       </div>}
 
@@ -124,6 +133,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           <Link href="/scan" aria-label="Scan a barcode" title="Scan a barcode" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:right-1.5 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><ScanBarcode size={19} /></Link>
         </div>
         <div className="text-[12.5px] text-steel -mt-2">Stock value <b className="num text-[var(--color-label)]">{formatINR(value)}</b> at last purchase cost · {ingredients.length} items</div>
+        <div className={cn(layout === "table" && "hidden", layout === "auto" && "md:hidden")} data-pantry-cards>
         {/* A phone: a list, one row per item — its picture in its state's colour, the name, the amount big with
             how it stands, a thin bar against three times the reorder level, and two square buttons: + (Add
             stock) and the bin (Waste). A tap on the name opens the item. Low ones first. */}
@@ -182,6 +192,11 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           })}
           {shownIngs.length === 0 && <p className="col-span-full text-[15px] text-steel py-6">{q ? `Nothing matches “${q}”.` : "Nothing in this group."}</p>}
         </div>
+        </div>
+        <div className={cn(layout === "cards" && "hidden", layout === "auto" && "hidden md:block")}>
+          {shownIngs.length === 0 ? <p className="text-[15px] text-steel py-6">{q ? `Nothing matches “${q}”.` : "Nothing in this group."}</p>
+            : <PantryGrid rows={shownIngs} levelOf={levelOf} fmtStock={fmtStock} barOf={barOf} onOpen={setDetail} onMove={(i, why) => { setReason(why); setMove(i); }} />}
+        </div>
       </>))}
 
       {tab === "purchases" && (purchases.length === 0 ? <Empty title="No purchases recorded" hint="Add a supplier bill and the stock goes straight into the pantry." /> : (
@@ -210,6 +225,11 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
         </div>
       )}
 
+      <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail?.name ?? ""}>
+        {detail && (() => { const i = ingredients.find((x) => x.id === detail.id) ?? detail; const l = levelOf(i); return (
+          <ItemDetail i={i} l={l} stock={fmtStock(i)} pct={barOf(i, l)} moves={ledger.filter((v) => v.ingredient_id === i.id)}
+            onMove={(why) => { setDetail(null); setReason(why); setMove(i); }} onEdit={() => { setDetail(null); setEditing(i); }} />); })()}
+      </Sheet>
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? "Edit ingredient" : "New ingredient"}>
         <form className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveIngredient(fd); if (r && "error" in r) setErr(r.error!); else setEditing(null); })}>
           {editing?.id && <input type="hidden" name="id" value={editing.id} />}
@@ -375,6 +395,117 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
       </div>
       {err && <p className="text-sm text-chili">{err}</p>}
       <Button size="lg" className="w-full" disabled={pending} onClick={() => start(async () => { const r = await recordPurchase(supplier, inv, lines.map(toUnits), supplierId || null); if ("error" in r) setErr(r.error!); else onDone(); })}><PackagePlus size={17} /> Add to pantry</Button>
+    </div>
+  );
+}
+
+type GridKey = "name" | "state" | "stock" | "reorder" | "cost" | "value" | "category" | "barcode";
+/**
+ * Pantry as a data grid (2026-10-23, the owner: "a grid, a row opens the product in a dialog, the cards untouched; the grid
+ * from an iPad up, cards on a phone, and a default I can set"). Every column but the last sorts; the low ones come first
+ * until a column is chosen. Add stock (+) and Waste (bin) are round keys at the row's end that do not open it. Columns come
+ * with the grid's own room (container queries): Item, In stock and the keys always; State from 36rem; Reorder at from 44;
+ * Cost and Value from 54; Category and Barcode from 70.
+ */
+function PantryGrid({ rows, levelOf, fmtStock, barOf, onOpen, onMove }: {
+  rows: IngRow[]; levelOf: (i: IngRow) => Lvl; fmtStock: (i: IngRow) => string; barOf: (i: IngRow, l: Lvl) => number;
+  onOpen: (i: IngRow) => void; onMove: (i: IngRow, why: "adjustment" | "wastage") => void;
+}) {
+  const [sort, setSort] = useState<{ key: GridKey; dir: 1 | -1 } | null>(null);
+  const AT: Partial<Record<GridKey, string>> = { state: "hidden @[36rem]:table-cell", reorder: "hidden @[44rem]:table-cell", cost: "hidden @[54rem]:table-cell", value: "hidden @[54rem]:table-cell", category: "hidden @[70rem]:table-cell", barcode: "hidden @[70rem]:table-cell" };
+  const COLS: { key: GridKey; label: string }[] = [{ key: "name", label: "Item" }, { key: "state", label: "State" }, { key: "stock", label: "In stock" }, { key: "reorder", label: "Reorder at" }, { key: "cost", label: "Cost / unit" }, { key: "value", label: "Value" }, { key: "category", label: "Category" }, { key: "barcode", label: "Barcode" }];
+  const num = (x: unknown) => Number(x ?? 0);
+  const by: Record<GridKey, (a: IngRow, b: IngRow) => number> = {
+    name: (a, b) => a.name.localeCompare(b.name), state: (a, b) => LVL[levelOf(a)].order - LVL[levelOf(b)].order,
+    stock: (a, b) => num(a.current_stock) - num(b.current_stock), reorder: (a, b) => num(a.reorder_level) - num(b.reorder_level),
+    cost: (a, b) => num(a.cost_per_unit) - num(b.cost_per_unit), value: (a, b) => num(a.current_stock) * num(a.cost_per_unit) - num(b.current_stock) * num(b.cost_per_unit),
+    category: (a, b) => (a.category ?? "~").localeCompare(b.category ?? "~"), barcode: (a, b) => (a.barcode ?? "~").localeCompare(b.barcode ?? "~"),
+  };
+  const list = sort ? [...rows].sort((a, b) => by[sort.key](a, b) * sort.dir || a.name.localeCompare(b.name)) : rows;
+  const flip = (k: GridKey) => setSort((s) => (!s || s.key !== k ? { key: k, dir: 1 } : s.dir === 1 ? { key: k, dir: -1 } : null));
+  const cell = (k: GridKey | "keys", extra?: string) => cn("px-3.5 py-2.5 align-middle border-b border-[var(--color-separator)]", k !== "keys" && AT[k], extra);
+  const key = "h-9 w-9 !min-h-9 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:!min-h-11 rounded-full grid place-items-center transition-colors";
+  return (
+    <div className="rounded-[24px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] overflow-hidden" data-pantry-table>
+      <div className="@container overflow-x-auto">
+        <table className="w-full border-separate border-spacing-0 text-left" aria-label="Pantry">
+          <thead><tr>
+            {COLS.map((c) => (
+              <th key={c.key} scope="col" className={cn("px-3.5 h-11 bg-[color-mix(in_srgb,var(--color-bg-2)_92%,var(--color-bg-3))] border-b border-[var(--color-separator)] whitespace-nowrap", AT[c.key])} aria-sort={sort?.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}>
+                <button type="button" onClick={() => flip(c.key)} className="!min-h-0 h-11 inline-flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[.08em] text-[var(--color-label-2)] hover:text-[var(--color-label)]" data-sort={c.key}>
+                  {c.label}{sort?.key === c.key ? (sort.dir === 1 ? <ArrowUp size={13} aria-hidden /> : <ArrowDown size={13} aria-hidden />) : <ArrowUpDown size={13} className="opacity-40" aria-hidden />}</button>
+              </th>))}
+            <th className="w-[1%] bg-[color-mix(in_srgb,var(--color-bg-2)_92%,var(--color-bg-3))] border-b border-[var(--color-separator)]" aria-hidden />
+          </tr></thead>
+          <tbody>
+            {list.map((i) => { const l = levelOf(i); const m = LVL[l]; const pct = barOf(i, l); return (
+              <tr key={i.id} tabIndex={0} data-pantry-row={i.id} data-level={l} aria-label={`${i.name} — open`} className={cn("cursor-pointer transition-colors hover:bg-[var(--color-fill)] focus-visible:outline-2 focus-visible:outline-[var(--color-tint)] focus-visible:-outline-offset-2", m.cls)}
+                onClick={() => onOpen(i)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(i); } }}>
+                <td className={cell("name", "min-w-[13rem] max-w-[20rem]")}>
+                  <div className="flex items-center gap-3 min-w-0"><span className="scale-[.8] -m-1.5 shrink-0"><IngIcon cat={i.category} level={l} /></span>
+                    <div className="min-w-0"><div className="text-[14.5px] font-extrabold truncate">{i.name}</div>{i.brand && <div className="text-[11.5px] text-[var(--color-label-2)] truncate mt-0.5">{i.brand}</div>}</div></div></td>
+                <td className={cell("state")}><span className="inline-flex items-center gap-1 h-6 px-2 rounded-full text-[12px] font-bold whitespace-nowrap" style={{ background: "var(--st-2)", color: "var(--st-ink)" }}><m.Icon size={12} aria-hidden /><Say w={m.w} start /></span></td>
+                <td className={cell("stock", "min-w-[8rem]")}>
+                  <div className="flex items-baseline gap-1"><span className="font-display num text-[19px] leading-none">{fmtStock(i)}</span><span className="text-[12px] font-bold text-steel">{i.unit}</span></div>
+                  <div className="mt-1.5 h-1.5 w-24 rounded-full bg-[var(--color-fill-2)] overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--st)" }} /></div></td>
+                <td className={cell("reorder")}><span className="num text-[13px] whitespace-nowrap">{num(i.reorder_level)} {i.unit}</span></td>
+                <td className={cell("cost")}><span className="num text-[13px] whitespace-nowrap">{formatINR(num(i.cost_per_unit))}</span></td>
+                <td className={cell("value")}><span className="num text-[13px] font-semibold whitespace-nowrap">{formatINR(num(i.current_stock) * num(i.cost_per_unit), { whole: true })}</span></td>
+                <td className={cell("category")}><span className="text-[13px] capitalize">{i.category ?? "—"}</span></td>
+                <td className={cell("barcode")}><span className="num text-[12.5px] text-[var(--color-label-2)]">{i.barcode || "—"}</span></td>
+                <td className={cell("keys", "pr-3")}>
+                  <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <button type="button" onClick={() => onMove(i, "adjustment")} className={cn(key, l === "ok" ? "bg-[var(--st-2)] text-[var(--st-ink)]" : "bg-[var(--color-tint)] text-[var(--color-on-tint)]")} aria-label={`Add stock — ${i.name}`} title="Add stock" data-add-stock><Plus size={16} aria-hidden /></button>
+                    <button type="button" onClick={() => onMove(i, "wastage")} className={cn(key, "bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)]")} aria-label={`Waste — ${i.name}`} title="Waste" data-waste><Trash2 size={15} aria-hidden /></button>
+                    <ChevronRight size={16} className="text-[var(--color-label-3)] ml-0.5" aria-hidden />
+                  </div></td>
+              </tr>); })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/** One product, opened from a grid row (2026-10-23): how it stands, the numbers that matter, its last stock moves and prices,
+ *  and the three moves — Add stock, Waste, Edit — each closing this first and opening its own sheet. */
+function ItemDetail({ i, l, stock, pct, moves, onMove, onEdit }: { i: IngRow; l: Lvl; stock: string; pct: number; moves: Led[]; onMove: (why: "adjustment" | "wastage") => void; onEdit: () => void }) {
+  const m = LVL[l]; const num = (x: unknown) => Number(x ?? 0);
+  const fact = (label: string, value: string, data?: string) => (
+    <div className="rounded-2xl bg-[var(--color-fill)] px-3.5 py-3 min-w-0" data-fact={data}><div className="text-[11px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)]">{label}</div><div className="mt-1 font-display num text-[20px] leading-tight truncate">{value}</div></div>);
+  return (
+    <div className={cn("space-y-4", m.cls)} data-item-detail={i.id}>
+      <div className="flex items-center gap-3 min-w-0">
+        <IngIcon cat={i.category} level={l} />
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] text-[var(--color-label-2)] truncate capitalize">{[i.category, i.brand].filter(Boolean).join(" · ") || "Ingredient"}</div>
+          <span className="mt-1 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[12px] font-bold" style={{ background: "var(--st-2)", color: "var(--st-ink)" }}><m.Icon size={12} aria-hidden /><Say w={m.w} start /></span>
+        </div>
+      </div>
+      <div className="rounded-[20px] border border-[color-mix(in_srgb,var(--st)_40%,transparent)] p-4" style={{ background: "color-mix(in srgb, var(--st) 7%, var(--color-bg-2))" }}>
+        <div className="flex items-baseline gap-1.5"><span className="font-display num text-[40px] leading-none">{stock}</span><span className="text-[15px] font-bold text-steel">{i.unit}</span><span className="ml-auto text-[12.5px] text-steel num">reorder at {num(i.reorder_level)} {i.unit}</span></div>
+        <div className="mt-3 h-2 rounded-full bg-[var(--color-fill-2)] overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--st)" }} /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        {fact("Cost / unit", formatINR(num(i.cost_per_unit)), "cost")}{fact("Stock value", formatINR(num(i.current_stock) * num(i.cost_per_unit), { whole: true }), "value")}
+        {fact("Pack", i.pack_qty ? `${num(i.pack_qty)} ${i.unit}` : "—", "pack")}{fact("Barcode", i.barcode || "—", "barcode")}
+      </div>
+      <div>
+        <div className="text-[11px] font-bold uppercase tracking-[.06em] text-[var(--color-label-2)] mb-1.5">Last moves</div>
+        {moves.length === 0 ? <p className="text-[13px] text-steel">No stock moves yet.</p> : (
+          <div className="rounded-2xl border border-[var(--color-separator)] divide-y divide-[var(--color-separator)]">
+            {moves.slice(0, 6).map((v) => <div key={v.id} className="flex items-center gap-3 px-3.5 py-2.5 text-[13px]">
+              <span className={cn("num font-bold w-20 shrink-0", num(v.qty) < 0 ? "text-[var(--color-red)]" : "text-[var(--color-green)]")}>{num(v.qty) > 0 ? "+" : ""}{num(v.qty).toFixed(num(v.qty) % 1 ? 2 : 0)}</span>
+              <span className="flex-1 min-w-0 truncate capitalize">{v.reason}{v.sub_reason ? ` · ${v.sub_reason}` : ""}{v.note ? <span className="text-steel normal-case"> · {v.note}</span> : null}</span>
+              <span className="text-[12px] text-steel num shrink-0">{fmtDate(v.created_at)}</span></div>)}
+          </div>)}
+      </div>
+      <PriceHistoryPanel id={i.id} unit={i.unit} />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
+        <button type="button" className={cn("svc-btn sm !gap-1.5", l === "ok" ? "st-ready" : "go")} style={l === "ok" ? { background: "var(--st-2)", color: "var(--st-ink)" } : undefined} onClick={() => onMove("adjustment")} data-detail-add><Plus size={17} aria-hidden /><Say w="add_stock" /></button>
+        <button type="button" className="svc-btn quiet sm !px-3.5 !gap-1.5" onClick={() => onMove("wastage")} data-detail-waste><Trash2 size={16} aria-hidden /><Say w="waste" /></button>
+        <button type="button" className="svc-btn quiet sm !px-3.5 !gap-1.5" onClick={onEdit} data-detail-edit><Pencil size={15} aria-hidden />Edit</button>
+      </div>
     </div>
   );
 }

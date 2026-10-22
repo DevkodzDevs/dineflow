@@ -211,3 +211,11 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
     `[data-seat-table]`.
   - **Next tables to free up** and **Every table** are cards like the two above, each head with an icon tile (`Head`
     takes `icon` and `tone`); "nothing freeing" is a dashed empty state. shots39: 16 of 16.
+
+- **Top dishes is a ranked list** (2026-10-23, the owner: "the words break"): the rank (No 1 in the tint), the name on one line
+  (the whole name on hover), a slim bar against the best seller, plates and takings — plain HTML (`TopDishes` in
+  ReportsClient.tsx, `[data-top-dishes]`). It was a recharts bar chart whose bars all ran full width and whose names wrapped in
+  a 110px axis.
+- **Pulse: an overdue table is built like a sitting** (2026-10-23): the time big in amber with an *overdue* tag where "frees ~"
+  sits, a full amber bar, and "Open too long — bill or close it" in one line (`[data-stale]`) — it was a grey stage pill
+  over a wrapping warning.

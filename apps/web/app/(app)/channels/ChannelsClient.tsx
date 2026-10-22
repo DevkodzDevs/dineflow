@@ -2,7 +2,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Copy, RefreshCw, Globe, Bike, Calendar, Check, AlertTriangle, ExternalLink, Trash2, Info, Pencil } from "lucide-react";
+import { Plus, Copy, RefreshCw, Globe, Bike, Calendar, Check, AlertTriangle, ExternalLink, Trash2, Info, Pencil, Square, Columns2, Columns3 } from "lucide-react";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { Button, Sheet, Field, Card, Pill, CardStrip, cn, useToast, type StripAction } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveOta, deleteOta, setRates, setRatesOnly, pushChannel, sendTestOrder } from "./actions";
@@ -37,6 +38,9 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
   /* which OTA action is running ("sync:all", "sync:<id>", "push:<id>") — its section spins — and which
      card's link was just copied */
   const [busy, setBusy] = useState<string | null>(null); const [copied, setCopied] = useState<string | null>(null);
+  /* OTA cards one, two or three across (2026-10-23, the owner); three unless this device keeps another (df-view:ota-cols).
+     The room still decides first: a card is never narrower than the card can hold, and a phone is always one. */
+  const cols = useViewPref("ota-cols", ["1", "2", "3"] as const); const across = cols.chosen ?? "3";
   /* Sync reads their calendars in, then the page refreshes in place: it used to reload the whole tab
      (a white flash, back to the top) and say "Sync finished" even when there was nothing to read */
   const syncNow = async (id?: string) => {
@@ -163,12 +167,14 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
         <section className="@container" data-ota-list>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-3 mb-3">
             <div className="flex items-center gap-2 min-w-0"><h3 className="text-xl">OTA channels</h3><span className="num text-xs font-semibold rounded-full px-2 py-0.5 bg-[var(--color-fill)] text-[var(--color-label-2)]">{ota.length}</span></div>
-            <div className="grid grid-cols-2 gap-2 w-full @lg:w-auto @lg:flex @lg:ml-auto">
+            <div className="grid grid-cols-2 gap-2 w-full @lg:w-auto @lg:flex @lg:items-center @lg:ml-auto">
+              {ota.length > 1 && <div className="max-md:hidden"><ViewSwitch label="Cards across" data="ota-cols" shown={across} onPick={cols.pick} saved={cols.saved} onKeep={(v) => { cols.keep(v); toast(`${v} across is your default here`); }}
+                options={[{ v: "1", label: "One across", icon: Square }, { v: "2", label: "Two across", icon: Columns2 }, { v: "3", label: "Three across", icon: Columns3 }]} /></div>}
               <Button variant="outline" className="[&>svg]:shrink-0" disabled={!!busy} onClick={() => syncNow()}><RefreshCw size={15} className={cn(busy === "sync:all" && "animate-spin")} /> {busy === "sync:all" ? "Syncing…" : "Sync now"}</Button>
               <Button className="[&>svg]:shrink-0" onClick={() => setEditOta({ kind: "booking_com", mode: "ical", commission_pct: 15 })}><Plus size={16} /> Add OTA</Button>
             </div>
           </div>
-          <ul className="grid grid-cols-1 @5xl:grid-cols-[repeat(auto-fit,minmax(20rem,1fr))] gap-3 @3xl:gap-4" aria-label="OTA channels">{ota.map((c) => {
+          <ul className={cn("grid grid-cols-1 gap-3 @3xl:gap-4", across === "2" && "@3xl:grid-cols-2", across === "3" && "@3xl:grid-cols-2 @5xl:grid-cols-3")} aria-label="OTA channels" data-ota-across={across}>{ota.map((c) => {
             const hue = OTA_HUE[c.kind] ?? "--color-label-2"; const link = `${base}/api/ical/${c.export_token}.ics`;
             const to = OTA_NAME[c.kind] ?? "their site"; const shown = link.replace(/^https?:\/\//, "");
             const syncing = busy === `sync:${c.id}`, pushing = busy === `push:${c.id}`;

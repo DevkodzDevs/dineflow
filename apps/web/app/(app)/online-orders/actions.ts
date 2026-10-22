@@ -86,6 +86,15 @@ export async function setRush(extra: number, forMin: number, pause: boolean) {
   return { ok: true as const, pace: data as { rush_extra_min: number; rush_until: string | null; online_paused_until: string | null } };
 }
 
+/** Online orders on or off (0133) — off is a pause with no end; set_online_taking checks the caller itself. */
+export async function setOnlineTaking(on: boolean) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("set_online_taking", { p_on: on });
+  if (error) return { error: error.message };
+  revalidatePath("/online-orders");
+  return { ok: true as const, taking: (data as { taking: boolean }).taking };
+}
+
 /** Dishes on or off online (0132) — separate from Sold out: off online, a dish is still sold at the till and the table.
  *  set_online_available checks the caller itself: owner, manager, chef, or a supervisor holding Online orders. */
 export async function setOnlineAvailable(ids: string[], on: boolean) {

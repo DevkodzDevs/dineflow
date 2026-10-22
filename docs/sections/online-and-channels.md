@@ -214,3 +214,19 @@ and reaches the kitchen.
 - **A dish the channel sent that is not on the menu is a callout** (`[data-unmatched]`, 2026-10-21): an icon tile, *n
   dish(es) not on your menu*, why it matters, and a red **Map now** pill (`[data-map-now]`) — was one wrapped line of
   red text with an underlined link.
+
+## Online orders on and off (2026-10-23, 0133)
+
+The owner: "a switch to stop or start taking online orders, with an are-you-sure". `OnlineSwitch.tsx`, first in the
+header (before Payouts): green *Taking orders* / red *Not taking orders* with its switch; a tap asks in a sheet what changes —
+the website's delivery and takeaway stop or start, the table QR keeps ordering either way, Swiggy and Zomato are switched in
+their partner apps. **Off is Kitchen pace's pause with no end**: `set_online_taking(on)` sets `online_paused_until` to
+'infinity' (or clears it) — owner, manager, chef or a supervisor holding Online orders (the rule of Dishes online). 0133 also:
+`set_rush` keeps an 'infinity' pause (Normal or a 30-minute Pause no longer turned online back on behind the owner's back);
+`dine_order` says "not taking online orders right now" (to_char of infinity is null — the old message read "back at ");
+`dine_storefront` carries `online_paused`, and the website says so above the menu before anyone fills a basket (not at a
+table — the QR still orders). **Not changed, still open: `set_rush` itself checks no role** — any signed-in staff member can
+pause for 30 minutes. Dry run `dry133.cjs` (13).
+
+- **OTA channels one, two or three across** (2026-10-23): a ViewSwitch beside Sync now (from md), three by default, the pin
+  keeps another on this device (`df-view:ota-cols`); the room still decides first (`@3xl` two, `@5xl` three).

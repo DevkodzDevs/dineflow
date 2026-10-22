@@ -3,7 +3,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { csvCell } from "@/lib/csv";
 import { motion } from "framer-motion";
-import { Plus, Search, MessageCircle, Download, Gift, Coins, Cake, Heart, Users, Sparkles, Moon, Star, Phone, Info, Check, Minus } from "lucide-react";
+import { Plus, Search, MessageCircle, Download, Gift, Coins, Cake, Heart, Users, Sparkles, Moon, Star, Phone, Info, Check, Minus, LayoutGrid, Rows3 } from "lucide-react";
 import { Button, Card, Field, Sheet, Empty, StatTile, cn, useToast } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
@@ -11,6 +11,8 @@ import { formatINR, fmtDate } from "@/lib/format";
 import { saveCustomer, adjustPoints, customerHistory, type HistoryRow } from "./actions";
 import { MarketingIdeas } from "./MarketingIdeas";
 import { FeedbackBoard, type Feedback } from "./FeedbackBoard";
+import { CustomersGrid } from "./CustomersGrid";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 
 export type Overview = { total?: number; new_30d?: number; returning?: number; lapsed_60d?: number; points_out?: number; spend_30d?: number; soon?: { id: string; name: string | null; phone: string; what: string; on: string }[] };
 type Customer = { id: string; phone: string; name: string | null; email: string | null; birthday: string | null; anniversary: string | null; tags: string[]; notes: string | null; visits: number; total_spend: number; points: number; first_visit_at: string; last_visit_at: string | null };
@@ -28,6 +30,11 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
   const [filter, setFilter] = useState<"all" | "regulars" | "lapsed" | "new" | "points" | "feedback">(initialTab);
   const [open, setOpen] = useState<Customer | null>(null);
   const [adding, setAdding] = useState(false);
+  /* Cards or the grid (2026-10-23, as Staff): until this device picks, CSS shows the grid from md (every iPad) and the
+     cards on a phone; a pick is kept on the device (df-view:customers). */
+  const lay = useViewPref("customers", ["cards", "table"] as const);
+  const layout = lay.chosen ?? "auto";
+  const shownAs = lay.chosen ?? (lay.wide === null ? null : lay.wide ? "table" : "cards");
   const digits = q.replace(/\D/g, "");
   const list = useMemo(() => customers.filter((c) => {
     if (q && !(c.name ?? "").toLowerCase().includes(q.toLowerCase()) && !(digits && c.phone.includes(digits))) return false;
@@ -73,8 +80,12 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
 
       {/* the search, wide, and who to show — with how many in each */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-        <div className="relative lg:flex-1 min-w-0 xl:min-w-[240px]"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
-          <input className="!h-14 !rounded-[18px] !pl-12 !text-[16px]" placeholder={filter === "feedback" ? "Search feedback" : "Name or phone"} aria-label={filter === "feedback" ? "Search the feedback" : "Find a customer by name or phone"} value={q} onChange={(e) => setQ(e.target.value)} /></div>
+        <div className="flex items-center gap-2 lg:flex-1 min-w-0 xl:min-w-[240px]">
+          <div className="relative flex-1 min-w-0"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
+            <input className="!h-14 !rounded-[18px] !pl-12 !text-[16px]" placeholder={filter === "feedback" ? "Search feedback" : "Name or phone"} aria-label={filter === "feedback" ? "Search the feedback" : "Find a customer by name or phone"} value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          {filter !== "feedback" && <ViewSwitch label="Show customers as" data="customers" shown={shownAs} onPick={lay.keep}
+            options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} />}
+        </div>
         <div className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 xl:shrink-0 xl:![mask-image:none] [scrollbar-width:none]" role="group" aria-label="Show">
           {FILTERS.map(([k, label, I]) => (
             <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} className={cn("shrink-0 !min-h-12 rounded-full pl-3.5 pr-2 inline-flex items-center gap-2 text-[14px] font-extrabold transition-colors", filter === k ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
@@ -93,6 +104,7 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
         {/* One card per guest: a coloured initial, the name (Regular when they have come three times) and
             the phone; visits, spend and the last visit in three boxes; Call and WhatsApp, big. A tap on the
             name opens their record: details, bills, points. */}
+        <div className={cn(layout === "table" && "hidden", layout === "auto" && "md:hidden")}>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[100rem]:grid-cols-4" data-customers>
           {list.slice(0, more).map((c, i) => {
             const d = since(c.last_visit_at); const ago = d === null ? "—" : d === 0 ? "Today" : d === 1 ? "Yesterday" : d < 7 ? `${d} days ago` : d < 30 ? `${Math.round(d / 7)} wk${Math.round(d / 7) === 1 ? "" : "s"} ago` : d < 365 ? `${Math.round(d / 30)} mth${Math.round(d / 30) === 1 ? "" : "s"} ago` : `${Math.round(d / 365)} yr ago`;
@@ -120,6 +132,10 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
               </motion.div>
             );
           })}
+        </div>
+        </div>
+        <div className={cn(layout === "cards" && "hidden", layout === "auto" && "hidden md:block")}>
+          <CustomersGrid rows={list.slice(0, more)} loyalty={loyalty} waHref={(c) => waLink(c.phone, `Hi ${first(c.name)}, ${restaurant} here.`)} onOpen={(c) => setOpen(c)} />
         </div>
         {list.length > more && <button type="button" className="svc-btn quiet sm w-full" onClick={() => setMore((m) => m + 60)}>Show {Math.min(60, list.length - more)} more · {list.length - more} left</button>}
       </>)}

@@ -51,13 +51,16 @@ export function BackButton({ home, tone = "bar", className }: { home: string; to
     if (same) router.back(); else router.push(prev);
   };
   return (
+    /* Icon only at every width (2026-10-23, the owner: "no 'Back' word — just the icon, modern and compact"): a 36px round
+       key with a fine ring and a top highlight; the arrow leans left on hover and the key presses in. The word is the
+       label and the tooltip. 44px to a finger (an invisible ring, ::before, round it). */
     <button type="button" onClick={back} aria-label="Back" title="Back" data-back
-      className={cn(tone === "dark"
-        ? "h-10 w-10 shrink-0 rounded-xl grid place-items-center text-white/70 hover:text-white hover:bg-white/[.08] transition"
-        : "tap-square h-9 w-9 sm:w-auto shrink-0 inline-flex items-center justify-center gap-1 sm:pl-2 sm:pr-3.5 rounded-full bg-[var(--color-fill)] text-[var(--color-label)] hover:bg-[var(--color-fill-2)] transition-colors",
+      className={cn("group/back relative h-9 w-9 !min-h-0 !min-w-0 shrink-0 rounded-full grid place-items-center transition-[background-color,transform,box-shadow] duration-150 active:scale-[.92] before:absolute before:-inset-1 pointer-coarse:before:-inset-1 before:content-[''] before:rounded-full",
+        tone === "dark"
+          ? "bg-white/[.06] text-white/80 hover:text-white hover:bg-white/[.11] shadow-[inset_0_0_0_1px_rgb(255_255_255/.09),inset_0_1px_0_rgb(255_255_255/.08)]"
+          : "bg-[var(--color-fill)] text-[var(--color-label)] hover:bg-[var(--color-fill-2)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-label)_9%,transparent),inset_0_1px_0_rgb(255_255_255/.06),0_1px_2px_rgb(0_0_0/.18)]",
         className)}>
-      <ChevronLeft size={20} strokeWidth={2.4} aria-hidden className="shrink-0" />
-      {tone === "bar" && <span className="hidden sm:inline text-[14px] font-semibold leading-none">Back</span>}
+      <ChevronLeft size={19} strokeWidth={2.6} aria-hidden className="shrink-0 -ml-px transition-transform duration-150 group-hover/back:-translate-x-0.5" />
     </button>
   );
 }

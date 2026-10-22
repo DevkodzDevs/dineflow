@@ -87,8 +87,33 @@ export async function markStaff(profileId: string, date: string, present: boolea
   revalidatePath("/staff"); return { error: null };
 }
 
+export type RegisterMonth = { month: string; att: { profile_id: string; work_date: string; in_at: string | null; out_at: string | null; hours: number | null }[]; leave: { profile_id: string; from_date: string; to_date: string; kind: string }[] };
+/** One month of the attendance register (2026-10-23): every punch day and every approved leave touching the month, for the
+ *  people the caller may see (staff_attendance: the property; staff_leave: what 0135 lets them see). Read on demand — the
+ *  Staff page carries only today. "YYYY-MM". */
+export async function attendanceMonth(month: string): Promise<RegisterMonth | { error: string }> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { error: "That is not a month." };
+  const s = await createClient();
+  const [y, m] = month.split("-").map(Number); const first = `${month}-01`; const last = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+  const [{ data: att, error: e1 }, { data: leave, error: e2 }] = await Promise.all([
+    s.from("staff_attendance").select("profile_id, work_date, in_at, out_at, hours").gte("work_date", first).lte("work_date", last).limit(5000),
+    s.from("staff_leave").select("profile_id, from_date, to_date, kind").eq("status", "approved").lte("from_date", last).gte("to_date", first).limit(2000),
+  ]);
+  if (e1 || e2) return { error: (e1 ?? e2)!.message };
+  return { month, att: (att ?? []) as RegisterMonth["att"], leave: (leave ?? []) as RegisterMonth["leave"] };
+}
+
 /** Position, own title, department, manager and joining date (0107 staff_set_position — the same who-may-change-whom
  *  rule as access; an owner may also set their own). */
+/** Their emergency contact (0134), set by whoever adds or manages them; the person can change it on My profile. */
+export async function setEmergency(userId: string, name: string, phone: string) {
+  const s = await createClient();
+  const { error } = await s.rpc("staff_set_emergency", { p_user: userId, p_name: name, p_phone: phone });
+  if (error) return { error: error.message };
+  revalidatePath("/staff");
+  return { ok: true as const };
+}
+
 export async function setPosition(userId: string, p: { position: string | null; department: string | null; title: string; reportsTo: string | null; joinedOn: string | null }) {
   const s = await createClient();
   const { error } = await s.rpc("staff_set_position", { p_user: userId, p_position: p.position, p_department: p.department, p_title: p.title || null, p_reports_to: p.reportsTo, p_joined_on: p.joinedOn || null });

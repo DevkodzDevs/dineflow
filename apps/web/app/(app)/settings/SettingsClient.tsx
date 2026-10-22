@@ -68,6 +68,14 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
   const barEnd = useRef<HTMLDivElement>(null);
   const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
   const [tab, setTab] = useState<Tab>("general");
+  /* A link may name the section: /settings#tables opens Tables (2026-10-23, the owner: "Set up tables goes to Settings
+     with Tables already chosen"). Read after mount and on every hash change; a choice here writes it back, so Back and a
+     shared link land on the same section. */
+  useEffect(() => {
+    const read = () => { const h = window.location.hash.slice(1) as Tab; if (TABS.some((t) => t.key === h)) setTab(h); };
+    read(); window.addEventListener("hashchange", read); return () => window.removeEventListener("hashchange", read);
+  }, []);
+  useEffect(() => { if (window.location.hash.slice(1) !== tab && (tab !== "general" || window.location.hash)) history.replaceState(history.state, "", `#${tab}`); }, [tab]);
   useEffect(() => {
     const el = barEnd.current; if (!el || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver(([e]) => setFloating(!e.isIntersecting && e.boundingClientRect.top > 0), { rootMargin: "0px 0px -90px 0px" });

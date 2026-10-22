@@ -554,3 +554,8 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
 - **0131 `pulse_seated_walkins` — written and dry-run (6 of 6, rolled back), NOT applied (2026-10-21).** Replaces
   `table_pulse` and `table_pulse_for` (stage *seated*; see reports-and-forecast.md). Apply after the code that knows
   *seated* is deployed: `DATABASE_URL=… node scripts/migrate.mjs`, then `notify pgrst, 'reload schema'`.
+
+- **0133 online orders on/off, 0134 an emergency contact on Add staff, 0135 leave up the ladder** (2026-10-23, all applied;
+  dry runs dry133 / dry134 / dry135, 13 + 9 + 18). 0133 and 0135 replace live functions (`set_rush`, `dine_order`,
+  `dine_storefront`; `_leave_mine_to_see`, `leave_decide`) — built from `pg_get_functiondef` of the deployed ones so they
+  differ only where they say. 0131 is still in `supabase/pending/`.

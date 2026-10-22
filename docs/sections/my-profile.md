@@ -62,3 +62,6 @@ pnpm lint && pnpm typecheck && pnpm test
 
 [staff-and-labour.md](staff-and-labour.md) (the facts, contact verification) · [settings.md](settings.md) (Appearance,
 Notifications) · [auth-and-session.md](auth-and-session.md) (`/account/password`) · [data-and-rls.md](data-and-rls.md) (0125)
+
+- **The profile card** (2026-10-23): the avatar now opens a summary of this page before it — shell-and-nav.md, *The avatar
+  opens the profile card*; `myCard` in actions.ts. **Menu style** sits under Language on This device (SidebarPicker).

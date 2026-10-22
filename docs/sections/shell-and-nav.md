@@ -247,8 +247,7 @@ every icon). Now `nav.tabbar` (`[data-tabbar]`, below md; the TAB BAR block in `
 round ends, `--tabbar-row` (64px — 56 on the first day, the owner asked for it a little taller) tall, floating `--tabbar-gap` — `max(12px, the bottom safe area)` — above the foot and
 12px in from each side; a solid `--color-bg-2` surface with a faint label-coloured edge and a soft drop shadow (graphite
 in the dark themes, white in paper, a gold edge in royal). **Icons only**: four sections, **More** (☰, `Menu`), and
-**the person's avatar** at the end — their initial in the tint, ringed in the ink colour — linking where the top bar's
-avatar does (`accountHref`: Settings for the owner, My profile for staff). Every icon is in the ink colour; the open one
+**the person's avatar** at the end — their initial in the tint, ringed in the ink colour — opening the profile card (`ProfileCard`, 2026-10-23) as the top bar's avatar does. Every icon is in the ink colour; the open one
 sits on a soft pill (`.tab-pill`, the label colour at 9%, `[data-tab-pill]`), and a press shrinks the icon (CSS). Names
 are each slot's `aria-label` and `title` (translated in Tamil and Hindi like any other), so the old two-line label rule
 for long Tamil names is gone. The open pill is 48px tall and up to 60 wide, icons 26px, the avatar 34px; each slot is ≥54 wide even at 360. Counts (late kitchen tickets, Help replies) stay red pills
@@ -301,7 +300,7 @@ follows; More opens the sheet).
   indexed count) and the Control room's room queries for a restaurant (empty, parallel, the owner's screen only).
 - **Back, on every screen (2026-10-22, the owner: "a proper back button on every page, in a place that disturbs no
   one, at every size").** `BackButton` (components/shell) is the first thing in the top bar — sticky, so always in
-  reach, never over the page: a round 36px icon on a phone (44px finger target, `tap-square`), "‹ Back" from `sm`;
+  reach, never over the page: a 36px round icon at every width since 2026-10-23 (no word — the owner: "just the icon"; a fine ring, a top highlight, the arrow leans left on hover; a 44px tap ring via ::before, not `tap-square`, which grew it to 40/44);
   Master control's header has the same, dark. It is not drawn on the person's home (`landingFor` — the Control room, or
   My day for staff; `/admin` for the master). It goes to the screen you came from, never out of the app: a per-tab trail in
   sessionStorage (`df-trail`, `step()` in lib/back.ts) — the browser's own back only when the Navigation API shows that
@@ -543,6 +542,20 @@ board counts as pinned in Edit bar (it was filtered by modules and dropped).
   on gets its tone, a toast, and a line in the bell's list (kept in `sessionStorage`, 40 at most);
   with permission and while the tab is hidden, also a system notification through the service
   worker (`sw.js` `notificationclick` focuses the app and opens that section).
+- **A table's call is a card, not a toast (2026-10-23, the owner: "a proper notification with the detail").** The
+  `service_calls` INSERT looks up the table's name and zone (`tableOf`, cached) — the alert says *T2 wants the bill ·
+  Main · asked 1:41 pm*, not "A table…". Every device that hears calls (Owner's phone, Till / waiters; not the Front desk
+  station) shows `CallAlert` (`components/shell/CallAlert.tsx`): table, zone, time, minutes waiting, **Later** (hides it
+  here) and **On my way** (`answerCall` → `service_call_done` for that table, so the guest's tile turns *On the way*). The
+  row's UPDATE to done takes the card off every other device. No backdrop — a waiter mid-order finishes first; bottom on
+  a phone above the tab bar, top-right from `sm` at 104px (clear of the top bar); three at most, then "+n more on
+  Orders". The phone buzzes (`lib/buzz.ts`). Its words are in the Tamil / Hindi dictionaries. `staffcall.mjs`, 22 checks
+  (2026-10-23, against `next start`, signed in as manoooo's waiter): the card in ~0.3–0.5 s at 412 and 1440, naming
+  table, zone and time; 44px buttons; On my way → done in the database in <0.4 s and the guest's `dine_call_status` says
+  done; answered on another device → the card leaves in ~0.25 s; Later hides it and the call stays open on Orders; all
+  five themes read (title ≥14:1, time line ≥6.5:1). A seeded staff login lands on /account/password once its temporary
+  password is old — the probe opens the app's own grace window (`profiles.temp_access_until`) for 15 minutes and puts
+  it back, never the password.
 - **The bell** (`NotificationBell`) replaced the link to /kitchen. Its count is unread events + late
   KOTs; the panel lists late tickets first, then events; closing it any way marks them read. Its
   footer, *Sound & alerts*, opens the device settings as a sheet — so a waiter or cook without
@@ -628,3 +641,27 @@ board counts as pinned in Edit bar (it was filtered by modules and dropped).
   round) and stands **3px off the foot** and **2.5px in from each side** (`bottom-[3px] left-[2.5px] right-[2.5px]` on the nav; `--tabbar` adds the 3px, so every bottom offset
   still clears it). Four tabs and More, pins up to four, as before. shots47: 4 of 4 (412 / 360, dark and paper — the
   bar's foot 3px above the screen's, 12px corners, no +).
+
+## The sidebar's six looks and the fold (2026-10-23)
+
+The owner: "a minimise for the left bar — icons only — and five or six designs to choose from, fitting every section and
+every screen; the iPad keeps its own as its default; the phone is not touched". `lib/sidebar.ts` (3 tests in
+`sidebar.test.ts`) holds the looks — **Classic** (`full`, 256px), **Compact** (212px, 36px rows), **Icons** (`rail`, 76px),
+**Icons and words** (`dock`, 96px, a small word under each icon), **Floating** (248px on a rounded card 12px off the
+edges) and **Floating icons** (`float-rail`). `html[data-sidebar]` carries the look; `SIDEBAR_BOOT` sets it in `<head>`
+before the first paint (beside THEME_BOOT and LANG_BOOT): the device's choice (`localStorage df-sidebar`), else `rail`
+under 1280 and `full` from 1280 — exactly the old split, so nothing moved for anyone who chooses nothing; the Sidebar keeps
+that default in step on resize. globals.css (the sidebar block) draws every look from 768 up — **below 768 nothing
+changes** (the bottom bar). The icon looks keep the ☰ drawer and the spacer. **The fold** (`[data-sb-fold]`, the foot of
+the menu over the account card): an open look folds to its icon look (Floating to Floating icons), an icon look unfolds to
+the one it came from (`df-sidebar-was`). **Menu style** — My profile → This device (`SidebarPicker`, six drawings, *As the
+screen* to go back to the default; hidden on a phone). The menu row's word carries `.nav-label` (the dock shows it).
+
+## The avatar opens the profile card (2026-10-23)
+
+The owner: "a click on the profile first shows the name, the position, when they started here and the rest".
+`components/shell/ProfileCard.tsx`: the top bar's avatar (`[data-my-profile]`, now a button) and the bottom bar's
+(`[data-tab="me"]`) open a sheet before any page — the person in their colour, title and team, then joined (date and "2 yr 3
+mth here"), access, staff code, reports to, phone, email (verified or not), the emergency contact, languages and their line
+about themselves; **Edit my profile** (/me) and, for the owner, **Settings**. Read when it opens (`myCard` in me/actions.ts),
+so no screen carries it. It went straight to Settings (or /me) before.

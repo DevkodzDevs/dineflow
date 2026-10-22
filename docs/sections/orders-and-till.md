@@ -350,3 +350,18 @@ node fit.mjs             # nine dishes on the ticket at 7 real screen sizes (not
   the table (time, guest, party, state, Call); **Today at this table** — bills, takings, the average sitting (paid −
   order start) and the bills; the table's **ordering QR**; then *Take order* / *Add items* and *Bill* as the Sheet's
   pinned footer. Every query is this property's by id. Live through `useLive`. shots45: 13 of 13 at 1440 / 834 / 412.
+
+## The till's dish cards (2026-10-23)
+
+The owner: "Choose and Add — compact and modern; even card heights; the selected border cuts the photo; a tap on the card adds it — only Choose opens the choices".
+
+- **A tap on the card, or +, adds the dish** — a dish in sizes goes on in its default size (`defaultVariant`) with no
+  add-ons. Only a dish with a *required* add-on group (`optionProblem` on no add-ons) still opens its choices, so nothing
+  half-ordered reaches the kitchen. **Choose** (`[data-choose]`) always opens the sizes and add-ons (`choose(it)`).
+- **The move on the photo's edge**, from md: a solid round **+** in the tint (`.dish-plus`, ringed in the card colour) and,
+  for a dish with choices, a slim **Choose** pill beside it (`.dish-chip`). **On a phone the owner kept the old pills**:
+  ADD with its word, CHOOSE alone (globals.css, under 768).
+- **Even cards**: name, then the price row (never wraps), then one fixed 16px line for "14 min · customisable" (blank when
+  there is nothing) — the price no longer rides `mt-auto`, so no card has a gap between its name and its price.
+- **The selected ring is drawn over the photo** (`.svc-dish[data-on]::after`, an inset ring at z 3); the inset outline it
+  replaced painted under the photo and vanished along the top and the corners. All widths.

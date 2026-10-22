@@ -309,7 +309,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             return (
               <motion.div key={t.id} variants={itemV} data-table={kind}
                 className={cn("min-w-0 rounded-2xl border p-3.5 flex flex-col gap-2.5",
-                  stale ? "border-[color-mix(in_srgb,var(--color-orange)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-orange)_7%,transparent)]"
+                  stale ? cn("border-[color-mix(in_srgb,var(--color-orange)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-orange)_9%,var(--color-bg-2))]", STAGE_CLS[t.stage])
                     : kind === "free" ? "border-dashed border-[var(--color-line-2)] bg-[var(--color-bg-2)]"
                       : kind === "reserved" ? "border-dashed border-[var(--color-orange)] bg-[var(--color-orange-2)]"
                         : cn("border-[var(--st)] bg-[var(--st-2)]", STAGE_CLS[t.stage]))}>
@@ -327,8 +327,14 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                 </>}
                 {kind === "busy" && <>
                   <span className="self-start inline-flex items-center h-6 px-2.5 rounded-full text-[11.5px] font-bold bg-[var(--color-fill-2)]" style={{ color: "var(--st-ink)" }}>{(STAGE[t.stage] ?? ["in use"])[0]}</span>
+                  {/* a table open past a service (2026-10-23, the owner: "make it like the other card"): the same build as a
+                      sitting — the time big, a tag where "frees ~" sits, a full bar — in amber, and the move in one line */}
                   {stale
-                    ? <span className="text-[12.5px] leading-snug text-[var(--color-orange)] font-semibold flex gap-1.5"><AlertTriangle size={14} className="shrink-0 mt-px" aria-hidden />Open {dur(t.age)} — bill or close it</span>
+                    ? <div data-stale>
+                        <div className="flex items-baseline justify-between gap-2"><span className="num text-[20px] font-semibold leading-none text-[var(--color-orange)]">{dur(t.age)}</span><span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-[var(--color-orange)]"><AlertTriangle size={12} aria-hidden />overdue</span></div>
+                        <div className="h-1.5 rounded-full bg-[var(--color-orange)] mt-2" aria-hidden />
+                        <div className="text-[11.5px] text-[var(--color-label-2)] mt-1.5">Open too long — bill or close it</div>
+                      </div>
                     : <div>
                         <div className="flex items-baseline justify-between gap-2"><span className="num text-[20px] font-semibold leading-none">{dur(t.mins_left)}</span><span className="text-[11.5px] text-[var(--color-label-2)] num">frees ~{t.free_at}</span></div>
                         <div className="h-1.5 rounded-full bg-[var(--color-fill-2)] overflow-hidden mt-2"><div className="h-full rounded-full" style={{ width: `${share}%`, background: "var(--st)" }} /></div>

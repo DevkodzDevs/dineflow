@@ -3,7 +3,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 // Charts are ~105 kB and nobody needs them before the page paints; they arrive a beat later.
 const SalesChart = dynamic(() => import("./Charts").then((m) => m.SalesChart), { ssr: false, loading: () => <div className="h-56 shimmer rounded-2xl" /> });
-const TopChart = dynamic(() => import("./Charts").then((m) => m.TopChart), { ssr: false, loading: () => <div className="h-56 shimmer rounded-2xl" /> });
 import { Card, StatTile, cn } from "@/components/ui";
 import { BreakdownView, type Breakdown } from "./Breakdown";
 import { formatINR } from "@/lib/format";
@@ -64,7 +63,7 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
         <Card><h3 className="text-xl mb-3">Sales by day</h3>
           <SalesChart data={byDay} /></Card>
         <Card><h3 className="text-xl mb-3">Top dishes</h3>
-          <TopChart data={top} /></Card>
+          <TopDishes data={top} /></Card>
       </div>
 
       {/* the breakdown: where, when and how the money came in */}
@@ -164,5 +163,30 @@ function Hours({ rows, target }: { rows: { h: number; n: number; avg_min: number
       </div>
       <div className="flex text-[10px] text-steel num mt-1">{Array.from({ length: 24 }, (_, h) => <span key={h} className="flex-1 text-center">{h % 3 === 0 ? h : ""}</span>)}</div>
     </div>
+  );
+}
+
+/** Top dishes as a ranked list (2026-10-23, the owner: "the words break, the design is not good"): the rank, the name on one
+ *  line (the whole name on hover), a slim bar against the best seller, plates and takings on the right. It was a bar chart
+ *  whose bars all ran full width and whose names wrapped in a 110px axis. Plain HTML — no chart library for a list. */
+function TopDishes({ data }: { data: { name: string; qty: number; rev?: number }[] }) {
+  const rows = data.filter((d) => Number(d.qty) > 0).slice(0, 8);
+  if (!rows.length) return <p className="h-40 grid place-items-center text-[14px] text-steel">Nothing sold in this window yet.</p>;
+  const max = Math.max(...rows.map((d) => Number(d.qty)), 1);
+  return (
+    <ol className="space-y-3" data-top-dishes>
+      {rows.map((d, i) => (
+        <li key={d.name + i} className="grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-3">
+          <span className={cn("h-7 w-7 rounded-full grid place-items-center text-[12px] font-extrabold num", i === 0 ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}>{i + 1}</span>
+          <div className="min-w-0">
+            <div className="text-[14px] font-semibold truncate" title={d.name}>{d.name}</div>
+            <div className="mt-1.5 h-2 rounded-full bg-[var(--color-fill)] overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.max(4, (Number(d.qty) / max) * 100)}%`, background: i === 0 ? "var(--color-tint)" : "color-mix(in srgb, var(--color-tint) 55%, transparent)" }} /></div>
+          </div>
+          <div className="text-right leading-tight">
+            <div className="num text-[15px] font-extrabold">{Number(d.qty)}<span className="text-[11px] font-semibold text-steel"> plates</span></div>
+            {d.rev != null && <div className="num text-[11.5px] text-steel">{formatINR(Number(d.rev), { whole: true })}</div>}
+          </div>
+        </li>))}
+    </ol>
   );
 }

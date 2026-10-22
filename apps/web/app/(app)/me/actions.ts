@@ -60,3 +60,33 @@ export async function signOutOthers() {
   if (error) return { error: error.message };
   return { ok: true as const };
 }
+
+export type MyCard = {
+  name: string; listed: string; title: string | null; dept: string | null; deptLabel: string | null; access: string;
+  staff_code: string | null; joined_on: string | null; reports_to: string | null; phone: string | null; email: string | null; verified: boolean;
+  emergency: string | null; languages: string[]; about: string | null; avatar_tone: string | null;
+};
+/** The profile card the avatar opens (2026-10-23, the owner: "a click on the profile shows the name, the position, when they
+ *  started here and more"): read when it opens, so no screen carries it. The person's own row, under their own RLS. */
+export async function myCard(): Promise<{ card?: MyCard; error?: string }> {
+  const { requireSession } = await import("@/lib/auth");
+  const { DEPARTMENTS, POSITIONS, ROLE_LABEL } = await import("@dineflow/shared");
+  const { myDept } = await import("../tasks/dept");
+  const session = await requireSession(); const s = await createClient();
+  if (session.actingAs) return { error: "Master control has no staff profile here." };
+  const { data } = await s.from("profiles").select("full_name, display_name, phone, contact_email, contact_verified_at, role, position, position_title, department, staff_code, joined_on, reports_to, emergency_name, emergency_phone, about, languages, avatar_tone").eq("id", session.profile.id).maybeSingle();
+  const p = (data ?? {}) as Record<string, unknown>; const str = (k: string) => (p[k] as string | null) ?? null;
+  const role = (str("role") ?? session.profile.role) as keyof typeof ROLE_LABEL;
+  const pos = POSITIONS.find((x) => x.key === str("position"));
+  const dept = myDept(role, str("department") ?? pos?.dept ?? null);
+  const boss = str("reports_to") ? (await s.from("profiles").select("full_name, position_title").eq("id", str("reports_to")!).maybeSingle()).data as { full_name: string; position_title: string | null } | null : null;
+  const full = str("full_name") ?? session.profile.full_name;
+  return { card: {
+    name: str("display_name")?.trim() || full, listed: full, title: str("position_title") ?? pos?.title ?? null,
+    dept, deptLabel: DEPARTMENTS.find((d) => d.key === dept)?.label ?? null, access: ROLE_LABEL[role] ?? role,
+    staff_code: str("staff_code"), joined_on: str("joined_on"), reports_to: boss ? `${boss.full_name}${boss.position_title ? ` · ${boss.position_title}` : ""}` : null,
+    phone: str("phone"), email: str("contact_email"), verified: !!p.contact_verified_at,
+    emergency: [str("emergency_name"), str("emergency_phone")].filter(Boolean).join(" · ") || null,
+    languages: (p.languages as string[] | null) ?? [], about: str("about"), avatar_tone: str("avatar_tone"),
+  } };
+}

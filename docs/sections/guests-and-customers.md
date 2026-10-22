@@ -99,3 +99,11 @@ node guests-test.mjs     # 17 checks, ending with
   state (`[data-points-empty]`). **Fixed on the way:** after Apply the list reset to `null` and `load()` — which only
   fetches when the list is empty in its own stale closure — never fetched again, so the history stayed a shimmer; it
   now refetches directly.
+
+## Customers as cards or a grid (2026-10-23)
+
+As Staff: a Cards · Table switch beside the search (`df-view:customers`, a pick is kept); the grid from md and the cards on a
+phone until one is picked. `CustomersGrid.tsx` (`[data-customers-grid]`): Name (initial, a star for a regular, tags), Phone,
+Visits, Spent, Last visit (red past 60 days), Points (with loyalty on), First visit, Birthday — by the grid's own width;
+every column sorts; Call and WhatsApp are round keys at the row's end. **A row opens the customer's own sheet** (details, bills,
+points) — the same dialog the card's name opens. The cards are untouched.
