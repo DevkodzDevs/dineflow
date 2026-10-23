@@ -29,10 +29,10 @@ export function GoogleLinks({ base, slug, listed, dining, ordering, rooms }: { b
         <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-[var(--color-tint)]"><Search size={17} /></span>
         <div className="min-w-0">
           <h2 className="text-xl">Bookings from Google</h2>
-          <p className="text-xs text-[var(--color-label-2)] mt-0.5">Guests on Google Search or Maps book here — <b>0% commission</b>. Paste each link into your Google profile.</p>
+          <p className="text-xs text-[var(--color-label-2)] mt-0.5">Google Search and Maps — <b>0% commission</b>.</p>
         </div>
       </div>
-      {!listed && <p className="mt-3 rounded-xl bg-[rgb(255_179_64/.12)] text-[var(--color-orange)] text-xs font-semibold p-3">Turn on “Listed publicly” above first, or guests can’t open these.</p>}
+      {!listed && <p className="mt-3 rounded-xl bg-[rgb(255_179_64/.12)] text-[var(--color-orange)] text-xs font-semibold p-3">Turn on “Listed publicly” first, or links won’t open.</p>}
       <div className="mt-4 divide-y divide-[var(--color-separator)] rounded-2xl border border-[var(--color-separator)] overflow-hidden">
         {links.map((l) => (
           <div key={l.label} className="flex items-center gap-3 p-3">
@@ -46,11 +46,11 @@ export function GoogleLinks({ base, slug, listed, dining, ordering, rooms }: { b
         ))}
       </div>
       <ol className="mt-4 space-y-1.5 text-[13px] text-[var(--color-label-2)] list-decimal pl-5">
-        <li>Open your Business Profile with the button below.</li>
-        <li>Choose <b className="text-[var(--color-label)]">Edit profile</b>, then <b className="text-[var(--color-label)]">Contact</b>, and paste each link into its box.</li>
+        <li>Open your Business Profile below.</li>
+        <li>Choose <b className="text-[var(--color-label)]">Edit profile</b>, then <b className="text-[var(--color-label)]">Contact</b>, paste each link.</li>
         <li>Save. Google may take a few days to check.</li>
       </ol>
-      {rooms && <p className="mt-3 text-xs text-[var(--color-label-2)]">Google’s hotel price box needs a certified partner. Until then, use the room link above.</p>}
+      {rooms && <p className="mt-3 text-xs text-[var(--color-label-2)]">Google’s hotel price box needs a certified partner.</p>}
       <a href="https://business.google.com/" target="_blank" rel="noreferrer" className="mt-4 min-h-11 rounded-full px-4 flex items-center justify-center gap-2 text-sm font-semibold bg-[var(--color-fill)] hover:brightness-110 transition"><ExternalLink size={15} /> Open Google Business Profile</a>
     </Card>
   );

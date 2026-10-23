@@ -77,7 +77,7 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
         {kitchen && (
           <Card>
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3"><h3 className="text-xl">Speed of service</h3><span className="text-xs text-steel num">target {kitchen.target ?? 15} min · {kitchen.tickets} ticket{Number(kitchen.tickets) === 1 ? "" : "s"} · {kitchen.recalls} recall{Number(kitchen.recalls) === 1 ? "" : "s"}</span></div>
-            {Number(kitchen.tickets) === 0 ? <p className="text-sm text-steel">No tickets marked ready in this window yet.{Number(kitchen.ignored ?? 0) > 0 && <> {kitchen.ignored} ticket{Number(kitchen.ignored) === 1 ? " was" : "s were"} left open for hours and closed later, so {Number(kitchen.ignored) === 1 ? "it is" : "they are"} not counted as cooking time.</>}</p> : (
+            {Number(kitchen.tickets) === 0 ? <p className="text-sm text-steel">No tickets marked ready in this window yet.{Number(kitchen.ignored ?? 0) > 0 && <> {kitchen.ignored} ticket{Number(kitchen.ignored) === 1 ? "" : "s"} left open too long — not counted.</>}</p> : (
               /* side by side only when the card itself is wide (52rem): at an iPad's half of the screen
                  the three tiles had ~100px each and "5.7 min" was cut. Otherwise the figures sit in a
                  row on top and the hour chart takes the card's full width under them. */
@@ -125,7 +125,7 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
         <Card><h3 className="text-xl mb-3">Day closes</h3>
           <div className="overflow-x-auto -mx-2 px-2 table-wrap"><table className="w-full text-sm min-w-[360px]"><thead className="text-xs uppercase text-steel"><tr><th className="text-left py-1">Date</th><th className="text-right">Bills</th><th className="text-right">Cash</th><th className="text-right">UPI</th><th className="text-right">Total</th></tr></thead>
             <tbody>{closes.map((c) => <tr key={c.business_date} className="border-t border-line"><td className="py-2 num">{c.business_date}</td><td className="text-right num">{c.orders_count}</td><td className="text-right num">{formatINR(Number(c.cash))}</td><td className="text-right num">{formatINR(Number(c.upi))}</td><td className="text-right num font-semibold">{formatINR(Number(c.total_sales))}</td></tr>)}
-              {closes.length === 0 && <tr><td colSpan={5} className="py-4 text-steel">Close a day from Billing to lock its totals here.</td></tr>}</tbody></table></div></Card>
+              {closes.length === 0 && <tr><td colSpan={5} className="py-4 text-steel">Days closed in Billing show here</td></tr>}</tbody></table></div></Card>
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ import { getClient } from "@/lib/supabase/lazy";
 import { formatINR, todayIST } from "@/lib/format";
 import { waDate } from "@/lib/wa";
 import { cn, Sheet, Switch, useToast } from "@/components/ui";
-import { KINDS, STATIONS, TONES, kindsFor, deptSees, loadPrefs, savePrefs, playTone, unlockAudio, stationPrefs, type NotifyKind, type NotifyPrefs, type StationId, type ToneId } from "@/lib/notify";
+import { KINDS, STATIONS, TONES, kindsFor, deptSees, loadPrefs, savePrefs, playTone, unlockAudio, armAudioUnlock, stationPrefs, type NotifyKind, type NotifyPrefs, type StationId, type ToneId } from "@/lib/notify";
 import { buzz } from "@/lib/buzz";
 import { CallAlert, type LiveCall } from "./CallAlert";
 
@@ -116,10 +116,10 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
     try { const f = JSON.parse(sessionStorage.getItem(FEED_KEY) ?? "[]") as Item[]; if (Array.isArray(f)) setFeed(f.slice(0, 40)); } catch { /* none */ }
     const onPrefs = (e: Event) => setPrefsState((e as CustomEvent<NotifyPrefs>).detail);
     window.addEventListener("df-notify-prefs", onPrefs);
-    // a browser only lets a page make sound after a touch or a key: the first one unlocks it
-    const unlock = () => unlockAudio();
-    window.addEventListener("pointerdown", unlock, { passive: true }); window.addEventListener("keydown", unlock);
-    return () => { window.removeEventListener("df-notify-prefs", onPrefs); window.removeEventListener("pointerdown", unlock); window.removeEventListener("keydown", unlock); };
+    // a browser only lets a page make sound after a tap or a key: every one unlocks it (lib/notify.ts, armAudioUnlock —
+    // a touch's pointerdown does not count, which is why a phone stayed silent)
+    const disarm = armAudioUnlock();
+    return () => { window.removeEventListener("df-notify-prefs", onPrefs); disarm(); };
   }, [propertyType, role]);
   useEffect(() => { try { sessionStorage.setItem(FEED_KEY, JSON.stringify(feed.slice(0, 40))); } catch { /* full */ } }, [feed]);
 

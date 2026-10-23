@@ -111,7 +111,7 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
-        <Column keyName="waiting" title="waiting" n={waiting.length} hint={filter === "mine" ? "Nothing waiting for you." : "Nothing waiting. Tap New job to add one."}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
+        <Column keyName="waiting" title="waiting" n={waiting.length} hint={filter === "mine" ? "Nothing waiting for you." : "Nothing waiting — tap New job."}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
         <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody is on a job right now."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{onIt.map(card)}</div></Column>
         {upcoming.length > 0 && <Column keyName="upcoming" title="coming_up" n={upcoming.length} hint=""><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{upcoming.map(card)}</div></Column>}
         <Column keyName="done" title="done_today" n={finished.length} hint="Nothing finished yet today."><Card className="!py-1 !px-4"><ul className="divide-y divide-[var(--color-separator)]">{finished.map((j) => <DoneRow key={j.id} j={j} me={me} inspectRequired={board.inspect_required} showDept={filter === "all" || filter === "mine"} />)}</ul></Card></Column>
@@ -176,7 +176,7 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
                 {board.labourers.length > 0 && <optgroup label="Day labourers (no sign-in — finish it for them)">{board.labourers.map((l) => <option key={l.id} value={`lab:${l.id}`}>{l.name}{l.skill ? ` — ${l.skill}` : ""}{l.on_duty ? " · on duty" : ""}</option>)}</optgroup>}
               </select></label>)}
           <button type="button" disabled={pending || f.title.trim().length < 2} className="svc-btn go w-full" onClick={raise} data-raise-job><Plus size={18} aria-hidden /><Say w="raise_it" /></button>
-          <p className="text-[12.5px] text-steel">Everyone in {deptLabel(f.department)} is told; whoever is free takes it. {f.priority <= 2 ? "Turns red when late." : ""}</p>
+          <p className="text-[12.5px] text-steel">Everyone in {deptLabel(f.department)} is told. {f.priority <= 2 ? "Turns red when late." : ""}</p>
         </div>
       </Sheet>
     </div>

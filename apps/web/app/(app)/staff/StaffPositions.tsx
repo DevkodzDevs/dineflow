@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { Crown, ConciergeBell, Sparkles, Wine, ChefHat, PartyPopper, Flower2, Waves, Wrench, ShieldCheck, Megaphone, Calculator, Users, Package, Bike, Briefcase, Search, GitBranch, Layers, ChevronDown, Home, type LucideIcon } from "lucide-react";
 import { cn } from "@/components/ui";
+import { ChipRail } from "@/components/ui/ChipRail";
 import { DEPARTMENTS, LEVELS, ROLE_LABEL, ROLE_ACCESS, MODULE_GROUPS, MODULES_BY_TYPE, positionAccessOf, hierarchyFor, levelOf, positionByKey, departmentByKey, positionModules, type Level, type PropertyType, type Role } from "@dineflow/shared";
 
 export type Placed = { id: string; full_name: string; role: Role; is_active: boolean; position: string | null; position_title: string | null; department: string | null; reports_to: string | null; joined_on: string | null };
@@ -142,7 +143,7 @@ export function TeamChart({ type, people }: { type: PropertyType; people: Placed
 
       {mode === "tree" ? (
         <div className="rounded-[26px] border border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)] p-4 sm:p-6" data-chart-tree>
-          {!anyLines && <p className="text-[13px] text-steel mb-3">No managers set yet. Set who each person reports to under Access.</p>}
+          {!anyLines && <p className="text-[13px] text-steel mb-3">No managers set. Set them under Access.</p>}
           <ul className="space-y-3 max-w-xl">{roots.filter((p) => levelFor(p, type) !== null || kids(p.id).length).map((p) => <Node key={p.id} p={p} depth={0} />)}</ul>
         </div>
       ) : (
@@ -159,7 +160,7 @@ export function TeamChart({ type, people }: { type: PropertyType; people: Placed
 
       {unplaced.length > 0 && <section className="rounded-[22px] border-2 border-dashed border-[var(--color-separator)] p-4" data-unplaced>
         <div className="text-[15px] font-extrabold">Not placed yet · <span className="num">{unplaced.length}</span></div>
-        <p className="text-[12.5px] text-steel mb-3">Give them a position under Access to add them here.</p>
+        <p className="text-[12.5px] text-steel mb-3">Set a position under Access.</p>
         <div className="flex flex-wrap gap-2">{unplaced.map((p) => <span key={p.id} className="inline-flex items-center gap-2 rounded-full bg-[var(--color-fill)] pl-1 pr-3 py-1 text-[13px] font-semibold"><Avatar name={p.full_name} dept={null} size={26} />{p.full_name} <span className="text-steel font-normal">· {ROLE_LABEL[p.role]}</span></span>)}</div>
       </section>}
       {live.length === 0 && <p className="text-sm text-steel">Nobody yet.</p>}
@@ -185,13 +186,14 @@ export function PositionsGuide({ type, people }: { type: PropertyType; people: P
       <div className="flex flex-col gap-3">
         <div className="relative w-full sm:max-w-md min-w-0"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
           <input className="!h-12 !rounded-full !pl-11" placeholder="Find a position — chef, captain, manager…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a position" data-guide-search /></div>
-        <div className="rail-fade flex gap-1.5 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 lg:flex-wrap lg:![mask-image:none] [scrollbar-width:none]" role="group" aria-label="Level">
+        {/* arrows at the edge it continues past (2026-10-23, ChipRail) — the phone and the iPad slide, a wide screen wraps */}
+        <ChipRail label="Level" watch={lv} wrapClassName="lg:flex-wrap" data={{ "data-level-rail": "" }}>
           {[null, ...LEVELS.map((l) => l.level)].map((l) => (
             <button key={l ?? "all"} type="button" aria-pressed={lv === l} onClick={() => setLv(l as Level | null)} className={cn("shrink-0 !min-h-11 rounded-full px-3.5 text-[13px] font-bold whitespace-nowrap", lv === l ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
               {l === null ? "All levels" : <><span className="num">{l}</span> · {LEVELS[(l as number) - 1].label}</>}</button>))}
-        </div>
+        </ChipRail>
       </div>
-      <p className="text-[13px] text-steel">{total} positions in {h.length} departments — the usual structure for a {type}, top down. Titles and access are only suggestions.</p>
+      <p className="text-[13px] text-steel">{total} positions · {h.length} departments · suggestions only</p>
       <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3 items-start">
         {view.map((d) => { const filled = d.positions.filter((x) => holders(x.key).length).length; const hue = deptHue(d.key); return (
           <section key={d.key} className="min-w-0 rounded-[24px] bg-[var(--color-bg-2)] border border-[var(--color-separator)] overflow-hidden" data-guide-dept={d.key}>

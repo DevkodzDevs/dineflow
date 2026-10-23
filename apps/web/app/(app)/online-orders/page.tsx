@@ -25,7 +25,7 @@ export default async function OnlineOrders() {
   ]);
   const mods = modulesFor(session.restaurant.property_type, session.profile.role, session.restaurant.enabled_modules ?? null, session.profile.allowed_modules ?? null);
   const dishes: OnlineDish[] = ((menu ?? []) as unknown as (Omit<OnlineDish, "category"> & { categories: { name: string } | { name: string }[] | null })[]).map((m) => ({ ...m, category: (Array.isArray(m.categories) ? m.categories[0]?.name : m.categories?.name) ?? null }));
-  return (<><SvcHead icon="online" title="Online orders" sub="Swiggy, Zomato and your website. Accept fast; the kitchen gets a ticket."
+  return (<><SvcHead icon="online" title="Online orders" sub="Swiggy, Zomato and your website"
     actions={<>{/* on / off first, where the eye lands (0133); off is a pause with no end — Kitchen pace's 30 minutes is not "off" */}
       <OnlineSwitch off={String(session.restaurant.online_paused_until ?? "") === "infinity"} canEdit={canSetOnline(session.profile.role, mods)} />
       {["owner", "manager"].includes(session.profile.role) && <Link href="/online-orders/payouts" className="svc-btn quiet sm !px-5" data-payouts-link><Landmark size={18} aria-hidden /> Payouts</Link>}</>} /><KitchenPace initial={{ rush_extra_min: Number(session.restaurant.rush_extra_min ?? 0), rush_until: (session.restaurant.rush_until as string | null) ?? null, online_paused_until: (session.restaurant.online_paused_until as string | null) ?? null }} /><div className="mb-5"><OnlineDishes dishes={dishes} canEdit={canSetOnline(session.profile.role, mods)} /></div><OnlineClient ai={aiEnabled()} orders={(orders ?? []) as never} channels={channels ?? []} menu={dishes} /></>);

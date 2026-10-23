@@ -221,3 +221,4 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
 
 [auth-and-session.md](auth-and-session.md) · [shell-and-nav.md](shell-and-nav.md) ·
 [legal.md](legal.md) · [data-and-rls.md](data-and-rls.md)
+- **Short copy** (2026-10-23): /membership and /about subtitles and hints cut to a few words.

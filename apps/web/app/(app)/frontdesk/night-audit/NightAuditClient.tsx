@@ -66,7 +66,7 @@ export function NightAuditClient({ today, date, audit, history, canClose }: { to
         </Card>
         <Card>
           <h3 className="text-lg mb-1 flex items-center gap-2"><LogOut size={16} /> Departures <span className="num text-steel text-sm ml-auto">{a.departed}/{a.departures}</span></h3>
-          <p className="text-xs text-steel mb-3">{a.due_out.length ? "Still in a room they should have left:" : "Every departure has checked out."}</p>
+          <p className="text-xs text-steel mb-3">{a.due_out.length ? "Past check-out, still in:" : "Every departure has checked out."}</p>
           <People rows={a.due_out} empty="—" />
         </Card>
         <Card>
@@ -82,17 +82,17 @@ export function NightAuditClient({ today, date, audit, history, canClose }: { to
 
       <Card className={cn(a.discrepancies.length && "!border-[var(--color-orange)]/50")}>
         <h3 className="text-lg mb-2 flex items-center gap-2">{a.discrepancies.length ? <AlertTriangle size={16} className="text-[var(--color-orange)]" /> : <CheckCircle2 size={16} className="text-mint" />} Discrepancies <span className="num text-steel text-sm ml-auto">{a.discrepancies.length}</span></h3>
-        {a.discrepancies.length === 0 ? <p className="text-sm text-steel">Front desk and housekeeping match on every room.</p>
+        {a.discrepancies.length === 0 ? <p className="text-sm text-steel">Desk and housekeeping agree.</p>
           : <ul className="text-sm space-y-1">{a.discrepancies.map((d, i) => <li key={i} className="flex gap-3"><span className="num font-semibold w-12 shrink-0">{d.room}</span><span>{d.who ? `${d.who} ${DISC[d.kind] ?? d.kind}` : DISC[d.kind] ?? d.kind}</span></li>)}</ul>}
       </Card>
 
       <Card>
         <h3 className="text-lg mb-1">{a.closed ? "Close the day again" : "Close the day"}</h3>
-        <p className="text-xs text-steel mb-4">{ready ? "Nothing is outstanding." : "Open items above are saved as they are. Settle what you can first."}{a.closed ? " Closing again saves today's numbers over the old ones." : ""}</p>
+        <p className="text-xs text-steel mb-4">{ready ? "Nothing is outstanding." : "Settle first — open items save as-is."}{a.closed ? " Closing again replaces the old numbers." : ""}</p>
         {canClose ? (
           <div className="space-y-3">
             <label className="flex items-start gap-2.5 text-sm"><input type="checkbox" className="mt-0.5" checked={noShows} onChange={(e) => setNoShows(e.target.checked)} />
-              <span>Mark the {a.not_arrived.length} arrival{a.not_arrived.length === 1 ? "" : "s"} that never came as no-shows<span className="block text-xs text-steel mt-0.5">Their rooms go back on sale. Late arrivals need a new booking.</span></span></label>
+              <span>Mark the {a.not_arrived.length} arrival{a.not_arrived.length === 1 ? "" : "s"} that never came as no-shows<span className="block text-xs text-steel mt-0.5">Rooms reopen. Late arrivals need a new booking.</span></span></label>
             <Field label="Notes for the record"><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Power cut 9–10 pm; 204 comped for the noise…" /></Field>
             <Button size="lg" disabled={pending} onClick={close}>{pending ? "Closing…" : `Close ${date}`}</Button>
             {a.closed?.notes && <p className="text-xs text-steel">On record: {a.closed.notes}</p>}

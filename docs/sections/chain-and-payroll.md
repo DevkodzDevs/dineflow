@@ -94,6 +94,8 @@ node bench106.cjs   # auth_restaurant_id before/after on the busiest property
 node batch3.mjs     # 25 checks on a throwaway demo — see testing-and-gates.md
 ```
 
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
 ## See also
 
 [auth-and-session.md](auth-and-session.md) · [data-and-rls.md](data-and-rls.md) ·

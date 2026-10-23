@@ -52,11 +52,11 @@ export function PasswordClient({ email, contactEmail, forced }:
           <div className="mt-7 space-y-4">
             <p className="text-sm text-[var(--color-label-2)]">
               {forced ? "You signed in with a temporary password. " : ""}
-              We&apos;ll email you a 6-digit code to set a new one.
+              We&apos;ll email you a 6-digit code.
             </p>
             {contactEmail
               ? <p className="text-sm">The code goes to <span className="num font-semibold">{contactEmail}</span>.</p>
-              : <p className="text-sm text-[var(--color-orange)]">No email on this account. Ask Master control to add one first.</p>}
+              : <p className="text-sm text-[var(--color-orange)]">No email — ask Master control to add one.</p>}
             {sendErr && <p className="text-sm text-[var(--color-red)] bg-[var(--color-red-2)] rounded-xl px-3 py-2">{sendErr}</p>}
             <Button size="lg" className="w-full" disabled={pending || !contactEmail} onClick={send}>
               {pending ? "Sending the code" : "Send me the code"}
@@ -68,7 +68,7 @@ export function PasswordClient({ email, contactEmail, forced }:
         {active === "code" && (
           <form action={vAct} className="mt-7 space-y-4">
             <p className="text-sm text-[var(--color-label-2)]">
-              We sent a six-digit code to <span className="num">{sentTo}</span>. It expires in 10 minutes.
+              Code sent to <span className="num">{sentTo}</span>. Valid 10 minutes.
             </p>
             {echoed && (
               <p className="text-sm bg-[var(--color-fill)] rounded-xl px-3 py-2">
@@ -95,7 +95,7 @@ export function PasswordClient({ email, contactEmail, forced }:
           <form action={pAct} className="mt-7 space-y-4">
             {skipOtp ? (
               <p className="text-sm text-[var(--color-label-2)]">
-                You used a temporary password. Choose your own now.
+                Now choose your own password.
               </p>
             ) : (
               <p className="text-sm text-[var(--color-green)]">Code OK. Set your password within 15 minutes.</p>

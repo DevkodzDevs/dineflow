@@ -77,7 +77,7 @@ export function PayoutsClient({ channels, rows, today }: { channels: { id: strin
             <div className={cn("feather !rounded-[18px] px-4 py-3", short.length && "!border-[var(--color-red)]")}><div className="text-[12px] font-bold text-steel">Short</div><div className={cn("font-display num text-[24px]", short.length ? "text-chili" : "")} data-short-total>{short.length ? inr(-short.reduce((a, r) => a + gapOf(r), 0)) : "None"}</div></div>
           </div>
           <Card className="!p-0 overflow-hidden" data-payout-list>
-            {rows.length === 0 ? <p className="p-4 text-sm text-steel">None yet. Note each weekly Swiggy or Zomato payout and its UTR here.</p> : rows.map((r) => { const g = gapOf(r); return (
+            {rows.length === 0 ? <p className="p-4 text-sm text-steel">None yet — note each weekly payout here.</p> : rows.map((r) => { const g = gapOf(r); return (
               <div key={r.id} className="px-4 py-3 border-b border-[var(--color-separator)] last:border-b-0 flex items-center gap-3 min-w-0" data-payout={r.id}>
                 <div className="min-w-0 flex-1">
                   <div className="text-[15px] font-bold truncate">{name(r.channel_id)} · {d(r.period_from)}–{d(r.period_to)}</div>

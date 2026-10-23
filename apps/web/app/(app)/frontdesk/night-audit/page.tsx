@@ -30,7 +30,7 @@ export default async function NightAuditPage({ searchParams }: { searchParams: P
   const canClose = ["owner", "manager", "supervisor", "frontdesk"].includes(session.profile.role);
   return (
     <>
-      <PageHeader eyebrow="Front desk · close of day" title="Night" accent="audit" sub="Settle the business date before it rolls over."
+      <PageHeader eyebrow="Front desk · close of day" title="Night" accent="audit" sub="Settle and close the day"
         actions={<Link href="/frontdesk" className="tap text-sm font-semibold text-steel hover:text-[var(--color-label)]">← Front desk</Link>} />
       <NightAuditClient today={today} date={target} audit={(audit ?? null) as Audit | null} history={(history ?? []) as never} canClose={canClose} />
     </>

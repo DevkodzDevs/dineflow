@@ -101,6 +101,8 @@ node diag.mjs "/tax?tab=overview@1194|…"   # all six tabs × 1366/1194/1024/83
 
 Then reconcile `gst_summary` for a demo month by hand against the bills for that month.
 
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
 ## See also
 
 [billing-and-invoices.md](billing-and-invoices.md) · [legal.md](legal.md) ·

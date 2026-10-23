@@ -39,6 +39,17 @@
 /* the way out of impersonation is the last control anyone should have to aim at */
 @media (pointer: coarse) { .exit { min-height: 44px; } }
 
+/* a phone: one slim line — the property's name, and Exit; "real and logged" stays on wider screens (2026-10-23) */
+.short { display: none; }
+@media (max-width: 639px) {
+  .bar { flex-wrap: nowrap; padding: 6px 6px 6px 10px; border-radius: 999px; gap: 8px; }
+  .shield { width: 26px; height: 26px; }
+  .text { flex: 1 1 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .long, .note { display: none; }
+  .short { display: inline; }
+  .exit { padding: 0 14px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shield::after { animation: none; opacity: .5; }
   .exit { transition: none; }

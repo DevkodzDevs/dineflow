@@ -141,3 +141,4 @@ are the whole point and they are theme-dependent.
   is one row per task (key card, what, by whom and when, *n min* in green); **New task**'s button is the green
   `svc-btn go` and reads *Choose a room first* until one is. shots39: the clean offered Room Attendant + Floor
   Supervisor, the maintenance task the engineer alone; never the owner or the chef.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

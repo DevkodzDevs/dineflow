@@ -259,7 +259,7 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
     <div className="space-y-4">
       <div className="flex items-center gap-2"><h3 className="text-xl">On file</h3><Button className="ml-auto" onClick={() => setEdit({ kind: "gst_reg", title: kindOf("gst_reg")?.label })}><Plus size={15} /> Add a document</Button></div>
       {essentials.length > 0 && <Card><div className="card-title"><h3>Not on file yet</h3></div><div className="flex flex-wrap gap-2">{essentials.map((k) => <button key={k.key} className="chip" onClick={() => setEdit({ kind: k.key, title: k.label })}>+ {k.label}</button>)}</div></Card>}
-      {docs.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">Nothing yet. Add each licence's number, dates and a link to the copy.</p> : (
+      {docs.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">Nothing yet. Add your licences.</p> : (
         <div className="grid md:grid-cols-2 gap-3">{docs.map((d) => { const k = kindOf(d.kind); const left = d.expires_on ? daysBetween(today, d.expires_on) : null; return (
           /* the card's actions are its footer strip, edge to edge (CardStrip): Open copy on a soft
              green when there is a link, Edit, Remove in red — they were three small text links */
@@ -288,7 +288,7 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
           <Field label="What is it" hint={kindOf(edit?.kind ?? "other")?.hint}><select name="kind" defaultValue={edit?.kind ?? "gst_reg"} onChange={(e) => setEdit({ ...edit, kind: e.target.value, title: edit?.title || kindOf(e.target.value)?.label })}>{DOC_KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}</select></Field>
           <Field label="Title"><input name="title" value={edit?.title ?? ""} onChange={(e) => setEdit({ ...edit, title: e.target.value })} required placeholder="e.g. FSSAI state licence 2025-30" /></Field>
           <div className="grid grid-cols-2 gap-3"><Field label="Number"><input name="number" className="num" defaultValue={edit?.number ?? ""} /></Field><Field label="Issued by"><input name="issuer" defaultValue={edit?.issuer ?? ""} placeholder="FSSAI · Commercial Taxes Dept · Corporation" /></Field></div>
-          <div className="grid grid-cols-2 gap-3"><Field label="Issued on"><input name="issued_on" type="date" className="num" defaultValue={edit?.issued_on ?? ""} /></Field><Field label="Expires on" hint="Leave blank for a document that does not expire"><input name="expires_on" type="date" className="num" defaultValue={edit?.expires_on ?? ""} /></Field></div>
+          <div className="grid grid-cols-2 gap-3"><Field label="Issued on"><input name="issued_on" type="date" className="num" defaultValue={edit?.issued_on ?? ""} /></Field><Field label="Expires on" hint="Blank = never expires"><input name="expires_on" type="date" className="num" defaultValue={edit?.expires_on ?? ""} /></Field></div>
           <Field label="Period" hint="For returns: FY 2025-26, 2026-08, Q1 2026-27"><input name="period" className="num" defaultValue={edit?.period ?? ""} /></Field>
           <Field label="Link to the signed copy" hint="DigiLocker, Google Drive or your CA's portal"><input name="url" defaultValue={edit?.url ?? ""} placeholder="https://…" /></Field>
           <Field label="Notes"><input name="notes" defaultValue={edit?.notes ?? ""} /></Field>
@@ -311,7 +311,7 @@ function Profile({ r, role, pending, onSave }: { r: Rest; role: string; pending:
             <select name="gst_scheme" value={scheme} onChange={(e) => setScheme(e.target.value)}><option value="regular">Regular</option><option value="composition">Composition (Sec 10)</option><option value="unregistered">Not registered</option></select></Field>
           {scheme === "regular" && <Field label="Filing period" hint="Quarterly (QRMP) allowed up to ₹5 crore turnover"><select name="gst_period" defaultValue={r.gst_monthly === false ? "quarterly" : "monthly"}><option value="monthly">Monthly</option><option value="quarterly">Quarterly (QRMP)</option></select></Field>}
           <Field label="GSTIN" hint="15 characters. State code and PAN come from it."><input name="gstin" className="num uppercase" defaultValue={r.gstin ?? ""} placeholder="33ABCDE1234F1Z5" maxLength={15} /></Field>
-          <Field label="Legal name" hint="As on the certificate, if not the shop name"><input name="legal_name" defaultValue={r.legal_name ?? ""} placeholder={r.name} /></Field>
+          <Field label="Legal name" hint="As on the certificate"><input name="legal_name" defaultValue={r.legal_name ?? ""} placeholder={r.name} /></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="PAN"><input name="pan" className="num uppercase" defaultValue={r.pan ?? ""} placeholder="ABCDE1234F" maxLength={10} /></Field>
             <Field label="State"><select name="gst_state_code" defaultValue={r.gst_state_code ?? ""}><option value="">From the GSTIN</option>{Object.entries(GST_STATES).map(([c, s]) => <option key={c} value={c}>{c} · {s.name}</option>)}</select></Field>
@@ -330,7 +330,7 @@ function Profile({ r, role, pending, onSave }: { r: Rest; role: string; pending:
           </div>
         </Card>
         <Button className="w-full" size="lg" disabled={pending || !["owner", "manager"].includes(role)}>Save</Button>
-        {!["owner", "manager"].includes(role) && <p className="footnote text-center">Only the owner or a manager can change these.</p>}
+        {!["owner", "manager"].includes(role) && <p className="footnote text-center">Owner or manager can change these</p>}
       </div>
     </form>
   );

@@ -60,7 +60,7 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
       {sent && (
         <div className="rounded-2xl p-4 flex items-start gap-3 bg-[var(--color-green-2)]" data-sent>
           <CircleCheck size={20} className="shrink-0 text-[var(--color-tint)] mt-px" />
-          <div className="text-[13.5px] leading-snug"><b>Sent — {ticketNo(t.ticket_no)}.</b> Our team has it. Replies show below{CONTACT.hours ? ` (${CONTACT.hours})` : ""}.{t.kind === "privacy" && <> A privacy & consent request is answered within {CONTACT.grievanceDays} days.</>}</div>
+          <div className="text-[13.5px] leading-snug"><b>Sent — {ticketNo(t.ticket_no)}.</b> Replies show below{CONTACT.hours ? ` (${CONTACT.hours})` : ""}.{t.kind === "privacy" && <> Answered within {CONTACT.grievanceDays} days.</>}</div>
         </div>
       )}
 
@@ -75,7 +75,7 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
                   <div className={cn("mt-1.5 text-[11.5px] leading-tight", i === stepOf(t.status) ? "font-semibold text-[var(--color-label)]" : on ? "text-[var(--color-label-2)]" : "text-[var(--color-label-3)]")}>{s.label}</div>
                 </li>); })}
             </ol>
-            {t.status === "waiting" && <p className="mt-3 text-[13px] rounded-xl bg-[var(--color-fill)] px-3 py-2.5" data-waiting><b>DineFlow is waiting for your answer.</b> Reply below and it goes straight back to them.</p>}
+            {t.status === "waiting" && <p className="mt-3 text-[13px] rounded-xl bg-[var(--color-fill)] px-3 py-2.5" data-waiting><b>DineFlow is waiting for your answer.</b> Reply below.</p>}
           </Card>
 
           {/* the thread */}
@@ -116,7 +116,7 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
 
           {/* answer back */}
           {closed ? (
-            <p className="rounded-2xl bg-[var(--color-fill)] p-4 text-[13px]" data-closed>This request is closed. If it comes back, <Link href={`/help?kind=${t.kind}`} className="underline font-semibold">raise a new one</Link> and mention {ticketNo(t.ticket_no)}.</p>
+            <p className="rounded-2xl bg-[var(--color-fill)] p-4 text-[13px]" data-closed>Closed. Still a problem? <Link href={`/help?kind=${t.kind}`} className="underline font-semibold">raise a new one</Link> and mention {ticketNo(t.ticket_no)}.</p>
           ) : manage ? (
             <Card className="space-y-3" data-composer>
               <label htmlFor="sup-reply" className="!mb-0">{done ? "Still not right? Reply and it opens again" : "Reply"}</label>
@@ -159,7 +159,7 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
           {manage && !closed && (
             <label className="feather flex items-start gap-3 p-4 cursor-pointer" data-access>
               <ShieldCheck size={18} className="shrink-0 mt-0.5 text-[var(--color-tint)]" />
-              <span className="flex-1 min-w-0"><span className="block text-[13.5px] font-semibold leading-snug">DineFlow may open the property</span><span className="block text-[12px] text-[var(--color-label-2)] mt-0.5 leading-snug">{t.allow_access ? "Allowed. Everything they do is logged." : "Not allowed. Turn on if they need to look."}</span></span>
+              <span className="flex-1 min-w-0"><span className="block text-[13.5px] font-semibold leading-snug">DineFlow may open the property</span><span className="block text-[12px] text-[var(--color-label-2)] mt-0.5 leading-snug">{t.allow_access ? "Allowed. Everything they do is logged." : "Not allowed. Turn on if needed."}</span></span>
               <Switch on={t.allow_access} onChange={(v) => act(() => setRequestAccess(t.id, v))} name="DineFlow may open the property for this request" />
             </label>
           )}

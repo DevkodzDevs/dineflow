@@ -53,7 +53,7 @@ export function PurchaseOrders({ orders, suppliers, ingredients, restaurant }: {
           options={([["2", Columns2], ["3", Columns3], ["4", Columns4]] as const).map(([v, I]) => ({ value: v, label: <span className="inline-flex items-center gap-1.5" title={`${v} across`}><I size={16} aria-hidden /><span className="num">{v}</span></span> }))} /></div>}
         <button type="button" onClick={() => setEditing("new")} className="svc-btn go sm !px-5 max-sm:w-full sm:self-center" data-new-po><Plus size={17} strokeWidth={2.4} aria-hidden /> New order</button>
       </div>
-      {orders.length === 0 ? <Empty title="No purchase orders yet" hint="What to bring, at what price, by when. Send on WhatsApp." action={<Button onClick={() => setEditing("new")}>Draft the first</Button>} /> : (
+      {orders.length === 0 ? <Empty title="No purchase orders yet" hint="Order stock, send on WhatsApp" action={<Button onClick={() => setEditing("new")}>Draft the first</Button>} /> : (
         <ul className={cn("grid gap-3 md:grid-cols-2 [&>*]:min-w-0", COLS_CLASS[cols])} aria-label="Purchase orders" data-po-grid={cols}>
           {[...orders].sort((a, b) => PO_RANK[a.status] - PO_RANK[b.status]).map((po) => {
             const S = PO_STATUS[po.status]; const live = po.status === "draft" || po.status === "sent";
@@ -178,7 +178,7 @@ function PoForm({ po, suppliers, ingredients, onDone }: { po: Po | null; supplie
               <select value={r.ingredient_id} onChange={(e) => { const g = byId[e.target.value]; set(i, { ingredient_id: e.target.value, unit_cost: r.unit_cost || Number(g?.cost_per_unit ?? 0), packs: false }); }}><option value="">Choose</option>{ingredients.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.unit}){Number(g.current_stock) <= Number(g.reorder_level) ? " · low" : ""}</option>)}</select>
               <input type="number" step="0.001" min="0" className="num" value={r.qty || ""} onChange={(e) => set(i, { qty: Number(e.target.value) })} placeholder={r.packs ? "packs" : ing?.unit} />
               <input type="number" step="0.01" min="0" className="num" value={r.unit_cost || ""} onChange={(e) => set(i, { unit_cost: Number(e.target.value) })} placeholder={r.packs ? "per pack" : "per unit"} />
-              <label className={cn("flex items-center justify-center gap-1 text-[11px]", pack > 0 ? "text-steel" : "text-line")} title={pack > 0 ? `One pack is ${pack} ${ing.unit}` : "Set a pack size on the ingredient to buy in packs"}>
+              <label className={cn("flex items-center justify-center gap-1 text-[11px]", pack > 0 ? "text-steel" : "text-line")} title={pack > 0 ? `One pack is ${pack} ${ing.unit}` : "Set a pack size first"}>
                 <input type="checkbox" disabled={pack <= 0} checked={r.packs} onChange={(e) => set(i, { packs: e.target.checked, unit_cost: e.target.checked ? r.unit_cost * pack : pack > 0 ? r.unit_cost / pack : r.unit_cost })} />{pack > 0 ? `×${pack}` : "—"}
               </label>
               <button onClick={() => setRows(rows.filter((_, j) => j !== i))} className="text-steel hover:text-chili" aria-label="Remove"><Trash2 size={15} /></button>
@@ -208,7 +208,7 @@ function ReceiveForm({ po, ingredients, onDone }: { po: Po; ingredients: Ing[]; 
   const short = po.purchase_order_items.filter((l) => (got[l.id]?.received_qty ?? 0) < Number(l.qty));
   return (
     <div className="space-y-4">
-      <p className="text-sm text-steel">Tick what came, at the invoice price. Save adds the stock; shortfalls stay on the order.</p>
+      <p className="text-sm text-steel">Enter what came, at invoice price.</p>
       <div className="grid grid-cols-2 gap-3"><Field label="Supplier invoice no."><input value={inv} onChange={(e) => setInv(e.target.value)} /></Field><Field label="Received on"><input type="date" className="num" value={on} onChange={(e) => setOn(e.target.value)} /></Field></div>
       <div className="space-y-2">
         <div className="grid grid-cols-[minmax(0,1fr)_70px_90px_90px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Asked</span><span>Received</span><span>Cost/unit</span></div>
@@ -221,7 +221,7 @@ function ReceiveForm({ po, ingredients, onDone }: { po: Po; ingredients: Ing[]; 
           </div>
         ))}
       </div>
-      {short.length > 0 && <p className="text-xs text-[var(--color-orange)]">{short.length} line{short.length === 1 ? "" : "s"} short of what was asked — noted on the order.</p>}
+      {short.length > 0 && <p className="text-xs text-[var(--color-orange)]">{short.length} line{short.length === 1 ? "" : "s"} short — noted on the order.</p>}
       <div className="flex justify-between items-center border-t border-line pt-3"><span className="text-sm text-steel">Goods received</span><span className="num text-xl font-semibold">{formatINR(total)}</span></div>
       <Button className="w-full" disabled={pending} onClick={() => start(async () => {
         const r = await receivePo(po.id, po.purchase_order_items.map((l) => ({ id: l.id, received_qty: got[l.id]?.received_qty ?? 0, unit_cost: got[l.id]?.unit_cost ?? Number(l.unit_cost) })), inv, on);
@@ -239,7 +239,7 @@ export function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
   const [pending, start] = useTransition(); const toast = useToast();
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3"><p className="text-sm text-steel">Who you buy from, and what each one charged.</p><Button onClick={() => setEditing({})}><Plus size={16} /> Supplier</Button></div>
+      <div className="flex items-center justify-between gap-3"><p className="text-sm text-steel">Who you buy from</p><Button onClick={() => setEditing({})}><Plus size={16} /> Supplier</Button></div>
       {suppliers.length === 0 ? <Empty title="No suppliers yet" hint="Add your vegetable, dairy and grocery suppliers." action={<Button onClick={() => setEditing({})}>Add the first</Button>} /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {/* A supplier card (2026-10-23, the owner: "modern") built like an OTA channel card: the initial on its own hue, the

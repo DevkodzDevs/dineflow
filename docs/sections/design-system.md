@@ -717,3 +717,16 @@ across, pin; three by default). Staff keeps its own switch (StaffClient). 40px w
   `overflow: hidden` clips only at the padding edge. `overflow: clip; overflow-clip-margin: content-box` clips at the content
   box, which ends where the 50px arrow room begins (tested in Chrome before it went in).
 - **Back is an icon only** (2026-10-23) — shell-and-nav.md.
+- **Short copy** (2026-10-23): the theme picker's hints cut to a few words (Theme.tsx).
+
+- **A one-button dialog footer kept its colour** (2026-10-23, the owner: Done on *Sign-in details* was a pale, washed
+  green). When `markSheetFoot` pins a single button (not a row), the button is the sticky element and so its own stacking
+  context: the bar's `::before` (z -1) painted over its fill and under its words. `.sheet-body [data-sheet-foot]:is(button,
+  a)::after` repaints the fill above the bar with `background: inherit` — variant, hover and theme follow by themselves.
+- **`ChipRail`** (`components/ui/ChipRail.tsx`, 2026-10-23): a sideways chip row that fades at an edge it continues past
+  and puts a round arrow there (36px, 44px on touch) — the Staff department rail's arrows as a shared piece. Brings the
+  `aria-pressed` chip into view on `watch`; `wrapClassName="lg:flex-wrap"` lets a wide screen wrap instead. First used
+  by Positions → Level (`[data-level-rail]`).
+- **Short copy** (2026-10-23, the owner: "short and sweet, crisp, easy for everyone — the whole app"): page subtitles,
+  hints and helper lines cut to a few words across the app; warnings, tax/legal rules and confirm text kept. New strings
+  are in the dictionaries (one merge).

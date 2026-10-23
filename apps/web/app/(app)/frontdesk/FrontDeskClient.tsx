@@ -74,7 +74,7 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
           <div className="mt-7"><Head icon={<CalendarDays size={16} />} tone="blue" label="Upcoming" n={upcoming.length} /></div>
           <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} action={<button className="text-xs text-steel hover:text-chili" onClick={(e) => { e.preventDefault(); if (confirm("Cancel this booking?")) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); }}>cancel</button>} />)}{upcoming.length === 0 && <p className="text-sm text-steel">Nothing upcoming.</p>}</div></section>
         <section className="min-w-0"><Head icon={<Moon size={16} />} tone="orange" label="In house" n={inHouse.length} />
-          <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} action={b.check_out <= today ? <Pill tone="alert">due out</Pill> : <Pill tone="gold">night {Math.max(1, Math.round((Date.now() - new Date(b.check_in).getTime()) / 86400000))}</Pill>} />)}{inHouse.length === 0 && <Empty title="No guests in house" hint="Check in an arrival or create a walk-in booking." />}</div></section>
+          <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} action={b.check_out <= today ? <Pill tone="alert">due out</Pill> : <Pill tone="gold">night {Math.max(1, Math.round((Date.now() - new Date(b.check_in).getTime()) / 86400000))}</Pill>} />)}{inHouse.length === 0 && <Empty title="No guests in house" hint="Check in an arrival or walk-in." />}</div></section>
       </div>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="New booking" wide>

@@ -141,3 +141,4 @@ node cal.mjs             # 6 checks — 42 cells, 7 weekday heads, dots, the ope
   shots41: nothing overlaps at 412 or 1440, seven days on one row.
   The kind chips are a `Rail` (`rail-fade`, label *Kinds*): on a phone, where they run past the edge, the shared light round
   › (glass, 80% opacity) slides the rest into view and turns round at the end. shots42: 412 and 360.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

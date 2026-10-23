@@ -53,7 +53,7 @@ export function ErrorRecovery({ error, reset, inline = false }: { error: Error &
       <div className="card p-6 max-w-md w-full text-center">
         <span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-red-2)] text-[var(--color-red)]"><AlertTriangle size={22} /></span>
         <h1 className="text-2xl mt-4">This screen did not load</h1>
-        <p className="text-sm text-[var(--color-label-2)] mt-2">Nothing you entered is lost. Try again; if it repeats, tell us.</p>
+        <p className="text-sm text-[var(--color-label-2)] mt-2">Nothing is lost. Try again.</p>
         {error?.digest && <p className="footnote mt-2 num">Reference {error.digest}</p>}
         <div className="flex gap-2 mt-5">
           {reset && <button onClick={reset} className="btn btn-gray flex-1">Try again</button>}

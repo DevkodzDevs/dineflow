@@ -107,3 +107,4 @@ phone until one is picked. `CustomersGrid.tsx` (`[data-customers-grid]`): Name (
 Visits, Spent, Last visit (red past 60 days), Points (with loyalty on), First visit, Birthday — by the grid's own width;
 every column sorts; Call and WhatsApp are round keys at the row's end. **A row opens the customer's own sheet** (details, bills,
 points) — the same dialog the card's name opens. The cards are untouched.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

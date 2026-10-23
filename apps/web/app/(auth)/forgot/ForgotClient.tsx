@@ -72,10 +72,10 @@ export function ForgotClient() {
             Enter your login ID. We email your property a code.
           </p>
           <form action={rAct} className="mt-7 space-y-4">
-            <Field label="Login ID" hint="Your DineFlow ID, like dine-htl-mano-00001">
+            <Field label="Login ID" hint="The ID you sign in with">
               <input name="login_id" value={loginId} onChange={(e) => setLoginId(e.target.value)}
                 required autoFocus autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                className="num" placeholder="dine-htl-mano-00001" />
+                placeholder="Your login ID" />
             </Field>
             {rState?.error && <p className="text-sm text-chili bg-chili-2 rounded-xl px-3 py-2">{rState.error}</p>}
             <Button size="lg" className="w-full" disabled={rPending}>{rPending ? "Sending" : "Send me a code"}</Button>

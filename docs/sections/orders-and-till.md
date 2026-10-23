@@ -365,3 +365,4 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
   there is nothing) — the price no longer rides `mt-auto`, so no card has a gap between its name and its price.
 - **The selected ring is drawn over the photo** (`.svc-dish[data-on]::after`, an inset ring at z 3); the inset outline it
   replaced painted under the photo and vanished along the top and the corners. All widths.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

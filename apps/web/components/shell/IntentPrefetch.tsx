@@ -1,4 +1,5 @@
 "use client";
+import { whenSettled } from "@/lib/idle";
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { actionBusy } from "@/lib/liveRefresh";
@@ -126,8 +127,10 @@ function useWarmMenus(router: Router) {
       timer = setTimeout(round, WARM_EVERY);
     };
     window.addEventListener("pointerdown", used, { passive: true }); window.addEventListener("keydown", used);
-    timer = setTimeout(round, 1500);   // after the screen itself has settled
-    return () => { stop = true; if (timer) clearTimeout(timer); window.removeEventListener("pointerdown", used); window.removeEventListener("keydown", used); };
+    // after the screen itself has loaded and the browser is idle, then 3 s (lib/idle.ts, 2026-10-23) — on a slow first
+    // visit the old fixed 1.5 s put eight screen fetches beside the first one
+    const cancelFirst = whenSettled(round, 3000);
+    return () => { stop = true; cancelFirst(); if (timer) clearTimeout(timer); window.removeEventListener("pointerdown", used); window.removeEventListener("keydown", used); };
   }, [router]);
 }
 

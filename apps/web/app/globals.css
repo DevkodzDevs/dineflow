@@ -1147,9 +1147,16 @@ label { font-size: 13px; font-weight: 600; color: var(--color-label-2); }
     box-shadow: 0 18px 50px -22px rgb(0 0 0 / .6), inset 0 0 0 1px rgb(255 255 255 / .07); }
   html[data-sidebar="floating"] aside.ink-panel { width: 248px !important; }
 }
-/* the fold key: from 768 up, every look, at the foot over the account */
+/* the fold key: from 768 up, every look, at the foot over the account — with Menu style beside it (.sb-tools: a row on the
+   open looks, the two keys one over the other on the icon looks, where the bar is 52px inside) */
 .sb-fold { display: none; }
-@media (min-width: 768px) { .sb-fold { display: flex; } }
+.sb-tools { display: none; }
+@media (min-width: 768px) {
+  .sb-fold { display: flex; }
+  .sb-tools { display: flex; align-items: center; }
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) .sb-tools { flex-direction: column; }
+  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) .sb-tools .sb-fold { flex: none; width: 40px; padding: 0; }
+}
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 /* ═══ TABLES ════════════════════════════════════════════════════════════
    One look for every table: a quiet header that sticks, hairline rows, numbers right and tabular,
@@ -1804,6 +1811,15 @@ html[data-palette="royal"] nav.tabbar { border-color: rgb(184 145 58 / .35); }
   -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
   border-top: 1px solid var(--color-separator);
   box-shadow: 0 -14px 28px -22px rgb(0 0 0 / .55);
+}
+/* A footer that is one button, not a row (2026-10-23, the owner: "why does the Done button look like this — and the
+   dialog buttons too"). Pinned, the button is its own stacking context (sticky + z-index), so the bar's ::before at
+   z-index -1 is painted inside it — over the button's own fill and under its words: Done came out as a pale, washed
+   green with white letters. The button's fill is painted again by ::after, after the bar and still under the words.
+   `background: inherit` takes whatever the button is wearing now — its variant, hover, the theme — so nothing is copied. */
+.sheet-body [data-sheet-foot]:is(button, a)::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  border-radius: inherit; background: inherit;
 }
 
 /* ── the guest's queue page (2026-10-21): the seated tick pops in once; "You're up" rings and its card glows, so the

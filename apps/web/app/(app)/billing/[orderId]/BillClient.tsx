@@ -193,7 +193,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
                     ? lateBy !== null && lateBy > 0
                       ? `Delivered ${hhmm(servedAt)} — ${lateBy} min late.`
                       : `Delivered ${hhmm(servedAt)}, on time.`
-                    : "No delivery was recorded, so the promise stands."}
+                    : "No delivery recorded — promise stands."}
                 </p>
                 <p className={cn("text-xs font-semibold mt-1.5", kept ? "text-[var(--color-tint)]" : "text-[var(--color-red)]")}>
                   {kept ? `Kept — ${order.promise_pct}% added to the food.` : "Missed — the food is free."}
@@ -204,7 +204,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
                 </button>
               </div>
             )}
-            <p className="text-xs text-steel mt-3">GST {restaurant.gst_rate}% split as CGST + SGST{Number(restaurant.service_charge_pct) > 0 && <>, service charge {restaurant.service_charge_pct}%</>}. Change these in Settings.</p>
+            <p className="text-xs text-steel mt-3">GST {restaurant.gst_rate}% split as CGST + SGST{Number(restaurant.service_charge_pct) > 0 && <>, service charge {restaurant.service_charge_pct}%</>}. Set in Settings.</p>
             {live.some((i) => i.status === "pending" || i.status === "preparing") && <p className="text-xs text-chili mt-2">Some items are still in the kitchen.</p>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
             <Button size="lg" className="w-full mt-5" data-kbd-primary disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt, kept, { phone: guest.phone, name: guest.name, redeem, coupon: coupon?.code }); if ("error" in r) setErr(r.error!); else setPays([{ method: "upi", amount: 0, ref: "" }]); })}>Generate bill</Button>
@@ -212,7 +212,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
               <div className="mt-4 pt-4 border-t border-dashed border-line"><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1"><BedDouble size={12} /> Or charge to a room</div>
                 <div className="flex gap-2"><select value={roomFor} onChange={(e) => setRoomFor(e.target.value)}><option value="">In-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
                   <Button variant="outline" disabled={pending || !roomFor} onClick={() => start(async () => { const r = await postOrderToRoom(order.id, roomFor); if ("error" in r) setErr(r.error!); else router.push(`/frontdesk/${roomFor}`); })}>Post</Button></div>
-                <p className="text-xs text-steel mt-2">Amount + GST goes on the guest folio; settled at check-out.</p></div>
+                <p className="text-xs text-steel mt-2">On the folio with GST; paid at check-out.</p></div>
             )}
           </Card>
         ) : bill.status === "unpaid" ? (<>
@@ -254,7 +254,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
               const r = await settleBill(bill.id, settled); if ("error" in r) setErr(r.error!);   // the action's answer is the re-rendered bill — no second render
             })}>Mark paid{!online && " (offline)"}</Button>
             <button type="button" className="mt-3 text-xs text-steel hover:text-chili w-full" disabled={pending} onClick={() => setVoiding(true)} data-void-bill>Void bill and edit order</button>
-            <ReasonDialog open={voiding} onClose={() => setVoiding(false)} title={`Void bill ${bill.bill_no}?`} hint="Cancels the bill and reopens the order. Your name and reason are kept."
+            <ReasonDialog open={voiding} onClose={() => setVoiding(false)} title={`Void bill ${bill.bill_no}?`} hint="Reopens the order; name and reason logged."
               chips={["Wrong table", "Item missed", "Discount missed", "Guest changed order", "Billed twice"]} confirmLabel="Void the bill"
               onConfirm={async (reason) => { const r = await voidBill(bill.id, reason); if ("error" in r) return { error: r.error }; }} />
           </Card>
@@ -291,8 +291,8 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
                     </div>
                   </>) : (<>
                     <div className="font-display num text-[36px] leading-none mt-5">{formatINR(totals.total)}</div>
-                    <p className="mt-2.5 text-[13px] text-steel max-w-[19rem] leading-snug">They scan to pay by UPI or card. It is on the printed bill too.</p>
-                    {upiChosen && !hasVpa && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-left" data-upi-missing><b>Want the exact amount in the QR?</b> Add your UPI ID in <Link href="/settings" className="underline">Settings → Payments</Link> and this turns into a UPI code for the amount.</p>}
+                    <p className="mt-2.5 text-[13px] text-steel max-w-[19rem] leading-snug">Scan to pay by UPI or card.</p>
+                    {upiChosen && !hasVpa && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-left" data-upi-missing><b>Want the exact amount in the QR?</b> Add your UPI ID in <Link href="/settings" className="underline">Settings → Payments</Link>.</p>}
                   </>)}
                 </div>
                 {payUrl && (

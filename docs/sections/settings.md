@@ -50,7 +50,7 @@ never be reachable on a real one.
   tokens · Menu only · Tokens only*, Copy, Open and **New link** (`screenKey(true)` — every old screen stops; it
   asks first); *Open kiosk on this device*; the feedback QR with Copy, Open and *Print card* (a window of its own,
   like Pulse's poster). Links are built on `NEXT_PUBLIC_CLOUD_URL`, so on a local server they point at the live
-  site. Staff other than owner and manager see "Only the owner or a manager can see the screen link".
+  site. Staff other than owner and manager see "Owner and managers only." in place of the screen link.
 
 - **Appearance has *Words on the buttons*** (2026-10-15, `LangPicker` from `components/ui/Say.tsx`): English,
   English + தமிழ், English + हिन्दी — the device's `df-lang` cookie, the same choice as the top bar's language
@@ -174,3 +174,4 @@ pnpm --filter @dineflow/web typecheck
 - **A link can open a section** (2026-10-23): `/settings#tables` opens Tables (Tables' *Set up tables*); the tab is read from
   the hash after mount and on every hash change, and a tab chosen here writes it back (replaceState), so Back and a shared
   link land on the same section.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words (Settings tabs, Attendance, Storefront, Google links, Booking page, Printers, Screens, Table QR). The tax, kiosk-exit and token facts are kept, shorter.

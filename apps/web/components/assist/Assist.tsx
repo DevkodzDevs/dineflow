@@ -1,4 +1,5 @@
 "use client";
+import { whenSettled } from "@/lib/idle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -40,6 +41,8 @@ const HEALTH = "Check the whole app for problems — what's wrong, what caused i
  * health check that names each problem's cause and fix, makes PDF documents with a Download button, and does a short
  * list of things — only after you tap. ⌘J opens it; the mic listens if the browser can.
  */
+/** the first screen of a visit has settled once (whenSettled) — later screens wait less */
+let booted = false;
 export function Assist() {
   const path = usePathname(); const router = useRouter(); const section = (path.split("/")[1] || "dashboard").toLowerCase();
   const [open, setOpen] = useState(false); const [msgs, setMsgs] = useState<Msg[]>([]); const [q, setQ] = useState(""); const [busy, setBusy] = useState(false);
@@ -51,7 +54,8 @@ export function Assist() {
 
   // notice things: on every screen, then every 90 s, quietly
   const notice = useCallback(async () => { try { const r = await fetch("/api/assist", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ path, mode: "insights" }) }); if (r.ok) { const d = await r.json(); setIns(d.insights ?? []); setTopics(d.topics ?? []); } } catch { /* offline: stay quiet */ } }, [path]);
-  useEffect(() => { setMsgs([]); setDocPick(false); notice(); const i = setInterval(notice, 90000); return () => clearInterval(i); }, [section, notice]);
+  // after the screen, not with it (lib/idle.ts, 2026-10-23): the first screen's load had this request queued beside it
+  useEffect(() => { setMsgs([]); setDocPick(false); const cancel = whenSettled(notice, booted ? 900 : 2500); booted = true; const i = setInterval(notice, 90000); return () => { cancel(); clearInterval(i); }; }, [section, notice]);
   useEffect(() => { const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") { e.preventDefault(); setOpen((o) => !o); } if (e.key === "Escape") setOpen(false); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, []);
   // what went wrong in this tab, so "it's not working" can be answered from the actual error
   useEffect(() => {
@@ -183,7 +187,7 @@ export function Assist() {
                     <p className="text-[12px] text-[var(--color-label-2)] font-display tracking-wide">Worth asking here</p>
                     {suggest.map((s) => <button key={s} onClick={() => ask(s)} className="block w-full text-left rounded-2xl border border-[var(--color-separator)] px-4 py-3 text-[14px] hover:bg-[var(--color-fill)] transition">{s}</button>)}
                   </div>
-                  <p className="flex items-start gap-2 text-[12px] leading-snug text-[var(--color-label-3)] px-1" data-assist-privacy><Lock size={13} className="shrink-0 mt-0.5" />Private: Assist sees only your role&apos;s screens — never passwords, keys or Master control.</p>
+                  <p className="flex items-start gap-2 text-[12px] leading-snug text-[var(--color-label-3)] px-1" data-assist-privacy><Lock size={13} className="shrink-0 mt-0.5" />Private: only your screens — never passwords or keys.</p>
                 </>)}
                 {msgs.map((m, i) => (
                   <div key={i} className={cn(m.role === "user" ? "max-w-[88%] ml-auto" : "max-w-full")} data-assist-msg={m.role}>

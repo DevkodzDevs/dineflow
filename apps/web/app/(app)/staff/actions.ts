@@ -71,6 +71,14 @@ export async function resetStaffPassword(userId: string) {
   return { ok: true as const, ...(data as { login_id: string; temp_password: string }) };
 }
 
+/** The owner lets a manager give temporary passwords, or stops them (0136 staff_set_password_right — the owner only). */
+export async function setPasswordRight(userId: string, on: boolean) {
+  const s = await createClient();
+  const { error } = await s.rpc("staff_set_password_right", { p_user: userId, p_on: on });
+  if (error) return { error: error.message };
+  revalidatePath("/staff"); return { ok: true as const };
+}
+
 /** Role, sections and active flag for one person — through owner_set_access, which enforces who may change whom. */
 export async function setAccess(userId: string, role: string, modules: string[] | null, active: boolean) {
   const s = await createClient();

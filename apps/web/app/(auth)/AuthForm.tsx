@@ -50,7 +50,7 @@ export function AuthForm({ mode, action, pendingApproval }:
           <Field label={ptype === "restaurant" ? "Restaurant name" : ptype === "hotel" ? "Hotel name" : "Resort name"}><input name="restaurant" required placeholder={ptype === "restaurant" ? "Annapoorna Mess" : ptype === "hotel" ? "Hotel Tamizh Residency" : "Kanyakumari Bay Resort"} /></Field>
         </>)}
         {mode === "join" && (
-          <Field label="DineFlow code" hint="Your property code, like dine-res-mano-00001, or an invite code">
+          <Field label="DineFlow code" hint="Property code or invite code">
             <input name="code" required className="num" placeholder="dine-res-mano-00001" maxLength={40} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
           </Field>
         )}
@@ -59,7 +59,7 @@ export function AuthForm({ mode, action, pendingApproval }:
         {mode === "login"
           ? <Field label="Login ID" hint="Your DineFlow ID or email">
               <input name="email" required autoFocus autoComplete="username" autoCapitalize="none"
-                autoCorrect="off" spellCheck={false} className="num" placeholder="dine-htl-mano-00001" />
+                autoCorrect="off" spellCheck={false} placeholder="Login ID or email" />
             </Field>
           : <Field label="Email"><input name="email" type="email" required autoComplete="email" placeholder="you@restaurant.in" /></Field>}
         <Field label="Password"><PasswordInput name="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} /></Field>

@@ -79,7 +79,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
             <label className="btn-like inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-line bg-card text-sm font-semibold cursor-pointer hover:bg-porcelain"><Upload size={16} /> Upload photo<input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} /></label>
             <form className="basis-full sm:basis-auto sm:ml-auto flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (manual) handleCode(manual, "manual"); }}><input placeholder="Type code / room no." value={manual} onChange={(e) => setManual(e.target.value)} className="flex-1 min-w-0 sm:!w-44 sm:flex-none !py-2 num" /><Button variant="outline" size="md" aria-label="Look up"><Keyboard size={16} /></Button></form>
           </div>
-          {!aiEnabled && <p className="px-4 pb-3 text-xs text-steel">Running in <b>sample mode</b>: photos show a sample. Ask support for real photos. Barcode and QR are real.</p>}
+          {!aiEnabled && <p className="px-4 pb-3 text-xs text-steel"><b>Sample mode</b>: photos are samples. Barcode and QR are real.</p>}
           {err && <p className="px-4 pb-3 text-sm text-chili">{err}</p>}
         </div>
 
@@ -93,10 +93,10 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
       <aside className="space-y-4">
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">How it lands</div>
           <ul className="text-sm space-y-2 text-steel">
-            <li className="flex gap-2"><Boxes size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Vegetable / packet</b> → new Pantry item; pick 200 g / ½ kg / 1 kg. Next scan adds stock.</span></li>
-            <li className="flex gap-2"><UtensilsCrossed size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Dish</b> → new Menu item with a price and veg/non-veg.</span></li>
-            {propertyType !== "restaurant" && <li className="flex gap-2"><BedDouble size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Room door / key tag</b> → opens the room; mark it cleaning or ready.</span></li>}
-            <li className="flex gap-2"><HardHat size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Worker / ID card</b> → new worker. Their badge QR marks attendance.</span></li>
+            <li className="flex gap-2"><Boxes size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Vegetable / packet</b> → Pantry item. Next scan adds stock.</span></li>
+            <li className="flex gap-2"><UtensilsCrossed size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Dish</b> → new Menu item.</span></li>
+            {propertyType !== "restaurant" && <li className="flex gap-2"><BedDouble size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Room door / key tag</b> → opens the room.</span></li>}
+            <li className="flex gap-2"><HardHat size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Worker / ID card</b> → new worker; badge marks attendance.</span></li>
           </ul>
           <Link href="/labour?tab=labels" className="mt-2 inline-flex items-center min-h-10 text-xs font-semibold underline">Print QR labels for rooms, products, workers →</Link></Card>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Recent scans</div>
@@ -157,7 +157,7 @@ function AiCard({ ai, setAi, categories, onDone, onReset }: { ai: ScanResult; se
           <Field label="Unit"><select value={unit} onChange={(e) => { set("unit", e.target.value); setQty(0); }}>{UNITS.map((u) => <option key={u}>{u}</option>)}</select></Field>
           <Field label={`Cost per ${unit} (₹)`}><input type="number" className="num" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} /></Field>
           <Field label="Brand (packaged)"><input value={ai.brand ?? ""} onChange={(e) => set("brand", e.target.value)} placeholder="—" /></Field>
-          <Field label="Barcode" hint="Scan the pack next time → adds stock directly"><input className="num" value={ai.barcode ?? ""} onChange={(e) => set("barcode", e.target.value)} placeholder="optional" /></Field>
+          <Field label="Barcode" hint="Next scan adds stock"><input className="num" value={ai.barcode ?? ""} onChange={(e) => set("barcode", e.target.value)} placeholder="optional" /></Field>
         </div>
         <div><label>Quantity in hand · {unit}</label><div className="mt-1.5 flex flex-wrap gap-1.5">{quick.map((q) => <button key={q.label} onClick={() => setQty(q.qty)} className={cn("chip", qty === q.qty && "on")}>{q.label}</button>)}<input type="number" step="0.001" className="num !w-28" placeholder="custom" value={qty || ""} onChange={(e) => setQty(Number(e.target.value))} /></div>
           <div className="mt-2 flex gap-1 p-1 bg-porcelain-2 rounded-xl w-fit">{(["purchase", "opening"] as const).map((r) => <button key={r} onClick={() => setReason(r)} className={cn("h-8 px-3 rounded-lg text-xs font-semibold", reason === r ? "bg-card shadow-feather" : "text-steel")}>{r === "purchase" ? "Just bought" : "Already in store"}</button>)}</div></div>
@@ -178,7 +178,7 @@ function AiCard({ ai, setAi, categories, onDone, onReset }: { ai: ScanResult; se
       </>)}
 
       {ai.kind === "room" && (<>
-        <p className="text-sm text-steel">Looks like <b className="text-ink">Room {ai.room_number ?? "?"}</b>. Type the number, or print QR labels for doors.</p>
+        <p className="text-sm text-steel">Looks like <b className="text-ink">Room {ai.room_number ?? "?"}</b>. Type the number.</p>
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); const n = (e.currentTarget.elements.namedItem("n") as HTMLInputElement).value; if (n) window.location.href = `/scan?code=${n}`; }}><input name="n" defaultValue={ai.room_number ?? ""} className="num !w-32" placeholder="104" /><Link href={`/rooms`}><Button variant="outline">Rooms</Button></Link><Link href="/labour?tab=labels"><Button variant="outline">Print labels</Button></Link></form>
       </>)}
 

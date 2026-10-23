@@ -121,3 +121,4 @@ node cleaning.mjs    # 43  ·  node cleaner.mjs  # 43 — the Cleaning board sti
 [staff-and-labour.md](staff-and-labour.md) · [shell-and-nav.md](shell-and-nav.md) · [data-and-rls.md](data-and-rls.md)
 - **Each card waits on its own answer** (2026-10-18): the board's one `pending` greyed every card while any one tap was
   answering. `actOn(id)` keeps a `busy` set; a card is held only while its own take / done / give / drop is answering.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

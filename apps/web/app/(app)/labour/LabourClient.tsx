@@ -52,7 +52,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
       {toast && <div className="feather p-3 text-sm flex items-center gap-2 border-mint"><Check size={15} className="text-mint" /> {toast}</div>}
       {err && <p className="text-sm text-chili">{err}</p>}
 
-      {tab === "today" && (active.length === 0 ? <Empty title="No labourers yet" hint="Add workers here, or scan their ID card." action={<Link href="/scan"><Button>Scan an ID</Button></Link>} /> : (
+      {tab === "today" && (active.length === 0 ? <Empty title="No labourers yet" hint="Add workers or scan an ID" action={<Link href="/scan"><Button>Scan an ID</Button></Link>} /> : (
         <div className="space-y-3">
         <div className="flex justify-end">
           <label className="inline-flex items-center gap-2.5 min-h-11 pl-3.5 pr-2 rounded-2xl bg-[var(--color-fill)] text-[13px] font-semibold text-[var(--color-label-2)] cursor-pointer select-none" data-cal-toggle>
@@ -104,7 +104,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
       </Sheet>
       <Sheet open={!!link} onClose={() => setLink(null)} title={`Punch link · ${link?.full_name ?? ""}`}>
         {link && <div className="space-y-4" data-link-sheet>
-          <p className="text-sm text-steel">{link.full_name} opens this on their own phone and punches in with {[methods.includes("biometric") && "fingerprint / Face ID", methods.includes("selfie") && "a selfie at the property"].filter(Boolean).join(" or ")}. This link is only for them — don&apos;t share it.</p>
+          <p className="text-sm text-steel">{link.full_name} punches in on their phone with {[methods.includes("biometric") && "fingerprint / Face ID", methods.includes("selfie") && "a selfie at the property"].filter(Boolean).join(" or ")}. For them only — don&apos;t share.</p>
           <div className="grid place-items-center rounded-2xl bg-white p-4"><QR value={linkUrl(link)} size={200} /></div>
           <div className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[12px] num break-all" data-link-url>{linkUrl(link)}</div>
           <div className="grid grid-cols-2 gap-2">
@@ -130,7 +130,7 @@ function Labels({ property, labourers, rooms, ingredients }: { property: string;
   return (
     <div>
       <div className="no-print flex items-center gap-2 mb-4">{(["rooms", "products", "labour"] as const).map((k) => <button key={k} onClick={() => setKind(k)} className={cn("chip capitalize", kind === k && "on")}>{k}</button>)}<Button variant="outline" className="ml-auto" onClick={() => window.print()}><Printer size={16} /> Print sheet</Button></div>
-      <p className="no-print text-xs text-steel mb-4">Stick labels on door frames, storage bins and ID badges. Any camera can scan them.</p>
+      <p className="no-print text-xs text-steel mb-4">Stick on doors, bins and badges</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 print:grid-cols-4 gap-3">{items.map((it) => <div key={it.v} className="feather p-3 text-center print:break-inside-avoid"><QR value={it.v} size={120} /><div className="font-semibold text-sm mt-1">{it.t}</div><div className="text-[10px] text-steel">{it.s} · {property}</div></div>)}{items.length === 0 && <p className="text-sm text-steel col-span-full">Nothing to print yet.</p>}</div>
     </div>
   );

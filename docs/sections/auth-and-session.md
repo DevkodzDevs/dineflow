@@ -150,4 +150,7 @@ pnpm --filter @dineflow/web build
   `loginCandidates(raw)` turns a bare id into `[id@dineflow.cloud, id@dineflow.local]`, and the sign-in action and both
   forgot-password steps try them in that order (a full address is tried once, as typed). 0130 refuses a new id whose name
   already exists on the old domain, so a bare id never means two accounts. Tests: `lib/login.test.ts`.
+- **Short copy** (2026-10-23): /account/password hints cut to a few words (the 10- and 15-minute limits kept).
 
+- **The Login ID placeholder** (2026-10-23, the owner): "Login ID or email" (Forgot: "Your login ID") instead of a sample
+  `dine-htl-mano-00001`, which read as something to copy. Hints shortened.

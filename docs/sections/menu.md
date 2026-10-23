@@ -199,3 +199,4 @@ A new place that shows a dish photo uses `DishImage`, not a bare `<img src={imag
 - **More tools is a panel of five even tiles** (`[data-tools]`, `[data-tool]`, 2026-10-21): icon in its colour, name, one
   line on what it is for (wraps, never cut) — two across on a phone, three on a tablet, five on a desktop. Were five
   outline buttons wrapping into uneven rows. `[data-recipes]` and `[data-find-photos]` are kept on their tiles.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

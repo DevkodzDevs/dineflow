@@ -53,6 +53,8 @@ node toolbars.mjs        # the hint rail
 
 Camera paths need a real device; the headless suites cannot cover them.
 
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
 ## See also
 
 [inventory.md](inventory.md) · [staff-and-labour.md](staff-and-labour.md) ·

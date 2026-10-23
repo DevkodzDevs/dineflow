@@ -28,14 +28,14 @@ function Sketch({ k }: { k: SidebarStyle }) {
  * this device. "As the screen" goes back to the default — icons on an iPad, the whole menu on a laptop. Hidden on a phone,
  * which has the bottom bar and no sidebar.
  */
-export function SidebarPicker() {
+export function SidebarPicker({ inSheet = false }: { inSheet?: boolean }) {
   const [now, setNow] = useState<SidebarStyle | null>(null); const [chosen, setChosen] = useState<SidebarStyle | null>(null);
   useEffect(() => { const sync = () => { setNow(currentSidebar()); setChosen(chosenSidebar()); }; sync(); window.addEventListener("df-sidebar", sync); window.addEventListener("resize", sync); return () => { window.removeEventListener("df-sidebar", sync); window.removeEventListener("resize", sync); }; }, []);
   return (
     <div className="max-md:hidden" data-sidebar-picker>
-      <div className="mt-6 mb-2 flex items-center gap-2"><span className="text-[13px] font-semibold text-[var(--color-label-2)] flex-1">Menu style</span>
+      <div className={cn("mb-2 flex items-center gap-2", inSheet ? "min-h-9" : "mt-6")}><span className="text-[13px] font-semibold text-[var(--color-label-2)] flex-1">{inSheet ? "Six looks · this device" : "Menu style"}</span>
         {chosen && <button type="button" onClick={() => setSidebar(null)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[12.5px] font-bold text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]" data-sidebar-reset><RotateCcw size={13} aria-hidden />As the screen</button>}</div>
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2.5" role="radiogroup" aria-label="Menu style">
+      <div className={cn("grid gap-2.5", inSheet ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-3 lg:grid-cols-6")} role="radiogroup" aria-label="Menu style">
         {SIDEBAR_STYLES.map((s) => { const on = now === s.key; return (
           <button key={s.key} type="button" role="radio" aria-checked={on} onClick={() => setSidebar(s.key)} title={s.hint} data-sidebar-style={s.key}
             className={cn("relative min-w-0 text-left rounded-[16px] p-2 border transition-colors", on ? "border-[var(--color-tint)] bg-[color-mix(in_srgb,var(--color-tint)_8%,var(--color-bg-2))]" : "border-[var(--color-separator)] bg-[var(--color-bg-2)] hover:bg-[var(--color-fill)]")}>
@@ -44,7 +44,7 @@ export function SidebarPicker() {
             <span className="block text-[11.5px] text-[var(--color-label-2)] leading-snug line-clamp-2">{s.hint}</span>
           </button>); })}
       </div>
-      <p className="mt-2 text-[12px] text-steel">{chosen ? "Kept on this device." : "Following the screen: icons on an iPad, the whole menu on a laptop."} The collapse key at the foot of the menu folds it to icons.</p>
+      <p className="mt-2 text-[12px] text-steel">{chosen ? "Kept on this device." : "Follows the screen size."} The collapse key folds it to icons.</p>
     </div>
   );
 }

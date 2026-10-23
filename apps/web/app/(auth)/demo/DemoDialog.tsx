@@ -39,7 +39,7 @@ export function DemoDialog({ open, onClose }: { open: boolean; onClose: () => vo
           </span>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-display">Try DineFlow</h2>
-            <p className="text-sm text-steel mt-0.5">A full working app, yours for 8 hours. No sign-up needed.</p>
+            <p className="text-sm text-steel mt-0.5">The full app for 8 hours. No sign-up.</p>
           </div>
           <button onClick={onClose} className="h-8 w-8 rounded-full bg-[var(--color-fill)] grid place-items-center text-steel hover:text-[var(--color-label)] transition-colors shrink-0">
             <X size={15} />

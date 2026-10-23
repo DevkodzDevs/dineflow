@@ -113,7 +113,7 @@ export function DishPhotoPicker({ name, category, value, onChange, autoPick = fa
           // eslint-disable-next-line @next/next/no-img-element -- a Wikimedia thumbnail or the property's own upload
           ? <img src={value.url} alt={name || "Dish photo"} className="h-full w-full object-cover" data-chosen />
           : <div className="h-full w-full grid place-items-center text-center px-6 text-[var(--color-label-3)]">
-              <div><ImageOff size={28} className="mx-auto" /><p className="mt-2 text-[13px]">{busy ? "Looking for a photo…" : name.trim().length < 3 ? "Type the dish name — a photo is found for it" : "No photo chosen"}</p></div>
+              <div><ImageOff size={28} className="mx-auto" /><p className="mt-2 text-[13px]">{busy ? "Looking for a photo…" : name.trim().length < 3 ? "Type the name to find a photo" : "No photo chosen"}</p></div>
             </div>}
         {value?.url && <button type="button" onClick={() => pick(null)} aria-label="Remove the photo" title="Remove the photo"
           className="absolute top-2 right-2 h-10 w-10 rounded-full grid place-items-center bg-black/55 text-white backdrop-blur hover:bg-black/70 transition"><X size={18} /></button>}
@@ -138,7 +138,7 @@ export function DishPhotoPicker({ name, category, value, onChange, autoPick = fa
           </div>
         </div>
       )}
-      {found && found.length === 0 && !busy && <p className="text-[13px] text-[var(--color-label-2)]">No photo found. Try a common name, or upload your own.</p>}
+      {found && found.length === 0 && !busy && <p className="text-[13px] text-[var(--color-label-2)]">No photo found — try another name.</p>}
       {err && <p className="text-[13px] text-[var(--color-red)]">{err}</p>}
 
       <div className="grid grid-cols-2 gap-2" data-own-photo>

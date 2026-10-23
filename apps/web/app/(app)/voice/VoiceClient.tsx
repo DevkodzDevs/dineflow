@@ -109,7 +109,7 @@ function Composer({ name }: { name: string }) {
         <span className="h-9 w-9 rounded-xl grid place-items-center shrink-0 bg-[var(--color-bg-2)] text-steel">{anon ? <EyeOff size={17} aria-hidden /> : <Eye size={17} aria-hidden />}</span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-bold">Send without my name</span>
-          <span className="block text-[12px] text-steel leading-snug">{anon ? "The owner sees “Anonymous”. You still get the answer here." : <>The owner sees it is from <b className="text-[var(--color-label)]">{name}</b>.</>}</span>
+          <span className="block text-[12px] text-steel leading-snug">{anon ? "Owner sees “Anonymous”; answers still come here." : <>The owner sees it is from <b className="text-[var(--color-label)]">{name}</b>.</>}</span>
         </span>
         <Switch on={anon} onChange={setAnon} name="Send without my name" />
       </label>
@@ -117,7 +117,7 @@ function Composer({ name }: { name: string }) {
       {err && <p className="mt-3 text-[14px] font-semibold text-chili" role="alert">{err}</p>}
       <button type="button" disabled={!ready || pending} onClick={send} className="svc-btn go w-full mt-4" data-voice-send>
         <Send size={18} aria-hidden /> Send to the owner</button>
-      {!ready && <p className="mt-2 text-center text-[12px] text-steel">Pick what it is, then a title and a few words.</p>}
+      {!ready && <p className="mt-2 text-center text-[12px] text-steel">Pick a kind, title and message.</p>}
     </section>
   );
 }
@@ -155,7 +155,7 @@ function Mine({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void }) {
       <div className="flex items-baseline justify-between gap-2 mb-3"><h2 className="text-[17px] font-extrabold">What I sent</h2><span className="text-[12.5px] text-steel num">{items.length}</span></div>
       {items.length === 0
         ? <div className="card !p-6 text-center" data-voice-empty><span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><MessagesSquare size={20} aria-hidden /></span>
-            <p className="mt-3 text-[15px] font-bold">Nothing sent yet</p><p className="mt-1 text-[13px] text-steel">What you send and the owner&apos;s answer show here.</p></div>
+            <p className="mt-3 text-[15px] font-bold">Nothing sent yet</p><p className="mt-1 text-[13px] text-steel">Your messages and answers show here.</p></div>
         : <div className="grid gap-3">{items.map((i) => <Row key={i.id} item={i} owner={false} onOpen={onOpen} />)}</div>}
     </section>
   );
@@ -208,7 +208,7 @@ function OwnerInbox({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => voi
       {items.length === 0
         ? <div className="card !p-8 text-center" data-voice-empty><span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><Inbox size={20} aria-hidden /></span>
             <p className="mt-3 text-[16px] font-bold">Nothing from your team yet</p>
-            <p className="mt-1 text-[13px] text-steel max-w-[46ch] mx-auto">Staff complaints, ideas and thanks land here. Only you see them.</p></div>
+            <p className="mt-1 text-[13px] text-steel max-w-[46ch] mx-auto">Staff messages land here. Only you see them.</p></div>
         : shown.length === 0
           ? <div className="card !p-6 text-center text-[14px] text-steel">Nothing here — choose another filter above.</div>
           : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{shown.map((i) => <Row key={i.id} item={i} owner onOpen={onOpen} />)}</div>}

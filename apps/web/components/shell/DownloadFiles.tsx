@@ -1,4 +1,5 @@
 "use client";
+import { whenSettled } from "@/lib/idle";
 import { useEffect, useState } from "react";
 import { Download, Monitor, Smartphone } from "lucide-react";
 import { cn } from "../ui";
@@ -18,9 +19,12 @@ export function useDownloads() {
   const [files, setFiles] = useState<Downloads | null>(null);
   useEffect(() => {
     let alive = true;
-    asked ??= fetch("/api/download", { cache: "no-store" }).then((r) => (r.ok ? (r.json() as Promise<Downloads>) : null)).catch(() => null);
-    void asked.then((d) => { if (alive) setFiles(d ?? { android: null, windows: null }); });
-    return () => { alive = false; };
+    // after the screen has settled (lib/idle.ts, 2026-10-23): the top bar's install key asked on every first load
+    const cancel = whenSettled(() => {
+      asked ??= fetch("/api/download", { cache: "no-store" }).then((r) => (r.ok ? (r.json() as Promise<Downloads>) : null)).catch(() => null);
+      void asked.then((d) => { if (alive) setFiles(d ?? { android: null, windows: null }); });
+    }, 1500);
+    return () => { alive = false; cancel(); };
   }, []);
   return files;
 }

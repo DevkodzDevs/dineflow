@@ -93,7 +93,7 @@ export function TallyTab({ month, company: company0, ledgers: ledgers0, canEdit 
         </div>
         {canEdit ? <button type="button" disabled={pending} className="svc-btn go w-full mt-4" data-save-tally
           onClick={() => start(async () => { setSaved(false); const r = await saveTallyNames(company, Object.fromEntries(Object.entries(names).filter(([, v]) => (v ?? "").trim())) as Record<string, string>); if ("error" in r) setErr(r.error!); else setSaved(true); })}>
-          {pending ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} aria-hidden />} Save names</button> : <p className="mt-3 text-[13px] text-steel">Only the owner or a manager can change these.</p>}
+          {pending ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} aria-hidden />} Save names</button> : <p className="mt-3 text-[13px] text-steel">Owner or manager can change these</p>}
         {saved && <p className="mt-2 text-[13.5px] font-semibold text-mint">Saved.</p>}
       </Card>
     </div>

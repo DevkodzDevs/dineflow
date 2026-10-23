@@ -26,10 +26,10 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
         <form action={(fd) => start(async () => { const x = await saveStorefront(fd); toast("error" in x ? x.error! : "Storefront saved", "error" in x ? "err" : "ok"); })} className="space-y-5">
           <Card>
             <h2 className="text-xl mb-1">What guests can do</h2>
-            <p className="text-xs text-[var(--color-label-2)] mb-4">Turn off what you're not ready for. Hidden until <b>Listed</b> is on.</p>
+            <p className="text-xs text-[var(--color-label-2)] mb-4">Hidden until <b>Listed</b> is on.</p>
             <div className="space-y-3">
-              {([["listed", "is_listed", "Listed publicly", "Appears at /dine and can be found by search", Globe],
-                 ["dining", "dining_enabled", "Table booking", "Guests pick a time; it shows in Reservations", UtensilsCrossed],
+              {([["listed", "is_listed", "Listed publicly", "Shown at /dine and in search", Globe],
+                 ["dining", "dining_enabled", "Table booking", "Shows in Reservations", UtensilsCrossed],
                  ["delivery", "delivery_enabled", "Delivery", "Orders arrive on your Online orders screen", Bike],
                  ["takeaway", "takeaway_enabled", "Takeaway", "Same, but the guest collects", ShoppingBag]] as const).map(([k, name, title, hint, I]) => (
                 <label key={k} className={cn("card p-4 flex items-center gap-3 cursor-pointer transition-colors", on[k] && "!border-[color-mix(in_srgb,var(--color-green)_45%,transparent)]")}>
@@ -49,13 +49,13 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
                 {ai && <AiButton label="Write one" busy={tagBusy} onClick={() => { setTagBusy(true); void suggestTagline().then((x) => { if ("error" in x) toast(x.error!, "err"); else { setTagline(x.tagline!); if (x.alternatives?.length) toast(`Or: ${x.alternatives.join(" · ")}`, "info"); } }).finally(() => setTagBusy(false)); }} />}</div></Field>
               <Field label="Cuisines" hint="Comma separated — guests search on these"><input name="cuisines" defaultValue={r.cuisines?.join(", ")} placeholder="South Indian, Chettinad, Seafood" /></Field>
               <Field label="Price for two (₹)"><input name="price_for_two" type="number" className="num" defaultValue={r.price_for_two ?? ""} /></Field>
-              <Field label="Photos" hint="Image links, one per line. First is the cover."><textarea name="photos" rows={2} defaultValue={r.photos?.join("\n")} placeholder="https://…" /></Field>
+              <Field label="Photos" hint="Image links, one per line; first is cover"><textarea name="photos" rows={2} defaultValue={r.photos?.join("\n")} placeholder="https://…" /></Field>
             </div>
           </Card>
 
           <Card>
             <h2 className="text-xl mb-1">Table booking</h2>
-            <p className="text-xs text-[var(--color-label-2)] mb-4">Slots run between these hours. Seats default to all your tables.</p>
+            <p className="text-xs text-[var(--color-label-2)] mb-4">Blank seats = all your tables.</p>
             <div className="grid sm:grid-cols-4 gap-3">
               <Field label="Opens"><input name="opens_at" type="time" className="num" defaultValue={r.opens_at?.slice(0, 5)} /></Field>
               <Field label="Closes"><input name="closes_at" type="time" className="num" defaultValue={r.closes_at?.slice(0, 5)} /></Field>
@@ -78,8 +78,8 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
 
         <Card>
           <div className="flex items-center justify-between mb-1"><h2 className="text-xl">Offers</h2><Button size="sm" onClick={() => setOffer({ kind: "flat_pct", scope: "both", value: 15, is_active: true })}><Plus size={15} /> New offer</Button></div>
-          <p className="text-xs text-[var(--color-label-2)] mb-4">Shown on your page and in search. Timed ones show as “happy hour”.</p>
-          {offers.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">No offers yet. Try 15% off early evening to fill tables.</p> : (
+          <p className="text-xs text-[var(--color-label-2)] mb-4">Timed offers show as “happy hour”.</p>
+          {offers.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">No offers yet. Try 15% off early evening.</p> : (
             <div className="space-y-2">{offers.map((o) => (
               <div key={o.id} className="card p-3 flex items-center gap-3">
                 <span className="h-9 w-9 rounded-xl bg-[var(--color-champagne-2)] grid place-items-center shrink-0"><Percent size={16} /></span>

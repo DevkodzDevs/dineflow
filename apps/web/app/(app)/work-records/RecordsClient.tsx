@@ -106,7 +106,7 @@ export function RecordsClient({ log, error, from, to, today, property }: { log: 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card className="!p-4 min-w-0" data-by-person>
           <div className="flex items-center gap-2 text-[17px] font-extrabold mb-2"><Users size={18} aria-hidden /> By person</div>
-          {people.length === 0 ? <p className="text-[13.5px] text-steel">Nobody has finished a job in this period.</p> : (
+          {people.length === 0 ? <p className="text-[13.5px] text-steel">No jobs finished in this period.</p> : (
             <div className="overflow-x-auto"><table className="w-full text-[13.5px]"><thead><tr className="text-left text-steel text-[12px]"><th className="py-1.5 pr-3">Person</th><th className="py-1.5 px-2 text-right">Done</th><th className="py-1.5 px-2 text-right">Each</th><th className="py-1.5 px-2 text-right">On time</th><th className="py-1.5 px-2 text-right">On it</th><th className="py-1.5 pl-2 text-right"><ChefHat size={13} className="inline" aria-label="Tickets cooked" /></th></tr></thead>
               <tbody>{people.map(([n, p]) => <tr key={n} className="border-t border-line" data-record-person={n}><td className="py-2 pr-3 font-bold">{n}</td><td className="py-2 px-2 text-right num">{p.done}</td><td className="py-2 px-2 text-right num">{fmtMin(avg(p.took))}</td>
                 <td className="py-2 px-2 text-right num">{p.done ? `${Math.round((p.onTime / p.done) * 100)}%` : "—"}</td><td className="py-2 px-2 text-right num">{p.open || "—"}</td><td className="py-2 pl-2 text-right num">{p.cooked || "—"}{p.cookMin != null && p.cooked > 0 && <span className="text-steel"> · {p.cookMin} min</span>}</td></tr>)}</tbody></table></div>)}

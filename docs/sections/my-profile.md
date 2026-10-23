@@ -65,3 +65,8 @@ Notifications) · [auth-and-session.md](auth-and-session.md) (`/account/password
 
 - **The profile card** (2026-10-23): the avatar now opens a summary of this page before it — shell-and-nav.md, *The avatar
   opens the profile card*; `myCard` in actions.ts. **Menu style** sits under Language on This device (SidebarPicker).
+
+- **Sign-in & security, redrawn** (2026-10-23, the owner: "ultra modern, every screen"): the ID on a tinted pass
+  (`[data-me-pass]`) with a copy key; **Password** and **Other devices** as two tiles (auto-fit 14rem — side by side where
+  there is room, stacked on a phone); Sign out others asks in a sheet (`[data-me-signout-ask]`, `[data-me-signout-yes]`), not
+  `confirm()`. The page's lines are cut to a few words (Short copy, design-system.md).

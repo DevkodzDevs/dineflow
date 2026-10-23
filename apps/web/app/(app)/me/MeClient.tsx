@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { BadgeCheck, BellRing, CalendarCheck, CalendarDays, Check, ChevronRight, Clock3, Hash, KeyRound, ListChecks, ListTodo, Mail, MailCheck, MonitorSmartphone, Palette, ShieldCheck, Undo2, UserRound, Users } from "lucide-react";
-import { Card, cn, useToast } from "@/components/ui";
+import { BadgeCheck, BellRing, CalendarCheck, CalendarDays, Check, ChevronRight, Clock3, Copy, Hash, KeyRound, Lock, ListChecks, ListTodo, Mail, MailCheck, MonitorSmartphone, Palette, ShieldCheck, Undo2, UserRound, Users } from "lucide-react";
+import { Button, Card, Sheet, cn, useToast } from "@/components/ui";
+import { copyText } from "@/lib/clipboard";
 import { ThemePicker } from "@/components/ui/Theme";
 import { LangPicker } from "@/components/ui/Say";
 import { NotificationSettings } from "@/components/shell/Notifier";
@@ -63,18 +64,18 @@ export function MeClient({ me, day }: { me: Me | null; day: Day | null }) {
         </div>
       ) : (
         <Card className="!p-5" data-me-acting>
-          <Head icon={<ShieldCheck size={18} />} title="You are in Master control" sub="No staff profile here. Settings below are for this device." />
+          <Head icon={<ShieldCheck size={18} />} title="You are in Master control" sub="No profile here. Device settings below." />
         </Card>
       )}
       <Card data-me-prefs>
-        <Head icon={<Palette size={18} />} title="This device" sub="Look and language on this device. Guest pages stay bright." />
+        <Head icon={<Palette size={18} />} title="This device" sub="Look and language" />
         <ThemePicker />
         <div className="mt-6 mb-2 text-[13px] font-semibold text-[var(--color-label-2)]">Language</div>
         <LangPicker />
         <SidebarPicker />
       </Card>
       <Card data-me-alerts>
-        <Head icon={<BellRing size={18} />} title="Alerts on this device" sub="Pick the device, its tone and what it rings for." />
+        <Head icon={<BellRing size={18} />} title="Alerts on this device" sub="Tone and what rings" />
         <NotificationSettings />
       </Card>
     </div>
@@ -131,12 +132,12 @@ function Profile({ me }: { me: Me }) {
                 <span className="block text-[13.5px] font-semibold truncate">{f.value}</span></span>
             </div>))}
         </div>
-        <p className="mt-2 text-[12px] text-steel">The owner sets these. Ask them to change them.</p>
+        <p className="mt-2 text-[12px] text-steel">Set by the owner</p>
       </div>
 
       {/* what I keep: my details, saved together */}
       <div className="border-t border-[var(--color-separator)] p-5" data-me-form>
-        <Head icon={<UserRound size={18} />} title="Your details" sub="Only you change these. The owner sees them on Staff." />
+        <Head icon={<UserRound size={18} />} title="Your details" sub="Only you can edit" />
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block min-w-0"><span className="text-[13px] font-semibold text-steel">Name you go by</span>
             <input className="mt-1" value={d.display_name} onChange={(e) => set("display_name", e.target.value)} maxLength={40} placeholder={me.full_name} disabled={!me.ready} data-me-field="display_name" />
@@ -178,7 +179,7 @@ function Profile({ me }: { me: Me }) {
             </div>
           </div>
         </div>
-        {!me.ready && <p className="mt-3 text-[12.5px] text-steel">You can save phone and email now. The rest comes soon.</p>}
+        {!me.ready && <p className="mt-3 text-[12.5px] text-steel">Phone and email save now. More soon.</p>}
         {err && <p className="mt-3 text-[14px] font-semibold text-chili" role="alert" data-me-error>{err}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2 justify-end">
           {dirty && <button type="button" onClick={() => { setD(saved); setErr(null); }} className="svc-btn quiet sm !px-4" data-me-undo><Undo2 size={16} aria-hidden /> Undo</button>}
@@ -193,13 +194,13 @@ function Profile({ me }: { me: Me }) {
 function EmailState({ email, verified, editing, onVerified }: { email: string; verified: boolean; editing: boolean; onVerified: () => void }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [sent, setSent] = useState<string | null>(null); const [code, setCode] = useState(""); const [err, setErr] = useState<string | null>(null);
-  if (editing) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="editing">Save first. Then we send a code to check it.</p>;
-  if (!email) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="none">Add an email to reset a forgotten password.</p>;
-  if (verified) return <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[var(--color-green)]" data-me-email-state="verified"><MailCheck size={14} aria-hidden /> Verified — your password resets go here</p>;
+  if (editing) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="editing">Save, then verify by code</p>;
+  if (!email) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="none">Needed to reset a password</p>;
+  if (verified) return <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[var(--color-green)]" data-me-email-state="verified"><MailCheck size={14} aria-hidden /> Verified</p>;
   return (
     <div className="mt-2 rounded-2xl bg-[var(--color-orange-2)] p-3" data-me-email-state="unverified">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[color-mix(in_srgb,var(--color-orange)_78%,var(--color-label))] flex-1 min-w-[12rem]"><Mail size={14} aria-hidden /> Not verified — you can't reset your password yet</span>
+        <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[color-mix(in_srgb,var(--color-orange)_78%,var(--color-label))] flex-1 min-w-[12rem]"><Mail size={14} aria-hidden /> Not verified</span>
         <button type="button" disabled={pending} className="btn btn-gray !h-11 !px-4 !rounded-full text-[13.5px] font-semibold" data-me-send-code
           onClick={() => start(async () => { setErr(null); const r = await sendMyCode(); if ("error" in r) { setErr(r.error ?? "Could not send."); return; } setSent(r.sent_to); toast(r.echoed ? `Code (mail is not set up here): ${r.echoed}` : `Code sent to ${r.sent_to}`); })}>
           {sent ? "Send again" : "Send a code"}</button>
@@ -227,7 +228,7 @@ function Today({ day }: { day: Day }) {
   ];
   return (
     <Card data-me-work>
-      <Head icon={<CalendarCheck size={18} />} title="Today" sub="Your day at a glance." />
+      <Head icon={<CalendarCheck size={18} />} title="Today" sub="At a glance" />
       <div className="divide-y divide-[var(--color-separator)] -mx-1">
         {rows.map((r) => (
           <Link key={r.key} href={r.href} className="flex items-center gap-3 px-1 py-2.5 !min-h-14 rounded-xl hover:bg-[var(--color-fill)] transition-colors" data-me-today={r.key}>
@@ -240,29 +241,46 @@ function Today({ day }: { day: Day }) {
   );
 }
 
-/** My sign-in: the id I sign in with, the password, and the other devices still signed in as me. */
+/** My sign-in (redrawn 2026-10-23, the owner: "ultra modern, fits every screen"): the ID on a tinted pass with a copy
+ *  key, then two tiles — Password and Other devices — side by side where there is room (auto-fit, 14rem each), stacked on a
+ *  phone. Sign out others asks first, in a sheet, not the browser's confirm box. */
 function Security({ me }: { me: Me }) {
-  const toast = useToast(); const [pending, start] = useTransition();
+  const toast = useToast(); const [pending, start] = useTransition(); const [ask, setAsk] = useState(false);
+  const tile = "flex items-center gap-3 min-h-[72px] w-full rounded-[18px] bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] px-3.5 py-3 text-left transition-colors min-w-0";
+  const bubble = (tint: string) => ({ background: `color-mix(in srgb, ${tint} 16%, transparent)`, color: `color-mix(in srgb, ${tint} 82%, var(--color-label))` });
   return (
     <Card data-me-security>
-      <Head icon={<KeyRound size={18} />} title="Sign-in & security" sub="Keep your password secret. All you do is saved under your name." />
-      <div className="divide-y divide-[var(--color-separator)]">
-        <div className="flex items-center gap-3 py-3 min-w-0">
-          <span className="min-w-0 flex-1"><span className="block text-[12px] font-bold uppercase tracking-[.08em] text-steel">Sign-in ID</span>
-            <span className="block text-[14.5px] font-semibold [overflow-wrap:anywhere]" data-me-login>{me.login || "—"}</span></span>
-        </div>
-        <div className="flex items-center gap-3 py-3 min-w-0">
-          <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-bold">Password</span><span className="block text-[12.5px] text-steel">Change it any time. We email you a code first.</span></span>
-          <a href="/account/password" className="btn btn-gray !h-11 !px-4 !rounded-full shrink-0 inline-flex items-center gap-1 text-[14px] font-semibold" data-me-password>Change <ChevronRight size={15} className="-mr-1" /></a>
-        </div>
-        <div className="flex items-center gap-3 py-3 min-w-0">
-          <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-bold">Other devices</span><span className="block text-[12.5px] text-steel">Lost a phone? Sign out everywhere except here.</span></span>
-          <button type="button" disabled={pending} className="btn btn-gray !h-11 !px-4 !rounded-full shrink-0 inline-flex items-center gap-1.5 text-[14px] font-semibold" data-me-signout-others
-            onClick={() => { if (!confirm("Sign out all other devices? This one stays in.")) return; start(async () => { const r = await signOutOthers(); toast("error" in r ? r.error! : "Signed out on every other device", "error" in r ? "err" : undefined); }); }}>
-            <MonitorSmartphone size={16} aria-hidden /> Sign out others</button>
-        </div>
+      <Head icon={<KeyRound size={18} />} title="Sign-in & security" sub="Your keys to DineFlow" />
+      <div className="flex items-center gap-3 rounded-[20px] border border-[color-mix(in_srgb,var(--color-tint)_28%,transparent)] px-4 py-3.5 min-w-0"
+        style={{ background: "linear-gradient(120deg, color-mix(in srgb, var(--color-tint) 14%, transparent), color-mix(in srgb, var(--color-tint) 4%, transparent))" }} data-me-pass>
+        <span className="h-11 w-11 shrink-0 rounded-full grid place-items-center bg-[var(--color-bg-2)] text-[var(--color-tint)] shadow-[0_1px_4px_rgb(0_0_0/0.16)]"><ShieldCheck size={20} aria-hidden /></span>
+        <span className="min-w-0 flex-1"><span className="block text-[11px] font-bold uppercase tracking-[.1em] text-steel">Sign-in ID</span>
+          <span className="block text-[15.5px] font-semibold leading-snug [overflow-wrap:anywhere]" data-me-login>{me.login || "—"}</span></span>
+        {me.login && <button type="button" onClick={() => { void copyText(me.login!); toast("Sign-in ID copied"); }} aria-label="Copy sign-in ID"
+          className="shrink-0 h-10 w-10 !min-h-10 pointer-coarse:h-11 pointer-coarse:w-11 rounded-full grid place-items-center bg-[var(--color-bg-2)] hover:brightness-110 text-[var(--color-label)]"><Copy size={16} aria-hidden /></button>}
       </div>
-      <div className="mt-3 text-[12px] text-steel">Forgot your password on another day? <Link href="/forgot" className="tap font-semibold text-[var(--color-label)] underline underline-offset-2">Reset it</Link> — it needs a verified email.</div>
+      <div className="mt-3 grid gap-2.5 grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
+        <a href="/account/password" className={tile} data-me-password>
+          <span className="h-10 w-10 shrink-0 rounded-xl grid place-items-center" style={bubble("var(--color-blue)")}><Lock size={18} aria-hidden /></span>
+          <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold leading-tight">Password</span><span className="block text-[12.5px] text-steel">Change by email code</span></span>
+          <ChevronRight size={18} className="shrink-0 text-[var(--color-label-3)]" aria-hidden />
+        </a>
+        <button type="button" disabled={pending} className={tile} onClick={() => setAsk(true)} data-me-signout-others>
+          <span className="h-10 w-10 shrink-0 rounded-xl grid place-items-center" style={bubble("var(--color-orange)")}><MonitorSmartphone size={18} aria-hidden /></span>
+          <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold leading-tight">Other devices</span><span className="block text-[12.5px] text-steel">Sign out all but this</span></span>
+          <ChevronRight size={18} className="shrink-0 text-[var(--color-label-3)]" aria-hidden />
+        </button>
+      </div>
+      <div className="mt-3 text-[12.5px] text-steel">Forgot it? <Link href="/forgot" className="tap font-semibold text-[var(--color-label)] underline underline-offset-2">Reset</Link></div>
+      <Sheet open={ask} onClose={() => setAsk(false)} title="Sign out other devices?">
+        <div className="space-y-4" data-me-signout-ask>
+          <p className="text-[14px] text-steel">Every other phone and computer signs out. This one stays in.</p>
+          <div className="flex gap-2">
+            <Button className="flex-1" disabled={pending} data-me-signout-yes onClick={() => start(async () => { const r = await signOutOthers(); setAsk(false); toast("error" in r ? r.error! : "Signed out on every other device", "error" in r ? "err" : undefined); })}><MonitorSmartphone size={16} aria-hidden /> Sign out others</Button>
+            <Button variant="gray" onClick={() => setAsk(false)}>Cancel</Button>
+          </div>
+        </div>
+      </Sheet>
     </Card>
   );
 }

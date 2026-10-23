@@ -64,6 +64,8 @@ node dry122.cjs     # 23 checks, rolled back — who sees and ticks which list, 
 node batch2.mjs     # 40 checks on a throwaway demo — see testing-and-gates.md
 ```
 
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
 ## See also
 
 [controls-and-intelligence.md](controls-and-intelligence.md) (the drawer) ·

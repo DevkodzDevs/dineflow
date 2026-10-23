@@ -139,3 +139,4 @@ pnpm --filter @dineflow/web typecheck
 [billing-and-invoices.md](billing-and-invoices.md)
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Arrivals, Departures, In house and Rooms ready are `StatTile` flaps, which now shuffle and settle when a count changes.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

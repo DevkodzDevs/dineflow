@@ -116,7 +116,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
 
   return (
     <div>
-      <SvcHead icon="pulse" title="Pulse" sub="Who is waiting, and which table frees next"
+      <SvcHead icon="pulse" title="Pulse" sub="Queue and next free table"
         actionsClassName="max-md:hidden"
         actions={<Link href="/pulse/qr" className="svc-btn quiet sm" data-joinqr-link><QrCode size={18} aria-hidden /><span>Join by QR</span></Link>} />
 
@@ -135,11 +135,11 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             ["wait", Users, "Waiting", "var(--color-blue)"],
             ["sit", Timer, "Avg sitting", "var(--color-orange)"],
           ] as const).map(([k, I, word, tone]) => (
-            <div key={k} className="min-w-0 px-3 pt-2.5 pb-3 flex flex-col gap-2" data-glance={k}>
+            <div key={k} className="min-w-0 px-3 pt-3 pb-3.5 flex flex-col gap-2.5" data-glance={k}>
               <span className="inline-flex items-center gap-1.5 min-w-0 text-[11.5px] font-bold" style={{ color: tone }}><I size={14} aria-hidden className="shrink-0" /><span className="truncate">{word}</span></span>
-              {k === "free" ? <div className="flex items-end gap-1 min-w-0" data-glance-n={String(counts.free)}><FlapShuffle value={counts.free} pad={0} size="xs" tile="30px" bare say={`${counts.free} of ${tables.length} tables free to seat`} /><span className="text-[12px] font-semibold text-steel num pb-0.5">/{tables.length}</span></div>
-                : k === "wait" ? <div data-glance-n={String(live.length)}><FlapBreathe value={live.length} pad={0} size="xs" tile="30px" say={`${live.length} waiting`} /></div>
-                : <div className="font-display num text-[22px] leading-[30px] truncate" title="A sitting usually takes">{dur(pulse.avg_dwell)}</div>}
+              {k === "free" ? <div className="flex items-end gap-1 min-w-0" data-glance-n={String(counts.free)}><FlapShuffle value={counts.free} pad={0} size="xs" tile="40px" bare say={`${counts.free} of ${tables.length} tables free to seat`} /><span className="text-[14px] font-semibold text-steel num pb-1">/{tables.length}</span></div>
+                : k === "wait" ? <div data-glance-n={String(live.length)}><FlapBreathe value={live.length} pad={0} size="xs" tile="40px" say={`${live.length} waiting`} /></div>
+                : <div className="font-display num text-[30px] leading-[40px] truncate" title="A sitting usually takes">{dur(pulse.avg_dwell)}</div>}
             </div>))}
         </div>
       </Card>
@@ -164,7 +164,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
           answer to step 1. Right: who is waiting, each with one big next move. Side by side from lg. */}
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5 mb-8 items-start" data-pulse-top>
         <Card className="min-w-0 !rounded-[24px] @container" data-quote>
-          <Head icon={UserPlus} title="Add a guest who is waiting" sub="Three steps. We work out the wait." />
+          <Head icon={UserPlus} title="Add a guest who is waiting" sub="Three steps. We quote the wait." />
 
           <Step n={1}>How many people?</Step>
           <div className="grid grid-cols-4 @[34rem]:grid-cols-8 gap-2" role="group" aria-label="Party size">
@@ -191,7 +191,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             <input placeholder="Name" aria-label="Guest's name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="!h-12" autoComplete="off" />
             <input placeholder="Phone (optional)" aria-label="Guest's phone (optional)" inputMode="tel" className="num !h-12" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} autoComplete="off" />
           </div>
-          <p className="mt-1.5 text-[12px] text-steel">Add a phone to tell them on WhatsApp when ready.</p>
+          <p className="mt-1.5 text-[12px] text-steel">Add a phone for a WhatsApp alert.</p>
 
           <div className="mt-5"><Step n={3}>Put them on the list</Step></div>
           <button type="button" className="svc-btn go xl w-full" disabled={!form.name.trim() || pending} onClick={add} data-add-walkin><UserPlus size={21} aria-hidden /><Say w="add_waiting" /></button>
@@ -200,12 +200,12 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
 
         <Card className="min-w-0 !rounded-[24px]" data-queue>
           <Head icon={Users} tone="var(--color-blue)" title={<>Waiting now <span className="ml-1 align-middle inline-grid place-items-center min-w-7 h-7 px-2 rounded-full bg-[var(--color-fill-2)] text-[14px] font-bold num">{live.length}</span></>}
-            sub="First come, first served. Tap Table ready, then Seat them." />
+            sub="First come, first served" />
           {live.length === 0 && (
             <div className="rounded-[20px] border border-dashed border-[var(--color-separator)] px-5 py-8 text-center">
               <span className="mx-auto h-14 w-14 rounded-[18px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Users size={26} aria-hidden /></span>
               <div className="mt-3 text-[16px] font-bold">Nobody is waiting</div>
-              <p className="mt-1 text-[13px] text-steel">Add a guest here, or let them scan the door QR.</p>
+              <p className="mt-1 text-[13px] text-steel">Add one here, or they scan the door QR.</p>
               <Link href="/pulse/qr" className="mt-3 inline-flex items-center gap-1.5 min-h-11 px-4 rounded-full bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] text-[13px] font-semibold"><QrCode size={15} aria-hidden /> Show the door QR <ArrowRight size={14} aria-hidden /></Link>
             </div>
           )}
@@ -270,7 +270,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
       {/* the tables that free next — what a host quoting a wait looks at */}
       {/* the two floor sections are cards like the two above, each head with its icon (2026-10-21, the owner: "messy") */}
       <Card className="mb-5 min-w-0 !rounded-[24px]" data-frees-next>
-        <Head icon={Timer} tone="var(--color-orange)" title="Next tables to free up" sub="Use these when a guest asks how long." />
+        <Head icon={Timer} tone="var(--color-orange)" title="Next tables to free up" sub="For “how long?”" />
         {soon.length === 0 ? <div className="rounded-[18px] border border-dashed border-[var(--color-separator)] px-4 py-4 flex items-center gap-3" data-frees-empty>
             <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]">{busy.length ? <AlertTriangle size={18} aria-hidden /> : <Check size={18} aria-hidden />}</span>
             <p className="text-[14px] text-[var(--color-label-2)] leading-snug">{busy.length ? "Only old open tables — close them in Every table below." : "Every table is free — seat straight away."}</p>
@@ -288,7 +288,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
       </Card>
 
       <Card className="min-w-0 !rounded-[24px]" data-every-table>
-        <Head icon={Armchair} tone="var(--color-green)" title="Every table" sub="Free, booked or in use — and when each frees"
+        <Head icon={Armchair} tone="var(--color-green)" title="Every table" sub="Free, booked or in use"
           end={<span className="text-[12.5px] font-semibold text-steel num shrink-0 mt-1 hidden sm:block">{busy.length} in use · {pulse.seats_free_now} seats free</span>} />
         {/* Free · Reserved · In use as tabs, each with its count; the tables as tiles you can read
             from across the floor. In use is sorted by when it frees (a forgotten table first). */}

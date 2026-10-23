@@ -14,12 +14,12 @@ export type Req = { id: string; ticket_no: number; kind: string; topic: string |
 
 /* what each kind of request asks for, in its own words */
 const ASK: Record<Kind, { subject: string; body: string }> = {
-  problem: { subject: "e.g. The kitchen printer stops after two tickets", body: "What happened, what you expected, and the screen and time." },
-  complaint: { subject: "e.g. Bills took ten minutes to print on Saturday", body: "Tell us what happened and how it affected you." },
-  question: { subject: "e.g. How do I split a bill between two cards?", body: "Ask anything — where things are, how a screen works." },
+  problem: { subject: "e.g. The kitchen printer stops after two tickets", body: "What happened, where and when." },
+  complaint: { subject: "e.g. Bills took ten minutes to print on Saturday", body: "What happened, and the impact." },
+  question: { subject: "e.g. How do I split a bill between two cards?", body: "Ask anything." },
   idea: { subject: "e.g. Let waiters see table notes", body: "What would make DineFlow better for you?" },
-  billing: { subject: "e.g. My renewal was charged twice", body: "Plan, renewal or payment — add the date and amount." },
-  privacy: { subject: "e.g. Stop using our guests' numbers for offers", body: "What should we do with your or your guests' data?" },
+  billing: { subject: "e.g. My renewal was charged twice", body: "Add the date and amount." },
+  privacy: { subject: "e.g. Stop using our guests' numbers for offers", body: "What should we do with the data?" },
 };
 const ROLE: Record<string, string> = { owner: "Owner", manager: "Manager", supervisor: "Supervisor", cashier: "Cashier", waiter: "Waiter", chef: "Chef", housekeeping: "Housekeeping", frontdesk: "Front desk" };
 
@@ -92,7 +92,7 @@ export function SupportClient({ requests, me, name, role, property, prefill }: {
         <Card className={cn("space-y-5", tab !== "new" && "max-lg:hidden")} data-new-request>
           <div>
             <h3 className="text-xl">New request</h3>
-            <p className="text-[13px] text-[var(--color-label-2)] mt-1">Goes to the DineFlow team. Replies show here{CONTACT.hours ? ` — ${CONTACT.hours.replace(/^Monday to Saturday/, "Mon–Sat")}` : ""}.</p>
+            <p className="text-[13px] text-[var(--color-label-2)] mt-1">To the DineFlow team{CONTACT.hours ? ` — ${CONTACT.hours.replace(/^Monday to Saturday/, "Mon–Sat")}` : ""}.</p>
           </div>
 
           <div>
@@ -120,7 +120,7 @@ export function SupportClient({ requests, me, name, role, property, prefill }: {
                 {TOPICS.map((t) => <button key={t.key} type="button" onClick={() => setTopic(t.key)} aria-pressed={topic === t.key} className={cn("chip", topic === t.key && "on")} data-topic={t.key}>{t.label}</button>)}
               </div>
               <p className="text-[12px] text-[var(--color-label-2)] flex gap-2 leading-snug"><ShieldCheck size={15} className="shrink-0 mt-px text-[var(--color-tint)]" />
-                <span>Privacy and consent requests go to our Grievance Officer{CONTACT.officer ? ` (${CONTACT.officer})` : ""} and are answered within {CONTACT.grievanceDays} days. You can also write to <a className="underline" href={`mailto:${CONTACT.grievance}`}>{CONTACT.grievance}</a>.</span></p>
+                <span>Goes to our Grievance Officer{CONTACT.officer ? ` (${CONTACT.officer})` : ""}; answered within {CONTACT.grievanceDays} days. Or write to <a className="underline" href={`mailto:${CONTACT.grievance}`}>{CONTACT.grievance}</a>.</span></p>
             </div>
           )}
 
@@ -162,7 +162,7 @@ export function SupportClient({ requests, me, name, role, property, prefill }: {
             <ShieldCheck size={18} className="shrink-0 mt-0.5 text-[var(--color-tint)]" />
             <span className="flex-1 min-w-0">
               <span className="block text-[13.5px] font-semibold leading-snug">Let DineFlow open your property to look into this</span>
-              <span className="block text-[12px] text-[var(--color-label-2)] mt-0.5 leading-snug">Just for this request. All logged; undo any time.</span>
+              <span className="block text-[12px] text-[var(--color-label-2)] mt-0.5 leading-snug">This request only. Logged; undo any time.</span>
             </span>
             <Switch on={allow} onChange={setAllow} name="Let DineFlow open the property for this request" />
           </label>
@@ -182,7 +182,7 @@ export function SupportClient({ requests, me, name, role, property, prefill }: {
           <Button className="w-full" disabled={!ready} onClick={send} data-send>
             {pending ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />} {pending ? stage ?? "Sending…" : "Send to DineFlow support"}
           </Button>
-          {!ready && !pending && <p className="-mt-3 text-center text-[11.5px] text-[var(--color-label-3)]">Add a subject and a few words to send.</p>}
+          {!ready && !pending && <p className="-mt-3 text-center text-[11.5px] text-[var(--color-label-3)]">Add a subject and details.</p>}
         </Card>
 
         <section className={cn("space-y-3 min-w-0", tab !== "list" && "max-lg:hidden")} data-requests>
@@ -198,7 +198,7 @@ export function SupportClient({ requests, me, name, role, property, prefill }: {
             <div className="feather p-7 text-center" data-empty>
               <div className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-fill)] grid place-items-center text-[var(--color-label-2)]"><LifeBuoy size={20} /></div>
               <p className="mt-3 text-[13.5px] font-semibold">{requests.length ? "Nothing here" : "No requests yet"}</p>
-              <p className="mt-1 text-[12.5px] text-[var(--color-label-2)]">{requests.length ? "Try another filter." : "Something wrong or could be better? Tell us."}</p>
+              <p className="mt-1 text-[12.5px] text-[var(--color-label-2)]">{requests.length ? "Try another filter." : "Something wrong? Tell us."}</p>
             </div>
           ) : (
             <ul className="space-y-2">

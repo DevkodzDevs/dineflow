@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useNavPath } from "./useNavPath";
 import { ProfileCard } from "./ProfileCard";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LogOut, ShieldCheck, Menu, X, Fingerprint, PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-react";
+import { LogOut, ShieldCheck, Menu, X, Fingerprint, PanelLeftClose, PanelLeftOpen, LayoutTemplate, type LucideIcon } from "lucide-react";
+import { SidebarPicker } from "./SidebarPicker";
 import { ICON_LOOKS, chosenSidebar, currentSidebar, defaultSidebar, toggleFold } from "@/lib/sidebar";
 import { cn, Sheet, FlapMini } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
@@ -112,6 +113,8 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
   /* The look (lib/sidebar.ts). With no choice on this device the default follows the width — rail under 1280, the full
      menu from 1280 — so a window dragged across 1280, or an iPad turned, still gets its own; a choice holds at any width. */
   const [folded, setFolded] = useState(false);
+  /* Menu style, from the sidebar itself (2026-10-23, the owner: "the users choose the design") — the same six as My profile */
+  const [styles, setStyles] = useState(false);
   useEffect(() => {
     const sync = () => { if (!chosenSidebar()) document.documentElement.setAttribute("data-sidebar", defaultSidebar(window.innerWidth)); setFolded(ICON_LOOKS.includes(currentSidebar())); };
     sync(); window.addEventListener("resize", sync); window.addEventListener("df-sidebar", sync);
@@ -163,12 +166,19 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
         {isAdmin && <Link href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
         {/* the fold (2026-10-23): the open looks fold to icons, the icon looks unfold to the one they came from; kept on this
             device. From 768 up (.sb-fold), at every look — a phone has the bottom bar. */}
+        {/* beside it, Menu style: the six looks in a sheet. A row on the open looks, a column on the icon looks (.sb-tools) */}
+        <div className="sb-tools mb-2 gap-1">
         <button type="button" onClick={() => { setOpen(false); toggleFold(); }} aria-pressed={folded} data-sb-fold
           title={folded ? "Expand the menu" : "Collapse the menu to icons"} aria-label={folded ? "Expand the menu" : "Collapse the menu to icons"}
-          className="sb-fold mb-2 w-full items-center justify-center gap-2.5 h-10 px-3 rounded-[12px] text-[13px] font-semibold text-white/55 hover:text-white hover:bg-white/[.06] transition-colors [@media(pointer:coarse)]:min-h-11">
+          className="sb-fold flex-1 min-w-0 items-center justify-center gap-2.5 h-10 px-3 rounded-[12px] text-[13px] font-semibold text-white/55 hover:text-white hover:bg-white/[.06] transition-colors [@media(pointer:coarse)]:min-h-11">
           {folded ? <PanelLeftOpen size={18} aria-hidden className="shrink-0" /> : <PanelLeftClose size={18} aria-hidden className="shrink-0" />}
           <span className="rail-hide flex-1 text-left truncate">{folded ? "Expand menu" : "Collapse menu"}</span>
         </button>
+        <button type="button" onClick={() => { setOpen(false); setStyles(true); }} title="Menu style" aria-label="Menu style" aria-haspopup="dialog" data-sb-style
+          className="shrink-0 h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 mx-auto grid place-items-center rounded-[12px] text-white/55 hover:text-white hover:bg-white/[.06] transition-colors">
+          <LayoutTemplate size={18} aria-hidden />
+        </button>
+        </div>
         {/* p-[7px] plus the 1px border puts the card at exactly 52px across — the width the rail
             leaves once it collapses, so the avatar alone still sits square inside it */}
         <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[.04] p-[7px]">
@@ -184,6 +194,7 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
     {/* holds the rail's 76px in the row while the open drawer floats over the page */}
     <div aria-hidden className="nav-spacer" />
     {open && <div className="nav-scrim" onClick={() => setOpen(false)} aria-hidden />}
+    <Sheet open={styles} onClose={() => setStyles(false)} title="Menu style" wide><SidebarPicker inSheet /></Sheet>
     </>
   );
 }

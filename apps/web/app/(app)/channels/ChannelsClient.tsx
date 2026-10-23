@@ -93,8 +93,8 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
 
       {tab === "food" && (<div className="space-y-4">
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-          <b>How this works.</b> Each channel has its own link. Give it to the sender; orders show in <Link href="/online-orders" className="tap underline font-semibold">Online orders</Link> like any other.
-          Swiggy and Zomato go through UrbanPiper or Petpooja Connect. Paste the link there.</div></Card>
+          <b>How this works.</b> Give each link to the sender; orders show in <Link href="/online-orders" className="tap underline font-semibold">Online orders</Link>.
+          Swiggy, Zomato: paste it in UrbanPiper or Petpooja Connect.</div></Card>
         <div className="flex justify-end"><Button onClick={() => setEditOc({ kind: "swiggy", commission_pct: 22, prep_minutes: 20 })}><Plus size={16} /> Add channel</Button></div>
         {/* each delivery channel the way an OTA card is (2026-10-21 — the owner: "messy"): its initial in the
             platform's colour, name, commission and prep time, Live / Draft; the webhook as one field with Copy inside
@@ -124,7 +124,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
                   <span className={cn("h-1.5 w-1.5 rounded-full", c.is_live && "animate-pulse")} style={{ background: "currentColor" }} />{c.is_live ? "Live" : "Draft"}
                 </span>
               </div>
-              <div className="mt-auto flex items-center gap-2.5 min-w-0 rounded-[14px] p-1.5 pl-3 ring-1 ring-inset ring-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_60%,transparent)]" title="Give this address to whoever sends you the orders" data-webhook>
+              <div className="mt-auto flex items-center gap-2.5 min-w-0 rounded-[14px] p-1.5 pl-3 ring-1 ring-inset ring-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_60%,transparent)]" title="Give this to the order sender" data-webhook>
                 <Link2 size={16} className="shrink-0 text-[var(--color-label-2)]" aria-hidden />
                 <div className="min-w-0 flex-1 leading-tight">
                   <div className="text-[10.5px] font-semibold uppercase tracking-[.12em] text-steel truncate">Webhook URL</div>
@@ -152,8 +152,8 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
 
       {tab === "rooms" && (<div className="space-y-4">
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-          <b>Two ways to stop double-bookings.</b> <b>iCal</b> (Airbnb, Booking.com, Agoda, MakeMyTrip): swap calendar links both ways. Syncs at 2:30 am and on Sync now.
-          <b> API</b> mode (live rates) needs a certified OTA or channel-manager link.</div></Card>
+          <b>Two ways to stop double-bookings.</b> <b>iCal</b> (Airbnb, Booking.com, Agoda, MakeMyTrip): swap calendar links both ways. Syncs 2:30 am daily.
+          <b> API</b> mode (live rates) needs a certified link.</div></Card>
         {/* The OTAs as cards, one per channel (they were rows of one list, each with four loose buttons).
             The grid sizes itself from its own width (@container): one card across below a 64rem list (a
             phone, an iPad upright) — so three channels never leave one alone — and from 64rem (an iPad on
@@ -228,12 +228,12 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
               {/* the actions as the card's footer strip, edge to edge, one equal section each */}
               <CardStrip actions={acts} data-actions />
             </li>); })}
-            {ota.length === 0 && <li className="feather p-6 text-center"><div className="mx-auto h-11 w-11 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Globe size={18} /></div><p className="mt-3 text-sm text-steel">No OTA channels yet. Add one to stop double-bookings.</p></li>}
+            {ota.length === 0 && <li className="feather p-6 text-center"><div className="mx-auto h-11 w-11 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Globe size={18} /></div><p className="mt-3 text-sm text-steel">No OTA channels yet.</p></li>}
           </ul>
         </section>
         <Card><div className="flex items-center gap-2"><Globe size={16} /><b>Your own booking page</b><Pill tone="ready">0% commission</Pill></div>
           <div className="mt-2 flex gap-2 min-w-0"><input readOnly className="num text-xs min-w-0" value={bookingUrl} /><Button size="sm" variant="outline" onClick={() => copy(bookingUrl)}><Copy size={14} /></Button><a href={bookingUrl} target="_blank" rel="noreferrer"><Button size="sm"><ExternalLink size={14} /> Open</Button></a></div>
-          <p className="text-xs text-steel mt-2">Share on Google, Instagram, WhatsApp. Bookings go to Front desk.</p></Card>
+          <p className="text-xs text-steel mt-2">Share it anywhere. Bookings go to Front desk.</p></Card>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Sync log</div><ul className="text-sm space-y-1">{log.map((l) => <li key={l.id} className="flex gap-2"><span className="num text-xs text-steel w-28">{new Date(l.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span><Pill tone={l.ok ? "ready" : "alert"}>{l.direction}</Pill><span className="flex-1">{l.message}</span></li>)}{log.length === 0 && <li className="text-steel">Nothing yet.</li>}</ul></Card>
       </div>)}
 
@@ -250,7 +250,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOc?.commission_pct ?? 22} /></Field>
             <Field label="Prep time (min)"><input name="prep_minutes" type="number" className="num" defaultValue={editOc?.prep_minutes ?? 20} /></Field></div>
           <Field label="Partner API base (optional)" hint="Only if you have partner credentials"><input name="api_base" defaultValue={editOc?.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
-          <Field label="API key (optional)" hint={editOc?.has_api_key ? "A key is saved. Leave this blank to keep it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOc?.has_api_key ? "Saved" : "••••••"} /></Field>
+          <Field label="API key (optional)" hint={editOc?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOc?.has_api_key ? "Saved" : "••••••"} /></Field>
           <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="auto_accept" defaultChecked={editOc?.auto_accept} /> Auto-accept matched orders</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_live" defaultChecked={editOc?.is_live} /> Live</label></div>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
       </Sheet>
@@ -262,7 +262,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <Field label="Mode"><select name="mode" defaultValue={editOta?.mode ?? "ical"}><option value="ical">iCal (works today)</option><option value="api">API (needs credentials)</option></select></Field>
             <Field label="Room type"><select name="room_type_id" defaultValue={editOta?.room_type_id ?? ""}><option value="">All types</option>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOta?.commission_pct ?? 15} /></Field>
-            <Field label="Rate offset %" hint="Sell higher on OTAs to protect direct rates"><input name="rate_offset_pct" type="number" step="0.1" className="num" defaultValue={editOta?.rate_offset_pct ?? 0} /></Field></div>
+            <Field label="Rate offset %" hint="Higher on OTAs protects direct rates"><input name="rate_offset_pct" type="number" step="0.1" className="num" defaultValue={editOta?.rate_offset_pct ?? 0} /></Field></div>
           <Field label="Their calendar link (iCal import)"><input name="import_url" className="num text-xs min-w-0" defaultValue={editOta?.import_url ?? ""} placeholder="https://ical.booking.com/v1/export?t=..." /></Field>
           <Field label="API base (API mode)"><input name="api_base" defaultValue={editOta?.api_base ?? ""} /></Field>
           <div className="grid grid-cols-2 gap-3"><Field label="Property id at the OTA"><input name="hotel_ref" className="num" defaultValue={editOta?.hotel_ref ?? ""} /></Field><Field label="API key" hint={editOta?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOta?.has_api_key ? "Saved" : "••••••"} /></Field></div>
@@ -308,7 +308,7 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
           <span className="h-10 w-10 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-[var(--color-tint)]"><Wand2 size={18} /></span>
           <div className="flex-1 min-w-[12rem]">
             <div className="text-[15px] font-semibold">{moves.length ? `Suggested rates for ${moves.length} night${moves.length === 1 ? "" : "s"}` : "Rates look right for the next 14 nights"}</div>
-            <div className="text-xs text-steel">{moves.length ? `${ups} up, ${moves.length - ups} down — from how full each night already is.` : "Tips show when a night is nearly full or empty."}</div>
+            <div className="text-xs text-steel">{moves.length ? `${ups} up, ${moves.length - ups} down — from bookings so far.` : "Tips show for nearly full or empty nights."}</div>
           </div>
           {moves.length > 0 && <Button disabled={pending} onClick={() => onApply(sel, moves.map((d) => ({ date: d.stay_date, rate: hints[d.stay_date]!.rate })))}>Use suggested rates</Button>}
         </div>

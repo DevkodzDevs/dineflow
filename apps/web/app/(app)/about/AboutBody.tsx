@@ -11,8 +11,8 @@ export function AboutBody() {
 
       <section className="grid lg:grid-cols-2 gap-6 mb-10">
         <div className="feather p-6"><div className="card-title"><h3>What it does</h3></div>
-          <p className="text-[15px] leading-relaxed text-[var(--color-label-2)]">Waiters order by phone; the kitchen sees it at once. Guests order online, no commission.</p>
-          <p className="text-[15px] leading-relaxed text-[var(--color-label-2)] mt-3">Works offline too. It sends everything once the internet is back.</p></div>
+          <p className="text-[15px] leading-relaxed text-[var(--color-label-2)]">Orders reach the kitchen at once. Online orders, no commission.</p>
+          <p className="text-[15px] leading-relaxed text-[var(--color-label-2)] mt-3">Works offline; syncs when back online.</p></div>
         <div className="feather p-6"><div className="card-title"><h3>Who sees what</h3></div>
           <div className="group">{[["Master", "All properties and what each one has"], ["Owner", "Their property, staff and who opens what"], ["Employee", "Only their own sections"]].map(([w, d]) => <div key={w} className="row"><span className="font-display text-lg w-24">{w}</span><span className="flex-1 text-[14px] text-[var(--color-label-2)]">{d}</span></div>)}</div>
           <p className="text-[13px] text-[var(--color-label-3)] mt-3">No one can give more access than they have.</p></div>
@@ -23,7 +23,7 @@ export function AboutBody() {
       </section>
 
       <section className="grid lg:grid-cols-3 gap-4 mb-10">
-        {[["Pulse", "Real wait times, and a walk-in queue guests join by QR."], ["Tomorrow's brief", "Tomorrow's guests, prep and shopping list, guessed from past days."], ["Leak finder", "Stock you should have vs stock you counted, in rupees."], ["Neighbours", "5+ local places share prices and spare stock. No one's figures shown alone."], ["Proof of business", "Each month's figures sealed. Share a link with your bank."], ["Assist", "Ask questions in plain words. It acts only after you tap Confirm."]].map(([t, d]) => <div key={t} className="feather p-5"><div className="font-display text-xl mb-1.5">{t}</div><p className="text-[14px] leading-relaxed text-[var(--color-label-2)]">{d}</p></div>)}
+        {[["Pulse", "Wait times and a QR walk-in queue."], ["Tomorrow's brief", "Tomorrow's guests, prep and shopping, forecast."], ["Leak finder", "Expected vs counted stock, in rupees."], ["Neighbours", "5+ places share prices; no one shown alone."], ["Proof of business", "Sealed monthly figures for your bank."], ["Assist", "Ask in plain words; acts only on Confirm."]].map(([t, d]) => <div key={t} className="feather p-5"><div className="font-display text-xl mb-1.5">{t}</div><p className="text-[14px] leading-relaxed text-[var(--color-label-2)]">{d}</p></div>)}
       </section>
 
       <section className="grid lg:grid-cols-2 gap-6 mb-10">

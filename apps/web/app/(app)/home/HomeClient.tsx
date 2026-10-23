@@ -108,7 +108,7 @@ export function HomeClient({ home }: { home: Home }) {
 
   return (
     <div className="space-y-5" data-home>
-      {home.locked && <p className="rounded-2xl bg-[var(--color-fill)] px-4 py-3 text-[13.5px] text-steel" data-home-locked>That page is not part of your job. Ask the owner if you need it.</p>}
+      {home.locked && <p className="rounded-2xl bg-[var(--color-fill)] px-4 py-3 text-[13.5px] text-steel" data-home-locked>Not part of your job — ask the owner.</p>}
 
       {/* who and when: the greeting, the job, today's date and where the day stands */}
       <section className="feather !rounded-[26px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 min-w-0" data-home-hello>
@@ -171,7 +171,7 @@ export function HomeClient({ home }: { home: Home }) {
         </Tile>
 
         <Tile k="salary" hue="var(--color-orange)" Icon={Wallet} title="Salary" figure={estimate != null ? formatINR(estimate, { whole: true }) : "—"} unit={estimate != null ? "so far this month" : undefined}
-          sub={home.pay ? <>{formatINR(home.pay.amount, { whole: true })} {home.pay.basis === "monthly" ? "a month" : "a day"} · {present} day{present === 1 ? "" : "s"} counted{owed ? <> · advance {formatINR(owed, { whole: true })}</> : null}</> : "Your pay rate is not set yet — the owner sets it"}
+          sub={home.pay ? <>{formatINR(home.pay.amount, { whole: true })} {home.pay.basis === "monthly" ? "a month" : "a day"} · {present} day{present === 1 ? "" : "s"} counted{owed ? <> · advance {formatINR(owed, { whole: true })}</> : null}</> : "Pay rate not set yet"}
           onOpen={() => setOpen("salary")}>
           {lastSlip && <span className="flex items-center gap-2 text-[13px] min-w-0"><FileText size={14} className="shrink-0 text-steel" aria-hidden /><span className="truncate">{monthName(lastSlip.month)}: <b className="num">{formatINR(Number(lastSlip.net), { whole: true })}</b> · {lastSlip.paid_at ? "paid" : "not paid yet"}</span></span>}
         </Tile>
@@ -183,14 +183,14 @@ export function HomeClient({ home }: { home: Home }) {
 
       <Link href="/me" className="feather !rounded-[22px] p-4 flex items-center gap-3 min-w-0 hover:brightness-[1.04]" data-home-tile="me">
         <span className="h-11 w-11 shrink-0 rounded-2xl grid place-items-center bg-[var(--color-fill)]"><UserRound size={20} aria-hidden /></span>
-        <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold truncate">{home.fullName}</span><span className="block text-[13px] text-steel truncate">Your details, sign-in and this device — Settings</span></span>
+        <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold truncate">{home.fullName}</span><span className="block text-[13px] text-steel truncate">Your details and sign-in</span></span>
         <ChevronRight size={18} className="shrink-0 text-[var(--color-label-3)]" aria-hidden />
       </Link>
 
       {/* ── the full views ─────────────────────────────────────────────────────────────────────── */}
       <Sheet open={open === "work"} onClose={() => setOpen(null)} title="My work" wide>
         <div className="space-y-2" data-home-work>
-          {home.jobs.length === 0 && <p className="text-[14px] text-steel py-6 text-center">No jobs for you now. Team jobs are on Work.</p>}
+          {home.jobs.length === 0 && <p className="text-[14px] text-steel py-6 text-center">No jobs for you now.</p>}
           {home.jobs.map((j) => (
             <div key={j.id} className="rounded-2xl bg-[var(--color-fill)] p-3.5 flex items-start gap-3 min-w-0">
               <span className={cn("mt-1 h-2.5 w-2.5 shrink-0 rounded-full", j.status === "in_progress" ? "bg-[var(--color-blue)]" : "bg-[var(--color-label-3)]")} aria-hidden />
@@ -271,7 +271,7 @@ function AttendanceView({ home, present, hours }: { home: Home; present: number;
             </div>);
         })}
       </div>
-      <p className="text-[12.5px] text-steel">Green: present. Blue: leave. A day wrong? Tell your manager.</p>
+      <p className="text-[12.5px] text-steel">Green: present. Blue: leave.</p>
       {home.attend && <Link href="/attendance" className="svc-btn go w-full"><Fingerprint size={18} aria-hidden /> My attendance — punch in or out</Link>}
     </div>
   );
@@ -344,7 +344,7 @@ function SalaryView({ home, present, daysInMonth, estimate, owed }: { home: Home
         <div className="rounded-2xl bg-[var(--color-fill)] p-3.5"><div className="text-[12px] text-steel">Your rate</div><div className="mt-1 font-display num text-[22px] leading-none">{home.pay ? formatINR(home.pay.amount, { whole: true }) : "—"}</div><div className="mt-1 text-[12px] text-steel">{home.pay ? (home.pay.basis === "monthly" ? "a month" : "a day") : "not set yet"}</div></div>
         <div className="rounded-2xl bg-[var(--color-fill)] p-3.5"><div className="text-[12px] text-steel">So far this month</div><div className="mt-1 font-display num text-[22px] leading-none">{estimate != null ? formatINR(estimate, { whole: true }) : "—"}</div><div className="mt-1 text-[12px] text-steel">{present} of {daysInMonth} days · an estimate</div></div>
       </div>
-      <p className="text-[12.5px] text-steel">Pay is from attendance, minus PF/ESI and advances. Your payslip is final.</p>
+      <p className="text-[12.5px] text-steel">An estimate — the payslip is final.</p>
       {owed > 0 && (
         <section><div className="text-[13px] font-bold text-steel mb-2">Advances to come off your pay · {formatINR(owed, { whole: true })}</div>
           <div className="space-y-1.5">{home.advances.map((a, i) => <div key={i} className="flex items-center gap-2 rounded-xl bg-[var(--color-fill)] px-3.5 py-2.5 text-[13.5px]"><span className="flex-1 min-w-0 truncate">{dmy(a.given_on)}{a.note ? ` · ${a.note}` : ""}</span><b className="num">{formatINR(a.amount, { whole: true })}</b></div>)}</div>

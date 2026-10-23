@@ -22,10 +22,10 @@ export function PrintersClient({ printers, restaurant }: { printers: Pr[]; resta
   return (
     <div className="space-y-5">
       <Card className="flex items-start gap-3 !bg-sky-2 border-sky"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-        <b>Which connection?</b> <b>Bluetooth</b>: portable 58 mm (Chrome, Android/Windows). <b>USB</b>: plugged into this machine (Chrome desktop). <b>Network</b>: LAN printer with an IP — run <span className="num">node scripts/print-bridge.mjs</span> once (or double-click <span className="num">Print-Bridge.bat</span>). <b>Browser</b>: normal print dialog, works everywhere, A4 and PDF too.</div></Card>
+        <b>Which connection?</b> <b>Bluetooth</b>: portable 58 mm (Chrome, Android/Windows). <b>USB</b>: plugged into this machine (Chrome desktop). <b>Network</b>: LAN printer — run <span className="num">node scripts/print-bridge.mjs</span> once (or double-click <span className="num">Print-Bridge.bat</span>). <b>Browser</b>: print dialog, works everywhere.</div></Card>
       <div className="flex justify-end"><Button onClick={() => setEdit({ kind: "bill", transport: "browser", width: 80, copies: 1, cut: true })}><Plus size={16} /> Add printer</Button></div>
       {msg && <p className="text-sm text-mint">{msg}</p>}{err && <p className="text-sm text-chili">{err}</p>}
-      {printers.length === 0 ? <Empty title="No printers yet" hint="Add one, or skip it to use the browser print dialog." /> : (
+      {printers.length === 0 ? <Empty title="No printers yet" hint="Or use the browser's print dialog" /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{printers.map((p, i) => (
           <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
             <Card lift className="h-full"><div className="flex items-start gap-3"><span className="h-10 w-10 rounded-2xl bg-ink text-on-label grid place-items-center"><P size={17} /></span>

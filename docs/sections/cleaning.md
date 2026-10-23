@@ -63,8 +63,8 @@ waiting, who is on what, and today's finished jobs with their times.
   or *Waiting for inspection*. *Today by person*: each person's jobs done, time each, and what they are on now.
   Room jobs with a guest arriving today sort first and say so; a VIP in the room says so. A wait past 15 min (table) /
   45 min (room), or a clean past 20 / 60 min, turns its time orange.
-- **Housekeeping board**: a task given to someone else (or someone else on it) shows *…'s task — ask a supervisor to
-  give it to you* instead of Start and Done, for anyone but a supervisor; the function refuses it too.
+- **Housekeeping board**: a task given to someone else (or someone else on it) shows *…'s task — ask a supervisor*
+  instead of Start and Done, for anyone but a supervisor; the function refuses it too.
 
 ## Before you edit
 
@@ -102,3 +102,4 @@ node cleaner.mjs     # 42 checks: a restaurant Cleaner's phone and a resort's at
   answering. `actOn(id)` keeps a `busy` set; a card is held only while its own take / done / give / drop is answering.
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Waiting breathes; On it and Cleaned today shuffle (`[data-clean-n]`); the average stays words.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

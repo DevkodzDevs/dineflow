@@ -17,7 +17,7 @@ export default async function WorkPage() {
   const dept = session.profile.department ?? board.me_dept ?? null;
   return (
     <>
-      <SvcHead icon="work" title="Work" sub="Raise a job, take it, finish it — your name goes on it" />
+      <SvcHead icon="work" title="Work" sub="Raise, take and finish jobs" />
       <WorkClient board={board} error={error?.message ?? null} me={session.profile.id} role={session.profile.role} dept={dept} hasRooms={session.restaurant.property_type !== "restaurant"} />
     </>
   );

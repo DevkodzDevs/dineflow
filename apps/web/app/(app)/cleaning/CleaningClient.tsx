@@ -111,13 +111,13 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Segmented value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "table", label: "Tables" }, ...(hasRooms ? [{ value: "room" as Filter, label: "Rooms" }] : []), { value: "mine", label: "Mine" }]} />
-        {waited != null && <span className="text-[13px] text-steel">A job waits {span(waited)} on average before someone takes it.</span>}
+        {waited != null && <span className="text-[13px] text-steel">Average wait: {span(waited)}</span>}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
-        <Column keyName="waiting" title="waiting" n={waiting.length} hint={"Nothing waiting. Paid tables show here" + (hasRooms ? "; rooms at check-out." : ".")}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
+        <Column keyName="waiting" title="waiting" n={waiting.length} hint="Nothing waiting."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
         <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody is cleaning right now."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{onIt.map(card)}</div></Column>
-        {boss && board.inspect_required && <Column keyName="inspect" title="to_inspect" n={inspect.length} hint="No room is waiting for you to sign it off."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{inspect.map(inspectCard)}</div></Column>}
+        {boss && board.inspect_required && <Column keyName="inspect" title="to_inspect" n={inspect.length} hint="No rooms to sign off."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{inspect.map(inspectCard)}</div></Column>}
         <Column keyName="done" title="done_today" n={finished.length} hint="Nothing finished yet today."><Card className="!py-1 !px-4"><ul className="divide-y divide-[var(--color-separator)]">{finished.map(row)}</ul></Card></Column>
       </div>
 
@@ -141,7 +141,7 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
             <input type="checkbox" className="h-5 w-5 mt-0.5" checked={tablesOn} disabled={pending} data-switch="tables"
               onChange={(e) => { const v = e.target.checked; setTablesOn(v); start(async () => { const r = await saveCleanSettings(v); if ("error" in r) { setTablesOn(!v); toast(r.error!, "err"); } else toast(v ? "Paid tables now get a cleaning job" : "Tables no longer get a cleaning job"); }); }} />
             <span><span className="block text-[15px] font-bold">Clean every table after it is paid</span>
-              <span className="block text-[12.5px] text-steel">Turn off for a counter. Rooms always get one at check-out.</span></span>
+              <span className="block text-[12.5px] text-steel">Off for counters. Rooms still get one.</span></span>
           </label>
         </Card>)}
     </div>

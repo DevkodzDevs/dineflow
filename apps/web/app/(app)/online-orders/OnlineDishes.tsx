@@ -62,8 +62,8 @@ export function OnlineDishes({ dishes, canEdit }: { dishes: OnlineDish[]; canEdi
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Dishes online">
         <div className="space-y-4" data-online-sheet>
-          <p className="text-[14px] text-[var(--color-label-2)]">Off online: not on Swiggy, Zomato or your website. Still sold at the till and tables.</p>
-          {!canEdit && <p className="flex items-center gap-2 rounded-2xl bg-[var(--color-fill)] px-3.5 py-3 text-[13.5px]" data-online-locked><Lock size={15} aria-hidden className="shrink-0" />Only the chef, a manager or an online supervisor can change this.</p>}
+          <p className="text-[14px] text-[var(--color-label-2)]">Off online = till and tables only.</p>
+          {!canEdit && <p className="flex items-center gap-2 rounded-2xl bg-[var(--color-fill)] px-3.5 py-3 text-[13.5px]" data-online-locked><Lock size={15} aria-hidden className="shrink-0" />Chef, manager or online supervisor only.</p>}
           <label className="flex items-center gap-2 h-12 rounded-2xl bg-[var(--color-fill)] px-3.5">
             <Search size={17} aria-hidden className="text-[var(--color-label-3)] shrink-0" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a dish" className="flex-1 min-w-0 !bg-transparent !border-0 !shadow-none !ring-0 !outline-none !px-0 !min-h-0 !h-full !rounded-none text-[15px]" data-online-search />

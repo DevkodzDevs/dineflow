@@ -134,3 +134,4 @@ Also run it at 412, 834, 1194 and 1440.
 - **The unread badge and the screenshot upload use `getClient()` from `lib/supabase/lazy.ts`** (2026-10-18). Imported
   directly, `lib/supabase/client` put Supabase's ~235 kB back into every signed-in screen's first load — this hook is in
   the menu on every screen.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words; the privacy line still says who answers and within how many days.

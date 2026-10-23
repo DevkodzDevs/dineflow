@@ -50,7 +50,7 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <PageHeader eyebrow="Numbered GST tax invoices" title="Invoices" accent="& tax" sub="Stay invoices cover room and extras. Dining ones come from paid bills." />
+      <PageHeader eyebrow="Numbered GST tax invoices" title="Invoices" accent="& tax" sub="From stays and paid bills" />
       <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 mb-4">
         <StatTile label={`Invoiced · ${n} days`} value={formatINR(total)} sub={`${count} invoices`} />
         <StatTile label="GST collected" value={formatINR(gst)} sub="CGST + SGST" delay={0.05} />
@@ -80,9 +80,9 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
         </span>
       </div>
       {!rows.length
-        ? <Empty title="No invoices yet" hint="Check a guest out, or press Tax invoice on a paid bill." />
+        ? <Empty title="No invoices yet" hint="From check-out or a paid bill" />
         : <>
-            {count > rows.length && <p className="footnote mb-3" data-shown>Showing the latest {rows.length} of {count} invoices — the totals above count all {count}. Pick a shorter window to reach the older ones.</p>}
+            {count > rows.length && <p className="footnote mb-3" data-shown>Showing {rows.length} of {count} · totals count all {count}.</p>}
             <InvoicesClient invoices={rows} months={months} property={session.restaurant.name} />
           </>}
     </>

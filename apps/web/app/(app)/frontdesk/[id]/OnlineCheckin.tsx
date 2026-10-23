@@ -37,7 +37,7 @@ export function OnlineCheckin({ token, base, at, pre, guest, phone, property, ch
           {pre.nationality && pre.nationality.trim().toLowerCase() !== "indian" && <p className="col-span-full text-xs text-[var(--color-orange)]">Foreign guest — check passport and visa; file Form C within 24 hours.</p>}
         </div>
       ) : (
-        <p className="mt-2 text-sm text-steel">Send the guest a link, or hand them this screen on a tablet.</p>
+        <p className="mt-2 text-sm text-steel">Send a link, or use a tablet.</p>
       )}
       <div className="mt-3 grid gap-2 grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))]">
         {wa && <a href={wa} target="_blank" rel="noreferrer" className={`${btn} bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110`}><MessageCircle size={16} className="shrink-0" /> {at ? "Send again" : "Send on WhatsApp"}</a>}

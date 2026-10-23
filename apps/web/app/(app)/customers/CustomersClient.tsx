@@ -61,7 +61,7 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
 
   return (
     <div className="space-y-5">
-      <SvcHead icon="customers" title="Customers" sub="Your regulars — call or WhatsApp in one tap"
+      <SvcHead icon="customers" title="Customers" sub="Call or WhatsApp in one tap"
         actions={<button type="button" className="svc-btn go sm !px-5" onClick={() => setAdding(true)} data-add-customer><Plus size={19} aria-hidden /><Say w="add_customer" /></button>} />
 
       {(ov.soon?.length ?? 0) > 0 && (
@@ -99,7 +99,7 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
       {/* guests' private ratings from the feedback QR (0103) — chosen like a filter, shown in place of the cards */}
       {filter === "feedback" ? <FeedbackBoard items={feedback} q={q} restaurant={restaurant} /> : <>
       {customers.length === 0 ? (
-        <Empty title="No customers yet" hint="A phone number on an order or bill adds them here." action={<Button onClick={() => setAdding(true)}>Add one by hand</Button>} />
+        <Empty title="No customers yet" hint="A phone on a bill adds them." action={<Button onClick={() => setAdding(true)}>Add one by hand</Button>} />
       ) : list.length === 0 ? <Empty title="Nobody matches" hint="Try another name, or clear the filter." /> : (<>
         {/* One card per guest: a coloured initial, the name (Regular when they have come three times) and
             the phone; visits, spend and the last visit in three boxes; Call and WhatsApp, big. A tap on the
@@ -218,7 +218,7 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
           {!loyalty.enabled && (
             <div className="flex items-start gap-3 rounded-2xl bg-[var(--color-fill)] px-3.5 py-3" data-loyalty-off>
               <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center bg-[var(--color-blue-2)] text-[var(--color-blue)]"><Info size={15} aria-hidden /></span>
-              <p className="min-w-0 text-[12.5px] leading-snug text-steel pt-1">Loyalty is off, so bills earn no points. Turn it on in Settings → Payments.</p>
+              <p className="min-w-0 text-[12.5px] leading-snug text-steel pt-1">Loyalty is off — turn it on in Settings → Payments.</p>
             </div>)}
           {/* give or take: the sign is a choice, the amount a plain number with quick picks, the reason full width, and
               the balance it leaves shown before Apply */}

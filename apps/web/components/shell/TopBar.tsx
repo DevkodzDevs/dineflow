@@ -38,7 +38,7 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
       {/* Back, first, on every screen but home (BackButton.tsx, 2026-10-22) */}
       <Suspense fallback={null}><BackButton home={home} /></Suspense>
       {/* Go to (components/shell/Keys.tsx): the hint said ⌘K for months and nothing answered it */}
-      <button type="button" onClick={() => dispatchEvent(new Event("df-palette"))} data-goto-open className="hidden sm:flex items-center gap-2 text-steel text-sm flex-1 min-w-0 h-10 -my-1 px-1 rounded-xl text-left hover:text-[var(--color-label)] transition-colors"><Search size={18} className="shrink-0" /><span className="text-xs truncate">Go to a section — orders, kitchen, billing…</span><kbd className="kbd ml-auto">{mac ? "⌘" : "Ctrl"} K</kbd></button>
+      <button type="button" onClick={() => dispatchEvent(new Event("df-palette"))} data-goto-open className="hidden sm:flex items-center gap-2 text-steel text-sm flex-1 min-w-0 h-10 -my-1 px-1 rounded-xl text-left hover:text-[var(--color-label)] transition-colors"><Search size={18} className="shrink-0" /><span className="text-xs truncate">Go to a section — orders, kitchen, billing…</span><kbd className="kbd ml-auto max-lg:!hidden">{mac ? "⌘" : "Ctrl"} K</kbd></button>
       {/* the wordmark goes home, like the sidebar's: /dashboard, or the first section this person holds */}
       {/* with several outlets the phone's top bar shows the outlet instead: there is no room for both (0106) */}
       <div className={cn("sm:hidden flex-1 min-w-0", outlets.length > 1 && "hidden")}><Link href="/dashboard" aria-label="DineFlow — home" className={cn("items-center !min-h-11 font-display text-xl tracking-wide max-[400px]:text-lg", backShown ? "hidden" : "inline-flex")} data-wordmark>DineFlow</Link></div>
@@ -60,8 +60,10 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
       <NotificationBell lateKots={alerts} />
       {/* the circle opens the profile card first (2026-10-23, the owner): who they are, their position, since when — with
           Edit my profile, and Settings for whoever may. It went straight to Settings (or /me) before. */}
+      {/* below md the bottom bar ends in the same circle, so this one steps aside there (2026-10-23, the owner: "why two
+          profile icons — one is enough") */}
       <button type="button" onClick={() => setCard(true)} title={`${name} · your profile`} aria-label={`${name} · your profile`} aria-haspopup="dialog" data-my-profile
-        className="tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</button>
+        className="max-md:!hidden tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</button>
     </motion.header>
     <ProfileCard open={card} onClose={() => setCard(false)} accountHref={accountHref} />
     </>

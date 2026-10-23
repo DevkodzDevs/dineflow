@@ -230,3 +230,4 @@ pause for 30 minutes. Dry run `dry133.cjs` (13).
 
 - **OTA channels one, two or three across** (2026-10-23): a ViewSwitch beside Sync now (from md), three by default, the pin
   keeps another on this device (`df-view:ota-cols`); the room still decides first (`@3xl` two, `@5xl` three).
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

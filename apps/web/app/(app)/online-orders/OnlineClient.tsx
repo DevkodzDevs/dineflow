@@ -37,8 +37,9 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
   // New when anything is waiting; otherwise whatever has orders in it
   const [tab, setTab] = useState<Tab>(() => (n("new") ? "new" : n("cook") ? "cook" : n("ready") ? "ready" : "new"));
   const newCount = orders.filter((o) => o.status === "new").length; const prev = useRef(newCount);
-  // a new order: a sound, and the New tab comes forward
-  useEffect(() => { if (newCount > prev.current) { try { new Audio("data:audio/wav;base64,UklGRl9vAAA=").play(); } catch { /* muted */ } setTab("new"); } prev.current = newCount; }, [newCount]);
+  // a new order brings the New tab forward; its sound is the alert system's (Notifier, "New online orders") — the
+  // data: clip that played here was an empty WAV header and never made a sound (2026-10-23)
+  useEffect(() => { if (newCount > prev.current) setTab("new"); prev.current = newCount; }, [newCount]);
   const [, tick] = useState(0); useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
   // dishes switched off online (0132): an aggregator keeps its own menu and can still send one — say so on the card
   const offOnline = new Set(menu.filter((m) => m.online_available === false).map((m) => m.id));
@@ -51,7 +52,7 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
   const TABS: { k: Tab; w: "new" | "cooking" | "ready"; Icon: typeof Bell }[] = [{ k: "new", w: "new", Icon: Bell }, { k: "cook", w: "cooking", Icon: Flame }, { k: "ready", w: "ready", Icon: PackageCheck }];
   return (
     <div className="space-y-5">
-      {channels.length === 0 && <Card className="!bg-champagne-2 flex items-start gap-3"><Link2 size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>No channels connected yet.</b> Add one on the <Link href="/channels" className="underline font-semibold">Channels</Link> page and give the aggregator your webhook URL.</div></Card>}
+      {channels.length === 0 && <Card className="!bg-champagne-2 flex items-start gap-3"><Link2 size={18} className="shrink-0 mt-0.5" /><div className="text-sm"><b>No channels connected yet.</b> Add one in <Link href="/channels" className="underline font-semibold">Channels</Link>.</div></Card>}
       <div className="grid grid-cols-3 gap-2 sm:max-w-xl" role="tablist" aria-label="Online orders" data-online-tabs>
         {TABS.map(({ k, w, Icon }) => {
           const c = n(k); const on = tab === k;
@@ -101,7 +102,7 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
                     <span className="h-9 w-9 shrink-0 rounded-[11px] grid place-items-center bg-[color-mix(in_srgb,var(--color-red)_16%,transparent)] text-[var(--color-red)]" aria-hidden><AlertTriangle size={17} /></span>
                     <div className="min-w-0 flex-1 leading-tight">
                       <div className="text-[13.5px] font-bold text-[var(--color-red)]"><span className="num">{o.unmatched.length}</span> {o.unmatched.length === 1 ? "dish" : "dishes"} not on your menu</div>
-                      <div className="text-[12px] text-[var(--color-label-2)] mt-0.5">Map {o.unmatched.length === 1 ? "it" : "them"} so the kitchen ticket and the stock are right.</div>
+                      <div className="text-[12px] text-[var(--color-label-2)] mt-0.5">Map {o.unmatched.length === 1 ? "it" : "them"} for the ticket and stock.</div>
                     </div>
                     <button type="button" onClick={() => setFix({ order: o, line: o.unmatched[0] })} className="shrink-0 !min-h-10 h-10 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold bg-[var(--color-red)] text-white active:scale-[.97] transition" data-map-now><Link2 size={15} aria-hidden />Map now</button>
                   </div>}
@@ -135,19 +136,19 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
       </div>
       <Sheet open={!!fix} onClose={() => setFix(null)} title={`Map "${fix?.line ?? ""}"`}>
         <div className="flex items-start gap-3 mb-3">
-          <p className="text-sm text-steel flex-1">Pick the menu dish this is. Next time it matches by itself.</p>
+          <p className="text-sm text-steel flex-1">Pick the menu dish — remembered next time.</p>
           {ai && <AiButton label="Find it" busy={hinting} onClick={() => { setHinting(true); void suggestDishMap([fix!.line]).then((r) => { if ("error" in r) setErr(r.error!); else setHint(r.matches?.[0] ?? null); }).finally(() => setHinting(false)); }} />}
         </div>
         {hint && hint.line === fix?.line && (
           <div className="mb-3 rounded-xl border border-[var(--color-tint)]/40 bg-[var(--color-green-2)] p-3 text-sm flex items-center gap-3">
-            <span className="flex-1 min-w-0">{hint.menu_item_id ? <>Looks like <b>{hint.name}</b> <span className="num text-xs text-steel">· {hint.confidence}% sure</span></> : <>Not on your menu — add it in Menu first.</>}</span>
+            <span className="flex-1 min-w-0">{hint.menu_item_id ? <>Looks like <b>{hint.name}</b> <span className="num text-xs text-steel">· {hint.confidence}% sure</span></> : <>Not on your menu — add it first.</>}</span>
             {hint.menu_item_id && <Button size="sm" disabled={pending} onClick={() => run(mapDish(hint.menu_item_id!, fix!.order.order_channels?.kind ?? "other", fix!.line), () => { setHint(null); setFix(null); })}>Map it</Button>}
           </div>
         )}
         <div className="space-y-2">{menu.map((m) => <button key={m.id} className="feather feather-lift w-full text-left p-3 flex justify-between" disabled={pending} onClick={() => run(mapDish(m.id, fix!.order.order_channels?.kind ?? "other", fix!.line), () => setFix(null))}><span>{m.name}</span><span className="num text-steel">{formatINR(Number(m.price))}</span></button>)}</div>
       </Sheet>
       <ReasonDialog open={!!rejecting} onClose={() => setRejecting(null)} title={rejecting ? `Reject ${rejecting.display_id ?? rejecting.external_id}?` : ""}
-        hint="The app tells the guest. You can't undo this." chips={["Item unavailable", "Kitchen too busy", "Closing soon", "Too far to deliver"]} confirmLabel="Reject order"
+        hint="The guest is told. Cannot be undone." chips={["Item unavailable", "Kitchen too busy", "Closing soon", "Too far to deliver"]} confirmLabel="Reject order"
         onConfirm={async (reason) => { const r = await rejectOnline(rejecting!.id, reason); if ("error" in r) return { error: r.error }; }} />
     </div>
   );

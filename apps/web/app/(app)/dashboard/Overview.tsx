@@ -191,7 +191,7 @@ function Week({ days }: { days: { day: string; value: number }[] }) {
   return (
     <div className="feather p-5 flex flex-col">
       <Head title="This week" note={formatINR(total)} />
-      {!traded ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">No bills settled in the last seven days.</p> : (<>
+      {!traded ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">No bills in seven days.</p> : (<>
       {/* the curve takes whatever height the band leaves it, so a short panel is never half air */}
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full flex-1 min-h-[88px] mt-1" preserveAspectRatio="none" role="img" aria-label="Takings over the last seven days">
         <defs><linearGradient id="wk" x1="0" y1="0" x2="0" y2="1">

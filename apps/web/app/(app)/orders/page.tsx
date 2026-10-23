@@ -28,7 +28,7 @@ export default async function OrdersPage() {
   return (
     <>
       {/* dine-in starts from a table on the floor; the header's one button is for an order with no table */}
-      <SvcHead icon="orders" title="Orders" sub="Tap a table to take or see its order"
+      <SvcHead icon="orders" title="Orders" sub="Tap a table to order"
         actions={<>
           <Link href="/orders/phone" className="svc-btn quiet sm !px-4" data-phone-order-link><Phone size={18} aria-hidden /> Phone</Link>
           <Link href="/orders/new?type=takeaway" className="svc-btn go sm !px-5" data-new-parcel><ShoppingBag size={19} aria-hidden /><Say w="parcel" /></Link>

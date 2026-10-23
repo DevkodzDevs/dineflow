@@ -58,7 +58,7 @@ export function ControlsClient({ expected, moves, shifts, voids, lines, names, m
         <Card data-cash-form>
           <div className="flex items-start gap-3 mb-4">
             <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Wallet size={16} /></span>
-            <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Move cash</h3><p className="text-xs text-steel mt-0.5">Cash added to or taken from the drawer. Counted in the shift close.</p></div>
+            <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Move cash</h3><p className="text-xs text-steel mt-0.5">Cash into or out of the drawer</p></div>
           </div>
           <Segmented value={kind} onChange={(v) => { setKind(v); setReason(""); setErr(null); }} className="w-full" options={[{ value: "in", label: <span className="inline-flex items-center gap-1.5"><ArrowDownToLine size={14} /> Cash in</span> }, { value: "out", label: <span className="inline-flex items-center gap-1.5"><ArrowUpFromLine size={14} /> Cash out</span> }]} />
           <div className="mt-4 space-y-3">
@@ -101,7 +101,7 @@ export function ControlsClient({ expected, moves, shifts, voids, lines, names, m
       <Card data-shifts>
         <div className="flex items-start gap-3 mb-3">
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Banknote size={16} /></span>
-          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Shift closes</h3><p className="text-xs text-steel mt-0.5">Last 30. Expected = cash sales + cash in − cash out. Counted excludes the float.</p></div>
+          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Shift closes</h3><p className="text-xs text-steel mt-0.5">Last 30. Expected = cash sales + in − out. Float not counted.</p></div>
         </div>
         {shifts.length === 0 ? <p className="text-sm text-steel">No shifts closed yet. Close one in Billing.</p> : (
           <div className="feather overflow-x-auto table-wrap"><table className="w-full text-sm min-w-[640px]">

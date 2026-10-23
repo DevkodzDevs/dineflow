@@ -53,7 +53,7 @@ function NeedsPanel({ n, col }: { n?: Needs[string]; col: Kot["status"] }) {
           </li>))}
       </ul>
       {more > 0 && <div className="text-[11px] text-steel mt-0.5">+{more} more</div>}
-      {n.unmapped.length > 0 && <div className="text-[11px] text-steel mt-1">No recipe yet: {n.unmapped.join(", ")} — the pantry won't move for {n.unmapped.length === 1 ? "it" : "these"}.</div>}
+      {n.unmapped.length > 0 && <div className="text-[11px] text-steel mt-1">No recipe yet: {n.unmapped.join(", ")} — stock won't move.</div>}
     </div>
   );
 }
@@ -162,12 +162,12 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
       {/* the head: what this screen is, in one sentence a new cook can follow, with the clock and the
           board for the guests on the right */}
       <SvcHead icon="kitchen" title={<>Kitchen{view !== "all" && <span className="text-[var(--color-label-2)]"> · {view}</span>}</>}
-        sub={board.length ? `${board.length} ticket${board.length > 1 ? "s" : ""} · tap the big button when you start, and again when the food is ready` : "All clear — new tickets appear here by themselves"}
+        sub={board.length ? `${board.length} ticket${board.length > 1 ? "s" : ""} · tap to start, tap when ready` : "All clear — new tickets show here"}
         actions={<>
           <span className="h-11 px-4 rounded-full bg-[var(--color-fill)] inline-flex items-center justify-center gap-2 text-[15px] font-bold num" data-clock><Clock size={16} aria-hidden />{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
-          <Link href="/kitchen/board" title="Guest screen: orders cooking and ready to collect" className="h-11 px-4 rounded-full inline-flex items-center justify-center gap-2 text-[15px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors"><Tv size={16} aria-hidden /> Order board</Link>
+          <Link href="/kitchen/board" title="Guest screen of order numbers" className="h-11 px-4 rounded-full inline-flex items-center justify-center gap-2 text-[15px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors"><Tv size={16} aria-hidden /> Order board</Link>
         </>} />
-      {stale > 0 && <p className="-mt-3 mb-4 text-[13px] font-semibold text-chili" title="Over a day old, never marked ready — not on the board">{stale} older ticket{stale > 1 ? "s" : ""} still open from earlier</p>}
+      {stale > 0 && <p className="-mt-3 mb-4 text-[13px] font-semibold text-chili" title="Over a day old, never marked ready">{stale} older ticket{stale > 1 ? "s" : ""} still open</p>}
 
       {known.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-4" data-stations>
@@ -176,7 +176,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
               {s === "all" ? "Everything" : s}<span className={cn("num ml-2", view === s ? "opacity-70" : "text-steel")}>{countAt(s)}</span>
             </button>
           ))}
-          {unrouted > 0 && view === "all" && <span className="text-[12px] text-steel ml-1">{unrouted} line{unrouted > 1 ? "s" : ""} with no station — set one on the Menu page</span>}
+          {unrouted > 0 && view === "all" && <span className="text-[12px] text-steel ml-1">{unrouted} line{unrouted > 1 ? "s" : ""} with no station — set in Menu</span>}
         </div>
       )}
 
@@ -263,7 +263,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                             </button>
                           ))}
                           {others > 0 && <div className="kt-sub mt-1">+{others} line{others > 1 ? "s" : ""} at other stations</div>}
-                          {stationDone && <div className="text-[13px] text-mint font-bold mt-1">This station is done — waiting on the rest</div>}
+                          {stationDone && <div className="text-[13px] text-mint font-bold mt-1">Station done — waiting on the rest</div>}
                           <NeedsPanel n={needs[k.id]} col={key} />
                         </div>
                         {/* one big button, always in the same place: start → ready → served */}
@@ -299,7 +299,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
           );
         })}
       </div>
-      <p className="mt-4 text-[12px] text-steel">Keys <span className="num font-semibold">1</span>–<span className="num font-semibold">9</span> move tickets on in order, <span className="num font-semibold">R</span> brings back the last one. A bump bar works too.</p>
+      <p className="mt-4 text-[12px] text-steel">Keys <span className="num font-semibold">1</span>–<span className="num font-semibold">9</span> move tickets on, <span className="num font-semibold">R</span> recalls the last.</p>
     </div>
   );
 }

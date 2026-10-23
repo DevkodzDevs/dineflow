@@ -128,8 +128,37 @@ function audio(): AudioContext | null {
   ctx ??= new AC();
   return ctx;
 }
-export function unlockAudio() { const c = audio(); if (c && c.state === "suspended") void c.resume().catch(() => {}); }
+/* Why the alerts were silent (2026-10-23, the owner: "notification sound is not working"). Two things, both on a phone:
+   - the unlock listened for pointerdown, and a touch's pointerdown is not a gesture that may start sound (the spec's list
+     is keydown, mousedown, a mouse's pointerdown, a touch's pointerup, touchend) — so on a phone or an iPad the context
+     never left "suspended". It now listens for pointerup, touchend, click and keydown too (armAudioUnlock);
+   - an iPhone's ring/silent switch mutes Web Audio, which plays as "ambient" sound. Asking for a "playback" audio session
+     (navigator.audioSession, Safari 16.4+) — and, for older ones, playing a moment of silence through an <audio> element
+     inside the tap — makes it play like media, through the switch.
+   And iOS leaves a context "interrupted" (a call, the app in the background), not "suspended": anything but "running" is
+   resumed. */
+let primed = false;
+function silentWav(): string {
+  const n = 400, b = new DataView(new ArrayBuffer(44 + n * 2)); const w = (o: number, s: string) => { for (let i = 0; i < s.length; i++) b.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); b.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, 8000, true); b.setUint32(28, 16000, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true); w(36, "data"); b.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([b.buffer], { type: "audio/wav" }));
+}
+function playbackSession() {
+  try { const s = (navigator as unknown as { audioSession?: { type: string } }).audioSession; if (s && s.type !== "playback") s.type = "playback"; } catch { /* not this browser */ }
+  if (primed) return; primed = true;
+  try { const a = new Audio(silentWav()); a.setAttribute("playsinline", ""); void a.play().catch(() => { primed = false; }); } catch { primed = false; }
+}
+export function unlockAudio() { const c = audio(); if (!c) return; playbackSession(); if (c.state !== "running") void c.resume().catch(() => {}); }
 export const audioBlocked = () => { const c = audio(); return !c || c.state !== "running"; };
+/** Every gesture that may start sound unlocks it — kept for the whole visit, since iOS can suspend the context again. */
+export function armAudioUnlock(): () => void {
+  const ev = ["pointerup", "touchend", "click", "keydown"] as const;
+  const f = () => unlockAudio();
+  const vis = () => { if (document.visibilityState === "visible") { const c = audio(); if (c && c.state !== "running") void c.resume().catch(() => {}); } };
+  ev.forEach((e) => window.addEventListener(e, f, { passive: true, capture: true })); document.addEventListener("visibilitychange", vis);
+  return () => { ev.forEach((e) => window.removeEventListener(e, f, { capture: true })); document.removeEventListener("visibilitychange", vis); };
+}
 
 type Note = { f: number; at: number; dur: number; type?: OscillatorType; gain?: number; glide?: number };
 const PATTERNS: Record<ToneId, Note[]> = {
@@ -143,7 +172,7 @@ const PATTERNS: Record<ToneId, Note[]> = {
 
 export function playTone(tone: ToneId, volume = 80) {
   const c = audio(); if (!c) return;
-  if (c.state === "suspended") void c.resume().catch(() => {});
+  if (c.state !== "running") void c.resume().catch(() => {});
   const master = c.createGain(); master.gain.value = Math.max(0, Math.min(1, volume / 100)) * 0.5; master.connect(c.destination);
   const t0 = c.currentTime + 0.02;
   for (const n of PATTERNS[tone] ?? PATTERNS.chime) {

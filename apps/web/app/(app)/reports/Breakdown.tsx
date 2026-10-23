@@ -46,7 +46,7 @@ export function BreakdownView({ d }: { d: Breakdown | null }) {
                 <div className="mt-1 h-1.5 rounded-full bg-line overflow-hidden"><div className="h-full rounded-full bg-mint" style={{ width: `${totalType ? (Number(t.rev) / totalType) * 100 : 0}%` }} /></div></div>
             ))}
             {d.by_type.length === 0 && <p className="text-sm text-steel">Nothing yet.</p>}
-            {Number(d.table_qr) > 0 && <p className="text-xs text-steel pt-1">{d.table_qr} order{Number(d.table_qr) === 1 ? "" : "s"} placed by guests scanning the table code.</p>}
+            {Number(d.table_qr) > 0 && <p className="text-xs text-steel pt-1">{d.table_qr} order{Number(d.table_qr) === 1 ? "" : "s"} from the table QR.</p>}
           </div>
         </Card>
       </div>
@@ -71,7 +71,7 @@ export function BreakdownView({ d }: { d: Breakdown | null }) {
         </Card>
         <Card>
           <h3 className="text-xl mb-3">Sizes &amp; add-ons that sell</h3>
-          {d.variants.length === 0 && d.addons.length === 0 ? <p className="text-sm text-steel">No sizes or add-ons sold yet. Add them in Menu → Options.</p> : (<>
+          {d.variants.length === 0 && d.addons.length === 0 ? <p className="text-sm text-steel">None sold yet. Add in Menu → Options.</p> : (<>
             {d.variants.length > 0 && <ul className="text-sm space-y-1">{d.variants.slice(0, 6).map((v) => <li key={v.name} className="flex justify-between"><span className="truncate">{v.name}</span><span className="num">{v.qty} · {formatINR(Number(v.rev))}</span></li>)}</ul>}
             {d.addons.length > 0 && <div className={cn(d.variants.length > 0 && "mt-3 pt-3 border-t border-line")}><div className="text-xs uppercase text-steel mb-1.5">Add-ons</div><ul className="text-sm space-y-1">{d.addons.slice(0, 6).map((a) => <li key={a.name} className="flex justify-between"><span className="truncate">+ {a.name}</span><span className="num">{a.n} · {formatINR(Number(a.rev))}</span></li>)}</ul></div>}
           </>)}

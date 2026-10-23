@@ -106,3 +106,4 @@ Then open `/kitchen/board` at 1920 and stand back from it.
   shell and its ✕ goes to `/kitchen`.
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Each ticket's age is a ticking flip clock (`FlapClock since`, `[data-kt-age]`) — emerald, amber at `warnAt`, red at `lateAt` (red too when a promise is missed); the words stay as sr-only text. Column counts shuffle on 40px compact tiles (`[data-kcol-count]`, the old `<b class="num">` kept sr-only). The Order board spells the newest ready order (`[data-board-call]`, `FlapSpell`) its Preparing count breathes (`[data-board-preparing]`) and its Ready count shuffles (`[data-board-ready-count]`), 40px on the wall, 34 on a phone.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

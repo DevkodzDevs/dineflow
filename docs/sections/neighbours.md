@@ -49,6 +49,8 @@ node dialog-audit.mjs    # "Sharing & privacy" is one of the 35 audited dialogs
 node audit-isolation.mjs # tenant isolation — 66 policies, cross-tenant read/write refused
 ```
 
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
 ## See also
 
 [data-and-rls.md](data-and-rls.md) · [legal.md](legal.md) · [inventory.md](inventory.md)

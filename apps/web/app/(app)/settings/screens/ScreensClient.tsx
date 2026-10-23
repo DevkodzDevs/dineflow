@@ -26,9 +26,9 @@ export function ScreensClient({ base, name, slug, initialKey }: { base: string; 
         <div className="flex items-start gap-3">
           <span className="h-11 w-11 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)]"><Tv size={20} aria-hidden /></span>
           <div className="min-w-0"><div className="text-[17px] font-extrabold">TV screen by the counter</div>
-            <p className="text-[13.5px] text-steel mt-0.5">Menu, prices and parcel tokens — <b>Preparing</b> and <b>Ready, please collect</b>. Open the link in the TV&apos;s browser and leave it on.</p></div>
+            <p className="text-[13.5px] text-steel mt-0.5">Menu and tokens. Open this link on the TV.</p></div>
         </div>
-        {!key ? <p className="mt-4 text-[14px] text-steel flex items-center gap-2"><Lock size={15} aria-hidden /> Only the owner or a manager sees this link.</p> : <>
+        {!key ? <p className="mt-4 text-[14px] text-steel flex items-center gap-2"><Lock size={15} aria-hidden /> Owner and managers only.</p> : <>
           <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="What the screen shows">
             {SHOW.map(([k, label]) => <button key={k} type="button" aria-pressed={show === k} onClick={() => setShow(k)} className={cn("!min-h-11 rounded-full px-4 text-[13.5px] font-extrabold", show === k ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)]")}>{label}</button>)}
           </div>
@@ -40,7 +40,7 @@ export function ScreensClient({ base, name, slug, initialKey }: { base: string; 
               onClick={() => { if (!confirm("Make a new link? Screens on the old link will stop.")) return; start(async () => { const r = await screenKey(true); if ("error" in r) toast(r.error!, "err"); else { setKey(r.key!); toast("New link made — the old one no longer works"); } }); }}>
               <RefreshCw size={16} aria-hidden /> New link</button>
           </div>
-          <p className="mt-2 text-[12.5px] text-steel">Use it only on your screens. Tokens restart at 1 each day.</p>
+          <p className="mt-2 text-[12.5px] text-steel">Your screens only. Tokens restart at 1 daily.</p>
         </>}
       </Card>
 
@@ -48,19 +48,19 @@ export function ScreensClient({ base, name, slug, initialKey }: { base: string; 
         <div className="flex items-start gap-3">
           <span className="h-11 w-11 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)]"><Tablet size={20} aria-hidden /></span>
           <div className="min-w-0"><div className="text-[17px] font-extrabold">Self-order kiosk</div>
-            <p className="text-[13.5px] text-steel mt-0.5">Guests order on a tablet, get a token and pay at the counter.</p></div>
+            <p className="text-[13.5px] text-steel mt-0.5">Order on a tablet, pay at the counter.</p></div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/kiosk" className="svc-btn go sm !px-4" data-open-kiosk><Tablet size={16} aria-hidden /> Open kiosk on this device</Link>
         </div>
-        <p className="mt-2 text-[12.5px] text-steel">Use a staff login that takes orders. Exit: hold top-left 2 seconds, enter the password.</p>
+        <p className="mt-2 text-[12.5px] text-steel">Use an order-taking login. Exit: hold top-left 2 s, then password.</p>
       </Card>
 
       <Card className="min-w-0" data-feedback-card>
         <div className="flex items-start gap-3">
           <span className="h-11 w-11 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)]"><Star size={20} aria-hidden /></span>
           <div className="min-w-0"><div className="text-[17px] font-extrabold">Feedback QR</div>
-            <p className="text-[13.5px] text-steel mt-0.5">Guests rate you in one tap. 3 stars or less alerts staff at once.</p></div>
+            <p className="text-[13.5px] text-steel mt-0.5">One-tap rating. 3 stars or less alerts staff.</p></div>
         </div>
         {!fb ? <p className="mt-4 text-[14px] text-steel">Set your storefront link first — <Link href="/settings/storefront" className="underline">Storefront & offers</Link>.</p> : (
           <div className="mt-4 flex flex-col sm:flex-row items-center gap-4">

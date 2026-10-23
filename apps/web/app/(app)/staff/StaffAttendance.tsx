@@ -41,14 +41,16 @@ export function StaffAttendance({ today, staff, att, methods, canMark, canRegist
   const manual = methods.includes("manual") && canMark;
   return (
     <section className="rounded-[26px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4 sm:p-5 mt-5" data-staff-attendance>
-      <div className="flex flex-wrap items-center gap-3 mb-3 min-w-0">
+      {/* the head (2026-10-23, the owner: "not looking good on a phone"): the title broke as "Attend / ance" beside the tabs.
+          Now the title never shrinks below its word; on a phone Today | Register drop to their own full-width row. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-3 mb-3 min-w-0" data-att-head>
         <span className="h-10 w-10 shrink-0 rounded-[13px] grid place-items-center bg-[color-mix(in_srgb,var(--color-green)_20%,transparent)] text-[var(--color-green)]"><ClipboardCheck size={19} aria-hidden /></span>
-        <div className="min-w-0 flex-1"><div role="heading" aria-level={2} className="text-[17px] font-extrabold">Attendance</div>
+        <div className="min-w-[8rem] flex-1"><div role="heading" aria-level={2} className="text-[17px] font-extrabold whitespace-nowrap">Attendance</div>
           <div className="text-[12.5px] text-steel num">{inNow} of {people.length} in today{onLeave ? ` · ${onLeave} on leave` : ""}</div></div>
-        {canRegister && <div className="flex rounded-full bg-[var(--color-fill)] p-1" role="tablist" aria-label="Attendance view">
+        {canRegister && <div className="flex rounded-full bg-[var(--color-fill)] p-1 max-sm:w-full max-sm:order-last" role="tablist" aria-label="Attendance view">
           {([["today", "Today", ClipboardCheck], ["register", "Register", CalendarRange]] as const).map(([k, l, I]) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} data-att-tab={k}
-              className={cn("!min-h-10 h-10 pointer-coarse:h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-extrabold transition-colors", tab === k ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_4px_rgb(0_0_0/0.22)]" : "text-steel hover:text-[var(--color-label)]")}><I size={15} aria-hidden />{l}</button>))}
+              className={cn("!min-h-10 h-10 pointer-coarse:h-11 px-3.5 max-sm:flex-1 justify-center rounded-full inline-flex items-center gap-1.5 text-[13px] font-extrabold transition-colors", tab === k ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_4px_rgb(0_0_0/0.22)]" : "text-steel hover:text-[var(--color-label)]")}><I size={15} aria-hidden />{l}</button>))}
         </div>}
         {tab === "today" && people.length > 1 && <div className="max-sm:hidden"><ViewSwitch label="Cards across" data="attendance-cols" shown={across} onPick={cols.pick} saved={cols.saved} onKeep={(v) => { cols.keep(v); toast(`${v} across is your default here`); }}
           options={[{ v: "1", label: "One across", icon: Square }, { v: "2", label: "Two across", icon: Columns2 }, { v: "3", label: "Three across", icon: Columns3 }]} /></div>}

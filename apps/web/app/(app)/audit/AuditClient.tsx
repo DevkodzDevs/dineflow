@@ -82,7 +82,7 @@ export function AuditClient({ events, names, days, more, error }: { events: Even
       </Card>
       {error && <p className="rounded-xl bg-[var(--color-red-2)] px-4 py-3 text-sm text-[var(--color-red)]">{error}</p>}
       <Card className="!p-0 overflow-hidden">
-        {rows.length === 0 ? <p className="p-8 text-center text-sm text-steel">{events.length === 0 ? `Nothing recorded in the last ${days === 1 ? "day" : `${days} days`}. The trail starts with the first void, discount, payment, stock change or settings change after this update.` : "Nothing matches."}</p> : (
+        {rows.length === 0 ? <p className="p-8 text-center text-sm text-steel">{events.length === 0 ? `Nothing recorded in the last ${days === 1 ? "day" : `${days} days`}.` : "Nothing matches."}</p> : (
           <ul className="divide-y divide-[var(--color-separator)]">
             {rows.map((e) => { const a = ACTION[e.action] ?? { title: e.action, group: "people" as Group }; const G = GROUPS.find((g) => g.key === a.group)!.Icon; return (
               <li key={e.id} className="px-4 py-3 flex items-start gap-3 min-w-0" data-event data-action={e.action}>
@@ -99,7 +99,7 @@ export function AuditClient({ events, names, days, more, error }: { events: Even
         )}
       </Card>
       {more && rows.length > 0 && <div className="text-center"><Link href={`/audit?days=${days}&before=${events[events.length - 1].id}`} className="btn btn-gray !h-11 px-5 inline-flex items-center text-sm font-semibold">Older</Link></div>}
-      <p className="text-[11.5px] text-steel flex items-center gap-1.5"><Settings2 size={12} /> Seen by owner, managers and supervisors. Logged from every screen and device.</p>
+      <p className="text-[11.5px] text-steel flex items-center gap-1.5"><Settings2 size={12} /> Owner, managers and supervisors only</p>
     </div>
   );
 }

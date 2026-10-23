@@ -16,7 +16,7 @@ export default async function ChainPage() {
   if (!["owner", "manager"].includes(session.profile.role)) redirect("/dashboard?locked=chain");   // 2026-10-20: no longer every supervisor's
   return (
     <>
-      <PageHeader eyebrow="Your chain" title="Outlets" sub="All outlets live. Tap one to work in it, or copy the menu across." />
+      <PageHeader eyebrow="Your chain" title="Outlets" sub="Every outlet, live" />
       <ChainClient initial={(list ?? []) as OutletLive[]} people={(people ?? []) as Person[]} role={session.profile.role} current={session.restaurant.id} currentName={session.restaurant.name} isDemo={!!session.restaurant.demo_expires_at} />
     </>
   );

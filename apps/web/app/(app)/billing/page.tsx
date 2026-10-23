@@ -31,7 +31,7 @@ export default async function BillingPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="min-w-0">
           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel mb-3">Ready to bill · {open?.length ?? 0}</div>
-          {!open?.length ? <Empty title="No open orders" hint="Bills appear here as soon as an order is placed." /> : (
+          {!open?.length ? <Empty title="No open orders" hint="Orders show here once placed." /> : (
             <div className="space-y-3">{open.map((o) => {
               const total = (o.order_items as { qty: number; price_snapshot: number; status: string }[]).filter((i) => i.status !== "cancelled").reduce((t, i) => t + i.qty * Number(i.price_snapshot), 0);
               const t = o.dining_tables as unknown as { name: string } | null;

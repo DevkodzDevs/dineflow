@@ -69,7 +69,7 @@ export function PhoneClient() {
               <span className="h-14 w-14 shrink-0 rounded-full grid place-items-center bg-[var(--color-fill)]"><UserRound size={26} aria-hidden /></span>
               <div className="min-w-0 flex-1">
                 <div className="text-[19px] font-extrabold truncate">{card?.customer?.name ?? (name || "New caller")}</div>
-                <div className="text-[13.5px] text-steel">{card?.customer ? `${card.customer.visits} visit${card.customer.visits === 1 ? "" : "s"} · ${formatINR(Number(card.customer.spend), { whole: true })} spent${card.customer.last ? ` · last ${ago(card.customer.last)}` : ""}` : "Not in your customers yet — the order adds them."}</div>
+                <div className="text-[13.5px] text-steel">{card?.customer ? `${card.customer.visits} visit${card.customer.visits === 1 ? "" : "s"} · ${formatINR(Number(card.customer.spend), { whole: true })} spent${card.customer.last ? ` · last ${ago(card.customer.last)}` : ""}` : "New customer — the order saves them."}</div>
               </div>
             </div>
             {card?.customer?.notes && <p className="mt-3 rounded-xl bg-[var(--color-orange-2)] text-[var(--color-orange)] px-3 py-2 text-[14px] font-semibold">{card.customer.notes}</p>}

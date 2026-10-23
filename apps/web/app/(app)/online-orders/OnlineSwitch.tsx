@@ -38,12 +38,12 @@ export function OnlineSwitch({ off: initialOff, canEdit }: { off: boolean; canEd
       <div className="space-y-4" data-online-confirm={off ? "start" : "stop"}>
         <div className="flex items-center gap-3.5 rounded-[20px] p-4 border" style={{ background: `color-mix(in srgb, ${off ? "var(--color-green)" : "var(--color-red)"} 9%, var(--color-bg-2))`, borderColor: `color-mix(in srgb, ${off ? "var(--color-green)" : "var(--color-red)"} 35%, transparent)` }}>
           <span className="h-12 w-12 shrink-0 rounded-full grid place-items-center" style={{ background: `color-mix(in srgb, ${off ? "var(--color-green)" : "var(--color-red)"} 18%, transparent)`, color: off ? "var(--color-green)" : "var(--color-red)" }}><Power size={22} aria-hidden /></span>
-          <p className="text-[14.5px] font-semibold leading-snug">{off ? "Your website takes delivery and takeaway orders again." : "Your website stops taking delivery and takeaway orders until you turn them back on."}</p>
+          <p className="text-[14.5px] font-semibold leading-snug">{off ? "Your website takes delivery and takeaway orders again." : "Your website stops delivery and takeaway orders."}</p>
         </div>
         <ul className="space-y-2.5 text-[13.5px] text-[var(--color-label-2)]">
           <li className="flex gap-2.5"><Globe size={17} className="shrink-0 mt-0.5" aria-hidden /><span>{off ? "Guests can order on your website again." : "Guests see “not taking orders” on your website."}</span></li>
-          <li className="flex gap-2.5"><QrCode size={17} className="shrink-0 mt-0.5" aria-hidden /><span>Table QR orders keep coming in either way.</span></li>
-          <li className="flex gap-2.5"><Bike size={17} className="shrink-0 mt-0.5" aria-hidden /><span>Swiggy and Zomato: switch them in their partner apps.</span></li>
+          <li className="flex gap-2.5"><QrCode size={17} className="shrink-0 mt-0.5" aria-hidden /><span>Table QR orders keep coming in.</span></li>
+          <li className="flex gap-2.5"><Bike size={17} className="shrink-0 mt-0.5" aria-hidden /><span>Swiggy, Zomato: switch in their own apps.</span></li>
         </ul>
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className="svc-btn quiet sm" onClick={() => setAsk(false)}>Cancel</button>

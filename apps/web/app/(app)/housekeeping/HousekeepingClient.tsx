@@ -114,10 +114,10 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
           <span className="rounded-full px-3 py-1.5 bg-card border border-line">Out of order <span className="num opacity-70">{ooo}</span></span>
         </div>
         <div className="toolbar-group toolbar-end">
-          <Button variant="outline" disabled={pending} onClick={sheet} title="A service for every occupied room and a clean for every dirty one"><ClipboardList size={15} /> Build today's sheet</Button>
+          <Button variant="outline" disabled={pending} onClick={sheet} title="Service occupied rooms, clean dirty ones"><ClipboardList size={15} /> Build today's sheet</Button>
         </div>
       </div>
-      {inspectRule && !canInspect && <p className="text-xs text-steel -mt-3">A supervisor, manager or owner must sign off each room.</p>}
+      {inspectRule && !canInspect && <p className="text-xs text-steel -mt-3">A supervisor or above signs off each room.</p>}
 
       <div className="sm:hidden">
         <Segmented value={view} onChange={setView} className="w-full [&>button]:flex-1 [&>button]:!h-11"
@@ -312,7 +312,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             })}
           </div></div>}</section>
       ); })}
-      {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet — add them on the Rooms page.</p>}
+      {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet — add them in Rooms.</p>}
       </div>
 
       {/* the task sheet */}
@@ -332,14 +332,14 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                       card. What Done does to the room is in its title instead. */}
                   {/* a task given to someone else, or someone else on it, is theirs: no buttons for anyone but them and a supervisor */}
                   {!canInspect && ((t.status === "pending" && t.assigned_to && t.assigned_to !== me) || (t.status === "in_progress" && t.taken_by && t.taken_by !== me && t.assigned_to !== me))
-                    ? <p className="mt-3 text-[12.5px] text-steel" data-task-theirs>{t.status === "in_progress" ? `${nameOf(t.taken_by)}'s task` : `${nameOf(t.assigned_to)}'s task`} — ask a supervisor to give it to you</p>
-                    : <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={!!busy[t.id]} onClick={() => act(() => takeJob("room", t.id), t.id)}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={!!busy[t.id]} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Mark done — the room is ready to sell"} onClick={() => act(() => finishJob("room", t.id), t.id)}><Check size={14} /> Done</Button></div>}
+                    ? <p className="mt-3 text-[12.5px] text-steel" data-task-theirs>{t.status === "in_progress" ? `${nameOf(t.taken_by)}'s task` : `${nameOf(t.assigned_to)}'s task`} — ask a supervisor</p>
+                    : <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={!!busy[t.id]} onClick={() => act(() => takeJob("room", t.id), t.id)}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={!!busy[t.id]} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Done — room goes on sale"} onClick={() => act(() => finishJob("room", t.id), t.id)}><Check size={14} /> Done</Button></div>}
                   {canInspect && <select className="mt-2 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={!!busy[t.id]} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign
                     onChange={(e) => act(() => assignJob("room", t.id, e.target.value || null), t.id)}>
                     <option value="">{t.assigned_to ? "Nobody — anyone can take it" : "Give to…"}</option>
                     {crewFor(t).map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.position_title ? ` — ${p.position_title}` : ""}</option>)}</select>}
                 </motion.div>))}</AnimatePresence>{list.length === 0 && <p className="text-sm text-steel px-1 py-3">{c.key === "pending" ? "Nothing to do." : "Nothing in progress."}</p>}</div></section>); })}
-          {tasks.length === 0 && <div className="sm:col-span-2"><Empty title="Nothing on the sheet" hint="Check-outs add cleans. Build today's sheet for stayovers." /></div>}
+          {tasks.length === 0 && <div className="sm:col-span-2"><Empty title="Nothing on the sheet" hint="Check-outs add cleans automatically." /></div>}
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 items-start min-w-0">
           <Card><h3 className="text-lg mb-3">New task</h3><div className="space-y-3">

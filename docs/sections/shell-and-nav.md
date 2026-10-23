@@ -564,7 +564,11 @@ board counts as pinned in Edit bar (it was filtered by modules and dropped).
   Kitchen screen · Till / waiters · Owner's phone) sets the tone and which alerts; changing either
   makes it Custom. A device never set up guesses: phone → Owner's phone, otherwise a restaurant's
   till or a hotel's front desk. Six tones are synthesised with WebAudio (no files); a browser makes
-  sound only after the first touch, so the provider unlocks audio on the first pointerdown/keydown.
+  sound only after a gesture, so the provider arms `armAudioUnlock()` (`lib/notify.ts`): pointerup, touchend, click and keydown
+  for the whole visit — **not pointerdown**, which a touch screen does not count as a gesture (that was why phones and iPads
+  were silent, 2026-10-23). It also asks for a `playback` audio session (`navigator.audioSession`, with a moment of silence
+  through an `<audio>` element for older Safari) so an iPhone's silent switch does not mute the alerts, and resumes any
+  state that is not `running` (iOS leaves a context `interrupted`).
   On iPhone, system notifications need the Home Screen app. Nothing here is Web Push — a closed app
   hears nothing.
 - **The phone wordmark** "DineFlow" in the top bar is a link to `/dashboard`, like the sidebar's
@@ -665,3 +669,39 @@ The owner: "a click on the profile first shows the name, the position, when they
 mth here"), access, staff code, reports to, phone, email (verified or not), the emergency contact, languages and their line
 about themselves; **Edit my profile** (/me) and, for the owner, **Settings**. Read when it opens (`myCard` in me/actions.ts),
 so no screen carries it. It went straight to Settings (or /me) before.
+- **Short copy** (2026-10-23): the install sheet, Send install link and Menu style hints cut to a few words; the step-by-step install instructions (InstallPanel, IosGuide) are unchanged.
+
+- **One profile circle on a phone, a slim Master bar** (2026-10-23, the owner: "why two profile icons — one is enough"):
+  below md the top bar's circle (`[data-my-profile]`) is hidden — the bottom bar ends in the same circle, opening the same
+  ProfileCard. `MasterBanner` under 640px is one pill-shaped line: "Master mode · <property>" and an **Exit** key (the
+  long "viewing … as its owner", "real and logged" and "Back to Master control" from sm up; `.long` / `.short` in
+  `MasterBanner.module.css`).
+
+- **Menu style from the sidebar itself, and in Settings** (2026-10-23, the owner: "the sidebar designs are still not applied" —
+  they were, locally, but never deployed; and the only way to choose was My profile). The foot now has the fold key and a
+  **Menu style** key side by side (`.sb-tools`, `[data-sb-style]`; one over the other on the icon looks), which opens the six
+  looks in a sheet (`SidebarPicker inSheet`); Settings → Appearance shows the picker too. The top bar hides its Ctrl K hint
+  under 1024px, where the search line is short. sb74: 76/76 — six looks × 1920/1440/1194/834 × restaurant and resort, the
+  default (icons under 1280, classic above), the fold both ways, the Menu style key, the phone untouched.
+
+### Speed pass — 2026-10-23 (the owner: "the first load is too slow")
+
+Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.mjs`):
+- **Live, a first visit to the control room: first paint 4.3 s.** The server began answering at 0.57 s but finished the
+  page at 3.3 s (a fresh instance loading the route's code for the first time), and 371 kB of script came on top (react-dom
+  53 kB, Next 46 kB, framer-motion 40 kB — the app's own share is small). The same screen warm: 0.5 s. Other screens cold
+  0.8–2.0 s, warm 0.3–0.7 s.
+- **Not the database:** `session_bundle` runs in 2.8 ms inside Postgres; each REST call is 80–190 ms from a desk in India,
+  nearly all of it the trip, and Vercel (bom1) sits beside Supabase (ap-south-1). The control room's twelve reads together:
+  ~240 ms.
+- **Fixed — what is not the screen waits for it** (`lib/idle.ts`, `whenSettled(fn, after)`: after the load event and an
+  idle moment): Assist's insights (2.5 s after the first screen, 0.9 s after later ones), `/api/download` (1.5 s), the
+  support count (1.2 s), and the screen warm-up (3 s, was a fixed 1.5 s from mount). A first load went from ~50 requests to
+  ~40, with no `/api/assist` or `/api/download` beside it. Screen to screen locally (frame-timed): median 303 ms.
+- **Tried and taken out — a Suspense boundary round the page in the layout.** The shell painted sooner, but the screen
+  itself arrived later on every route (the control room's LCP 0.76 → 2.9 s, Menu 0.49 → 2.6 s) and taps slowed to
+  0.6–2.2 s. Same lesson as the loading.tsx above: **do not put a boundary round `{children}`.**
+- **Left for the owner (outside the code):** make **dineflow.cloud** the primary domain in Vercel → Domains (every visit to
+  the bare name is a 308 to www first: +0.2–0.4 s); confirm Fluid compute is on (Settings → Functions); a free uptime
+  check on `https://www.dineflow.cloud/api/health?deep=1` every 5 minutes keeps an instance and its database path warm;
+  the Supabase compute size (Micro) is the owner's call. pg_cron / pg_net are not installed and were not turned on.

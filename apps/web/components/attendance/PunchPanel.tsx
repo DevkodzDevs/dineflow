@@ -133,7 +133,7 @@ export function PunchPanel({ token, name, property, methods, today, passkeys, lo
               : <Button size="lg" variant="outline" className="w-full" loading={pending} onClick={setUp} data-method="biometric-setup"><ShieldCheck size={20} /> Set up fingerprint / Face ID</Button>)}
 
           {selfie && (!locationSet
-            ? <p className="feather p-4 text-[13px] text-[var(--color-label-2)]"><MapPin size={15} className="inline -mt-0.5" /> Selfie punch starts once the owner sets the location.</p>
+            ? <p className="feather p-4 text-[13px] text-[var(--color-label-2)]"><MapPin size={15} className="inline -mt-0.5" /> Owner must set the location first.</p>
             : shot
               ? <div className="feather p-4 space-y-3" data-selfie-preview>
                   {/* eslint-disable-next-line @next/next/no-img-element -- a local blob preview */}
@@ -146,7 +146,7 @@ export function PunchPanel({ token, name, property, methods, today, passkeys, lo
                 </div>
               : <Button size="lg" variant={bio && passkeys > 0 ? "outline" : "primary"} className="w-full" loading={pending} onClick={beginSelfie} data-method="selfie"><Camera size={20} /> {word} with selfie</Button>)}
 
-          {!bio && !selfie && <p className="feather p-4 text-[13px] text-[var(--color-label-2)]">Phone punch is off. Scan your badge or ask your manager.</p>}
+          {!bio && !selfie && <p className="feather p-4 text-[13px] text-[var(--color-label-2)]">Phone punch is off — scan your badge.</p>}
           <input ref={fileRef} type="file" accept="image/*" capture="user" hidden style={{ display: "none" }} data-selfie-input
             onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; const blob = await shrink(f); setShot({ blob, url: URL.createObjectURL(blob) }); }} />
         </section>

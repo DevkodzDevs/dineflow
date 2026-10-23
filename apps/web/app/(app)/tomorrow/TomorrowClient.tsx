@@ -122,7 +122,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
               different gap above each. */}
           <div className="mt-5 pt-4 border-t border-line no-print" data-adjust>
             <div className="flex items-start justify-between gap-3 mb-3">
-              <span className="text-xs font-semibold text-steel leading-snug">Know better? Adjust — prep and buy list follow.</span>
+              <span className="text-xs font-semibold text-steel leading-snug">Know better? Adjust — lists follow.</span>
               {covers !== forecast.predicted_covers && <button type="button" onClick={() => setCovers(forecast.predicted_covers)} data-reset
                 className="shrink-0 text-xs font-semibold text-[var(--color-tint)] !min-h-0 h-9 -my-2.5 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:-my-3.5 px-2 rounded-lg hover:bg-[var(--color-fill)] inline-flex items-center">Reset to {forecast.predicted_covers}</button>}
             </div>
@@ -153,14 +153,14 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
       {forecast.neighbourhood?.available && (
         <Link href="/neighbours?tab=signal" className="feather feather-lift flex items-center gap-3 p-4 mb-5 border-champagne/60 bg-gradient-to-r from-card to-champagne-2/40">
           <span className="h-9 w-9 rounded-xl bg-ink text-on-label grid place-items-center shrink-0"><TrendingUp size={16} /></span>
-          <div className="flex-1 text-sm"><b>The neighbourhood is {forecast.neighbourhood.label}.</b> <span className="text-steel">{forecast.neighbourhood.detail} This brief has been nudged accordingly.</span></div>
+          <div className="flex-1 text-sm"><b>The neighbourhood is {forecast.neighbourhood.label}.</b> <span className="text-steel">{forecast.neighbourhood.detail} Brief adjusted.</span></div>
           <span className="text-xs font-semibold text-steel">Area signal →</span>
         </Link>
       )}
       {cold && (
         <Card className="!bg-champagne-2 flex items-start gap-3 mb-5">
           <Info size={18} className="shrink-0 mt-0.5" />
-          <div className="text-sm"><b>Still learning.</b> It needs about four weeks of sales to predict well. Edit anything before you act on it.</div>
+          <div className="text-sm"><b>Still learning.</b> Needs about 4 weeks of sales — check it.</div>
         </Card>
       )}
 
@@ -168,8 +168,8 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
         {/* ── prep ── */}
         <Card>
           <div className="flex items-center gap-2 mb-1"><ChefHat size={17} /><h2 className="text-2xl">Prep for the kitchen</h2></div>
-          <p className="text-xs text-steel mb-4">Portions include your {forecast.buffer_pct}% buffer. Chef: write what you actually made.</p>
-          {dishes.length === 0 ? <Empty title="Nothing to prep yet" hint="Once dishes start selling, this fills itself in." /> : (
+          <p className="text-xs text-steel mb-4">Includes {forecast.buffer_pct}% buffer. Chef: note what you made.</p>
+          {dishes.length === 0 ? <Empty title="Nothing to prep yet" hint="Fills in once dishes sell" /> : (
             <div className="divide-y divide-line">
               {dishes.slice(0, 18).map((d, i) => (
                 <motion.div key={d.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }} className="flex items-center gap-3 py-2.5">
@@ -190,7 +190,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
         {/* ── market list ── */}
         <Card>
           <div className="flex items-center gap-2 mb-1"><ShoppingBasket size={17} /><h2 className="text-2xl">Buy in the morning</h2></div>
-          <p className="text-xs text-steel mb-4">What you&apos;ll run out of, plus low stock (filled to 2× reorder). Ticked items go into stock.</p>
+          <p className="text-xs text-steel mb-4">Ticked items go into stock</p>
           {purchase.length === 0 ? (
             <div className="feather p-6 text-center bg-mint-2 border-mint"><Check size={22} className="mx-auto text-ink" /><p className="font-semibold mt-2">Pantry covers tomorrow</p><p className="text-xs text-steel mt-1">Nothing to buy on today&apos;s numbers.</p></div>
           ) : (<>
@@ -223,8 +223,8 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
       {/* ── how honest has this been? ── */}
       <Card className="mt-4">
         <div className="flex items-center gap-2 mb-1"><Target size={17} /><h2 className="text-2xl">Was it right?</h2></div>
-        <p className="text-xs text-steel mb-4">Each brief is checked next day against what sold.</p>
-        {!score?.days ? <p className="text-sm text-steel">Nothing yet — save a brief tonight, check tomorrow.</p> : (
+        <p className="text-xs text-steel mb-4">Checked next day against sales</p>
+        {!score?.days ? <p className="text-sm text-steel">Save a brief tonight, check tomorrow</p> : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               <StatTile label="Average accuracy" value={score.accuracy != null ? `${score.accuracy}%` : "—"} sub={`over ${score.days} graded days`} tone={(score.accuracy ?? 0) >= 80 ? "good" : undefined} />
@@ -250,7 +250,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
         )}
       </Card>
 
-      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Sparkles size={13} className="mt-0.5 shrink-0" /> A guess from your sales and bookings. Know better? Tap Quiet or Busy.</p>
+      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Sparkles size={13} className="mt-0.5 shrink-0" /> A guess from sales and bookings</p>
     </>
   );
 }

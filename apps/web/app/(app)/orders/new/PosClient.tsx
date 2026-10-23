@@ -401,8 +401,8 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                       {free.map((t) => <button key={t.id} type="button" onClick={() => { pickTable(t); setPickOpen(false); }} aria-pressed={tableId === t.id} data-free-table={t.name}
                         className={cn("h-11 px-1 rounded-xl text-[14px] font-bold border truncate", tableId === t.id ? "bg-ink text-on-label border-ink" : "border-line hover:bg-[var(--color-fill)]")}>{t.name}</button>)}
                     </div>
-                  : <p className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[13px] font-semibold" data-no-free-table>No free table — all in use, booked or being cleaned.</p>}
-                {hidden > 0 && <p className="mt-1.5 text-[12px] text-steel" data-hidden-tables>Free tables only · {hidden} in use, booked or being cleaned</p>}
+                  : <p className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[13px] font-semibold" data-no-free-table>No free table right now.</p>}
+                {hidden > 0 && <p className="mt-1.5 text-[12px] text-steel" data-hidden-tables>Free tables only · {hidden} not free</p>}
               </div>);
           })()}
           {busy && (
@@ -439,7 +439,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
 
       <div className="mt-4 flex items-center gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel flex-1">Ticket{count ? ` · ${count} item${count === 1 ? "" : "s"}` : ""}</span>
-        <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} title="Starters now; later courses wait until the kitchen fires them"
+        <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} title="Later courses wait to be fired"
           className={cn("h-9 rounded-full px-2.5 text-[11.5px] font-semibold flex items-center gap-1 transition", coursing ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)]")}><ListOrdered size={12} /> Courses {coursing ? "on" : "off"}</button>
         {lines.length > 0 && <button type="button" onClick={clearTicket} className="h-9 px-2 -mr-1 text-[13px] font-semibold text-steel hover:text-[var(--color-red)]">Clear</button>}
       </div>
@@ -497,7 +497,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <span className={cn("h-9 w-9 rounded-xl grid place-items-center shrink-0", promised ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill)] text-steel")}><Timer size={16} /></span>
             <span className="flex-1 min-w-0">
               <span className="block text-sm font-semibold">On-time promise · {promise.minutes} min</span>
-              <span className="block text-[11px] text-steel mt-0.5">{promised ? `+${promise.pct}% on the food. Late and the whole bill is free.` : `Guest pays ${promise.pct}% more. If it is late, the food is free.`}</span>
+              <span className="block text-[11px] text-steel mt-0.5">{promised ? `+${promise.pct}% on food. Late? Bill is free.` : `Guest pays ${promise.pct}% more. Late? Food is free.`}</span>
             </span>
             <span className={cn("num text-xs font-semibold shrink-0", promised ? "text-[var(--color-tint)]" : "text-steel")}>{promised ? `+${formatINR(total * promise.pct / 100)}` : "off"}</span>
           </button>
@@ -509,10 +509,10 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <ul className="mt-1 space-y-0.5 text-steel">
               {shortfalls.map(({ item, qty, cover }) => <li key={item.id}>{item.name} · {qty} ordered, {cover!.portions} covered{cover!.short[0] ? ` (${cover!.short[0].name} is out)` : ""}</li>)}
             </ul>
-            <p className="mt-1.5 text-steel">Send anyway if the shelf has it — the count may be out of date.</p>
+            <p className="mt-1.5 text-steel">Shelf has it? Send anyway.</p>
           </div>
         )}
-        {coursing && courses.length > 1 && <p className="text-[11px] text-steel mb-2">Course 1 goes now. {courses.filter((c) => c > 1).map((c) => `Course ${c}`).join(" and ")} will wait on the kitchen screen until fired.</p>}
+        {coursing && courses.length > 1 && <p className="text-[11px] text-steel mb-2">Course 1 goes now. {courses.filter((c) => c > 1).map((c) => `Course ${c}`).join(" and ")} will wait until fired.</p>}
         {/* the request for the whole ticket opens in a dialog (an iPad keyboard squeezed it inline); the
             count and the total, big, on the same row */}
         <div className="flex items-center gap-3">
@@ -609,7 +609,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             {unresolved.length > 0 && (
               <div className="mt-2 flex items-start gap-2 rounded-xl border border-[var(--color-orange)]/40 bg-[var(--color-orange-2)] px-3 py-2 text-xs">
                 <AlertTriangle size={13} className="mt-0.5 shrink-0 text-[var(--color-orange)]" />
-                <span className="flex-1"><b className="text-[var(--color-orange)]">Not on the menu:</b> {unresolved.join(", ")} — tell the guest, or add the dish in Menu.</span>
+                <span className="flex-1"><b className="text-[var(--color-orange)]">Not on the menu:</b> {unresolved.join(", ")} — tell the guest.</span>
                 <button type="button" onClick={() => setUnresolved([])} aria-label="Dismiss" className="text-steel hover:text-[var(--color-label)]"><X size={14} /></button>
               </div>
             )}
@@ -706,7 +706,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       {(() => { const ln = lines.find((l) => l.key === noteFor); const parts = (ln?.note ?? "").split(" · ").filter(Boolean); return (
         <Sheet open={!!ln} onClose={() => setNoteFor(null)} title={ln ? `Request · ${lineName(ln.item, ln.variant)}` : "Request"}>
           {ln && <div className="space-y-4" data-line-note>
-            <p className="text-[13px] text-steel -mt-1">This dish only. Prints under it on the ticket.</p>
+            <p className="text-[13px] text-steel -mt-1">This dish only.</p>
             <div className="flex flex-wrap gap-2">
               {LINE_NOTES.map((n) => { const on = parts.includes(n); return (
                 <button key={n} type="button" aria-pressed={on} onClick={() => setNote(ln.key, (on ? parts.filter((x) => x !== n) : [...parts, n]).join(" · "))} className={cn("chip", on && "on")}>{n}</button>); })}
@@ -720,7 +720,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         </Sheet>); })()}
       <Sheet open={askNote} onClose={() => setAskNote(false)} title="Cooking request">
         <div className="space-y-4" data-note-sheet>
-          <p className="text-[13px] text-steel -mt-1">For the whole order. Prints in capitals at the top of the ticket.</p>
+          <p className="text-[13px] text-steel -mt-1">Whole order · top of the ticket.</p>
           <div>
             <textarea autoFocus rows={3} maxLength={200} value={ticketNote} onChange={(e) => setTicketNote(e.target.value)}
               placeholder="All mild · no onion · serve everything together" className="w-full resize-none !text-[15px] leading-snug" />

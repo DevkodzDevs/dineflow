@@ -43,7 +43,7 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
 
   if (!listed || !slug) return (
     <div>
-      <SvcHead icon="qr" title="Join by QR" sub="Guests scan at the door to join the waiting list" />
+      <SvcHead icon="qr" title="Join by QR" sub="Guests scan to join the queue" />
       <Card className="!rounded-[24px] max-w-2xl mx-auto text-center !p-8" data-joinqr-off>
         <span className="mx-auto h-16 w-16 rounded-[20px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><QrCode size={30} aria-hidden /></span>
         <h2 className="mt-4 text-[22px] font-extrabold">Join by QR is off</h2>
@@ -55,7 +55,7 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
 
   return (
     <div>
-      <SvcHead icon="qr" title="Join by QR" sub="Guests scan this at the door to join the waiting list" />
+      <SvcHead icon="qr" title="Join by QR" sub="Guests scan to join the queue" />
       {/* Left: the code itself, large, with the moves on it (copy, open, share, print). Right: how a guest uses it and
           where to put it. Stacked under lg; the code is never wider than the screen. */}
       <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-5 items-start">
@@ -80,7 +80,7 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
         <div className="space-y-5 min-w-0">
           <Card className="!rounded-[24px]">
             <h2 className="text-[18px] font-extrabold">How guests use it</h2>
-            <p className="text-[13px] text-steel mt-0.5">Three steps on their phone. Nothing to download.</p>
+            <p className="text-[13px] text-steel mt-0.5">Three taps. No app.</p>
             <ol className="mt-4 space-y-3">
               {STEPS.map(({ Icon, title, text }, i) => (
                 <li key={title} className="flex gap-3.5 items-start rounded-[18px] bg-[var(--color-fill)] p-3.5">
@@ -98,7 +98,7 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
               <span className="h-12 w-12 shrink-0 rounded-[14px] grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><DoorOpen size={22} aria-hidden /></span>
               <div className="min-w-0">
                 <h2 className="text-[16px] font-extrabold leading-tight">Where to put it</h2>
-                <p className="text-[13px] text-steel mt-1 leading-snug">At the door, host stand and waiting bench. Scans join your Pulse list.</p>
+                <p className="text-[13px] text-steel mt-1 leading-snug">Door, host stand, waiting bench.</p>
               </div>
             </div>
             <Link href="/pulse" className="mt-4 svc-btn quiet sm w-full"><Activity size={18} aria-hidden /><span>See who is waiting on Pulse</span></Link>

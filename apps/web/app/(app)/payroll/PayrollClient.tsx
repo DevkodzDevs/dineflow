@@ -78,7 +78,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
           {/* ── advances ── */}
           <Card className="min-w-0" data-advances>
             <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Wallet size={18} aria-hidden /> Advances</div>
-            <p className="text-[12.5px] text-steel mb-3">Paid now from the drawer; cut from next month&apos;s pay.</p>
+            <p className="text-[12.5px] text-steel mb-3">From the drawer; cut from next pay.</p>
             <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-2">
               <select value={adv.who} onChange={(e) => setAdv((a) => ({ ...a, who: e.target.value }))} aria-label="Who">{people.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}</select>
               <input inputMode="decimal" className="num" placeholder="₹" value={adv.amount} onChange={(e) => setAdv((a) => ({ ...a, amount: e.target.value.replace(/[^\d.]/g, "") }))} data-advance-amount />
@@ -101,7 +101,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[17px] font-extrabold"><IndianRupee size={18} aria-hidden /> Pay rates</div>
-            <p className="text-[12.5px] text-steel mt-0.5 max-w-[46rem]">Everyone with a pay rate is here. Days come from attendance.</p>
+            <p className="text-[12.5px] text-steel mt-0.5 max-w-[46rem]">Days come from attendance</p>
           </div>
           {people.length > 0 && <span className="shrink-0 rounded-full px-3 h-8 inline-flex items-center text-[12.5px] font-bold bg-[var(--color-fill)] num" data-rates-count>{people.filter((p) => p.pay).length} of {people.length} on the sheet</span>}
         </div>
@@ -186,7 +186,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
             {lines.length > 0 && <button type="button" className="svc-btn quiet sm !px-4 max-sm:flex-1" onClick={() => void excel()} data-payroll-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>}
           </div>
         </div>
-        {!run ? <div className="p-6 text-[14px] text-steel">Not worked out yet. Set the rates above, then <b>Work out pay</b>.</div> : lines.length === 0 ? <div className="p-6 text-[14px] text-steel">Nobody has a pay rate yet.</div> : (<>
+        {!run ? <div className="p-6 text-[14px] text-steel">Set the rates, then <b>Work out pay</b>.</div> : lines.length === 0 ? <div className="p-6 text-[14px] text-steel">Nobody has a pay rate yet.</div> : (<>
           <div className="overflow-x-auto"><table className="w-full text-[13.5px] lg:min-w-[900px] max-lg:block">
             <thead className="max-lg:hidden"><tr className="text-left text-steel text-[12px] border-b border-[var(--color-separator)]">{["Name", "Days", "Gross", "Bonus", "PF", "ESI", "Advance", "Other", "Net", ""].map((h, i) => <th key={i} className={cn("py-2 font-semibold", i === 0 ? "pl-4" : "text-right pr-3", i === 9 && "pr-4")}>{h}</th>)}</tr></thead>
             <tbody className="max-lg:grid max-lg:gap-3 max-lg:p-3 sm:max-lg:grid-cols-2">{lines.map((l) => { const e = edits[l.id] ?? { bonus: String(Number(l.bonus) || ""), other: String(Number(l.other_deduction) || "") }; const dirty = Number(e.bonus || 0) !== Number(l.bonus) || Number(e.other || 0) !== Number(l.other_deduction); return (

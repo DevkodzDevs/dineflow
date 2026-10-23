@@ -211,7 +211,7 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
           </section>
         )}
         {only && <button type="button" onClick={() => setOnly(null)} className="svc-btn quiet sm w-full sm:w-auto">Show every table</button>}
-        {tables.length === 0 && <Empty title="No tables set up" hint="Add tables in Settings, or take a parcel order." action={<Link href="/orders/new?type=takeaway" className="svc-btn go sm"><ShoppingBag size={18} /> Parcel / Takeaway</Link>} />}
+        {tables.length === 0 && <Empty title="No tables set up" hint="Add tables in Settings." action={<Link href="/orders/new?type=takeaway" className="svc-btn go sm"><ShoppingBag size={18} /> Parcel / Takeaway</Link>} />}
       </>) : (
         <section data-open-orders>
           {orders.length === 0

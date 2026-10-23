@@ -31,7 +31,7 @@ const siteUrl = (() => {
   const raw = process.env.NEXT_PUBLIC_CLOUD_URL?.trim();
   // a production build with no address set falls back to the public site, not to this machine — the live share
   // card pointed at http://localhost:3000/icon-512.png
-  const fallback = process.env.NODE_ENV === "production" ? "https://dineflow.cloud" : "http://localhost:3000";
+  const fallback = process.env.NODE_ENV === "production" ? "https://www.dineflow.cloud" : "http://localhost:3000";   // www: the primary host (the bare name 308s to it)
   try { return new URL(raw || fallback); } catch { return new URL(fallback); }
 })();
 

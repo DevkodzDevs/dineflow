@@ -17,8 +17,8 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
         <div className="glass p-8">
           <div className="flex items-center gap-3"><span className="h-11 w-11 rounded-2xl bg-ink text-on-label grid place-items-center"><Crown size={20} /></span><div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{name}</div><h1 className="text-3xl">{locked ? "Membership login" : "Membership"}</h1></div></div>
           <div className="hairline-gold my-6" />
-          {state === "trial" && <p className="text-sm text-steel">Your <b className="text-ink">7-day trial</b> has {trialDays} day{trialDays === 1 ? "" : "s"} left. Activate now — same logins, same data.</p>}
-          {state === "expired" && <p className="text-sm text-steel">The temporary trial login for <b className="text-ink">{name}</b> has ended. Enter your key to continue. Your data is safe.</p>}
+          {state === "trial" && <p className="text-sm text-steel">Your <b className="text-ink">7-day trial</b> has {trialDays} day{trialDays === 1 ? "" : "s"} left. Activate now; data stays.</p>}
+          {state === "expired" && <p className="text-sm text-steel">Trial for <b className="text-ink">{name}</b> ended. Enter your key — data is safe.</p>}
           {state === "suspended" && <p className="text-sm text-chili">This account is suspended. Contact DineFlow support.</p>}
           {state === "active" && <p className="text-sm text-steel leading-relaxed"><Check size={16} className="text-mint inline -mt-0.5 mr-1.5" />Active · <b className="text-ink capitalize">{plan}</b> plan{endsAt && <> · renews by <span className="num whitespace-nowrap">{endsAt.slice(0, 10)}</span></>}</p>}
           {state !== "suspended" && (isOwner ? (

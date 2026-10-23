@@ -35,8 +35,8 @@ export function InstallSheet({ open, onClose }: { open: boolean; onClose: () => 
           {/* eslint-disable-next-line @next/next/no-img-element -- the app's own icon, as it will look on the Home Screen */}
           <img src="/apple-touch-icon.png" alt="" width={52} height={52} className="h-[52px] w-[52px] rounded-[14px] shadow-[0_6px_18px_-6px_rgb(0_0_0/.6)]" />
           <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{offer?.primary === "apk" || offer?.primary === "exe"
-            ? "One file, one click — installs DineFlow like any app."
-            : "Opens from its own icon like any app. Updates itself."}</p>
+            ? "One file, one click to install."
+            : "Own icon. Updates itself."}</p>
         </div>
 
         {open && <InstallPanel others="none" />}

@@ -23,14 +23,14 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
   return (
     <div>
       <Link href="/inventory" className="tap inline-flex items-center gap-1 text-sm text-steel mb-3"><ChevronLeft size={16} /> Pantry</Link>
-      <PageHeader eyebrow="Recipes versus the shelf" title="Leak finder" sub="Stock missing after a count, beyond what recipes used." actions={<Button onClick={() => setCounting(true)}><ClipboardCheck size={16} /> Count stock now</Button>} />
+      <PageHeader eyebrow="Recipes versus the shelf" title="Leak finder" sub="Stock lost beyond recipe use" actions={<Button onClick={() => setCounting(true)}><ClipboardCheck size={16} /> Count stock now</Button>} />
       <div className="flip-row mb-8">
         <Flip value={Math.round(report.lost_value / 100) / 10} label="k ₹ lost" tone={report.lost_value > 0 ? "alert" : "live"} />
         <Flip value={leaks.length} label="leaking" />
         <Flip value={report.uncounted} label="never counted" tone={report.uncounted > 0 ? undefined : "live"} />
         <Flip value={Math.round(report.logged_wastage_value / 100) / 10} label="k ₹ logged waste" />
       </div>
-      {report.uncounted === report.items.length && <Card className="mb-6"><p className="text-[15px]">Nothing counted yet. Tap <b>Count stock now</b> to start — it takes about 2 minutes.</p></Card>}
+      {report.uncounted === report.items.length && <Card className="mb-6"><p className="text-[15px]">Nothing counted yet. Tap <b>Count stock now</b>.</p></Card>}
       <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
         <div className="min-w-0">
           <div className="card-title"><h3>Where it's going</h3><span className="more">last {report.since_days} days or since last count</span></div>
@@ -49,16 +49,16 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
         <Card>
           <div className="card-title"><h3>How to read this</h3></div>
           <ol className="space-y-3 text-[14px] text-steel list-decimal pl-4">
-            <li>Count the shelf. The ledger is set to what you counted.</li>
-            <li>From then on, every sale deducts its recipe.</li>
-            <li>Next count, any shortfall is the leak, in rupees.</li>
-            <li>Log wastage when it happens; logged waste is not a leak.</li>
+            <li>Count the shelf — stock resets to it.</li>
+            <li>Each sale deducts its recipe.</li>
+            <li>Next count, the shortfall is the leak.</li>
+            <li>Logged waste is not a leak.</li>
           </ol>
-          <p className="text-xs text-steel mt-4">Count costly items (chicken, mutton, fish, ghee, paneer) weekly, the rest monthly.</p>
+          <p className="text-xs text-steel mt-4">Count costly items weekly, the rest monthly.</p>
         </Card>
       </div>
       <Sheet open={counting} onClose={() => setCounting(false)} title="Count stock" wide>
-        <p className="text-sm text-steel mb-4">Type what is on the shelf. Leave blank to skip.</p>
+        <p className="text-sm text-steel mb-4">Type what's there. Blank = skip.</p>
         <div className="group">
           {ingredients.map((g) => <div key={g.id} className="row"><span className="flex-1">{g.name}<span className="block text-xs text-steel">system says {Number(g.current_stock).toFixed(2)} {g.unit}</span></span><input type="number" inputMode="decimal" step="any" placeholder={g.unit} className="num !w-32 !text-right" value={vals[g.id] ?? ""} onChange={(e) => setVals({ ...vals, [g.id]: e.target.value })} /></div>)}
         </div>

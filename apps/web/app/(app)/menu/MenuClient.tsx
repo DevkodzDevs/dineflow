@@ -97,7 +97,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
   const toggleOnline = (it: Item, v: boolean) => { setOnl((m) => ({ ...m, [it.id]: v })); start(async () => { const r = await setOnlineAvailable([it.id], v); if ("error" in r) { setOnl((m) => ({ ...m, [it.id]: !v })); toast(r.error!, "err"); } else toast(v ? `${it.name} is online again` : `${it.name} is off online — still sold in the restaurant`); }); };
   const onlineBtn = (it: Item, size: string) => canOnline && (
     <button type="button" onClick={() => toggleOnline(it, !isOnline(it))} disabled={!it.is_available} aria-pressed={isOnline(it)} data-online-toggle={isOnline(it) ? "on" : "off"}
-      aria-label={`${isOnline(it) ? "Take off online" : "Sell online"} — ${it.name}`} title={!it.is_available ? "Sold out everywhere" : isOnline(it) ? "Online — tap to take it off Swiggy, Zomato and the website" : "Off online — tap to sell online again"}
+      aria-label={`${isOnline(it) ? "Take off online" : "Sell online"} — ${it.name}`} title={!it.is_available ? "Sold out everywhere" : isOnline(it) ? "Online — tap to stop selling online" : "Off online — tap to sell online again"}
       className={cn(size, "shrink-0 grid place-items-center transition-colors disabled:opacity-40", isOnline(it) ? "bg-[color-mix(in_srgb,var(--color-green)_14%,transparent)] text-[var(--color-green)]" : "bg-[color-mix(in_srgb,var(--color-orange)_20%,transparent)] text-[var(--color-orange)]")}>
       {isOnline(it) ? <Globe size={18} aria-hidden /> : <GlobeLock size={18} aria-hidden />}
     </button>
@@ -105,7 +105,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
 
   return (
     <div className="space-y-5">
-      <SvcHead icon="menu" title="Menu" sub="Switch a dish off when it runs out — waiters see it at once"
+      <SvcHead icon="menu" title="Menu" sub="Switch a dish off when it runs out"
         actions={<>
           <button type="button" className="svc-btn quiet sm" onClick={() => setTools((v) => !v)} aria-expanded={tools} data-menu-tools><Wrench size={17} aria-hidden /> More tools<ChevronDown size={16} aria-hidden className={cn("transition-transform", tools && "rotate-180")} /></button>
           <button type="button" className="svc-btn go sm !px-5" onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15, category_id: cat === "all" || cat === "soldout" ? null : cat })} data-new-dish><Plus size={19} aria-hidden /><Say w="new_dish" /></button>
@@ -144,8 +144,8 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
       </Rail>
 
       {visible.length === 0 ? (
-        cat === "soldout" ? <Empty title="Nothing is sold out" hint="All dishes are on. Switch one off from its card." /> :
-        <Empty title="No dishes yet" hint="Add a dish, then its recipe so stock updates itself." action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
+        cat === "soldout" ? <Empty title="Nothing is sold out" hint="All dishes are on." /> :
+        <Empty title="No dishes yet" hint="Add a dish, then its recipe." action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
       ) : (<>
         {/* A phone: a list, one row per dish — the photo, the name, the price and its state, and the switch at
             the end of the row. A tap on the name opens the dish (its sizes, add-ons and recipe are in there). */}
@@ -211,7 +211,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
                 {/* online (0132): its own button over the photo's corner — a button cannot sit inside the photo's button */}
                 {canOnline && it.is_available && (
                   <button type="button" onClick={() => toggleOnline(it, !isOnline(it))} aria-pressed={isOnline(it)} data-online-toggle={isOnline(it) ? "on" : "off"}
-                    aria-label={`${isOnline(it) ? "Take off online" : "Sell online"} — ${it.name}`} title={isOnline(it) ? "Online — tap to take it off Swiggy, Zomato and the website" : "Off online — tap to sell online again"}
+                    aria-label={`${isOnline(it) ? "Take off online" : "Sell online"} — ${it.name}`} title={isOnline(it) ? "Online — tap to stop selling online" : "Off online — tap to sell online again"}
                     className={cn("tap-square absolute right-2.5 top-2.5 z-[3] h-9 rounded-full inline-flex items-center justify-center gap-1.5 backdrop-blur-sm transition-colors", isOnline(it) ? "w-9 bg-[rgb(10_10_13/.5)] text-[var(--color-green)] hover:bg-[rgb(10_10_13/.7)]" : "px-3 bg-[var(--color-orange)] text-white text-[12px] font-extrabold")}>
                     {isOnline(it) ? <Globe size={17} aria-hidden /> : <><GlobeLock size={15} aria-hidden /><span data-not-online>Not online</span></>}
                   </button>
@@ -223,7 +223,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
                     a sparkle when the library already has a standard plate for it. A tap opens the recipe; on touch an
                     invisible ::before makes the target 44px without the badge looking bigger. */}
                 {!mapped && (
-                  <button type="button" onClick={() => setRecipeFor(it)} aria-label={`Recipe — ${it.name}`} title={std[it.id] ? "No recipe yet — tap to add the ready one" : "No recipe yet — this dish moves no stock"} data-no-recipe
+                  <button type="button" onClick={() => setRecipeFor(it)} aria-label={`Recipe — ${it.name}`} title={std[it.id] ? "Tap to add the ready recipe" : "No recipe — moves no stock"} data-no-recipe
                     className="absolute left-2.5 bottom-2.5 z-[3] !min-h-0 h-[26px] pl-2 pr-2.5 rounded-full inline-flex items-center gap-1.5 text-[11.5px] font-semibold tracking-[.01em] text-white bg-[rgb(10_10_13/.55)] backdrop-blur-md ring-1 ring-white/15 shadow-[0_4px_14px_-6px_rgb(0_0_0/.6)] hover:bg-[rgb(10_10_13/.7)] active:scale-[.96] transition before:absolute before:-inset-[9px] before:content-[''] [@media(pointer:fine)]:before:hidden">
                     <span className="h-2 w-2 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--color-orange)_72%,white)] shadow-[0_0_0_3px_rgb(255_190_90/.22)]" aria-hidden />
                     No recipe
@@ -282,7 +282,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
             <select name="category_id" defaultValue={editing?.category_id ?? ""} onChange={(e) => setDishCat(e.target.value || null)}><option value="">— none —</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           </Field>
           {stations.length > 0 && (
-            <Field label="Kitchen station" hint="Change only if this dish is made elsewhere">
+            <Field label="Kitchen station" hint="Only if made at another station">
               <select name="station" defaultValue={editing?.station ?? ""}><option value="">— same as its category —</option>{stations.map((s) => <option key={s} value={s}>{s}</option>)}</select>
             </Field>
           )}
@@ -383,7 +383,7 @@ function RecipesOverview({ items, categories, recipeMap, ingredients, std, onEdi
     <div className="space-y-4" data-recipes-overview>
       <div className="rounded-2xl bg-[var(--color-fill)] p-3.5">
         <div className="text-[15px] font-semibold" data-recipes-summary>{withRecipe} of {rows.length} dishes move the pantry</div>
-        <p className="text-xs text-[var(--color-label-2)] mt-1 leading-relaxed">A recipe takes stock out when the dish is sent or cooked.{ready > 0 && <> <b>{ready}</b> can be set up from the library in one press.</>}{byHand > 0 && <> <b>{byHand}</b> need mapping by hand.</>}</p>
+        <p className="text-xs text-[var(--color-label-2)] mt-1 leading-relaxed">Stock comes off when sent or cooked.{ready > 0 && <> <b>{ready}</b> ready in the library.</>}{byHand > 0 && <> <b>{byHand}</b> to map by hand.</>}</p>
         {ready > 0 && <Button className="mt-3 w-full" loading={busy} onClick={() => { void setupAll(); }} data-setup-recipes><Sparkles size={16} /> Set up {ready} dish{ready === 1 ? "" : "es"} from the library</Button>}
       </div>
       {groups.map(({ c, rows: g }) => (
@@ -406,7 +406,7 @@ function RecipesOverview({ items, categories, recipeMap, ingredients, std, onEdi
                   {isOpen && (
                     <div className="px-3.5 pb-3.5 -mt-1">
                       {text.length ? <p className={cn("text-[13px] leading-relaxed", lines.length ? "" : "text-[var(--color-label-2)]")} data-recipe-lines>{text.join(" · ")}{!lines.length && <span className="text-xs"> (the library&apos;s plate)</span>}</p>
-                        : <p className="text-[13px] text-[var(--color-label-2)]">Nothing mapped yet — this dish does not move stock.</p>}
+                        : <p className="text-[13px] text-[var(--color-label-2)]">Not mapped — moves no stock.</p>}
                       <div className="flex gap-2 mt-2.5">
                         {!lines.length && std && <Button size="sm" disabled={busy} onClick={() => { void applyStd(it); }} data-use-standard><Sparkles size={14} /> Use the library plate</Button>}
                         <Button size="sm" variant="outline" onClick={() => onEdit(it)}><Pencil size={14} /> {lines.length ? "Edit" : "Map by hand"}</Button>
@@ -454,12 +454,12 @@ function RecipeEditor({ item, ingredients, initial, std, onDone, ai = false }: {
       <Button size="sm" variant="outline" disabled={pending} onClick={useStandard}>Use it</Button>
     </div>
   );
-  if (ingredients.length === 0) return <div className="space-y-3">{standard}<p className="text-sm text-steel">{std ? "Or add" : "Add"} ingredients in Pantry first, then map them here.</p></div>;
+  if (ingredients.length === 0) return <div className="space-y-3">{standard}<p className="text-sm text-steel">{std ? "Or add" : "Add"} ingredients in Pantry first.</p></div>;
   return (
     <div className="space-y-3">
       {standard}
       <div className="flex items-start gap-3">
-        <p className="text-sm text-steel flex-1">Per 1 plate of <b>{item.name}</b>. Cooking takes these from stock.</p>
+        <p className="text-sm text-steel flex-1">Per 1 plate of <b>{item.name}</b>.</p>
         {ai && <AiButton label="Propose" busy={proposing} onClick={() => { void propose(); }} />}
       </div>
       {rows.map((r, i) => (

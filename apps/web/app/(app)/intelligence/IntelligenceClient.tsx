@@ -24,7 +24,7 @@ const CLASS: Record<Dish["class"], { label: string; hint: string; tone: string }
   plowhorse: { label: "Plowhorse", hint: "sells well, earns little — raise price or cut cost", tone: "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]" },
   puzzle: { label: "Puzzle", hint: "earns well, sells little — promote it", tone: "bg-[color-mix(in_srgb,var(--color-sky,var(--color-tint))_16%,transparent)] text-[var(--color-label)]" },
   dog: { label: "Dog", hint: "sells little, earns little — rework or drop", tone: "bg-[var(--color-red-2)] text-[var(--color-red)]" },
-  uncosted: { label: "No recipe", hint: "no plate cost without a recipe — add one in Menu", tone: "bg-[var(--color-fill)] text-[var(--color-label-2)]" },
+  uncosted: { label: "No recipe", hint: "add a recipe in Menu", tone: "bg-[var(--color-fill)] text-[var(--color-label-2)]" },
   unsold: { label: "Not sold", hint: "nothing sold in this window", tone: "bg-[var(--color-fill)] text-[var(--color-label-3)]" },
 };
 const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
@@ -93,7 +93,7 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
       <Card data-briefing>
         <div className="flex items-start gap-3 mb-3">
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Sparkles size={16} /></span>
-          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Owner&apos;s briefing</h3><p className="text-xs text-steel mt-0.5">Yesterday vs last week, today so far, and anything unusual. Tap a line to open it.</p></div>
+          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Owner&apos;s briefing</h3><p className="text-xs text-steel mt-0.5">Yesterday vs last week, and today</p></div>
         </div>
         <ul className="divide-y divide-[var(--color-separator)]">
           {notes.map((n, i) => {
@@ -101,7 +101,7 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
             const row = <><span className={cn("h-7 w-7 shrink-0 rounded-lg grid place-items-center", n.tone === "warn" ? "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]" : n.tone === "ok" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><Icon size={14} /></span><span className="text-[14px] leading-snug min-w-0 flex-1">{n.text}</span></>;
             return <li key={i} className="py-2.5 first:pt-0 last:pb-0">{n.href ? <Link href={n.href} className="flex items-start gap-3 min-w-0 hover:opacity-80 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center">{row}</Link> : <div className="flex items-start gap-3 min-w-0">{row}</div>}</li>;
           })}
-          {notes.length === 0 && <li className="py-2 text-sm text-steel">No bills yet — the briefing starts after your first bill.</li>}
+          {notes.length === 0 && <li className="py-2 text-sm text-steel">Starts after your first bill</li>}
         </ul>
       </Card>
 
@@ -109,7 +109,7 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
       <Card data-menu-engineering>
         <div className="flex items-start gap-3 mb-4">
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><ChefHat size={16} /></span>
-          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Menu engineering · {days} days</h3><p className="text-xs text-steel mt-0.5">How each dish sells and earns vs the average. Plate cost uses today&apos;s ingredient prices.</p></div>
+          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Menu engineering · {days} days</h3><p className="text-xs text-steel mt-0.5">Vs average · plate cost at today&apos;s prices</p></div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
           {(["star", "plowhorse", "puzzle", "dog"] as const).map((k) => (

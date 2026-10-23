@@ -101,7 +101,7 @@ export function KitchenPace({ initial }: { initial: Pace }) {
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-[var(--color-label-2)] mt-2">Busy lasts 1 hour, a pause 30 min, then back to normal. Table QR orders never pause.</p>
+        <p className="text-[11px] text-[var(--color-label-2)] mt-2">Busy: 1 hour · pause: 30 min · table QR never stops</p>
       </div>
     </>
   );

@@ -126,6 +126,8 @@ node newmenu.mjs 1440 paper "Tanvi's"  # a cash out, a dish and an order cancell
 pnpm test                 # lib/print/route.test.ts covers station routing (4)
 ```
 
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
 ## See also
 
 [billing-and-invoices.md](billing-and-invoices.md) · [orders-and-till.md](orders-and-till.md) ·

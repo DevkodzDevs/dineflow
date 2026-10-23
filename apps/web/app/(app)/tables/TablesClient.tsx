@@ -175,7 +175,7 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
             </ul>
             <div className="px-3.5 py-3 flex items-center justify-between border-t border-[var(--color-separator)]"><span className="text-[13px] font-semibold text-steel">{o.bills?.some((b) => b.status === "unpaid") ? "Bill out — waiting to be paid" : "Running total"}</span><span className="font-display num text-[22px]">{formatINR(amountOf(o))}</span></div>
           </div>
-        ) : <p className="rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-4 text-[13.5px] text-[var(--color-label-2)]">{clean ? "Waiting to be cleaned before the next party." : "Nobody is at this table — it is ready to seat."}</p>}
+        ) : <p className="rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-4 text-[13.5px] text-[var(--color-label-2)]">{clean ? "Waiting to be cleaned." : "Free — ready to seat."}</p>}
       </section>
 
       {/* cleaning */}
@@ -210,7 +210,7 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
       {qrUrl && <section><H Icon={QrCode}>Table ordering QR</H>
         <div className="flex items-center gap-4 rounded-2xl bg-[var(--color-fill)] p-3">
           <div className="rounded-xl bg-white p-2 shrink-0"><QR value={qrUrl} size={96} /></div>
-          <div className="min-w-0 text-[13px] text-[var(--color-label-2)] leading-snug">Guests scan this at {t.name} to see the menu and order from their phone.<a href={qrUrl} target="_blank" rel="noreferrer" className="mt-1.5 block font-semibold text-[var(--color-tint)] truncate">Open the table menu</a></div>
+          <div className="min-w-0 text-[13px] text-[var(--color-label-2)] leading-snug">Guests at {t.name} scan to order.<a href={qrUrl} target="_blank" rel="noreferrer" className="mt-1.5 block font-semibold text-[var(--color-tint)] truncate">Open the table menu</a></div>
         </div>
       </section>}
 

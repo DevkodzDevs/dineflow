@@ -61,3 +61,4 @@ node dry124.cjs     # 34 — 0124 in a rolled-back transaction: owner, a named w
 [help-and-support.md](help-and-support.md) · [data-and-rls.md](data-and-rls.md) · [shell-and-nav.md](shell-and-nav.md)
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. The owner's "n new" (`[data-voice-unread]`) breathes until opened.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

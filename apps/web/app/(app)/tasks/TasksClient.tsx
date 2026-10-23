@@ -101,7 +101,7 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
           Your lists — the ones for everyone{myTags.length ? <> and for <ForWhom tags={myTags} look={look} /></> : "."}
         </p>)}
 
-      {active.length === 0 ? <Empty title="No checklists yet" hint={editor ? "Add ready-made Opening and Closing lists, then edit them." : "Nothing for your job yet. Ask your manager to add lists."} /> : shown.length === 0 ? <Empty title="No lists for this choice" hint="Pick another above, or tap New list." /> : (
+      {active.length === 0 ? <Empty title="No checklists yet" hint={editor ? "Start with ready-made lists" : "Ask your manager to add lists"} /> : shown.length === 0 ? <Empty title="No lists for this choice" hint="Pick another above, or tap New list." /> : (
         <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3" data-lists>
           {shown.map((l) => {
             const done = doneOf(l); const n = Object.keys(done).length; const all = n >= l.items.length; const { label, Icon } = SHIFT[l.shift];
@@ -210,7 +210,7 @@ function ListEditor({ list, teams, jobs, positions, people, look, preset, onDone
                 </button>); })}
             </div>
           </div>))}
-        <p className="mt-2 text-[12px] text-steel">Seen by the picked teams, jobs and positions. Owner, managers and supervisors see all.</p>
+        <p className="mt-2 text-[12px] text-steel">Owner, managers and supervisors see all</p>
       </div>
 
       <label className="block"><span className="text-[13px] font-semibold text-steel">Duties — one a line <span className="num">({items.length}/40)</span></span>
@@ -220,7 +220,7 @@ function ListEditor({ list, teams, jobs, positions, people, look, preset, onDone
       <button type="button" disabled={pending} className="svc-btn go w-full" data-save-list
         onClick={() => start(async () => { setErr(null); const r = await saveList(list?.id ?? null, name, shift, items, active, keysOf(tags, "d"), keysOf(tags, "j"), keysOf(tags, "p")); if ("error" in r) setErr(r.error!); else { toast("Saved"); onDone(); } })}>
         <Check size={18} aria-hidden /><Say w="save_list" /></button>
-      {list && <p className="text-[12.5px] text-steel">Reorder only before anyone starts today, or ticks will shift.</p>}
+      {list && <p className="text-[12.5px] text-steel">Reordering after ticks shifts them</p>}
     </div>
   );
 }

@@ -23,7 +23,7 @@ export default async function HK() {
   const inspectRule = !!session.restaurant.hk_inspect_required;
   return (
     <>
-      <PageHeader eyebrow="Rooms division" title="House" accent="keeping" sub={inspectRule ? "Rooms are inspected before they are sold" : "A finished clean puts the room back on sale"} />
+      <PageHeader eyebrow="Rooms division" title="House" accent="keeping" sub={inspectRule ? "Rooms are inspected before they are sold" : "Cleaned rooms go back on sale"} />
       <HousekeepingClient today={today} tasks={(tasks ?? []) as never} rooms={(rooms ?? []) as never} stays={(stays ?? []) as never} done={(done ?? []) as never} canInspect={canInspect} inspectRule={inspectRule}
         people={(people ?? []) as never} me={session.profile.id} />
     </>

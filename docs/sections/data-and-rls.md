@@ -559,3 +559,7 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   dry runs dry133 / dry134 / dry135, 13 + 9 + 18). 0133 and 0135 replace live functions (`set_rush`, `dine_order`,
   `dine_storefront`; `_leave_mine_to_see`, `leave_decide`) — built from `pg_get_functiondef` of the deployed ones so they
   differ only where they say. 0131 is still in `supabase/pending/`.
+
+- **0136 temporary passwords are the owner's** (2026-10-23, applied; dry136 16/16): `profiles.can_issue_passwords`,
+  `_may_issue_passwords(me)`, `staff_set_password_right` (owner only, a manager only); `staff_create_login`,
+  `staff_reset_password` and `staff_login_details` rebuilt from their live definitions with that one check.

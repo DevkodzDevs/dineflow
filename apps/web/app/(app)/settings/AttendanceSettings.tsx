@@ -7,9 +7,9 @@ import { saveAttendanceSettings } from "./actions";
 
 const WAYS = [
   { key: "manual", Icon: ClipboardCheck, title: "Manual", hint: "A manager marks Present / Absent." },
-  { key: "qr", Icon: QrCode, title: "QR badge", hint: "Scan the badge: first scan in, second scan out." },
-  { key: "biometric", Icon: Fingerprint, title: "Fingerprint / Face ID", hint: "Each person punches on their own phone. No extra device." },
-  { key: "selfie", Icon: Camera, title: "Selfie + location", hint: "A selfie, only inside the property's area. Photo is kept." },
+  { key: "qr", Icon: QrCode, title: "QR badge", hint: "First scan in, second scan out." },
+  { key: "biometric", Icon: Fingerprint, title: "Fingerprint / Face ID", hint: "Each person punches on their phone." },
+  { key: "selfie", Icon: Camera, title: "Selfie + location", hint: "Selfie inside the property. Photo kept." },
 ] as const;
 const RADII = [50, 100, 150, 250, 500];
 
@@ -45,7 +45,7 @@ export function AttendanceSettings({ owner, phoneReady = true, initial }: { owne
       <Card>
         <div className="flex items-start gap-3 mb-4">
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Fingerprint size={16} /></span>
-          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Ways to mark attendance</h3><p className="text-xs text-steel mt-0.5">Turn on any you like. A way that is off won&apos;t work anywhere.</p></div>
+          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Ways to mark attendance</h3><p className="text-xs text-steel mt-0.5">A way that is off works nowhere.</p></div>
         </div>
         <div className="divide-y divide-[var(--color-separator)]">
           {WAYS.map(({ key, Icon, title, hint }) => { const on = methods.includes(key); return (
@@ -61,11 +61,11 @@ export function AttendanceSettings({ owner, phoneReady = true, initial }: { owne
         <Card>
           <div className="flex items-start gap-3 mb-4">
             <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><MapPin size={16} /></span>
-            <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Where the property is</h3><p className="text-xs text-steel mt-0.5">Selfies count only inside this circle. Set it while at the property.</p></div>
+            <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Where the property is</h3><p className="text-xs text-steel mt-0.5">Selfies count only inside this circle.</p></div>
           </div>
           <div className="rounded-2xl bg-[var(--color-fill)] px-4 py-3 text-[13px] flex items-center gap-3 min-w-0">
             <MapPin size={15} className={cn("shrink-0", loc ? "text-[var(--color-green)]" : "text-[var(--color-orange)]")} />
-            <span className="min-w-0 flex-1 truncate num" data-loc>{loc ? `${loc.lat}, ${loc.lng}` : "Not set — selfie attendance waits until it is"}</span>
+            <span className="min-w-0 flex-1 truncate num" data-loc>{loc ? `${loc.lat}, ${loc.lng}` : "Not set — selfie punches are off"}</span>
             {loc && <a href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`} target="_blank" rel="noreferrer" className="shrink-0 text-[12px] font-semibold text-[var(--color-tint)]">Map</a>}
           </div>
           {owner && <Button variant="outline" className="mt-3 w-full sm:w-auto" loading={finding} onClick={here} data-here><MapPin size={16} /> Use this device&apos;s location</Button>}
@@ -85,7 +85,7 @@ export function AttendanceSettings({ owner, phoneReady = true, initial }: { owne
         </Link>
       )}
 
-      {!phoneReady && (methods.includes("biometric") || methods.includes("selfie")) && <div className="rounded-xl px-4 py-3 text-[13px] bg-[color-mix(in_srgb,var(--color-orange)_14%,transparent)]" data-not-ready>Fingerprint and selfie punches are off. Ask DineFlow support to turn them on.</div>}
+      {!phoneReady && (methods.includes("biometric") || methods.includes("selfie")) && <div className="rounded-xl px-4 py-3 text-[13px] bg-[color-mix(in_srgb,var(--color-orange)_14%,transparent)]" data-not-ready>Fingerprint and selfie are off — ask DineFlow support.</div>}
       {msg && <div role="status" className={cn("rounded-xl px-4 py-2.5 text-sm", msg.ok ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-red-2)] text-[var(--color-red)]")}>{msg.text}</div>}
       {owner && <Button className="w-full sm:w-auto" loading={pending} disabled={!dirty} onClick={save} data-save>Save attendance settings</Button>}
     </div>

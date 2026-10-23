@@ -52,3 +52,4 @@ pnpm test                  # positions.test.ts: staff land on My day, the owner 
 ```
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. "In since" shows its time on flap tiles; the checklist tile's figure is a `FlapPercent`; attendance and messages figures shuffle; the "n new" work badge is a `FlapMini` (its number kept sr-only).
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

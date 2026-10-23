@@ -170,6 +170,8 @@ node design-test.mjs     # the invoices month strip shares the Charts code
 node dialog-audit.mjs    # /proof opens two dialogs; both are audited
 ```
 
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
 ## See also
 
 [billing-and-invoices.md](billing-and-invoices.md) · [inventory.md](inventory.md) ·
@@ -219,3 +221,6 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
 - **Pulse: an overdue table is built like a sitting** (2026-10-23): the time big in amber with an *overdue* tag where "frees ~"
   sits, a full amber bar, and "Open too long — bill or close it" in one line (`[data-stale]`) — it was a grey stage pill
   over a wrapping warning.
+
+- **Pulse on a phone, bigger figures** (2026-10-23, the owner): in "The floor now" the flaps are 40px (were 30) and the
+  sitting time 30px (was 22); iPad and desktop tiles unchanged. Pulse and Join by QR lines shortened.

@@ -152,3 +152,4 @@ pnpm --filter @dineflow/web test
 - **On a phone the filters are two segmented rows** (`sm:hidden`): All · Stay · Dining, and 7 days ·
   30 days · 90 days · 1 yr, each one row, 44px. sm and up keep the chips. Probe: `inv.mjs` (20 checks
   over five widths, with the order header).
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.

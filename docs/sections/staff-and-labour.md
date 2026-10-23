@@ -299,3 +299,17 @@ year. See [my-day.md](my-day.md).
   on My profile (0125's own columns). Dry run `dry134.cjs` (9).
 - **Note**: `staff_attendance` is readable by everyone on the property (`staff_attendance_read`); the register is shown only to
   the people above, but the rows themselves are not narrowed — unchanged, worth a look.
+- **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
+- **Temporary passwords are the owner's** (0136, 2026-10-23, the owner: "only the owner, always; the owner can enable it
+  for a manager; otherwise no one"). `staff_create_login` and `staff_reset_password` refuse anyone but the owner or a
+  manager with `profiles.can_issue_passwords`; `staff_login_details` shows the sign-in ID as before but the temporary
+  password only to those (`can_issue`). The owner turns it on per manager in Access (`[data-password-right]`,
+  `staff_set_password_right`). The page passes `canIssue`: without it there is no **Add staff** (Invite with a code is the
+  one button) and no **Reset their password**.
+- **The sign-in slip, redrawn** (`Credentials`, `[data-credentials]`): the login ID and the temporary password on rows with
+  round copy keys, the password large and spaced, a "3 days" tag; no password → one line ("Own password set…", and who
+  can reset it). The old "What happens next" card is a one-line foot, shown only with a password.
+- **Attendance head on a phone** (`[data-att-head]`): the title no longer breaks ("Attend / ance"); Today | Register take
+  their own full-width row under 640px.
+- **Positions → Level** chips slide in a `ChipRail` with arrows (`[data-level-rail]`) on phone and iPad; wrap from lg.

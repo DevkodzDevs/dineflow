@@ -40,7 +40,7 @@ export function MenuImport({ existing, onDone }: { existing: string[]; onDone: (
         <span className="h-11 w-11 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-[var(--color-tint)]">{reading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-semibold">{reading ? "Reading the menu…" : rows ? "Read another page" : "Photograph your menu"}</span>
-          <span className="block text-xs text-[var(--color-label-2)]">Photo a menu page by page. You check each dish before adding.</span>
+          <span className="block text-xs text-[var(--color-label-2)]">Page by page — check before adding.</span>
         </span>
         <input type="file" accept="image/*" capture="environment" className="sr-only !w-px !h-px !min-w-0 !p-0 !border-0" disabled={reading}
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void read(f); }} />
@@ -52,7 +52,7 @@ export function MenuImport({ existing, onDone }: { existing: string[]; onDone: (
           <b className="text-[13px]">{rows.length} dish{rows.length === 1 ? "" : "es"} read</b>{sample && <Pill tone="gold">sample</Pill>}
           <button type="button" className="ml-auto h-9 px-2 font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)]" onClick={() => setRows(rows.map((r) => ({ ...r, keep: !rows.every((x) => x.keep) })))}>{rows.every((x) => x.keep) ? "Untick all" : "Tick all"}</button>
         </div>
-        {sample && <p className="text-xs text-[var(--color-label-2)] -mt-2">Sample only: ask DineFlow support to turn on menu reading.</p>}
+        {sample && <p className="text-xs text-[var(--color-label-2)] -mt-2">Sample only — ask support to turn it on.</p>}
         <div className="rounded-2xl border border-[var(--color-separator)] divide-y divide-[var(--color-separator)] overflow-hidden">
           {rows.map((r, i) => {
             const dup = have.has(r.name.trim().toLowerCase());
