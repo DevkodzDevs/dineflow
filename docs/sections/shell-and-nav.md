@@ -719,3 +719,10 @@ Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.
   widening ring, "DineFlow" rises under it; it leaves once the page has loaded and 1.1 s have passed (4 s at most), fading
   in 0.35 s. Drawn from pseudo-elements of <html> and <body> — nothing in React's tree. `?splash=1` shows it in a tab.
   The logo (16 kB) is fetched only when the splash shows.
+
+- **The error card retries once by itself** (2026-10-24, the owner: "after login the app shows This screen did not load").
+  The evening before, the shared database was overloaded by a full-app test run for a few minutes; every screen in that
+  window fell to the card and stayed there. `ErrorRecovery` now reloads once after 1.5 s ("Reconnecting…",
+  `[data-error-retrying]`), at most once a minute (sessionStorage `df-retried-after-error`); a second failure inside the
+  minute shows the card, so a real bug cannot spin. A stale build still reloads at once, as before. **Lesson for testing:**
+  dev and live share the database — never run parallel browser suites against it; one browser, paced.

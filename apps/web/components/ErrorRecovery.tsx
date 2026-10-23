@@ -13,16 +13,30 @@ import { RefreshCw, AlertTriangle, LifeBuoy } from "lucide-react";
  */
 const STALE = /ChunkLoadError|Loading chunk|Loading CSS chunk|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
 const ONCE = "df-reloaded-after-stale-build";   // holds the time of the last automatic reload
+/* Any other failure gets one quiet retry too (2026-10-24, the owner: "after login the app shows 'This screen did not load'").
+   That evening the shared database was briefly overloaded; every screen that asked it in that minute fell to this card and
+   stayed there until someone pressed Reload. Now the card waits 1.5 s and reloads once by itself ("Reconnecting…"); a
+   second failure inside a minute shows the card as before, so a real bug can never spin. */
+const RETRY = "df-retried-after-error";
 
 export function ErrorRecovery({ error, reset, inline = false }: { error: Error & { digest?: string }; reset?: () => void; inline?: boolean }) {
   // inside the app shell the card sits in the page column, under the sidebar and above the tab bar;
   // at the root it is the whole screen
   const frame = inline ? "min-h-[60dvh] grid place-items-center p-2" : "min-h-dvh grid place-items-center bg-[var(--color-bg)] p-6";
   const [reloading, setReloading] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     const stale = STALE.test(`${error?.name} ${error?.message}`);
-    if (!stale) return;
+    if (!stale) {
+      let tried = 0;
+      try { tried = Number(sessionStorage.getItem(RETRY)) || 0; } catch { return; }   // no storage, no rate limit: show the card
+      if (Date.now() - tried < 60000) return;
+      try { sessionStorage.setItem(RETRY, String(Date.now())); } catch { return; }
+      setRetrying(true);
+      const t = setTimeout(() => location.reload(), 1500);
+      return () => clearTimeout(t);
+    }
     // A timestamp rather than a flag: it forgets on its own, so a deploy an hour from now can still
     // recover, while a build that is genuinely broken cannot spin — the second failure inside the
     // window falls through to the card instead of reloading again.
@@ -38,6 +52,15 @@ export function ErrorRecovery({ error, reset, inline = false }: { error: Error &
       location.reload();
     })();
   }, [error]);
+
+  if (retrying) return (
+    <div className={frame} data-error-screen data-error-retrying>
+      <div className="text-center">
+        <RefreshCw size={22} className="mx-auto animate-spin text-[var(--color-label-2)]" />
+        <p className="mt-3 text-sm text-[var(--color-label-2)]">Reconnecting…</p>
+      </div>
+    </div>
+  );
 
   if (reloading) return (
     <div className={frame} data-error-screen>
