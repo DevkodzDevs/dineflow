@@ -93,3 +93,23 @@ DINEFLOW_KEYSTORE="<path>/dineflow-android.jks" DINEFLOW_KEYSTORE_PASSWORD="<pas
 Checked 2026-10-20: `apksigner verify` → v2 signature by `CN=DineFlow`; installed on an API 36 emulator, it
 opened Chrome's Trusted Web Activity on dineflow.cloud's sign-in page. The `.exe` (1.1.0) opened a window
 titled "Sign in · DineFlow".
+
+## 2026-10-23 — the app opened with Chrome's address bar: it now trusts www
+
+The Android app pointed at **https://dineflow.cloud**. That name answers every request with a 308 to www — including
+`/.well-known/assetlinks.json` — and Android checks the link **without following redirects**, so the app was never verified
+and Chrome showed it as a tab with the address bar ("dineflow.cloud", ✕, share). `strings.xml` (launchUrl,
+asset_statements) and the manifest's intent filter now say **www.dineflow.cloud**, where assetlinks.json is served directly
+(`curl https://www.dineflow.cloud/.well-known/assetlinks.json` → 200, package `cloud.dineflow.app`). Version **1.0.1**
+(versionCode 2). Build it signed with the release key (it must be the key whose SHA-256 is in assetlinks.json), then upload
+the new file in Master control → App files:
+
+```bash
+cd apps/android-app
+DINEFLOW_KEYSTORE="D:/dine flow/v-4/release-keys/dineflow-android.jks" DINEFLOW_KEYSTORE_PASSWORD="<password>" ./gradlew assembleRelease
+```
+
+**"File might be harmful" and Play Protect's scan** are Android's own, for every app installed from a file rather than the
+Play Store — no file or server setting removes them. The two ways without them: publish the same app on Google Play (an
+`.aab`, `./gradlew bundleRelease`, and a developer account), or install from Chrome's own menu (Install app), which Chrome
+packages and verifies itself.

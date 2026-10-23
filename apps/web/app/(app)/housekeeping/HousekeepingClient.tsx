@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star, ChevronDown, ChevronsUpDown, ChevronsDownUp, Clock, Brush, RotateCcw } from "lucide-react";
 import { deptOf } from "@/components/shell/sections";
 import { useLive } from "@/lib/useLive";
-import { Button, Card, Field, Segmented, cn, Empty, useToast } from "@/components/ui";
+import { Button, Card, Field, Segmented, cn, Empty, useToast, FlapSpell } from "@/components/ui";
 import { fmtSince } from "@/lib/format";
 import { addTask, setCondition, inspectRoom, buildSheet } from "./actions";
 import { setRoomStatus } from "../rooms/actions";
@@ -80,13 +80,13 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
   /* Where the front office and housekeeping disagree about a room. Every PMS prints this at the
      night audit; here it is live, and empty on a good day. */
   const discrepancies = useMemo(() => {
-    const out: { room: string; what: string }[] = [];
+    const out: { room: string; what: string; why: string }[] = [];
     rooms.forEach((r) => {
       const s = byRoom[r.id];
-      if (r.status === "occupied" && !s) out.push({ room: r.number, what: "Shown occupied, but nobody is checked in" });
-      if (s && r.status !== "occupied") out.push({ room: r.number, what: `${s.guests?.full_name ?? "A guest"} is checked in, but the room is marked ${r.status}` });
-      if (r.status === "available" && r.condition === "dirty") out.push({ room: r.number, what: "On sale, but housekeeping says dirty" });
-      if (s && s.check_out < today) out.push({ room: r.number, what: `${s.guests?.full_name ?? "The guest"} was due out on ${s.check_out.slice(5)}` });
+      if (r.status === "occupied" && !s) out.push({ room: r.number, what: "Shown occupied", why: "Nobody is checked in" });
+      if (s && r.status !== "occupied") out.push({ room: r.number, what: `${s.guests?.full_name ?? "A guest"} is checked in`, why: `Room marked ${r.status}` });
+      if (r.status === "available" && r.condition === "dirty") out.push({ room: r.number, what: "On sale but dirty", why: "Housekeeping marked it dirty" });
+      if (s && s.check_out < today) out.push({ room: r.number, what: `${s.guests?.full_name ?? "The guest"} is past check-out`, why: `Was due out ${dayMonth(s.check_out)}` });
     });
     return out;
   }, [rooms, byRoom, today]);
@@ -127,10 +127,20 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
 
       <div className={cn("space-y-6", view !== "rooms" && "max-sm:hidden")}>
       {discrepancies.length > 0 && (
-        <Card className="!border-[var(--color-orange)]/50">
-          <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-orange)] mb-2 flex items-center gap-1.5"><AlertTriangle size={13} /> Discrepancies · {discrepancies.length}</div>
-          <ul className="text-sm space-y-1">{discrepancies.map((d, i) => <li key={i} className="flex items-center gap-3"><span className="num font-semibold shrink-0 h-7 min-w-11 px-2 rounded-lg bg-[var(--color-fill)] grid place-items-center">{d.room}</span><span className="min-w-0">{d.what}</span></li>)}</ul>
-        </Card>
+        /* What the board and the bookings disagree on (redrawn 2026-10-23, the owner: "not looking good"): a head with its
+           count, then one row each — the room on its flap tiles, what is wrong in bold, why in a quiet line under it */
+        <section className="feather overflow-hidden" data-discrepancies>
+          <header className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-separator)]">
+            <span className="h-9 w-9 shrink-0 rounded-[11px] grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]" aria-hidden><AlertTriangle size={17} /></span>
+            <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold leading-tight">Needs a look</span><span className="block text-[12px] text-steel">Board and bookings disagree</span></span>
+            <span className="num shrink-0 h-7 min-w-7 px-2 rounded-full bg-[var(--color-orange-2)] text-[var(--color-orange)] text-[13px] font-bold grid place-items-center">{discrepancies.length}</span>
+          </header>
+          <ul className="divide-y divide-[var(--color-separator)]">{discrepancies.map((d, i) => (
+            <li key={i} className="flex items-center gap-3 px-4 py-3 min-w-0" data-discrepancy={d.room}>
+              <FlapSpell text={d.room} size="xs" tile="28px" say={`Room ${d.room}`} className="shrink-0" />
+              <span className="min-w-0 flex-1"><span className="block text-[14px] font-semibold leading-snug [overflow-wrap:anywhere]">{d.what}</span><span className="block text-[12.5px] text-steel leading-snug">{d.why}</span></span>
+            </li>))}</ul>
+        </section>
       )}
 
       {/* Floors fold. The first is open; opening another closes it; Open all shows the lot. A board of
@@ -224,7 +234,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     is in the room and the one thing to know about it; the actions as small pills */}
                 <div data-room={r.number} className="@container hidden sm:flex feather relative overflow-hidden p-3 flex-col gap-2.5 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-display text-[22px] leading-none tracking-tight" data-num>{r.number}</span>
+                    <span data-num className="shrink-0"><FlapSpell text={r.number} size="xs" tile="26px" say={`Room ${r.number}`} /></span>
                     <span className={cn("ml-auto shrink-0 inline-flex items-center gap-1.5 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold", out ? "bg-chili-2 text-chili" : c.chip)} data-cond>
                       <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone }} /><span data-cond-label>{out ? "Out of order" : c.label}</span>
                     </span>
@@ -254,25 +264,27 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                   {/* the state as a slim pill down the inside edge, clear of the rounded corners */}
                   <span aria-hidden className="absolute left-1.5 top-4 bottom-4 w-[3px] rounded-full" style={{ background: tone }} />
 
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-display text-[30px] leading-none tracking-tight">{r.number}</div>
-                      <div className="mt-1.5 text-[13px] leading-tight truncate">
-                        {s ? <span className="font-semibold inline-flex items-center gap-1 max-w-full"><span className="truncate">{s.guests?.full_name}</span>{s.guests?.vip && <Star size={12} className="text-champagne fill-current shrink-0" />}</span>
-                          : <span className="text-[var(--color-label-2)] capitalize">{out ? "Maintenance" : r.status === "available" ? "Vacant" : r.status}</span>}
+                  {/* the head (redrawn 2026-10-23, the owner: "not looking good"): the room number on flap tiles, then who is in
+                      it — or what it is — in bold with the since-line under, and the condition as its pill on the right */}
+                  <div className="flex items-center gap-3 min-w-0" data-room-head>
+                    <FlapSpell text={r.number} size="xs" tile="34px" say={`Room ${r.number}`} className="shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[15px] font-bold leading-tight truncate">
+                        {s ? <span className="inline-flex items-center gap-1 max-w-full"><span className="truncate">{s.guests?.full_name}</span>{s.guests?.vip && <Star size={12} className="text-champagne fill-current shrink-0" />}</span>
+                          : <span className="capitalize">{out ? "Maintenance" : r.status === "available" ? "Vacant" : r.status}</span>}
                       </div>
+                      <div className="mt-1 num text-[12px] leading-tight text-[var(--color-label-2)] inline-flex items-center gap-1"><Clock size={12} aria-hidden />{c.label.toLowerCase()} · {fmtSince(r.condition_at)}</div>
                     </div>
-                    <span className={cn("shrink-0 inline-flex items-center gap-1.5 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold", out ? "bg-chili-2 text-chili" : c.chip)}>
+                    <span className={cn("shrink-0 self-start inline-flex items-center gap-1.5 h-7 pl-2.5 pr-3 rounded-full text-[12px] font-semibold", out ? "bg-chili-2 text-chili" : c.chip)}>
                       <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone }} />{out ? "Out of order" : c.label}
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] min-h-5">
-                    <span className="num inline-flex items-center gap-1 text-[var(--color-label-2)]"><Clock size={11} />{c.label.toLowerCase()} {fmtSince(r.condition_at)} ago</span>
+                  {(s || dueOut || out) && <div className="flex flex-wrap items-center gap-1.5 text-[11px] min-h-5">
                     {s && <span className="num h-5 px-2 rounded-full bg-[var(--color-fill)] text-[var(--color-label-2)] inline-flex items-center">out {s.check_out.slice(5)}</span>}
                     {dueOut && <span className="h-5 px-2 rounded-full bg-[var(--color-red-2)] text-[var(--color-red)] font-semibold inline-flex items-center">Due out</span>}
                     {out && (() => { const fix = tasks.find((t) => t.kind === "maintenance" && t.status !== "done" && t.rooms?.number === r.number); return fix?.notes ? <span className="min-w-0 max-w-full truncate text-[var(--color-red)]">{fix.notes}</span> : null; })()}
-                  </div>
+                  </div>}
 
                   {/* out of order: the repair's state and the way back, in the same dock as every other
                       room, so the row it sits in keeps one height */}
@@ -325,7 +337,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             <section key={c.key} className={cn("rounded-[20px] p-3", c.key === "pending" ? "bg-sky-2" : "bg-champagne-2")}><div className="text-sm font-semibold px-1 pb-3">{c.title} <span className="num text-steel">{list.length}</span></div>
               <div className="space-y-3"><AnimatePresence>{list.map((t) => (
                 <motion.div key={t.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-4">
-                  <div className="flex items-start gap-3"><span className="keycard h-11 w-12 shrink-0 grid place-items-center font-display text-lg">{t.rooms?.number ?? "—"}</span><div className="flex-1 min-w-0"><div className="font-semibold flex items-center gap-1.5">{t.kind === "maintenance" ? <Wrench size={14} className="text-chili shrink-0" /> : <Sparkles size={14} className="shrink-0" />}<span className="truncate">{KIND[t.kind] ?? t.kind}</span></div><div className="text-xs text-steel line-clamp-2 mt-0.5">{t.notes || "No notes"}</div><div className="num text-[11px] text-[var(--color-label-2)] mt-0.5">{fmtSince(t.created_at)} ago</div>
+                  <div className="flex items-start gap-3"><span className="shrink-0 min-w-12 grid place-items-center" data-task-room>{t.rooms?.number ? <FlapSpell text={t.rooms.number} size="xs" tile="30px" say={`Room ${t.rooms.number}`} /> : <span className="keycard h-11 w-12 grid place-items-center font-display text-lg">—</span>}</span><div className="flex-1 min-w-0"><div className="font-semibold flex items-center gap-1.5">{t.kind === "maintenance" ? <Wrench size={14} className="text-chili shrink-0" /> : <Sparkles size={14} className="shrink-0" />}<span className="truncate">{KIND[t.kind] ?? t.kind}</span></div><div className="text-xs text-steel line-clamp-2 mt-0.5">{t.notes || "No notes"}</div><div className="num text-[11px] text-[var(--color-label-2)] mt-0.5">{fmtSince(t.created_at)} ago</div>
                     {t.status === "in_progress" && t.taken_by && <div className="text-[12.5px] font-semibold text-[var(--color-cyan)] mt-1 truncate" data-task-who>{nameOf(t.taken_by)} · since {fmtSince(t.taken_at ?? t.created_at)}</div>}
                     {t.status === "pending" && t.assigned_to && <div className="text-[12.5px] font-semibold mt-1 truncate" data-task-who>Given to {nameOf(t.assigned_to)}{t.assigned_by && <span className="font-normal text-steel"> by {nameOf(t.assigned_by)}</span>}</div>}</div></div>
                   {/* "Done", never "Done · room ready": the long label ran out of its half of a narrow
@@ -352,7 +364,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             {done.length === 0 ? <p className="text-[13.5px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] px-3 py-4 text-center">Nothing finished yet today.</p>
               : <ul className="divide-y divide-[var(--color-separator)]">{done.map((d) => { const took = d.taken_at ? Math.max(1, Math.round((new Date(d.done_at).getTime() - new Date(d.taken_at).getTime()) / 60000)) : null; return (
                 <li key={d.id} className="flex items-center gap-3 py-2.5 min-w-0">
-                  <span className="keycard h-10 w-11 shrink-0 grid place-items-center font-display text-[16px]">{d.rooms?.number ?? "—"}</span>
+                  <span className="shrink-0 min-w-11 grid place-items-center">{d.rooms?.number ? <FlapSpell text={d.rooms.number} size="xs" tile="26px" say={`Room ${d.rooms.number}`} /> : <span className="keycard h-10 w-11 grid place-items-center font-display text-[16px]">—</span>}</span>
                   <div className="min-w-0 flex-1 leading-tight">
                     <div className="text-[14px] font-semibold truncate">{KIND[d.kind] ?? d.kind}</div>
                     <div className="text-[12px] text-steel truncate mt-0.5">{d.done_by ? `by ${nameOf(d.done_by)}` : "done"}{d.done_at ? ` · ${fmtSince(d.done_at)} ago` : ""}</div>

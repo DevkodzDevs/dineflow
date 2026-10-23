@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="app_name">DineFlow</string>
-  <string name="launchUrl">https://dineflow.cloud/dashboard</string>
+  <string name="launchUrl">https://www.dineflow.cloud/dashboard</string>
   <string name="providerAuthority">cloud.dineflow.app.fileprovider</string>
   <string name="fallbackType">webview</string>
-  <!-- ties the app to the site; with /.well-known/assetlinks.json on the site, Chrome drops its address bar -->
-  <string name="asset_statements">[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://dineflow.cloud\"}}]</string>
+  <!-- ties the app to the site; with /.well-known/assetlinks.json on the site, Chrome drops its address bar. www, not the
+       bare name: dineflow.cloud 308s to www, and Android reads assetlinks.json without following a redirect — so the
+       bare name never verified and the app opened with Chrome's address bar (2026-10-23) -->
+  <string name="asset_statements">[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://www.dineflow.cloud\"}}]</string>
 </resources>

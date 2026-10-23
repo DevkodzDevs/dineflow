@@ -47,7 +47,7 @@ export function LangButton() {
         {lang === "en" ? <Languages size={20} /> : <span className="text-[19px] font-bold leading-none" lang={scriptOf(lang)}>{cur.short}</span>}
       </button>
       {open && (
-        <div role="menu" translate="no" className="absolute right-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-24px)] rounded-2xl bg-[var(--color-bg-2)] border border-[var(--color-separator)] shadow-[var(--shadow-pop)] p-1.5">
+        <div role="menu" translate="no" data-lang-panel className="absolute right-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-24px)] max-sm:fixed max-sm:left-3 max-sm:right-3 max-sm:w-auto max-sm:max-w-none max-sm:top-[calc(env(safe-area-inset-top,0px)+64px)] max-sm:mt-0 max-sm:max-h-[calc(100dvh-env(safe-area-inset-top,0px)-170px)] max-sm:overflow-y-auto rounded-2xl bg-[var(--color-bg-2)] border border-[var(--color-separator)] shadow-[var(--shadow-pop)] p-1.5">
           {GROUPS.map(({ g, title }) => (
             <div key={g} role="group" aria-label={title} className={cn(g === "all" && "mt-1 pt-1 border-t border-[var(--color-separator)]")}>
               <div className="px-3 pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-[.12em] text-[var(--color-label-2)]">{title}</div>

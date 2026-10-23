@@ -142,3 +142,11 @@ are the whole point and they are theme-dependent.
   `svc-btn go` and reads *Choose a room first* until one is. shots39: the clean offered Room Attendant + Floor
   Supervisor, the maintenance task the engineer alone; never the owner or the chef.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
+- **The phone card, the discrepancies and the room numbers, redrawn** (2026-10-23, the owner: "not looking good"; "the
+  numbers like the flap design"). Room numbers are `FlapSpell` tiles — on the phone card (`[data-room-head]`), the wide card,
+  the task cards (`[data-task-room]`), Recently done and the discrepancy rows. The phone card's head: the number, then the
+  guest (or Vacant / the status) in bold with "condition · since" under it, the condition pill on the right; the out / due /
+  repair chips only when there is one. **Discrepancies** are "Needs a look" (`[data-discrepancies]`): an amber head with the
+  count, then a row each — the room's tiles, what is wrong in bold, why in a quiet line ("Ravi is past check-out" / "Was due
+  out 20 Oct").

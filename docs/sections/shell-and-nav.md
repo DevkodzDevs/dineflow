@@ -705,3 +705,17 @@ Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.
   the bare name is a 308 to www first: +0.2–0.4 s); confirm Fluid compute is on (Settings → Functions); a free uptime
   check on `https://www.dineflow.cloud/api/health?deep=1` every 5 minutes keeps an instance and its database path warm;
   the Supabase compute size (Micro) is the owner's call. pg_cron / pg_net are not installed and were not turned on.
+
+- **The phone's top bar is the top of the screen** (2026-10-23, the owner on an iPhone: "the top bar and the start of the
+  page are not visible properly"). Under 768px `.topbar` is one solid bar, square and edge to edge, pinned at 0 and padded
+  by the safe area — the clock and battery sit on the bar's colour, never on the page; no glass (`!important` over
+  `.material`), the same shape pinned or not. Master mode's band takes the safe area when it is above the bar. iPad and
+  laptop keep the floating card. round79: 412 × four screens at rest and scrolled, a 47px emulated safe area, 834/1440 unchanged.
+- **The language menu on a phone** opens as a full-width panel under the bar (`[data-lang-panel]`, fixed, 12px in) — anchored to
+  the button's right edge it ran off the left of the screen.
+- **The opening splash** (`lib/splash.ts` SPLASH_BOOT in <head>, the SPLASH block at the end of globals.css): only when
+  DineFlow runs as an app (display-mode standalone/fullscreen, iOS `navigator.standalone`, the Android app's
+  `android-app://` referrer), once per launch (sessionStorage `df-splash`). The logo scales in with a soft green glow and a
+  widening ring, "DineFlow" rises under it; it leaves once the page has loaded and 1.1 s have passed (4 s at most), fading
+  in 0.35 s. Drawn from pseudo-elements of <html> and <body> — nothing in React's tree. `?splash=1` shows it in a tab.
+  The logo (16 kB) is fetched only when the splash shows.

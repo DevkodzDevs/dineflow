@@ -1334,6 +1334,26 @@ input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
   padding-top: 5px; padding-bottom: 5px; margin-bottom: calc(2rem + 6px); }
 .topbar[data-stuck]::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: env(safe-area-inset-top, 0px); background: inherit; }
 @media (min-width: 768px) { .topbar[data-stuck] { --bx: 32px; --br: 44px; } }
+/* A phone: one solid app bar, edge to edge, from the very top (2026-10-23, the owner, on an iPhone: "the top bar and the
+   start of the page are not visible properly"). The floating, see-through card stuck a little below the status bar; on
+   an iPhone the page showed through above it and around it — under iOS's own status-bar fade — and the first lines of
+   every screen looked cut. Now, under 768px, the bar is the top of the screen: square, full width, solid, and it reaches
+   up under the status bar (its padding is the safe area, so the clock and the battery sit on the bar's colour, never on
+   the page). Pinned or not it is the same bar, so nothing changes shape as the page scrolls under it. */
+@media (max-width: 767px) {
+  .topbar, .topbar[data-stuck] {
+    position: sticky; top: 0 !important; z-index: 30;
+    margin-left: -16px; margin-right: -16px; margin-top: -17px;   /* -17: the main column's 16px and the 1px pin marker above the bar */
+    padding: calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;
+    border-radius: 0 !important; border-width: 0 0 .5px; border-style: solid; border-color: var(--color-separator);
+    background: var(--color-bg-2) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;   /* over .material's glass */
+    box-shadow: 0 6px 18px -16px rgb(0 0 0 / .55);
+  }
+  .topbar[data-stuck]::before { display: none; }
+  /* Master mode's band sits above the bar: the bar then needs no room for the status bar, the band takes it */
+  [role="status"] + div + .topbar, [role="status"] + .topbar { margin-top: 8px; padding-top: 6px; }
+  main > div > [role="status"]:first-child { margin-top: calc(env(safe-area-inset-top, 0px) + 4px); }
+}
 @media (min-width: 1536px) { .topbar[data-stuck] { --bx: 48px; --br: 60px; } }
 
 /* the keyboard (components/shell/Keys.tsx): a key cap, and the item a list highlight is on */
@@ -1871,3 +1891,31 @@ html[data-palette="royal"] nav.tabbar { border-color: rgb(184 145 58 / .35); }
 }
 /* the hero's own lights, on the dark cover in every theme */
 .store-hero { --cv-star: #ffc94a; --cv-open: #5ee39a; --cv-closed: #ff7a6b; }
+
+/* ═══ SPLASH — the installed app's opening screen (lib/splash.ts, 2026-10-23) ═══════════════════════════════════
+   Drawn only while <html data-splash> is set, from pseudo-elements (nothing in the page React renders):
+     html::before  the dark screen, the same colour as the Android system splash and the theme colour
+     html::after   the logo — scales in with a soft green glow, then breathes once
+     body::before  a green ring that widens out from behind the logo and fades
+     body::after   "DineFlow", rising in under the logo
+   Only transform and opacity move (the compositor rule, design-system.md). "out" fades the lot in 0.35 s. */
+html[data-splash]::before { content: ""; position: fixed; inset: 0; z-index: 2147483000; background: radial-gradient(60vmax 60vmax at 50% 44%, #10261b 0%, #0a0a0d 62%); pointer-events: all; transition: opacity .35s ease; }
+html[data-splash]::after { content: ""; position: fixed; left: 50%; top: 44%; width: 112px; height: 112px; margin: -56px 0 0 -56px; z-index: 2147483002;
+  background: url(/icon-192.png) center / contain no-repeat; border-radius: 26px; box-shadow: 0 18px 50px -12px rgb(46 230 160 / .35);
+  animation: splash-logo .7s cubic-bezier(.16, 1, .3, 1) both, splash-breathe 1.6s ease-in-out .7s infinite; transition: opacity .3s ease; }
+html[data-splash] body::before { content: ""; position: fixed; left: 50%; top: 44%; width: 112px; height: 112px; margin: -56px 0 0 -56px; z-index: 2147483001;
+  border-radius: 30px; border: 2px solid rgb(46 230 160 / .55); animation: splash-ring 1.4s cubic-bezier(.2, .7, .3, 1) .25s infinite; opacity: 0; pointer-events: none; }
+html[data-splash] body::after { content: "DineFlow"; position: fixed; left: 0; right: 0; top: calc(44% + 78px); z-index: 2147483002; text-align: center;
+  font-family: var(--font-display), system-ui, sans-serif; font-size: 26px; letter-spacing: .06em; color: #f4f4f1;
+  animation: splash-word .6s cubic-bezier(.16, 1, .3, 1) .3s both; pointer-events: none; }
+html[data-splash="out"]::before, html[data-splash="out"]::after, html[data-splash="out"] body::before, html[data-splash="out"] body::after { opacity: 0 !important; transition: opacity .35s ease; }
+html[data-splash="out"]::after { animation: splash-leave .35s ease-in both; }
+@keyframes splash-logo { from { transform: scale(.72); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes splash-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+@keyframes splash-ring { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes splash-word { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes splash-leave { to { transform: scale(1.08); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  html[data-splash]::after, html[data-splash] body::after { animation: none; }
+  html[data-splash] body::before { display: none; }
+}
