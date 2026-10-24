@@ -171,6 +171,32 @@ tab is the sixth in `AdminNav` (three across on a phone, six from `sm`). How to 
   "Compliance" is not truncated.
 - **The console is dense on purpose with a mouse (30–36px); under `pointer: coarse` its tabs, chips,
   search, actions and row Open/menu reach 44px** (`AdminToolbar.module.css`, `RowActions.module.css`).
+- **The five figures above the toolbar fill every row** (`AdminToolbar.module.css` `.stats`, `[data-admin-stats]`,
+  2026-10-24, the owner: "the bottom card must fill that empty space"). Two across left "Clients' sales today" alone
+  beside a hole. Now a phone is 2 + 2 + the last full width, an iPad 3 + 2 halves (a six-track grid), a desktop 5 in a
+  row. `pw/view93.mjs` checks each row starts and ends on the grid's edges at all five widths.
+- **The estate: a table from an iPad up, cards on a phone, and a Table / Cards switch** (`PropertyCards.tsx`,
+  `[data-estate-view]` at the end of the filter row; 2026-10-24, the owner: "ultra modern, user friendly", then "desktop
+  to iPad must be the table by default, with a card / table toggle"). With no choice made, CSS picks by width — the table
+  from 768px, cards below — so the first paint is right; a choice is kept on the device (`df-estate-view`) and wins at
+  every width. The shared DataTable's phone mode (MEMBERSHIP / TODAY in caps down the left) is left for the other
+  screens. Each **card**: the type icon in the status colour (a blue mark on its corner when it runs on a Box), the name
+  (one line, …), code · type · users (one line, …), the status badge with the days left (red at 2 or fewer), a tray of
+  Today / 30 days / Live (open orders, or rooms in use for a hotel or resort), and Open + ⋯ across the foot
+  (`RowActions fill`, 44px). 1 across on a phone, 2 from 700px, 3 from 1100px, 4 from 1500px; 20 at a time with Show
+  more. Card sums are a glance — ₹48,251, ₹12.8 L, ₹1.2 Cr, the exact sum in the title (`formatINR's whole` only drops
+  ".00", so it rounds first). The **table** (`.estateTable`): Open at full strength (not the shared .55-until-hover);
+  between 641 and 1179px Live and Users step out and a long name ends in … — with them the row ran 58px past an iPad
+  and Open and ⋯ sat behind a sideways scroll. Its own "Search…" is gone: the toolbar's Find and chips filter both views.
+  Probes: `pw/cards92.mjs` (52 — the cards in five themes, 360, 412, 834) and `pw/view93.mjs` (68 — the real AdminClient
+  bundled with stand-ins for its actions and router, at 1920 / 1440 / 1194 / 834 / 412: the default per width, the
+  switch, the choice across a reload, the table fitting with Open on screen).
+- **A property's ⋯ menu is a sheet on a phone** (2026-10-24, the owner's iPhone: it hung off the ⋯ half over the next
+  card, the name right-aligned and the items left). Under 640px `place()` does nothing and `RowActions.module.css` pins
+  it 12px from each side above the home bar, the page dimmed, name and rows on one left edge, rows 56px+. With a mouse
+  it is still the 268px menu under the ⋯; `text-align: left` because it renders inside the right-aligned actions cell.
+  The rule that sets Delete apart is drawn above it (it was under). Probe: `pw/rowmenu91.mjs` (22 checks — a stand-in,
+  as /admin needs the master login).
 - **Compliance totals are compact rows on a phone** (label left, figure right), cards from `sm`.
 - **The full-record sheet** (`PropertyDetail.tsx`) is a header card (type icon, name, type · logins ·
   records, Copy all) then one `Panel` per section — title, "N of M filled in", Edit and Copy in its

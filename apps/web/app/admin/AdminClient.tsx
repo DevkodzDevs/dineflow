@@ -9,12 +9,14 @@ import { issueKey, setMembership, matchChain, setMasterPassword, createProperty,
 import { Trash2 } from "lucide-react";
 import { PropertyDetailView } from "./PropertyDetail";
 import { RowActions } from "./RowActions";
+import { PropertyCards } from "./PropertyCards";
+import cardStyles from "./PropertyCards.module.css";
 import { LoginIdField } from "./LoginIdField";
 import { loginAddressProblem } from "@dineflow/shared";
 import { Boxes } from "lucide-react";
 import { Plus, UtensilsCrossed as UC, Building2 as B2, Palmtree as PT } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { KeyRound as KeyIcon, X } from "lucide-react";
+import { KeyRound as KeyIcon, X, Rows3, LayoutGrid } from "lucide-react";
 import { MODULES_BY_TYPE, MODULE_GROUPS, ALWAYS_ON, PLAN_PRESETS, PROPERTY_FILTERS, type PlanPreset } from "@dineflow/shared";
 import { DataTable } from "@/components/ui/DataTable";
 import { setModules } from "./actions";
@@ -74,6 +76,18 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
     box: tenants.filter((t) => onBox(t.id)).length,
   }), [tenants, boxes]);   // eslint-disable-line react-hooks/exhaustive-deps
   const filtered = q.trim() !== "" || filter !== "all";
+  /* the estate as a table or as cards (2026-10-24, the owner: "desktop to iPad must be the table by default, with a
+     card / table switch"). Unset, it follows the width — the table from 768px, cards below — in CSS, so the first paint
+     is right; a choice is kept on this device (df-estate-view) and wins at every width. */
+  const [view, setView] = useState<"table" | "cards" | null>(null);
+  const [wide, setWide] = useState(true);
+  useEffect(() => {
+    try { const v = localStorage.getItem("df-estate-view"); if (v === "table" || v === "cards") setView(v); } catch { /* storage off */ }
+    const m = window.matchMedia("(min-width: 768px)"); const f = () => setWide(m.matches); f();
+    m.addEventListener("change", f); return () => m.removeEventListener("change", f);
+  }, []);
+  const shown = view ?? (wide ? "table" : "cards");
+  const pickView = (v: "table" | "cards") => { setView(v); try { localStorage.setItem("df-estate-view", v); } catch { /* storage off */ } };
   /* "/" jumps to the find field the way it does in every other console */
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -86,6 +100,16 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
   const mrr = tenants.filter((t) => t.membership === "active").reduce((s, t) => s + (t.plan === "yearly" ? 24999 / 12 : 2499), 0);
   const nameOf = (id: string | null) => tenants.find((t) => t.id === id)?.name ?? "—";
   const tone = (m: string) => (m === "active" ? "ready" : m === "trial" ? "gold" : "alert") as "ready" | "gold" | "alert";
+  /* one property's Open and ⋯ menu — the same for the table row and the card */
+  const rowActions = (t: T, fill?: boolean) => (
+    <RowActions
+      name={t.name} code={codeOf(t.id)} pending={pending}
+      openId={t.id} fill={fill}
+      onDetails={() => openDetail(t)}
+      onAccess={() => { setSel(t); setMods(access.find((x) => x.id === t.id)?.enabled_modules ?? null); setErr(null); setSheet("access"); }}
+      onManage={() => { setSel(t); setIssued(null); setErr(null); setSheet("tenant"); }}
+      onDelete={() => { setSel(t); setErr(null); setDelText(""); setDel(null); setSheet("delete"); start(async () => { const p = await deletePreview(t.id); if ("error" in p) setErr(p.error!); else setDel({ ...(p as DeletePreview), id: t.id }); }); }}
+    />);
 
   return (
     <div className="space-y-6">
@@ -98,7 +122,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
         </div>
       )}
       <div className="aurora"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Platform</div><h1 className="text-4xl">{tenants.length} properties <em>under control</em></h1></div>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className={styles.stats} data-admin-stats>
         <StatTile label="Active memberships" value={String(tenants.filter((t) => t.membership === "active").length)} tone="good" />
         <StatTile label="On trial" value={String(tenants.filter((t) => t.membership === "trial").length)} sub={`${tenants.filter((t) => t.membership === "trial" && daysLeft(t.trial_ends_at) <= 2).length} expiring in 2 days`} delay={0.05} />
         <StatTile label="Expired / suspended" value={String(tenants.filter((t) => ["expired", "suspended"].includes(t.membership)).length)} tone={tenants.some((t) => t.membership === "expired") ? "alert" : undefined} delay={0.1} />
@@ -146,16 +170,29 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
               </button>
             ))}
           </div>
-          <p className={styles.meta} aria-live="polite">
-            <span>{filtered ? <><b className="num">{list.length}</b> of {tenants.length} shown</> : <><b className="num">{tenants.length}</b> {tenants.length === 1 ? "property" : "properties"}</>}</span>
+          <div className={styles.meta}>
+            <p className={styles.metaCount} aria-live="polite">{filtered ? <><b className="num">{list.length}</b> of {tenants.length} shown</> : <><b className="num">{tenants.length}</b> {tenants.length === 1 ? "property" : "properties"}</>}</p>
             {filtered && <button type="button" className={styles.reset} onClick={() => { setQ(""); setFilter("all"); }}><X size={12} aria-hidden="true" /> Clear</button>}
-          </p>
+            <div className={styles.view} role="group" aria-label="Show properties as" data-estate-view>
+              {([["table", "Table", Rows3], ["cards", "Cards", LayoutGrid]] as const).map(([v, label, I]) => (
+                <button key={v} type="button" aria-pressed={shown === v} title={`Show as ${label.toLowerCase()}`} data-view={v}
+                  className={cn(styles.viewBtn, shown === v && styles.viewOn)} onClick={() => pickView(v)}>
+                  <I size={15} aria-hidden="true" /><span className={styles.viewLabel}>{label}</span>
+                </button>))}
+            </div>
+          </div>
         </div>}
       </section>
       </div>
 
-      {tab === "properties" ? (
-        <DataTable rows={list as unknown as Record<string, unknown>[]} rowKey="id" search={["name", "property_type", "membership"] as never} pageSize={20}
+      {tab === "properties" ? (<>
+        {/* the toolbar above filters and searches both; with no choice made, CSS picks by width */}
+        <div className={view === null ? cardStyles.onlyNarrow : undefined} hidden={view === "table"} data-estate-cards>
+          <PropertyCards rows={list} codeOf={codeOf} onBox={onBox} actions={(t) => rowActions(t, true)}
+            empty={filtered ? "No properties match this filter" : "No properties yet — press New property"} />
+        </div>
+        <div className={view === null ? cardStyles.onlyWide : undefined} hidden={view === "cards"} data-estate-table>
+        <DataTable className={cardStyles.estateTable} rows={list as unknown as Record<string, unknown>[]} rowKey="id" pageSize={20}
           empty={filtered ? "No properties match this filter" : "No properties yet — press New property"}
           columns={[
             { key: "name", label: "Property", primary: true, render: (r) => { const t = r as unknown as T; return <div className="flex items-center gap-3"><span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0"><Icon t={t.property_type} /></span><div className="min-w-0"><div className="font-semibold truncate">{t.name}</div><div className="text-xs text-steel truncate">{codeOf(t.id) ? <span className="num">{codeOf(t.id)}</span> : t.property_type}{boxes.find((b) => b.restaurant_id === t.id)?.runs_on_box ? " · on a Box" : ""}</div></div></div>; } },
@@ -165,16 +202,9 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
             { key: "open_orders", label: "Live", num: true, hideOnPhone: true, render: (r) => { const t = r as unknown as T; return <span className="text-steel">{t.open_orders} orders{t.rooms ? ` · ${t.occupied_rooms}/${t.rooms} rooms` : ""}</span>; } },
             { key: "users", label: "Users", num: true, hideOnPhone: true },
           ]}
-          actions={(r) => { const t = r as unknown as T; return (
-            <RowActions
-              name={t.name} code={codeOf(t.id)} pending={pending}
-              openId={t.id}
-              onDetails={() => openDetail(t)}
-              onAccess={() => { setSel(t); setMods(access.find((x) => x.id === t.id)?.enabled_modules ?? null); setErr(null); setSheet("access"); }}
-              onManage={() => { setSel(t); setIssued(null); setErr(null); setSheet("tenant"); }}
-              onDelete={() => { setSel(t); setErr(null); setDelText(""); setDel(null); setSheet("delete"); start(async () => { const p = await deletePreview(t.id); if ("error" in p) setErr(p.error!); else setDel({ ...(p as DeletePreview), id: t.id }); }); }}
-            />); }} />
-      ) : (
+          actions={(r) => rowActions(r as unknown as T)} />
+        </div>
+      </>) : (
         <div className="grid gap-4 lg:grid-cols-[1.4fr_minmax(0,1fr)]">
           <div className="feather divide-y divide-line">
             {keys.length === 0 && <p className="p-6 text-sm text-steel">No keys issued yet.</p>}

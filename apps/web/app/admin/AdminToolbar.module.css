@@ -123,6 +123,18 @@
   font-size: 12px; font-weight: 500; color: var(--color-label-2); white-space: nowrap;
 }
 .meta b { color: var(--color-label); font-weight: 700; }
+.metaCount { margin: 0; }
+/* Table / Cards: a two-way segmented switch at the end of the row */
+.view { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: var(--color-fill); }
+.viewBtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 26px; min-width: 34px; padding: 0 11px;
+  border-radius: 999px; color: var(--color-label-2); font-size: 12px; font-weight: 650; cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.viewBtn:hover { color: var(--color-label); }
+.viewOn { background: var(--color-bg-2); color: var(--color-label); box-shadow: 0 1px 3px rgb(0 0 0 / .12), 0 0 0 .5px var(--color-separator); }
+.viewOn svg { color: var(--color-tint); }
+.viewBtn:focus-visible { outline: 2px solid var(--color-tint); outline-offset: 1px; }
 .reset {
   display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 999px;
   background: var(--color-fill); color: var(--color-label-2); font-size: 11.5px; font-weight: 600; cursor: pointer;
@@ -148,6 +160,8 @@
 }
 /* below this the section names no longer clear the action button — icons + counts carry it */
 @container (max-width: 520px) { .tab { padding: 0 10px; } .tabLabel { display: none; } }
+/* the switch keeps its words down to a phone; on the narrowest only the icons */
+@container (max-width: 360px) { .viewLabel { display: none; } .viewBtn { padding: 0 10px; } }
 @media (prefers-reduced-motion: reduce) {
   .tab, .search, .clear, .chip, .reset, .more, .panel .action { transition: none; }
   .menu { animation: none; }
@@ -164,6 +178,8 @@
   .more { width: 44px; height: 44px; }
   .menu button { min-height: 44px; }
   .reset { height: 36px; }
+  .view { padding: 0; }
+  .viewBtn { height: 44px; min-width: 44px; padding: 0 14px; }
 }
 
 /* ── a phone: the five status chips become one row of five tiles — the count large, a short name
@@ -191,4 +207,19 @@
   }
   .chip.on .chipCount { color: color-mix(in srgb, var(--chip) 70%, var(--color-label)); }
   .chip.on .short { color: var(--color-label); }
+}
+
+/* ── the five figures above the toolbar (2026-10-24, the owner: "the bottom card must fill that empty space"). Two
+   across left the fifth alone beside a hole. A phone: two across, the last one full width. An iPad: three, then
+   two halves (a six-track grid). A desktop: five in a row. */
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.stats > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (min-width: 768px) {
+  .stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .stats > * { grid-column: span 2; }
+  .stats > :nth-child(n+4), .stats > :last-child:nth-child(odd) { grid-column: span 3; }
+}
+@media (min-width: 1024px) {
+  .stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .stats > *, .stats > :nth-child(n+4), .stats > :last-child:nth-child(odd) { grid-column: auto; }
 }

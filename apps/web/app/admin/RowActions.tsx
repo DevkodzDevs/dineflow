@@ -13,6 +13,8 @@ type Props = {
   onAccess: () => void;
   onManage: () => void;
   onDelete: () => void;
+  /** stretch Open across its container at every width (the estate cards); the table keeps the compact pair */
+  fill?: boolean;
 };
 
 /**
@@ -26,7 +28,7 @@ type Props = {
  * horizontally, and an absolutely positioned menu would be cut off at the cell's edge. Light
  * dismiss, Escape and focus return come with it rather than being rebuilt.
  */
-export function RowActions({ name, code, pending, openId, onDetails, onAccess, onManage, onDelete }: Props) {
+export function RowActions({ name, code, pending, openId, onDetails, onAccess, onManage, onDelete, fill }: Props) {
   const id = useId().replace(/:/g, "");
   const menu = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -35,6 +37,8 @@ export function RowActions({ name, code, pending, openId, onDetails, onAccess, o
   const place = () => {
     const m = menu.current, t = trigger.current;
     if (!m || !t) return;
+    // a phone gets the menu as a sheet at the foot of the screen (RowActions.module.css) — no placement to do
+    if (window.matchMedia("(max-width: 640px)").matches) { m.style.left = ""; m.style.top = ""; return; }
     const r = t.getBoundingClientRect();
     const w = m.offsetWidth || 268, h = m.offsetHeight || 260, gap = 6;
     const left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8);
@@ -71,7 +75,7 @@ export function RowActions({ name, code, pending, openId, onDetails, onAccess, o
   );
 
   return (
-    <div className={styles.row}>
+    <div className={fill ? `${styles.row} ${styles.fill}` : styles.row}>
       {/* a form, in the same tab: it works before hydration (app/admin/open/route.ts) */}
       <form action="/admin/open" method="post" className="contents">
         <input type="hidden" name="id" value={openId} />

@@ -35,6 +35,7 @@
   position: fixed; margin: 0; padding: 6px; inset: auto; width: 268px; max-width: calc(100vw - 24px);
   border: .5px solid var(--color-separator); border-radius: 14px; background: var(--color-bg-2);
   box-shadow: var(--shadow-pop); color: var(--color-label);
+  text-align: left;   /* it renders inside the right-aligned actions cell; the name sat right while the items sat left */
 }
 .menu:popover-open { animation: pop var(--dur-fast) var(--ease-out); }
 .menu::backdrop { background: transparent; }
@@ -60,11 +61,16 @@
 .itemHint { font-size: 11.5px; font-weight: 500; color: var(--color-label-3); line-height: 1.3; white-space: normal; }
 
 /* Destructive: set apart by a rule and by colour, never sitting flush against an everyday action. */
-.danger { margin-top: 5px; padding-top: 10px; box-shadow: 0 -1px 0 var(--color-separator) inset; border-radius: 0 0 10px 10px; }
+.danger { margin-top: 5px; padding-top: 10px; box-shadow: inset 0 1px 0 var(--color-separator);   /* the rule sits above Delete — it was drawn under it */ border-radius: 0 0 10px 10px; }
 .danger .itemLabel, .danger > svg { color: var(--color-red); }
 .danger:hover, .danger:focus-visible { background: var(--color-red-2); }
 
 .open:focus-visible, .more:focus-visible, .item:focus-visible { outline: 2px solid var(--color-tint); outline-offset: 1px; }
+
+/* the estate cards: Open takes the width at every size */
+.fill { display: flex; width: 100%; gap: 8px; }
+.fill .open { flex: 1; justify-content: center; height: 44px; font-size: 14px; border-radius: 13px; }
+.fill .more { width: 44px; height: 44px; border-radius: 13px; }
 
 /* On a phone every row becomes a card and the cell is full width, so the pair stretches to fill it
    rather than huddling at one edge. */
@@ -73,6 +79,28 @@
   .open { flex: 1; justify-content: center; height: 38px; }
   .more { width: 38px; height: 38px; }
 }
+/* On a phone the menu is a sheet at the foot of the screen (2026-10-24, the owner: the menu hung off the ⋯ half over
+   the next card, its name right-aligned and its items left): full width inside a 12px gutter, above the home bar,
+   the page dimmed behind it, the name and every row on one left edge, rows a thumb tall. */
+@media (max-width: 640px) {
+  .menu {
+    left: 12px; right: 12px; top: auto; bottom: calc(12px + env(safe-area-inset-bottom)); width: auto; max-width: none;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto;
+    padding: 8px; border-radius: 22px; overscroll-behavior: contain;
+  }
+  .menu:popover-open { animation: sheet var(--dur-fast) var(--ease-out); }
+  .menu::backdrop { background: rgb(0 0 0 / .38); }
+  .head { padding: 10px 12px 12px; margin-bottom: 6px; }
+  .headName { font-size: 16px; }
+  .headCode { font-size: 12.5px; }
+  .menu .item { align-items: center; gap: 14px; min-height: 56px; padding: 10px 12px; border-radius: 14px; }
+  .item > svg { width: 20px; height: 20px; margin-top: 0; }
+  .itemText { flex: 1; }
+  .itemLabel { font-size: 15px; }
+  .itemHint { font-size: 13px; }
+  .menu .danger { border-radius: 0 0 14px 14px; margin-top: 6px; }
+}
+@keyframes sheet { from { opacity: 0; transform: translateY(16px); } }
 @media (prefers-reduced-motion: reduce) {
   .open, .more, .item { transition: none; }
   .menu:popover-open { animation: none; }

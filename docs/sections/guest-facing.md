@@ -176,6 +176,25 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
   screens the previous answer and, after a deploy, handed the new build the old build's page data —
   Next.js answers that with a full reload, so every open tab "refreshed itself" within a minute of
   each update. Bump `V` whenever what the worker caches changes, so old entries are dropped.
+- **The service worker never keeps or serves a redirected page** (v17, 2026-10-24, the owner's iPhone: "This site can't be
+  reached — /login — ERR_FAILED"). Install used `addAll(SHELL)`, which follows redirects: signed out, `/dashboard`, `/`,
+  `/orders`… all redirect to /login, so the login page was stored under each name, marked redirected, and Safari's engine
+  (every browser on an iPhone) fails a navigation answered by a worker with a redirected response. Install now keeps a
+  page only when it answered itself (`keep`), `put` skips redirected answers, the fallback skips a redirected copy
+  (`copy`), and any navigation answer is rebuilt plain (`plain`). v17 deletes the v16 copies. Probe:
+  `pw/sw89.mjs [old]` — a proxy that really drops connections (Playwright's `setOffline` in WebKit also cuts the
+  worker off from its own cache, so every page "fails" there and it cannot test this). The deploys around the report
+  were all READY and the live site answered 200 throughout; the one failure was on the phone's side.
+- **A page never ends on the browser's error, the host's error or an endless load** (v18, 2026-10-24, the owner: "never
+  show that error or loading issue"). A page load with no line gets its last copy, else the **reconnect page**; the
+  host's 502/503/504 and no answer in 25 s get the reconnect page. That page lives inside `sw.js` (`reconnect`), so it
+  shows with nothing cached — in the app's language (`df-lang`) and the theme's light or dark look (`df-theme`). It
+  asks the free `/api/health` after 2, 3, 5, 8, 13 s and then every 15 s, at once on `online` and when the app comes
+  to the front, and reloads the page as soon as the server answers. A page that fails again straight after
+  (a real fault, not the line) stops after 4 tries in 2 minutes on "This screen is not answering" with Try again /
+  Dashboard. `/login` is kept too. Probe: `pw/sw90.mjs` (9 checks, iPhone engine; screens in `s90/`). The one thing it
+  cannot cover is a phone that has never opened DineFlow — there is no worker on it yet, so the browser's own page
+  shows.
 - **The service worker's install and activate never fail on storage** (`public/sw.js`). When the
   browser could not open its cache ("Failed to execute 'open' on 'CacheStorage'" — low space, private
   mode, a damaged profile) the precache rejected and the whole worker was discarded: no offline copy,

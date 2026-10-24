@@ -1,0 +1,103 @@
+/* The estate as cards — phones and an iPad in portrait (PropertyCards.tsx). One card per property: who and what
+   state it is in across the top, three figures in a tray, Open and its menu at the foot. --st is the status colour
+   (active tint, trial amber, expired/suspended red), carried by the icon tile, the badge and a hairline at the top. */
+
+.grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 700px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
+
+.card {
+  position: relative; min-width: 0; display: flex; flex-direction: column; gap: 14px; padding: 16px;
+  border-radius: 22px; background: var(--color-bg-2); border: .5px solid var(--color-separator);
+  box-shadow: var(--shadow-card); overflow: hidden;
+}
+/* the status, as light along the top edge rather than a stripe down the side */
+.card::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 3px;
+  background: linear-gradient(90deg, var(--st), color-mix(in srgb, var(--st) 0%, transparent));
+  opacity: .85;
+}
+
+.head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.icon {
+  position: relative; width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; flex-shrink: 0;
+  color: var(--st); background: color-mix(in srgb, var(--st) 14%, transparent);
+  box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--st) 30%, transparent);
+}
+.who { min-width: 0; }
+.name { font-size: 17px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* one line: on a narrow card it ends in … rather than wrapping a lone "·" onto a second line */
+.sub { margin-top: 3px; font-size: 12.5px; color: var(--color-label-3); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub > span + span::before { content: "·"; margin: 0 6px; color: var(--color-label-3); }
+.code { font-weight: 650; font-variant-numeric: tabular-nums; color: var(--color-label-2); letter-spacing: .02em; }
+.kind { text-transform: capitalize; }
+/* on a Box: a small blue mark on the icon's corner */
+.box {
+  position: absolute; right: -4px; bottom: -4px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--color-blue); color: var(--color-bg-2); box-shadow: 0 0 0 2px var(--color-bg-2);
+}
+
+.status { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+.badge {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; text-transform: capitalize; white-space: nowrap;
+  color: color-mix(in srgb, var(--st) 78%, var(--color-label)); background: color-mix(in srgb, var(--st) 13%, transparent);
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--st); box-shadow: 0 0 0 3px color-mix(in srgb, var(--st) 22%, transparent); }
+.left { font-size: 12px; font-weight: 600; color: var(--color-label-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.left.soon { color: var(--color-red); }
+
+/* three figures in one tray, divided by hairlines — read across like a dashboard strip */
+.figs {
+  margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-radius: 16px; background: var(--color-fill); overflow: hidden;
+}
+.figs > div { min-width: 0; padding: 10px 12px 11px; }
+.figs > div + div { box-shadow: inset .5px 0 0 var(--color-separator); }
+.figs dt { font-size: 11.5px; font-weight: 600; color: var(--color-label-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.figs dd {
+  margin: 3px 0 0; font-size: 18px; font-weight: 750; letter-spacing: -0.02em; line-height: 1.15;
+  color: var(--color-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.figs dd small { font-size: 12px; font-weight: 600; color: var(--color-label-3); letter-spacing: 0; }
+
+.foot { display: flex; min-width: 0; }
+.foot > * { flex: 1; min-width: 0; }
+
+.empty {
+  padding: 36px 20px; text-align: center; border-radius: 22px; background: var(--color-bg-2);
+  border: .5px dashed var(--color-separator); color: var(--color-label-2); font-size: 14px;
+}
+.more {
+  margin: 14px auto 0; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px;
+  border-radius: 999px; background: var(--color-fill); color: var(--color-label); font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.more:hover { background: var(--color-fill-2); }
+.more:focus-visible { outline: 2px solid var(--color-tint); outline-offset: 2px; }
+.moreOf { font-weight: 500; color: var(--color-label-3); font-variant-numeric: tabular-nums; }
+
+/* a narrow phone: the status stacks under the name instead of squeezing it */
+@media (max-width: 380px) {
+  .head { grid-template-columns: auto minmax(0, 1fr); }
+  .status { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
+  .figs dd { font-size: 16px; }
+}
+
+/* chosen on a wide screen, the cards spread to three and four across */
+@media (min-width: 1100px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1500px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* with no choice made (AdminClient's Table / Cards switch): cards below 768px, the table from an iPad up */
+.onlyNarrow { display: block; }
+.onlyWide { display: none; }
+@media (min-width: 768px) { .onlyNarrow { display: none; } .onlyWide { display: block; } }
+
+/* the estate table (AdminClient passes this to DataTable). Columns: 1 Property, 2 Membership, 3 Today, 4 30 days, 5 Live,
+   6 Users, 7 Open + ⋯. Open is the thing an operator came for: full strength, not the shared table's .55-until-hover.
+   On an iPad (768–1179px) Live and Users step out — with them the row ran past the screen and Open and ⋯ sat behind a
+   sideways scroll; the cards view still has both, and a desktop has room for them. */
+.estateTable :global(td.dt-actions) > * { opacity: 1; }
+@media (min-width: 641px) and (max-width: 1179px) {
+  .estateTable :global(table.dt) tr > :nth-child(5), .estateTable :global(table.dt) tr > :nth-child(6) { display: none; }
+  /* and a long name ends in … (its cell already truncates) instead of widening the row */
+  .estateTable :global(td.dt-primary) > * { max-width: 32vw; }
+}
