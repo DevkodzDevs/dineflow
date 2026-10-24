@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Copy, UserPlus, KeyRound, Check, MailWarning, MailCheck, Mail, Hash, Users, Network, BookOpen, Briefcase, Search, Ticket, ShieldCheck, UserCheck, Building2, AlertCircle, Phone, CalendarDays, X, LayoutDashboard, LayoutGrid, Rows3, Clock3, ChevronLeft, ChevronRight } from "lucide-react";
-import { SlidersHorizontal as AccessIcon } from "lucide-react";
+import { SlidersHorizontal as AccessIcon, Plug, BarChart3 } from "lucide-react";
 import { Button, Field, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, ROLE_DEFAULT, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
-import { createInvite, setAccess, setPasswordRight, setAssistAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency } from "./actions";
+import { createInvite, setAccess, setPasswordRight, setAssistAccess, setGrant, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency } from "./actions";
 import { PositionFields, TeamChart, PositionsGuide, Avatar, DeptIcon, ModuleChips, titleOf, deptOf, levelFor, DEPT_ORDER, deptHue } from "./StaffPositions";
 import { StaffGrid, type Duty } from "./StaffGrid";
 import { copyText } from "@/lib/clipboard";
@@ -68,7 +68,7 @@ function Credentials({ title, loginId, password, staffCode, canIssue }: { title:
 }
 
 type Staff = { id: string; full_name: string; email: string | null; phone: string | null; contact_email: string | null; contact_verified_at: string | null; staff_code: string | null; role: Role; is_active: boolean; allowed_modules: string[] | null; must_change_password: boolean;
-  position: string | null; position_title: string | null; department: string | null; reports_to: string | null; joined_on: string | null; can_issue_passwords?: boolean; assist_access?: boolean };
+  position: string | null; position_title: string | null; department: string | null; reports_to: string | null; joined_on: string | null; can_issue_passwords?: boolean; assist_access?: boolean; grants?: string[] | null };
 type Pos = { department: string; position: string; title: string; reportsTo: string; joinedOn: string };
 const posOf = (p?: Staff | null): Pos => ({ department: p ? deptOf(p) ?? "" : "", position: p?.position ?? "", title: p?.position_title ?? "", reportsTo: p?.reports_to ?? "", joinedOn: p?.joined_on ?? "" });
 const samePos = (a: Pos, b: Pos) => a.department === b.department && a.position === b.position && a.title.trim() === b.title.trim() && a.reportsTo === b.reportsTo && a.joinedOn === b.joinedOn;
@@ -104,6 +104,10 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
   /* Assist (0138): the top three have it; anyone below, when the owner or a manager switches it on */
   const [aiOn, setAiOn] = useState<Record<string, boolean>>({});
   const assistOn = (p: Staff) => aiOn[p.id] ?? !!p.assist_access;
+  /* Connections and Reports (0140): the owner's, and the manager or supervisor the owner switches them on for */
+  const [grantOn, setGrantOn] = useState<Record<string, string[]>>({});
+  const grantsOf = (p: Staff) => grantOn[p.id] ?? (p.grants ?? []);
+  const flipGrant = (p: Staff, g: "connections" | "reports") => { const cur = grantsOf(p), on = !cur.includes(g); const next = on ? [...cur, g] : cur.filter((x) => x !== g); setGrantOn((m) => ({ ...m, [p.id]: next })); start(async () => { const r = await setGrant(p.id, g, on); if ("error" in r) { setGrantOn((m) => ({ ...m, [p.id]: cur })); setErr(r.error!); } else toast(on ? `${p.full_name} can now open ${g === "reports" ? "Reports" : "Connections"}` : `${g === "reports" ? "Reports" : "Connections"} is off for ${p.full_name}`); }); };
   const toast = useToast();
   // the ranks below mine — the only ones I may appoint anyone to
   const assignable = rolesIMayAssign(myRole);
@@ -378,10 +382,24 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             {invites.length === 0 && <p className="text-sm text-steel">None. Invite codes last 7 days.</p>}
             <ul className="space-y-2">{invites.map((i) => <li key={i.code} className="flex items-center justify-between gap-2 text-sm rounded-xl bg-[var(--color-fill)] px-3 py-2"><span className="num font-semibold tracking-wider">{i.code}</span><span className="text-[12px] font-semibold text-steel">{ROLE_LABEL[i.role]}</span></li>)}</ul>
           </div>
-          <div className="rounded-[22px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4 text-[13px] text-steel space-y-2 leading-relaxed">
-            <div className="text-[13px] font-bold uppercase tracking-wide">Two ways in</div>
-            {canIssue && <p><b className="text-[var(--color-label)]">Add staff</b> — you make their sign-in.</p>}
-            <p><b className="text-[var(--color-label)]">Invite with a code</b> — they join at <b>/join</b>.</p>
+          {/* the two ways in as the two buttons they are (2026-10-24, the owner: "design") — each a tile with its icon, what
+              it does and a chevron, opening Add staff or the invite sheet; it was two sentences in grey */}
+          <div className="rounded-[22px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4" data-two-ways>
+            <div className="flex items-center gap-2 mb-3"><UserCheck size={16} className="text-steel" aria-hidden /><span className="text-[13px] font-bold uppercase tracking-wide text-steel">Two ways in</span></div>
+            <div className="grid gap-2">
+              {canIssue && <button type="button" onClick={openAdd} data-way="add"
+                className="group w-full flex items-center gap-3 rounded-[16px] border border-[var(--color-separator)] bg-[var(--color-bg)] px-3 py-2.5 min-h-[64px] text-left hover:border-[color-mix(in_srgb,var(--color-green)_45%,transparent)] active:scale-[.99] transition">
+                <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]"><UserPlus size={19} aria-hidden /></span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold text-[var(--color-label)]">Add staff</span><span className="block text-[12.5px] text-steel leading-snug">You make their sign-in — they can start today</span></span>
+                <ChevronRight size={18} className="shrink-0 text-steel group-hover:translate-x-0.5 transition-transform" aria-hidden />
+              </button>}
+              <button type="button" onClick={() => { setCode(null); setOpen(true); }} data-way="invite"
+                className="group w-full flex items-center gap-3 rounded-[16px] border border-[var(--color-separator)] bg-[var(--color-bg)] px-3 py-2.5 min-h-[64px] text-left hover:border-[color-mix(in_srgb,var(--color-blue)_45%,transparent)] active:scale-[.99] transition">
+                <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center bg-[var(--color-blue-2)] text-[var(--color-blue)]"><Ticket size={19} aria-hidden /></span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold text-[var(--color-label)]">Invite with a code</span><span className="block text-[12.5px] text-steel leading-snug">They join at <b className="text-[var(--color-label)]">/join</b> — a code lasts 7 days</span></span>
+                <ChevronRight size={18} className="shrink-0 text-steel group-hover:translate-x-0.5 transition-transform" aria-hidden />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -457,6 +475,11 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             {acc.id !== me && <div className={SWITCH_GROUP}><SwitchRow title="Active" hint="Off = can't sign in" on={active} onToggle={() => setActive(!active)} /></div>}
             {err && <p className="text-sm text-chili">{err}</p>}
             <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setAccess(acc.id, role, role === "owner" ? null : ticks, active); if ("error" in r) { setErr(r.error!); return; } if (!samePos(accPos, posOf(acc))) { const x = await savePos(acc.id, accPos); if ("error" in x) { setErr(x.error!); return; } } setAcc(null); })} data-save-access>Save</Button><Button variant="gray" onClick={() => setAcc(null)}>Cancel</Button></div>
+            {/* the owner gives a manager or a supervisor the two owner's screens (0140): saved at once, like Assist */}
+            {myRole === "owner" && ["manager", "supervisor", "supervisor_2"].includes(acc.role) && <div className={SWITCH_GROUP} data-grants>
+              <SwitchRow title="Connections" hint="Swiggy, Zomato, room sites, payments, tracking — every outside link" icon={<Plug size={18} />} on={grantsOf(acc).includes("connections")} data={{ "data-grant-switch": "connections" }} onToggle={() => flipGrant(acc, "connections")} />
+              <SwitchRow title="Reports" hint="Every in and out, by department, with Excel and PDF" icon={<BarChart3 size={18} />} on={grantsOf(acc).includes("reports")} data={{ "data-grant-switch": "reports" }} onToggle={() => flipGrant(acc, "reports")} />
+            </div>}
             {myRole === "owner" && acc.role === "manager" && <div className={SWITCH_GROUP} data-password-right>
               <SwitchRow title="Temporary passwords" hint="Can add staff and reset passwords" icon={<KeyRound size={18} />} on={issueOn(acc)} data={{ "data-password-right-switch": "" }}
                 onToggle={() => { const p = acc, on = !issueOn(p); setIssue((m) => ({ ...m, [p.id]: on })); start(async () => { const r = await setPasswordRight(p.id, on); if ("error" in r) { setIssue((m) => ({ ...m, [p.id]: !on })); setErr(r.error!); } else toast(on ? `${p.full_name} can now give temporary passwords` : "Only you give temporary passwords now"); }); }} />

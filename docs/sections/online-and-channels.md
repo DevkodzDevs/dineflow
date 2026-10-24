@@ -231,3 +231,30 @@ pause for 30 minutes. Dry run `dry133.cjs` (13).
 - **OTA channels one, two or three across** (2026-10-23): a ViewSwitch beside Sync now (from md), three by default, the pin
   keeps another on this device (`df-view:ota-cols`); the room still decides first (`@3xl` two, `@5xl` three).
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+## Delivery tracking (0140, 2026-10-24)
+
+The owner: "the rider's live tracking, in one place, working perfectly". `deliveries` — one row per order out for delivery:
+who rides (`rider_id`, a staff member, or `rider_name` / `rider_phone`), where they are (`lat`, `lng`, `located_at`),
+`status` assigned / picked_up / delivered, `eta_min`, the customer's `token` (for a till order) and the rider's
+`rider_token`. `online_orders.track_token` is minted with the order, so the customer's link is stable from the start.
+
+- **Send out** (`AssignRider.tsx`, on a Ready card with an address when `restaurants.delivery_tracking` is on —
+  `[data-send-out]`): a staff rider in one tap (the people whose position is Delivery Rider or whose team is delivery) or any
+  name and phone, how long it should take, then **two links** — the rider's page and the customer's tracking page — each with
+  *Send on WhatsApp* (`waHref`) and Copy. `delivery_assign` (any member of the property; one delivery per order, assigning
+  again re-points the same links). The card then names the rider with a way back to the links (`[data-rider-links]`) and keeps
+  Picked up beside it for a rider without the page. A takeaway (no address) keeps plain Picked up.
+- **The rider's page** `/ride/<rider_token>` (public, `RideClient`): the drop with Navigate (the maps app) and Call, the food,
+  *Paid online — nothing to collect* or *Collect ₹x in cash* in red, **Share my location** (the browser's own GPS, sent every
+  10 s or 50 m while the page is open — `delivery_rider_set`; a wake lock where the phone allows), **Picked up**, **Delivered**.
+  Picked up moves the online order to `picked_up` as the counter's button would.
+- **The customer's page** `/track/<track_token>` (public, `TrackClient`): the stage big (Placed → Cooking → Ready → On the way
+  → Delivered; a takeaway ends at Ready to collect), the rider with Call and a live map (a Google Maps embed of the last
+  position, when under 3 hours old and tracking is on) while the trip is on, the order, Call the restaurant. It asks
+  `delivery_track` every 8 s and when the page comes back to the front. The website's order confirmation shows **Track** for a
+  delivery or takeaway (`dine_track_token`: the phone that ordered gets its own link).
+- `/track/demo` and `/ride/demo` are made-up orders for the owner to look at (Connections); nothing is written.
+- Both pages are in `PUBLIC_PREFIX` and `SESSION_FREE`; the tokens are the only key, like /pay. `delivery_track` returns
+  nothing about the property beyond its name and phone. Dry run `dry140.cjs` (35); browser `pw/conn140.mjs` (connections.md).
+- **Connections** (`/connections`, connections.md) gathers this page's channel cards, Test order and Push menu, and the OTA
+  cards, in one place for the owner; the forms and actions are shared.

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowUpRight, Wallet, Users, Timer, BedDouble, Bike, Boxes, ConciergeBell, Sparkles, Flame, ReceiptText } from "lucide-react";
 import { cn, FlapShuffle, FlapPercent } from "@/components/ui";
 import { AnalogClock } from "@/components/ui/AnalogClock";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { formatINR } from "@/lib/format";
 
 /**
@@ -221,9 +222,9 @@ export function Overview({
   /* One panel, three lists — the floor, the rooms, the orders coming off the internet. They are
      the same shape, so they share a row and a tab rather than three cards the eye must re-learn. */
   const panels = [
-    { key: "floor", label: "Floor", rows: floor, href: "/orders", empty: "No open orders right now." },
-    ...(rooms.length ? [{ key: "rooms", label: "In house", rows: rooms, href: "/frontdesk", empty: "Nobody checked in." }] : []),
-    ...(web.length ? [{ key: "web", label: "Online", rows: web, href: "/online-orders", empty: "Nothing from the aggregators today." }] : []),
+    { key: "floor", label: "Floor", rows: floor, href: "/orders", empty: "No open orders right now.", hint: "Orders from the till, a table's QR and online land here live.", go: "Take an order", Icon: ConciergeBell, hue: "tint" as const },
+    ...(rooms.length ? [{ key: "rooms", label: "In house", rows: rooms, href: "/frontdesk", empty: "Nobody checked in.", hint: "Guests show here once they check in at the Front desk.", go: "Front desk", Icon: BedDouble, hue: "blue" as const }] : []),
+    ...(web.length ? [{ key: "web", label: "Online", rows: web, href: "/online-orders", empty: "Nothing from the aggregators today.", hint: "Swiggy, Zomato and your own site's orders show here as they come in.", go: "Online orders", Icon: Bike, hue: "orange" as const }] : []),
   ];
   const [tab, setTab] = useState(panels[0].key);
   const shown = panels.find((p) => p.key === tab) ?? panels[0];
@@ -288,7 +289,11 @@ export function Overview({
                   tab === p.key ? "bg-ink text-on-label" : "text-steel hover:text-[var(--color-label)]")}>{p.label}</button>
             ))}
           </div>
-          {shown.rows.length === 0 ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">{shown.empty}</p> : (
+          {shown.rows.length === 0 ? (
+            /* an empty list, said properly (2026-10-24): the list's icon in a turning ring, what fills it, and the way there */
+            <EmptyState icon={shown.Icon} hue={shown.hue} title={shown.empty} hint={shown.hint} className="flex-1 justify-center" data-on-now-empty={shown.key}
+              actions={<Link href={shown.href} className="svc-btn quiet sm !px-4 inline-flex items-center gap-1.5">{shown.go} <ArrowUpRight size={15} aria-hidden /></Link>} />
+          ) : (
             /* flex-1 so the list takes the height the band gives it, min-h-0 so it may shrink
                below its content, and the fade so a row cut by the scroll edge reads as a list
                that continues rather than as a row that broke */

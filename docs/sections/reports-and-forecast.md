@@ -224,3 +224,23 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
 
 - **Pulse on a phone, bigger figures** (2026-10-23, the owner): in "The floor now" the flaps are 40px (were 30) and the
   sitting time 30px (was 22); iPad and desktop tiles unchanged. Pulse and Join by QR lines shortened.
+- **Reports by department (0140, 2026-10-24 — the owner: "every in and out, every department its own table, Excel and PDF for all
+  and for each, charts; the owner's, and the owner gives access").** `report_departments(p_from, p_to)` answers the owner, whoever
+  holds the **Reports grant** (`profiles.grants`, Staff → Access; connections.md) or the master — anyone else is refused, and the
+  app layout sends them home (`?locked=reports`); the module ceilings still apply on top. One call, at most a year, pinned to
+  the property, IST dates: `sales` (each paid bill: day, type, where, items, subtotal, discount, GST, total, how it was paid,
+  who billed), `online` (each order with the platform's cut, the rider), `rooms` (each stay that touched the window, with
+  `folio_totals`), `facilities`, `expenses`, `purchases`, `payroll` (the runs whose month falls in the window),
+  `attendance` (staff days and hours; daily labour with wages), `housekeeping` (done, by who), `customers` (who came, spend,
+  points), `inventory` (the shelf now, its value, wasted in the window), `cancelled` (lines and voids with reasons),
+  `cashups` (each shift close) — each with a `_totals` — and `by_day` (dining, rooms, facilities, expenses, purchases).
+  Lists are capped at 2000 rows (1000 for rooms, facilities, customers; 500 cash-ups); the totals count everything.
+  **Income** on the charts is dining bills + room nights (rate × night, as hotel_kpis) + facilities; **outgoings** is expenses
+  (salaries paid are already expenses) + pantry purchases. Payroll and online payouts are shown, not added, so nothing is
+  counted twice. `deptSpec.ts` is the one description of every department's columns — the screen (`Departments.tsx`:
+  Income · Outgoings · Net, the in-and-out bars, the two share rings, a chip rail, a card per department with its figures in one
+  line, a DataTable and its own **Excel** and **PDF**), the Excel sheet and the PDF are all drawn from it. "Export all" (the
+  page's Excel / PDF) now carries *In and out by day* and every department before the older tables. `Charts.tsx` adds
+  `MoneyChart` and `ShareChart` (recharts, tokens only). `Departments.tsx` is lower-case `deptSpec.ts`'s neighbour on purpose:
+  a file named `departments.ts` beside it clashed on Windows (TS1149). Probe: `pw/conn140.mjs` (connections.md).
+- **Tomorrow's weekday tile with no history (2026-10-24).** `forecast_day` sends "no history yet", and the tile took its first word, "no", as the number in big letters. TomorrowClient now shows 00 on the flaps with "No Sundays on record yet" under it.

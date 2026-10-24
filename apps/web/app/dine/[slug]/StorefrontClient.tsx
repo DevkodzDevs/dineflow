@@ -6,7 +6,7 @@ import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, Minus, Plus, B
 import { Button, Field, Segmented, Sheet, Select, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DishImage } from "@/components/menu/DishImage";
-import { slots as fetchSlots, reserve, placeOrder } from "../actions";
+import { slots as fetchSlots, reserve, placeOrder, trackToken } from "../actions";
 import { OptionChooser } from "@/components/OptionChooser";
 import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
 import { GuestNotice } from "@/components/legal/GuestNotice";
@@ -362,7 +362,7 @@ function DishCard({ i, sells, qty, onAdd, onLess }: { i: Item; sells: boolean; q
 const Row = ({ k, v, good }: { k: string; v: number; good?: boolean }) => <div className="flex justify-between"><span className="text-[var(--color-label-2)]">{k}</span><span className={good ? "text-[var(--color-green)]" : ""}>{formatINR(v)}</span></div>;
 
 function Confirmation({ kind, data, name, slug }: { kind: "book" | "order"; data: Record<string, unknown>; name: string; slug: string }) {
-  const d = data as never as { no?: number; ref?: string; date?: string; time?: string; party?: number; offer?: string; discount_pct?: number; total?: number; eta?: number; mode?: string; table?: string; accepted?: boolean; order_no?: number; phone?: string; address?: string };
+  const d = data as never as { no?: number; ref?: string; date?: string; time?: string; party?: number; offer?: string; discount_pct?: number; total?: number; eta?: number; mode?: string; table?: string; accepted?: boolean; order_no?: number; phone?: string; address?: string; id?: string };
   return (
     <div className="min-h-dvh grid place-items-center p-6 aurora">
       <motion.div initial={{ opacity: 0, y: 14, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 26 }} className="material-thick p-8 max-w-md w-full text-center rounded-[28px]">
@@ -384,9 +384,18 @@ function Confirmation({ kind, data, name, slug }: { kind: "book" | "order"; data
         <p className="text-sm text-[var(--color-label-2)] mt-4">{kind === "book" ? "Show this number at the door — they already have your booking." : d.mode === "dine_in" ? (d.accepted ? `The kitchen has it${d.order_no ? ` as order #${d.order_no}` : ""}. It comes to Table ${d.table ?? ""}. Pay at the table when you are done.` : `The counter will confirm it in a moment and send it to the kitchen. It comes to Table ${d.table ?? ""}.`) : "The kitchen has it. Pay on delivery — cash, UPI or card."}</p>
         <div className="flex gap-2 mt-5">
           {d.phone && <a href={`tel:${d.phone}`} className="flex-1"><Button variant="gray" className="w-full"><Phone size={15} /> Call</Button></a>}
+          {kind === "order" && d.mode !== "dine_in" && <TrackLink id={d.id} phone={d.phone} />}
           <Link href={`/dine/${slug}`} className="flex-1"><Button className="w-full">Done</Button></Link>
         </div>
       </motion.div>
     </div>
   );
+}
+
+/** Track your order (0140): the link appears once the order's own token comes back for the phone that placed it. */
+function TrackLink({ id, phone }: { id?: string; phone?: string }) {
+  const [tok, setTok] = useState<string | null>(null);
+  useEffect(() => { if (!id || !phone) return; void trackToken(id, phone).then((r) => { if ("token" in r && r.token) setTok(r.token); }); }, [id, phone]);
+  if (!tok) return null;
+  return <Link href={`/track/${tok}`} className="flex-1" data-track-link><Button variant="gray" className="w-full"><MapPin size={15} /> Track</Button></Link>;
 }

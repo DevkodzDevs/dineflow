@@ -27,6 +27,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(app)/inventory/**` | [inventory.md](inventory.md) |
 | `app/(app)/staff/**`, `app/(app)/labour/**`, `app/(app)/attendance/**`, `app/attend/**`, `lib/attendance.ts`, `components/attendance/**` | [staff-and-labour.md](staff-and-labour.md) |
 | `app/(app)/online-orders/**`, `app/(app)/channels/**` | [online-and-channels.md](online-and-channels.md) |
+| `app/(app)/connections/**` — every outside link in one page, the owner's; `app/track/**`, `app/ride/**` — the customer's and the rider's delivery pages | [connections.md](connections.md) · [online-and-channels.md](online-and-channels.md) |
 | `app/(app)/reports/**`, `app/(app)/pulse/**`, `app/(app)/tomorrow/**`, `app/(app)/proof/**` | [reports-and-forecast.md](reports-and-forecast.md) |
 | `app/(app)/settings/**` | [settings.md](settings.md) |
 | `app/(app)/expenses/**`, `app/(app)/tasks/**` | [expenses-and-checklists.md](expenses-and-checklists.md) |

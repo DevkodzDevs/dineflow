@@ -47,7 +47,7 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
   return (
     <div className="space-y-5" data-chain>
       {/* today across the chain */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5" data-chain-totals>
+      <div className="fill-tiles !gap-2.5" data-chain-totals>
         {[["Outlets", String(list.length)], ["Sales today", inr(sum("sales"))], ["Bills", String(sum("bills"))], ["Open orders", String(sum("open_orders"))], ["Late tickets", String(sum("late"))]].map(([k, v]) => (
           <div key={k} className={cn("feather !rounded-[18px] px-4 py-3 min-w-0", k === "Late tickets" && Number(v) > 0 && "!border-[var(--color-red)]")}>
             <div className="text-[12px] font-bold text-steel">{k}</div><div className={cn("font-display num text-[24px] leading-tight truncate", k === "Late tickets" && Number(v) > 0 && "text-chili")}>{v}</div></div>))}

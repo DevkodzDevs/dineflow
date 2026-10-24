@@ -5,6 +5,7 @@
 import type { Table } from "@/lib/tablePdf";
 import type { Summary } from "./ReportsClient";
 import type { Breakdown } from "./Breakdown";
+import { departmentTables, type Dept } from "./deptSpec";
 
 export type Extra = {
   from: string; to: string;
@@ -22,8 +23,10 @@ const n = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100;
 export const METHOD: Record<string, string> = { cash: "Cash", upi: "UPI", card: "Card", other: "Other" };
 const TYPE: Record<string, string> = { dine_in: "Dine-in", takeaway: "Takeaway", delivery: "Delivery", room_service: "Room service" };
 
-export function reportTables(summary: Summary, breakdown: Breakdown | null, extra: Extra | null): Table[] {
+export function reportTables(summary: Summary, breakdown: Breakdown | null, extra: Extra | null, dept: Dept | null = null, lodging = false): Table[] {
   const t: Table[] = [];
+  // every department first (0140): in and out by day, then each department's rows
+  if (dept) t.push(...departmentTables(dept, lodging));
   if (extra) {
     const x = extra.totals;
     t.push({ title: "Summary", head: ["", "Amount"], widths: [3, 1.4], rows: [

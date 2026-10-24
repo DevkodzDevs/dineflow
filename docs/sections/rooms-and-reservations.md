@@ -142,3 +142,12 @@ node cal.mjs             # 6 checks — 42 cells, 7 weekday heads, dots, the ope
   The kind chips are a `Rail` (`rail-fade`, label *Kinds*): on a phone, where they run past the edge, the shared light round
   › (glass, 80% opacity) slides the rest into view and turns round at the end. shots42: 412 and 360.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+- **The room type has its own line** (2026-10-24, the owner: "the text goes out of the card"). It sat beside the flap
+  number as `shrink-0` and "Deluxe Cottage" ran past a 184px phone card; now it is under the number (`[data-room-type]`,
+  11.5px, one line, … with the full name as its title). `pw/fd94.mjs` checks every room card holds its text at 412,
+  834 and 1440.
+
+- **Rooms and Facilities, empty (2026-10-24).** Rooms with no room type says *Start with a room type* and opens the type
+  sheet; with types but no rooms, *Add a room* (`[data-rooms-empty=types|rooms]`). Facilities with none offers three starts —
+  Spa, Activity, Venue — each opening the form set to that kind (a venue 4 h and 100 people) (`[data-fac-empty]`,
+  `[data-fac-start]`).

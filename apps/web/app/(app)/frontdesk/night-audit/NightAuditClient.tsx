@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { CheckCircle2, AlertTriangle, LogIn, LogOut, Sparkles, Star } from "lucide-react";
+import { CheckCircle2, AlertTriangle, LogIn, LogOut, Sparkles, Star, ChevronRight } from "lucide-react";
 import { Button, Card, Field, Pill, StatTile, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { runNightAudit } from "../actions";
@@ -21,6 +21,13 @@ const DISC: Record<string, string> = {
   guest_room_not_occupied: "is checked in, but the room shows empty",
   sellable_but_dirty: "On sale, but housekeeping says dirty",
   stayed_past_checkout: "was due out before this date and is still in",
+};
+/* each kind of disagreement: a short name for its tag, its colour, and the screen that settles it */
+const KIND: Record<string, { tag: string; c: string; fix: string; where: string }> = {
+  occupied_no_guest: { tag: "No guest", c: "var(--color-orange)", fix: "/rooms", where: "Rooms" },
+  guest_room_not_occupied: { tag: "Room shows empty", c: "var(--color-blue)", fix: "/rooms", where: "Rooms" },
+  sellable_but_dirty: { tag: "Dirty on sale", c: "var(--color-red)", fix: "/housekeeping", where: "Housekeeping" },
+  stayed_past_checkout: { tag: "Overstay", c: "var(--color-orange)", fix: "/frontdesk", where: "Front desk" },
 };
 
 /** A list of bookings with the room first, the way a desk reads it. Declared here, not inside the page, so React keeps it mounted. */
@@ -80,11 +87,44 @@ export function NightAuditClient({ today, date, audit, history, canClose }: { to
         </Card>
       </div>
 
-      <Card className={cn(a.discrepancies.length && "!border-[var(--color-orange)]/50")}>
-        <h3 className="text-lg mb-2 flex items-center gap-2">{a.discrepancies.length ? <AlertTriangle size={16} className="text-[var(--color-orange)]" /> : <CheckCircle2 size={16} className="text-mint" />} Discrepancies <span className="num text-steel text-sm ml-auto">{a.discrepancies.length}</span></h3>
-        {a.discrepancies.length === 0 ? <p className="text-sm text-steel">Desk and housekeeping agree.</p>
-          : <ul className="text-sm space-y-1">{a.discrepancies.map((d, i) => <li key={i} className="flex gap-3"><span className="num font-semibold w-12 shrink-0">{d.room}</span><span>{d.who ? `${d.who} ${DISC[d.kind] ?? d.kind}` : DISC[d.kind] ?? d.kind}</span></li>)}</ul>}
-      </Card>
+      {/* Discrepancies (2026-10-24, the owner: "upgrade this card"): a head with the state as a tinted tile and the count
+          as a badge; each disagreement its own row — the room as a tile, the guest in bold and what is wrong, a tag
+          naming the kind in its colour, and the screen that settles it. All clear is a green tile and one line. */}
+      <section className={cn("feather overflow-hidden", a.discrepancies.length && "!border-[color-mix(in_srgb,var(--color-orange)_45%,transparent)]")} data-discrepancies>
+        <div className="flex items-center gap-3 p-4 sm:p-5">
+          <span className="h-10 w-10 rounded-[13px] grid place-items-center shrink-0" style={{ color: a.discrepancies.length ? "var(--color-orange)" : "var(--color-green)", background: `color-mix(in srgb, ${a.discrepancies.length ? "var(--color-orange)" : "var(--color-green)"} 14%, transparent)` }}>
+            {a.discrepancies.length ? <AlertTriangle size={19} /> : <CheckCircle2 size={19} />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[17px] !font-bold tracking-[-0.01em] leading-tight">Discrepancies</h3>
+            <p className="text-[12.5px] text-[var(--color-label-2)] mt-0.5">{a.discrepancies.length ? "Desk and housekeeping disagree" : "Desk and housekeeping agree."}</p>
+          </div>
+          <span className="num h-7 min-w-7 px-2.5 rounded-full grid place-items-center text-[13px] font-bold shrink-0"
+            style={{ color: a.discrepancies.length ? "var(--color-orange)" : "var(--color-label-2)", background: a.discrepancies.length ? "color-mix(in srgb, var(--color-orange) 14%, transparent)" : "var(--color-fill)" }}>{a.discrepancies.length}</span>
+        </div>
+        {a.discrepancies.length > 0 && (
+          <ul className="border-t border-[var(--color-separator)]">
+            {a.discrepancies.map((d, i) => { const k = KIND[d.kind] ?? { tag: "Check", c: "var(--color-orange)", fix: "/rooms", where: "Rooms" };
+              return (
+                <li key={i} className="border-b border-[var(--color-separator)] last:border-b-0">
+                  <Link href={k.fix} className="flex items-center gap-3.5 px-4 sm:px-5 py-3.5 min-h-[68px] hover:bg-[var(--color-fill)] transition-colors" data-discrepancy={d.kind}>
+                    <span className="relative h-12 w-12 shrink-0 rounded-[15px] grid place-items-center content-center" style={{ background: `color-mix(in srgb, ${k.c} 12%, var(--color-fill))`, boxShadow: `inset 0 0 0 .5px color-mix(in srgb, ${k.c} 30%, transparent)` }}>
+                      <span className="text-[8.5px] font-bold uppercase tracking-[0.14em] text-[var(--color-label-3)] leading-none">Room</span>
+                      <span className="font-display text-[18px] leading-none mt-0.5 num">{d.room}</span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14.5px] leading-snug">{d.who ? <><b className="font-semibold">{d.who}</b> {DISC[d.kind] ?? d.kind}</> : DISC[d.kind] ?? d.kind}</span>
+                      <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11.5px] font-semibold" style={{ color: k.c, background: `color-mix(in srgb, ${k.c} 13%, transparent)` }}><span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: k.c }} />{k.tag}</span>
+                        <span className="text-[12px] text-[var(--color-label-3)]">{`Settle in ${k.where}`}</span>
+                      </span>
+                    </span>
+                    <ChevronRight size={18} className="shrink-0 text-[var(--color-label-3)]" aria-hidden />
+                  </Link>
+                </li>); })}
+          </ul>
+        )}
+      </section>
 
       <Card>
         <h3 className="text-lg mb-1">{a.closed ? "Close the day again" : "Close the day"}</h3>

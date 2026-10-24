@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { ReportsClient, type Summary, type KitchenSpeed, type HotelKpis, type AuditRow } from "./ReportsClient";
 import type { Breakdown } from "./Breakdown";
 import type { Extra } from "./tables";
+import type { Dept } from "./deptSpec";
 import { todayIST } from "@/lib/format";
 export const metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   // the same window as IST dates, for the reports that count by day (0105 report_extra)
   const to = todayIST(); const from = new Date(Date.parse(to) - (n - 1) * 86400000).toISOString().slice(0, 10);
   const past = (rid?: string) => { const q = s.from("night_audits").select("business_date, occupancy_pct, adr, revpar, room_revenue, no_shows, discrepancies"); return (rid ? q.eq("restaurant_id", rid) : q).order("business_date", { ascending: false }).limit(14); };
-  const [session, { data: summary }, { data: closes }, { data: kitchen }, { data: rooms }, audits0, { data: breakdown }, { data: extra }] = await Promise.all([
+  const [session, { data: summary }, { data: closes }, { data: kitchen }, { data: rooms }, audits0, { data: breakdown }, { data: extra }, { data: dept }] = await Promise.all([
     requireSession(),
     s.rpc("report_summary", { p_days: n }),
     s.from("day_closes").select("business_date, orders_count, total_sales, cash, upi, card, other, notes")
@@ -40,6 +41,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     s.rpc("sales_breakdown", { p_days: n }),
     // payments, every dish, staff, cancellations, expenses, sales less expenses — owner, manager, supervisor only
     s.rpc("report_extra", { p_from: from, p_to: to }),
+    // every department as rows, income and outgoings by day (0140) — the owner, or whoever holds the Reports grant
+    s.rpc("report_departments", { p_from: from, p_to: to }),
   ]);
   // the master reads every property's night audits (lib/scoped.ts): only for it, ask again for this property
   const { data: audits } = await pinned(session, audits0, past);
@@ -49,7 +52,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader eyebrow="How the business is doing" title="Reports" />
       <ReportsClient days={n} summary={(summary ?? {}) as Summary} closes={closes ?? []} kitchen={(kitchen ?? null) as KitchenSpeed | null} hotel={(rooms ?? null) as HotelKpis | null} audits={(audits ?? []) as AuditRow[]} breakdown={(breakdown ?? null) as Breakdown | null}
-        extra={(extra ?? null) as Extra | null} property={session.restaurant.name} />
+        extra={(extra ?? null) as Extra | null} dept={(dept ?? null) as Dept | null} lodging={session.restaurant.property_type !== "restaurant"} property={session.restaurant.name} />
     </>
   );
 }

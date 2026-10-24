@@ -19,6 +19,11 @@ export async function placeOrder(slug: string, guest: { full_name: string; phone
   const { data, error } = await anon().rpc("dine_order", { p_slug: slug, p_guest: guest, p_items: items, p_mode: mode, p_note: note || null, p_offer: offer, p_table: table });
   if (error) return { error: error.message }; return { ok: true, order: data as never };
 }
+/** the tracking token for an order just placed here (0140 dine_track_token): the phone that ordered gets its own link */
+export async function trackToken(id: string, phone: string) {
+  const { data, error } = await anon().rpc("dine_track_token", { p_id: id, p_phone: phone });
+  if (error) return { error: error.message }; return { ok: true as const, token: (data as string | null) ?? null };
+}
 export async function track(ref: string, phone: string) {
   const { data, error } = await anon().rpc("dine_track", { p_ref: ref, p_phone: phone });
   if (error) return { error: error.message }; return { ok: true, result: data as never };

@@ -114,7 +114,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
       {tools && (
         /* five even tiles in a panel — icon, name, what it is for — two across on a phone, five on a desktop; were
            five outline buttons wrapping in uneven rows (2026-10-21, the owner) */
-        <div className="-mt-2 rounded-[22px] p-2 bg-[var(--color-fill)] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2" data-tools>
+        <div className="-mt-2 rounded-[22px] p-2 bg-[var(--color-fill)] fill-tiles" data-tools>
           {([
             { k: "cats", Icon: Plus, hue: "--color-tint", label: "Categories", sub: "Add, rename, remove", on: () => setCatSheet(true) },
             { k: "addons", Icon: SlidersHorizontal, hue: "--color-blue", label: "Add-ons", sub: "Extras and choices", on: () => setGroupsSheet(true) },

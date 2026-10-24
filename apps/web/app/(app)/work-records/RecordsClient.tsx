@@ -95,7 +95,7 @@ export function RecordsClient({ log, error, from, to, today, property }: { log: 
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5" data-record-stats>
+      <div className="fill-tiles !gap-2.5" data-record-stats>
         {([[ListChecks, "Jobs", String(rows.length)], [ListChecks, "Done", String(done.length)], [AlertTriangle, "Late", String(rows.filter(late).length)],
           [Hourglass, "Average response", fmtMin(resp)], [Timer, "Average work", fmtMin(work)]] as const).map(([I, k, v]) => (
           <div key={k} className={cn("feather !rounded-[18px] px-4 py-3 min-w-0 flex items-center gap-3", k === "Late" && v !== "0" && "!border-[var(--color-red)]")}>

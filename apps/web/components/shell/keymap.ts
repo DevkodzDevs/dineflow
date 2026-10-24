@@ -20,7 +20,7 @@ export type Screen = {
 };
 
 /** `G` + letter → section. Shown only when this person may open it (`module` from modulesFor, or always; `owner`: the owner's alone). */
-export const GO: { key: string; href: string; label: string; module?: string; owner?: true }[] = [
+export const GO: { key: string; href: string; label: string; module?: string; owner?: true; grant?: string }[] = [
   { key: "d", href: "/dashboard", label: "Control room", module: "dashboard" },
   { key: "r", href: "/reservations", label: "Reservations", module: "reservations" },
   { key: "p", href: "/pulse", label: "Pulse", module: "pulse" },
@@ -32,7 +32,8 @@ export const GO: { key: string; href: string; label: string; module?: string; ow
   { key: "b", href: "/billing", label: "Billing", module: "billing" },
   { key: "m", href: "/menu", label: "Menu", module: "menu" },
   { key: "i", href: "/inventory", label: "Pantry", module: "inventory" },
-  { key: "t", href: "/reports", label: "Reports", module: "reports" },
+  { key: "t", href: "/reports", label: "Reports", module: "reports", grant: "reports" },
+  { key: "x", href: "/connections", label: "Connections", grant: "connections" },
   { key: "s", href: "/settings", label: "Settings", module: "settings" },
   { key: "f", href: "/voice", label: "Feedback & complaints" },
   { key: "h", href: "/help", label: "Help & support", owner: true },

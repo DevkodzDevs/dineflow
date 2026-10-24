@@ -289,3 +289,18 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   :hover after a tap, so the size just chosen stayed grey with white ink until the next tap elsewhere. Paper's chip rules
   are `.chip:not(.on)` now (the bright palette met the same trap — design-system.md). calls.mjs checks it with the mouse
   still on the chip.
+- **The launch loader** (v19, 2026-10-24, the owner: "after the app is minimised it opens to a black screen — show the
+  logo with a loading animation; never a black or blank screen, never a delay feeling"). A page (`bootable`: not a file,
+  not /get/) the network has not answered in 0.9 s (`BOOT_AFTER`) is answered at once with `boot()` — emerald, the logo
+  with a spinning ring, orbiting dots, a shimmer bar and status lines in the app's language; endless motion on transform
+  and opacity only. The request goes on; its answer is held (`waiting`, keyed by URL, kept alive 30 s after it lands by
+  `waitUntil`). The loader asks `/__df/ready?u=` (answered by the worker: ok / fail / wait after 20 s / gone) and reloads;
+  the reload takes the held answer, so the page is fetched once. Nothing in 40 s → the reconnect page. It marks the launch
+  (`df-splash`) so the in-app splash does not play after it. **Navigation preload is off** from v19: Safari's engine
+  cancels a preload as soon as the event is answered with something else, so the held answer never landed and the loader
+  spun (the first try). Probes: `pw/boot97.mjs` (9 — a proxy that holds pages 3 s: loader in ~1.3 s, the page by itself
+  ~0.5 s after the server answers, fetched once; a quick page never sees it; no line → reconnect; the splash) and
+  `pw/sw90.mjs` (9 — a silent server now ends on the reconnect page after ~41 s, through the loader).
+- **Two more public pages (0140, 2026-10-24):** `/track/<token>` — the customer's delivery tracking — and `/ride/<token>` — the
+  rider's page. Both in `PUBLIC_PREFIX` and `SESSION_FREE`, both English like /pay (the translation scan skips `track|ride`),
+  both `noindex`. See online-and-channels.md, *Delivery tracking*.

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CornerDownLeft, Keyboard, Search } from "lucide-react";
 import { Sheet, cn } from "../ui";
-import { ITEMS, freshFor, endFor, myDayFor, modOf } from "./sections";
+import { freshFor, endFor, myDayFor, rowsFor } from "./sections";
 import { GO, screenFor } from "./keymap";
 import type { Role } from "@dineflow/shared";
 
@@ -18,13 +18,13 @@ const typingIn = (t: EventTarget | null) => {
 };
 const visible = (e: Element) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
 
-export function Keys({ modules, role, dept = null }: { modules: string[]; role: Role; dept?: string | null }) {
+export function Keys({ modules, role, dept = null, grants = null }: { modules: string[]; role: Role; dept?: string | null; grants?: string[] | null }) {
   const path = usePathname(); const router = useRouter();
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
   const pendingG = useRef<number>(0);
   const allowed = (m?: string) => !m || modules.includes(m);
-  const go = useMemo(() => GO.filter((g) => allowed(g.module) && (!g.owner || role === "owner")), [modules, role]); // eslint-disable-line react-hooks/exhaustive-deps
+  const go = useMemo(() => GO.filter((g) => allowed(g.module) && (!g.owner || role === "owner") && (!g.grant || role === "owner" || (grants ?? []).includes(g.grant))), [modules, role, grants]); // eslint-disable-line react-hooks/exhaustive-deps
   const screen = screenFor(path);
 
   // a new screen starts with nothing highlighted
@@ -112,7 +112,7 @@ export function Keys({ modules, role, dept = null }: { modules: string[]; role: 
   }, [screen, go, path, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>
-    <GoTo open={palette} onClose={() => setPalette(false)} modules={modules} role={role} dept={dept} onHelp={() => { setPalette(false); setHelp(true); }} />
+    <GoTo open={palette} onClose={() => setPalette(false)} modules={modules} role={role} dept={dept} grants={grants} onHelp={() => { setPalette(false); setHelp(true); }} />
     <Sheet open={help} onClose={() => setHelp(false)} title="Keyboard shortcuts">
       <div className="space-y-5" data-keys-help>
         {screen?.hints && <KeyList title={`On ${screen.title}`} rows={screen.hints} />}
@@ -140,19 +140,19 @@ function KeyList({ title, rows, cols }: { title: string; rows: [string, string][
 }
 
 /** Ctrl/⌘ K — type a few letters of any section this person can open, ↑ ↓, Enter. */
-function GoTo({ open, onClose, modules, role, dept, onHelp }: { open: boolean; onClose: () => void; modules: string[]; role: Role; dept: string | null; onHelp: () => void }) {
+function GoTo({ open, onClose, modules, role, dept, grants, onHelp }: { open: boolean; onClose: () => void; modules: string[]; role: Role; dept: string | null; grants: string[] | null; onHelp: () => void }) {
   const router = useRouter();
   const [q, setQ] = useState(""); const [i, setI] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const all = useMemo(() => [
     ...(modules.includes("orders") ? [{ href: "/orders/new", label: "New order", hint: "N" }] : []),
     ...(myDayFor(role) ? [{ href: "/home", label: "My day", hint: "" }] : []),
-    ...ITEMS.filter((s) => modules.includes(modOf(s))).map((s) => ({ href: s.href, label: s.label, hint: GO.find((g) => g.href === s.href) ? `G ${GO.find((g) => g.href === s.href)!.key.toUpperCase()}` : "" })),
+    ...rowsFor(modules, role, grants).map((s) => ({ href: s.href, label: s.label, hint: GO.find((g) => g.href === s.href) ? `G ${GO.find((g) => g.href === s.href)!.key.toUpperCase()}` : "" })),
     ...freshFor(role, dept).map((s) => ({ href: s.href, label: s.label, hint: "" })),
     // the menu's last group: the person's own settings, Feedback & complaints, and the owner's Help & support (2026-10-20)
     ...endFor(role).map((s) => ({ href: s.href, label: s.label, hint: s.key === "help" ? "G H" : s.key === "voice" ? "G F" : "" })),
     { href: "#keys", label: "Keyboard shortcuts", hint: "?" },
-  ], [modules, role, dept]);
+  ], [modules, role, dept, grants]);
   const list = all.filter((x) => { const t = q.trim().toLowerCase(); return !t || x.label.toLowerCase().includes(t) || x.label.toLowerCase().split(/\s+/).map((w) => w[0]).join("").startsWith(t); });
   useEffect(() => { if (open) { setQ(""); setI(0); setTimeout(() => input.current?.focus(), 30); } }, [open]);
   useEffect(() => { setI(0); }, [q]);

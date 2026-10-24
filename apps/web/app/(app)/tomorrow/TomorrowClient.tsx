@@ -145,7 +145,10 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
                as "· 5 comparable days" on the card. */
             const [head, ...rest] = String(d.detail).split(" ");
             const tail = rest.join(" ").replace(/^[·•\-–—]\s*/, "");
-            return <StatTile key={d.label} label={d.label} value={head} sub={tail} delay={i * 0.05} tone={d.label === "Confidence" ? (conf >= 60 ? "good" : undefined) : undefined} />;
+            /* no history for this weekday arrives as "no history yet": its first word "no" took the number's place in big
+               letters (2026-10-24, the owner). It is a count of zero days on record — say it on the flaps, the words under. */
+            const none = /^no\b/i.test(String(d.detail));
+            return <StatTile key={d.label} label={d.label} value={none ? "00" : head} sub={none ? `No ${d.label}s on record yet` : tail} delay={i * 0.05} tone={d.label === "Confidence" ? (conf >= 60 ? "good" : undefined) : undefined} />;
           })}
         </div>
       </div>

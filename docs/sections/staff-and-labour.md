@@ -316,3 +316,6 @@ year. See [my-day.md](my-day.md).
 
 - **Access → Assist (AI)** (0138, `[data-assist-switch]`): the owner or a manager switches the AI helper on for someone below a
   supervisor (`staff_set_assist`); the top three have it always.
+- **Access → Connections / Reports** (0140, `[data-grant-switch=connections|reports]`, the owner only, on a manager or a
+  supervisor; `staff_set_grant`): the two owner's screens, given per person (connections.md). Saved at once, like Assist.
+- **Two ways in, as buttons (2026-10-24, the owner: "design").** `[data-two-ways]` is two tiles, each with its icon, what it does and a chevron: **Add staff** (`[data-way=add]`, only with `canIssue`, opens Add staff) and **Invite with a code** (`[data-way=invite]`, opens the invite sheet). It was two grey sentences.

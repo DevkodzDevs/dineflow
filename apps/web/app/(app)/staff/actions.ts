@@ -87,6 +87,14 @@ export async function setAssistAccess(userId: string, on: boolean) {
   revalidatePath("/staff"); return { ok: true as const };
 }
 
+/** Connections or Reports for one person (0140 staff_set_grant — the owner only). */
+export async function setGrant(userId: string, grant: "connections" | "reports", on: boolean) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("staff_set_grant", { p_user: userId, p_grant: grant, p_on: on });
+  if (error) return { error: error.message };
+  revalidatePath("/staff"); return { ok: true as const, grants: (data ?? []) as string[] };
+}
+
 /** Role, sections and active flag for one person — through owner_set_access, which enforces who may change whom. */
 export async function setAccess(userId: string, role: string, modules: string[] | null, active: boolean) {
   const s = await createClient();

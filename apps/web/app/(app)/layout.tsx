@@ -1,4 +1,4 @@
-import { requireSession, daysLeft, assistAllowed } from "@/lib/auth";
+import { requireSession, daysLeft, assistAllowed, connectionsAllowed, reportsAllowed } from "@/lib/auth";
 import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { modulesFor, landingFor } from "@dineflow/shared";
@@ -67,6 +67,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     const home = landingFor(s.profile.role, mods, s.profile.position ?? null);
     redirect(key === "dashboard" ? `/${home}` : `/${home}?locked=${key}`);
   }
+  /* Two screens are the owner's, and whoever the owner gave them to (0140 grants): Connections (no module) and Reports (a module
+     *and* the grant — the ceilings above still apply). Everyone else is sent home with the same note as a locked section. */
+  const seg = path.split("/")[1] ?? "";
+  if ((seg === "connections" && !connectionsAllowed(s.profile)) || (seg === "reports" && !reportsAllowed(s.profile))) {
+    redirect(`/${landingFor(s.profile.role, mods, s.profile.position ?? null)}?locked=${seg}`);
+  }
   // the profile avatar opens the property's Settings for whoever may open them, and everyone else's own settings (/me, 2026-10-20)
   const accountHref = mods.includes("settings") ? "/settings" : "/me";
   // the person's team — set on them, else their position's, else their role's — decides the team-bound control links
@@ -90,7 +96,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
-      <Sidebar name={s.profile.full_name} role={s.profile.role} dept={dept} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />
+      <Sidebar name={s.profile.full_name} role={s.profile.role} dept={dept} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} grants={s.profile.grants ?? null} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />
       <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-[calc(var(--tabbar)+28px)] md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
@@ -102,7 +108,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}
       </div></main>
       <BottomNav role={s.profile.role} type={s.restaurant.property_type} dept={dept} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
-        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} />
+        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} grants={s.profile.grants ?? null} />
       {/* food at the pass, brought to whoever takes it out: parcels, and the orders this person took (ReadyDock.tsx) */}
       {mods.includes("orders") && <ReadyDock me={s.profile.id} all={["owner", "manager", "supervisor", "supervisor_2"].includes(s.profile.role)} parcels={mods.includes("orders") || mods.includes("online-orders")} />}
       {/* Assist only for whoever may use it (0138) */}
@@ -115,7 +121,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* the next screen is fetched when a finger touches a menu link or a mouse rests on one, not on the click */}
       <IntentPrefetch />
       {/* the keyboard: Ctrl K go to, G + letter, N new order, ↑ ↓ Enter on lists, ? for the list (keymap.ts) */}
-      <Keys modules={mods} role={s.profile.role} dept={dept} />
+      <Keys modules={mods} role={s.profile.role} dept={dept} grants={s.profile.grants ?? null} />
     </div>
    </SayProvider>
    </NotifierProvider>

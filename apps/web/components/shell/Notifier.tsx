@@ -359,7 +359,8 @@ export function NotificationSettings() {
       {/* the machine */}
       <div>
         <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-steel mb-2">This device is</div>
-        <div className="grid gap-2 grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))]">
+        {/* 2 across on a phone, 3 wider — the last row filled (.fill-tiles .fill-3) */}
+        <div className="fill-tiles fill-3" data-stations>
           {STATIONS.map((s) => { const Icon = STATION_ICON[s.id]; const on = p.station === s.id; return (
             <button key={s.id} type="button" aria-pressed={on} onClick={() => { const q = stationPrefs(s.id, { on: p.on, volume: p.volume, system: p.system }); n.setPrefs(q); if (q.on) playTone(q.tone, q.volume); }}
               className={cn("min-w-0 text-left rounded-2xl border p-3 flex flex-col items-start gap-2 transition-colors !min-h-[96px]", on ? "border-[var(--color-tint)] bg-[color-mix(in_srgb,var(--color-tint)_10%,transparent)]" : "border-[var(--color-separator)] hover:border-[var(--color-label-3)]")}>

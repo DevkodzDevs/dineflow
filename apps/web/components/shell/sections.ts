@@ -1,9 +1,15 @@
-import { Armchair, HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck, QrCode, Tv, MessagesSquare, UserRoundCog, LifeBuoy, type LucideIcon } from "lucide-react";
+import { Plug, Armchair, HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck, QrCode, Tv, MessagesSquare, UserRoundCog, LifeBuoy, type LucideIcon } from "lucide-react";
 import { positionByKey, type Role } from "@dineflow/shared";
 
 /** A menu row. `key` names it (React, the phone bar's pins); `mod` is the module whose tick opens it when that is
  *  not its own key — Join by QR is a Pulse screen, the Order board a Kitchen one. */
-export type Section = { key: string; href: string; label: string; Icon: LucideIcon; mod?: string };
+export type Section = { key: string; href: string; label: string; Icon: LucideIcon; mod?: string; grant?: string };
+/** `grant` (0140): the row is the owner's, and anyone the owner gave that grant — Connections is no module at all; Reports is a
+ *  module *and* needs the grant (the ceilings still apply). `hasGrant` in lib/auth.ts is the same rule. */
+export const grantOpens = (role: string, grants: string[] | null | undefined, g: string) => role === "owner" || (grants ?? []).includes(g);
+/** The module rows this person may open: the module (when the row has one), and the grant (when it needs one). */
+export const rowsFor = (mods: string[], role: string, grants: string[] | null | undefined) =>
+  ITEMS.filter((i) => (i.grant ? grantOpens(role, grants, i.grant) : true) && (i.key === "connections" ? true : mods.includes(modOf(i))));
 
 /**
  * Every section of the app, in menu order — one list for the sidebar, the phone's More sheet and
@@ -36,13 +42,15 @@ export const ITEMS: Section[] = [
   { key: "proof", href: "/proof", label: "Proof of business", Icon: BadgeCheck },
   { key: "neighbours", href: "/neighbours", label: "Neighbours", Icon: Users2 },
   { key: "channels", href: "/channels", label: "Channels", Icon: Radio },
-  { key: "reports", href: "/reports", label: "Reports", Icon: BarChart3 },
+  { key: "reports", href: "/reports", label: "Reports", Icon: BarChart3, grant: "reports" },
   { key: "tax", href: "/tax", label: "Tax & GST", Icon: Landmark },
   { key: "staff", href: "/staff", label: "Staff", Icon: Users },
   { key: "settings", href: "/settings", label: "Settings", Icon: Settings },
   // 2026-10-21: every table and everything about one — a screen of the Orders module (last here: the phone bar fills
   // from this order, and its defaults must not move); the menu shows it first under Guests & tables
   { key: "tables", mod: "orders", href: "/tables", label: "Tables", Icon: Armchair },
+  // 2026-10-24: every outside link in one place — the owner's, and a manager the owner gives it to (no module: a grant)
+  { key: "connections", href: "/connections", label: "Connections", Icon: Plug, grant: "connections" },
 ];
 
 /**
@@ -133,7 +141,7 @@ const MENU_GROUPS: { title: string | null; keys: string[] }[] = [
   { title: "Team & work", keys: ["staff", "tasks", "cleaning", "work", "work-records", "labour", "payroll"] },
   { title: "Money", keys: ["invoices", "expenses", "controls", "tax"] },
   { title: "Reports & insights", keys: ["reports", "intelligence", "audit"] },
-  { title: "Business & growth", keys: ["chain", "channels", "proof", "neighbours"] },
+  { title: "Business & growth", keys: ["chain", "connections", "channels", "proof", "neighbours"] },
 ];
 /** The rows this person may open, under their headings: `rows` is everything they hold (modules and "fresh" links,
  *  Settings left to the last group). A row no group names still shows, in a last "More" group, so a new section is

@@ -109,3 +109,7 @@ count differs and so does the grid.
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. The three big counters shuffle and settle when they change (`FlapShuffle`); a resort's "% full" counts up over a bar (`FlapPercent`). Every `StatTile` count shuffles too.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
+- **On now, empty (2026-10-24).** Each tab's empty list is an `EmptyState` (design-system.md) — Floor: a bell, "No open
+  orders right now", where orders come from and **Take an order** → /orders; In house and Online the same with their own icon
+  and link (`[data-on-now-empty]`). It was one grey line in a 400px blank.

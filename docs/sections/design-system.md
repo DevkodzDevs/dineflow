@@ -730,3 +730,19 @@ across, pin; three by default). Staff keeps its own switch (StaffClient). 40px w
 - **Short copy** (2026-10-23, the owner: "short and sweet, crisp, easy for everyone — the whole app"): page subtitles,
   hints and helper lines cut to a few words across the app; warnings, tax/legal rules and confirm text kept. New strings
   are in the dictionaries (one merge).
+- **A fixed set of tiles never leaves a hole in its last row** (`.fill-tiles` in globals.css; 2026-10-24, the owner: "the
+  bottom card must fill the empty space — just examples"). Two across on a phone with an odd last tile spanning the row;
+  from 640px six tracks, two per tile, so a last row of two is halves and a last row of one spans it; from 1024px five
+  across (`.fill-3` stops at three, for a grid in a narrow column). Used by Menu → More tools, Chain's totals, Work
+  records' figures and the notification settings' devices (`[data-stations]`, Settings and My profile); Master
+  control's figures do the same in `AdminToolbar.module.css`. **Only for fixed sets** — a list that grows with the data
+  (rooms, tables, the expense categories) keeps even tiles and a short last row: a room card twice as wide reads as a
+  different thing. `pw/gaps96.mjs <restaurant|resort>` signs in a demo, walks every screen the navigation links to at
+  412 and 834 and lists every grid of cards whose last row leaves a hole; after this change it lists only those lists.
+
+- **Empty states (2026-10-24, the owner: "these empty sections don't look good").** `components/ui/EmptyState.tsx` (its own
+  file — `index.tsx`'s `Empty` stays for the screens not yet moved): a dashed panel washed in the section's hue
+  (`hue` tint · blue · orange · violet · cyan · red, tokens only), the section's icon on a tile inside a slowly turning dotted
+  ring (still under reduced motion), a bold line, one line on what fills it, and the action that fills it. `size="sm"` is
+  the 76px row for a list inside a column. Used on Front desk (Arrivals, Upcoming, In house), the control room's On now,
+  Rooms, Facilities and Payroll's month. Pass the Lucide component as `icon` from a client screen. design24.mjs: 146 checks.

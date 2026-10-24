@@ -122,3 +122,8 @@ node cleaning.mjs    # 43  ·  node cleaner.mjs  # 43 — the Cleaning board sti
 - **Each card waits on its own answer** (2026-10-18): the board's one `pending` greyed every card while any one tap was
   answering. `actOn(id)` keeps a `busy` set; a card is held only while its own take / done / give / drop is answering.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
+- **The four counts are split-flaps (2026-10-24, the owner: "number flap design").** `[data-work-stat]` tiles: an icon and
+  the word, then the count on the same flap every `StatTile` wears (`.flip-stat`, so the card is an `@container`) with a
+  caption beside it. Waiting breathes while there is any, Late breathes red, On it and Done today shuffle on a change. Each
+  state keeps its colour along the top edge: waiting amber, on it blue, late red, done green. It was 24px numerals.

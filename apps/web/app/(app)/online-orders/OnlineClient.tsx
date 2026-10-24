@@ -11,8 +11,9 @@ import { usePrinters } from "@/lib/print/usePrinter";
 import { acceptOnline, rejectOnline, setOnlineStatus, mapDish, suggestDishMap } from "./actions";
 import { AiButton } from "@/components/ui/AiButton";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { AssignRider, type Delivery, type Rider } from "./AssignRider";
 
-type OO = { id: string; external_id: string; display_id: string | null; status: string; customer_name: string | null; customer_phone: string | null; address: string | null; items: { menu_item_id: string | null; name: string; qty: number; price: number; note: string | null }[]; unmatched: string[]; gross: number; commission: number; payout: number; is_prepaid: boolean; placed_at: string; order_id: string | null; order_channels: { kind: string; label: string; prep_minutes: number } | null };
+type OO = { track_token?: string | null; id: string; external_id: string; display_id: string | null; status: string; customer_name: string | null; customer_phone: string | null; address: string | null; items: { menu_item_id: string | null; name: string; qty: number; price: number; note: string | null }[]; unmatched: string[]; gross: number; commission: number; payout: number; is_prepaid: boolean; placed_at: string; order_id: string | null; order_channels: { kind: string; label: string; prep_minutes: number } | null };
 /* each channel's own colour on its card's head band — what a packer recognises across the counter */
 const BAND: Record<string, string> = { swiggy: "bg-[#fc8019] text-[#1f0f00]", zomato: "bg-[#e23744] text-white", website: "bg-ink text-on-label", ondc: "bg-mint text-on-tint", other: "bg-porcelain-2 text-ink" };
 type Tab = "new" | "cook" | "ready";
@@ -23,10 +24,13 @@ const TAB_OF = (s: string): Tab => (s === "new" ? "new" : s === "ready" ? "ready
  * before the aggregator gives up), Cooking, Ready — and one card per order with the channel's colour
  * on top, the dishes with their counts, the total big, and one big button: Accept, Food ready, Picked up.
  */
-export function OnlineClient({ orders, channels, menu, ai = false }: { orders: OO[]; channels: { id: string; kind: string; label: string; is_live: boolean }[]; menu: { id: string; name: string; price: number; online_available?: boolean }[]; ai?: boolean }) {
+export function OnlineClient({ orders, channels, menu, ai = false, deliveries = [], riders = [], base = "", property = "", tracking = true }: { deliveries?: Delivery[]; riders?: Rider[]; base?: string; property?: string; tracking?: boolean; orders: OO[]; channels: { id: string; kind: string; label: string; is_live: boolean }[]; menu: { id: string; name: string; price: number; online_available?: boolean }[]; ai?: boolean }) {
   const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   const [fix, setFix] = useState<{ order: OO; line: string } | null>(null);
   const [rejecting, setRejecting] = useState<OO | null>(null);
+  /* Send out (0140): the order a rider is being chosen for, and who already rides each */
+  const [assign, setAssign] = useState<OO | null>(null);
+  const dOf = (o: OO) => deliveries.find((d) => d.online_order_id === o.id) ?? null;
   // every action's answer reaches the screen; a refused write used to look exactly like a saved one
   const run = (p: Promise<{ error?: string } | { ok: boolean }>, then?: () => void) => start(async () => { const r = await p; if ("error" in r && r.error) setErr(r.error); else { setErr(null); then?.(); } });
   const [hint, setHint] = useState<{ line: string; menu_item_id: string | null; name: string | null; confidence: number } | null>(null); const [hinting, setHinting] = useState(false);
@@ -117,7 +121,15 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
                       <button type="button" className="svc-btn go flex-1" disabled={pending} onClick={() => accept(o)} data-accept><Check size={20} aria-hidden /><Say w="accept" /></button>
                       <button type="button" className="svc-btn no !px-5" disabled={pending} aria-label="Reject this order" onClick={() => setRejecting(o)}><X size={20} aria-hidden /><Say w="reject" /></button>
                     </> : o.status === "ready"
-                      ? <button type="button" className="svc-btn ink flex-1" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "picked_up"))}><Bike size={20} aria-hidden /> Picked up</button>
+                      ? (tracking && !!o.address
+                        /* a delivery with tracking on: Send out picks the rider and hands over the two links; once sent, the rider's name and a way back to the links, and Picked up beside it for a rider without the page */
+                        ? (dOf(o)
+                          ? <div className="flex-1 min-w-0 flex gap-2">
+                              <button type="button" className="svc-btn quiet flex-1 min-w-0" disabled={pending} onClick={() => setAssign(o)} data-rider-links><Bike size={20} aria-hidden /><span className="truncate">{dOf(o)!.rider_name ?? "Rider"}{dOf(o)!.status === "picked_up" ? " · on the way" : " · links"}</span></button>
+                              <button type="button" className="svc-btn ink !px-5" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "picked_up"))} aria-label="Picked up" title="Picked up"><PackageCheck size={20} aria-hidden /></button>
+                            </div>
+                          : <button type="button" className="svc-btn ink flex-1" disabled={pending} onClick={() => setAssign(o)} data-send-out><Bike size={20} aria-hidden /> Send out</button>)
+                        : <button type="button" className="svc-btn ink flex-1" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "picked_up"))}><Bike size={20} aria-hidden /> Picked up</button>)
                       : <button type="button" className="svc-btn go flex-1" disabled={pending} onClick={() => run(setOnlineStatus(o.id, "ready"))}><PackageCheck size={20} aria-hidden /><Say w="food_ready" /></button>}
                     {o.order_id && <Link href={`/orders/${o.order_id}`} aria-label="Open the kitchen order" title="Open the kitchen order" className="h-14 w-14 shrink-0 rounded-[18px] grid place-items-center bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"><ExternalLink size={18} /></Link>}
                   </div>
@@ -147,6 +159,7 @@ export function OnlineClient({ orders, channels, menu, ai = false }: { orders: O
         )}
         <div className="space-y-2">{menu.map((m) => <button key={m.id} className="feather feather-lift w-full text-left p-3 flex justify-between" disabled={pending} onClick={() => run(mapDish(m.id, fix!.order.order_channels?.kind ?? "other", fix!.line), () => setFix(null))}><span>{m.name}</span><span className="num text-steel">{formatINR(Number(m.price))}</span></button>)}</div>
       </Sheet>
+      <AssignRider order={assign} riders={riders} base={base} property={property} existing={assign ? dOf(assign) : null} onClose={() => setAssign(null)} />
       <ReasonDialog open={!!rejecting} onClose={() => setRejecting(null)} title={rejecting ? `Reject ${rejecting.display_id ?? rejecting.external_id}?` : ""}
         hint="The guest is told. Cannot be undone." chips={["Item unavailable", "Kitchen too busy", "Closing soon", "Too far to deliver"]} confirmLabel="Reject order"
         onConfirm={async (reason) => { const r = await rejectOnline(rejecting!.id, reason); if ("error" in r) return { error: r.error }; }} />

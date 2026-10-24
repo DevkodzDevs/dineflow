@@ -1,7 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Plus, Waves, Flower2, Tent, Pencil, Clock, Users, CalendarPlus, X } from "lucide-react";
+import { Plus, Waves, Flower2, Tent, Pencil, Clock, Users, CalendarPlus, X, Sparkles } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button, Sheet, Field, Card, Pill } from "@/components/ui";
 import { Rail } from "@/components/ui/Rail";
 import { formatINR } from "@/lib/format";
@@ -68,7 +69,16 @@ export function FacilitiesClient({ facilities, slots, inHouse }: { facilities: F
                 })()}
               </motion.div>))}</div></section>
         ))}
-        {facilities.length === 0 && <p className="text-sm text-steel">Add spa, activities and venues.</p>}
+        {/* nothing yet (2026-10-24): one start per kind, each opening the form already set to it */}
+        {facilities.length === 0 && (
+          <EmptyState icon={Sparkles} hue="violet" title="No spa, activities or venues yet" data-fac-empty
+            hint="Add what guests can book — a massage, a guided trek, the banquet hall. Then book them in from here."
+            actions={([["spa", "Spa", Flower2], ["activity", "Activity", Waves], ["venue", "Venue", Tent]] as const).map(([k, label, I]) => (
+              <button key={k} type="button" data-fac-start={k} onClick={() => setEdit({ kind: k, duration_minutes: k === "venue" ? 240 : 60, capacity: k === "venue" ? 100 : 1 })}
+                className={`h-11 pl-2 pr-4 rounded-full inline-flex items-center gap-2 text-[14px] font-bold border border-[var(--color-separator)] bg-[var(--color-bg-2)] hover:border-[var(--color-line-2)] active:scale-[.97] transition`}>
+                <span className={`h-8 w-8 rounded-full grid place-items-center ${KIND_TONE[k]}`}><I size={15} aria-hidden /></span><Plus size={14} strokeWidth={2.6} aria-hidden className="-mr-1" />{label}
+              </button>))} />
+        )}
       </div>
       {/* the schedule: a date tile (day, month, time), what and who, the amount and a real ✕ — the time ran into the
           name in a 64px column (2026-10-21) */}

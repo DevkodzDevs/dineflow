@@ -140,3 +140,26 @@ pnpm --filter @dineflow/web typecheck
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Arrivals, Departures, In house and Rooms ready are `StatTile` flaps, which now shuffle and settle when a count changes.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+- **Bookings are stay tickets** (`StayCard.module.css`; 2026-10-24, the owner twice: "ultra modern, user friendly,
+  properly fit"). `Row` takes `kind` (arrival / upcoming / inhouse), which sets `--tone` — green, blue, amber, red when due
+  out — for the band, badge, avatar and timeline. The **band**: ROOM, the number at 34px with housekeeping's dot
+  (`[data-room-dot]`), the type under it (one line, …), and a badge (`[data-badge]`: Arriving today / Due since <date> /
+  Tomorrow / In N days / Night N of M / Due out). A dashed **tear line** with notches (circles in the page colour, clipped
+  by the card). The **guest**: an initials avatar, the name (★ VIP; one line, …), "2 guests · #24". The **stay**
+  (`[data-stay]`) like a boarding pass: CHECK-IN date and weekday, the nights on a track, CHECK-OUT — dates read at midday
+  so no time zone moves them. **Chips**: the room's state (`[data-room-state]`: Room ready / cleaned / awaits inspection /
+  not cleaned yet / needs a touch-up) and online check-in; the guest's note (two lines at most); *Move to N · ready now*.
+  The **foot**: rate / night, then Check in (`[data-check-in]`), Cancel (a real 40/44px button) or Folio ›. The first
+  redraw that morning (a tinted tile and chips) was not enough; the action sharing the top row had squeezed the details to
+  "Garden …" on a phone.
+- **Night audit → Discrepancies** (`[data-discrepancies]`): a head with a tinted state tile, "Desk and housekeeping
+  disagree" (or agree) and the count; each row (`[data-discrepancy=<kind>]`) is a link — the room as a tile, the guest in
+  bold and what is wrong, a tag for the kind (`KIND`: Overstay, No guest, Room shows empty, Dirty on sale) and "Settle in
+  Front desk / Rooms / Housekeeping", which is where the link goes.
+- Probe: `pw/fd94.mjs` — a demo resort with long type names, an overstay, a VIP with a long name and a note, an arrival in
+  a dirty room; 412 paper and dark, 834, 1440: contents inside every card, no sideways scroll, Check in ≥44 on touch, the
+  dot clear of the ROOM label.
+
+- **Empty columns (2026-10-24).** No arrivals, nothing upcoming and nobody in house are `EmptyState`s (design-system.md):
+  Arrivals and Upcoming the 76px row (with a *Booking* button on Arrivals), In house the full panel with **New booking**
+  (`[data-fd-empty]`). The stay cards (`Row`) are unchanged.

@@ -738,3 +738,16 @@ Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.
   owner or a manager switches it in Access). The layout leaves the button out and `/api/assist` (and `/act`) answer 403
   otherwise. **Drag the bubble onto the close mark** that appears at the foot of the screen to put it away on that device
   (`df-assist-hidden`); My profile → This device → Show Assist brings it back; ⌘J still opens the panel.
+- **Launching is emerald, never black** (2026-10-24, the owner: "a black screen when the app opens again"). The phone's own
+  launch screen comes first: `manifest.json` `background_color` is #0b4a35 (it was #17171c, the black), and the iPhone
+  and iPad get launch images — `public/splash/<w>x<h>.png`, 19 sizes from the SE to the 16 Pro Max and the iPads, drawn
+  by `pw/launch97.mjs`, linked from `LAUNCH_IMAGES` (lib/splash.ts) as `apple-touch-startup-image`. iOS reads them when
+  the app is added to the home screen: **an app added before this keeps a black launch until it is removed and added
+  again**. Then the service worker's launch loader if the page is slow (guest-facing.md), then the in-app splash — the
+  same emerald, the logo (its own dark tile) in a spinning ring, "DineFlow" — which now leaves once the document is
+  parsed and at least 0.6 s have passed (at most 3 s); it waited for every image and 1.1 s. `lib/splash.ts` is outside the
+  translation check (its strings are media queries).
+- **A menu row an owner-given grant opens** (0140, 2026-10-24): `Section.grant` — Connections (`/connections`, no module; under
+  *Business & growth*) and Reports (a module *and* the grant). `rowsFor(mods, role, grants)` in sections.ts is the one filter
+  for the sidebar, the phone bar, Go to and `G` + letter (`G X` → Connections); the layout gates the same two segments.
+  `grants` ride with the session (`session_bundle`). See connections.md.

@@ -10,7 +10,7 @@ import { cn, Sheet, FlapMini } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
 import { barFor } from "@/lib/bar";
-import { ITEMS, freshFor, endFor, myDayFor, modOf, isOn, menuGroups, type Section } from "./sections";
+import { rowsFor, freshFor, endFor, myDayFor, isOn, menuGroups, type Section } from "./sections";
 import { useSupportUnread } from "@/components/support/useUnread";
 
 /** A menu row; `badge` is a count that wants attention (a red dot on the icon, the number beside the label). */
@@ -91,9 +91,9 @@ function useKeepMenuInPlace(path: string) {
   return ref;
 }
 
-type Props = { name: string; role: Role; dept?: string | null; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null; attend?: boolean };
+type Props = { name: string; role: Role; dept?: string | null; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null; attend?: boolean; grants?: string[] | null };
 
-export function Sidebar({ name, role, dept = null, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref, attend }: Props) {
+export function Sidebar({ name, role, dept = null, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref, attend, grants = null }: Props) {
   const path = useNavPath();   // lights the tapped item at once (useNavPath.ts)
   const navRef = useKeepMenuInPlace(path);
   /* The drawer. On an iPad or a tablet (768–1279) the menu is an icon rail; the hamburger at its
@@ -121,7 +121,7 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
     return () => { window.removeEventListener("resize", sync); window.removeEventListener("df-sidebar", sync); };
   }, []);
   const mods = modulesFor(type, role, enabled, personal);
-  const allowed = ITEMS.filter((i) => mods.includes(modOf(i)));
+  const allowed = rowsFor(mods, role, grants);
   const unread = useSupportUnread(path, endFor(role).some((i) => i.key === "help"));
   /* the menu under its headings (menuGroups, sections.ts — 2026-10-21) */
   const groups = menuGroups([...allowed, ...freshFor(role, dept)], myDayFor(role) ? [myDayFor(role)!] : []);
@@ -203,7 +203,7 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
  *  this person may open are used, and the gaps fill from the menu's own order. */
 const PIN_KEY = "df-bar-pins";
 
-type MoreProps = { role: Role; type: PropertyType; dept?: string | null; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number; attend?: boolean };
+type MoreProps = { role: Role; type: PropertyType; dept?: string | null; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number; attend?: boolean; grants?: string[] | null };
 
 /* a count on a tab stays a red pill: a flap tile cannot be read at 18px (2026-10-20, design-system.md "Flap numbers") */
 const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num" data-tab-count={n}>{n > 99 ? "99+" : n}</span>;
@@ -230,12 +230,12 @@ function TabIcon({ active, Icon, n }: { active: boolean; Icon: LucideIcon; n: nu
  * phone had no way to sign out at all. More opens every section this person can use, grouped the
  * way the sidebar groups them, with the account, Master control and Sign out at the foot.
  */
-export function BottomNav({ role, type, dept = null, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0, attend }: MoreProps) {
+export function BottomNav({ role, type, dept = null, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0, attend, grants = null }: MoreProps) {
   const path = useNavPath();   // lights the tapped item at once (useNavPath.ts)
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [path]);
   const mods = modulesFor(type, role, enabled, personal);
-  const allowed = ITEMS.filter((i) => mods.includes(modOf(i)));
+  const allowed = rowsFor(mods, role, grants);
   /* The bar's four: the person's own pins if they set any on this device (Square lets staff pin the
      applets they use most), else what their role does all day, else the property's default. */
   const [pins, setPins] = useState<string[] | null>(null);

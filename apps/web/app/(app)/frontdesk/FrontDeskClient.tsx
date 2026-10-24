@@ -2,19 +2,19 @@
 import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, LogIn, CalendarDays, Moon, Users, Star, ClipboardCheck, List, Check, CheckCircle2, ArrowRightLeft } from "lucide-react";
+import { Plus, LogIn, CalendarDays, Moon, Star, ClipboardCheck, List, Check, CheckCircle2, ArrowRightLeft, Sparkles, ChevronRight } from "lucide-react";
 import { suggestRoom } from "@/lib/roomsuggest";
 import { useLive } from "@/lib/useLive";
-import { Button, Sheet, Field, StatTile, Pill, cn, Empty, useToast } from "@/components/ui";
-import { formatINR } from "@/lib/format";
+import { Button, Sheet, Field, StatTile, cn, useToast } from "@/components/ui";
+import { formatINR, fmtDate } from "@/lib/format";
 import { createBooking, checkIn, cancelBooking, moveRoom } from "./actions";
+import sc from "./StayCard.module.css";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type Room = { id: string; number: string; floor: number; status: string; condition?: string | null; room_type_id: string | null; room_types: { name: string; base_rate: number; capacity: number } | null };
 type Booking = { id: string; room_id: string | null; precheckin_at?: string | null; precheckin?: { arrival_time?: string | null } | null; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; guests: { full_name: string; phone: string | null; vip?: boolean; preferences?: string | null } | null; rooms: { number: string; condition?: string | null; room_types: { name: string } | null } | null };
 type RT = { id: string; name: string; base_rate: number; capacity: number };
 type G = { id: string; full_name: string; phone: string | null; vip?: boolean };
-/** housekeeping's word on a room, as the front desk needs to read it at a glance */
-const CONDITION_DOT: Record<string, string> = { dirty: "bg-chili", clean: "bg-saffron", inspected: "bg-mint", pickup: "bg-sky" };
 
 export function FrontDeskClient({ today, bookings, rooms, types, guests, inspectRule = false }: { today: string; bookings: Booking[]; rooms: Room[]; types: RT[]; guests: G[]; inspectRule?: boolean }) {
   const router = useRouter(); const [pending, start] = useTransition();
@@ -26,30 +26,74 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
   const upcoming = bookings.filter((b) => b.status === "reserved" && b.check_in > today);
   const occ = rooms.length ? Math.round((rooms.filter((r) => r.status === "occupied").length / rooms.length) * 100) : 0;
 
-  /* An arrival's row says whether its room is actually ready — the thing a five-star desk checks
-     before it says "welcome" — and a VIP is marked before the desk has to remember. */
-  const Row = ({ b, action }: { b: Booking; action?: React.ReactNode }) => {
+  /* One booking as a stay ticket (StayCard.module.css; 2026-10-24, the owner twice: "ultra modern, user friendly,
+     properly fit"). A band in the section's colour with the room big and where the stay stands; a tear line; the guest
+     with an initials avatar; the stay read like a boarding pass — in and out with their weekdays, the nights on the
+     track between; what the desk should know as chips (the room's state, online check-in), the guest's note, Move to;
+     and a foot with the rate and the one thing to do. An arrival still says whether its room is actually ready — the
+     thing a five-star desk checks before it says "welcome". */
+  const Row = ({ b, kind, action }: { b: Booking; kind: "arrival" | "upcoming" | "inhouse"; action?: React.ReactNode }) => {
     const cond = b.status === "reserved" ? b.rooms?.condition : null;
     /* the room booked is not ready: offer a ready one of the same type, one tap to move (0081) */
     const better = b.status === "reserved" && b.check_in <= today ? suggestRoom(b, rooms, bookings, inspectRule) : null;
+    const tone = cond ? COND_TONE[cond] : null;
+    const state = cond && cond !== "inspected" ? { text: cond === "dirty" ? "Room not cleaned yet" : cond === "clean" ? (inspectRule ? "Room awaits inspection" : "Room cleaned") : "Room needs a touch-up", c: cond === "dirty" ? "var(--color-red)" : "var(--color-orange)" }
+      : cond === "inspected" ? { text: "Room ready", c: "var(--color-green)" } : null;
+    const at = (d: string) => new Date(d + "T12:00:00");   // midday, so no time zone moves the date
+    const nights = Math.max(1, Math.round((at(b.check_out).getTime() - at(b.check_in).getTime()) / 86400000));
+    const party = b.adults + b.children;
+    const dueOut = kind === "inhouse" && b.check_out <= today;
+    const night = Math.min(nights, Math.max(1, Math.round((at(today).getTime() - at(b.check_in).getTime()) / 86400000) + 1));
+    const inDays = Math.max(1, Math.round((at(b.check_in).getTime() - at(today).getTime()) / 86400000));
+    const badge = kind === "arrival" ? (b.check_in < today ? `Due since ${fmtDate(at(b.check_in).toISOString())}` : "Arriving today")
+      : kind === "upcoming" ? (inDays === 1 ? "Tomorrow" : `In ${inDays} days`)
+      : dueOut ? "Due out" : `Night ${night} of ${nights}`;
+    const toneVar = dueOut ? "var(--color-red)" : kind === "arrival" ? "var(--color-green)" : kind === "upcoming" ? "var(--color-blue)" : "var(--color-orange)";
+    const name = b.guests?.full_name ?? "Guest";
+    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
+    const wd = (d: string) => at(d).toLocaleDateString("en-IN", { weekday: "short" });
     return (
-      <Link href={`/frontdesk/${b.id}`} className="feather feather-lift flex items-center gap-4 p-4">
-        <div className="keycard h-12 w-14 grid place-items-center font-display text-lg shrink-0 relative">{b.rooms?.number}{cond && <span title={`Housekeeping: ${cond}`} className={cn("absolute top-1 right-1 h-2 w-2 rounded-full", CONDITION_DOT[cond] ?? "bg-steel")} />}</div>
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold truncate flex items-center gap-1.5">{b.guests?.vip && <Star size={13} className="text-champagne fill-current shrink-0" aria-label="VIP" />}{b.guests?.full_name}</div>
-          <div className="text-xs text-steel num truncate">#{b.booking_no} · {b.check_in.slice(5)} → {b.check_out.slice(5)} · {b.rooms?.room_types?.name} · <Users size={10} className="inline" /> {b.adults + b.children}</div>
-          {b.guests?.preferences && <div className="text-xs text-champagne truncate mt-0.5">{b.guests.preferences}</div>}
-          {cond && cond !== "inspected" && <div className={cn("text-[11px] mt-0.5", cond === "dirty" ? "text-chili" : "text-[var(--color-orange)]")}>{cond === "dirty" ? "Room not cleaned yet" : cond === "clean" ? (inspectRule ? "Room awaits inspection" : "Room cleaned") : "Room needs a touch-up"}</div>}
-          {b.precheckin_at && b.status === "reserved" && <div className="text-[11px] mt-0.5 text-[var(--color-green)] font-semibold flex items-center gap-1"><CheckCircle2 size={11} className="shrink-0" /> Checked in online{b.precheckin?.arrival_time ? ` · arriving ${b.precheckin.arrival_time}` : ""}</div>}
+      <Link href={`/frontdesk/${b.id}`} className={sc.card} style={{ "--tone": toneVar } as React.CSSProperties} data-booking={b.booking_no} data-kind={kind}>
+        <div className={sc.band}>
+          <div className={sc.room}>
+            <div className={sc.roomLabel}>Room</div>
+            <div className={sc.roomNo}><span className="num">{b.rooms?.number ?? "—"}</span>{tone && <span className={sc.dot} title={`Housekeeping: ${tone.label}`} style={{ background: tone.c, boxShadow: `0 0 0 3px color-mix(in srgb, ${tone.c} 22%, transparent)` }} data-room-dot />}</div>
+            <div className={sc.roomType}>{b.rooms?.room_types?.name ?? "Room"}</div>
+          </div>
+          <span className={sc.badge} data-badge><span className={sc.badgeDot} aria-hidden />{badge}</span>
+        </div>
+        <div className={sc.perf} aria-hidden />
+        <div className={sc.body}>
+          <div className={sc.guest}>
+            <span className={sc.avatar} aria-hidden>{initials || "G"}</span>
+            <div className={sc.who}>
+              <div className={sc.name}>{b.guests?.vip && <Star size={15} className="text-champagne fill-current shrink-0" aria-label="VIP" />}<span>{name}</span></div>
+              <div className={sc.meta}><span className="num">{party}</span> {party === 1 ? "guest" : "guests"} · <span className="num">#{b.booking_no}</span></div>
+            </div>
+          </div>
+          <div className={sc.stay} data-stay>
+            <div className={sc.end}><div className={sc.endLabel}>Check-in</div><div className={sc.endDate}>{fmtDate(at(b.check_in).toISOString())}</div><div className={sc.endDay}>{wd(b.check_in)}</div></div>
+            <div className={sc.track}><span className={sc.nights}><Moon size={12} aria-hidden />{nights === 1 ? "1 night" : `${nights} nights`}</span></div>
+            <div className={cn(sc.end, sc.out)}><div className={sc.endLabel}>Check-out</div><div className={sc.endDate}>{fmtDate(at(b.check_out).toISOString())}</div><div className={sc.endDay}>{wd(b.check_out)}</div></div>
+          </div>
+          {(state || (b.precheckin_at && b.status === "reserved")) && (
+            <div className={sc.chips}>
+              {state && <span className={sc.chip} style={{ color: state.c, background: `color-mix(in srgb, ${state.c} 12%, transparent)` }} data-room-state><span aria-hidden className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: state.c }} /><span>{state.text}</span></span>}
+              {b.precheckin_at && b.status === "reserved" && <span className={cn(sc.chip, "bg-[var(--color-green-2)] text-[var(--color-green)]")}><CheckCircle2 size={13} className="shrink-0" aria-hidden /><span>Checked in online{b.precheckin?.arrival_time ? ` · arriving ${b.precheckin.arrival_time}` : ""}</span></span>}
+            </div>
+          )}
+          {b.guests?.preferences && <div className={sc.note}><Sparkles size={14} aria-hidden /><span>{b.guests.preferences}</span></div>}
           {better && (
             <button type="button" title={`Room ${better.number} (${better.condition}) is ready — same type`} aria-label={`Move to room ${better.number}, which is ready`} disabled={pending} onClick={(e) => { e.preventDefault(); start(async () => { const r = await moveRoom(b.id, better.id); if ("error" in r) toast(r.error!, "err"); else toast(`${b.guests?.full_name ?? "Guest"} moved to room ${r.number}`); }); }}
-              className="mt-1.5 min-h-10 px-3 rounded-full inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110 transition max-w-full">
-              <ArrowRightLeft size={13} className="shrink-0" /><span className="truncate">Move to {better.number}</span>
+              className="mt-3 min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-green-2)] text-[var(--color-green)] hover:brightness-110 transition max-w-full">
+              <ArrowRightLeft size={14} className="shrink-0" /><span className="truncate">{`Move to ${better.number} · ready now`}</span>
             </button>
           )}
         </div>
-        <div className="num text-sm font-semibold hidden sm:block shrink-0">{formatINR(Number(b.rate))}/n</div>
-        {action}
+        <div className={sc.foot}>
+          <span className={sc.rate}><b className="num">{formatINR(Number(b.rate), { whole: true })}</b><small> / night</small></span>
+          <span className={sc.act}>{action ?? <span className={sc.folio}>Folio <ChevronRight size={16} aria-hidden /></span>}</span>
+        </div>
       </Link>
     );
   };
@@ -70,11 +114,11 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
         </div></div>
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="min-w-0"><Head icon={<LogIn size={16} />} tone="green" label="Arrivals" n={arrivals.length} />
-          <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} action={<Button size="sm" variant="ink" disabled={pending} onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}>Check in</Button>} />)}{arrivals.length === 0 && <p className="text-sm text-steel">No pending arrivals.</p>}</div>
+          <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} kind="arrival" action={<Button size="sm" variant="ink" disabled={pending} data-check-in onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}><LogIn size={15} /> Check in</Button>} />)}{arrivals.length === 0 && <EmptyState size="sm" icon={LogIn} hue="tint" title="No arrivals waiting" hint="Everyone due today is in. A walk-in? Make a booking." data-fd-empty="arrivals" actions={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div>
           <div className="mt-7"><Head icon={<CalendarDays size={16} />} tone="blue" label="Upcoming" n={upcoming.length} /></div>
-          <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} action={<button className="text-xs text-steel hover:text-chili" onClick={(e) => { e.preventDefault(); if (confirm("Cancel this booking?")) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); }}>cancel</button>} />)}{upcoming.length === 0 && <p className="text-sm text-steel">Nothing upcoming.</p>}</div></section>
+          <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} kind="upcoming" action={<button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full text-[13px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors" onClick={(e) => { e.preventDefault(); if (confirm("Cancel this booking?")) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); }}>Cancel</button>} />)}{upcoming.length === 0 && <EmptyState size="sm" icon={CalendarDays} hue="blue" title="Nothing coming up" hint="Bookings for the coming days line up here." data-fd-empty="upcoming" />}</div></section>
         <section className="min-w-0"><Head icon={<Moon size={16} />} tone="orange" label="In house" n={inHouse.length} />
-          <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} action={b.check_out <= today ? <Pill tone="alert">due out</Pill> : <Pill tone="gold">night {Math.max(1, Math.round((Date.now() - new Date(b.check_in).getTime()) / 86400000))}</Pill>} />)}{inHouse.length === 0 && <Empty title="No guests in house" hint="Check in an arrival or walk-in." />}</div></section>
+          <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} kind="inhouse" />)}{inHouse.length === 0 && <EmptyState icon={Moon} hue="orange" title="No guests in house" hint="Check in an arrival, or book a walk-in and check them straight in." data-fd-empty="inhouse" actions={<Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>} />}</div></section>
       </div>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="New booking" wide>

@@ -5,7 +5,7 @@ import { THEME_BOOT, ThemeKeeper } from "@/components/ui/Theme";
 import { FullLanguage } from "@/components/ui/FullLanguage";
 import { LANG_BOOT } from "@/lib/i18n/scope";
 import { SIDEBAR_BOOT } from "@/lib/sidebar";
-import { SPLASH_BOOT } from "@/lib/splash";
+import { SPLASH_BOOT, LAUNCH_IMAGES } from "@/lib/splash";
 import { INSTALL_CAPTURE } from "@/lib/install";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { FirstPaint } from "@/components/FirstPaint";
@@ -81,6 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="DineFlow" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        {LAUNCH_IMAGES.map(([f, m]) => <link key={f} rel="apple-touch-startup-image" href={`/splash/${f}`} media={`screen and ${m}`} />)}
         {process.env.NEXT_PUBLIC_SUPABASE_URL && <><link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" /><link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} /></>}<script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /><script dangerouslySetInnerHTML={{ __html: LANG_BOOT }} /><script dangerouslySetInnerHTML={{ __html: SIDEBAR_BOOT }} /><script dangerouslySetInnerHTML={{ __html: SPLASH_BOOT }} /><script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} /></head>
       <body><NavProgress /><ThemeKeeper /><FullLanguage /><FirstPaint>{children}</FirstPaint><ServiceWorker /></body>
     </html>

@@ -1406,6 +1406,26 @@ button.svc-chip { transition: filter var(--dur-fast); } button.svc-chip:hover { 
 button.svc-chip[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--st-ink, var(--color-label)); }
 
 /* the big buttons: 56px, 64 for the one that matters most on the screen */
+/* ── .fill-tiles: tiles 2 across on a phone, 3 from 640px, 5 from 1024px — and the last row always full (2026-10-24,
+   the owner: "the bottom card must fill the empty space"). A phone: an odd last tile spans the row. From 640px the
+   grid is six tracks, two per tile, so a last row of two becomes halves and a last row of one spans it. Menu → More
+   tools, Chain's totals, Work records' figures and the notification settings' devices use it; .fill-3 stops at three
+   across, for a grid in a narrow column. */
+.fill-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.fill-tiles > * { min-width: 0; }
+.fill-tiles > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (min-width: 640px) {
+  .fill-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .fill-tiles > *, .fill-tiles > :last-child:nth-child(odd) { grid-column: span 2; }
+  .fill-tiles > :nth-child(3n+1):nth-last-child(2), .fill-tiles > :nth-child(3n+1):nth-last-child(2) + * { grid-column: span 3; }
+  .fill-tiles > :nth-child(3n+1):last-child { grid-column: 1 / -1; }
+}
+@media (min-width: 1024px) {
+  .fill-tiles:not(.fill-3) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .fill-tiles:not(.fill-3) > *, .fill-tiles:not(.fill-3) > :last-child:nth-child(odd), .fill-tiles:not(.fill-3) > :nth-child(3n+1):nth-last-child(2),
+  .fill-tiles:not(.fill-3) > :nth-child(3n+1):nth-last-child(2) + *, .fill-tiles:not(.fill-3) > :nth-child(3n+1):last-child { grid-column: auto; }
+}
+
 .svc-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 6px 20px; border-radius: 18px; font-weight: 800; font-size: 17px; line-height: 1.1; text-align: center; user-select: none; min-width: 0;
   transition: transform var(--dur-fast) var(--ease-out), filter var(--dur-fast), background var(--dur-fast); }
 .svc-btn:active { transform: scale(.97); }
@@ -1911,32 +1931,37 @@ html[data-palette="royal"] nav.tabbar { border-color: rgb(184 145 58 / .35); }
 /* the hero's own lights, on the dark cover in every theme */
 .store-hero { --cv-star: #ffc94a; --cv-open: #5ee39a; --cv-closed: #ff7a6b; }
 
-/* ═══ SPLASH — the installed app's opening screen (lib/splash.ts, 2026-10-23) ═══════════════════════════════════
-   Drawn only while <html data-splash> is set, from pseudo-elements (nothing in the page React renders):
-     html::before  the dark screen, the same colour as the Android system splash and the theme colour
-     html::after   the logo — scales in with a soft green glow, then breathes once
-     body::before  a green ring that widens out from behind the logo and fades
+/* ═══ SPLASH — the installed app's opening screen (lib/splash.ts, 2026-10-23; emerald 2026-10-24) ══════════════════
+   The same look as the service worker's launch loader (public/sw.js, boot), so one runs into the other, and the colour
+   of the launch screen the phone shows first (manifest background_color, the iPhone launch images in public/splash/).
+   Never black (2026-10-24, the owner: "a black screen when the app opens again"). Drawn only while <html data-splash>
+   is set, from pseudo-elements (nothing in the page React renders):
+     html::before  the emerald sky
+     html::after   the logo (its own dark tile) — pops in, then floats
+     body::before  a glowing ring that spins around the logo (a masked conic gradient, rotated)
      body::after   "DineFlow", rising in under the logo
    Only transform and opacity move (the compositor rule, design-system.md). "out" fades the lot in 0.35 s. */
-html[data-splash]::before { content: ""; position: fixed; inset: 0; z-index: 2147483000; background: radial-gradient(60vmax 60vmax at 50% 44%, #10261b 0%, #0a0a0d 62%); pointer-events: all; transition: opacity .35s ease; }
-html[data-splash]::after { content: ""; position: fixed; left: 50%; top: 44%; width: 112px; height: 112px; margin: -56px 0 0 -56px; z-index: 2147483002;
-  background: url(/icon-192.png) center / contain no-repeat; border-radius: 26px; box-shadow: 0 18px 50px -12px rgb(46 230 160 / .35);
-  animation: splash-logo .7s cubic-bezier(.16, 1, .3, 1) both, splash-breathe 1.6s ease-in-out .7s infinite; transition: opacity .3s ease; }
-html[data-splash] body::before { content: ""; position: fixed; left: 50%; top: 44%; width: 112px; height: 112px; margin: -56px 0 0 -56px; z-index: 2147483001;
-  border-radius: 30px; border: 2px solid rgb(46 230 160 / .55); animation: splash-ring 1.4s cubic-bezier(.2, .7, .3, 1) .25s infinite; opacity: 0; pointer-events: none; }
-html[data-splash] body::after { content: "DineFlow"; position: fixed; left: 0; right: 0; top: calc(44% + 78px); z-index: 2147483002; text-align: center;
-  font-family: var(--font-display), system-ui, sans-serif; font-size: 26px; letter-spacing: .06em; color: #f4f4f1;
-  animation: splash-word .6s cubic-bezier(.16, 1, .3, 1) .3s both; pointer-events: none; }
+html[data-splash]::before { content: ""; position: fixed; inset: 0; z-index: 2147483000; background: radial-gradient(70vmax 70vmax at 20% 10%, rgb(64 238 170 / .35), transparent 60%), radial-gradient(70vmax 70vmax at 90% 95%, rgb(56 189 248 / .25), transparent 60%), linear-gradient(165deg, #13805a 0%, #0b4a35 48%, #052a1e 100%); pointer-events: all; transition: opacity .35s ease; }
+html[data-splash]::after { content: ""; position: fixed; left: 50%; top: 44%; width: 104px; height: 104px; margin: -52px 0 0 -52px; z-index: 2147483002;
+  background: url(/icon-192.png) center / cover no-repeat; border-radius: 28px; box-shadow: 0 22px 50px -14px rgb(0 0 0 / .55);
+  animation: splash-logo .7s cubic-bezier(.16, 1, .3, 1) both, splash-float 3.2s ease-in-out .7s infinite; transition: opacity .3s ease; }
+html[data-splash] body::before { content: ""; position: fixed; left: 50%; top: 44%; width: 184px; height: 184px; margin: -92px 0 0 -92px; z-index: 2147483001; border-radius: 50%;
+  background: conic-gradient(from 0deg, rgb(255 255 255 / 0) 0deg, rgb(64 238 170 / 0) 40deg, #40eeaa 200deg, #d9fff0 300deg, rgb(255 255 255 / 0) 360deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 84%, #000 86%, #000 97%, transparent 99%); mask: radial-gradient(closest-side, transparent 84%, #000 86%, #000 97%, transparent 99%);
+  animation: splash-spin 1.15s linear infinite; pointer-events: none; }
+html[data-splash] body::after { content: "DineFlow"; position: fixed; left: 0; right: 0; top: calc(44% + 112px); z-index: 2147483002; text-align: center;
+  font: 800 30px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; letter-spacing: .02em; color: #f2fbf6;
+  animation: splash-word .6s cubic-bezier(.16, 1, .3, 1) .2s both; pointer-events: none; }
 html[data-splash="out"]::before, html[data-splash="out"]::after, html[data-splash="out"] body::before, html[data-splash="out"] body::after { opacity: 0 !important; transition: opacity .35s ease; }
 html[data-splash="out"]::after { animation: splash-leave .35s ease-in both; }
-@keyframes splash-logo { from { transform: scale(.72); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes splash-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
-@keyframes splash-ring { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(1.9); opacity: 0; } }
-@keyframes splash-word { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes splash-logo { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes splash-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes splash-spin { to { transform: rotate(360deg); } }
+@keyframes splash-word { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes splash-leave { to { transform: scale(1.08); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   html[data-splash]::after, html[data-splash] body::after { animation: none; }
-  html[data-splash] body::before { display: none; }
+  html[data-splash] body::before { animation-duration: 2.4s; }
 }
 
 /* the ready bubbles (components/shell/ReadyDock.tsx, 2026-10-24): a soft ring widens out and fades while food waits —

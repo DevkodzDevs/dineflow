@@ -566,3 +566,9 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
 
 - **0137 stock stops orders, 0138 Assist access, 0139 who took a payment** (2026-10-24, all applied; dry137 7/7, dry138 9/9,
   dry139 1/1). 0137 rebuilds `place_order` and 0138 `session_bundle` from their live definitions with one change each.
+- **0140 — Connections, grants, delivery tracking, reports by department (2026-10-24, applied; dry140.cjs 35/35, rolled
+  back).** `profiles.grants text[]`, `_grant_allowed`, `staff_set_grant` (the owner only); `session_bundle` rebuilt from its
+  live definition (byte-checked against 0138's) with `grants`. `restaurants.delivery_tracking`, `online_orders.track_token`
+  (minted with the order; backfilled), the `deliveries` table (tenant read for authenticated; no direct writes — `delivery_assign`
+  for staff; `delivery_track`, `delivery_rider_view`, `delivery_rider_set`, `dine_track_token` for anon, each keyed by a
+  token alone). `report_departments(p_from, p_to)`: the owner, the grant or the master; at most a year; lists capped.

@@ -6,7 +6,7 @@
  *   everything else GET → stale-while-revalidate
  * Writes are never touched here; they go through the IndexedDB outbox so they survive a reload.
  */
-const V = "dineflow-v18";   // v17 dropped the redirected page copies v16 kept (see keep); v18 keeps /login and answers a failed page with the reconnect page
+const V = "dineflow-v19";   // v17 dropped redirected copies; v18 kept /login and the reconnect page; v19 adds the launch loader (boot)
 const SHELL = ["/", "/icon-192.png", "/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/scan", "/tomorrow", "/inventory", "/menu", "/login", "/offline"];
 
 /* Install and activate never fail on storage. When the browser cannot open its cache (low space,
@@ -22,7 +22,10 @@ const keep = async (c, path) => { try { const r = await fetch(path, { credential
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => Promise.all(SHELL.map((p) => keep(c, p)))).catch(() => {}).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => { e.waitUntil((async () => {
   try { const keys = await caches.keys(); await Promise.all(keys.filter((k) => k !== V).map((k) => caches.delete(k))); } catch { /* storage unavailable */ }
-  try { if (self.registration.navigationPreload) await self.registration.navigationPreload.enable(); } catch { /* not supported */ }
+  /* navigation preload off (v19): the launch loader holds a page's answer past its own event, and Safari's engine cancels
+     a preload the moment the event is answered with something else — the held answer never landed and the loader
+     spun. A plain fetch belongs to the worker and finishes. Preload saved only the worker's own wake-up. */
+  try { if (self.registration.navigationPreload) await self.registration.navigationPreload.disable(); } catch { /* not supported */ }
   await self.clients.claim();
 })()); });
 
@@ -86,9 +89,85 @@ wait();
 })();
 </script></body></html>`, { status: 503, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "retry-after": "5" } });
 
+/* ── The launch loader (2026-10-24, the owner: "after the app is minimised it opens to a black screen — show the logo
+   with a loading animation instead; never a black or blank screen, never a delay feeling"). A page the network has
+   not answered in 0.9 s — a phone waking the app after the system closed it, a server waking from idle — is answered at
+   once with this screen, whole in this file (nothing to fetch but the cached logo). The network keeps going: its answer
+   is held here (`waiting`), the screen asks /__df/ready when it lands, and reloads into it — the held answer is served
+   straight away, so nothing is fetched twice. A failure or a slow minute falls back to the copy / reconnect page as
+   before. Brand emerald, never black; endless motion only on transform and opacity. */
+const waiting = new Map();   // page URL → { p: Promise<Response>, at }
+const BOOT_AFTER = 900;
+const boot = () => new Response(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b4a35"><meta name="robots" content="noindex"><title>DineFlow</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#0b4a35;color:#f2fbf6;font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.sky{position:fixed;inset:0;background:linear-gradient(165deg,#13805a 0%,#0b4a35 48%,#052a1e 100%)}
+.blob{position:fixed;width:80vmax;height:80vmax;border-radius:50%;opacity:.5;will-change:transform}
+.b1{left:-30vmax;top:-34vmax;background:radial-gradient(closest-side,rgba(64,238,170,.55),rgba(64,238,170,0));animation:drift1 9s ease-in-out infinite alternate}
+.b2{right:-34vmax;bottom:-36vmax;background:radial-gradient(closest-side,rgba(56,189,248,.42),rgba(56,189,248,0));animation:drift2 11s ease-in-out infinite alternate}
+.b3{left:20vmax;bottom:-50vmax;width:60vmax;height:60vmax;background:radial-gradient(closest-side,rgba(250,204,21,.2),rgba(250,204,21,0));animation:drift1 13s ease-in-out infinite alternate-reverse}
+main{position:relative;height:100%;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom))}
+.c{display:flex;flex-direction:column;align-items:center;text-align:center}
+.stage{position:relative;width:184px;height:184px;display:grid;place-items:center}
+.spin{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(255,255,255,0) 0deg,rgba(64,238,170,.0) 40deg,#40eeaa 200deg,#d9fff0 300deg,rgba(255,255,255,0) 360deg);-webkit-mask:radial-gradient(closest-side,transparent 84%,#000 86%,#000 97%,transparent 99%);mask:radial-gradient(closest-side,transparent 84%,#000 86%,#000 97%,transparent 99%);animation:spin 1.15s linear infinite}
+.spin2{position:absolute;inset:16px;border-radius:50%;border:1.5px dashed rgba(217,255,240,.35);animation:spin 6s linear infinite reverse}
+.orbit{position:absolute;inset:-10px;animation:spin 2.6s cubic-bezier(.45,.05,.55,.95) infinite}
+.orbit i{position:absolute;left:50%;top:0;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:#d9fff0;box-shadow:0 0 14px 3px rgba(64,238,170,.8)}
+.orbit i:nth-child(2){top:auto;bottom:0;width:6px;height:6px;margin-left:-3px;background:#7dd3fc;box-shadow:0 0 12px 2px rgba(56,189,248,.8)}
+.glow{position:absolute;width:150px;height:150px;border-radius:50%;background:radial-gradient(closest-side,rgba(64,238,170,.45),rgba(64,238,170,0));animation:pulse 1.8s ease-in-out infinite}
+.logo{position:relative;width:104px;height:104px;border-radius:28px;background:url(/icon-192.png) center/cover no-repeat;box-shadow:0 22px 50px -14px rgba(0,0,0,.55);animation:pop .8s cubic-bezier(.16,1,.3,1) both,float 3.2s ease-in-out .8s infinite}
+.word{margin-top:26px;font-size:30px;font-weight:800;letter-spacing:.02em;animation:rise .7s cubic-bezier(.16,1,.3,1) .15s both}
+.word b{font-weight:800;background:linear-gradient(90deg,#fff,#a7f3d0,#fff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.bar{position:relative;width:180px;height:5px;margin-top:20px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;animation:rise .7s cubic-bezier(.16,1,.3,1) .25s both}
+.bar i{position:absolute;inset:0;width:45%;border-radius:999px;background:linear-gradient(90deg,rgba(64,238,170,0),#40eeaa,#e6fff5);animation:sweep 1.25s cubic-bezier(.45,.05,.55,.95) infinite}
+.say{margin-top:14px;min-height:22px;font-size:14.5px;font-weight:600;color:rgba(230,255,244,.85);transition:opacity .35s ease,transform .35s ease}
+.say.out{opacity:0;transform:translateY(6px)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{transform:scale(.88);opacity:.55}50%{transform:scale(1.12);opacity:1}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes rise{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes sweep{from{transform:translateX(-110%)}to{transform:translateX(230%)}}
+@keyframes drift1{from{transform:translate(0,0) scale(1)}to{transform:translate(8vmax,6vmax) scale(1.15)}}
+@keyframes drift2{from{transform:translate(0,0) scale(1.1)}to{transform:translate(-7vmax,-5vmax) scale(.95)}}
+@media (prefers-reduced-motion:reduce){.blob,.spin2,.orbit,.glow,.logo{animation:none}.spin{animation-duration:2.4s}.bar i{animation-duration:2.4s}}
+</style></head><body><div class="sky"></div><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+<main><div class="c" role="status" aria-live="polite"><div class="stage"><div class="glow"></div><div class="spin"></div><div class="spin2"></div><div class="orbit"><i></i><i></i></div><div class="logo" aria-hidden="true"></div></div>
+<div class="word"><b>DineFlow</b></div><div class="bar" aria-hidden="true"><i></i></div><div class="say" id="say"></div></div></main>
+<script>
+(function(){
+var ck=function(k){var m=document.cookie.match(new RegExp("(?:^|; )"+k+"=([^;]*)"));return m?decodeURIComponent(m[1]):""};
+var L={en:["Waking up DineFlow…","Syncing your day…","Bringing in the latest…","Almost ready…","Taking a little longer — hang on…"],
+ta:["DineFlow தயாராகிறது…","இன்றைய தகவல்கள் ஒத்திசைகிறது…","சமீபத்தியவை வருகின்றன…","கிட்டத்தட்ட தயார்…","சற்று நேரம் ஆகிறது — காத்திருங்கள்…"],
+hi:["DineFlow तैयार हो रहा है…","आपका दिन सिंक हो रहा है…","ताज़ा जानकारी आ रही है…","बस तैयार…","थोड़ा समय लग रहा है — रुकिए…"]};
+var lg=ck("df-lang"),S=L[lg]||L.en;document.documentElement.lang=L[lg]?lg:"en";
+var say=document.getElementById("say"),i=0;say.textContent=S[0];
+var turn=setInterval(function(){i=Math.min(i+1,S.length-1);say.className="say out";setTimeout(function(){say.textContent=S[i];say.className="say"},350);if(i>=S.length-1)clearInterval(turn)},2200);
+try{sessionStorage.setItem("df-splash","1")}catch(e){}
+var go=function(){location.replace(location.href)};
+var waits=0,ask=function(){fetch("/__df/ready?u="+encodeURIComponent(location.href),{cache:"no-store"}).then(function(r){return r.text()}).then(function(t){if(t==="wait"&&++waits<2)ask();else go()}).catch(function(){setTimeout(go,1500)})};
+ask();
+setTimeout(go,60000);
+})();
+</script></body></html>`, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+
+/* /__df/ready?u=<page>: the loader asks whether the held answer has landed — "ok", "fail", "wait" (still going after 20 s;
+   it asks again) or "gone" (nothing held: reload and fetch as usual) */
+const ready = async (u) => {
+  const h = u && waiting.get(u);
+  const say = (t) => new Response(t, { headers: { "content-type": "text/plain", "cache-control": "no-store" } });
+  if (!h) return say("gone");
+  return say(await Promise.race([h.p.then(() => "ok", () => "fail"), new Promise((ok) => setTimeout(() => ok("wait"), 20000))]));
+};
+/* the loader is for pages, not a file someone is downloading */
+const bootable = (url) => !/\.[a-z0-9]{2,5}$/i.test(url.pathname) && !url.pathname.startsWith("/get/") && !url.pathname.startsWith("/__df");
+/* a page's answer as the browser gets it: the host's 502/503/504 become the reconnect page */
+const finish = async (req, r) => (r.status === 502 || r.status === 503 || r.status === 504 ? reconnect("down") : plain(await put(req, r)));
+
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== location.origin) return;      // writes and third parties pass through
+  if (url.pathname === "/__df/ready") { e.respondWith(ready(url.searchParams.get("u"))); return; }
   if (url.pathname.startsWith("/api/")) return;                                   // never cache an answer that must be current
   /* Next.js's own page data — a tap on a link, router.refresh() (every live screen does one every
      10–60 s), a prefetch — is a GET with ?_rsc= and an RSC header. It must always come from the
@@ -111,16 +190,28 @@ self.addEventListener("fetch", (e) => {
      The reconnect page retries by itself and opens the page the moment the server answers. */
   if (e.request.mode === "navigate") {
     e.respondWith((async () => {
-      let timer;
+      /* the loader's reload: take the answer held for this page (once) instead of asking the server again */
+      const key = e.request.url, held = waiting.get(key);
+      if (held) waiting.delete(key);
+      /* nothing in 40 s: the server is not waking — the reconnect page takes over (it keeps asking, and opens the page) */
+      if (held && !held.done && Date.now() - held.at > 40000) return reconnect("slow");
+      const net = held && Date.now() - held.at < 90000 ? held.p : fetch(e.request);
+      let timer, bootT;
       const late = new Promise((r) => { timer = setTimeout(() => r("late"), 25000); });
-      const net = (async () => { const pre = await e.preloadResponse; return pre || fetch(e.request); })();
+      const early = bootable(url) ? new Promise((r) => { bootT = setTimeout(() => r("boot"), BOOT_AFTER); }) : null;
       try {
-        const r = await Promise.race([net, late]);
+        const r = await Promise.race(early ? [net, late, early] : [net, late]);
+        if (r === "boot") {
+          const h = held && held.p === net ? held : { p: net, at: Date.now(), done: false };   // a re-held answer keeps its first time
+          if (h !== held) net.then(() => { h.done = true; }, () => { h.done = true; });
+          waiting.set(key, h);
+          e.waitUntil(net.catch(() => {}).then(() => new Promise((ok) => setTimeout(ok, 30000))));   // keep the held answer alive for the reload
+          return boot();
+        }
         if (r === "late") return reconnect("slow");
-        if (r.status === 502 || r.status === 503 || r.status === 504) return reconnect("down");
-        return plain(await put(e.request, r));
+        return finish(e.request, r);
       } catch { return (await copy(e.request)) || reconnect("offline"); }
-      finally { clearTimeout(timer); }
+      finally { clearTimeout(timer); clearTimeout(bootT); }
     })());
     return;
   }

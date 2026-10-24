@@ -200,3 +200,5 @@ A new place that shows a dish photo uses `DishImage`, not a bare `<img src={imag
   line on what it is for (wraps, never cut) — two across on a phone, three on a tablet, five on a desktop. Were five
   outline buttons wrapping into uneven rows. `[data-recipes]` and `[data-find-photos]` are kept on their tiles.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+- **More tools fills its last row** (`.fill-tiles`, 2026-10-24): 2 + 2 + Find photos across the row on a phone, 3 + two
+  halves from 640px, 5 in a row from 1024px. "Find photos" sat alone beside a hole. See design-system.md.

@@ -10,6 +10,8 @@ import { useState } from "react";
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import { MoreReports } from "./MoreReports";
 import { reportTables, toSheet, type Extra } from "./tables";
+import { Departments } from "./Departments";
+import type { Dept } from "./deptSpec";
 
 /** Already added up by report_summary() in the database, so the size of the window stops mattering. */
 export type Summary = {
@@ -29,7 +31,7 @@ export type HotelKpis = { rooms: number; sellable?: number; ooo?: number; days: 
   by_day: { day: string; occupied: number; total: number; occ_pct: number; revenue: number; adr: number; revpar: number }[] };
 export type AuditRow = { business_date: string; occupancy_pct: number; adr: number; revpar: number; room_revenue: number; no_shows: number; discrepancies: number };
 
-export function ReportsClient({ days, summary, closes, kitchen = null, hotel = null, audits = [], breakdown = null, extra = null, property = "" }: { days: number; summary: Summary; closes: Close[]; kitchen?: KitchenSpeed | null; hotel?: HotelKpis | null; audits?: AuditRow[]; breakdown?: Breakdown | null; extra?: Extra | null; property?: string }) {
+export function ReportsClient({ days, summary, closes, kitchen = null, hotel = null, audits = [], breakdown = null, extra = null, dept = null, lodging = false, property = "" }: { dept?: Dept | null; lodging?: boolean; days: number; summary: Summary; closes: Close[]; kitchen?: KitchenSpeed | null; hotel?: HotelKpis | null; audits?: AuditRow[]; breakdown?: Breakdown | null; extra?: Extra | null; property?: string }) {
   const [busy, setBusy] = useState<"xlsx" | "pdf" | null>(null);
   const period = extra ? `${extra.from} to ${extra.to}` : days === 1 ? "today" : `last ${days} days`;
   const fileBase = `${(property || "report").replace(/[^\w]+/g, "-").toLowerCase()}-${days === 1 ? "today" : `${days}d`}`;
@@ -37,7 +39,7 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
   const exportAs = async (kind: "xlsx" | "pdf") => {
     setBusy(kind);
     try {
-      const tables = reportTables(summary, breakdown, extra);
+      const tables = reportTables(summary, breakdown, extra, dept, lodging);
       const { download, xlsx, XLSX_TYPE } = await import("@/lib/xlsx");
       if (kind === "xlsx") download(`${fileBase}.xlsx`, xlsx(tables.map(toSheet)), XLSX_TYPE);
       else { const { tablesPdf } = await import("@/lib/tablePdf"); download(`${fileBase}.pdf`, new Uint8Array(await tablesPdf(`${property} · Reports`, `${period} (IST) · made ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`, tables)), "application/pdf"); }
@@ -51,6 +53,8 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
         <button type="button" disabled={!!busy} onClick={() => void exportAs("xlsx")} className="svc-btn quiet sm !px-4" data-export-xlsx>{busy === "xlsx" ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <FileSpreadsheet size={16} aria-hidden />} Excel</button>
         <button type="button" disabled={!!busy} onClick={() => void exportAs("pdf")} className="svc-btn quiet sm !px-4" data-export-pdf>{busy === "pdf" ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <FileText size={16} aria-hidden />} PDF</button>
       </div>
+      {/* every department (0140): in and out by day, the shares, then a table each with its own Excel and PDF */}
+      {dept && <Departments d={dept} lodging={lodging} property={property} fileBase={fileBase} period={period} />}
       {/* four money figures, never a flap, so the row is .stat-flat: no band to line up with a
           flap tile, the number sits under its label and the tile is as tall as its words */}
       <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 stat-flat" data-kpis>

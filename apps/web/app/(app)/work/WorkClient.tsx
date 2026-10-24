@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Timer, Hourglass, ListChecks, AlertTriangle, Users, Plus, ChefHat, ClipboardCheck } from "lucide-react";
 import { DEPARTMENTS } from "@dineflow/shared";
-import { Card, Sheet, cn, useToast } from "@/components/ui";
+import { Card, Sheet, cn, useToast, FlapBreathe, FlapShuffle } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { Rail } from "@/components/ui/Rail";
 import { useLive } from "@/lib/useLive";
@@ -89,12 +89,33 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
   return (
     <div className="space-y-5" data-work>
       {error && <p className="text-[14px] font-semibold text-chili" role="alert">{error}</p>}
+      {/* the four counts as split-flaps (2026-10-24, the owner: "number flap design") — the same tiles as Cleaning and the
+          control room: what is waiting breathes while there is any, Late breathes red, the others shuffle when they change.
+          Each state keeps its colour: waiting amber, on it blue, late red, done green. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5" data-work-stats>
-        {([[Hourglass, "Waiting", String(all.filter((j) => j.status === "pending" && !isUpcoming(j)).length), ""], [Timer, "On it", String(all.filter((j) => j.status === "in_progress").length), ""],
-          [AlertTriangle, "Late", String(late), late ? "!border-[var(--color-red)]" : ""], [ListChecks, "Done today", String(all.filter((j) => j.status === "done").length), ""]] as const).map(([I, k, v, extra]) => (
-          <div key={k} className={cn("feather !rounded-[18px] px-4 py-3 min-w-0 flex items-center gap-3", extra)}>
-            <span className={cn("h-10 w-10 shrink-0 rounded-xl grid place-items-center", k === "Late" && late ? "bg-[var(--color-red-2)] text-[var(--color-red)]" : "bg-[var(--color-cyan-2)] text-[var(--color-cyan)]")}><I size={19} aria-hidden /></span>
-            <div className="min-w-0"><div className="text-[12px] font-bold text-steel">{k}</div><div className={cn("font-display num text-[24px] leading-tight truncate", k === "Late" && late && "text-[var(--color-red)]")}>{v}</div></div></div>))}
+        {([["waiting", Hourglass, "Waiting", all.filter((j) => j.status === "pending" && !isUpcoming(j)).length, "var(--color-orange)", "var(--color-orange-2)"],
+          ["on", Timer, "On it", all.filter((j) => j.status === "in_progress").length, "var(--color-blue)", "var(--color-blue-2)"],
+          ["late", AlertTriangle, "Late", late, "var(--color-red)", "var(--color-red-2)"],
+          ["done", ListChecks, "Done today", all.filter((j) => j.status === "done").length, "var(--color-green)", "var(--color-green-2)"]] as const).map(([key, I, k, n, hue, hue2]) => (
+          <div key={key} data-work-stat={key} data-n={n} style={{ ["--hue" as string]: hue, ["--hue-2" as string]: hue2 }}
+            className={cn("@container feather !rounded-[20px] p-3.5 sm:p-4 min-w-0 flex flex-col gap-3 relative overflow-hidden", key === "late" && n > 0 && "!border-[color-mix(in_srgb,var(--color-red)_45%,transparent)]")}>
+            <span className="absolute inset-x-0 top-0 h-1 bg-[var(--hue)] opacity-80" aria-hidden />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="h-9 w-9 shrink-0 rounded-xl grid place-items-center bg-[var(--hue-2)] text-[var(--hue)]"><I size={18} aria-hidden /></span>
+              <span className="text-[13.5px] font-bold text-[var(--color-label-2)] truncate">{k}</span>
+            </div>
+            {/* the flap at the size every StatTile wears (.flip-stat — Front desk's arrivals, the control room), a caption beside it */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <div className="flip-stat shrink-0">
+                {key === "waiting" || key === "late"
+                  ? <FlapBreathe value={n} pad={2} size="sm" tone={key === "late" ? "alert" : "live"} on={n > 0} say={`${n} ${k.toLowerCase()}`} />
+                  : <FlapShuffle value={n} pad={2} size="sm" say={`${n} ${k.toLowerCase()}`} />}
+              </div>
+              <span className={cn("min-w-0 flex-1 basis-24 text-[12px] leading-snug", key === "late" && n > 0 ? "text-[var(--color-red)] font-semibold" : "text-[var(--color-label-2)]")}>
+                {key === "waiting" ? (n ? "to be taken" : "nothing waiting") : key === "on" ? (n ? "being done now" : "nobody on a job") : key === "late" ? (n ? "past their time" : "none late") : (n ? "finished today" : "none yet")}
+              </span>
+            </div>
+          </div>))}
       </div>
 
       {/* on a phone: New job on a row of its own, the departments sliding sideways under it (the floor's chip rail) */}

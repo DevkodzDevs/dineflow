@@ -2,7 +2,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Sparkles, Wrench, Check, Trash2 } from "lucide-react";
+import { Plus, Pencil, Sparkles, Wrench, Check, Trash2, BedDouble } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
 import { Button, Sheet, Field, cn, FlapSpell } from "@/components/ui";
 import { Rail } from "@/components/ui/Rail";
@@ -45,7 +46,9 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
               return (
               <motion.div key={r.id} className={cn("keycard feather-lift flex flex-col", r.status)} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}>
                 <Link href={b ? `/frontdesk/${b.id}` : "/frontdesk"} className="flex-1 min-h-[6.5rem] p-3 flex flex-col">
-                  <div className="flex justify-between items-start"><span className="font-display text-2xl inline-flex items-center">{String(r.number).length <= 4 ? <FlapSpell text={String(r.number)} size="xs" tile={String(r.number).length <= 3 ? "36px" : "32px"} bare say={`Room ${r.number}`} /> : r.number}{r.condition && r.status !== "maintenance" && <span title={`Housekeeping: ${r.condition}`} className={cn("inline-block h-2 w-2 rounded-full ml-1.5 align-middle", CONDITION_DOT[r.condition] ?? "bg-steel")} />}</span><span className="text-[10px] font-semibold text-[var(--card-muted)] shrink-0 ml-2">{r.room_types?.name}</span></div>
+                  {/* the number and housekeeping's dot on one line, the type on its own line under it (2026-10-24, the owner: the
+                      text went out of the card). Beside the flaps, "Deluxe Cottage" was shrink-0 and ran past a 184px phone card. */}
+                  <span className="font-display text-2xl inline-flex items-center max-w-full">{String(r.number).length <= 4 ? <FlapSpell text={String(r.number)} size="xs" tile={String(r.number).length <= 3 ? "36px" : "32px"} bare say={`Room ${r.number}`} /> : r.number}{r.condition && r.status !== "maintenance" && <span title={`Housekeeping: ${r.condition}`} className={cn("inline-block h-2 w-2 rounded-full ml-1.5 align-middle", CONDITION_DOT[r.condition] ?? "bg-steel")} />}</span><span className="mt-1.5 block text-[11.5px] font-semibold text-[var(--card-muted)] truncate" title={r.room_types?.name ?? undefined} data-room-type>{r.room_types?.name}</span>
                   <div className="mt-auto text-xs">
                     {r.status === "occupied" && b ? <><div className="font-semibold truncate">{b.guests?.full_name}</div><div className="num text-[var(--card-muted)]">out {b.check_out.slice(5)}</div></>
                       : r.status === "cleaning" ? <span className="flex items-center gap-1 text-ink"><Sparkles size={12} /> cleaning</span>
@@ -62,7 +65,15 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
               </motion.div>); })}
           </div></section>
       ))}
-      {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet. Add room types first.</p>}
+      {/* no rooms (2026-10-24, the owner: "design"): what to do first — a room type and its rate, or, once there is one, the rooms */}
+      {rooms.length === 0 && (
+        <EmptyState icon={BedDouble} hue="blue" data-rooms-empty={types.length ? "rooms" : "types"}
+          title={types.length ? "No rooms yet" : "Start with a room type"}
+          hint={types.length ? `Add each room with its number and floor — you have ${types.length} room type${types.length === 1 ? "" : "s"} ready.` : "A room type is a kind of room and its nightly rate — Deluxe, Suite, Villa. Then add the rooms of that type."}
+          actions={types.length
+            ? <Button onClick={() => setEdit({ floor: floors.at(-1) ?? 1 })}><Plus size={16} /> Add a room</Button>
+            : <Button onClick={() => { setEdit(null); setErr(null); setTypeSheet(true); }}><Plus size={16} /> Add a room type</Button>} />
+      )}
 
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? `Room ${edit.number}` : "New room"}>
         <form className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveRoom(fd); if ("error" in r) setErr(r.error!); else setEdit(null); })}>

@@ -106,3 +106,12 @@ export async function setOnlineAvailable(ids: string[], on: boolean) {
   ["/online-orders", "/menu"].forEach((p) => revalidatePath(p));
   return { ok: true as const, changed: Number(data ?? 0) };
 }
+
+/** Send out (0140 delivery_assign): who rides this order — a staff rider, or a name and phone — and the two links to send. */
+export async function assignRider(onlineOrderId: string, riderId: string | null, name: string | null, phone: string | null, eta: number | null) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("delivery_assign", { p_online_order: onlineOrderId, p_order: null, p_rider: riderId, p_rider_name: name, p_rider_phone: phone, p_eta: eta });
+  if (error) return { error: error.message };
+  revalidatePath("/online-orders");
+  return { ok: true as const, ...(data as { id: string; track_token: string; rider_token: string; rider_name: string | null; rider_phone: string | null; status: string }) };
+}

@@ -1,11 +1,12 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Calculator, Lock, FileText, FileSpreadsheet, HandCoins, Check, Settings2, Wallet, IndianRupee, Landmark, CalendarClock } from "lucide-react";
-import { Card, Empty, cn, useToast } from "@/components/ui";
+import { ChevronLeft, ChevronRight, Calculator, Lock, FileText, FileSpreadsheet, HandCoins, Check, Settings2, Wallet, IndianRupee, Landmark, CalendarClock, Minus, Plus, CalendarDays, CircleDashed, PencilLine } from "lucide-react";
+import { Card, Empty, Switch, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveSettings, setPay, giveAdvance, buildMonth, setLine, finalise, payLine } from "./actions";
 import { Say } from "@/components/ui/Say";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export type Person = { id: string; full_name: string; role: string; pay: { profile_id: string; basis: "monthly" | "daily"; amount: number; pf_on: boolean; esi_on: boolean; pf_basic_pct?: number } | null };
 export type Advance = { id: string; profile_id: string; amount: number; given_on: string; method: string; note: string | null };
@@ -28,7 +29,7 @@ const initials = (n: string) => n.split(/\s+/).map((w) => w[0]).slice(0, 2).join
 
 export function PayrollClient({ month, today, property, settings, people, advances, run, lines }: { month: string; today: string; property: string; settings: { pf: boolean; esi: boolean; offs: number; rule: boolean }; people: Person[]; advances: Advance[]; run: Run | null; lines: Line[] }) {
   const toast = useToast(); const [pending, start] = useTransition();
-  const [cfg, setCfg] = useState(settings);
+  const [cfg, setCfg] = useState(settings); const [saved, setSaved] = useState(settings);
   const [rates, setRates] = useState<Record<string, { basis: "monthly" | "daily"; amount: string; pf: boolean; esi: boolean; basic: string }>>(() =>
     Object.fromEntries(people.map((p) => [p.id, { basis: p.pay?.basis ?? "monthly", amount: p.pay ? String(Number(p.pay.amount)) : "", pf: p.pay?.pf_on ?? true, esi: p.pay?.esi_on ?? true, basic: String(Number(p.pay?.pf_basic_pct ?? 100)) }])));
   const [adv, setAdv] = useState({ who: people[0]?.id ?? "", amount: "", method: "cash", note: "" });
@@ -63,16 +64,41 @@ export function PayrollClient({ month, today, property, settings, people, advanc
       {/* the switches and the advances side by side; the rates take the whole width under them (2026-10-20) */}
       <div className="grid gap-4 md:grid-cols-2 md:items-start">
           {/* ── the switches ── */}
+          {/* the rules, as settings rows (2026-10-24, the owner: "design"): a badge per rule in its own colour, the words,
+              and a switch on the right — the whole row is the tap target; weekly offs is a − n + stepper. Save is the main
+              button only while something has changed, and says Saved when nothing has. */}
           <Card className="min-w-0" data-payroll-settings>
-            <div className="flex items-center gap-2 text-[17px] font-extrabold mb-3"><Settings2 size={18} aria-hidden /> How pay is worked out</div>
-            {([["pf", "PF", "12% staff + 12% you, on pay up to ₹15,000. Needed from 20 staff."], ["esi", "ESI", "0.75% staff + 3.25% you, pay up to ₹21,000/month. Needed from 10 staff."]] as const).map(([k, label, hint]) => (
-              <label key={k} className="flex items-start gap-3 py-2 !min-h-11 cursor-pointer"><input type="checkbox" className="h-5 w-5 mt-0.5" checked={cfg[k]} onChange={(e) => setCfg((c) => ({ ...c, [k]: e.target.checked }))} data-switch={k} />
-                <span><span className="block text-[15px] font-bold">Include {label}</span><span className="block text-[12.5px] text-steel">{hint}</span></span></label>))}
-            <label className="flex items-center justify-between gap-3 py-2"><span><span className="block text-[15px] font-bold">Paid weekly offs a month</span><span className="block text-[12.5px] text-steel">Added to days present for monthly-paid staff</span></span>
-              <input type="number" min={0} max={8} className="!w-20 num text-center" value={cfg.offs} onChange={(e) => setCfg((c) => ({ ...c, offs: Math.max(0, Math.min(8, Number(e.target.value) || 0)) }))} /></label>
-            {cfg.pf && <label className="flex items-start gap-3 py-2 !min-h-11 cursor-pointer"><input type="checkbox" className="h-5 w-5 mt-0.5" checked={cfg.rule} onChange={(e) => setCfg((c) => ({ ...c, rule: e.target.checked }))} data-switch="rule" />
-              <span><span className="block text-[15px] font-bold">The 50% wage rule</span><span className="block text-[12.5px] text-steel">From 21 Nov 2025, PF is on at least half of pay. Check with your CA.</span></span></label>}
-            <button type="button" disabled={pending} className="svc-btn quiet sm w-full mt-2" data-save-payroll-settings onClick={() => act(saveSettings(cfg.pf, cfg.esi, cfg.offs, cfg.rule), "Saved — work the month out again to use it")}><Check size={16} aria-hidden /><Say w="save" /></button>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="h-11 w-11 shrink-0 rounded-[14px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]"><Settings2 size={20} aria-hidden /></span>
+              <div className="min-w-0"><div className="text-[17px] font-extrabold leading-tight">How pay is worked out</div><div className="text-[12.5px] text-steel mt-0.5">Used each time you work out a month</div></div>
+            </div>
+            <div className="rounded-[18px] border border-[var(--color-separator)] divide-y divide-[var(--color-separator)] overflow-hidden bg-[var(--color-bg)]">
+              {([["pf", "PF", "Provident fund", "12% staff + 12% you, on pay up to ₹15,000. Needed from 20 staff.", "var(--color-blue)", "var(--color-blue-2)"],
+                ["esi", "ESI", "Health insurance", "0.75% staff + 3.25% you, pay up to ₹21,000/month. Needed from 10 staff.", "var(--color-violet)", "var(--color-violet-2)"]] as const).map(([k, badge, what, hint, hue, hue2]) => (
+                <label key={k} className="flex items-center gap-3 px-3.5 py-3 min-h-[64px] cursor-pointer hover:bg-[var(--color-fill)] transition-colors" data-switch={k}>
+                  <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center text-[12.5px] font-extrabold tracking-wide" style={{ background: hue2, color: hue }}>{badge}</span>
+                  <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">Include {badge} <span className="font-semibold text-steel">· {what}</span></span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">{hint}</span></span>
+                  <Switch on={cfg[k]} onChange={(v) => setCfg((c) => ({ ...c, [k]: v }))} name={`Include ${badge}`} />
+                </label>))}
+              {cfg.pf && <label className="flex items-center gap-3 px-3.5 py-3 min-h-[64px] cursor-pointer hover:bg-[var(--color-fill)] transition-colors" data-switch="rule">
+                <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center text-[12.5px] font-extrabold bg-[var(--color-orange-2)] text-[var(--color-orange)]">50%</span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">The 50% wage rule</span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">From 21 Nov 2025, PF is on at least half of pay. Check with your CA.</span></span>
+                <Switch on={cfg.rule} onChange={(v) => setCfg((c) => ({ ...c, rule: v }))} name="The 50% wage rule" />
+              </label>}
+              <div className="flex items-center gap-3 px-3.5 py-3 min-h-[64px]" data-payroll-offs>
+                <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center bg-[var(--color-cyan-2)] text-[var(--color-cyan)]"><CalendarClock size={19} aria-hidden /></span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">Paid weekly offs a month</span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">Added to days present for monthly-paid staff</span></span>
+                <div className="shrink-0 flex items-center rounded-[14px] border border-[var(--color-separator)] bg-[var(--color-bg-2)]">
+                  <button type="button" aria-label="One fewer weekly off" disabled={cfg.offs <= 0} onClick={() => setCfg((c) => ({ ...c, offs: Math.max(0, c.offs - 1) }))} className="h-11 w-11 grid place-items-center rounded-l-[14px] hover:bg-[var(--color-fill)] disabled:opacity-35"><Minus size={16} aria-hidden /></button>
+                  <span className="num w-8 text-center text-[17px] font-bold" aria-live="polite" data-offs={cfg.offs}>{cfg.offs}</span>
+                  <button type="button" aria-label="One more weekly off" disabled={cfg.offs >= 8} onClick={() => setCfg((c) => ({ ...c, offs: Math.min(8, c.offs + 1) }))} className="h-11 w-11 grid place-items-center rounded-r-[14px] hover:bg-[var(--color-fill)] disabled:opacity-35"><Plus size={16} aria-hidden /></button>
+                </div>
+              </div>
+            </div>
+            {(() => { const dirty = cfg.pf !== saved.pf || cfg.esi !== saved.esi || cfg.offs !== saved.offs || cfg.rule !== saved.rule; return (
+              <button type="button" disabled={pending || !dirty} className={cn("svc-btn sm w-full mt-3", dirty ? "go" : "quiet")} data-save-payroll-settings data-dirty={dirty}
+                onClick={() => { const next = cfg; start(async () => { const r = await saveSettings(next.pf, next.esi, next.offs, next.rule); if ("error" in r && r.error) toast(r.error, "err"); else { toast("Saved — work the month out again to use it"); setSaved(next); } }); }}>
+                <Check size={16} aria-hidden />{dirty ? <Say w="save" /> : "Saved"}</button>); })()}
           </Card>
 
           {/* ── advances ── */}
@@ -169,16 +195,22 @@ export function PayrollClient({ month, today, property, settings, people, advanc
         {/* the month: one navigator (◀ month + its state ▶), then the actions — on a phone the main one takes the
             row and the others share the next, rather than three buttons wrapping wherever they fell (2026-10-21) */}
         <div className="p-4 flex flex-wrap items-center gap-3 border-b border-[var(--color-separator)]">
-          <div className="flex items-center gap-1 rounded-2xl bg-[var(--color-fill)] p-1 max-sm:w-full sm:min-w-[19rem]" data-payroll-nav>
-            <Link href={`/payroll?m=${shift(month, -1)}`} className="h-11 w-11 shrink-0 grid place-items-center rounded-xl hover:bg-[var(--color-fill-2)]" aria-label="Previous month"><ChevronLeft size={19} /></Link>
-            <div className="flex-1 min-w-0 text-center">
-              <div className="text-[17px] font-extrabold leading-tight truncate" data-payroll-month-name>{monthName(month)}</div>
-              <div className={cn("mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] font-bold", !run ? "text-steel" : final ? "text-[var(--color-green)]" : "text-[var(--color-orange)]")}>
-                <span className={cn("h-1.5 w-1.5 rounded-full", !run ? "bg-[var(--color-steel)]" : final ? "bg-[var(--color-green)]" : "bg-[var(--color-orange)]")} aria-hidden />
-                {run ? <span data-run-status>{final ? "Final" : "Draft"}</span> : <span>Not worked out</span>}
+          {/* the month (2026-10-24, the owner: "design"): round ◀ ▶ buttons either side of a calendar tile, the month, and
+              its state as a coloured chip — Not worked out (grey, dashed), Draft (amber), Final (green, locked) */}
+          <div className="flex items-center gap-2 max-sm:w-full sm:min-w-[21rem]" data-payroll-nav>
+            <Link href={`/payroll?m=${shift(month, -1)}`} className="h-11 w-11 shrink-0 grid place-items-center rounded-full border border-[var(--color-separator)] bg-[var(--color-bg-2)] shadow-[var(--shadow-card)] hover:border-[var(--color-line-2)] active:scale-95 transition" aria-label="Previous month"><ChevronLeft size={19} /></Link>
+            <div className="flex-1 min-w-0 flex items-center gap-3 rounded-[18px] border border-[var(--color-separator)] bg-[var(--color-bg)] px-3 py-2">
+              <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center bg-[var(--color-blue-2)] text-[var(--color-blue)]"><CalendarDays size={20} aria-hidden /></span>
+              <div className="min-w-0">
+                <div className="text-[17px] font-extrabold leading-tight truncate" data-payroll-month-name>{monthName(month)}</div>
+                <span className={cn("mt-1 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11.5px] font-bold",
+                  !run ? "border border-dashed border-[var(--color-line-2)] text-steel" : final ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")} data-month-state={!run ? "none" : final ? "final" : "draft"}>
+                  {!run ? <CircleDashed size={12} aria-hidden /> : final ? <Lock size={11} aria-hidden /> : <PencilLine size={12} aria-hidden />}
+                  {run ? <span data-run-status>{final ? "Final" : "Draft"}</span> : <span>Not worked out</span>}
+                </span>
               </div>
             </div>
-            <Link href={`/payroll?m=${shift(month, 1)}`} className={cn("h-11 w-11 shrink-0 grid place-items-center rounded-xl hover:bg-[var(--color-fill-2)]", month >= today.slice(0, 7) && "pointer-events-none opacity-40")} aria-label="Next month"><ChevronRight size={19} /></Link>
+            <Link href={`/payroll?m=${shift(month, 1)}`} className={cn("h-11 w-11 shrink-0 grid place-items-center rounded-full border border-[var(--color-separator)] bg-[var(--color-bg-2)] shadow-[var(--shadow-card)] hover:border-[var(--color-line-2)] active:scale-95 transition", month >= today.slice(0, 7) && "pointer-events-none opacity-40")} aria-label="Next month"><ChevronRight size={19} /></Link>
           </div>
           <div className="flex flex-wrap gap-2 max-sm:w-full sm:ml-auto" data-payroll-actions>
             {!final && <button type="button" disabled={pending} className="svc-btn go sm !px-4 max-sm:basis-full" data-build onClick={() => act(buildMonth(month), run ? "Worked out again" : "Worked out")}><Calculator size={17} aria-hidden /><Say w={run ? "work_out_again" : "work_out_pay"} /></button>}
@@ -186,7 +218,8 @@ export function PayrollClient({ month, today, property, settings, people, advanc
             {lines.length > 0 && <button type="button" className="svc-btn quiet sm !px-4 max-sm:flex-1" onClick={() => void excel()} data-payroll-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>}
           </div>
         </div>
-        {!run ? <div className="p-6 text-[14px] text-steel">Set the rates, then <b>Work out pay</b>.</div> : lines.length === 0 ? <div className="p-6 text-[14px] text-steel">Nobody has a pay rate yet.</div> : (<>
+        {!run ? <div className="p-4"><EmptyState size="sm" icon={Calculator} hue="blue" title={`${monthName(month)} is not worked out yet`} hint={<>Set the rates above, then <b>Work out pay</b> — days come from attendance.</>} data-payroll-empty="none" /></div>
+          : lines.length === 0 ? <div className="p-4"><EmptyState size="sm" icon={IndianRupee} hue="orange" title="Nobody has a pay rate yet" hint="Give each person a monthly or daily rate under Pay rates, then work it out again." data-payroll-empty="rates" /></div> : (<>
           <div className="overflow-x-auto"><table className="w-full text-[13.5px] lg:min-w-[900px] max-lg:block">
             <thead className="max-lg:hidden"><tr className="text-left text-steel text-[12px] border-b border-[var(--color-separator)]">{["Name", "Days", "Gross", "Bonus", "PF", "ESI", "Advance", "Other", "Net", ""].map((h, i) => <th key={i} className={cn("py-2 font-semibold", i === 0 ? "pl-4" : "text-right pr-3", i === 9 && "pr-4")}>{h}</th>)}</tr></thead>
             <tbody className="max-lg:grid max-lg:gap-3 max-lg:p-3 sm:max-lg:grid-cols-2">{lines.map((l) => { const e = edits[l.id] ?? { bonus: String(Number(l.bonus) || ""), other: String(Number(l.other_deduction) || "") }; const dirty = Number(e.bonus || 0) !== Number(l.bonus) || Number(e.other || 0) !== Number(l.other_deduction); return (

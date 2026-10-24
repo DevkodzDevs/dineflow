@@ -132,3 +132,11 @@ node batch3.mjs     # 25 checks on a throwaway demo — see testing-and-gates.md
   - **PF / ESI to deposit** (`[data-deposit]`): office, *Due 15 Oct* (the 15th of the next month), the total big
     (`[data-deposit-total]`), a two-part bar staff | you (tint | blue) with its legend. Was one sentence of sums.
   shots34 checks the navigator is one row, no card cell is cut, the name never runs under the pill, at 360–1440.
+
+- **How pay is worked out, and the month (2026-10-24, the owner: "design").** The rules are settings rows in one rounded
+  group (`[data-switch=pf|esi|rule]` on each row): a coloured badge (PF blue, ESI violet, 50% amber), the words, a `Switch`
+  on the right — the whole row is the tap target; weekly offs is a 44px − n + stepper (`[data-payroll-offs]`). Save is the
+  main button only while something has changed (`data-dirty`), "Saved" otherwise, and marks it saved only when the server
+  says so. The month navigator is two 44px round ◀ ▶ buttons either side of a calendar tile, the month and its state as a
+  chip (`[data-month-state]`: Not worked out — dashed grey, Draft — amber, Final — green with a lock). Under it, an empty
+  month or a sheet with no rates is a small `EmptyState`. design24.mjs, 412 → 1920.
