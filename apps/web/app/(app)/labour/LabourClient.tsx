@@ -8,6 +8,7 @@ import { Plus, QrCode, Printer, Check, Banknote, Pencil, Link2, Copy, MessageCir
 import { copyText } from "@/lib/clipboard";
 import { Button, Sheet, Field, Card, Pill, StatTile, Switch, cn, Empty } from "@/components/ui";
 import { formatINR } from "@/lib/format";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { LABOUR_SKILLS } from "@dineflow/shared";
 import { saveLabourer, setLabourStatus, markAttendance, payLabour, punchCode } from "./actions";
 
@@ -131,7 +132,9 @@ function Labels({ property, labourers, rooms, ingredients }: { property: string;
     <div>
       <div className="no-print flex items-center gap-2 mb-4">{(["rooms", "products", "labour"] as const).map((k) => <button key={k} onClick={() => setKind(k)} className={cn("chip capitalize", kind === k && "on")}>{k}</button>)}<Button variant="outline" className="ml-auto" onClick={() => window.print()}><Printer size={16} /> Print sheet</Button></div>
       <p className="no-print text-xs text-steel mb-4">Stick on doors, bins and badges</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 print:grid-cols-4 gap-3">{items.map((it) => <div key={it.v} className="feather p-3 text-center print:break-inside-avoid"><QR value={it.v} size={120} /><div className="font-semibold text-sm mt-1">{it.t}</div><div className="text-[10px] text-steel">{it.s} · {property}</div></div>)}{items.length === 0 && <p className="text-sm text-steel col-span-full">Nothing to print yet.</p>}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 print:grid-cols-4 gap-3">{items.map((it) => <div key={it.v} className="feather p-3 text-center print:break-inside-avoid"><QR value={it.v} size={120} /><div className="font-semibold text-sm mt-1">{it.t}</div><div className="text-[10px] text-steel">{it.s} · {property}</div></div>)}{items.length === 0 && <p className="sm:hidden text-sm text-steel col-span-full">Nothing to print yet.</p>}{items.length === 0 && <EmptyState from="sm" className="col-span-full no-print" icon={QrCode} hue="tint" data-labels-empty={kind}
+        title={kind === "rooms" ? "No rooms to label yet" : kind === "products" ? "No products to label yet" : "No labourers to label yet"}
+        hint={kind === "rooms" ? "Add rooms under Rooms, then print a sticker for each door." : kind === "products" ? "Add items in Pantry, then print a sticker for each bin." : "Add a labourer, then print their badge."} />}</div>
     </div>
   );
 }

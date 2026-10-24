@@ -202,3 +202,9 @@ A new place that shows a dish photo uses `DishImage`, not a bare `<img src={imag
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
 - **More tools fills its last row** (`.fill-tiles`, 2026-10-24): 2 + 2 + Find photos across the row on a phone, 3 + two
   halves from 640px, 5 in a row from 1024px. "Find photos" sat alone beside a hole. See design-system.md.
+- **Categories, iPad and desktop (2026-10-24, the owner: "doesn't look good"; the phone is unchanged).** Each row
+  (`[data-cat-row]`) has the category's icon (`catIcon`), its dish count, **Rename** (`[data-cat-rename]` → an inline field,
+  Enter saves through `saveCategory` with the id, Escape cancels) and Delete. The add form (`[data-cat-add]`) is one joined
+  field — a tag icon, the input, Add inside it — under "Add a category", with **Usual ones** chips (Starters, Main course,
+  Breads, Rice & biryani, Desserts, Beverages — those not already there; one tap adds). An empty list says so.
+- **No dishes yet** is `Empty`'s sm+ form (design-system.md).

@@ -2,7 +2,7 @@
 import { clsx } from "clsx";
 import { motion, AnimatePresence, useDragControls, useMotionValue, animate as animateValue } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { X, Check, ChevronDown, Search } from "lucide-react";
+import { X, Check, ChevronDown, Search, UtensilsCrossed, Package, Truck, Trash2, FileText, Wallet, HardHat, Users, MessageSquareHeart, Star, ClipboardList, Store, CalendarDays, Printer, Globe, LayoutGrid, ListChecks, BarChart3, Lock, Link2, Inbox, QrCode, ShoppingCart, Bike, type LucideIcon } from "lucide-react";
 import { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
 export const cn = clsx;
@@ -119,12 +119,65 @@ export function Pill({ tone, children }: { tone: "pending" | "preparing" | "read
   return <span className={cn("pill", `pill-${tone}`)}>{children}</span>;
 }
 
-export function Empty({ title, hint, action }: { title: string; hint: string; action?: ReactNode }) {
+/** What an empty list is of, as an icon name: a server page can pass it (a Lucide component cannot cross the boundary). */
+export type EmptyIcon = "dish" | "pantry" | "purchase" | "supplier" | "waste" | "invoice" | "expense" | "labour" | "people" | "feedback"
+  | "review" | "orders" | "online" | "outlet" | "calendar" | "printer" | "web" | "tables" | "list" | "chart" | "sealed" | "link" | "qr" | "inbox";
+type EmptyHueName = "tint" | "blue" | "orange" | "violet" | "cyan";
+const EMPTY_ICON: Record<EmptyIcon, [LucideIcon, EmptyHueName]> = {
+  dish: [UtensilsCrossed, "tint"], pantry: [Package, "orange"], purchase: [ShoppingCart, "orange"], supplier: [Truck, "orange"],
+  waste: [Trash2, "orange"], invoice: [FileText, "blue"], expense: [Wallet, "orange"], labour: [HardHat, "cyan"], people: [Users, "violet"],
+  feedback: [MessageSquareHeart, "violet"], review: [Star, "violet"], orders: [ClipboardList, "blue"], online: [Bike, "blue"],
+  outlet: [Store, "tint"], calendar: [CalendarDays, "cyan"], printer: [Printer, "blue"], web: [Globe, "cyan"], tables: [LayoutGrid, "tint"],
+  list: [ListChecks, "tint"], chart: [BarChart3, "violet"], sealed: [Lock, "blue"], link: [Link2, "cyan"], qr: [QrCode, "tint"], inbox: [Inbox, "tint"],
+};
+const EMPTY_HUE: Record<EmptyHueName, [string, string]> = {
+  tint: ["var(--color-tint)", "var(--color-green-2)"], blue: ["var(--color-blue)", "var(--color-blue-2)"],
+  orange: ["var(--color-orange)", "var(--color-orange-2)"], violet: ["var(--color-violet)", "var(--color-violet-2)"], cyan: ["var(--color-cyan)", "var(--color-cyan-2)"],
+};
+/** the icon an empty list wears when the caller names none, read from its title (the 36 screens that use Empty) */
+export function emptyIconFor(title: string): EmptyIcon {
+  const t = title.toLowerCase();
+  const rules: [RegExp, EmptyIcon][] = [
+    [/invoice/, "invoice"], [/expense/, "expense"], [/labourer|labour/, "labour"], [/pantry|stock|ingredient/, "pantry"],
+    [/purchase order|purchase/, "purchase"], [/supplier/, "supplier"], [/wastage|waste/, "waste"], [/dish|sold out|prep|menu/, "dish"],
+    [/feedback/, "feedback"], [/review/, "review"], [/online|rider|delivery|cooking for/, "online"], [/channel/, "link"],
+    [/outlet/, "outlet"], [/booking|reservation|for this day/, "calendar"], [/printer/, "printer"], [/web address/, "web"],
+    [/table|board/, "tables"], [/checklist|list|sheet/, "list"], [/compare/, "chart"], [/sealed|month/, "sealed"],
+    [/customer|guest|staff|nobody|standby/, "people"], [/order/, "orders"], [/print|qr/, "qr"],
+  ];
+  return rules.find(([re]) => re.test(t))?.[1] ?? "inbox";
+}
+
+/**
+ * An empty list. On a phone it is exactly what it was (a card, a small tile, the title and hint). From `sm` up
+ * (2026-10-24, the owner on an iPad: "the ◌ box doesn't look good — ultra modern, iPad and desktop only, don't disturb
+ * the mobile version") the same card carries the section's icon on a tile inside a slowly turning dotted ring, a wash
+ * of the section's hue with a fading dot grid, and a larger title. `icon` names it; left out, the title picks one.
+ */
+export function Empty({ title, hint, action, icon }: { title: string; hint: string; action?: ReactNode; icon?: EmptyIcon }) {
+  const [Icon, hueName] = EMPTY_ICON[icon ?? emptyIconFor(title)]; const [hue, hue2] = EMPTY_HUE[hueName];
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={springSoft} className="card p-10 text-center">
-      <div className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-fill)] grid place-items-center text-[var(--color-label-3)]">◌</div>
-      <h3 className="text-xl mt-4">{title}</h3><p className="text-sm text-[var(--color-label-2)] mt-1 max-w-sm mx-auto">{hint}</p>
-      {action && <div className="mt-5 flex justify-center">{action}</div>}
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={springSoft}
+      style={{ ["--hue" as string]: hue, ["--hue-2" as string]: hue2 }} data-empty={icon ?? emptyIconFor(title)}
+      className="card p-10 text-center sm:relative sm:overflow-hidden sm:px-8 sm:pt-12 sm:pb-12 isolate">
+      {/* sm+: the hue wash and a dot grid that fades out from the top */}
+      <span aria-hidden className="hidden sm:block absolute inset-0 -z-10 pointer-events-none"
+        style={{ background: "radial-gradient(70% 85% at 50% 0%, color-mix(in srgb, var(--hue) 11%, transparent), transparent 72%)" }} />
+      <span aria-hidden className="hidden sm:block absolute inset-0 -z-10 pointer-events-none opacity-70"
+        style={{ backgroundImage: "radial-gradient(color-mix(in srgb, var(--hue) 22%, transparent) 1px, transparent 1.5px)", backgroundSize: "18px 18px",
+          maskImage: "radial-gradient(60% 75% at 50% 0%, #000, transparent 80%)", WebkitMaskImage: "radial-gradient(60% 75% at 50% 0%, #000, transparent 80%)" }} />
+      <div className="sm:hidden mx-auto h-12 w-12 rounded-2xl bg-[var(--color-fill)] grid place-items-center text-[var(--color-label-3)]">◌</div>
+      <span aria-hidden className="hidden sm:grid relative mx-auto h-[104px] w-[104px] place-items-center">
+        <span className="absolute inset-0 rounded-full border-2 border-dotted border-[color-mix(in_srgb,var(--hue)_40%,transparent)] animate-[spin_28s_linear_infinite] motion-reduce:animate-none" />
+        <span className="absolute inset-[11px] rounded-full bg-[var(--hue-2)]" />
+        <span className="absolute right-[9px] top-[13px] h-2.5 w-2.5 rounded-full bg-[var(--hue)] opacity-70" />
+        <span className="relative h-14 w-14 rounded-[18px] grid place-items-center bg-[var(--color-bg-2)] text-[var(--hue)] shadow-[0_14px_28px_-16px_var(--hue),0_0_0_1px_color-mix(in_srgb,var(--hue)_20%,transparent)]">
+          <Icon size={26} strokeWidth={2.1} aria-hidden />
+        </span>
+      </span>
+      <h3 className="text-xl mt-4 sm:mt-5 sm:text-[23px] sm:leading-tight">{title}</h3>
+      <p className="text-sm text-[var(--color-label-2)] mt-1 max-w-sm mx-auto sm:mt-2 sm:text-[14.5px] sm:leading-relaxed sm:max-w-md">{hint}</p>
+      {action && <div className="mt-5 flex justify-center sm:mt-6">{action}</div>}
     </motion.div>
   );
 }

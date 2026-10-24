@@ -157,3 +157,5 @@ Then receive a small PO on a demo property and confirm the ledger and the level 
   they bring (the notes), the lead time as a pill, a soft panel with the phone and the GSTIN that never wraps a line, and
   Call · WhatsApp · Edit along the foot (`CardStrip`).
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+- **Pantry is empty** (and no purchases, orders, suppliers, wastage — 2026-10-24) are `Empty`'s sm+ form with their own icons
+  (design-system.md). The phone is unchanged.

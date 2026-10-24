@@ -244,3 +244,6 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
   `MoneyChart` and `ShareChart` (recharts, tokens only). `Departments.tsx` is lower-case `deptSpec.ts`'s neighbour on purpose:
   a file named `departments.ts` beside it clashed on Windows (TS1149). Probe: `pw/conn140.mjs` (connections.md).
 - **Tomorrow's weekday tile with no history (2026-10-24).** `forecast_day` sends "no history yet", and the tile took its first word, "no", as the number in big letters. TomorrowClient now shows 00 on the flaps with "No Sundays on record yet" under it.
+
+- **Proof, no months sealed — iPad and desktop (2026-10-24).** Phones keep the markup they had: every new part is `hidden md:…` and the old one `md:hidden` (or the change is `md:` classes only). An `EmptyState` with a shield (`[data-proof-empty]`): why
+  a sealed month is worth having, and **Seal my trading history** (the same action).

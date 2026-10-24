@@ -151,3 +151,7 @@ node cal.mjs             # 6 checks — 42 cells, 7 weekday heads, dots, the ope
   sheet; with types but no rooms, *Add a room* (`[data-rooms-empty=types|rooms]`). Facilities with none offers three starts —
   Spa, Activity, Venue — each opening the form set to that kind (a venue 4 h and 100 people) (`[data-fac-empty]`,
   `[data-fac-start]`).
+- **An occupied room in the light themes is a step lighter** (2026-10-24, the owner: "reduce that card's dark background
+  slightly, the inner content is not visible"). On paper, bright and royal the card is 78% label mixed into the card colour
+  (`[data-theme="paper"] .keycard.occupied`) and its muted lines 80% of `--color-on-label`; the solid label colour was
+  near-black, and the dark flap tiles and *out* date sank into it. The dark themes keep the solid card.

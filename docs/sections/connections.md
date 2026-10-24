@@ -71,3 +71,13 @@ pnpm --filter @dineflow/web typecheck
 
 [online-and-channels.md](online-and-channels.md) · [reports-and-forecast.md](reports-and-forecast.md) ·
 [staff-and-labour.md](staff-and-labour.md) · [settings.md](settings.md) · [guest-facing.md](guest-facing.md)
+
+- **Payments and Delivery tracking on iPad and desktop (2026-10-24, the owner: "design").** Phones keep the markup they had: every new part is `hidden md:…` and the old one `md:hidden` (or the change is `md:` classes only).
+  - The steps (*How a guest pays*, Delivery tracking) are a connected timeline (`Flow`, `[data-flow]`): a coloured icon tile with
+    its number on a badge, a line down to the next, the title and the words — payments green (QR, link, webhook), tracking
+    cyan (send, links, map), the two demo pages under the tracking steps (`[data-track-how]`).
+  - The payment form is two groups (`GroupHead`): **UPI** (`[data-pay-upi]`) and **Razorpay keys** (`[data-pay-keys]`, key, secret
+    and webhook secret together), each an icon, a name, one line and its fields in a bordered panel. The fields and their
+    names are unchanged.
+  - No riders: a small `EmptyState` with **Staff** (`[data-riders-empty]`).
+  - The password field's own eye button (`PasswordInput`) is 36px on a touch screen — unchanged here, the shared component's.

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { Store, Plus, Send, ArrowRight, Flame, ShoppingBag, Users, Bike, Check, Loader2, MapPin, KeyRound } from "lucide-react";
-import { Card, Empty, cn, useToast } from "@/components/ui";
+import { Card, Empty, Switch, cn, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { chainOverview, switchOutlet, createOutlet, pushMenu, grantOutlet, type OutletLive } from "./actions";
 import { Say } from "@/components/ui/Say";
@@ -94,10 +94,35 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
       <div className="grid gap-4 lg:grid-cols-2">
         {owner && !isDemo && (
           <Card data-new-outlet>
-            <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Plus size={18} aria-hidden /> Open a new outlet</div>
-            <p className="text-[13px] text-steel mb-3">Copies <b>{currentName}</b>&apos;s brand, GST and sections. Trial up to 7 days.</p>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Anna Nagar" maxLength={80} data-outlet-name />
-            <label className="mt-3 flex items-center gap-3 !min-h-11"><input type="checkbox" checked={copy} onChange={(e) => setCopy(e.target.checked)} className="h-5 w-5" /> <span className="text-[14px] font-semibold">Copy this outlet&apos;s menu and prices</span></label>
+            {/* phones: the heading and line as they were */}
+            <div className="md:hidden">
+              <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Plus size={18} aria-hidden /> Open a new outlet</div>
+              <p className="text-[13px] text-steel mb-3">Copies <b>{currentName}</b>&apos;s brand, GST and sections. Trial up to 7 days.</p>
+            </div>
+            {/* iPad and up (2026-10-24, the owner: "design"): an icon tile and the heading, then what the new outlet brings along
+                as chips, the name with a pin in the field, and copying the menu as a switch row */}
+            <div className="hidden md:block" data-new-outlet-head>
+              <div className="flex items-center gap-3">
+                <span className="h-12 w-12 shrink-0 rounded-[15px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-green)_22%,transparent)]"><Store size={22} aria-hidden /></span>
+                <div className="min-w-0"><div className="text-[18px] font-extrabold leading-tight">Open a new outlet</div><div className="text-[13px] text-steel mt-0.5">A second branch, run from this same login</div></div>
+              </div>
+              <div className="mt-4 text-[11.5px] font-bold uppercase tracking-[.08em] text-steel">Copied from {currentName}</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[["Brand", "var(--color-violet)", "var(--color-violet-2)"], ["GST", "var(--color-blue)", "var(--color-blue-2)"], ["Sections", "var(--color-cyan)", "var(--color-cyan-2)"], ["7-day trial", "var(--color-orange)", "var(--color-orange-2)"]].map(([t, h, h2]) => (
+                  <span key={t} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12.5px] font-bold" style={{ background: h2, color: h }}><Check size={13} strokeWidth={3} aria-hidden />{t}</span>))}
+              </div>
+              <label className="mt-4 block text-[13px] font-bold" htmlFor="outlet-name">Outlet name or area</label>
+            </div>
+            <div className="relative md:mt-1.5">
+              <MapPin size={17} className="hidden md:block absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
+              <input id="outlet-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Anna Nagar" maxLength={80} data-outlet-name className="md:!pl-10" />
+            </div>
+            <label className="mt-3 flex items-center gap-3 !min-h-11 md:hidden"><input type="checkbox" checked={copy} onChange={(e) => setCopy(e.target.checked)} className="h-5 w-5" /> <span className="text-[14px] font-semibold">Copy this outlet&apos;s menu and prices</span></label>
+            <label className="hidden md:flex mt-3 items-center gap-3 rounded-[16px] border border-[var(--color-separator)] bg-[var(--color-bg)] px-3.5 py-2.5 min-h-[60px] cursor-pointer" data-copy-menu>
+              <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><ShoppingBag size={18} aria-hidden /></span>
+              <span className="flex-1 min-w-0"><span className="block text-[14.5px] font-bold">Copy this outlet&apos;s menu and prices</span><span className="block text-[12.5px] text-steel">Off: the new outlet starts with an empty menu</span></span>
+              <Switch on={copy} onChange={setCopy} name="Copy this outlet's menu and prices" />
+            </label>
             <button type="button" disabled={pending || name.trim().length < 2} className="svc-btn go w-full mt-3" data-create-outlet
               onClick={() => start(async () => { const r = await createOutlet(name.trim(), copy); if ("error" in r) toast(r.error!, "err"); else { toast(`${name.trim()} is open — switch to it from the top bar`); setName(""); const x = await chainOverview(); if ("list" in x && x.list) setList(x.list); } })}>
               {pending ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} aria-hidden />}<Say w="open_outlet" /></button>

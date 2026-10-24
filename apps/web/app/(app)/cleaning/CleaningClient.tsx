@@ -98,7 +98,7 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
   return (
     <div className="space-y-5" data-cleaning>
       {error && <p className="text-[14px] font-semibold text-chili" role="alert">{error}</p>}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5" data-clean-stats>
+      <div className="grid sm:hidden grid-cols-2 lg:grid-cols-4 gap-2.5" data-clean-stats>
         {([[Hourglass, "Waiting", String(waiting.length)], [Timer, "On it", String(onIt.length)], [ListChecks, "Cleaned today", String(finished.filter((j) => j.status === "done").length)],
           [Clock, "Average clean", took == null ? "—" : brief(took)]] as const).map(([I, k, v]) => (
           <div key={k} className="feather !rounded-[18px] px-4 py-3 min-w-0 flex items-center gap-3">
@@ -109,6 +109,9 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
                 : k !== "Average clean" ? <div className="mt-1" data-clean-n={v}><FlapShuffle value={v} pad={0} size="xs" tile="34px" bare say={`${v} ${k}`} /></div>
                 : <div className="font-display num text-[24px] leading-tight truncate">{v}</div>}</div></div>))}
       </div>
+      {/* iPad and desktop (2026-10-24, the owner: "the flaps are tiny — number flap design, perfectly sized"): Work's tiles —
+          each state its colour, the flap at .flip-stat's size, a caption beside it. The phone keeps the row above. */}
+      <CleanTiles waiting={waiting.length} onIt={onIt.length} done={finished.filter((j) => j.status === "done").length} took={took} />
       <div className="flex flex-wrap items-center gap-3">
         <Segmented value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "table", label: "Tables" }, ...(hasRooms ? [{ value: "room" as Filter, label: "Rooms" }] : []), { value: "mine", label: "Mine" }]} />
         {waited != null && <span className="text-[13px] text-steel">Average wait: {span(waited)}</span>}
@@ -144,6 +147,38 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
               <span className="block text-[12.5px] text-steel">Off for counters. Rooms still get one.</span></span>
           </label>
         </Card>)}
+    </div>
+  );
+}
+
+/** The four counts as split-flaps from sm up — the same tile as Work's (WorkClient `data-work-stats`). */
+function CleanTiles({ waiting, onIt, done, took }: { waiting: number; onIt: number; done: number; took: number | null }) {
+  const mins = took == null ? 0 : Math.max(0, Math.round(took / 60000));
+  const tiles = [
+    ["waiting", Hourglass, "Waiting", waiting, "var(--color-orange)", "var(--color-orange-2)", waiting ? "to be cleaned" : "nothing waiting"],
+    ["on", Timer, "On it", onIt, "var(--color-blue)", "var(--color-blue-2)", onIt ? "being cleaned now" : "nobody cleaning"],
+    ["done", ListChecks, "Cleaned today", done, "var(--color-green)", "var(--color-green-2)", done ? "cleaned today" : "none yet"],
+    ["avg", Clock, "Average clean", mins, "var(--color-cyan)", "var(--color-cyan-2)", took == null ? "none timed yet" : mins < 1 ? "under a minute" : "min a clean"],
+  ] as const;
+  return (
+    <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-2.5" data-clean-tiles>
+      {tiles.map(([key, I, k, n, hue, hue2, cap]) => (
+        <div key={key} data-clean-tile={key} data-n={n} style={{ ["--hue" as string]: hue, ["--hue-2" as string]: hue2 }}
+          className="@container feather !rounded-[20px] p-4 min-w-0 flex flex-col gap-3 relative overflow-hidden">
+          <span className="absolute inset-x-0 top-0 h-1 bg-[var(--hue)] opacity-80" aria-hidden />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="h-9 w-9 shrink-0 rounded-xl grid place-items-center bg-[var(--hue-2)] text-[var(--hue)]"><I size={18} aria-hidden /></span>
+            <span className="text-[13.5px] font-bold text-[var(--color-label-2)] truncate">{k}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <div className="flip-stat shrink-0">
+              {key === "waiting"
+                ? <FlapBreathe value={n} pad={2} size="sm" tone="live" on={n > 0} say={`${n} waiting`} />
+                : <FlapShuffle value={n} pad={2} size="sm" say={key === "avg" ? (took == null ? "no clean timed yet" : `${n} minutes a clean`) : `${n} ${k.toLowerCase()}`} />}
+            </div>
+            <span className="min-w-0 flex-1 basis-24 text-[12px] leading-snug text-[var(--color-label-2)]">{cap}</span>
+          </div>
+        </div>))}
     </div>
   );
 }

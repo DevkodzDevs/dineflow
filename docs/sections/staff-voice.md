@@ -62,3 +62,6 @@ node dry124.cjs     # 34 — 0124 in a rolled-back transaction: owner, a named w
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. The owner's "n new" (`[data-voice-unread]`) breathes until opened.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
+- **Nothing from your team yet — iPad and desktop (2026-10-24).** Phones keep the markup they had: every new part is `hidden md:…` and the old one `md:hidden` (or the change is `md:` classes only). An `EmptyState` (`[data-voice-empty-md]`) saying what
+  can arrive, with the four kinds as chips in their colours; the phone keeps its card (`[data-voice-empty]`).

@@ -162,3 +162,4 @@ pnpm --filter @dineflow/web test
   payment methods and "Billed by <name> · paid to <name>". The bill: "Billed by" and "At the counter" chips, **Split evenly ÷2 ÷3
   ÷4** (the last share takes the odd paise), **Cash given** keys (Exact / ₹100 / ₹200 / ₹500 / ₹2000) and the change to return,
   large. Who took each payment is `payments.received_by` (0139, defaulting to the signed-in person).
+- **No invoices yet** (2026-10-24) is `Empty`'s sm+ form — the invoice icon, blue (design-system.md). The phone is unchanged.

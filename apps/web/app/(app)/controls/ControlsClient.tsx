@@ -1,6 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, Banknote, Check, Scissors, Wallet } from "lucide-react";
+import Link from "next/link";
+import { ArrowDownToLine, ArrowUpFromLine, ArrowUpRight, Banknote, Check, Scissors, Wallet } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button, Card, Field, Segmented, StatTile, cn, useToast } from "@/components/ui";
 import { usePrinters } from "@/lib/print/usePrinter";
 import { formatINR } from "@/lib/format";
@@ -103,7 +105,13 @@ export function ControlsClient({ expected, moves, shifts, voids, lines, names, m
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Banknote size={16} /></span>
           <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Shift closes</h3><p className="text-xs text-steel mt-0.5">Last 30. Expected = cash sales + in − out. Float not counted.</p></div>
         </div>
-        {shifts.length === 0 ? <p className="text-sm text-steel">No shifts closed yet. Close one in Billing.</p> : (
+        {shifts.length === 0 ? (<>
+          {/* phones keep the line; iPad and up get the empty panel (2026-10-24, the owner — desktop and iPad only) */}
+          <p className="text-sm text-steel md:hidden">No shifts closed yet. Close one in Billing.</p>
+          <div className="hidden md:block"><EmptyState icon={Banknote} hue="tint" title="No shifts closed yet" data-shifts-empty
+            hint="At the end of a shift, count the drawer in Billing — each close lands here with what was expected, what was counted and the difference."
+            actions={<Link href="/billing" className="svc-btn quiet sm !px-4 inline-flex items-center gap-1.5">Close a shift in Billing <ArrowUpRight size={15} aria-hidden /></Link>} /></div>
+        </>) : (
           <div className="feather overflow-x-auto table-wrap"><table className="w-full text-sm min-w-[640px]">
             <thead><tr><th className="text-left px-4 py-3">Day</th><th className="text-left px-3 py-3">Closed</th><th className="text-right px-3 py-3">Sales</th><th className="text-right px-3 py-3">Expected cash</th><th className="text-right px-3 py-3">Counted</th><th className="text-right px-3 py-3">Variance</th><th className="text-left px-4 py-3">By · note</th></tr></thead>
             <tbody>{shifts.map((s) => { const v = s.variance == null ? null : Number(s.variance); const exp = Number(s.expected?.cash_drawer ?? s.expected?.cash ?? 0); return (

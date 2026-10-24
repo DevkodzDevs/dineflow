@@ -1,8 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileSpreadsheet, ListChecks, Timer, AlertTriangle, Hourglass, Users, Building2, ChefHat, Search } from "lucide-react";
-import { Card, cn } from "@/components/ui";
+import { FileSpreadsheet, ListChecks, Timer, AlertTriangle, Hourglass, Users, Building2, ChefHat, Search, CalendarDays, ArrowRight, CircleCheck } from "lucide-react";
+import { Card, cn, FlapShuffle, FlapBreathe } from "@/components/ui";
 import { useLive } from "@/lib/useLive";
 import { deptLabel, PRIORITY } from "../cleaning/JobCard";
 
@@ -81,21 +81,67 @@ export function RecordsClient({ log, error, from, to, today, property }: { log: 
   };
 
   const sel = "!h-11 !min-h-11 text-[14px] font-semibold min-w-0";
+  const wideDate = "!h-auto !min-h-0 !border-0 !bg-transparent !p-0 !shadow-none !rounded-none !text-[15.5px] !font-bold num !w-[8.4rem] cursor-pointer";
+  const days = Math.max(1, Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1);
+  const lateN = rows.filter(late).length;
   return (
     <div className="space-y-5" data-records>
       {error && <p className="text-[14px] font-semibold text-chili" role="alert">{error}</p>}
-      <Card className="!p-4 space-y-3">
+      <Card className="!p-4 space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
         <div className="flex flex-wrap gap-2">
           {ranges.map(([label, f, t]) => <button key={label} type="button" aria-pressed={from === f && to === t} onClick={() => go(f, t)} data-range={label}
             className={cn("!min-h-11 rounded-full px-4 text-[14px] font-bold", from === f && to === t ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)]")}>{label}</button>)}
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+        <div className="grid grid-cols-2 gap-3 sm:hidden">
           <label className="min-w-0"><span className="text-[12.5px] font-semibold text-steel">From</span><input type="date" className="mt-1" value={from} max={today} onChange={(e) => e.target.value && go(e.target.value, to < e.target.value ? e.target.value : to)} data-from /></label>
           <label className="min-w-0"><span className="text-[12.5px] font-semibold text-steel">To</span><input type="date" className="mt-1" value={to} max={today} onChange={(e) => e.target.value && go(from > e.target.value ? e.target.value : from, e.target.value)} data-to /></label>
         </div>
+        {/* iPad and desktop (2026-10-24, the owner: "the From / To fields don't look good"): one range control — the calendar,
+            From → To, and how many days it covers */}
+        <div className="hidden sm:flex items-stretch min-w-0 rounded-[18px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] overflow-hidden min-h-[58px] shadow-[0_1px_0_var(--color-separator)]" data-range-wide>
+          <span className="px-3.5 grid place-items-center bg-[var(--color-cyan-2)] text-[var(--color-cyan)]" aria-hidden><CalendarDays size={20} /></span>
+          <label className="px-3.5 py-1.5 flex flex-col justify-center min-w-0 cursor-pointer hover:bg-[var(--color-fill)] transition-colors">
+            <span className="text-[10.5px] font-extrabold uppercase tracking-[.12em] text-steel">From</span>
+            <input type="date" className={wideDate} value={from} max={today} onChange={(e) => e.target.value && go(e.target.value, to < e.target.value ? e.target.value : to)} data-from-wide />
+          </label>
+          <span className="grid place-items-center px-1 text-[var(--color-label-3)]" aria-hidden><ArrowRight size={17} /></span>
+          <label className="px-3.5 py-1.5 flex flex-col justify-center min-w-0 cursor-pointer hover:bg-[var(--color-fill)] transition-colors">
+            <span className="text-[10.5px] font-extrabold uppercase tracking-[.12em] text-steel">To</span>
+            <input type="date" className={wideDate} value={to} max={today} onChange={(e) => e.target.value && go(from > e.target.value ? e.target.value : from, e.target.value)} data-to-wide />
+          </label>
+          <span className="px-4 grid place-items-center border-l border-[var(--color-separator)] text-[13px] font-bold whitespace-nowrap" data-range-days={days}>
+            <span><span className="num">{days}</span> {days === 1 ? "day" : "days"}</span>
+          </span>
+        </div>
       </Card>
 
-      <div className="fill-tiles !gap-2.5" data-record-stats>
+      {/* iPad and desktop: the counts as split-flaps (Work's tiles) — five across from lg; on an iPad in portrait Jobs, Done,
+          Late on top and the two averages under them */}
+      <div className="hidden sm:grid grid-cols-6 lg:grid-cols-5 gap-2.5" data-record-tiles>
+        {([["jobs", ListChecks, "Jobs", rows.length, "var(--color-blue)", "var(--color-blue-2)", rows.length ? "raised in this period" : "none raised"],
+          ["done", CircleCheck, "Done", done.length, "var(--color-green)", "var(--color-green-2)", done.length ? "finished" : "none finished"],
+          ["late", AlertTriangle, "Late", lateN, "var(--color-red)", "var(--color-red-2)", lateN ? "past their time" : "none late"],
+          ["resp", Hourglass, "Average response", resp == null ? 0 : Math.round(resp), "var(--color-orange)", "var(--color-orange-2)", resp == null ? "none taken yet" : resp < 1 ? "under a minute to take a job" : "min to take a job"],
+          ["work", Timer, "Average work", work == null ? 0 : Math.round(work), "var(--color-cyan)", "var(--color-cyan-2)", work == null ? "none finished yet" : work < 1 ? "under a minute a job" : "min a job"]] as const).map(([key, I, k, n, hue, hue2, cap]) => (
+          <div key={key} data-record-tile={key} data-n={n} style={{ ["--hue" as string]: hue, ["--hue-2" as string]: hue2 }}
+            className={cn("@container feather !rounded-[20px] p-4 min-w-0 flex flex-col gap-3 relative overflow-hidden", key === "resp" || key === "work" ? "col-span-3 lg:col-span-1" : "col-span-2 lg:col-span-1", key === "late" && n > 0 && "!border-[color-mix(in_srgb,var(--color-red)_45%,transparent)]")}>
+            <span className="absolute inset-x-0 top-0 h-1 bg-[var(--hue)] opacity-80" aria-hidden />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="h-9 w-9 shrink-0 rounded-xl grid place-items-center bg-[var(--hue-2)] text-[var(--hue)]"><I size={18} aria-hidden /></span>
+              <span className="text-[13.5px] font-bold text-[var(--color-label-2)] truncate">{k}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <div className="flip-stat shrink-0">
+                {key === "late"
+                  ? <FlapBreathe value={n} pad={2} size="sm" tone="alert" on={n > 0} say={`${n} late`} />
+                  : <FlapShuffle value={n} pad={2} size="sm" say={`${n} ${cap}`} />}
+              </div>
+              <span className={cn("min-w-0 flex-1 basis-24 text-[12px] leading-snug", key === "late" && n > 0 ? "text-[var(--color-red)] font-semibold" : "text-[var(--color-label-2)]")}>{cap}</span>
+            </div>
+          </div>))}
+      </div>
+
+      <div className="fill-tiles sm:!hidden !gap-2.5" data-record-stats>
         {([[ListChecks, "Jobs", String(rows.length)], [ListChecks, "Done", String(done.length)], [AlertTriangle, "Late", String(rows.filter(late).length)],
           [Hourglass, "Average response", fmtMin(resp)], [Timer, "Average work", fmtMin(work)]] as const).map(([I, k, v]) => (
           <div key={k} className={cn("feather !rounded-[18px] px-4 py-3 min-w-0 flex items-center gap-3", k === "Late" && v !== "0" && "!border-[var(--color-red)]")}>

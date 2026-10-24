@@ -140,3 +140,7 @@ node batch3.mjs     # 25 checks on a throwaway demo — see testing-and-gates.md
   says so. The month navigator is two 44px round ◀ ▶ buttons either side of a calendar tile, the month and its state as a
   chip (`[data-month-state]`: Not worked out — dashed grey, Draft — amber, Final — green with a lock). Under it, an empty
   month or a sheet with no rates is a small `EmptyState`. design24.mjs, 412 → 1920.
+
+- **Open a new outlet on iPad and desktop (2026-10-24, the owner: "design").** Phones keep the markup they had: every new part is `hidden md:…` and the old one `md:hidden` (or the change is `md:` classes only). An icon tile and the heading, *Copied
+  from <outlet>* with Brand · GST · Sections · 7-day trial as chips, the name field with a pin, and copying the menu as a
+  switch row (`[data-copy-menu]`, the whole 60px row toggles it). Both the phone's checkbox and the switch drive the same state.

@@ -2,8 +2,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowUpRight, Banknote, CheckCircle2, ChefHat, Flag, Info, Percent, Scissors, Sparkles, Star, TrendingDown, Wallet } from "lucide-react";
-import { Card, Segmented, cn } from "@/components/ui";
+import { AlertTriangle, ArrowUpRight, Banknote, Check, CheckCircle2, ChefHat, Flag, Info, Percent, Puzzle, Scissors, Tractor, Dog, Sparkles, Star, TrendingDown, Wallet } from "lucide-react";
+import { Card, Segmented, cn, FlapShuffle } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 
 export type Dish = { id: string; name: string; category: string | null; price: number; qty: number; revenue: number; plate_cost: number | null; margin: number | null; margin_pct: number | null; unpriced: number; class: "star" | "plowhorse" | "puzzle" | "dog" | "uncosted" | "unsold" };
@@ -26,6 +26,13 @@ const CLASS: Record<Dish["class"], { label: string; hint: string; tone: string }
   dog: { label: "Dog", hint: "sells little, earns little — rework or drop", tone: "bg-[var(--color-red-2)] text-[var(--color-red)]" },
   uncosted: { label: "No recipe", hint: "add a recipe in Menu", tone: "bg-[var(--color-fill)] text-[var(--color-label-2)]" },
   unsold: { label: "Not sold", hint: "nothing sold in this window", tone: "bg-[var(--color-fill)] text-[var(--color-label-3)]" },
+};
+/* each class's colour and picture on iPad and up */
+const HUE: Record<"star" | "plowhorse" | "puzzle" | "dog", { hue: string; hue2: string; Icon: typeof Star }> = {
+  star: { hue: "var(--color-green)", hue2: "var(--color-green-2)", Icon: Star },
+  plowhorse: { hue: "var(--color-orange)", hue2: "var(--color-orange-2)", Icon: Tractor },
+  puzzle: { hue: "var(--color-blue)", hue2: "var(--color-blue-2)", Icon: Puzzle },
+  dog: { hue: "var(--color-red)", hue2: "var(--color-red-2)", Icon: Dog },
 };
 const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const day = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
@@ -111,7 +118,28 @@ export function IntelligenceClient({ days, engineering, exceptions, compare, err
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><ChefHat size={16} /></span>
           <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Menu engineering · {days} days</h3><p className="text-xs text-steel mt-0.5">Vs average · plate cost at today&apos;s prices</p></div>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+        {/* iPad and up (2026-10-24, the owner: "number flap design"): each class a tile in its own colour — its icon, the
+            name, the count on the StatTile flap, what to do. Phones keep the compact tiles below. */}
+        <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4" data-classes>
+          {(["star", "plowhorse", "puzzle", "dog"] as const).map((k) => { const h = HUE[k]; const on = klass === k; return (
+            <button key={k} type="button" onClick={() => setKlass(on ? "all" : k)} aria-pressed={on} data-class={k}
+              style={{ ["--hue" as string]: h.hue, ["--hue-2" as string]: h.hue2 }}
+              className={cn("@container relative overflow-hidden rounded-[20px] p-4 text-left min-w-0 border bg-[var(--color-bg-2)] transition flex flex-col gap-3",
+                on ? "border-[var(--hue)] shadow-[0_0_0_3px_var(--hue-2)]" : "border-[var(--color-separator)] hover:border-[color-mix(in_srgb,var(--hue)_45%,transparent)]")}>
+              <span className="absolute inset-x-0 top-0 h-1 bg-[var(--hue)]" aria-hidden />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--hue-2)] text-[var(--hue)]"><h.Icon size={19} aria-hidden /></span>
+                <span className="text-[14px] font-extrabold uppercase tracking-[.08em] text-[color-mix(in_srgb,var(--hue)_62%,var(--color-label))] truncate">{CLASS[k].label}</span>
+                {on && <span className="ml-auto h-6 w-6 rounded-full grid place-items-center bg-[var(--hue)] text-[var(--color-on-tint)]"><Check size={14} strokeWidth={3} aria-hidden /></span>}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div className="flip-stat shrink-0"><FlapShuffle value={counts[k] ?? 0} pad={2} size="sm" say={`${counts[k] ?? 0} ${CLASS[k].label}`} /></div>
+                <span className="min-w-0 flex-1 basis-24 text-[12px] text-[var(--color-label-2)]">{(counts[k] ?? 0) === 1 ? "dish" : "dishes"}</span>
+              </div>
+              <div className="text-[13px] text-[var(--color-label-2)] leading-snug">{CLASS[k].hint}</div>
+            </button>); })}
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4 md:hidden">
           {(["star", "plowhorse", "puzzle", "dog"] as const).map((k) => (
             <button key={k} type="button" onClick={() => setKlass(klass === k ? "all" : k)} aria-pressed={klass === k}
               className={cn("rounded-2xl p-3 text-left min-w-0 border transition", klass === k ? "border-[var(--color-label)]" : "border-[var(--color-separator)] hover:bg-[var(--color-fill)]")}>

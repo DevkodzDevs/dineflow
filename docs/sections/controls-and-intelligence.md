@@ -133,3 +133,12 @@ pnpm test                 # lib/print/route.test.ts covers station routing (4)
 [billing-and-invoices.md](billing-and-invoices.md) · [orders-and-till.md](orders-and-till.md) ·
 [kitchen.md](kitchen.md) · [data-and-rls.md](data-and-rls.md) · [reports-and-forecast.md](reports-and-forecast.md) ·
 [`docs/audit-2026-10-11.md`](../audit-2026-10-11.md)
+
+- **iPad and desktop design (2026-10-24, the owner — "desktop to iPad only, don't disturb the mobile").** Phones keep the markup they had: every new part is `hidden md:…` and the old one `md:hidden` (or the change is `md:` classes only).
+  - **Shift closes, empty** (`[data-shifts-empty]`): an `EmptyState` (design-system.md) — what a close records, and **Close a
+    shift in Billing** → /billing.
+  - **Menu engineering's classes are flap tiles** (`[data-classes]`, `[data-class=star|plowhorse|puzzle|dog]`): each in its own
+    colour along the top (Star green, Plowhorse amber, Puzzle blue, Dog red), its icon (star, tractor, puzzle, dog), the name,
+    the count on the `StatTile` flap (`.flip-stat`, the tile an `@container`) with "dishes" beside it, and what to do. Four
+    across from `lg`, two below. A tapped class gets a ring in its colour and a tick; tapping again shows all. The name is
+    the hue mixed 62% toward the label colour — the pure hue measured 3.4:1 on the colourful-light card.

@@ -97,3 +97,4 @@ node batch2.mjs     # 40 checks on a throwaway demo — see testing-and-gates.md
   height (flex column, the items grow) with the week at its foot; the head is the shift's icon, the name in two lines before
   it cuts, the shift and the count, and **one progress ring** (SVG, `[data-list-pct]`) — it replaced the flap % and the bar
   under it; the week's dots carry the day letters, today ringed.
+- **No expenses this month** (2026-10-24) is `Empty`'s sm+ form — the wallet, amber (design-system.md). The phone is unchanged.

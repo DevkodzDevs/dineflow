@@ -102,22 +102,32 @@ function Profile({ me }: { me: Me }) {
     setSaved(next); setD(next); setVerified(contact_verified);
     toast(email_changed && next.contact_email ? "Saved — verify your new email below" : "Saved");
   });
-  const facts: { icon: React.ReactNode; caption: string; value: string; key: string }[] = [
-    { key: "role", icon: <ShieldCheck size={14} />, caption: "Access", value: me.role },
-    { key: "code", icon: <Hash size={14} />, caption: "Staff code", value: me.staff_code ?? "—" },
-    { key: "joined", icon: <CalendarDays size={14} />, caption: "Joined", value: me.joined_on ? new Date(me.joined_on + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—" },
-    { key: "boss", icon: <Users size={14} />, caption: "Reports to", value: me.reports_to ? `${me.reports_to.name} · ${me.reports_to.title}` : "—" },
+  /* `hue` colours a fact's icon on iPad and up only (2026-10-24); a phone draws them as before */
+  const facts: { icon: React.ReactNode; caption: string; value: string; key: string; hue: string }[] = [
+    { key: "role", icon: <ShieldCheck size={14} />, caption: "Access", value: me.role, hue: "var(--color-green)" },
+    { key: "code", icon: <Hash size={14} />, caption: "Staff code", value: me.staff_code ?? "—", hue: "var(--color-blue)" },
+    { key: "joined", icon: <CalendarDays size={14} />, caption: "Joined", value: me.joined_on ? new Date(me.joined_on + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—", hue: "var(--color-orange)" },
+    { key: "boss", icon: <Users size={14} />, caption: "Reports to", value: me.reports_to ? `${me.reports_to.name} · ${me.reports_to.title}` : "—", hue: "var(--color-violet)" },
   ];
   return (
     <Card className="!p-0 overflow-hidden" data-me-profile>
       {/* who I am: a band in my colour, my circle over its edge, my name, my position and team, then the owner's facts */}
-      <div className="h-20 sm:h-24" style={{ background: `color-mix(in srgb, ${hue} 20%, var(--color-bg-2))` }} aria-hidden />
-      <div className="px-5 pb-5 -mt-10 sm:-mt-12">
+      {/* iPad and up (2026-10-24, the owner: "design"): a taller band in my colour with a soft gradient and dot texture, a bigger
+          circle with a halo, a bigger name; the facts as four tiles, each icon in its own colour. Phones: as they were. */}
+      <div className="relative h-20 sm:h-24 md:h-36 overflow-hidden" style={{ background: `color-mix(in srgb, ${hue} 20%, var(--color-bg-2))` }} aria-hidden data-me-band>
+        {/* the app's own accents under my colour, so a person with no tone (grey) still gets a living band */}
+        <span className="hidden md:block absolute inset-0" style={{ background: `linear-gradient(115deg, color-mix(in srgb, var(--color-tint) 26%, var(--color-bg-2)) 0%, color-mix(in srgb, var(--color-blue) 15%, var(--color-bg-2)) 55%, color-mix(in srgb, var(--color-violet) 14%, var(--color-bg-2)) 100%)` }} />
+        <span className="hidden md:block absolute inset-0" style={{ background: `linear-gradient(115deg, color-mix(in srgb, ${hue} 34%, transparent) 0%, transparent 70%)` }} />
+        <span className="hidden md:block absolute inset-0 opacity-[.16]" style={{ backgroundImage: `radial-gradient(color-mix(in srgb, var(--color-label) 40%, transparent) 1px, transparent 1.3px)`, backgroundSize: "24px 24px", maskImage: "linear-gradient(90deg, transparent 20%, #000 75%)", WebkitMaskImage: "linear-gradient(90deg, transparent 20%, #000 75%)" }} />
+        <span className="hidden md:block absolute -right-12 -top-20 h-64 w-64 rounded-full" style={{ background: `color-mix(in srgb, var(--color-tint) 16%, transparent)` }} />
+        <span className="hidden md:block absolute right-40 -bottom-24 h-48 w-48 rounded-full" style={{ background: `color-mix(in srgb, var(--color-blue) 12%, transparent)` }} />
+      </div>
+      <div className="px-5 pb-5 -mt-10 sm:-mt-12 md:px-7 md:pb-6 md:-mt-14 relative">
         <div className="flex items-end gap-4 min-w-0">
-          <span className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-full grid place-items-center font-display text-[30px] sm:text-[36px] ring-4 ring-[var(--color-bg-2)]"
+          <span className="h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28 shrink-0 rounded-full grid place-items-center font-display text-[30px] sm:text-[36px] md:text-[42px] ring-4 md:ring-[6px] ring-[var(--color-bg-2)] md:shadow-[0_14px_30px_-16px_rgb(0_0_0/.45)]"
             style={{ background: `color-mix(in srgb, ${hue} 26%, var(--color-bg-2))`, color: `color-mix(in srgb, ${hue} 82%, var(--color-label))` }} data-me-avatar>{initials(shown)}</span>
           <div className="min-w-0 pb-1">
-            <div className="text-[22px] sm:text-[26px] font-extrabold leading-tight truncate" data-me-name>{shown}</div>
+            <div className="text-[22px] sm:text-[26px] md:text-[30px] font-extrabold leading-tight truncate" data-me-name>{shown}</div>
             {d.display_name.trim() && d.display_name.trim() !== me.full_name && <div className="text-[12.5px] text-steel truncate">On the staff list as {me.full_name}</div>}
           </div>
         </div>
@@ -125,12 +135,12 @@ function Profile({ me }: { me: Me }) {
           {me.title && <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[var(--color-fill)] text-[13px] font-bold max-w-full"><BadgeCheck size={14} className="shrink-0" aria-hidden /><span className="truncate">{me.title}</span></span>}
           {me.deptLabel && <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[13px] font-bold max-w-full" style={{ background: `color-mix(in srgb, ${deptHue(me.dept)} 16%, transparent)`, color: `color-mix(in srgb, ${deptHue(me.dept)} 78%, var(--color-label))` }}><DeptIcon dept={me.dept} size={14} className="shrink-0" /><span className="truncate">{me.deptLabel}</span></span>}
         </div>
-        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-3 rounded-2xl bg-[var(--color-fill)] border border-[var(--color-separator)] p-3.5" data-me-facts>
+        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-3 rounded-2xl bg-[var(--color-fill)] border border-[var(--color-separator)] p-3.5 md:mt-5 md:grid-cols-[repeat(4,minmax(0,1fr))] md:gap-3 md:p-0 md:bg-transparent md:border-0" data-me-facts>
           {facts.map((f) => (
-            <div key={f.key} className="flex items-center gap-2.5 min-w-0" data-me-fact={f.key}>
-              <span className="h-8 w-8 shrink-0 rounded-full grid place-items-center bg-[var(--color-bg-2)] text-[var(--color-label-2)]">{f.icon}</span>
-              <span className="min-w-0"><span className="block text-[10.5px] font-bold uppercase tracking-[.08em] text-steel">{f.caption}</span>
-                <span className="block text-[13.5px] font-semibold truncate">{f.value}</span></span>
+            <div key={f.key} style={{ ["--fh" as string]: f.hue }} className="flex items-center gap-2.5 min-w-0 md:gap-3 md:rounded-[18px] md:border md:border-[var(--color-separator)] md:bg-[var(--color-bg)] md:p-3.5 md:min-h-[76px]" data-me-fact={f.key}>
+              <span className="h-8 w-8 shrink-0 rounded-full grid place-items-center bg-[var(--color-bg-2)] text-[var(--color-label-2)] md:h-11 md:w-11 md:rounded-[13px] md:bg-[color-mix(in_srgb,var(--fh)_14%,transparent)] md:text-[var(--fh)] md:[&>svg]:h-[19px] md:[&>svg]:w-[19px]">{f.icon}</span>
+              <span className="min-w-0"><span className="block text-[10.5px] font-bold uppercase tracking-[.08em] text-steel md:text-[11px]">{f.caption}</span>
+                <span className="block text-[13.5px] font-semibold truncate md:text-[15px] md:font-bold">{f.value}</span></span>
             </div>))}
         </div>
         <p className="mt-2 text-[12px] text-steel">Set by the owner</p>

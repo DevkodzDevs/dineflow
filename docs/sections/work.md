@@ -127,3 +127,9 @@ node cleaning.mjs    # 43  ·  node cleaner.mjs  # 43 — the Cleaning board sti
   the word, then the count on the same flap every `StatTile` wears (`.flip-stat`, so the card is an `@container`) with a
   caption beside it. Waiting breathes while there is any, Late breathes red, On it and Done today shuffle on a change. Each
   state keeps its colour along the top edge: waiting amber, on it blue, late red, done green. It was 24px numerals.
+- **Empty columns and Work records, iPad and desktop (2026-10-24; the phone is unchanged).** `Column` (JobCard.tsx): an empty
+  column is an `EmptyState size="sm"` from sm (`[data-col-empty]`) — waiting amber hourglass, on it blue timer, to inspect
+  violet shield, done green tick, coming up cyan calendar. **Work records**: the range is one control (`[data-range-wide]`:
+  the calendar, From → To, how many days, `[data-range-days]`) beside the presets; the counts are Work's flap tiles
+  (`[data-record-tiles]`) — Jobs, Done, Late (breathes red), Average response and Average work as minutes — five across from
+  lg, three and two on an iPad in portrait. The phone keeps `[data-from]` / `[data-to]` and `[data-record-stats]`.

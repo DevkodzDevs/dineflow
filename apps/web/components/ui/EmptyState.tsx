@@ -22,9 +22,11 @@ const HUE: Record<EmptyHue, [string, string]> = {
  * right — 76px tall instead of ~240. Pass the icon as a component; this file has no "use client", so a server page can
  * use it only with an icon it renders itself — client screens pass the Lucide component as they already import it.
  */
-export function EmptyState({ icon: Icon, title, hint, hue = "tint", actions, size = "md", className, ...rest }: {
+export function EmptyState({ icon: Icon, title, hint, hue = "tint", actions, size = "md", from, className, ...rest }: {
   icon: ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean }>;
   title: ReactNode; hint?: ReactNode; hue?: EmptyHue; actions?: ReactNode; size?: "sm" | "md"; className?: string;
+  /** "sm": shown only from the sm breakpoint up — a screen keeps its old phone line beside it (the owner: "don't disturb the mobile version") */
+  from?: "sm";
 } & Record<`data-${string}`, string | boolean | undefined>) {
   const [hue1, hue2] = HUE[hue];
   const style = {
@@ -33,7 +35,7 @@ export function EmptyState({ icon: Icon, title, hint, hue = "tint", actions, siz
   };
   if (size === "sm") return (
     <div role="status" style={style} {...rest}
-      className={cn("rounded-[18px] border border-dashed border-[color-mix(in_srgb,var(--hue)_32%,var(--color-separator))] px-3.5 py-3 min-h-[76px] flex items-center gap-3.5 min-w-0", className)}>
+      className={cn("rounded-[18px] border border-dashed border-[color-mix(in_srgb,var(--hue)_32%,var(--color-separator))] px-3.5 py-3 min-h-[76px] items-center", from === "sm" ? "hidden sm:flex" : "flex", " gap-3.5 min-w-0", className)}>
       <span className="relative h-12 w-12 shrink-0 grid place-items-center" aria-hidden>
         <span className="absolute inset-0 rounded-[15px] bg-[var(--hue-2)]" />
         <span className="relative text-[var(--hue)]"><Icon size={21} strokeWidth={2.1} aria-hidden /></span>
@@ -47,7 +49,7 @@ export function EmptyState({ icon: Icon, title, hint, hue = "tint", actions, siz
   );
   return (
     <div role="status" style={style} {...rest}
-      className={cn("relative overflow-hidden rounded-[24px] border border-dashed border-[color-mix(in_srgb,var(--hue)_32%,var(--color-separator))] px-6 py-9 sm:py-11 flex flex-col items-center text-center min-w-0", className)}>
+      className={cn("relative overflow-hidden rounded-[24px] border border-dashed border-[color-mix(in_srgb,var(--hue)_32%,var(--color-separator))] px-6 py-9 sm:py-11 flex-col", from === "sm" ? "hidden sm:flex" : "flex", " items-center text-center min-w-0", className)}>
       <span className="relative h-[88px] w-[88px] grid place-items-center" aria-hidden>
         {/* a dotted orbit that turns slowly, a hue wash, then the tile — still under reduced motion */}
         <span className="absolute inset-0 rounded-full border-2 border-dotted border-[color-mix(in_srgb,var(--hue)_38%,transparent)] animate-[spin_26s_linear_infinite] motion-reduce:animate-none" />

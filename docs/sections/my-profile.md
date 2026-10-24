@@ -72,3 +72,10 @@ Notifications) · [auth-and-session.md](auth-and-session.md) (`/account/password
   `confirm()`. The page's lines are cut to a few words (Short copy, design-system.md).
 
 - **This device → Show Assist** (`[data-me-assist]`, only for whoever has Assist): brings the button back after a drag put it away.
+
+- **The profile header on iPad and desktop (2026-10-24, the owner: "design").** Only `md:` classes and `hidden md:block` layers
+  — a phone draws exactly what it did. The band is 144px: the app's tint → blue → violet under the person's own colour, a faint
+  dot texture fading in from the left and two soft circles, so a person with no tone (grey) still gets a living band; the circle
+  is 112px with a 6px ring and a shadow; the name 30px. The four facts are tiles in a row (`md:grid-cols-4`), each icon in
+  its own colour (Access green, Staff code blue, Joined amber, Reports to violet — `--fh`). On a phone the facts stay the
+  two-column panel (design24b.mjs asserts 2 columns at 412).

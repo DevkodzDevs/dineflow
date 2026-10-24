@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, Images, ImagePlus, ChevronDown, Wrench, Ban, Loader2, Globe, GlobeLock } from "lucide-react";
+import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, Images, ImagePlus, ChevronDown, Wrench, Ban, Loader2, Globe, GlobeLock, Tag, Check } from "lucide-react";
 import { DishPhotoPicker, type DishPhoto } from "@/components/menu/DishPhotoPicker";
 import { DishGlyph, glyphFor } from "@/components/menu/DishGlyph";
 import { motion, AnimatePresence } from "framer-motion";
@@ -50,6 +50,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
     } finally { setFilling(false); }
   };
   const [catSheet, setCatSheet] = useState(false);
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   /* Options: the sizes a dish is sold in and the add-on groups it offers; the groups themselves are
      managed in their own sheet. A combo's parts are edited inside the dish form. */
   const [optionsFor, setOptionsFor] = useState<Item | null>(null);
@@ -333,19 +334,38 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
 
       {/* categories */}
       <Sheet open={catSheet} onClose={() => setCatSheet(false)} title="Categories">
-        <ul className="space-y-2 mb-5">
-          {categories.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-2 text-sm"><span className="flex-1 min-w-0 truncate">{c.name}</span>
+        {/* iPad and desktop (2026-10-24, the owner: "the categories box doesn't look good"): the icon, the dish count and a
+            rename on each row, the add field as one control. The phone keeps the plain rows and form. */}
+        {categories.length === 0 && <div className="hidden sm:flex items-center gap-3 rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-3.5 mb-4 text-[13.5px] text-steel" data-cat-none><Tag size={17} className="shrink-0 text-[var(--color-tint)]" aria-hidden />No categories yet. Add the first one below, or tap a usual one.</div>}
+        <ul className="space-y-2 mb-5 sm:space-y-1.5">
+          {categories.map((c) => { const n = items.filter((i) => i.category_id === c.id).length; return (
+            <li key={c.id} className="flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-2 text-sm sm:rounded-2xl sm:px-2.5 sm:py-2 sm:gap-2.5 sm:bg-[var(--color-bg)] sm:min-h-[60px]" data-cat-row={c.id}>
+              <span className="hidden sm:grid h-10 w-10 shrink-0 rounded-xl place-items-center bg-[var(--color-green-2)] text-[var(--color-tint)]" aria-hidden><CatIcon name={catIcon(c.name)} size={18} /></span>
+              {renaming?.id === c.id
+                ? <form className="flex-1 min-w-0 flex items-center gap-1.5" action={() => start(async () => { const fd = new FormData(); fd.set("id", c.id); fd.set("name", renaming.name.trim() || c.name); fd.set("sort_order", String(c.sort_order)); await saveCategory(fd); setRenaming(null); })}>
+                    <input autoFocus value={renaming.name} onChange={(e) => setRenaming({ id: c.id, name: e.target.value })} onKeyDown={(e) => { if (e.key === "Escape") setRenaming(null); }} className="!h-10 !text-[14.5px] !font-semibold" aria-label={`New name for ${c.name}`} data-cat-rename-input />
+                    <button type="submit" className="h-10 w-10 shrink-0 rounded-xl grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)]" aria-label="Save the name"><Check size={17} /></button>
+                  </form>
+                : <span className="flex-1 min-w-0 truncate sm:flex sm:flex-col sm:leading-tight"><span className="sm:truncate sm:text-[15px] sm:font-bold">{c.name}</span><span className="hidden sm:block text-[12px] text-steel mt-0.5">{n === 1 ? "1 dish" : `${n} dishes`}</span></span>}
               {/* the station this category's dishes print at; "any" keeps them on the expo view only */}
               {stations.length > 0 && <select value={c.station ?? ""} onChange={(e) => start(() => { setCategoryStation(c.id, e.target.value || null); })} className="!w-36 !h-8 !py-0 text-xs" title="Kitchen station"><option value="">any station</option>{stations.map((s) => <option key={s} value={s}>{s}</option>)}</select>}
-              <button className="text-steel hover:text-chili" onClick={() => start(() => { deleteCategory(c.id); })} aria-label="Delete"><Trash2 size={15} /></button></li>
-          ))}
+              {renaming?.id !== c.id && <button type="button" className="hidden sm:grid h-10 w-10 shrink-0 rounded-xl place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]" onClick={() => setRenaming({ id: c.id, name: c.name })} aria-label={`Rename ${c.name}`} data-cat-rename><Pencil size={15} /></button>}
+              <button className="text-steel hover:text-chili sm:h-10 sm:w-10 sm:shrink-0 sm:rounded-xl sm:grid sm:place-items-center sm:hover:bg-[var(--color-red-2)]" onClick={() => start(() => { deleteCategory(c.id); })} aria-label="Delete"><Trash2 size={15} /></button></li>
+          ); })}
         </ul>
-        <form className="flex gap-2" action={(fd) => start(async () => { await saveCategory(fd); })}>
-          <input name="name" placeholder="New category" required />
+        <div className="hidden sm:block text-[11px] font-extrabold uppercase tracking-[.12em] text-steel mb-2">Add a category</div>
+        <form className="flex gap-2 sm:gap-1 sm:items-center sm:rounded-2xl sm:border sm:border-[var(--color-separator)] sm:bg-[var(--color-bg)] sm:p-1.5 sm:pl-3.5 sm:transition-colors sm:focus-within:border-[var(--color-tint)] sm:focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-tint)_16%,transparent)]" action={(fd) => start(async () => { await saveCategory(fd); })} data-cat-add>
+          <Tag size={18} className="hidden sm:block shrink-0 text-[var(--color-tint)]" aria-hidden />
+          <input name="name" placeholder="New category" required className="sm:!border-0 sm:!bg-transparent sm:!shadow-none sm:!h-11 sm:!px-2 sm:!text-[15.5px] sm:!font-semibold" />
           <input type="hidden" name="sort_order" value={categories.length + 1} />
-          <Button>Add</Button>
+          <Button className="sm:!h-11 sm:!rounded-xl sm:!px-5 sm:shrink-0"><Plus size={17} className="hidden sm:block" aria-hidden />Add</Button>
         </form>
+        {(() => { const have = new Set(categories.map((c) => c.name.trim().toLowerCase())); const quick = ["Starters", "Main course", "Breads", "Rice & biryani", "Desserts", "Beverages"].filter((q) => !have.has(q.toLowerCase())); return quick.length > 0 && (
+          <div className="hidden sm:flex flex-wrap items-center gap-1.5 mt-3" data-cat-quick>
+            <span className="text-[12px] font-semibold text-steel mr-1">Usual ones:</span>
+            {quick.map((q, i) => <button key={q} type="button" disabled={pending} onClick={() => start(async () => { const fd = new FormData(); fd.set("name", q); fd.set("sort_order", String(categories.length + 1 + i)); await saveCategory(fd); })}
+              className="h-9 px-3 rounded-full text-[13px] font-bold inline-flex items-center gap-1 bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] disabled:opacity-50"><Plus size={13} aria-hidden />{q}</button>)}
+          </div>); })()}
       </Sheet>
     </div>
   );

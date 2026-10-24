@@ -5,6 +5,7 @@ import { ROLE_LABEL, type Role } from "@dineflow/shared";
 import { Sheet, Switch, cn, useToast, FlapBreathe } from "@/components/ui";
 import { VOICE_KINDS, VOICE_TOPICS, VOICE_STATUS, kindOf, topicOf, type VoiceKind, type VoiceAbout, type VoiceStatus } from "@/lib/voice";
 import { sendVoice, replyVoice, setVoiceStatus, openVoice, type Reply } from "./actions";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export type Item = {
   id: string; kind: VoiceKind; about: VoiceAbout | null; subject: string; body: string; anonymous: boolean;
@@ -206,9 +207,17 @@ function OwnerInbox({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => voi
         {unread > 0 && <div className="flex items-center justify-center gap-2.5 pt-0.5 text-[13px] font-bold text-[var(--color-red)]" data-voice-unread>{/* new messages breathe until the owner opens them (Flap.tsx) */}<FlapBreathe value={unread} pad={0} size="xs" tile="26px" say={`${unread} new`} />new — tap one to read it</div>}
       </div>
       {items.length === 0
-        ? <div className="card !p-8 text-center" data-voice-empty><span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><Inbox size={20} aria-hidden /></span>
+        ? <>
+          {/* iPad and up (2026-10-24, the owner: "design"): the empty panel, and what can arrive — phones keep the card below */}
+          <div className="hidden md:block"><EmptyState icon={Inbox} hue="violet" title="Nothing from your team yet" data-voice-empty-md
+            hint="When someone on your team sends a complaint, feedback, an idea or a thank-you from My day, it lands here. Only you see them."
+            actions={([[AlertTriangle, "Complaints", "var(--color-red)", "var(--color-red-2)"], [MessageSquare, "Feedback", "var(--color-blue)", "var(--color-blue-2)"], [Lightbulb, "Ideas", "var(--color-orange)", "var(--color-orange-2)"], [HeartHandshake, "Thanks", "var(--color-green)", "var(--color-green-2)"]] as const).map(([I, t, h, h2]) => (
+              <span key={t} className="inline-flex items-center gap-1.5 h-9 pl-1.5 pr-3 rounded-full text-[12.5px] font-bold bg-[var(--color-bg-2)] border border-[var(--color-separator)]">
+                <span className="h-6 w-6 rounded-full grid place-items-center" style={{ background: h2, color: h }}><I size={13} aria-hidden /></span>{t}</span>))} /></div>
+          <div className="card !p-8 text-center md:hidden" data-voice-empty><span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><Inbox size={20} aria-hidden /></span>
             <p className="mt-3 text-[16px] font-bold">Nothing from your team yet</p>
             <p className="mt-1 text-[13px] text-steel max-w-[46ch] mx-auto">Staff messages land here. Only you see them.</p></div>
+          </>
         : shown.length === 0
           ? <div className="card !p-6 text-center text-[14px] text-steel">Nothing here — choose another filter above.</div>
           : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{shown.map((i) => <Row key={i.id} item={i} owner onOpen={onOpen} />)}</div>}

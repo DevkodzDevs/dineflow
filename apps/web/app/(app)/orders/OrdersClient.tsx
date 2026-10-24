@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles } from "lucide-react";
+import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
 import { cn, Empty, Segmented, useToast } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
@@ -215,7 +216,12 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
       </>) : (
         <section data-open-orders>
           {orders.length === 0
-            ? <div className="rounded-[22px] border border-dashed border-[var(--color-separator)] p-8 text-center text-sm text-steel">Nothing open. Quiet before the rush.</div>
+            ? <>
+              <div className="sm:hidden rounded-[22px] border border-dashed border-[var(--color-separator)] p-8 text-center text-sm text-steel">Nothing open. Quiet before the rush.</div>
+              {/* iPad and desktop (2026-10-24, the owner): the empty floor said properly, with the two ways to start */}
+              <EmptyState from="sm" icon={HandPlatter} hue="blue" title="Nothing open. Quiet before the rush." hint="Orders show here as soon as a table, a parcel or a phone order starts." data-orders-empty
+                actions={<><Link href="/orders/new?type=takeaway" className="btn btn-filled" data-empty-parcel><ShoppingBag size={17} aria-hidden />Parcel</Link><Link href="/orders/phone" className="btn btn-gray" data-empty-phone><Phone size={17} aria-hidden />Phone order</Link></>} />
+            </>
             : <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 min-[100rem]:grid-cols-4 gap-3 lg:gap-4" data-order-grid>
             {orders.filter((o) => shows(stateOf(o), lateOf(o))).map((o, i) => {
               const items = live(o); const plates = items.reduce((s, x) => s + x.qty, 0); const s = stateOf(o); const I = SVC_ICON[s];

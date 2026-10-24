@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { formatINR } from "@/lib/format";
 import { sealAll, createLink, revokeLink } from "./actions";
 import { copyText } from "@/lib/clipboard";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type P = { period: string; rooms_revenue: number; dining_revenue: number; delivery_revenue: number; total_revenue: number; gst_collected: number; supplier_paid: number; wages_paid: number; covers: number; invoices_issued: number; occupancy_pct: number | null; avg_ticket: number | null; days_traded: number; hash: string };
 type Rec = { property: { name: string; address: string | null; gstin: string | null; type: string; since: string }; from: string; to: string; months: number; periods: P[]; total_revenue: number; gst_collected: number; avg_monthly: number; verification: { periods: number; intact: boolean; broken: { period: string; reason: string }[]; head: string | null } };
@@ -43,8 +44,14 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
       {err && <p className="text-sm text-chili mb-4">{err}</p>}
 
       {periods.length === 0 ? (
-        <Empty title="No months sealed yet" hint="Months seal after they end"
-          action={<Button disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(`${r.sealed} month(s) sealed.`); })}>Seal my trading history</Button>} />
+        <>
+        {/* phones as they were; iPad and up the empty panel (2026-10-24, the owner — desktop and iPad only) */}
+        <div className="md:hidden"><Empty title="No months sealed yet" hint="Months seal after they end"
+          action={<Button disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(`${r.sealed} month(s) sealed.`); })}>Seal my trading history</Button>} /></div>
+        <div className="hidden md:block"><EmptyState icon={ShieldCheck} hue="blue" title="No months sealed yet" data-proof-empty
+          hint="Each finished month's sales are sealed so nobody can change them — a record your bank, a supplier or a landlord can trust. Seal the months you already have now."
+          actions={<Button disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(`${r.sealed} month(s) sealed.`); })}><Lock size={16} /> Seal my trading history</Button>} /></div>
+        </>
       ) : (<>
         {/* verification banner — the whole point of the feature */}
         <Card className={cn("flex flex-wrap sm:flex-nowrap items-start gap-3 mb-5", v?.intact ? "!bg-mint-2 border-mint" : "!bg-chili-2 border-chili")}>

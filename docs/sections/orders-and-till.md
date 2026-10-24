@@ -359,8 +359,8 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
   add-ons. Only a dish with a *required* add-on group (`optionProblem` on no add-ons) still opens its choices, so nothing
   half-ordered reaches the kitchen. **Choose** (`[data-choose]`) always opens the sizes and add-ons (`choose(it)`).
 - **The move on the photo's edge**, from md: a solid round **+** in the tint (`.dish-plus`, ringed in the card colour) and,
-  for a dish with choices, a slim **Choose** pill beside it (`.dish-chip`). **On a phone the owner kept the old pills**:
-  ADD with its word, CHOOSE alone (globals.css, under 768).
+  for a dish with choices, a slim **Choose** pill beside it (`.dish-chip`). **On a phone the same round +, 40px** (2026-10-24, the owner:
+  "only the plus symbol is enough"); the ADD pill with its word is gone (globals.css, under 768).
 - **Even cards**: name, then the price row (never wraps), then one fixed 16px line for "14 min · customisable" (blank when
   there is nothing) — the price no longer rides `mt-auto`, so no card has a gap between its name and its price.
 - **The selected ring is drawn over the photo** (`.svc-dish[data-on]::after`, an inset ring at z 3); the inset outline it
@@ -379,3 +379,17 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
   cutlery / Extra sauce / Gravy separate / Eco bag). They join the order's request and print on the kitchen ticket ("Pickup by 7:45
   PM · Cutlery"). The strip at the top follows the type: the tables' open tickets for dine-in, the parcels' (by token) for a parcel
   or delivery (`[data-order-line=tables|parcels]`) — a parcel no longer shows tables.
+- **iPad and desktop round (2026-10-24, the owner's screenshots; the phone is unchanged).**
+  - **Orders, list view, nothing open** (`[data-orders-empty]`, sm+): `EmptyState` with the waiter's icon, a line on what fills it,
+    and **Parcel** and **Phone order** (`[data-empty-parcel]`, `[data-empty-phone]`). The phone keeps the dashed line.
+  - **The till's side panel on an iPad in landscape** ("screen broke the design": a delivery's details pushed Send to kitchen
+    below the screen). Between the order type and the footer is one scroll region, `[data-cart-scroll]` — on lg a flex
+    column that scrolls; below lg `display: contents` with `[&>*]:shrink-0`, so the phone and tablet sheet lay out exactly as
+    before. The ticket lines no longer scroll inside it on lg (`lg:min-h-fit lg:overflow-visible`). The footer — Cooking
+    request, the total, **Send to kitchen** — always shows. Parcel and Delivery on lg: name | phone as one joined field, the
+    name wider (`[data-cust-name]`, `[data-cust-phone]`, a separator line between, so "Customer name" is no longer cut); the
+    time as one segmented track of five; Packing one row that slides (`[data-packing-rail]`); a compact empty ticket.
+  - **Phone order → Call** ("Call option need add here", sm+): a green **Call** inside the number field
+    (`[data-call-number]`), on the waiting panel (`[data-call-waiting]`, an `EmptyState`) and on the caller's card
+    (`[data-call-caller]`) — `tel:+91` and the ten digits, off (`aria-disabled`) until ten are typed. On an iPad or a Mac it
+    rings through FaceTime / the linked phone.

@@ -746,3 +746,16 @@ across, pin; three by default). Staff keeps its own switch (StaffClient). 40px w
   ring (still under reduced motion), a bold line, one line on what fills it, and the action that fills it. `size="sm"` is
   the 76px row for a list inside a column. Used on Front desk (Arrivals, Upcoming, In house), the control room's On now,
   Rooms, Facilities and Payroll's month. Pass the Lucide component as `icon` from a client screen. design24.mjs: 146 checks.
+- **`Empty` from sm up, and "phone untouched" (2026-10-24, the owner on an iPad: "these marked sections don't look good —
+  ultra modern; desktop to iPad only, don't disturb the mobile version").** `index.tsx`'s `Empty` (36 screens) keeps its
+  phone form exactly — the card, the ◌ tile, the title and hint. From `sm` the same card draws the section's icon on a tile
+  inside a slowly turning dotted ring, a wash of the section's hue with a dot grid fading from the top, and a 23px title.
+  `icon` is a **name** (`EmptyIcon`: dish, pantry, invoice, expense, labour, people, orders, qr, …) so a server page can pass
+  it; left out, `emptyIconFor(title)` picks one from the title's words, and the hue comes with it. `data-empty` says which.
+  `EmptyState` takes `from="sm"`: its root is `hidden sm:flex`, so a screen keeps its old phone line beside it
+  (`sm:hidden`). That pair is the pattern for "iPad and desktop only": render the phone's element with `sm:hidden` and the
+  new one with `hidden sm:…`, or prefix every new class with `sm:` / `lg:` on one element. **A field's font, width, padding
+  and border need `!`** — the global `input, select, textarea` rule is unlayered and beats any plain utility
+  (`font: inherit` wins over `font-bold`, `width: 100%` over `w-…`). `cn` is `clsx`, not tailwind-merge: two display
+  classes on one element both stay, so swap them in code (as `from` does) rather than overriding with `className`.
+  Probe: `pw/design141.mjs` (testing-and-gates.md).

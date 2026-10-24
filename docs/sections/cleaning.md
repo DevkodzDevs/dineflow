@@ -103,3 +103,9 @@ node cleaner.mjs     # 42 checks: a restaurant Cleaner's phone and a resort's at
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. Waiting breathes; On it and Cleaned today shuffle (`[data-clean-n]`); the average stays words.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+- **iPad and desktop (2026-10-24, the owner: "the flaps are tiny — number flap design, perfectly sized"; the phone is unchanged).**
+  `CleanTiles` (`[data-clean-tiles]`, sm+) is Work's tile: an icon and the word, the count on `.flip-stat`'s flap (86px at
+  1194, was 34) with a caption, each state its colour on the top edge — Waiting amber (breathes), On it blue, Cleaned today
+  green, **Average clean** cyan, now a flap of minutes ("min a clean"). The phone keeps `[data-clean-stats]`. An empty
+  column (`Column` in JobCard.tsx, shared with Work) is an `EmptyState size="sm"` from sm (`[data-col-empty]`): the column's
+  icon and hue, its sentence and one line on what lands there.

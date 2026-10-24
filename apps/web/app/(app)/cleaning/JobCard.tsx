@@ -3,6 +3,8 @@ import { useState, type ReactNode } from "react";
 import { BedDouble, Armchair, Clock, Check, UserPlus, RotateCcw, Ban, Hand, CalendarCheck, Star, Wrench, Sprout, SprayCan, ConciergeBell, ChefHat, HandPlatter, Boxes, ShieldCheck, ShieldX, PartyPopper, Briefcase, ClipboardList, AlertTriangle, Repeat, StickyNote, CircleCheck, MoreHorizontal, type LucideIcon } from "lucide-react";
 import { DEPARTMENTS } from "@dineflow/shared";
 import { cn } from "@/components/ui";
+import { EmptyState, type EmptyHue } from "@/components/ui/EmptyState";
+import { Hourglass, Timer, CalendarClock } from "lucide-react";
 import { Say } from "@/components/ui/Say";
 import { takeJob, finishJob, giveBack, assignJob, skipJob, cancelJob, assignLabour, type JobKind } from "./actions";
 
@@ -195,12 +197,24 @@ export function DoneRow({ j, me, inspectRequired, showDept }: { j: Job; me: stri
   );
 }
 
+const COL_LOOK: Record<"waiting" | "on_it" | "done_today" | "to_inspect" | "coming_up", [LucideIcon, EmptyHue, string]> = {
+  waiting: [Hourglass, "orange", "New jobs land here first"],
+  on_it: [Timer, "blue", "A job moves here when someone takes it"],
+  to_inspect: [ShieldCheck, "violet", "Cleaned rooms wait here for a check"],
+  done_today: [CircleCheck, "tint", "Finished jobs collect here through the day"],
+  coming_up: [CalendarClock, "cyan", "Jobs set for later wait here"],
+};
+
 /** A column of the board: its word, a count, and its cards or a quiet line. */
 export function Column({ keyName, title, n, hint, children }: { keyName: string; title: "waiting" | "on_it" | "done_today" | "to_inspect" | "coming_up"; n: number; hint: string; children: ReactNode }) {
   return (
     <section className="min-w-0 space-y-3" data-col={keyName}>
       <div className="flex items-center gap-2 px-1"><span className="text-[17px] font-extrabold"><Say w={title} start /></span><span className="num rounded-full bg-[var(--color-fill)] px-2.5 py-0.5 text-[13px] font-extrabold">{n}</span></div>
-      {n === 0 ? <div className="rounded-2xl border border-dashed border-[var(--color-line-2)] px-4 py-6 text-center text-[13.5px] text-steel">{hint}</div> : children}
+      {n === 0 ? <>
+        {/* the phone keeps its quiet dashed line; from sm up the column says it with its icon and hue (2026-10-24, the owner) */}
+        <div className="sm:hidden rounded-2xl border border-dashed border-[var(--color-line-2)] px-4 py-6 text-center text-[13.5px] text-steel">{hint}</div>
+        <EmptyState from="sm" size="sm" icon={COL_LOOK[title][0]} hue={COL_LOOK[title][1]} title={hint} hint={COL_LOOK[title][2]} data-col-empty={keyName} />
+      </> : children}
     </section>
   );
 }

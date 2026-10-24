@@ -2,7 +2,8 @@
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Copy, Check, RefreshCw, Upload, Send, Pencil, Trash2, Link2, Calendar, Clock, AlertTriangle, Loader2, Bike, BedDouble, CreditCard, MapPin, Globe, ShieldCheck, ExternalLink, Users, Smartphone, QrCode, UtensilsCrossed } from "lucide-react";
+import { Plus, Copy, Check, RefreshCw, Upload, Send, Pencil, Trash2, Link2, Calendar, Clock, AlertTriangle, Loader2, Bike, BedDouble, CreditCard, MapPin, Globe, ShieldCheck, ExternalLink, Users, Smartphone, QrCode, UtensilsCrossed, Webhook, KeyRound } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SvcHead } from "@/components/ui/Service";
 import { Button, Sheet, Field, Switch, CardStrip, cn, useToast, type StripAction } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -168,9 +169,15 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
         right={<span className={cn("inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12.5px] font-bold", pay === "ready" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : pay === "keys" ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "bg-[var(--color-fill)] text-steel")} data-pay-state={pay}>
           <span className={cn("h-1.5 w-1.5 rounded-full", pay === "ready" && "animate-pulse")} style={{ background: "currentColor" }} />{pay === "ready" ? "Razorpay ready" : pay === "keys" ? "Secret missing" : "Razorpay not set up"}</span>}>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="rounded-[18px] bg-[var(--color-fill)] p-4 space-y-3 min-w-0">
+          <div className="rounded-[18px] bg-[var(--color-fill)] p-4 space-y-3 min-w-0 md:bg-[var(--color-bg-2)] md:border md:border-[var(--color-separator)] md:p-5 md:space-y-4" data-pay-how>
             <div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel">How a guest pays</div>
-            <ol className="text-sm space-y-2">
+            {/* iPad and up (2026-10-24, the owner: "design"): the steps as a connected timeline; phones keep the numbered list */}
+            <div className="hidden md:block"><Flow hue="var(--color-green)" steps={[
+              { Icon: QrCode, title: "The bill's QR", body: <>Printed on every bill and shown at the till — a UPI payment to <span className="num font-semibold text-[var(--color-label)]">{restaurant.upi_vpa || "your UPI ID (set it on the right)"}</span>.</> },
+              { Icon: Link2, title: "The pay link", body: <><span className="num">{base}/pay/…</span> on each bill — card, netbanking and wallets through Razorpay once the keys are saved; UPI always.</> },
+              { Icon: Webhook, title: "The webhook", body: "Razorpay tells DineFlow the moment a payment lands, so the bill turns paid by itself." },
+            ]} /></div>
+            <ol className="text-sm space-y-2 md:hidden">
               <li className="flex gap-2.5"><Step n={1} /><span><b>The bill's QR.</b> Printed on every bill and shown at the till: a UPI payment to <span className="num">{restaurant.upi_vpa || "your UPI ID (set it below)"}</span>.</span></li>
               <li className="flex gap-2.5"><Step n={2} /><span><b>The pay link.</b> <span className="num text-steel">{base}/pay/…</span> on each bill — card, netbanking and wallets through Razorpay once the keys are saved; UPI always.</span></li>
               <li className="flex gap-2.5"><Step n={3} /><span><b>The webhook.</b> Razorpay tells DineFlow the moment a payment lands, so the bill turns paid by itself.</span></li>
@@ -178,19 +185,23 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
             <LinkField icon={<Link2 size={16} />} label="Webhook address — Razorpay → Webhooks → payment.captured" value={`${base}/api/webhooks/razorpay`} keep={18} copied={copied === "rzp-hook"} onCopy={() => copyLink("rzp-hook", `${base}/api/webhooks/razorpay`)} aria="Copy the Razorpay webhook address" data="rzp-webhook" />
           </div>
           {owner ? (
-            <form className="rounded-[18px] bg-[var(--color-fill)] p-4 space-y-3 min-w-0" data-pay-form action={(fd) => start(async () => { const r = await savePayments(fd); if ("error" in r) toast(r.error!, "err"); else { toast("Payment settings saved"); setTested(null); router.refresh(); } })}>
+            <form className="rounded-[18px] bg-[var(--color-fill)] p-4 space-y-3 min-w-0 md:bg-[var(--color-bg-2)] md:border md:border-[var(--color-separator)] md:p-5 md:space-y-4" data-pay-form action={(fd) => start(async () => { const r = await savePayments(fd); if ("error" in r) toast(r.error!, "err"); else { toast("Payment settings saved"); setTested(null); router.refresh(); } })}>
               <input type="hidden" name="id" value={restaurant.id} />
-              <div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel">UPI</div>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel md:hidden">UPI</div>
+              <GroupHead Icon={QrCode} hue="var(--color-green)" title="UPI" sub="The ID every bill's QR pays" />
+              <div className="grid sm:grid-cols-2 gap-3 md:rounded-[16px] md:border md:border-[var(--color-separator)] md:bg-[var(--color-bg)] md:p-3.5" data-pay-upi>
                 <Field label="UPI ID"><input name="upi_vpa" defaultValue={restaurant.upi_vpa ?? ""} placeholder="hotel@okaxis" className="num" autoCapitalize="none" /></Field>
                 <Field label="Payee name" hint="Blank = property name"><input name="upi_payee" defaultValue={restaurant.upi_payee ?? ""} /></Field>
               </div>
-              <div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel pt-1">Razorpay — Account & Settings → API keys</div>
+              <div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel pt-1 md:hidden">Razorpay — Account & Settings → API keys</div>
+              <GroupHead Icon={KeyRound} hue="var(--color-blue)" title="Razorpay keys" sub={<>Razorpay → Account &amp; Settings → API keys</>} />
+              <div className="md:rounded-[16px] md:border md:border-[var(--color-separator)] md:bg-[var(--color-bg)] md:p-3.5 space-y-3" data-pay-keys>
               <div className="grid sm:grid-cols-2 gap-3">
                 <Field label="Key ID"><input name="razorpay_key_id" defaultValue={gateway.key_id} placeholder="rzp_live_…" className="num" autoCapitalize="none" /></Field>
                 <Field label="Key secret" hint={gateway.hasSecret ? "Saved. Blank keeps it; 'clear' removes." : ""}><PasswordInput name="razorpay_key_secret" autoComplete="new-password" placeholder={gateway.hasSecret ? "••••••••" : ""} /></Field>
               </div>
               <Field label="Webhook secret" hint={gateway.hasWebhook ? "Saved. Blank keeps it; 'clear' removes." : "From the webhook you add at Razorpay"}><PasswordInput name="razorpay_webhook_secret" autoComplete="new-password" placeholder={gateway.hasWebhook ? "••••••••" : ""} /></Field>
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button disabled={pending}>Save payments</Button>
                 <Button type="button" variant="outline" disabled={pending || pay === "none"} data-test-keys onClick={() => start(async () => { const r = await testGateway(); setTested("error" in r ? { ok: false, text: r.error! } : { ok: true, text: r.message! }); })}><ShieldCheck size={15} /> Test keys</Button>
@@ -212,16 +223,30 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
       <Block id="track" icon={<MapPin size={20} />} hue="--color-cyan" title="Delivery tracking" sub="The customer watches the rider come; the rider shares the trip from a link, no app to install" data="track"
         right={<label className="flex items-center gap-3 text-sm font-semibold"><span data-tracking-state>{tracking ? "On" : "Off"}</span><Switch on={tracking} name="Delivery tracking" onChange={(v) => { setTrackingOn(v); start(async () => { const r = await setTracking(v); if ("error" in r) { setTrackingOn(!v); toast(r.error!, "err"); } else toast(v ? "Delivery tracking is on" : "Delivery tracking is off"); }); }} /></label>}>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-          <ol className="rounded-[18px] bg-[var(--color-fill)] p-4 text-sm space-y-2.5 min-w-0">
+          {/* iPad and up: the steps as a timeline with the two demo pages under them; phones keep the list */}
+          <div className="hidden md:block rounded-[18px] bg-[var(--color-bg-2)] border border-[var(--color-separator)] p-5 min-w-0" data-track-how>
+            <Flow hue="var(--color-cyan)" steps={[
+              { Icon: Send, title: "Food ready → Send out", body: "On Online orders, pick who rides it — a staff member, or just a name and phone." },
+              { Icon: Link2, title: "Two links", body: <>The rider gets <span className="num">{base}/ride/…</span> on WhatsApp — Picked up, Share my location, Delivered. The customer gets <span className="num">{base}/track/…</span>.</> },
+              { Icon: MapPin, title: "Live", body: "The customer's page shows the stage, the rider's name, a call button and the rider on a map while the trip is on." },
+            ]} />
+            <div className="mt-4 flex flex-wrap gap-2.5"><a href="/track/demo" target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4"><Smartphone size={16} aria-hidden /> See the customer&apos;s page</a><a href="/ride/demo" target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4"><Bike size={16} aria-hidden /> See the rider&apos;s page</a></div>
+          </div>
+          <ol className="rounded-[18px] bg-[var(--color-fill)] p-4 text-sm space-y-2.5 min-w-0 md:hidden">
             <li className="flex gap-2.5"><Step n={1} /><span><b>Food ready → Send out.</b> On Online orders, pick who rides it (a staff member, or just a name and phone).</span></li>
             <li className="flex gap-2.5"><Step n={2} /><span><b>Two links.</b> The rider gets <span className="num text-steel">{base}/ride/…</span> on WhatsApp — Picked up, Share my location, Delivered. The customer gets <span className="num text-steel">{base}/track/…</span>.</span></li>
             <li className="flex gap-2.5"><Step n={3} /><span><b>Live.</b> The customer's page shows the stage, the rider's name, a call button and the rider on a map while the trip is on.</span></li>
             <li className="flex gap-2.5 pt-1"><a href="/track/demo" target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4" data-track-demo><Smartphone size={16} aria-hidden /> See the customer's page</a><a href="/ride/demo" target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4" data-ride-demo><Bike size={16} aria-hidden /> See the rider's page</a></li>
           </ol>
-          <div className="rounded-[18px] bg-[var(--color-fill)] p-4 min-w-0" data-riders>
+          <div className="rounded-[18px] bg-[var(--color-fill)] p-4 min-w-0 md:bg-[var(--color-bg-2)] md:border md:border-[var(--color-separator)] md:p-5" data-riders>
             <div className="flex items-center justify-between gap-2 mb-2"><div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel">Your riders</div><Link href="/staff" className="text-[12.5px] font-semibold text-steel hover:text-[var(--color-label)] underline-offset-2 hover:underline">Staff →</Link></div>
             {riders.length ? <ul className="space-y-1.5 text-sm">{riders.map((r) => <li key={r.id} className="flex items-center gap-2 min-w-0"><span className="h-7 w-7 rounded-full grid place-items-center bg-[var(--color-bg-2)] text-[12px] font-bold shrink-0">{r.full_name.slice(0, 1)}</span><span className="truncate font-semibold">{r.full_name}</span><span className="num text-xs text-steel ml-auto shrink-0">{r.phone ?? "no phone"}</span></li>)}</ul>
-              : <p className="text-sm text-steel">No one has the Delivery Rider position yet. Any name and phone still works when you send an order out; adding riders in Staff makes it one tap.</p>}
+              : <>
+                <p className="text-sm text-steel md:hidden">No one has the Delivery Rider position yet. Any name and phone still works when you send an order out; adding riders in Staff makes it one tap.</p>
+                <div className="hidden md:block"><EmptyState size="sm" icon={Bike} hue="cyan" title="No riders yet" data-riders-empty
+                  hint="Any name and phone works when you send an order out. Give someone the Delivery Rider position in Staff and they're one tap."
+                  actions={<Link href="/staff" className="svc-btn quiet sm !px-3.5">Staff</Link>} /></div>
+              </>}
           </div>
         </div>
       </Block>
@@ -295,6 +320,29 @@ function Block({ id, icon, hue, title, sub, right, children, data }: { id: strin
     </section>
   );
 }
+/** iPad and up (2026-10-24): steps as a connected timeline — a coloured icon tile with its number, the title, the words. */
+function Flow({ steps, hue }: { steps: { Icon: typeof QrCode; title: string; body: ReactNode }[]; hue: string }) {
+  return (
+    <ol className="relative" data-flow>
+      {steps.map((st, i) => (
+        <li key={i} className="relative flex gap-3.5 pb-5 last:pb-0">
+          {i < steps.length - 1 && <span className="absolute left-[21px] top-[50px] bottom-1 w-0.5 rounded-full" style={{ background: `color-mix(in srgb, ${hue} 28%, transparent)` }} aria-hidden />}
+          <span className="relative h-11 w-11 shrink-0 rounded-[14px] grid place-items-center" style={{ background: `color-mix(in srgb, ${hue} 14%, var(--color-bg-2))`, color: hue }}>
+            <st.Icon size={19} aria-hidden />
+            <span className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full grid place-items-center text-[10.5px] font-extrabold num ring-2 ring-[var(--color-bg-2)]" style={{ background: hue, color: "var(--color-on-tint)" }}>{i + 1}</span>
+          </span>
+          <div className="min-w-0 pt-0.5"><div className="text-[15px] font-bold leading-snug">{st.title}</div><div className="text-[13px] text-steel leading-relaxed mt-0.5">{st.body}</div></div>
+        </li>))}
+    </ol>
+  );
+}
+/** iPad and up: a form group's heading — its icon tile, the name, one line. Hidden on a phone. */
+const GroupHead = ({ Icon, hue, title, sub }: { Icon: typeof QrCode; hue: string; title: string; sub: ReactNode }) => (
+  <div className="hidden md:flex items-center gap-3">
+    <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center" style={{ background: `color-mix(in srgb, ${hue} 14%, var(--color-bg-2))`, color: hue }}><Icon size={18} aria-hidden /></span>
+    <div className="min-w-0"><div className="text-[15px] font-bold leading-tight">{title}</div><div className="text-[12.5px] text-steel mt-0.5">{sub}</div></div>
+  </div>
+);
 const Step = ({ n }: { n: number }) => <span className="h-6 w-6 shrink-0 rounded-full grid place-items-center bg-[var(--color-bg-2)] text-[12px] font-bold num">{n}</span>;
 /** a channel card's head: its initial in the platform's colour, the name, the numbers under it, Live or Draft */
 function Head({ hue, label, live, meta }: { hue: string; label: string; live: boolean; meta: ReactNode }) {

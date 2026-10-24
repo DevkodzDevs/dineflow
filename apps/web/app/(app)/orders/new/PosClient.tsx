@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { dishMatch } from "@/lib/tillSearch";
 import { motion, AnimatePresence } from "framer-motion";
-import { Minus, Plus, Search, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils } from "lucide-react";
+import { Minus, Plus, Search, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils, Package } from "lucide-react";
 import { Button, Sheet, cn, useToast, FlapMini } from "@/components/ui";
 import { Say, CatIcon } from "@/components/ui/Say";
 import { SVC_ICON, stClass } from "@/components/ui/Service";
@@ -406,6 +406,10 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         ))}
       </div>
 
+      {/* lg+ (2026-10-24, the owner on an iPad in landscape: "screen broke the design" — the delivery details pushed Send to
+          kitchen below the screen): everything between the order type and the footer scrolls as one, the footer stays.
+          Below lg this wrapper is display:contents, so the phone and tablet sheet are exactly as they were. */}
+      <div className="contents lg:flex lg:flex-col lg:!shrink lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:-mr-2 lg:pr-2 lg:[scrollbar-width:thin] [&>*]:shrink-0" data-cart-scroll>
       {type === "dine_in" ? (
         <>
           {/* A new order picks from the free tables only (2026-10-20, the owner): a table with an open order or marked
@@ -449,25 +453,25 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       ) : type === "room_service" ? (
         <select className="mt-3" value={room} onChange={(e) => { setRoom(e.target.value); const g = inHouse.find((x) => x.id === e.target.value); setCustomer({ name: g ? `Room ${g.rooms?.number} · ${g.guests?.full_name}` : "", phone: "" }); }}><option value="">Choose in-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
       ) : (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <input placeholder="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
-          <input placeholder="Phone" inputMode="tel" className="num" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
-          {type === "delivery" && <textarea placeholder="Delivery address — house, street, landmark" rows={2} className="col-span-2" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} data-delivery-address />}
-          <div className="col-span-2 mt-1 space-y-2" data-parcel-details>
+        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-x-0">
+          <input placeholder="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className="lg:!rounded-r-none lg:!text-[15px] lg:!px-3.5" data-cust-name />
+          <input placeholder="Phone" inputMode="tel" className="num lg:!rounded-l-none lg:![border-left:1px_solid_var(--color-separator)] lg:!text-[15px] lg:!px-3.5" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} data-cust-phone />
+          {type === "delivery" && <textarea placeholder="Delivery address — house, street, landmark" rows={2} className="col-span-2 lg:!text-[15px] lg:!px-3.5 lg:!py-2.5 lg:!min-h-[68px] lg:resize-none" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} data-delivery-address />}
+          <div className="col-span-2 mt-1 space-y-2 lg:mt-1.5 lg:space-y-3" data-parcel-details>
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[.1em] text-steel mb-1.5">{type === "delivery" ? "Deliver" : "Pickup"}</div>
-              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={type === "delivery" ? "Deliver when" : "Pickup when"}>
+              <div className="text-[11px] font-bold uppercase tracking-[.1em] text-steel mb-1.5 lg:inline-flex lg:items-center lg:gap-1.5"><Clock size={12} className="hidden lg:inline" aria-hidden />{type === "delivery" ? "Deliver" : "Pickup"}</div>
+              <div className="flex flex-wrap gap-1.5 lg:grid lg:grid-cols-5 lg:gap-1 lg:p-1 lg:rounded-full lg:bg-[var(--color-fill)]" role="radiogroup" aria-label={type === "delivery" ? "Deliver when" : "Pickup when"}>
                 {([[0, "Now"], [15, "15 min"], [30, "30 min"], [45, "45 min"], [60, "1 hr"]] as const).map(([m, l]) => (
                   <button key={m} type="button" role="radio" aria-checked={pickup === m} onClick={() => setPickup(pickup === m ? null : m)} data-pickup={m}
-                    className={cn("h-9 px-3 rounded-full text-[12.5px] font-bold transition-colors", pickup === m ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>{l}</button>))}
+                    className={cn("h-9 px-3 rounded-full text-[12.5px] font-bold transition-colors lg:px-0 lg:min-w-0 lg:whitespace-nowrap", pickup === m ? "bg-[var(--color-label)] text-[var(--color-on-label)] lg:shadow-[0_6px_14px_-8px_var(--color-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] lg:bg-transparent lg:hover:bg-[var(--color-bg-2)]")}>{l}</button>))}
               </div>
             </div>
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[.1em] text-steel mb-1.5">Packing</div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="text-[11px] font-bold uppercase tracking-[.1em] text-steel mb-1.5 lg:inline-flex lg:items-center lg:gap-1.5"><Package size={12} className="hidden lg:inline" aria-hidden />Packing</div>
+              <div className="flex flex-wrap gap-1.5 lg:flex-nowrap lg:overflow-x-auto lg:[scrollbar-width:none] lg:-mr-2 lg:pr-6 lg:[mask-image:linear-gradient(90deg,black_calc(100%-28px),transparent)] lg:[-webkit-mask-image:linear-gradient(90deg,black_calc(100%-28px),transparent)]" data-packing-rail>
                 {["Cutlery", "No cutlery", "Extra sauce", "Gravy separate", "Eco bag"].map((p) => { const on = packing.includes(p); return (
                   <button key={p} type="button" aria-pressed={on} onClick={() => setPacking((xs) => on ? xs.filter((x) => x !== p) : [...xs.filter((x) => !(p === "Cutlery" && x === "No cutlery") && !(p === "No cutlery" && x === "Cutlery")), p])} data-packing={p}
-                    className={cn("h-9 px-3 rounded-full text-[12.5px] font-bold transition-colors inline-flex items-center gap-1", on ? "bg-[var(--color-green-2)] text-[var(--color-tint)] ring-1 ring-[var(--color-tint)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>{on && <Check size={13} aria-hidden />}{p}</button>); })}
+                    className={cn("h-9 px-3 rounded-full text-[12.5px] font-bold transition-colors inline-flex items-center gap-1 lg:shrink-0 lg:whitespace-nowrap", on ? "bg-[var(--color-green-2)] text-[var(--color-tint)] ring-1 ring-[var(--color-tint)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>{on && <Check size={13} aria-hidden />}{p}</button>); })}
               </div>
             </div>
           </div>
@@ -481,15 +485,15 @@ export function PosClient({ categories, items, tables, initialTable, initialType
           className={cn("h-9 rounded-full px-2.5 text-[11.5px] font-semibold flex items-center gap-1 transition", coursing ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)]")}><ListOrdered size={12} /> Courses {coursing ? "on" : "off"}</button>
         {lines.length > 0 && <button type="button" onClick={clearTicket} className="h-9 px-2 -mr-1 text-[13px] font-semibold text-steel hover:text-[var(--color-red)]">Clear</button>}
       </div>
-      <div className="mt-2 !shrink flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 -mr-2 pr-2 [scrollbar-width:thin]">
+      <div className="mt-2 !shrink flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 -mr-2 pr-2 [scrollbar-width:thin] lg:!shrink-0 lg:min-h-fit lg:overflow-visible lg:mr-0 lg:pr-0 lg:pb-1">
         <AnimatePresence initial={false}>
           {lines.length === 0 && (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="rounded-2xl border border-dashed border-[var(--color-line-2)] grid place-items-center text-center px-6 py-8">
-              <div>
-                <span className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-fill)] grid place-items-center text-steel"><UtensilsCrossed size={20} /></span>
-                <p className="mt-3 text-[15px] font-bold">Nothing on the ticket yet</p>
-                <p className="mt-1 text-[13px] text-steel">Tap a dish to add it.</p>
+              className="rounded-2xl border border-dashed border-[var(--color-line-2)] grid place-items-center text-center px-6 py-8 lg:py-4 lg:px-4">
+              <div className="lg:flex lg:items-center lg:gap-3 lg:text-left">
+                <span className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-fill)] grid place-items-center text-steel lg:mx-0 lg:h-10 lg:w-10 lg:shrink-0"><UtensilsCrossed size={20} /></span>
+                <div className="lg:min-w-0"><p className="mt-3 text-[15px] font-bold lg:mt-0">Nothing on the ticket yet</p>
+                <p className="mt-1 text-[13px] text-steel lg:mt-0.5">Tap a dish to add it.</p></div>
               </div>
             </motion.div>
           )}
@@ -526,6 +530,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             </motion.div>
           ))}
         </AnimatePresence>
+      </div>
       </div>
 
       <div className="shrink-0 pt-3 mt-2 border-t border-line">
@@ -730,7 +735,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                               <button type="button" onClick={() => choose(it)} aria-label={`Choose options for ${it.name}`} title="Size and add-ons" data-choose className="dish-chip"><SlidersHorizontal size={17} strokeWidth={2.4} aria-hidden /></button>
                               <button type="button" onClick={() => tap(it)} aria-label={`Add ${it.name}`} title="Add" data-add className="dish-plus"><Plus size={18} strokeWidth={2.8} aria-hidden /></button>
                             </div>
-                          : <button type="button" onClick={() => tap(it)} aria-label={`Add ${it.name}`} title="Add" data-add className="dish-plus solo"><Plus size={18} strokeWidth={2.8} aria-hidden /><span className="dish-plus-word"><Say w="add" /></span></button>}
+                          : <button type="button" onClick={() => tap(it)} aria-label={`Add ${it.name}`} title="Add" data-add className="dish-plus solo"><Plus size={18} strokeWidth={2.8} aria-hidden /></button>}
                     </div>
                   </div>
                 );
