@@ -1,6 +1,6 @@
 import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { requireSession } from "@/lib/auth";
+import { requireSession, assistAllowed } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { todayIST } from "@/lib/format";
 import { DEPARTMENTS, POSITIONS, ROLE_LABEL } from "@dineflow/shared";
@@ -23,7 +23,7 @@ export default async function MePage() {
   const session = await requireSession();
   const s = await createClient();
   const signOut = <form action="/logout" method="post"><button className="btn btn-gray !h-11 px-4 inline-flex items-center gap-2 text-sm font-semibold" data-me-signout><LogOut size={16} /> Sign out</button></form>;
-  if (session.actingAs) return <><PageHeader eyebrow="Your account" title="My profile" actionsInline actions={signOut} /><MeClient me={null} day={null} /></>;
+  if (session.actingAs) return <><PageHeader eyebrow="Your account" title="My profile" actionsInline actions={signOut} /><MeClient me={null} day={null} assist /></>;
 
   const today = todayIST();
   // 0125's columns; before it is applied the page still opens, with only the fields that already exist
@@ -70,7 +70,7 @@ export default async function MePage() {
   return (
     <>
       <PageHeader eyebrow="Your account" title="My profile" sub="Your details and sign-in" actionsInline actions={signOut} />
-      <MeClient me={me} day={day} />
+      <MeClient me={me} day={day} assist={assistAllowed(session.profile)} />
     </>
   );
 }

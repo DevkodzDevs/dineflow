@@ -313,3 +313,6 @@ year. See [my-day.md](my-day.md).
 - **Attendance head on a phone** (`[data-att-head]`): the title no longer breaks ("Attend / ance"); Today | Register take
   their own full-width row under 640px.
 - **Positions → Level** chips slide in a `ChipRail` with arrows (`[data-level-rail]`) on phone and iPad; wrap from lg.
+
+- **Access → Assist (AI)** (0138, `[data-assist-switch]`): the owner or a manager switches the AI helper on for someone below a
+  supervisor (`staff_set_assist`); the top three have it always.

@@ -79,6 +79,14 @@ export async function setPasswordRight(userId: string, on: boolean) {
   revalidatePath("/staff"); return { ok: true as const };
 }
 
+/** Assist (the AI) for one person below a supervisor (0138 staff_set_assist — the owner, or a manager for someone below them). */
+export async function setAssistAccess(userId: string, on: boolean) {
+  const s = await createClient();
+  const { error } = await s.rpc("staff_set_assist", { p_user: userId, p_on: on });
+  if (error) return { error: error.message };
+  revalidatePath("/staff"); return { ok: true as const };
+}
+
 /** Role, sections and active flag for one person — through owner_set_access, which enforces who may change whom. */
 export async function setAccess(userId: string, role: string, modules: string[] | null, active: boolean) {
   const s = await createClient();

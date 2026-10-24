@@ -19,5 +19,8 @@ export default async function BillPage({ params, searchParams }: { params: Promi
     session.restaurant.property_type === "restaurant" ? Promise.resolve({ data: [] }) : s.from("bookings").select("id, booking_no, rooms(number), guests(full_name)").eq("status", "checked_in"),
   ]);
   if (!order) notFound();
-  return <BillClient order={order as never} bill={bill as never} restaurant={session.restaurant} cashier={session.profile.full_name} inHouse={(inHouse ?? []) as never} />;
+  // who generated the bill (bills.created_by) — shown on the bill beside who is at the counter now (2026-10-24)
+  const creator = (bill as { created_by?: string | null } | null)?.created_by;
+  const billedBy = creator ? ((await s.from("profiles").select("full_name").eq("id", creator).maybeSingle()).data?.full_name as string | undefined) ?? null : null;
+  return <BillClient order={order as never} bill={bill as never} restaurant={session.restaurant} cashier={session.profile.full_name} billedBy={billedBy} inHouse={(inHouse ?? []) as never} />;
 }

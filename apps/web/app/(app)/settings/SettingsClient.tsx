@@ -14,7 +14,7 @@ import { InstallApp } from "@/components/InstallApp";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments, saveLoyalty } from "./actions";
 import { copyText } from "@/lib/clipboard";
 
-type Rest = { id: string; name: string; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null; attendance_methods?: string[]; attend_lat?: number | null; attend_lng?: number | null; attend_radius_m?: number; stock_draw?: "ticket" | "cook" };
+type Rest = { id: string; name: string; stock_block?: boolean; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null; attendance_methods?: string[]; attend_lat?: number | null; attend_lng?: number | null; attend_radius_m?: number; stock_draw?: "ticket" | "cook" };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number; qr_token?: string | null };
 type Tab = "general" | "payments" | "tables" | "attendance" | "advanced";
 
@@ -238,6 +238,11 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                       </label>))}
                   </div>
                 </div>
+                {/* 0137: a dish the pantry cannot make cannot be ordered — the till, the kiosk and the table QR (on by default) */}
+                <label className="mt-4 flex items-start gap-3 rounded-2xl border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-3 cursor-pointer has-[:checked]:border-[var(--color-tint)] has-[:checked]:bg-[var(--color-green-2)] normal-case" data-stock-block>
+                  <input type="checkbox" name="stock_block" defaultChecked={restaurant.stock_block !== false} className="mt-0.5 h-5 w-5 accent-[var(--color-tint)]" />
+                  <span className="min-w-0"><span className="block text-[14px] font-semibold">Stop orders when the pantry is short</span><span className="block text-xs font-normal text-[var(--color-label-2)] mt-0.5">A dish its recipe cannot make is shown out of stock</span></span>
+                </label>
               </Section>
             </Card>
 

@@ -1,4 +1,4 @@
-import { requireSession, daysLeft } from "@/lib/auth";
+import { requireSession, daysLeft, assistAllowed } from "@/lib/auth";
 import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { modulesFor, landingFor } from "@dineflow/shared";
@@ -19,6 +19,7 @@ import { ThemeSync } from "@/components/ui/Theme";
 import { SayProvider } from "@/components/ui/Say";
 import { readLang, LANG_COOKIE } from "@/lib/say";
 import { AssistLazy as Assist } from "@/components/assist/AssistLazy";
+import { ReadyDock } from "@/components/shell/ReadyDock";
 
 /**
  * There is deliberately no loading.tsx beside this file, and putting one back will make every
@@ -93,13 +94,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-[calc(var(--tabbar)+28px)] md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
+        {/* one head: Master mode's band over the top bar — on a phone they stay at the top together (.app-head, globals.css) */}
+        <div className="app-head">
         {s.isAdmin && s.actingAs && <MasterBanner property={s.restaurant.name} />}
         <TopBar home={`/${landingFor(s.profile.role, mods, s.profile.position ?? null)}`} membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} outlets={s.outlets} />
+        </div>
         {children}
       </div></main>
       <BottomNav role={s.profile.role} type={s.restaurant.property_type} dept={dept} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
         name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} />
-      <Assist />
+      {/* food at the pass, brought to whoever takes it out: parcels, and the orders this person took (ReadyDock.tsx) */}
+      {mods.includes("orders") && <ReadyDock me={s.profile.id} all={["owner", "manager", "supervisor", "supervisor_2"].includes(s.profile.role)} parcels={mods.includes("orders") || mods.includes("online-orders")} />}
+      {/* Assist only for whoever may use it (0138) */}
+      {assistAllowed(s.profile) && <Assist />}
       {/* pull to refresh everywhere on touch; edge swipe back/forward in the installed app */}
       <Gestures />
       {/* on an iPad-size touch screen the frame scrolls, not the page: back/forward land where you were */}

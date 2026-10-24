@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireSession } from "@/lib/auth";
+import { requireSession, assistAllowed } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 /** Runs one whitelisted action, only after the person tapped Confirm in the panel. Nothing else is reachable from here. */
 export async function POST(req: Request) {
   const { kind, arg } = (await req.json()) as { kind: string; arg: string };
   const session = await requireSession(); const s = await createClient();
+  if (!assistAllowed(session.profile)) return NextResponse.json({ error: "Assist is not switched on for you." }, { status: 403 });   // 0138
   switch (kind) {
     case "call_walkin": {
       if (!/^[0-9a-f-]{36}$/.test(arg)) return NextResponse.json({ error: "bad id" }, { status: 400 });

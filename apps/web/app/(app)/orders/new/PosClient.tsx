@@ -28,7 +28,7 @@ type Guest = { id: string; booking_no: number; rooms: { number: string } | null;
 /** What the pantry can still cover, keyed by dish. A dish that is absent has no recipe: it moves no
  *  stock, so there is nothing true to say about it, and it is always sellable. */
 type Cover = { portions: number; short: { name: string; unit: string; per: number; stock: number }[] };
-type Running = { id: string; order_no: number; table_id: string; created_at: string; order_items: { qty: number; status: string }[]; dining_tables: { name: string } | null; bills?: { status: string }[] | null };
+type Running = { id: string; order_no: number; table_id: string | null; type?: string; token_no?: number | null; customer_name?: string | null; created_at: string; order_items: { qty: number; status: string }[]; dining_tables: { name: string } | null; bills?: { status: string }[] | null };
 
 /** One line of the ticket: a dish with the size and extras it was chosen with. The same dish as
  *  Half and as Full is two lines. `ask` marks a line that still owes a required choice — a voice
@@ -40,7 +40,7 @@ type Line = { key: string; item: Item; variant: Variant | null; addons: Addon[];
 const LINE_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain", "Parcel", "Well done", "No ice"];
 const QUICK_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain", "Kids portion", "Serve together", "Pack separately"];
 
-export function PosClient({ categories, items, tables, initialTable, initialType = null, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {}, popular = {}, notFree = {} }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; initialType?: "takeaway" | "delivery" | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]>; popular?: Record<string, number>; notFree?: Record<string, "occupied" | "reserved" | "cleaning"> }) {
+export function PosClient({ categories, items, tables, initialTable, initialType = null, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {}, popular = {}, notFree = {}, stockBlock = true }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; initialType?: "takeaway" | "delivery" | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]>; popular?: Record<string, number>; notFree?: Record<string, "occupied" | "reserved" | "cleaning">; stockBlock?: boolean }) {
   const router = useRouter();
   // a parcel or a delivery starts from Orders' header button (?type=), a table from the floor (?table=)
   const [type, setType] = useState<"dine_in" | "takeaway" | "delivery" | "room_service">(initialType ?? "dine_in");
@@ -90,6 +90,15 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   /* One request for the whole ticket — "all mild", "serve together". Per-line notes still exist
      for the dish that needs its own. */
   const [ticketNote, setTicketNote] = useState(""); const [askNote, setAskNote] = useState(false);
+  /* a parcel's details (2026-10-24, the owner: "parcel needs more details"): when it is collected or sent, and how it is packed —
+     printed on the kitchen ticket with the order's request ("Pickup by 7:45 PM · Cutlery") */
+  const [pickup, setPickup] = useState<number | null>(null); const [packing, setPacking] = useState<string[]>([]);
+  const parcelNote = () => {
+    if (type !== "takeaway" && type !== "delivery") return [] as string[];
+    const when = pickup === null ? null : pickup === 0 ? (type === "delivery" ? "Deliver now" : "Pickup now")
+      : `${type === "delivery" ? "Deliver by" : "Pickup by"} ${new Date(Date.now() + pickup * 60000).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}`;
+    return [when, ...packing].filter(Boolean) as string[];
+  };
   /* Which lines have their note field showing. A line that already carries a note always shows it. */
   /* which line's request sheet is open — one sheet for the whole ticket, not a box inside every card */
   const [noteFor, setNoteFor] = useState<string | null>(null);
@@ -115,13 +124,18 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   /** Tapping a tile — or + — puts the dish straight on the ticket (2026-10-23, the owner: "a tap on the card adds it; only
    *  Choose opens the choices"): a dish in sizes goes in its default size with no add-ons. Only a dish whose add-ons must be
    *  chosen (a group with a minimum) still opens its choices, so nothing half-ordered reaches the kitchen. */
+  /* 0137 (2026-10-24, the owner: "if the pantry is short for a product, don't allow orders"): with the owner's switch on, a
+     dish the pantry cannot make cannot be added, nor one more than it can make; the server refuses the same ticket anyway */
+  const outOf = (it: Item, more = 1) => { const c = coverOf(it.id); return stockBlock && !!c && qtyOf(it.id) + more > c.portions; };
+  const refuse = (it: Item) => { const c = coverOf(it.id)!; setErr(c.portions <= 0 ? `${it.name} is out of stock${c.short[0] ? ` — ${c.short[0].name} is finished` : ""}` : `Only ${c.portions} ${it.name} left in the pantry`); };
   const tap = (it: Item) => {
+    if (outOf(it)) return refuse(it);
     if (!hasOptions(it)) return putLine(it, null, [], 1);
     if (optionProblem(it, [])) return setChooser({ item: it });
     putLine(it, defaultVariant(it), [], 1);
   };
   /** Choose: the dish's sizes and add-ons, always. */
-  const choose = (it: Item) => setChooser({ item: it });
+  const choose = (it: Item) => { if (outOf(it)) return refuse(it); setChooser({ item: it }); };
   /* From the call screen (/orders/phone, ?from=phone): the caller, their address and, for "Same again", the dishes
      of an earlier order in their sizes — add-ons are asked again. Read once and cleared, so a reload starts clean. */
   useEffect(() => {
@@ -246,10 +260,11 @@ export function PosClient({ categories, items, tables, initialTable, initialType
     if (owed) { askFor(owed); return setErr(`${owed.item.name} needs a choice first`); }
     // The pantry gets one say, and only one. Warning and then standing aside is the whole point:
     // the shelf is the authority here, not the count.
+    if (shortfalls.length > 0 && stockBlock) { setWarned(true); return setErr("Not enough in the pantry — reduce or remove the marked dishes"); }
     if (shortfalls.length > 0 && !warned) return setWarned(true);
     if (type === "room_service" && !room) return setErr("Pick the guest room");
     const label = type === "dine_in" ? (tables.find((t) => t.id === tableId)?.name ?? "Table") : type === "room_service" ? customer.name : type.replace("_", " ");
-    const payload = { type, promise: promised, table_id: type === "dine_in" ? tableId : null, customer_name: customer.name || null, customer_phone: customer.phone || null, note: ticketNote.trim() || null,
+    const payload = { type, promise: promised, table_id: type === "dine_in" ? tableId : null, customer_name: customer.name || null, customer_phone: customer.phone || null, note: ([ticketNote.trim(), ...parcelNote()].filter(Boolean).join(" · ")) || null,
       items: lines.map((l) => ({ menu_item_id: l.item.id, qty: l.qty, notes: l.note || undefined, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id), course: coursing ? l.course : 1 })) };
 
     // The kitchen ticket prints from this device, so it works with or without internet — one per
@@ -260,7 +275,8 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         const on = lines.filter((l) => (coursing ? l.course : 1) === c);
         // the ticket-wide request rides on the printed docket too, or the kitchen never sees it
         const course = courses.length > 1 ? (c > 1 ? `COURSE ${c} · HELD — fire from the kitchen screen` : "COURSE 1") : null;
-        const heading = [course, ticketNote.trim() ? `** ${ticketNote.trim().toUpperCase()} **` : null].filter(Boolean).join(" · ") || undefined;
+        const whole = [ticketNote.trim(), ...parcelNote()].filter(Boolean).join(" · ");   // the parcel's pickup and packing print too
+        const heading = [course, whole ? `** ${whole.toUpperCase()} **` : null].filter(Boolean).join(" · ") || undefined;
         await printKot({ kotNo: "KOT", when, tableOrType: label, heading,
           items: on.map((l) => ({ name: lineName(l.item, l.variant), qty: l.qty, note: l.note || null, extras: lineExtras({ addons: l.addons, components: l.item.components }), station: l.item.station ?? l.item.categories?.station ?? null })) });
       }
@@ -299,7 +315,11 @@ export function PosClient({ categories, items, tables, initialTable, initialType
      screen cannot afford a keypad above an empty ticket. Picking closes it again. */
   const [pickOpen, setPickOpen] = useState(false); const [guestOpen, setGuestOpen] = useState(false);
   const tableName = tables.find((t) => t.id === tableId)?.name ?? null;
-  const clearTicket = () => { setLines([]); setTicketNote(""); setAskNote(false); setWarned(false); setErr(null); };
+  /* the strip at the top: the tables' open tickets for dine-in, the parcels' for a parcel or a delivery (2026-10-24, the owner:
+     "a parcel page should not show table details") */
+  const parcelLine = type === "takeaway" || type === "delivery";
+  const lineOrders = running.filter((o) => parcelLine ? (o.type === "takeaway" || o.type === "delivery") : !!o.table_id);
+  const clearTicket = () => { setLines([]); setTicketNote(""); setAskNote(false); setWarned(false); setErr(null); setPickup(null); setPacking([]); };
   const grand = total + (promised && promise ? total * promise.pct / 100 : 0);
   /* how the order leaves the kitchen, as four picture tiles (Room only while guests are in) */
   const typeTiles = [
@@ -433,6 +453,24 @@ export function PosClient({ categories, items, tables, initialTable, initialType
           <input placeholder="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
           <input placeholder="Phone" inputMode="tel" className="num" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
           {type === "delivery" && <textarea placeholder="Delivery address — house, street, landmark" rows={2} className="col-span-2" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} data-delivery-address />}
+          <div className="col-span-2 mt-1 space-y-2" data-parcel-details>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[.1em] text-steel mb-1.5">{type === "delivery" ? "Deliver" : "Pickup"}</div>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={type === "delivery" ? "Deliver when" : "Pickup when"}>
+                {([[0, "Now"], [15, "15 min"], [30, "30 min"], [45, "45 min"], [60, "1 hr"]] as const).map(([m, l]) => (
+                  <button key={m} type="button" role="radio" aria-checked={pickup === m} onClick={() => setPickup(pickup === m ? null : m)} data-pickup={m}
+                    className={cn("h-9 px-3 rounded-full text-[12.5px] font-bold transition-colors", pickup === m ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>{l}</button>))}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[.1em] text-steel mb-1.5">Packing</div>
+              <div className="flex flex-wrap gap-1.5">
+                {["Cutlery", "No cutlery", "Extra sauce", "Gravy separate", "Eco bag"].map((p) => { const on = packing.includes(p); return (
+                  <button key={p} type="button" aria-pressed={on} onClick={() => setPacking((xs) => on ? xs.filter((x) => x !== p) : [...xs.filter((x) => !(p === "Cutlery" && x === "No cutlery") && !(p === "No cutlery" && x === "Cutlery")), p])} data-packing={p}
+                    className={cn("h-9 px-3 rounded-full text-[12.5px] font-bold transition-colors inline-flex items-center gap-1", on ? "bg-[var(--color-green-2)] text-[var(--color-tint)] ring-1 ring-[var(--color-tint)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>{on && <Check size={13} aria-hidden />}{p}</button>); })}
+              </div>
+            </div>
+          </div>
         </div>
       )}
       {known && type !== "room_service" && <div className="mt-1.5 text-[12px] text-steel">Welcome back{known.name ? `, ${known.name.split(" ")[0]}` : ""} · {known.visits} visit{known.visits === 1 ? "" : "s"}{known.notes ? ` · ${known.notes}` : ""}</div>}
@@ -505,11 +543,11 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         {err && <p className="text-[15px] font-bold text-chili mb-2" data-till-error>{err}</p>}
         {warned && shortfalls.length > 0 && (
           <div className="mb-2 rounded-xl border border-[var(--color-orange)]/40 bg-[var(--color-orange-2)] p-2.5 text-xs">
-            <div className="font-semibold text-[var(--color-orange)] flex items-center gap-1.5"><AlertTriangle size={13} /> The pantry is short</div>
+            <div className="font-semibold text-[var(--color-orange)] flex items-center gap-1.5"><AlertTriangle size={13} /> {stockBlock ? "Not enough in the pantry" : "The pantry is short"}</div>
             <ul className="mt-1 space-y-0.5 text-steel">
               {shortfalls.map(({ item, qty, cover }) => <li key={item.id}>{item.name} · {qty} ordered, {cover!.portions} covered{cover!.short[0] ? ` (${cover!.short[0].name} is out)` : ""}</li>)}
             </ul>
-            <p className="mt-1.5 text-steel">Shelf has it? Send anyway.</p>
+            <p className="mt-1.5 text-steel">{stockBlock ? "Reduce or remove these to send." : "Shelf has it? Send anyway."}</p>
           </div>
         )}
         {coursing && courses.length > 1 && <p className="text-[11px] text-steel mb-2">Course 1 goes now. {courses.filter((c) => c > 1).map((c) => `Course ${c}`).join(" and ")} will wait until fired.</p>}
@@ -526,7 +564,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <span className="block font-display num text-[32px] leading-none mt-0.5" data-total>{formatINR(grand)}</span>
           </span>
         </div>
-        <button type="button" className="svc-btn go xl w-full mt-3" disabled={pending || lines.length === 0} onClick={submit} data-send>
+        <button type="button" className="svc-btn go xl w-full mt-3" disabled={pending || lines.length === 0 || (stockBlock && shortfalls.length > 0)} onClick={submit} data-send>
           <Send size={20} aria-hidden />{pending ? "Sending…" : warned && shortfalls.length > 0 ? "Send anyway" : <Say w="send_kitchen" />}
         </button>
       </div>
@@ -569,15 +607,15 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         {/* What is already running, at the top of the screen the waiter is standing in front of —
             "is table six done yet?" without the trip to Orders. Each ticket wears its state's colour,
             the same as the floor: ordered, cooking, food ready, eating, bill. */}
-        {running.length > 0 && (
-          <div className="mb-4">
+        {lineOrders.length > 0 && (
+          <div className="mb-4" data-order-line={parcelLine ? "parcels" : "tables"}>
             <div className="flex items-center gap-2 mb-2">
               <span className="eyebrow">Order line</span>
-              <span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{running.length}</span>
+              <span className="num h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold grid place-items-center">{lineOrders.length}</span>
               <Link href="/orders" className="ml-auto inline-flex items-center min-h-11 pl-2 -my-3 text-xs font-semibold text-steel hover:text-[var(--color-label)]">All orders →</Link>
             </div>
             <Rail className="rail-fade flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]" arrowClassName="!bottom-2" label="Order line">
-              {running.slice(0, 12).map((o) => {
+              {lineOrders.slice(0, 12).map((o) => {
                 const n = (o.order_items ?? []).reduce((t, i) => t + Number(i.qty), 0);
                 const s = orderState(o.order_items ?? [], (o.bills ?? []).some((b) => b.status === "unpaid")); const I = SVC_ICON[s];
                 const step = s === "new" ? 1 : s === "cook" ? 2 : 3;
@@ -585,7 +623,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                   <Link key={o.id} href={`/orders/${o.id}`} data-line={s} className={cn("feather feather-lift shrink-0 w-52 p-3.5 flex flex-col gap-2", stClass(s))}
                     style={s === "ready" ? { background: "color-mix(in srgb, var(--color-green) 10%, var(--color-bg-2))", borderColor: "color-mix(in srgb, var(--color-green) 50%, transparent)" } : undefined}>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-display text-xl leading-tight truncate min-w-0">{o.dining_tables?.name ?? "Table"}</span>
+                      <span className="font-display text-xl leading-tight truncate min-w-0">{o.dining_tables?.name ?? (o.token_no ? `Token ${o.token_no}` : o.customer_name || (o.type === "delivery" ? "Delivery" : "Parcel"))}</span>
                       <span className="svc-chip lone ml-auto shrink-0 !min-h-7 !text-[12px] !px-2.5 !gap-1.5"><I size={13} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={SVC_WORD[s]} start /></span>
                     </div>
                     <div className="text-[11px] text-steel num flex items-center gap-1.5 min-w-0 whitespace-nowrap"><span>#{o.order_no}</span><span aria-hidden>·</span><span>{n} item{n === 1 ? "" : "s"}</span><span aria-hidden>·</span>{/* minutes ago: the server and the device can fall either side of a minute — React would log #418 and redraw */}<span className="inline-flex items-center gap-1 min-w-0 truncate" suppressHydrationWarning><Clock size={11} className="shrink-0" />{fmtSince(o.created_at)}</span></div>
@@ -651,14 +689,14 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                      units so it lands there at any card width); under it the veg mark and name, then the price, the
                      prep time and "customisable". No foot row: nothing sits at the card's edge to be cut, and a short
                      name leaves no hole. The whole card adds, at every width. */
-                  <div key={it.id} className="svc-dish" data-tile data-on={qty > 0 || undefined}>
+                  <div key={it.id} className="svc-dish" data-tile data-on={qty > 0 || undefined} data-out={(stockBlock && c?.portions === 0) || undefined}>
                     <button type="button" onClick={() => tap(it)} className="!min-h-0 text-left flex flex-col flex-1 min-w-0 after:absolute after:inset-0 after:content-['']" aria-label={`${it.name} — add one`}>
                       <span className="pic" data-nophoto={!it.image_url || undefined}>
                         {it.image_url
                           ? <DishImage src={it.image_url} w={330} />
                           : <span className="absolute inset-0 grid place-items-center text-[var(--color-label-3)]"><CatIcon name={catIcon(catName(it.category_id))} size={34} /></span>}
                         {qty > 0 && <span className="qty qty-flap num" data-qty={qty}><FlapMini value={qty} tile="32px" tone="live" say={`${qty} on the ticket`} /></span>}
-                        {c?.portions === 0 ? <span className="flag short"><AlertTriangle size={12} aria-hidden />Pantry short</span>
+                        {c?.portions === 0 ? <span className="flag short"><AlertTriangle size={12} aria-hidden />{stockBlock ? "Out of stock" : "Pantry short"}</span>
                           : !!c?.portions && c.portions <= 5 ? <span className="flag num">{c.portions} left</span>
                           : it.is_combo ? <span className="flag"><Layers size={12} aria-hidden />Combo</span> : null}
                       </span>
@@ -689,7 +727,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                            choices gets a slim "Choose" pill beside a +, so the card's tap adds and Choose opens the choices */
                         : asks
                           ? <div className="dish-pair">
-                              <button type="button" onClick={() => choose(it)} aria-label={`Choose options for ${it.name}`} title="Choose size and add-ons" data-choose className="dish-chip"><SlidersHorizontal size={14} aria-hidden /><Say w="choose" /></button>
+                              <button type="button" onClick={() => choose(it)} aria-label={`Choose options for ${it.name}`} title="Size and add-ons" data-choose className="dish-chip"><SlidersHorizontal size={17} strokeWidth={2.4} aria-hidden /></button>
                               <button type="button" onClick={() => tap(it)} aria-label={`Add ${it.name}`} title="Add" data-add className="dish-plus"><Plus size={18} strokeWidth={2.8} aria-hidden /></button>
                             </div>
                           : <button type="button" onClick={() => tap(it)} aria-label={`Add ${it.name}`} title="Add" data-add className="dish-plus solo"><Plus size={18} strokeWidth={2.8} aria-hidden /><span className="dish-plus-word"><Say w="add" /></span></button>}

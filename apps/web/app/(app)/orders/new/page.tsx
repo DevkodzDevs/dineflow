@@ -22,7 +22,8 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
     // waiter promises it to a table rather than after the kitchen has picked the ticket up
     s.rpc("menu_stock"),
     // the orders already running on a table, so tapping an occupied one can offer the open ticket
-    s.from("orders").select("id, order_no, table_id, created_at, order_items(qty, status), dining_tables(name), bills(status)").eq("status", "open").not("table_id", "is", null).order("created_at", { ascending: false }),
+    // open tickets for the top strip: the tables', and (2026-10-24) the parcels' — a parcel shows parcels, never tables
+    s.from("orders").select("id, order_no, table_id, type, token_no, customer_name, created_at, order_items(qty, status), dining_tables(name), bills(status)").eq("status", "open").in("type", ["dine_in", "takeaway", "delivery"]).order("created_at", { ascending: false }).limit(60),
     // sizes, add-on groups and combo parts: what a dish asks before it goes on a ticket
     ...optionReads(s),
     // what this property's guests order together, for "Goes well with" at the till (0080)
@@ -50,7 +51,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const pairs: Record<string, { id: string; n: number }[]> = {};
   for (const p of (pairings ?? []) as { item: string; pair: string; together: number }[]) (pairs[p.item] ??= []).push({ id: p.pair, n: p.together });
   const menu = withOptions(items ?? [], (variants ?? []) as never, (groups ?? []) as never, links ?? [], combos ?? []);
-  return <PosClient categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={table ?? null} initialType={type === "takeaway" || type === "delivery" ? type : null}
+  return <PosClient stockBlock={(session.restaurant as { stock_block?: boolean }).stock_block !== false} categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={table ?? null} initialType={type === "takeaway" || type === "delivery" ? type : null}
     inHouse={(inHouse ?? []) as never} stock={(stock ?? {}) as never} running={(running ?? []) as never} ai={aiEnabled()}
     promise={session.restaurant.promise_enabled ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} pairs={pairs} popular={popular} notFree={notFree} />;
 }

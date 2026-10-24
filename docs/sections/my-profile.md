@@ -70,3 +70,5 @@ Notifications) · [auth-and-session.md](auth-and-session.md) (`/account/password
   (`[data-me-pass]`) with a copy key; **Password** and **Other devices** as two tiles (auto-fit 14rem — side by side where
   there is room, stacked on a phone); Sign out others asks in a sheet (`[data-me-signout-ask]`, `[data-me-signout-yes]`), not
   `confirm()`. The page's lines are cut to a few words (Short copy, design-system.md).
+
+- **This device → Show Assist** (`[data-me-assist]`, only for whoever has Assist): brings the button back after a drag put it away.

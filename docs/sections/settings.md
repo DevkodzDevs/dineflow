@@ -175,3 +175,5 @@ pnpm --filter @dineflow/web typecheck
   the hash after mount and on every hash change, and a tab chosen here writes it back (replaceState), so Back and a shared
   link land on the same section.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words (Settings tabs, Attendance, Storefront, Google links, Booking page, Printers, Screens, Table QR). The tax, kiosk-exit and token facts are kept, shorter.
+
+- **Settings → Kitchen → Stop orders when the pantry is short** (`[data-stock-block]`, `restaurants.stock_block`, 0137, on by default).

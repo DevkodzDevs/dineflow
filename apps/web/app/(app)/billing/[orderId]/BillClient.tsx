@@ -26,7 +26,7 @@ type Order = { id: string; order_no: number; status: string; type: string; custo
 type Bill = { id: string; bill_no: number; promise_fee?: number; promise_waived?: number; promise_kept?: boolean | null; points_redeemed?: number; points_earned?: number; coupon_code?: string | null; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; payments: { method: string; amount: number; ref: string | null }[] } | null;
 type Rest = { name: string; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; legal_name?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; fssai_no?: string | null; loyalty_enabled?: boolean; loyalty_point_value?: number; loyalty_min_redeem?: number; upi_vpa?: string | null; upi_payee?: string | null };
 
-export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: { order: Order; bill: Bill; restaurant: Rest; cashier: string; inHouse?: { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null }[] }) {
+export function BillClient({ order, bill, restaurant, cashier, inHouse = [], billedBy = null }: { order: Order; bill: Bill; restaurant: Rest; cashier: string; inHouse?: { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null }[] ; billedBy?: string | null }) {
   const [roomFor, setRoomFor] = useState("");
   const [inv, setInv] = useState({ name: "", gstin: "" });
   const { online } = useOffline();
@@ -218,6 +218,12 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
         ) : bill.status === "unpaid" ? (<>
           <Card>
             <div className="flex items-center justify-between"><h3 className="text-xl">Take payment</h3><Pill tone="pending">unpaid</Pill></div>
+            {/* who (2026-10-24, the owner: "show who is billing, from the login"): who generated this bill, and who is taking the
+                money now — the payment is written with that person's id (0139) */}
+            <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]" data-bill-people>
+              {billedBy && <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-[var(--color-fill)]"><span className="text-steel">Billed by</span><b>{billedBy}</b></span>}
+              <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-[var(--color-green-2)] text-[var(--color-tint)]"><span className="opacity-80">At the counter</span><b>{cashier}</b></span>
+            </div>
             {/* the scan-to-pay QR lives in its own card below — one QR on the screen, never two */}
             {bill.pay_claim_ref && (
               <div className="mt-3 flex items-center gap-2 rounded-xl bg-mint-2 px-3 py-2 text-sm">
@@ -240,9 +246,24 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [] }: {
                 <Button variant="outline" size="sm" onClick={() => setPays([{ method: "upi", amount: totals.total, ref: "" }])}>Full UPI</Button>
                 <Button variant="outline" size="sm" onClick={() => setPays([{ method: "cash", amount: totals.total, ref: "" }])}>Full cash</Button>
               </div>
+              {/* split evenly — the guests sharing a table pay the same; the last share takes the odd paise */}
+              <div className="flex flex-wrap items-center gap-1.5" data-split-even>
+                <span className="text-[12px] font-semibold text-steel mr-1">Split evenly</span>
+                {[2, 3, 4].map((n) => <button key={n} type="button" className="h-9 min-w-11 px-3 rounded-full text-[13px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" data-split-n={n}
+                  onClick={() => { const part = Math.floor((totals.total / n) * 100) / 100; setPays(Array.from({ length: n }, (_, k) => ({ method: "upi" as PaymentMethod, amount: k === n - 1 ? Math.round((totals.total - part * (n - 1)) * 100) / 100 : part, ref: "" }))); }}>÷ {n}</button>)}
+              </div>
+              {/* cash handed over: tap what the guest gave, see the change — big, so it is counted out right */}
+              {pays.some((p) => p.method === "cash") && (
+                <div className="flex flex-wrap items-center gap-1.5" data-cash-keys>
+                  <span className="text-[12px] font-semibold text-steel mr-1">Cash given</span>
+                  {[0, 100, 200, 500, 2000].filter((v) => v === 0 || v >= totals.total - (paid - (pays.find((p) => p.method === "cash")?.amount ?? 0))).map((v) => (
+                    <button key={v} type="button" className="h-9 min-w-11 px-3 rounded-full text-[13px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] num" data-cash-key={v}
+                      onClick={() => { const ci = pays.findIndex((p) => p.method === "cash"); const others = paid - pays[ci].amount; const owed = Math.max(0, totals.total - others); setPays(pays.map((x, j) => j === ci ? { ...x, amount: v === 0 ? owed : v } : x)); }}>{v === 0 ? "Exact" : `₹${v}`}</button>))}
+                </div>
+              )}
             </div>
             <div className={cn("mt-4 flex justify-between text-sm", paid + 0.01 < totals.total ? "text-chili" : "text-ink")}><span>Received</span><span className="num font-semibold">{formatINR(paid)} / {formatINR(totals.total)}</span></div>
-            {paid > totals.total + 0.01 && <div className="flex justify-between text-sm text-steel"><span>Change to return</span><span className="num">{formatINR(paid - totals.total)}</span></div>}
+            {paid > totals.total + 0.01 && <div className="mt-2 flex items-center justify-between rounded-2xl bg-[var(--color-green-2)] px-4 py-3" data-change><span className="text-[14px] font-bold text-[var(--color-tint)]">Change to return</span><span className="font-display num text-[28px] leading-none text-[var(--color-tint)]">{formatINR(paid - totals.total)}</span></div>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
             <Button data-kbd-primary size="lg" className="w-full mt-4" disabled={pending || paid + 0.01 < totals.total} onClick={() => start(async () => {
               const settled = pays.map((p) => ({ ...p, amount: p.method === "cash" && paid > totals.total ? p.amount - (paid - totals.total) : p.amount }));

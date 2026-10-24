@@ -43,8 +43,19 @@ const HEALTH = "Check the whole app for problems — what's wrong, what caused i
  */
 /** the first screen of a visit has settled once (whenSettled) — later screens wait less */
 let booted = false;
+/** Where the close mark sits: above the phone's bottom bar, near the foot elsewhere. */
+const BIN_FROM_FOOT = () => (typeof window !== "undefined" && window.innerWidth < 768 ? 150 : 96);
+export const ASSIST_HIDDEN = "df-assist-hidden";
 export function Assist() {
   const path = usePathname(); const router = useRouter(); const section = (path.split("/")[1] || "dashboard").toLowerCase();
+  /* Drag the bubble to the close mark at the foot of the screen to put it away (2026-10-24, the owner: "a close option — drag
+     it to the centre and it closes"). Kept on this device (localStorage df-assist-hidden); My profile → This device brings
+     it back, and ⌘J still opens the panel. A drag never counts as a tap. */
+  const [hidden, setHidden] = useState(false); const [dragging, setDragging] = useState(false); const [overBin, setOverBin] = useState(false);
+  const moved = useRef(false);
+  useEffect(() => { const read = () => { try { setHidden(localStorage.getItem(ASSIST_HIDDEN) === "1"); } catch { /* storage blocked: shown */ } }; read(); window.addEventListener("df-assist", read); return () => window.removeEventListener("df-assist", read); }, []);
+  const nearBin = (p: { x: number; y: number }) => { const bx = window.innerWidth / 2, by = window.innerHeight - BIN_FROM_FOOT(); const y = p.y - window.scrollY; return Math.hypot(p.x - bx, y - by) < 72; };
+  const putAway = () => { try { localStorage.setItem(ASSIST_HIDDEN, "1"); } catch { /* this visit only */ } setHidden(true); setOpen(false); };
   const [open, setOpen] = useState(false); const [msgs, setMsgs] = useState<Msg[]>([]); const [q, setQ] = useState(""); const [busy, setBusy] = useState(false);
   const [ins, setIns] = useState<Insight[]>([]); const [topics, setTopics] = useState<Topic[]>([]); const [docPick, setDocPick] = useState(false);
   const [seenKey, setSeenKey] = useState(""); const [listening, setListening] = useState(false); const [copied, setCopied] = useState<number | null>(null);
@@ -134,12 +145,22 @@ export function Assist() {
 
   return (
     <>
-      <motion.button onClick={() => { tap(); setOpen(true); }} aria-label={`Open Assist (⌘J)${urgent.length ? ` · ${urgent.length} things need you` : ""}`} title={urgent[0]?.text ?? "Assist · ⌘J"}
+      {dragging && (
+        <div aria-hidden data-assist-bin={overBin ? "over" : ""} className="fixed z-[45] left-1/2 pointer-events-none flex flex-col items-center gap-2" style={{ bottom: `${BIN_FROM_FOOT() - 36}px`, transform: "translateX(-50%)" }}>
+          <span className={cn("h-[72px] w-[72px] rounded-full grid place-items-center text-white transition-transform duration-150", overBin ? "scale-110 bg-[var(--color-red)]" : "bg-black/70")} style={{ boxShadow: "0 10px 30px -10px rgb(0 0 0 / .7)" }}><X size={30} strokeWidth={2.4} /></span>
+          <span className="rounded-full bg-black/70 px-3 py-1 text-[12px] font-semibold text-white">Drop here to close</span>
+        </div>
+      )}
+      {!hidden && <motion.button onClick={() => { if (moved.current) return; tap(); setOpen(true); }}
+        drag dragSnapToOrigin dragMomentum={false} dragElastic={0.15}
+        onDragStart={() => { moved.current = true; setDragging(true); }}
+        onDrag={(_, info) => setOverBin(nearBin(info.point))}
+        onDragEnd={(_, info) => { const hit = nearBin(info.point); setDragging(false); setOverBin(false); if (hit) putAway(); setTimeout(() => { moved.current = false; }, 60); }} aria-label={`Open Assist (⌘J)${urgent.length ? ` · ${urgent.length} things need you` : ""}`} title={urgent[0]?.text ?? "Assist · ⌘J"}
         initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 20, delay: .4 }} whileTap={{ scale: .92 }}
         data-assist className={cn("fixed z-40 right-4 md:right-6 bottom-[calc(var(--tabbar)+12px)] md:bottom-6 h-14 w-14 rounded-full grid place-items-center bg-[#0a0a0d]", state === "alert" ? "shadow-[0_0_0_1px_rgb(255_255_255/.08),0_16px_40px_-12px_rgb(0_0_0/.9),0_0_0_6px_rgb(255_69_58/.14)]" : "shadow-[0_0_0_1px_rgb(255_255_255/.08),0_16px_40px_-12px_rgb(0_0_0/.9),0_0_0_6px_rgb(76_217_100/.08)]", open && "opacity-0 pointer-events-none")}>
         <AssistMark size={32} state={state} />
         {urgent.length > 0 && unseen && <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 rounded-full bg-[#ff453a] text-white text-[11px] font-display grid place-items-center ring-2 ring-[#0a0a0d]">{urgent.length}</span>}
-      </motion.button>
+      </motion.button>}
 
       <AnimatePresence>
         {open && (

@@ -726,3 +726,15 @@ Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.
   `[data-error-retrying]`), at most once a minute (sessionStorage `df-retried-after-error`); a second failure inside the
   minute shows the card, so a real bug cannot spin. A stale build still reloads at once, as before. **Lesson for testing:**
   dev and live share the database — never run parallel browser suites against it; one browser, paced.
+
+- **Master mode on a phone: one head** (2026-10-24): `.app-head` wraps the band and the top bar; under 768px with the band in it,
+  it is one solid sticky head from the very top (the band takes the safe area, the bar sits under it). Elsewhere it is
+  `display: contents`.
+- **The ready bubbles** (`components/shell/ReadyDock.tsx`, mounted for anyone with Orders): an amber parcel bubble for takeaway,
+  delivery and online tickets that are Ready, a green bell for the dine-in tickets the person took (supervisors and up: all), each
+  with a count and a soft ring, above Assist on the right; a tap lists them with **Handed over / Served** (`setKotStatus`). Read
+  after the screen settles, then live on a `kots` channel and every minute; never on the kitchen's screens.
+- **Assist is for the top three, and whoever is given it** (0138): owner, manager, supervisor, or `profiles.assist_access` (the
+  owner or a manager switches it in Access). The layout leaves the button out and `/api/assist` (and `/act`) answer 403
+  otherwise. **Drag the bubble onto the close mark** that appears at the foot of the screen to put it away on that device
+  (`df-assist-hidden`); My profile → This device → Show Assist brings it back; ⌘J still opens the panel.

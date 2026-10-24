@@ -4,7 +4,7 @@ import { Copy, UserPlus, KeyRound, Check, MailWarning, MailCheck, Mail, Hash, Us
 import { SlidersHorizontal as AccessIcon } from "lucide-react";
 import { Button, Field, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, ROLE_DEFAULT, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
-import { createInvite, setAccess, setPasswordRight, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency } from "./actions";
+import { createInvite, setAccess, setPasswordRight, setAssistAccess, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency } from "./actions";
 import { PositionFields, TeamChart, PositionsGuide, Avatar, DeptIcon, ModuleChips, titleOf, deptOf, levelFor, DEPT_ORDER, deptHue } from "./StaffPositions";
 import { StaffGrid, type Duty } from "./StaffGrid";
 import { copyText } from "@/lib/clipboard";
@@ -68,7 +68,7 @@ function Credentials({ title, loginId, password, staffCode, canIssue }: { title:
 }
 
 type Staff = { id: string; full_name: string; email: string | null; phone: string | null; contact_email: string | null; contact_verified_at: string | null; staff_code: string | null; role: Role; is_active: boolean; allowed_modules: string[] | null; must_change_password: boolean;
-  position: string | null; position_title: string | null; department: string | null; reports_to: string | null; joined_on: string | null; can_issue_passwords?: boolean };
+  position: string | null; position_title: string | null; department: string | null; reports_to: string | null; joined_on: string | null; can_issue_passwords?: boolean; assist_access?: boolean };
 type Pos = { department: string; position: string; title: string; reportsTo: string; joinedOn: string };
 const posOf = (p?: Staff | null): Pos => ({ department: p ? deptOf(p) ?? "" : "", position: p?.position ?? "", title: p?.position_title ?? "", reportsTo: p?.reports_to ?? "", joinedOn: p?.joined_on ?? "" });
 const samePos = (a: Pos, b: Pos) => a.department === b.department && a.position === b.position && a.title.trim() === b.title.trim() && a.reportsTo === b.reportsTo && a.joinedOn === b.joinedOn;
@@ -101,6 +101,9 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
   /* temporary passwords (0136): the owner's switch on each manager, shown at once and saved behind */
   const [issue, setIssue] = useState<Record<string, boolean>>({});
   const issueOn = (p: Staff) => issue[p.id] ?? !!p.can_issue_passwords;
+  /* Assist (0138): the top three have it; anyone below, when the owner or a manager switches it on */
+  const [aiOn, setAiOn] = useState<Record<string, boolean>>({});
+  const assistOn = (p: Staff) => aiOn[p.id] ?? !!p.assist_access;
   const toast = useToast();
   // the ranks below mine — the only ones I may appoint anyone to
   const assignable = rolesIMayAssign(myRole);
@@ -447,6 +450,10 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
                 {MODULE_GROUPS.map((g) => { const keys = g.keys.filter((k) => ceiling(role).includes(k.key)); if (!keys.length) return null; return (
                   <div key={g.title} className="mb-4 min-w-0"><div className="eyebrow mb-2">{g.title}</div><div className={SWITCH_GROUP}>{keys.map((k) => <SwitchRow key={k.key} title={k.label} hint={k.hint} on={isOn(k.key)} onToggle={() => toggle(k.key)} />)}</div></div>); })}
               </div></>)}
+            {(myRole === "owner" || myRole === "manager") && !["owner", "manager", "supervisor"].includes(acc.role) && <div className={SWITCH_GROUP} data-assist-right>
+              <SwitchRow title="Assist (AI)" hint="The AI helper button" on={assistOn(acc)} data={{ "data-assist-switch": "" }}
+                onToggle={() => { const p = acc, on = !assistOn(p); setAiOn((m) => ({ ...m, [p.id]: on })); start(async () => { const r = await setAssistAccess(p.id, on); if ("error" in r) { setAiOn((m) => ({ ...m, [p.id]: !on })); setErr(r.error!); } }); }} />
+            </div>}
             {acc.id !== me && <div className={SWITCH_GROUP}><SwitchRow title="Active" hint="Off = can't sign in" on={active} onToggle={() => setActive(!active)} /></div>}
             {err && <p className="text-sm text-chili">{err}</p>}
             <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setAccess(acc.id, role, role === "owner" ? null : ticks, active); if ("error" in r) { setErr(r.error!); return; } if (!samePos(accPos, posOf(acc))) { const x = await savePos(acc.id, accPos); if ("error" in x) { setErr(x.error!); return; } } setAcc(null); })} data-save-access>Save</Button><Button variant="gray" onClick={() => setAcc(null)}>Cancel</Button></div>

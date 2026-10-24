@@ -153,3 +153,12 @@ pnpm --filter @dineflow/web test
   30 days · 90 days · 1 yr, each one row, 44px. sm and up keep the chips. Probe: `inv.mjs` (20 checks
   over five widths, with the order header).
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
+- **The counter, redrawn** (2026-10-24, the owner: "pro-level billing, ultra modern, and who billed — from the login"). The
+  "keeps its own design" note above is superseded by this request. `page.tsx` fetches, `BillingBoard.tsx` draws: who is at the
+  counter (the login) and how many payments they took today; six figures (sales, average bill, unpaid, cash, UPI, card with its
+  share) and the payment mix as one bar; **Ready to bill** — filter by kind (Dine in / Parcel / Delivery), oldest or biggest first,
+  the wait amber at 45 min and red at 90; **Today's bills** — search (bill, order, table, name), filter by state, each row with its
+  payment methods and "Billed by <name> · paid to <name>". The bill: "Billed by" and "At the counter" chips, **Split evenly ÷2 ÷3
+  ÷4** (the last share takes the odd paise), **Cash given** keys (Exact / ₹100 / ₹200 / ₹500 / ₹2000) and the change to return,
+  large. Who took each payment is `payments.received_by` (0139, defaulting to the signed-in person).

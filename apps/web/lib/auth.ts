@@ -16,7 +16,7 @@ export type Session = {
   outlets: Outlet[];
   /** `restaurant_id` is the outlet this sign-in is working in; `home_restaurant_id` the person's own (0106) */
   profile: { id: string; full_name: string; role: Role; restaurant_id: string; home_restaurant_id?: string; allowed_modules?: string[] | null; must_change_password?: boolean; is_active?: boolean;
-    department?: string | null; position?: string | null };   // 0115: the job alerts and the phone bar follow the department
+    department?: string | null; position?: string | null; assist_access?: boolean };   // 0115: the job alerts and the phone bar follow the department; 0138: Assist
   restaurant: { id: string; name: string; slug: string; property_type: PropertyType; gst_rate: number; room_gst_rate: number; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; service_charge_pct: number; gstin: string | null; address: string | null; phone: string | null; plan: string; trial_ends_at: string; membership: Membership; membership_plan: string | null; membership_ends_at: string | null; check_in_time: string; check_out_time: string; booking_slug?: string | null; tagline?: string | null; policies?: string | null; advance_pct?: number; booking_engine?: boolean; prep_buffer_pct?: number; brief_whatsapp?: string | null; district?: string | null; pincode?: string | null; network_alias?: string | null; runs_on_box?: boolean; box_last_seen?: string | null; enabled_modules?: string[] | null; legal_name?: string | null; pan?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; gst_monthly?: boolean | null; fssai_no?: string | null; ca_name?: string | null; ca_firm?: string | null; ca_membership_no?: string | null; ca_email?: string | null; ca_phone?: string | null; [k: string]: unknown; logo_url?: string | null; brand_colour?: string | null; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean };
 };
 
@@ -93,3 +93,7 @@ export async function requireAdmin() {
 }
 
 export { daysLeft } from "./format";
+
+/** Assist (the AI) is for the top three ranks — owner, manager, supervisor — and anyone the owner or a manager switched on
+ *  (0138, _assist_allowed in the database says the same). Master control acting as an owner is the owner. */
+export const assistAllowed = (p: Pick<Session["profile"], "role" | "assist_access">) => p.role === "owner" || p.role === "manager" || p.role === "supervisor" || !!p.assist_access;

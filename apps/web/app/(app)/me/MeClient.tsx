@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { BadgeCheck, BellRing, CalendarCheck, CalendarDays, Check, ChevronRight, Clock3, Copy, Hash, KeyRound, Lock, ListChecks, ListTodo, Mail, MailCheck, MonitorSmartphone, Palette, ShieldCheck, Undo2, UserRound, Users } from "lucide-react";
 import { Button, Card, Sheet, cn, useToast } from "@/components/ui";
 import { copyText } from "@/lib/clipboard";
@@ -54,7 +54,7 @@ function Head({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?
  * this device. Two columns from xl (the profile and my details · today and sign-in), one below; the device's look,
  * language and alerts full width under them — the same components Settings → Appearance and Notifications use.
  */
-export function MeClient({ me, day }: { me: Me | null; day: Day | null }) {
+export function MeClient({ me, day, assist = false }: { me: Me | null; day: Day | null; assist?: boolean }) {
   return (
     <div className="space-y-5" data-me>
       {me && day ? (
@@ -73,6 +73,7 @@ export function MeClient({ me, day }: { me: Me | null; day: Day | null }) {
         <div className="mt-6 mb-2 text-[13px] font-semibold text-[var(--color-label-2)]">Language</div>
         <LangPicker />
         <SidebarPicker />
+        {assist && <AssistSwitch />}
       </Card>
       <Card data-me-alerts>
         <Head icon={<BellRing size={18} />} title="Alerts on this device" sub="Tone and what rings" />
@@ -282,5 +283,19 @@ function Security({ me }: { me: Me }) {
         </div>
       </Sheet>
     </Card>
+  );
+}
+
+/** Assist on this device (2026-10-24): a drag to the close mark puts the button away (components/assist/Assist.tsx); this brings
+ *  it back. The key is the Assist bubble's own (df-assist-hidden), written here so this page never loads Assist's code. */
+function AssistSwitch() {
+  const [on, setOn] = useState(true);
+  useEffect(() => { try { setOn(localStorage.getItem("df-assist-hidden") !== "1"); } catch { /* shown */ } }, []);
+  const flip = () => { const v = !on; setOn(v); try { if (v) localStorage.removeItem("df-assist-hidden"); else localStorage.setItem("df-assist-hidden", "1"); } catch { /* this visit */ } window.dispatchEvent(new Event("df-assist")); };
+  return (
+    <label className="mt-6 flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3 cursor-pointer" data-me-assist>
+      <span className="min-w-0 flex-1"><span className="block text-[14px] font-semibold">Show Assist</span><span className="block text-[12.5px] text-steel">The AI helper button on this device</span></span>
+      <button type="button" role="switch" aria-checked={on} data-on={on ? "true" : "false"} className="switch shrink-0" onClick={flip} aria-label="Show Assist" />
+    </label>
   );
 }

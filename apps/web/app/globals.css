@@ -1351,8 +1351,17 @@ input[type="range"]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
   }
   .topbar[data-stuck]::before { display: none; }
   /* Master mode's band sits above the bar: the bar then needs no room for the status bar, the band takes it */
-  [role="status"] + div + .topbar, [role="status"] + .topbar { margin-top: 8px; padding-top: 6px; }
-  main > div > [role="status"]:first-child { margin-top: calc(env(safe-area-inset-top, 0px) + 4px); }
+}
+/* Master mode on a phone (2026-10-24, the owner on an iPhone: "keep that section fixed at the top when scrolling"): the band and
+   the bar are one solid head that stays at the top — the band reaches up under the status bar, the bar sits under it with
+   no edge of its own. Elsewhere .app-head is no box at all (display: contents), so nothing else moves. */
+.app-head { display: contents; }
+@media (max-width: 767px) {
+  .app-head:has(> [role="status"]) { display: block; position: sticky; top: 0; z-index: 30; margin: -17px -16px 2rem;
+    padding: calc(env(safe-area-inset-top, 0px) + 6px) 10px 0; background: var(--color-bg-2);
+    border-bottom: .5px solid var(--color-separator); box-shadow: 0 6px 18px -16px rgb(0 0 0 / .55); }
+  .app-head:has(> [role="status"]) > [role="status"] { margin: 0 0 4px; }
+  .app-head:has(> [role="status"]) .topbar, .app-head:has(> [role="status"]) .topbar[data-stuck] { position: static; margin: 0 -10px !important; padding-top: 4px; border-width: 0; box-shadow: none; }
 }
 @media (min-width: 1536px) { .topbar[data-stuck] { --bx: 48px; --br: 60px; } }
 
@@ -1458,23 +1467,29 @@ a.svc-table:hover .svc-take, .svc-take:hover { background: var(--color-fill-2); 
    card colour so it reads as notched into the card's photo edge; a dish with choices adds a slim Choose pill beside it. On a
    phone the owner kept the old pills: ADD with its word, CHOOSE alone (the card's tap adds there too). */
 .dish-pair { display: inline-flex; align-items: center; gap: 6px; }
-.dish-plus, .dish-chip { position: relative; min-height: 0 !important; border-radius: 999px; transition: transform .15s var(--ease-out), background-color .15s; }
+.dish-plus, .dish-chip { position: relative; min-height: 0 !important; min-width: 0 !important; border-radius: 999px; transition: transform .15s var(--ease-out), background-color .15s; }
 .dish-plus::before, .dish-chip::before { content: ""; position: absolute; inset: -4px; }   /* 44px to a finger */
 .dish-plus { height: 38px; width: 38px; display: grid; place-items: center; background: var(--color-tint); color: var(--color-on-tint);
   box-shadow: 0 0 0 3px var(--color-bg-2), 0 8px 18px -8px rgb(0 0 0 / .6); }
 .dish-plus:hover { filter: brightness(1.08); } .dish-plus:active, .dish-chip:active { transform: scale(.92); }
 .dish-plus .dish-plus-word { display: none; }
-.dish-chip { height: 32px; padding: 0 12px 0 10px; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--color-label);
-  background: var(--color-bg-2); box-shadow: inset 0 0 0 1px var(--color-separator), 0 0 0 3px var(--color-bg-2), 0 8px 18px -8px rgb(0 0 0 / .6); }
+/* Choose is a round options key now, the same size as + (2026-10-24, the owner: "an icon only") — the sliders in the tint on the
+   card colour, a ring of the tint; + beside it adds with the dish's defaults */
+.dish-chip { height: 38px; width: 38px; padding: 0; display: grid; place-items: center; color: var(--color-tint);
+  background: var(--color-bg-2); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-tint) 55%, transparent), 0 0 0 3px var(--color-bg-2), 0 8px 18px -8px rgb(0 0 0 / .6); }
 .dish-chip:hover { background: color-mix(in srgb, var(--color-tint) 10%, var(--color-bg-2)); }
 @media (max-width: 767.98px) {
-  .dish-pair .dish-plus { display: none; }
-  .dish-plus.solo, .dish-chip { height: 40px; width: auto; min-width: 6.5rem; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  .dish-chip, .dish-pair .dish-plus { height: 40px !important; width: 40px !important; }
+  .dish-plus.solo { height: 40px; width: auto; min-width: 6.5rem !important; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     font-size: 13.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; background: var(--color-bg-2); color: var(--color-tint);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-tint) 45%, transparent), 0 10px 22px -12px rgb(0 0 0 / .7); }
   .dish-plus.solo .dish-plus-word { display: inline; }
 }
 .svc-dish .pic { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; background: var(--color-fill); overflow: hidden; }
+/* out of stock (0137): the card greys, its photo dims, and its keys are off — the flag on the photo says why */
+.svc-dish[data-out] .pic img, .svc-dish[data-out] .pic > span:not(.flag) { filter: grayscale(1); opacity: .55; }
+.svc-dish[data-out] [data-tile-name], .svc-dish[data-out] [data-tile-price] { opacity: .55; }
+.svc-dish[data-out] .act { opacity: .4; pointer-events: none; }
 .svc-dish .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .svc-dish .pic[data-nophoto] { background: linear-gradient(160deg, var(--color-bg-3), var(--color-fill)); }
 .svc-dish .qty { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: 34px; height: 34px; padding: 0 8px; border-radius: 999px; background: var(--color-tint); color: var(--color-on-tint); display: grid; place-items: center; font-weight: 900; font-size: 17px; box-shadow: 0 4px 12px -4px rgb(0 0 0 / .5); }
@@ -1498,8 +1513,12 @@ a.svc-table:hover .svc-take, .svc-take:hover { background: var(--color-fill-2); 
   --color-chili: color-mix(in srgb, var(--color-red) 80%, var(--color-paper-ink)); --color-mint: color-mix(in srgb, var(--color-green) 62%, var(--color-paper-ink)); }
 .kt.late { box-shadow: 0 0 0 3px var(--color-red), 0 14px 30px -18px rgb(0 0 0 / .85); }
 .kt.warn { box-shadow: 0 0 0 3px var(--color-orange), 0 14px 30px -18px rgb(0 0 0 / .85); }
-.kt-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: color-mix(in srgb, var(--st) 18%, var(--color-paper)); }
-.kt-head .where { font-family: var(--font-display); font-size: 32px; line-height: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the ticket's head is a solid band of its column's colour, the words in that colour's own ink (2026-10-24, the owner: "the
+   card header blends into the background"): it was 18% of the colour on the paper, on a column of the same tint, so the
+   head, the column and the card read as one wash. The size steps down on a phone so "Takeaway · Token 7" fits. */
+.kt-head { display: flex; align-items: center; gap: 10px; padding: 11px 12px 11px 14px; background: var(--st); color: var(--st-on); box-shadow: inset 0 -1px 0 rgb(0 0 0 / .12); }
+.kt-head .where { font-family: var(--font-display); font-size: 30px; line-height: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 639px) { .kt-head .where { font-size: 24px; } }
 .kt-mins { margin-left: auto; height: 36px; padding: 0 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; font-weight: 900; font-size: 17px; background: var(--age, var(--color-green)); color: var(--color-bezel); white-space: nowrap; flex: none; }
 [data-theme="paper"] .kt-mins { color: #fff; }
 .kt-line { width: 100%; display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; border-bottom: 1px dashed color-mix(in srgb, var(--color-paper-ink) 18%, transparent); text-align: left; }
@@ -1919,3 +1938,10 @@ html[data-splash="out"]::after { animation: splash-leave .35s ease-in both; }
   html[data-splash]::after, html[data-splash] body::after { animation: none; }
   html[data-splash] body::before { display: none; }
 }
+
+/* the ready bubbles (components/shell/ReadyDock.tsx, 2026-10-24): a soft ring widens out and fades while food waits —
+   transform and opacity on a pseudo-element only (the compositor rule) */
+.ready-bubble { box-shadow: 0 0 0 1px rgb(255 255 255 / .1), 0 14px 32px -12px rgb(0 0 0 / .7); }
+.ready-bubble::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: 2px solid var(--hue); animation: ready-ring 1.8s ease-out infinite; pointer-events: none; }
+@keyframes ready-ring { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(1.55); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ready-bubble::after { animation: none; opacity: 0; } }

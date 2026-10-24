@@ -366,3 +366,16 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
 - **The selected ring is drawn over the photo** (`.svc-dish[data-on]::after`, an inset ring at z 3); the inset outline it
   replaced painted under the photo and vanished along the top and the corners. All widths.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+
+- **A dish the pantry cannot make cannot be ordered** (0137, 2026-10-24, the owner: "most important"). `place_order` refuses a
+  ticket asking more of a dish than `menu_stock()` says its recipe and the pantry can make ("Not enough in the pantry: Chicken
+  biryani (0 left — Basmati rice is out)"), when `restaurants.stock_block` is on (default; Settings → Kitchen). Never an order
+  synced from offline (placed_at set), never a dish with no recipe, never an aggregator's accepted order. The till: such a
+  card greys with **Out of stock** (`[data-out]`), a tap is refused with the reason, one more than is left says "Only N left",
+  and Send stays off while anything on the ticket is short — no "Send anyway" (that remains when the owner turns the switch off).
+- **Choose is a round options key** (2026-10-24, the owner: "an icon only"): the sliders in the tint on a ring, the same circle as
+  + (38px, 40px on a phone — `min-width: 0 !important` beats the touch minimum), both shown at every width; a plain dish keeps ADD.
+- **A parcel's details** (`[data-parcel-details]`): Pickup (or Deliver) Now · 15 · 30 · 45 min · 1 hr, and Packing (Cutlery / No
+  cutlery / Extra sauce / Gravy separate / Eco bag). They join the order's request and print on the kitchen ticket ("Pickup by 7:45
+  PM · Cutlery"). The strip at the top follows the type: the tables' open tickets for dine-in, the parcels' (by token) for a parcel
+  or delivery (`[data-order-line=tables|parcels]`) — a parcel no longer shows tables.
