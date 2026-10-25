@@ -751,3 +751,13 @@ Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.
   *Business & growth*) and Reports (a module *and* the grant). `rowsFor(mods, role, grants)` in sections.ts is the one filter
   for the sidebar, the phone bar, Go to and `G` + letter (`G X` → Connections); the layout gates the same two segments.
   `grants` ride with the session (`session_bundle`). See connections.md.
+
+- **A locked device has no menu (0141, Display lock — [display-lock.md](display-lock.md)).** When the `df-lock` cookie holds a
+  lock the property still allows, the `(app)` layout renders no Sidebar, TopBar (so no Back), BottomNav, Assist or `Keys`,
+  wraps the page in `[data-lock-area]` and mounts `DisplayLock` (the guard, the *Locked* pill, the unlock); on a view lock the
+  ReadyDock is left out too. The middleware's `lockRedirect` sends any other page back to the locked one. With no cookie the
+  layout renders exactly as before. "Display lock" (`/lock`) is a "fresh" link for the owner and managers, under *Devices*.
+- **The sidebar on a touch screen (2026-10-25 audit).** Menu rows (and My attendance) are 42px with a mouse and 44px under
+  `pointer: coarse`; on the folded rail the fold key is 44 wide (40 with a mouse) and the account link at least 44 wide. Measured
+  with real touch emulation (`mobile: true` + touch at 1194 and 834): nothing in the sidebar under 44. The top bar's Back is
+  36px drawn with an invisible `::before` making the target 44 — a box-measuring probe reports 36; that is by design.

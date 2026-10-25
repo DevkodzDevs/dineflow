@@ -572,3 +572,17 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   (minted with the order; backfilled), the `deliveries` table (tenant read for authenticated; no direct writes — `delivery_assign`
   for staff; `delivery_track`, `delivery_rider_view`, `delivery_rider_set`, `dine_track_token` for anon, each keyed by a
   token alone). `report_departments(p_from, p_to)`: the owner, the grant or the master; at most a year; lists capped.
+- **0141 — Display lock (2026-10-25, applied; dry141.mjs 14/14, rolled back).** `restaurants.display_lock jsonb not null
+  default '{}'` — `{ "<page key>": "view"|"work" }`; `display_lock_set(p_key, p_mode)` (owner / manager; key and kind checked;
+  `display.allow` / `display.disallow` in the audit trail); `display_lock_note(p_action, p_key, p_mode, p_by)` (`lock` needs
+  owner / manager; `release` names who — the app checks that person's sign-in first). No new table, so no new policy; both
+  granted to authenticated only. [display-lock.md](display-lock.md)
+- **0143 — Audit fixes (2026-10-25, applied; dry143.mjs 6/6, rolled back).** `display_lock_note` — a release line, like a lock
+  line, only from an owner or manager (the app writes it on the releasing manager's own sign-in; the actor is auth.uid()).
+  `apply_ledger` — the stock trigger updates `where id = ingredient and restaurant_id = new.restaurant_id` (0098's
+  `zz_same_property` already refused a foreign ingredient; now the trigger says so itself).
+- **0142 — the deep self-tests (2026-10-25, applied; dry142.cjs 13/13, rolled back).** `selftest_security()`,
+  `selftest_integrity()`, `selftest_ops()`, `selftest_dbperf()` — read-only, master-only, security definer with
+  search_path pinned, each with its own statement timeout; anon is refused execute. No table, so no policy.
+  `selftest_integrity` walks every single-column foreign key between two tables that both carry restaurant_id and counts
+  rows whose restaurant differs from their parent's. See admin-and-membership.md, *The deep suites*.

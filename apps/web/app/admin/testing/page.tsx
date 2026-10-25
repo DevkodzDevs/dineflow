@@ -20,10 +20,15 @@ export default async function TestingPage() {
     s.rpc("session_bundle"),
   ]);
   const last: Record<string, Run> = {};
-  for (const r of (runs ?? []) as Run[]) if (!last[r.suite]) last[r.suite] = r;
+  /* the run before the last of each suite, as name → status: what got worse (new) and what got better (fixed) */
+  const prev: Record<string, Record<string, string>> = {};
+  for (const r of (runs ?? []) as Run[]) {
+    if (!last[r.suite]) last[r.suite] = r;
+    else if (!prev[r.suite]) prev[r.suite] = Object.fromEntries(r.checks.map((c) => [c.name, c.status]));
+  }
   const acting = ((bundle as { acting_as?: string | null } | null)?.acting_as) ?? null;
   /* every kept run, oldest first, without its checks: the dots on each row and the trend line */
   const history: Hist[] = ((runs ?? []) as Run[]).map((r) => ({ suite: r.suite, status: r.status, ms: r.ms, ran_at: r.ran_at,
     pass: r.checks.filter((c) => c.status === "pass").length, warn: r.checks.filter((c) => c.status === "warn").length, fail: r.checks.filter((c) => c.status === "fail").length })).reverse();
-  return <TestingClient last={last} history={history} properties={(props ?? []) as { id: string; name: string }[]} acting={acting} />;
+  return <TestingClient last={last} prev={prev} history={history} properties={(props ?? []) as { id: string; name: string }[]} acting={acting} />;
 }

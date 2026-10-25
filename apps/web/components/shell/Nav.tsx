@@ -27,7 +27,7 @@ function Group({ title, items, path, className }: { title?: string; items: NavIt
       {items.map(({ key, href, label, Icon, badge, hint }) => {
         const active = isOn(path, href);
         return (
-          <Link key={key} href={href} title={hint ?? label} data-active={active ? "true" : undefined} data-help={key === "help" ? "" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
+          <Link key={key} href={href} title={hint ?? label} data-active={active ? "true" : undefined} data-help={key === "help" ? "" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] [@media(pointer:coarse)]:h-11 rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
             {active && <span className="absolute inset-0 rounded-[10px] bg-white/[.12] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/.12)]" />}
             {active && <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-[var(--color-tint)] shadow-[0_0_14px_color-mix(in_srgb,var(--color-tint)_80%,transparent)]" />}
             <span className="relative shrink-0"><Icon size={17} strokeWidth={active ? 2.2 : 1.8} />{badge ? <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-red)] ring-2 ring-[#121216]" aria-hidden /> : null}</span>
@@ -162,7 +162,7 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
           are the menu's last group above; installing is the top bar's download button. */}
       <div className="mt-auto pt-3">
         {/* only when the owner has turned on a way to punch from one's own phone (fingerprint or selfie) */}
-        {attend && <Link href="/attendance" title="My attendance" className={cn("mb-2 flex items-center gap-3 h-[42px] px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/attendance") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}><Fingerprint size={17} className="shrink-0" /><span className="rail-hide">My attendance</span></Link>}
+        {attend && <Link href="/attendance" title="My attendance" className={cn("mb-2 flex items-center gap-3 h-[42px] [@media(pointer:coarse)]:h-11 px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/attendance") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}><Fingerprint size={17} className="shrink-0" /><span className="rail-hide">My attendance</span></Link>}
         {isAdmin && <Link href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
         {/* the fold (2026-10-23): the open looks fold to icons, the icon looks unfold to the one they came from; kept on this
             device. From 768 up (.sb-fold), at every look — a phone has the bottom bar. */}
@@ -183,7 +183,7 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
             leaves once it collapses, so the avatar alone still sits square inside it */}
         <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[.04] p-[7px]">
           {accountHref
-            ? <Link href={accountHref} title={`${name} · settings`} className="flex items-center gap-2.5 min-w-0 flex-1 rounded-xl transition hover:brightness-125 [@media(pointer:coarse)]:min-h-11">{who}</Link>
+            ? <Link href={accountHref} title={`${name} · settings`} className="flex items-center gap-2.5 min-w-0 flex-1 rounded-xl transition hover:brightness-125 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11">{who}</Link>
             : <span className="flex items-center gap-2.5 min-w-0 flex-1">{who}</span>}
           <form action="/logout" method="post" className="rail-hide shrink-0">
             <button title="Sign out" aria-label="Sign out" className="h-8 w-8 grid place-items-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white transition"><LogOut size={15} /></button>

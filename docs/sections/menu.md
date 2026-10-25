@@ -208,3 +208,13 @@ A new place that shows a dish photo uses `DishImage`, not a bare `<img src={imag
   field — a tag icon, the input, Add inside it — under "Add a category", with **Usual ones** chips (Starters, Main course,
   Breads, Rice & biryani, Desserts, Beverages — those not already there; one tap adds). An empty list says so.
 - **No dishes yet** is `Empty`'s sm+ form (design-system.md).
+
+- **Dish photo addresses are checked by host (2026-10-25 audit).** `setDishPhoto`: https, and the host Wikimedia
+  (`upload`/`thumb.wikimedia.org`) or this project's own Supabase storage under `/storage/v1/object/public/menu/` — the old
+  `includes(".../menu/")` let a photo come from any site with that text in its path, so every guest's browser would call that
+  site from the storefront, the kiosk and the TV. The credit link must be `https://`.
+- **List · Cards beside the categories (2026-10-25, the app's ViewSwitch, `[data-view-switch=menu]`).** Nothing chosen,
+  the width decides as before (the list on a phone, cards from sm — `useViewPref(..., { wideAt: 640 })`); a tap shows the
+  other at any width for this visit, the pin keeps it (`df-view:menu`). The list from sm is two, three, four across; cards
+  on a phone are one across. On a phone the category chips take the whole row and the switch sits under them at the
+  right (beside them only two chips fit); from sm they share one row.

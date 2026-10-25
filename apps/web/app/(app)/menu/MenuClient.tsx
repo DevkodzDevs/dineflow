@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, Images, ImagePlus, ChevronDown, Wrench, Ban, Loader2, Globe, GlobeLock, Tag, Check } from "lucide-react";
+import { Plus, Pencil, FlaskConical, Trash2, Sparkles, SlidersHorizontal, Camera, Clock, Images, ImagePlus, ChevronDown, Wrench, Ban, Loader2, Globe, GlobeLock, Tag, Check, LayoutGrid, List } from "lucide-react";
 import { DishPhotoPicker, type DishPhoto } from "@/components/menu/DishPhotoPicker";
 import { DishGlyph, glyphFor } from "@/components/menu/DishGlyph";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Field, Sheet, Empty, Switch, cn, useToast } from "@/components/ui";
 import { Rail } from "@/components/ui/Rail";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { Say, CatIcon } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import { catIcon } from "@/lib/say";
@@ -35,6 +36,9 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
      fill it from the model, the values are written straight onto the inputs — the same thing the
      person would have typed — so nothing about how the form saves changes. */
   const toast = useToast();
+  const dishLay = useViewPref("menu", ["list", "cards"] as const, { wideAt: 640 });
+  const dishView = dishLay.chosen;
+  const dishShown = dishView ?? (dishLay.wide === null ? null : dishLay.wide ? "cards" : "list");
   const formRef = useRef<HTMLFormElement>(null); const [filling, setFilling] = useState(false);
   const fillDish = async () => {
     const f = formRef.current; if (!f) return;
@@ -135,7 +139,12 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
         </div>
       )}
       {/* the categories as chips with their picture and how many dishes; Sold out last, in red */}
-      <Rail className="rail-fade flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]" arrowClassName="!bottom-1" label="Categories">
+      {/* the categories, and beside them how the dishes are shown — the app's one ViewSwitch (2026-10-25, the owner): a list
+          (one row a dish, the switch at the end of the row) or cards (the photo first). Nothing chosen: the list on a phone,
+          cards from sm, in CSS; a tap is for this visit, the pin keeps it on this device (df-view:menu). */}
+      {/* a phone: the chips get the whole row and the switch sits under them at the right (beside them only two chips fit) */}
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 min-w-0">
+      <Rail wrapClassName="min-w-0 flex-1 max-sm:basis-full" className="rail-fade flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none]" arrowClassName="!bottom-1" label="Categories">
         {[{ id: "all", name: "All", icon: "LayoutGrid", n: items.length }, ...categories.map((c) => ({ id: c.id, name: c.name, icon: catIcon(c.name), n: items.filter((i) => i.category_id === c.id).length }))].map((c) => (
           <button key={c.id} type="button" onClick={() => setCat(c.id)} aria-pressed={cat === c.id} className={cn("shrink-0 !min-h-11 rounded-full pl-3.5 pr-2 inline-flex items-center gap-2 text-[14px] font-extrabold transition-colors", cat === c.id ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-cat={c.id}>
             <CatIcon name={c.icon} size={16} />{c.name}<b className={cn("num min-w-6 h-6 px-1.5 rounded-full grid place-items-center text-[12.5px]", cat === c.id ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")}>{c.n}</b>
@@ -143,6 +152,10 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
         ))}
         {soldOut > 0 && <button type="button" onClick={() => setCat("soldout")} aria-pressed={cat === "soldout"} className={cn("svc-chip st-late shrink-0", cat === "soldout" && "ring-2 ring-[var(--color-red)]")} data-cat="soldout"><Ban size={16} aria-hidden /><Say w="sold_out" start /><b className="num">{soldOut}</b></button>}
       </Rail>
+      {items.length > 0 && <div className="max-sm:ml-auto shrink-0"><ViewSwitch label="Show dishes as" data="menu" shown={dishShown} onPick={dishLay.pick} saved={dishLay.saved}
+        onKeep={(v) => { dishLay.keep(v); toast(v === "list" ? "The list is your default here" : "Cards are your default here"); }}
+        options={[{ v: "list", label: "List", icon: List, word: "List" }, { v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }]} /></div>}
+      </div>
 
       {visible.length === 0 ? (
         cat === "soldout" ? <Empty title="Nothing is sold out" hint="All dishes are on." /> :
@@ -150,7 +163,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
       ) : (<>
         {/* A phone: a list, one row per dish — the photo, the name, the price and its state, and the switch at
             the end of the row. A tap on the name opens the dish (its sizes, add-ons and recipe are in there). */}
-        <div className="sm:hidden space-y-2" data-dish-list>
+        <div className={dishView === "list" ? "grid gap-2 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4" : cn("space-y-2", dishView === "cards" ? "hidden" : "sm:hidden")} data-dish-list>
           {visible.map((it) => {
             const vs = variantsOf(it.id); const mapped = recipeMap[it.id]?.length ?? 0;
             const lo = vs.length ? Math.min(...vs.map((v) => Number(v.price))) : Number(it.price);
@@ -187,7 +200,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
             corner. Under the photo the name and the price on one line, then "Starters · 15 min", then one footer: the
             Available / Sold out switch as a pill, and Edit. Sizes, add-ons and the recipe open from Edit. Sold out darkens the photo under a
             SOLD OUT label and turns the pill red. */}
-        <div className="hidden sm:grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" data-dish-grid>
+        <div className={cn(dishView === "cards" ? "grid" : dishView === "list" ? "hidden" : "hidden sm:grid", "gap-4 grid-cols-[repeat(auto-fill,minmax(min(15rem,100%),1fr))]")} data-dish-grid>
           <AnimatePresence initial={false}>
             {visible.map((it) => {
               const vs = variantsOf(it.id); const mapped = recipeMap[it.id]?.length ?? 0;

@@ -2,7 +2,8 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Star, Phone, Mail, MapPin, MessageCircle, BedDouble, CalendarDays, Wallet, ChevronRight } from "lucide-react";
+import { Star, Phone, Mail, MapPin, MessageCircle, BedDouble, CalendarDays, Wallet, ChevronRight, LayoutGrid, Rows3 } from "lucide-react";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { Field, Sheet, Pill, cn, useToast } from "@/components/ui";
 import { formatINR, fmtDate } from "@/lib/format";
 import { saveGuestFlags, saveGuestNotes } from "./actions";
@@ -27,10 +28,45 @@ export function GuestsClient({ guests }: { guests: Guest[] }) {
   const [open, setOpen] = useState<Guest | null>(null);
   // the row that was clicked, kept fresh when its own edits change it
   const current = useMemo(() => (open ? guests.find((g) => g.id === open.id) ?? open : null), [open, guests]);
+  /* Cards or the table (2026-10-25, the owner: "the Pantry switch, everywhere it is needed"). The table is 860px wide, so a
+     phone scrolled it sideways; nothing chosen, CSS shows cards below md and the table from md. A tap is for this visit,
+     the pin keeps it on this device (df-view:guests). */
+  const lay = useViewPref("guests", ["cards", "table"] as const); const toast = useToast();
+  const shownAs = lay.chosen ?? (lay.wide === null ? null : lay.wide ? "table" : "cards");
+  const openKey = (g: Guest) => (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(g); } };
 
   return (
     <>
-      <div className="feather overflow-x-auto table-wrap">
+      <div className="flex items-center gap-3 mb-3" data-guests-bar>
+        <span className="text-[13px] text-steel"><b className="num text-[var(--color-label)]">{guests.length}</b> {guests.length === 1 ? "guest" : "guests"}</span>
+        <div className="ml-auto"><ViewSwitch label="Show guests as" data="guests" shown={shownAs} onPick={lay.pick} saved={lay.saved}
+          onKeep={(v) => { lay.keep(v); toast(v === "table" ? "The table is your default here" : "Cards are your default here"); }}
+          options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} /></div>
+      </div>
+
+      {/* the cards: who, how to reach them, what they like, and what they have been worth */}
+      <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4", lay.chosen === "table" ? "hidden" : lay.chosen === "cards" ? "" : "md:hidden")} data-guest-cards>
+        {guests.map((g) => { const bs = live(g); const last = lastStay(g); return (
+          <div key={g.id} role="button" tabIndex={0} onClick={() => setOpen(g)} onKeyDown={openKey(g)} aria-label={`Open ${g.full_name}`} data-guest-card={g.id}
+            className="feather !rounded-[20px] p-4 min-w-0 flex flex-col gap-3 cursor-pointer transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-tint)]">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="h-11 w-11 rounded-full bg-ink text-on-label grid place-items-center font-display text-[18px] shrink-0">{g.full_name.slice(0, 1)}</span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 min-w-0"><span className="font-bold text-[15.5px] truncate">{g.full_name}</span>{g.vip && <Star size={14} className="fill-champagne text-champagne shrink-0" aria-label="VIP" />}</span>
+                <span className="block text-[12.5px] text-steel truncate">{g.phone ?? g.email ?? (g.id_type ? `${g.id_type} ••••${g.id_last4}` : "No contact")}</span>
+              </span>
+              <ChevronRight size={17} className="text-steel shrink-0" aria-hidden />
+            </div>
+            {g.preferences && <p className="text-[13px] text-[var(--color-label-2)] line-clamp-2">{g.preferences}</p>}
+            <div className="grid grid-cols-3 gap-2 rounded-[14px] bg-[var(--color-fill)] p-2.5 text-center">
+              <span className="min-w-0"><span className="block font-display num text-[18px] leading-none">{bs.length}</span><span className="block text-[11px] text-steel mt-1">{bs.length === 1 ? "stay" : "stays"}</span></span>
+              <span className="min-w-0"><span className="block num text-[13px] font-bold leading-none mt-1 truncate">{last ? fmtDate(last.check_in) : "—"}</span><span className="block text-[11px] text-steel mt-1">last stay</span></span>
+              <span className="min-w-0"><span className="block num text-[13px] font-bold leading-none mt-1 truncate">{formatINR(revenueOf(g), { whole: true })}</span><span className="block text-[11px] text-steel mt-1">lifetime</span></span>
+            </div>
+          </div>); })}
+      </div>
+
+      <div className={cn("feather overflow-x-auto table-wrap", lay.chosen === "cards" ? "hidden" : lay.chosen === "table" ? "" : "hidden md:block")} data-guest-table>
         <table className="w-full text-sm min-w-[860px]">
           <thead><tr>
             <th className="text-left px-4 py-3">Guest</th>

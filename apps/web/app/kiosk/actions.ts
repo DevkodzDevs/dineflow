@@ -33,11 +33,13 @@ export async function kioskLeave(password: string) {
   if (!user?.email) return { error: "This tablet is not signed in." };
   const { adminClient, serviceRoleConfigured } = await import("@/lib/supabase/admin");
   const db = serviceRoleConfigured() ? adminClient() : null;
-  if (db) { const { data: open } = await db.rpc("login_gate", { p_login: user.email, p_ip: "kiosk" }); if (open === false) return { error: "Too many tries. Wait 15 minutes." }; }
+  // this tablet's own lockout (2026-10-25 audit): one shared "kiosk" bucket let anyone stop every kiosk being left
+  const bucket = `kiosk:${user.id}`;
+  if (db) { const { data: open } = await db.rpc("login_gate", { p_login: user.email, p_ip: bucket }); if (open === false) return { error: "Too many tries. Wait 15 minutes." }; }
   const { createClient: plain } = await import("@supabase/supabase-js");
   const check = plain(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
   const { error } = await check.auth.signInWithPassword({ email: user.email, password });
-  if (error) { if (db) await db.rpc("login_failed", { p_login: user.email, p_ip: "kiosk" }); return { error: "That is not this tablet's password." }; }
+  if (error) { if (db) await db.rpc("login_failed", { p_login: user.email, p_ip: bucket }); return { error: "That is not this tablet's password." }; }
   await check.auth.signOut({ scope: "local" });
   return { ok: true as const };
 }

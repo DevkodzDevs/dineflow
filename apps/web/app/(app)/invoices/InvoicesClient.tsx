@@ -2,8 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Printer, ArrowUpRight, ChevronRight, Receipt, TrendingUp, TrendingDown } from "lucide-react";
-import { Pill, Sheet, cn } from "@/components/ui";
+import { Printer, ArrowUpRight, ChevronRight, Receipt, TrendingUp, TrendingDown, LayoutGrid, Rows3 } from "lucide-react";
+import { Pill, Sheet, cn, useToast } from "@/components/ui";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { formatINR } from "@/lib/format";
 
 export type Line = { description: string; qty: number; rate: number; amount: number; gst_rate: number; gst: number };
@@ -34,13 +35,34 @@ export function InvoicesClient({ invoices, months, property }: { invoices: Invoi
   const [sel, setSel] = useState<string | null>(null);
   const wide = useWide();
   const current = useMemo(() => invoices.find((i) => i.id === sel) ?? null, [sel, invoices]);
+  /* Cards or the table (2026-10-25, the owner: "the Pantry switch, everywhere it is needed"): the table is 620px wide and
+     a phone scrolled it sideways. Nothing chosen: cards below md, the table from md (CSS). The pin keeps a choice (df-view:invoices). */
+  const lay = useViewPref("invoices", ["cards", "table"] as const); const toast = useToast();
+  const shownAs = lay.chosen ?? (lay.wide === null ? null : lay.wide ? "table" : "cards");
 
   return (
     <>
       <MonthStrip months={months} />
 
       <div className="grid gap-4 items-start xl:grid-cols-[minmax(0,1fr)_minmax(360px,400px)]">
-        <div className="feather overflow-x-auto table-wrap">
+        <div className="min-w-0 space-y-3">
+        <div className="flex items-center gap-3" data-invoices-bar>
+          <span className="text-[13px] text-steel"><b className="num text-[var(--color-label)]">{invoices.length}</b> {invoices.length === 1 ? "invoice" : "invoices"}</span>
+          <div className="ml-auto"><ViewSwitch label="Show invoices as" data="invoices" shown={shownAs} onPick={lay.pick} saved={lay.saved}
+            onKeep={(v) => { lay.keep(v); toast(v === "table" ? "The table is your default here" : "Cards are your default here"); }}
+            options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} /></div>
+        </div>
+        <div className={cn("grid gap-3 sm:grid-cols-2", lay.chosen === "table" ? "hidden" : lay.chosen === "cards" ? "" : "md:hidden")} data-invoice-cards>
+          {invoices.map((i) => (
+            <button key={i.id} type="button" onClick={() => setSel(i.id)} aria-label={`Open ${no(i)}`} data-invoice-card={i.id}
+              className={cn("feather !rounded-[20px] p-4 min-w-0 text-left flex flex-col gap-2.5 transition hover:-translate-y-0.5 !min-h-0", sel === i.id && "!border-[var(--color-tint)]")}>
+              <span className="flex items-center gap-2 min-w-0"><span className="num font-bold text-[15px]">{no(i)}</span><Pill tone={i.kind === "stay" ? "gold" : "preparing"}>{i.kind}</Pill><span className="ml-auto text-[12px] num text-steel whitespace-nowrap">{day(i.issued_at)}</span></span>
+              <span className="text-[14px] truncate">{i.guest_name ?? "Walk-in"}</span>
+              <span className="flex items-end gap-2 min-w-0"><span className="font-display num text-[22px] leading-none">{formatINR(Number(i.total))}</span><span className="ml-auto"><Pill tone={i.status === "paid" ? "ready" : "alert"}>{i.status}</Pill></span></span>
+              {due(i) > 0 && <span className="text-[12px] font-semibold text-[var(--color-red)] num">{formatINR(due(i))} due</span>}
+            </button>))}
+        </div>
+        <div className={cn("feather overflow-x-auto table-wrap", lay.chosen === "cards" ? "hidden" : lay.chosen === "table" ? "" : "hidden md:block")} data-invoice-table>
           <table className="w-full text-sm min-w-[620px]">
             <thead><tr>
               <th className="text-left px-4 py-3">No.</th>
@@ -68,6 +90,7 @@ export function InvoicesClient({ invoices, months, property }: { invoices: Invoi
               ))}
             </tbody>
           </table>
+        </div>
         </div>
 
         {/* beside the list on a wide screen, so you can read one invoice after another without leaving */}

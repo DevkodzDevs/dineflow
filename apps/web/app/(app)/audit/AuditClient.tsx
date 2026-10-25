@@ -17,6 +17,8 @@ const ACTION: Record<string, { title: string; group: Group }> = {
   "stock.adjust": { title: "Stock adjusted", group: "stock" }, "stock.waste": { title: "Wastage logged", group: "stock" }, "stock.opening": { title: "Opening stock", group: "stock" }, "po.status": { title: "Purchase order", group: "stock" },
   "menu.price": { title: "Price changed", group: "menu" }, "menu.availability": { title: "Availability changed", group: "menu" }, "menu.active": { title: "Dish on/off the menu", group: "menu" },
   "staff.access": { title: "Staff access changed", group: "people" }, "settings.change": { title: "Settings changed", group: "people" },
+  // 0141: Display lock — a page allowed or not, a device locked or released (the reason column names who released it)
+  "display.allow": { title: "Display lock on", group: "people" }, "display.disallow": { title: "Display lock off", group: "people" }, "display.lock": { title: "Display locked", group: "people" }, "display.release": { title: "Display released", group: "people" },
 };
 type Group = "money" | "orders" | "stock" | "menu" | "people";
 const GROUPS: { key: Group | "all"; label: string; Icon: typeof Banknote }[] = [

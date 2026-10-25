@@ -1,4 +1,4 @@
-import { Plug, Armchair, HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck, QrCode, Tv, MessagesSquare, UserRoundCog, LifeBuoy, type LucideIcon } from "lucide-react";
+import { Plug, Armchair, HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck, QrCode, Tv, MessagesSquare, UserRoundCog, LifeBuoy, MonitorSmartphone, type LucideIcon } from "lucide-react";
 import { positionByKey, type Role } from "@dineflow/shared";
 
 /** A menu row. `key` names it (React, the phone bar's pins); `mod` is the module whose tick opens it when that is
@@ -88,6 +88,8 @@ const FRESH: Fresh[] = [
   { key: "work", href: "/work", label: "Work", Icon: ListTodo, roles: EVERYONE },
   // 0116: the whole property's record of the work — who took what, from when to when — the owner's and managers' own menu
   { key: "work-records", href: "/work-records", label: "Work records", Icon: ClipboardCheck, roles: ["owner", "manager"] },
+  // 0141: pin a device to one page — a static display, or one page and its own steps (the owner, a general manager, a manager)
+  { key: "lock", href: "/lock", label: "Display lock", Icon: MonitorSmartphone, roles: ["owner", "manager"] },
 ];
 /** A person's team: the one set on their profile, else their position's, else their role's — the database's
  *  _my_dept() (0116) plus the position, so a cleaner whose profile carries no team still reads as Housekeeping. */
@@ -142,6 +144,7 @@ const MENU_GROUPS: { title: string | null; keys: string[] }[] = [
   { title: "Money", keys: ["invoices", "expenses", "controls", "tax"] },
   { title: "Reports & insights", keys: ["reports", "intelligence", "audit"] },
   { title: "Business & growth", keys: ["chain", "connections", "channels", "proof", "neighbours"] },
+  { title: "Devices", keys: ["lock"] },
 ];
 /** The rows this person may open, under their headings: `rows` is everything they hold (modules and "fresh" links,
  *  Settings left to the last group). A row no group names still shows, in a last "More" group, so a new section is
@@ -159,7 +162,11 @@ export const menuGroups = (rows: Section[], lead: Section[] = []): { title: stri
 /** The module a section's link needs: its own key, or the section it lives inside. */
 export const modOf = (s: Section) => s.mod ?? s.key;
 
-const HREFS = [...ITEMS, ...FRESH, ...END, MY_DAY].map((i) => i.href);
+/** Every section there is — the menu rows, the "fresh" links, the last group and My day — for whoever needs one by key
+ *  (Display lock's page list and its icons, 0141). */
+export const ALL_SECTIONS: Section[] = [...ITEMS, ...FRESH, ...END, MY_DAY];
+export const sectionByKey = (key: string) => ALL_SECTIONS.find((i) => i.key === key) ?? null;
+const HREFS = ALL_SECTIONS.map((i) => i.href);
 const under = (path: string, href: string) => path === href || path.startsWith(href + "/");
 /**
  * Is this row the screen you are on? A row owns its path and everything under it — except a deeper row's own:

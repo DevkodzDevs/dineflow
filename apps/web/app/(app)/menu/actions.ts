@@ -290,8 +290,13 @@ export async function findPhotos(name: string, category?: string | null) {
   const { findDishPhotos } = await import("@/lib/dishPhotos");
   return { ok: true as const, photos: await findDishPhotos(name, category, 8) };
 }
-const photoSchema = z.object({ url: z.string().url().max(600).refine((u) => /^https:\/\/(upload|thumb)\.wikimedia\.org\//.test(u) || u.includes("/storage/v1/object/public/menu/"), "Use a Wikimedia photo or one uploaded here"),
-  credit: z.string().max(200).nullable().optional(), source: z.string().url().max(600).nullable().optional() });
+/* 2026-10-25 (audit): the host itself is checked — `includes("/storage/…/menu/")` let a photo come from any site that put
+   that text in its path (guests' browsers would then call that site from the storefront, the kiosk and the TV). A photo is
+   https, from Wikimedia or this project's own storage; a credit link is https only. */
+const ownStorage = (() => { try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").host; } catch { return ""; } })();
+const photoUrlOk = (u: string) => { try { const x = new URL(u); return x.protocol === "https:" && (/^(upload|thumb)\.wikimedia\.org$/.test(x.host) || (!!ownStorage && x.host === ownStorage && x.pathname.startsWith("/storage/v1/object/public/menu/"))); } catch { return false; } };
+const photoSchema = z.object({ url: z.string().url().max(600).refine(photoUrlOk, "Use a Wikimedia photo or one uploaded here"),
+  credit: z.string().max(200).nullable().optional(), source: z.string().url().max(600).refine((u) => /^https:\/\//i.test(u), "A credit link starts with https://").nullable().optional() });
 /** Put a photo on a dish (or take it off with null). Only a Wikimedia file or the property's own upload. */
 export async function setDishPhoto(id: string, photo: { url: string; credit?: string | null; source?: string | null } | null) {
   const s = await createClient();

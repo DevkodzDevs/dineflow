@@ -322,3 +322,8 @@ year. See [my-day.md](my-day.md).
 - **Labour, iPad and desktop (2026-10-24; the phone is unchanged).** No labourers yet is `Empty`'s sm+ form (the hard hat).
   QR labels with nothing to print says which (`[data-labels-empty=rooms|products|labour]`) and where to add them; the phone
   keeps "Nothing to print yet."
+- **Staff's Cards · Table is the app's ViewSwitch (2026-10-25)** (`[data-view-switch=staff]` inside `[data-staff-layout]`;
+  `df-view:staff`, the old `df-staff-layout` read as pinned). **Wages & payments** gained Cards · Table
+  (`[data-view-switch=wages]`, `[data-wage-cards]` / `[data-wage-table]`): cards below md — the worker, Pay, days and hours,
+  earned and paid, the balance in red when owed — and a bar with how many workers and what is left to pay. The 720px table
+  scrolled a phone sideways.

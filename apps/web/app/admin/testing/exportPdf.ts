@@ -73,7 +73,10 @@ export async function exportPdf(runs: Run[], titles: Record<string, string>) {
       // three columns: the status chip, the check's name (wraps in 165pt), what was seen (the rest)
       doc.setFont("helvetica", "normal"); doc.setFontSize(9);
       const name = doc.splitTextToSize(plain(c.name), 165) as string[];
-      const detail = c.detail ? doc.splitTextToSize(plain(c.detail + (typeof c.ms === "number" && !/ms/.test(c.detail) ? ` | ${c.ms} ms` : "")), W - M * 2 - 230) as string[] : [];
+      // what was seen, then (for a warning or a failure) what to do about it — the line a developer acts on
+      const seen = c.detail ? c.detail + (typeof c.ms === "number" && !/ms/.test(c.detail) ? ` | ${c.ms} ms` : "") : "";
+      const said = [seen, c.fix && c.status !== "pass" ? `Fix: ${c.fix}` : ""].filter(Boolean).join("  ");
+      const detail = said ? doc.splitTextToSize(plain(said), W - M * 2 - 230) as string[] : [];
       const lines = Math.max(name.length, detail.length, 1);
       const h = 10 + lines * 11;
       need(h + 2);

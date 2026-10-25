@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { modulesFor, landingFor } from "@dineflow/shared";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar, BottomNav } from "@/components/shell/Nav";
-import { deptOf } from "@/components/shell/sections";
+import { deptOf, sectionByKey } from "@/components/shell/sections";
+import { DisplayLock, StaleLock, type ShownLock } from "@/components/shell/DisplayLock";
+import { parseLock, allowedFor, lockHref, LOCK_COOKIE } from "@/lib/displayLock";
 import { TopBar } from "@/components/shell/TopBar";
 import { Gestures } from "@/components/shell/Gestures";
 import { DeckScroll } from "@/components/shell/DeckScroll";
@@ -82,7 +84,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // the late-ticket badge rides along with the session now; it used to cost a query of its own here
   const count = s.lateKots;
   const dl = s.membership === "trial" ? daysLeft(s.restaurant.trial_ends_at) : daysLeft(s.restaurant.membership_ends_at);
-  const lang = readLang((await cookies()).get(LANG_COOKIE)?.value);
+  const jar = await cookies();
+  const lang = readLang(jar.get(LANG_COOKIE)?.value);
+  /* Display lock (0141): this device pinned to one page. The lock holds only while the property still allows that page in
+     that kind; otherwise it is stale — forgotten by StaleLock, and the device carries on unlocked. */
+  const held = parseLock(jar.get(LOCK_COOKIE)?.value);
+  /* another property's lock (the device was signed out and in elsewhere) still holds, in the kind it was set — only a
+     manager of the property that set it releases it (2026-10-25 audit) */
+  const allowedKind = held ? (held.rid === s.restaurant.id ? (s.restaurant.display_lock ?? {})[held.key] : held.mode) : undefined;
+  const lock: ShownLock | null = held && allowedKind === held.mode
+    ? { key: held.key, mode: held.mode, label: sectionByKey(held.key)?.label ?? held.key, href: lockHref(held.key), allowed: allowedFor(held) }
+    : null;
+  const staleLock = !!held && !lock;
   const boxSync = process.env.DINEFLOW_BOX ? (await (await createClient()).from("sync_state").select("cursor, note").eq("key", "pull").maybeSingle()).data : null;
   // mods is passed to OfflineProvider so it only warms screens this person can open — a waiter has
   // no use for the rooms board, and warming it costs a whole server render
@@ -96,23 +109,26 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
-      <Sidebar name={s.profile.full_name} role={s.profile.role} dept={dept} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} grants={s.profile.grants ?? null} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />
+      {!lock && <Sidebar name={s.profile.full_name} role={s.profile.role} dept={dept} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} grants={s.profile.grants ?? null} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />}
       <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-[calc(var(--tabbar)+28px)] md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
         {/* one head: Master mode's band over the top bar — on a phone they stay at the top together (.app-head, globals.css) */}
         <div className="app-head">
         {s.isAdmin && s.actingAs && <MasterBanner property={s.restaurant.name} />}
-        <TopBar home={`/${landingFor(s.profile.role, mods, s.profile.position ?? null)}`} membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} outlets={s.outlets} />
+        {!lock && <TopBar home={`/${landingFor(s.profile.role, mods, s.profile.position ?? null)}`} membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} outlets={s.outlets} />}
         </div>
-        {children}
+        {lock ? <div data-lock-area={lock.mode}>{children}</div> : children}
       </div></main>
-      <BottomNav role={s.profile.role} type={s.restaurant.property_type} dept={dept} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
-        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} grants={s.profile.grants ?? null} />
+      {!lock && <BottomNav role={s.profile.role} type={s.restaurant.property_type} dept={dept} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
+        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} grants={s.profile.grants ?? null} />}
       {/* food at the pass, brought to whoever takes it out: parcels, and the orders this person took (ReadyDock.tsx) */}
-      {mods.includes("orders") && <ReadyDock me={s.profile.id} all={["owner", "manager", "supervisor", "supervisor_2"].includes(s.profile.role)} parcels={mods.includes("orders") || mods.includes("online-orders")} />}
+      {mods.includes("orders") && (!lock || lock.mode === "work") && <ReadyDock me={s.profile.id} all={["owner", "manager", "supervisor", "supervisor_2"].includes(s.profile.role)} parcels={mods.includes("orders") || mods.includes("online-orders")} />}
       {/* Assist only for whoever may use it (0138) */}
-      {assistAllowed(s.profile) && <Assist />}
+      {!lock && assistAllowed(s.profile) && <Assist />}
+      {/* a locked device: the guard, the "Locked" pill and its unlock (DisplayLock.tsx); a lock no longer allowed is forgotten */}
+      {lock && <DisplayLock lock={lock} />}
+      {staleLock && <StaleLock />}
       {/* pull to refresh everywhere on touch; edge swipe back/forward in the installed app */}
       <Gestures />
       {/* on an iPad-size touch screen the frame scrolls, not the page: back/forward land where you were */}
@@ -121,7 +137,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* the next screen is fetched when a finger touches a menu link or a mouse rests on one, not on the click */}
       <IntentPrefetch />
       {/* the keyboard: Ctrl K go to, G + letter, N new order, ↑ ↓ Enter on lists, ? for the list (keymap.ts) */}
-      <Keys modules={mods} role={s.profile.role} dept={dept} grants={s.profile.grants ?? null} />
+      {!lock && <Keys modules={mods} role={s.profile.role} dept={dept} grants={s.profile.grants ?? null} />}
     </div>
    </SayProvider>
    </NotifierProvider>

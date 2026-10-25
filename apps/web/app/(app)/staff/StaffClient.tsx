@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { Copy, UserPlus, KeyRound, Check, MailWarning, MailCheck, Mail, Hash, Users, Network, BookOpen, Briefcase, Search, Ticket, ShieldCheck, UserCheck, Building2, AlertCircle, Phone, CalendarDays, X, LayoutDashboard, LayoutGrid, Rows3, Clock3, ChevronLeft, ChevronRight } from "lucide-react";
 import { SlidersHorizontal as AccessIcon, Plug, BarChart3 } from "lucide-react";
 import { Button, Field, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, ROLE_DEFAULT, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
 import { createInvite, setAccess, setPasswordRight, setAssistAccess, setGrant, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency } from "./actions";
 import { PositionFields, TeamChart, PositionsGuide, Avatar, DeptIcon, ModuleChips, titleOf, deptOf, levelFor, DEPT_ORDER, deptHue } from "./StaffPositions";
@@ -119,15 +120,11 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
   /* Cards or the grid (2026-10-22). "auto" until this device picks one: CSS shows the grid from md and the cards below it.
      A pick is kept on the device (localStorage df-staff-layout), read after mount so the server render and the first
      paint agree. `wide` only lights the right half of the switch while it is still on auto. */
-  const [layout, setLayout] = useState<"auto" | "cards" | "table">("auto");
-  const [wide, setWide] = useState<boolean | null>(null);
-  useEffect(() => {
-    try { const v = localStorage.getItem(LAYOUT_KEY); if (v === "cards" || v === "table") setLayout(v); } catch { /* none kept */ }
-    const mq = matchMedia("(min-width: 768px)"); const on = () => setWide(mq.matches); on();
-    mq.addEventListener("change", on); return () => mq.removeEventListener("change", on);
-  }, []);
-  const pickLayout = (v: "cards" | "table") => { setLayout(v); try { localStorage.setItem(LAYOUT_KEY, v); } catch { /* fine */ } };
-  const shownAs = layout !== "auto" ? layout : wide === null ? null : wide ? "table" : "cards";
+  /* 2026-10-25: the app's one ViewSwitch (a tap for this visit, the pin for this device's default); a pick kept before under
+     df-staff-layout reads as pinned. */
+  const lay = useViewPref("staff", ["cards", "table"] as const, { legacy: LAYOUT_KEY });
+  const layout = lay.chosen ?? "auto";
+  const shownAs = lay.chosen ?? (lay.wide === null ? null : lay.wide ? "table" : "cards");
   /* a row of the grid opens the person: their card, today, the sections they open, who they report to and who reports to them */
   const [detail, setDetail] = useState<Staff | null>(null);
   const [dept, setDept] = useState<string | null>(null);
@@ -341,12 +338,9 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             <input className="!h-12 !rounded-full !pl-11 !pr-11" placeholder="Name, title, phone or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find someone" data-staff-search />
             {q && <button type="button" onClick={() => setQ("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 !min-h-9 rounded-full grid place-items-center text-steel hover:bg-[var(--color-fill)]" aria-label="Clear"><X size={16} /></button>}</div>
           {/* Cards · Table (2026-10-22): the cards as they were, or the data grid; the default is the grid from an iPad up */}
-          <div className="ml-auto shrink-0 flex rounded-full bg-[var(--color-fill)] p-1" role="group" aria-label="Show staff as" data-staff-layout>
-            {([["cards", LayoutGrid, "Cards"], ["table", Rows3, "Table"]] as const).map(([k, I, label]) => (
-              <button key={k} type="button" onClick={() => pickLayout(k)} aria-pressed={shownAs === k} title={label} aria-label={`Show as ${label.toLowerCase()}`} data-staff-layout-pick={k}
-                className={cn("!min-h-10 h-10 min-w-11 px-3 rounded-full inline-flex items-center justify-center gap-1.5 text-[13px] font-extrabold transition-colors", shownAs === k ? "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_4px_rgb(0_0_0/0.22)]" : "text-steel hover:text-[var(--color-label)]")}>
-                <I size={16} aria-hidden /><span className="hidden sm:inline">{label}</span></button>))}
-          </div>
+          <div className="ml-auto shrink-0" data-staff-layout><ViewSwitch label="Show staff as" data="staff" shown={shownAs} onPick={lay.pick} saved={lay.saved}
+            onKeep={(v) => { lay.keep(v); toast(v === "table" ? "The table is your default here" : "Cards are your default here"); }}
+            options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} /></div>
         </div>}
       </div>
 

@@ -13,7 +13,10 @@ const menu = (role: Parameters<typeof freshFor>[0], type: "restaurant" | "hotel"
 describe("the menu's headings (2026-10-21)", () => {
   it("an owner of a restaurant: every row under its heading, no hotel group, Settings left for the last group", () => {
     const m = menu("owner", "restaurant");
-    expect(m.map(([t]) => t)).toEqual([null, "Guests & tables", "Orders & kitchen", "Menu & stock", "Team & work", "Money", "Reports & insights", "Business & growth"]);
+    expect(m.map(([t]) => t)).toEqual([null, "Guests & tables", "Orders & kitchen", "Menu & stock", "Team & work", "Money", "Reports & insights", "Business & growth", "Devices"]);
+    // 0141: Display lock, the owner's and managers' own heading
+    expect(m.find(([t]) => t === "Devices")?.[1]).toEqual(["lock"]);
+    expect(menu("waiter", "restaurant").map(([t]) => t)).not.toContain("Devices");
     const flat = m.flatMap(([, k]) => k);
     expect(flat).not.toContain("settings");
     expect(flat).not.toContain("frontdesk");

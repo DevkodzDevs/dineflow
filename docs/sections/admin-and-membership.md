@@ -19,8 +19,8 @@ property's app; it sits above all of them.
 
 **Testing** (`/admin/testing`, the fourth tab, `AdminNav`). A self-test console: *Run all tests* and
 one *Run* per suite, each a list of checks that pass, warn or fail with what was seen, kept in
-`selftest_runs` (0093, master-only) so the page opens on the last result of each. Six suites run on
-the server through `POST /api/admin/selftest` (`{ suite, restaurant }`, master only): **Database**
+`selftest_runs` (0093, master-only) so the page opens on the last result of each. Eleven suites run on
+the server (six described here; the five added on 2026-10-25 are under *The deep suites* below) through `POST /api/admin/selftest` (`{ suite, restaurant }`, master only): **Database**
 (`selftest_db()` — round trip, migrations, RLS on every table, no bare policy, required functions,
 triggers, indexes, integrity: negative stock, orders open > 24 h, paid bills vs payments, properties
 without an owner, load, row counts), **Functions** (`selftest_functions(rid)` — 19 report and screen
@@ -32,8 +32,8 @@ refused, signed-out visits redirect to sign-in, this route without a session is 
 sync without its secret is 401, no secret under a `NEXT_PUBLIC_` name, legal facts), **Speed** (server
 time per screen and per database call against Lighthouse's lab budget — under 600 ms good, over 1.5 s
 failing — property screens only while acting) and **Code checks** (money, dates, the bill, recipes,
-the till search, run in place). The seventh, **Screens & buttons**, runs in the master's own browser
-(`TestingClient` → `runBrowser`): every screen in a hidden same-origin frame at 412 and 1280 — crash
+the till search, run in place). The twelfth, **Screens & buttons**, runs in the master's own browser
+(`TestingClient` → `runBrowser`): every screen in a hidden same-origin frame at 412, 834 and 1280 — crash
 card, sideways scroll, images that did not arrive, unnamed buttons, a missing heading, where it
 landed — then every internal link those screens offer is fetched; the result is kept through
 `recordRun`. Nothing in any suite writes a property's data.
@@ -67,6 +67,65 @@ Each suite row carries its **last eight results as dots** (`[data-history]`), an
 Probe `enh.mjs` (7): issue count = warnings + failures, dots on every row, the trend line, the three
 figures, an issue tap opening its suite filtered, All restoring every check, nothing past a phone's
 edge. It records the run ids that existed before and removes only its own.
+
+**The deep suites (2026-10-25, 0142 — the owner: "upgrade all the testing tools, more master-minded tools").** Twelve
+suites in five areas, each area a tile with its own score (`[data-groups]`, `.fill-tiles`; a tap opens its first suite
+that is not clear):
+
+| Area | Suites |
+| --- | --- |
+| Data & money | Database · **Money & data integrity** (`integrity`) · Functions |
+| Security | Security · **Database security** (`dbsecurity`) |
+| Speed & load | Speed · **Load test** (`load`) · **Database performance** (`dbperf`) |
+| Live system | **Live operations** (`ops`) · API & connectivity |
+| Screens & code | Code checks · Screens & buttons |
+
+- **Money & data integrity** — `selftest_integrity()`: every paid bill adds up to the paisa by `generate_bill`'s own
+  arithmetic (total = subtotal − discount − waived + service + promise fee + CGST + SGST + round-off), CGST = SGST,
+  round-off within ₹0.50, bill and invoice numbers unique and the invoice series without gaps (GST rule 46), no zero or
+  negative lines, lines added or cancelled after the bill was paid, payments above zero, unpaid bills already covered,
+  void bills holding money, loyalty points negative or off their ledger, rooms booked twice for the same nights, stays that
+  end before they start, negative rates and charges — and, over **every single-column foreign key between two property
+  tables** (99 today, found from the catalogue, so a new table is covered without editing the test), rows that point at
+  another property's row.
+- **Database security** — `selftest_security()`: SECURITY DEFINER functions without a pinned search_path, master-only
+  functions (admin_*, selftest_*, staff_set*, sweeps) anonymous may execute, a `using (true)` policy for anon or public on
+  a table with restaurant_id, views without security_invoker, the attendance and support buckets public, key-shaped strings
+  (Razorpay, Stripe, Anthropic, a JWT) in any function body, the master still on the password 0011 shipped
+  (`master_password_is_default()`), more than three masters. Tables with row security and no policy are listed as the
+  locked ones (reached only through functions).
+- **Live operations** — `selftest_ops()`: online orders still new after 30 min, accepted and not picked up after 6 h,
+  riders out 6 h, guests past check-out, reservations past arrival never marked, failed OTA syncs in 24 h, cash-ups off by
+  more than ₹500 in 30 days, orders open and bills unpaid over a day, expired demos not swept — across every property.
+- **Database performance** — `selftest_dbperf()`: table and index cache hit ratios (99% / 95%), foreign keys without an
+  index (a warning above 10), tables over 5,000 rows read mostly by scanning, dead rows, unused indexes over 1 MB,
+  connections against `max_connections`, sessions idle in a transaction, the five slowest statements in
+  `pg_stat_statements` (warning over 1 s on average), the largest tables.
+- **Load test** — bursts at once: 20 health checks, 10 sign-in pages, 8 `session_bundle` calls, 6 Master control loads;
+  the median, 95th percentile, slowest and errors of each. Light enough for Supabase Micro; it writes nothing.
+- The older suites grew: **Database** compares the server's and the database's clocks; **API** checks the service worker,
+  that the support, grievance and privacy mail domains have an **MX record** (`node:dns`), and every server key the app
+  reads (service role, cron, cloud URL, rate-limit secret, Resend, Anthropic); **Security** checks a nonce in script-src,
+  16 tables read anonymously, an anonymous **write**, four master functions called anonymously, six signed-out screens,
+  signed-out POSTs to /api/assist and /api/box/push, **CORS** (a stranger's origin is not allowed), `DINEFLOW_OTP_ECHO` off
+  in production; **Speed** times 14 property screens and a cold and a warm answer; **Code checks** adds lakh grouping, GST
+  halves and the IST day turnover; **Screens** adds the iPad width, tap targets under 40px on touch widths, script errors
+  after load, fields without a label, images without alt, page weight (script KB, element count), 21 property screens and
+  80 links.
+- **Every warning and failure says what to do** — `Check.fix`, shown under the check (`[data-fix]`), in Needs attention,
+  in the copied report and in the PDF ("Fix: …").
+- **New and fixed**: `page.tsx` hands each suite's run before the last as name → status (`prev`); a check worse than
+  then is **New** (`[data-change-tag=new]`, issues sort new first), better is **Fixed**; the overview says how many
+  (`[data-delta]`), and a re-run in the page keeps the run it replaced as the comparison.
+- **Tools** (`[data-tools]`): *Find a check* across every suite (`[data-search]`, results `[data-search-results]` with each
+  check's suite as a button), **Re-run issues** (only the suites with warnings or failures, `[data-rerun-issues]`), **Copy
+  report** (plain text: the score, then every issue with its fix — for a chat or a ticket), **JSON** (every check of the
+  last runs).
+- The route turns a suite that throws into one failing check ("The suite itself") instead of a 500, and has
+  `maxDuration = 60`. The Slowest answers chart leaves out the deep scans (they read the catalogue, not a screen).
+- **Before you edit:** keep every suite read-only. The four 0142 functions are master-only (`is_platform_admin()`), pin
+  search_path, set their own statement timeout and refuse anon execute. A new check that counts something belongs in the
+  SQL function; its words, level and fix belong in the route.
 
 
 **Acting as.** `admin_act_as` puts a master inside one property; the rest of the app then behaves
@@ -248,3 +307,6 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
 [auth-and-session.md](auth-and-session.md) · [shell-and-nav.md](shell-and-nav.md) ·
 [legal.md](legal.md) · [data-and-rls.md](data-and-rls.md)
 - **Short copy** (2026-10-23): /membership and /about subtitles and hints cut to a few words.
+- **Properties' Table · Cards is the app's ViewSwitch (2026-10-25)** (`[data-estate-view]` holds `[data-view-switch=estate]`;
+  `df-view:estate`, the old `df-estate-view` read as pinned). The `.view` / `.viewBtn` rules in AdminToolbar.module.css are
+  no longer used.

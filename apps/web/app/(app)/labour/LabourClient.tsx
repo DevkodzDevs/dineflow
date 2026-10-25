@@ -4,9 +4,10 @@ import { QR } from "@/components/QR";
 export { QR };   // the booking-page and storefront settings import it from here
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, QrCode, Printer, Check, Banknote, Pencil, Link2, Copy, MessageCircle, Fingerprint, Camera, ClipboardCheck, MapPin, CalendarDays } from "lucide-react";
+import { Plus, QrCode, Printer, Check, Banknote, Pencil, Link2, Copy, MessageCircle, Fingerprint, Camera, ClipboardCheck, MapPin, CalendarDays, LayoutGrid, Rows3 } from "lucide-react";
 import { copyText } from "@/lib/clipboard";
-import { Button, Sheet, Field, Card, Pill, StatTile, Switch, cn, Empty } from "@/components/ui";
+import { Button, Sheet, Field, Card, Pill, StatTile, Switch, cn, Empty, useToast } from "@/components/ui";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { formatINR } from "@/lib/format";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LABOUR_SKILLS } from "@dineflow/shared";
@@ -33,6 +34,8 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
   const active = labourers.filter((l) => l.status === "active");
   const todayAtt = attendance.filter((a) => a.work_date === today);
   const byL = (id: string) => attendance.filter((a) => a.labourer_id === id);
+  const wagesLay = useViewPref("wages", ["cards", "table"] as const); const notify = useToast();
+  const wagesShown = wagesLay.chosen ?? (wagesLay.wide === null ? null : wagesLay.wide ? "table" : "cards");
   const earned = (id: string) => byL(id).reduce((t, a) => t + Number(a.wage), 0);
   const paid = (id: string) => payments.filter((p) => p.labourer_id === id).reduce((t, p) => t + Number(p.amount), 0);
   const monthWages = active.reduce((t, l) => t + earned(l.id), 0); const monthPaid = active.reduce((t, l) => t + paid(l.id), 0);
@@ -82,10 +85,32 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
       ))}
       {tab === "today" && log.length > 0 && <PunchLog log={log} labourers={labourers} />}
 
-      {tab === "wages" && (
-        <div className="feather overflow-x-auto table-wrap"><table className="w-full text-sm min-w-[720px]"><thead><tr><th className="text-left px-4 py-3">Worker</th><th className="text-right px-4 py-3">Days</th><th className="text-right px-4 py-3">Hours</th><th className="text-right px-4 py-3">Earned</th><th className="text-right px-4 py-3">Paid</th><th className="text-right px-4 py-3">Balance</th><th className="px-4 py-3"></th></tr></thead>
+      {tab === "wages" && (<>
+        {/* Cards or the table (2026-10-25, the owner: "the Pantry switch, everywhere it is needed"): the table is 720px and a
+            phone scrolled it sideways. Nothing chosen: cards below md, the table from md; the pin keeps a choice (df-view:wages). */}
+        <div className="flex items-center gap-3 mb-3" data-wages-bar>
+          <span className="text-[13px] text-steel"><b className="num text-[var(--color-label)]">{labourers.length}</b> {labourers.length === 1 ? "worker" : "workers"} · <b className="num text-[var(--color-label)]">{formatINR(labourers.reduce((t, l) => t + Math.max(0, earned(l.id) - paid(l.id)), 0))}</b> to pay</span>
+          <div className="ml-auto"><ViewSwitch label="Show wages as" data="wages" shown={wagesShown} onPick={wagesLay.pick} saved={wagesLay.saved}
+            onKeep={(v) => { wagesLay.keep(v); notify(v === "table" ? "The table is your default here" : "Cards are your default here"); }}
+            options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} /></div>
+        </div>
+        <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3", wagesLay.chosen === "table" ? "hidden" : wagesLay.chosen === "cards" ? "" : "md:hidden")} data-wage-cards>
+          {labourers.map((l) => { const e = earned(l.id), p = paid(l.id), bal = e - p; return (
+            <div key={l.id} className={cn("feather !rounded-[20px] p-4 min-w-0 flex flex-col gap-3", l.status !== "active" && "opacity-60")} data-wage-card={l.id}>
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="min-w-0 flex-1"><span className="block font-bold text-[15px] truncate">{l.full_name}</span><span className="block text-[12.5px] text-steel truncate">{l.skill} · {l.code}</span></span>
+                <Button size="sm" variant="outline" className="shrink-0 [@media(pointer:coarse)]:!min-h-11" onClick={() => setPay(l)}><Banknote size={14} /> Pay</Button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 rounded-[14px] bg-[var(--color-fill)] p-2.5 text-center">
+                <span className="min-w-0"><span className="block font-display num text-[18px] leading-none">{byL(l.id).length}</span><span className="block text-[11px] text-steel mt-1">days · {byL(l.id).reduce((t, a) => t + Number(a.hours ?? 0), 0).toFixed(1)} h</span></span>
+                <span className="min-w-0"><span className="block num text-[13px] font-bold leading-none mt-1 truncate">{formatINR(e)}</span><span className="block text-[11px] text-steel mt-1">earned · {formatINR(p, { whole: true })} paid</span></span>
+                <span className="min-w-0"><span className={cn("block num text-[13px] font-bold leading-none mt-1 truncate", bal > 0 && "text-chili")}>{formatINR(bal)}</span><span className="block text-[11px] text-steel mt-1">balance</span></span>
+              </div>
+            </div>); })}
+        </div>
+        <div className={cn("feather overflow-x-auto table-wrap", wagesLay.chosen === "cards" ? "hidden" : wagesLay.chosen === "table" ? "" : "hidden md:block")} data-wage-table><table className="w-full text-sm min-w-[720px]"><thead><tr><th className="text-left px-4 py-3">Worker</th><th className="text-right px-4 py-3">Days</th><th className="text-right px-4 py-3">Hours</th><th className="text-right px-4 py-3">Earned</th><th className="text-right px-4 py-3">Paid</th><th className="text-right px-4 py-3">Balance</th><th className="px-4 py-3"></th></tr></thead>
           <tbody>{labourers.map((l) => { const e = earned(l.id), p = paid(l.id); return <tr key={l.id} className={cn("border-t border-line", l.status !== "active" && "opacity-50")}><td className="px-4 py-3"><div className="font-semibold">{l.full_name}</div><div className="text-xs text-steel">{l.skill} · {l.code}</div></td><td className="px-4 py-3 text-right num">{byL(l.id).length}</td><td className="px-4 py-3 text-right num">{byL(l.id).reduce((t, a) => t + Number(a.hours ?? 0), 0).toFixed(1)}</td><td className="px-4 py-3 text-right num">{formatINR(e)}</td><td className="px-4 py-3 text-right num text-steel">{formatINR(p)}</td><td className={cn("px-4 py-3 text-right num font-semibold", e - p > 0 && "text-chili")}>{formatINR(e - p)}</td><td className="px-4 py-3 text-right"><Button size="sm" variant="outline" onClick={() => setPay(l)}><Banknote size={14} /> Pay</Button></td></tr>; })}</tbody></table></div>
-      )}
+      </>)}
 
       {tab === "labels" && <Labels property={property} labourers={active} rooms={rooms} ingredients={ingredients} />}
 

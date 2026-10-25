@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { crossSite } from "@/lib/sameOrigin";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
  * without the app's sign-in. admin_act_as checks that the caller is a master itself.
  */
 export async function POST(req: Request) {
+  if (crossSite(req)) return new NextResponse("Forbidden", { status: 403 }); // only this app's own pages (2026-10-25 audit)
   const id = String((await req.formData()).get("id") ?? "");
   const s = await createClient();
   const { error } = id ? await s.rpc("admin_act_as", { p_restaurant: id }) : { error: { message: "No property chosen" } };

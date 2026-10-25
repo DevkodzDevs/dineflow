@@ -393,3 +393,9 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
     (`[data-call-number]`), on the waiting panel (`[data-call-waiting]`, an `EmptyState`) and on the caller's card
     (`[data-call-caller]`) — `tel:+91` and the ten digits, off (`aria-disabled`) until ten are typed. On an iPad or a Mac it
     rings through FaceTime / the linked phone.
+
+- **The kiosk's leave has its own lockout (2026-10-25 audit).** `kioskLeave` counts failed passwords in a bucket of that tablet's
+  sign-in (`kiosk:<user id>`) — one shared `kiosk` bucket let anyone with any account stop every kiosk being left for 15 minutes.
+- **Tables · List is the app's ViewSwitch (2026-10-25).** `[data-view-switch=orders]` replaced the Segmented control; a tap
+  shows the other for this visit, the pin keeps it (`df-view:orders`; a choice kept before under `df-orders-view` reads as
+  pinned). Design-system.md, *One switch everywhere*.

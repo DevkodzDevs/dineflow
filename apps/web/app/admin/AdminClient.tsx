@@ -17,6 +17,7 @@ import { Boxes } from "lucide-react";
 import { Plus, UtensilsCrossed as UC, Building2 as B2, Palmtree as PT } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { KeyRound as KeyIcon, X, Rows3, LayoutGrid } from "lucide-react";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { MODULES_BY_TYPE, MODULE_GROUPS, ALWAYS_ON, PLAN_PRESETS, PROPERTY_FILTERS, type PlanPreset } from "@dineflow/shared";
 import { DataTable } from "@/components/ui/DataTable";
 import { setModules } from "./actions";
@@ -79,15 +80,11 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
   /* the estate as a table or as cards (2026-10-24, the owner: "desktop to iPad must be the table by default, with a
      card / table switch"). Unset, it follows the width — the table from 768px, cards below — in CSS, so the first paint
      is right; a choice is kept on this device (df-estate-view) and wins at every width. */
-  const [view, setView] = useState<"table" | "cards" | null>(null);
-  const [wide, setWide] = useState(true);
-  useEffect(() => {
-    try { const v = localStorage.getItem("df-estate-view"); if (v === "table" || v === "cards") setView(v); } catch { /* storage off */ }
-    const m = window.matchMedia("(min-width: 768px)"); const f = () => setWide(m.matches); f();
-    m.addEventListener("change", f); return () => m.removeEventListener("change", f);
-  }, []);
-  const shown = view ?? (wide ? "table" : "cards");
-  const pickView = (v: "table" | "cards") => { setView(v); try { localStorage.setItem("df-estate-view", v); } catch { /* storage off */ } };
+  /* 2026-10-25: the app's one ViewSwitch — a tap for this visit, the pin for this device's default (df-view:estate; a choice
+     kept before under df-estate-view reads as pinned). Nothing chosen: CSS decides, table from 768px. */
+  const lay = useViewPref("estate", ["table", "cards"] as const, { legacy: "df-estate-view" });
+  const view = lay.chosen;
+  const shown = view ?? (lay.wide === false ? "cards" : "table");
   /* "/" jumps to the find field the way it does in every other console */
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -173,13 +170,8 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
           <div className={styles.meta}>
             <p className={styles.metaCount} aria-live="polite">{filtered ? <><b className="num">{list.length}</b> of {tenants.length} shown</> : <><b className="num">{tenants.length}</b> {tenants.length === 1 ? "property" : "properties"}</>}</p>
             {filtered && <button type="button" className={styles.reset} onClick={() => { setQ(""); setFilter("all"); }}><X size={12} aria-hidden="true" /> Clear</button>}
-            <div className={styles.view} role="group" aria-label="Show properties as" data-estate-view>
-              {([["table", "Table", Rows3], ["cards", "Cards", LayoutGrid]] as const).map(([v, label, I]) => (
-                <button key={v} type="button" aria-pressed={shown === v} title={`Show as ${label.toLowerCase()}`} data-view={v}
-                  className={cn(styles.viewBtn, shown === v && styles.viewOn)} onClick={() => pickView(v)}>
-                  <I size={15} aria-hidden="true" /><span className={styles.viewLabel}>{label}</span>
-                </button>))}
-            </div>
+            <div data-estate-view><ViewSwitch label="Show properties as" data="estate" shown={shown} onPick={lay.pick} saved={lay.saved} onKeep={lay.keep}
+              options={[{ v: "table", label: "Table", icon: Rows3, word: "Table" }, { v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }]} /></div>
           </div>
         </div>}
       </section>

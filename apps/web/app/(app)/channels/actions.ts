@@ -1,6 +1,5 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { wrote } from "@/lib/wrote";
 const bump = () => ["/channels", "/frontdesk", "/rooms"].forEach((p) => revalidatePath(p));
@@ -49,14 +48,13 @@ export async function sendTestOrder(token: string, _base?: string) {
   const s = await createClient();
   const { data: mine } = await s.from("order_channels").select("id").eq("webhook_token", token).maybeSingle();
   if (!mine) return { error: "That channel is not on this property." };
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const proto = h.get("x-forwarded-proto") ?? (/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host) ? "http" : "https");
-  const base = `${proto}://${host}`;
-  const res = await fetch(`${base}/api/webhooks/aggregator/${encodeURIComponent(token)}`, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id: `TEST-${Date.now().toString().slice(-6)}`, customer_name: "Test customer", customer_phone: "9840000000", address: "12 Test Street", total: 605,
-      items: [{ name: "Chicken biryani", qty: 2, price: 280 }, { name: "Butter naan", qty: 1, price: 45 }] }) });
-  const j = await res.json().catch(() => ({}));
+  /* 2026-10-25 (audit): straight to what the webhook route does — `ingest_online_order` with the channel's token — on a
+     client of its own. It fetched this server's own URL built from the Host / X-Forwarded-* headers, which a caller can set:
+     on a self-hosted build that pointed the server at any address (SSRF) and handed the reply back. */
+  const { createClient: plain } = await import("@supabase/supabase-js");
+  const hook = plain(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
+  const { data, error } = await hook.rpc("ingest_online_order", { p_token: token, p_payload: { id: `TEST-${Date.now().toString().slice(-6)}`, customer_name: "Test customer", customer_phone: "9840000000", address: "12 Test Street", total: 605,
+    items: [{ name: "Chicken biryani", qty: 2, price: 280 }, { name: "Butter naan", qty: 1, price: 45 }] } });
   revalidatePath("/online-orders"); revalidatePath("/channels");
-  return res.ok ? { ok: true, ...j } : { error: j.error ?? `webhook returned ${res.status}` };
+  return error ? { error: error.message.includes("unknown channel") ? "unknown channel" : "could not record the test order" } : { ok: true, ...((data ?? {}) as Record<string, unknown>) };
 }

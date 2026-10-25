@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { lockRedirect, LOCK_COOKIE } from "@/lib/displayLock";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC = ["/", "/login", "/signup", "/join", "/forgot", "/membership", "/offline", "/get"];
@@ -53,6 +54,11 @@ export async function middleware(req: NextRequest) {
    */
   const SESSION_FREE = ["/legal", "/dine", "/book/", "/queue/", "/checkin/", "/record/", "/pay/", "/track/", "/ride/", "/get", "/offline", "/attend/", "/screen/", "/feedback/", "/api/screen/"];
   if (SESSION_FREE.some((x) => path === x || path.startsWith(x))) return NextResponse.next({ request: req });
+
+  /* Display lock (0141): a device pinned to one page goes back to it from anywhere else — a typed address, a bookmark,
+     Back. The cookie is httpOnly and only the lock's server actions set or clear it (lib/displayLock.ts). */
+  const locked = lockRedirect(req.cookies.get(LOCK_COOKIE)?.value, path);
+  if (locked) return NextResponse.redirect(new URL(locked, req.url));
 
   let res = NextResponse.next({ request: req });
   /**

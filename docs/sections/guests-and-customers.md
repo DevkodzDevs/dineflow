@@ -108,3 +108,7 @@ Visits, Spent, Last visit (red past 60 days), Points (with loyalty on), First vi
 every column sorts; Call and WhatsApp are round keys at the row's end. **A row opens the customer's own sheet** (details, bills,
 points) — the same dialog the card's name opens. The cards are untouched.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+- **Guests: Cards · Table (2026-10-25, the app's ViewSwitch, `[data-view-switch=guests]`).** The table was 860px wide and a
+  phone scrolled it sideways. Cards below md (`[data-guest-card]`): the initial, the name and VIP star, the phone (or email,
+  or the ID), what they like, and stays · last stay · lifetime; a tap opens the same sheet. The table from md. A bar shows
+  how many guests. `df-view:guests`.

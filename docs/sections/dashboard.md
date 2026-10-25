@@ -113,3 +113,6 @@ count differs and so does the grid.
 - **On now, empty (2026-10-24).** Each tab's empty list is an `EmptyState` (design-system.md) — Floor: a bell, "No open
   orders right now", where orders come from and **Take an order** → /orders; In house and Online the same with their own icon
   and link (`[data-on-now-empty]`). It was one grey line in a 400px blank.
+- **The analog clock's dial is rounded (2026-10-25 audit).** Node and the browser differ in the last digit of `Math.sin`/`cos`,
+  so the dial's dots came out `80.84051025731185` on the server and `…186` in the browser — a hydration mismatch on every
+  load of the control room. `AnalogClock` rounds the coordinates to 1/1000 (and sin/cos to 1e-6); a fresh dev server shows none.

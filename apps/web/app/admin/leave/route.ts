@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { crossSite } from "@/lib/sameOrigin";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
@@ -8,7 +9,8 @@ import { createClient } from "@/lib/supabase/server";
  * the first second after opening a property was silently lost and the master was left inside it.
  * admin_stop_acting checks the caller itself (a non-master changes nothing); then on to /admin.
  */
-export async function POST() {
+export async function POST(req: Request) {
+  if (crossSite(req)) return new NextResponse("Forbidden", { status: 403 }); // only this app's own pages (2026-10-25 audit)
   const s = await createClient();
   try { await s.rpc("admin_stop_acting"); } catch { /* /admin shows the truth either way */ }
   revalidatePath("/", "layout");

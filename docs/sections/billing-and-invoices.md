@@ -163,3 +163,6 @@ pnpm --filter @dineflow/web test
   ÷4** (the last share takes the odd paise), **Cash given** keys (Exact / ₹100 / ₹200 / ₹500 / ₹2000) and the change to return,
   large. Who took each payment is `payments.received_by` (0139, defaulting to the signed-in person).
 - **No invoices yet** (2026-10-24) is `Empty`'s sm+ form — the invoice icon, blue (design-system.md). The phone is unchanged.
+- **Invoices: Cards · Table (2026-10-25, the app's ViewSwitch, `[data-view-switch=invoices]`).** The 620px table scrolled a
+  phone sideways. Cards below md (`[data-invoice-card]`): the number, kind and date, the guest, the total and status, what
+  is still due in red. The detail pane beside the list from xl is unchanged. `df-view:invoices`.

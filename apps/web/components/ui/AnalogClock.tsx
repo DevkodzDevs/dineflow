@@ -25,10 +25,13 @@ const FACE = (<>
   <circle cx="50" cy="50" r="49" className="ac-bezel" />
   <circle cx="50" cy="50" r="46" className="ac-face" />
   {Array.from({ length: 60 }, (_, i) => {
-    const a = (i * 6 * Math.PI) / 180, sin = Math.sin(a), cos = Math.cos(a);
-    if (i % 5) return <circle key={i} cx={50 + 41.5 * sin} cy={50 - 41.5 * cos} r="0.75" className="ac-dot" />;
+    /* rounded to 1/1000 (2026-10-25 audit): Node and the browser disagree in the last digit of sin/cos, and the dial's
+       coordinates came out 80.84051025731185 on the server and …186 in the browser — a hydration mismatch on every load */
+    const a = (i * 6 * Math.PI) / 180, sin = Math.round(Math.sin(a) * 1e6) / 1e6, cos = Math.round(Math.cos(a) * 1e6) / 1e6;
+    const q = (n: number) => Math.round(n * 1000) / 1000;
+    if (i % 5) return <circle key={i} cx={q(50 + 41.5 * sin)} cy={q(50 - 41.5 * cos)} r="0.75" className="ac-dot" />;
     const quarter = i % 15 === 0, r1 = quarter ? 33.5 : 36;
-    return <line key={i} x1={50 + r1 * sin} y1={50 - r1 * cos} x2={50 + 42 * sin} y2={50 - 42 * cos} className="ac-tick" strokeWidth={quarter ? 3.4 : 2.2} />;
+    return <line key={i} x1={q(50 + r1 * sin)} y1={q(50 - r1 * cos)} x2={q(50 + 42 * sin)} y2={q(50 - 42 * cos)} className="ac-tick" strokeWidth={quarter ? 3.4 : 2.2} />;
   })}
 </>);
 const LAYER = "absolute inset-0 h-full w-full overflow-visible";

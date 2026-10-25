@@ -4,20 +4,26 @@ import { Pin, type LucideIcon } from "lucide-react";
 import { cn } from "./index";
 
 /**
- * How a list is shown, and the owner's say in it (2026-10-23 — Customers, Pantry, Attendance, OTA channels; Staff keeps its
- * own switch). `useViewPref(key, valid)` holds two things per device: what is chosen now (this visit) and the saved default
+ * How a list is shown, and the owner's say in it (2026-10-23 — Customers, Pantry, Attendance, OTA channels; since 2026-10-25
+ * also Orders, Staff, Master control, Menu, Guests, Invoices and Labour's wages — the one switch for this in the app). `useViewPref(key, valid)` holds two things per device: what is chosen now (this visit) and the saved default
  * (`localStorage df-view:<key>`, read after mount so the server render and the first paint agree). `chosen` is the one to
  * honour — now, else the default, else null, and null means the screen's own default, which a screen showing cards on a
  * phone and a grid from md decides with CSS, so the first paint is right at every width. `wide` (md and up) only lights the
  * right segment while nothing is chosen.
  */
-export function useViewPref<V extends string>(key: string, valid: readonly V[]) {
+export function useViewPref<V extends string>(key: string, valid: readonly V[], opts?: { legacy?: string; wideAt?: number }) {
   const [saved, setSaved] = useState<V | null>(null);
   const [now, setNow] = useState<V | null>(null);
   const [wide, setWide] = useState<boolean | null>(null);
   useEffect(() => {
-    try { const v = localStorage.getItem(`df-view:${key}`) as V | null; if (v && valid.includes(v)) setSaved(v); } catch { /* none kept */ }
-    const mq = matchMedia("(min-width: 768px)"); const on = () => setWide(mq.matches); on();
+    /* `legacy`: the key a screen kept its choice under before it used this switch (2026-10-25 — Orders df-orders-view,
+       Staff df-staff-layout, Master control df-estate-view). A choice made there reads as this device's default (pinned). */
+    try {
+      const v = (localStorage.getItem(`df-view:${key}`) ?? (opts?.legacy ? localStorage.getItem(opts.legacy) : null)) as V | null;
+      if (v && valid.includes(v)) setSaved(v);
+    } catch { /* none kept */ }
+    // `wideAt`: the width the screen's own CSS switches at (768 unless it says, Menu 640)
+    const mq = matchMedia(`(min-width: ${opts?.wideAt ?? 768}px)`); const on = () => setWide(mq.matches); on();
     mq.addEventListener("change", on); return () => mq.removeEventListener("change", on);
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const keep = (v: V) => { setSaved(v); setNow(v); try { localStorage.setItem(`df-view:${key}`, v); } catch { /* fine */ } };

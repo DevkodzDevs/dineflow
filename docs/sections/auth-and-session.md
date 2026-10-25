@@ -154,3 +154,8 @@ pnpm --filter @dineflow/web build
 
 - **The Login ID placeholder** (2026-10-23, the owner): "Login ID or email" (Forgot: "Your login ID") instead of a sample
   `dine-htl-mano-00001`, which read as something to copy. Hints shortened.
+
+- **POST route handlers check where the request came from (2026-10-25 audit).** `/logout`, `/admin/open` and `/admin/leave` are
+  plain route handlers, so they do not get Next's cross-site check that server actions have; they relied on the sign-in
+  cookies being SameSite=Lax. `lib/sameOrigin.ts` `crossSite(req)` refuses (403) a request the browser marks
+  `Sec-Fetch-Site: cross-site`/`same-site`, or whose `Origin` host is not this request's host.

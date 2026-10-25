@@ -258,3 +258,8 @@ who rides (`rider_id`, a staff member, or `rider_name` / `rider_phone`), where t
   nothing about the property beyond its name and phone. Dry run `dry140.cjs` (35); browser `pw/conn140.mjs` (connections.md).
 - **Connections** (`/connections`, connections.md) gathers this page's channel cards, Test order and Push menu, and the OTA
   cards, in one place for the owner; the forms and actions are shared.
+
+- **The test order goes straight to the database (2026-10-25 audit).** `sendTestOrder` (channels/actions.ts) calls
+  `ingest_online_order` with the channel's token, as the webhook route does. It used to fetch this server's own webhook URL
+  built from the `Host` / `X-Forwarded-*` headers, which a caller sets: on a self-hosted (standalone / Box) build that pointed
+  the server at any address and returned the reply (SSRF).

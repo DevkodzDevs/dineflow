@@ -710,7 +710,25 @@ Then look at it, in both themes, at 1440 and 412.
 with `onKeep`, a **pin** that makes the shown choice the default (filled when it is). A screen whose default is cards on a
 phone and the grid from md decides that with CSS (`md:hidden` / `hidden md:block`) until a choice exists — the first paint is
 right at every width. Used by Customers (cards/table), Pantry (cards/table, pin), Attendance and OTA channels (1 · 2 · 3
-across, pin; three by default). Staff keeps its own switch (StaffClient). 40px with a mouse, 44 on touch.
+across, pin; three by default). 40px with a mouse, 44 on touch.
+
+**One switch everywhere (2026-10-25, the owner, of Pantry's: "so love it — check the full application and use this design
+wherever it is needed").** Since then every list that can be shown two ways uses it, with the pin:
+
+| Screen | Choices | Key | Before |
+| --- | --- | --- | --- |
+| Orders | Tables · List | `orders` | a Segmented control, every pick saved (`df-orders-view`) |
+| Staff → People | Cards · Table | `staff` | its own switch (`df-staff-layout`) |
+| Master control → Properties | Table · Cards | `estate` | a CSS-module switch (`df-estate-view`) |
+| Menu | List · Cards | `menu` | the width alone (list on a phone, cards from sm) |
+| Guests | Cards · Table | `guests` | a table only, 860px — a phone scrolled it sideways |
+| Invoices | Cards · Table | `invoices` | a table only, 620px |
+| Labour → Wages & payments | Cards · Table | `wages` | a table only, 720px |
+
+`useViewPref(key, valid, { legacy, wideAt })`: `legacy` reads a choice kept under a screen's old key as this device's
+default (pinned), so nobody loses what they picked; `wideAt` is the width the screen's own CSS switches at (768 unless
+it says — Menu's is 640). A tap now is for this visit; only the pin saves. A new two-way list takes this switch, its
+`data` name, CSS defaults until something is chosen (`hidden md:block` / `md:hidden`), and a toast on the pin.
 
 - **A long choice in a select is cut before the arrow** (2026-10-23 — "Engineering & maintenance" ran under the chip). In the
   `appearance: base-select` mode the select is a flex box: its text does not shrink, ellipsis does not apply, and

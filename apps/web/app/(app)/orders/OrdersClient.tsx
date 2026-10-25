@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
-import { cn, Empty, Segmented, useToast } from "@/components/ui";
+import { cn, Empty, useToast } from "@/components/ui";
+import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { Say } from "@/components/ui/Say";
 import { StateChip, SVC_ICON, stClass } from "@/components/ui/Service";
 import { Rail } from "@/components/ui/Rail";
@@ -47,9 +48,10 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
   const [, tick] = useState(0);
   useLive(["orders", "order_items", "dining_tables", "bills", "service_calls", "table_cleanings"], 30000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
-  const [view, setView] = useState<"tables" | "list">("tables");
-  useEffect(() => { try { if (localStorage.getItem("df-orders-view") === "list") setView("list"); } catch { /* storage blocked: tables */ } }, []);
-  const pickView = (v: "tables" | "list") => { setView(v); try { localStorage.setItem("df-orders-view", v); } catch { /* fine */ } };
+  /* Tables · List as the app's one view switch (2026-10-25, the owner: "this design, everywhere it is needed"): a tap shows
+     the other for this visit, the pin keeps it as this device's default; a choice kept before (df-orders-view) reads as pinned. */
+  const lay = useViewPref("orders", ["tables", "list"] as const, { legacy: "df-orders-view" });
+  const view = lay.chosen ?? "tables";
   const [only, setOnly] = useState<Svc | "late" | null>(null);
 
   const byTable = new Map<string, Order>(); orders.forEach((o) => { if (o.table_id && !byTable.has(o.table_id)) byTable.set(o.table_id, o); });
@@ -190,8 +192,9 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
           className="rail-fade flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible sm:![mask-image:none] sm:![-webkit-mask-image:none] [scrollbar-width:none]">
           {chips.map((s) => <StateChip key={s} s={s} n={counts.get(s) ?? 0} on={only === s} onClick={() => setOnly((x) => (x === s ? null : s))} className="shrink-0 max-sm:!pl-3 max-sm:!pr-1.5 max-sm:!gap-1.5 max-sm:!text-[13px]" />)}
         </Rail>
-        <Segmented value={view} onChange={pickView} className="sm:ml-auto shrink-0 max-sm:w-full max-sm:[&>button]:flex-1"
-          options={[{ value: "tables", label: <span className="inline-flex items-center gap-1.5"><LayoutGrid size={15} /> Tables</span> }, { value: "list", label: <span className="inline-flex items-center gap-1.5"><List size={15} /> List</span> }]} />
+        <div className="sm:ml-auto shrink-0"><ViewSwitch label="Show orders as" data="orders" shown={view} onPick={lay.pick} saved={lay.saved}
+          onKeep={(v) => { lay.keep(v); toast(v === "list" ? "The list is your default here" : "Tables are your default here"); }}
+          options={[{ v: "tables", label: "Tables", icon: LayoutGrid, word: "Tables" }, { v: "list", label: "List", icon: List, word: "List" }]} /></div>
       </div>
 
       {view === "tables" ? (<>
