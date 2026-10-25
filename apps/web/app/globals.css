@@ -436,6 +436,27 @@ body:has(.deck-card) { background: #0a0a0d; }
   .admin-frame::after { content: ""; position: absolute; top: 100%; left: 0; width: 1px; height: 1px; pointer-events: none; }
   html[style*="overflow: hidden"] .admin-frame { overflow-y: hidden; }
   .admin-frame main > *, .admin-frame main > * > * { scroll-margin-top: 100vh; }
+
+  /* The installed iPad app (2026-10-25, the owner: "the time, the day and date and the battery look collapsed over the top,
+     and the bottom shows an empty band — iPad only"). Installed, iOS draws the page from the very top of the screen under a
+     see-through status bar (apple-mobile-web-app-status-bar-style black-translucent, viewport-fit=cover), yet 100dvh there
+     is the screen less the status bar. So the frame (100dvh, from y = 0) put the clock and the battery over the card's top
+     edge and the sidebar's first key, and ended a status bar short of the bottom, where the dark page showed as a band.
+     html[data-app] (lib/splash.ts, set before the first paint whenever DineFlow runs as an app) pins the frame from just
+     under the status bar to the bottom of the screen; the status bar sits on the frame's own colour (the body's, per theme),
+     and nothing inside is measured in dvh any more — the card, the sidebar and the open drawer take the frame's height,
+     and the pinned top bar sticks at the frame's top (its env() offset was for a frame that started under the clock).
+     A browser tab has no data-app and no status bar over it, and a phone (under 768) keeps its own handling. --sat is the
+     one place the inset is read, so a probe can stand a status bar in for it. */
+  html[data-app] { --sat: env(safe-area-inset-top, 0px); }
+  html[data-app] body .deck { position: fixed; inset: var(--sat) 0 0 0; height: auto; min-height: 0; }
+  html[data-app] body .deck > .deck-card { min-height: calc(100% - 23px); }
+  html[data-app] body .deck > aside.ink-panel:not([data-open]) { height: 100% !important; }
+  html[data-app]:is([data-sidebar="floating"], [data-sidebar="float-rail"]) body .deck > aside.ink-panel:not([data-open]) { height: calc(100% - 24px) !important; }
+  html[data-app]:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel[data-open] { top: var(--sat) !important; bottom: 0; height: auto !important; }
+  html[data-app] .topbar, html[data-app] .topbar[data-stuck] { top: 0 !important; }
+  html[data-app] .topbar[data-stuck]::before { display: none; }
+  html[data-app] .admin-frame { position: fixed; inset: var(--sat) 0 0 0; height: auto; }
 }
 /* the wall is always graphite, whatever the theme — so is everything written on it */
 .wall { color: #f4f4f1; } .wall h1, .wall .flip-label, .wall .font-display { color: #f4f4f1; } .wall .flip-label { color: #9a9aa6; }

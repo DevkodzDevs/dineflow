@@ -761,3 +761,16 @@ Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.
   `pointer: coarse`; on the folded rail the fold key is 44 wide (40 with a mouse) and the account link at least 44 wide. Measured
   with real touch emulation (`mobile: true` + touch at 1194 and 834): nothing in the sidebar under 44. The top bar's Back is
   36px drawn with an invisible `::before` making the target 44 — a box-measuring probe reports 36; that is by design.
+- **The installed iPad app sits under the status bar, not behind it (2026-10-25, the owner: "the time, day and date and the
+  battery look collapsed over the top, and the bottom shows an empty band — iPad only").** Installed, iOS draws the page from
+  the top of the screen under a see-through status bar (black-translucent, viewport-fit=cover), but 100dvh there is the screen
+  less the status bar: the frame (100dvh from y = 0) put the clock and the battery over the card's top edge and the sidebar's
+  first key, and ended a status bar short of the bottom — the dark page showed as a band. `SPLASH_BOOT` (lib/splash.ts) now
+  sets `html[data-app]` before the first paint whenever DineFlow runs as an app, every launch. In the iPad frame block
+  (globals.css, `any-pointer: coarse` and 768 up) `html[data-app]` pins `body .deck` from `--sat` (=
+  `env(safe-area-inset-top)`) to the bottom of the screen (`position: fixed`), so the status bar sits on the frame's own
+  colour; the card's minimum is `calc(100% - 23px)` of that frame (not dvh), the sidebar is 100% of it (the floating looks
+  100% − 24px), the icon looks' open drawer runs from `--sat` to the bottom, the pinned top bar sticks at the frame's top
+  (`top: 0`; its env() offset and `::before` band were for a frame that started under the clock), and Master control's
+  `.admin-frame` is pinned the same way. A browser tab (no data-app) and a phone (under 768) are unchanged.
+  Probe `pw/ipadapp143.mjs` (testing-and-gates.md).

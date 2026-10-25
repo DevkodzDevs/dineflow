@@ -12,8 +12,11 @@
  * (2026-10-24). Emerald, like the phone's own launch screen and the service worker's launch loader, which also marks
  * the launch (df-splash) so the two never play back to back. `?splash=1` shows it in
  * a browser too (to look at it, and for the probes).
+ *
+ * It also marks <html data-app> whenever DineFlow runs as an app, every launch (2026-10-25): the installed iPad app draws
+ * its frame below the status bar from that (globals.css, the iPad frame block) — a browser tab has no status bar over it.
  */
-export const SPLASH_BOOT = `(function(){try{var d=document.documentElement,q=/[?&]splash=1(&|$)/.test(location.search);var app=matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true||document.referrer.indexOf('android-app://')===0;if(!q&&(!app||sessionStorage.getItem('df-splash')))return;try{sessionStorage.setItem('df-splash','1')}catch(e){}d.setAttribute('data-splash','in');(new Image()).src='/icon-192.png';var t0=Date.now(),gone=false;var out=function(){if(gone)return;gone=true;d.setAttribute('data-splash','out');setTimeout(function(){d.removeAttribute('data-splash')},380)};var ready=function(){setTimeout(out,Math.max(0,600-(Date.now()-t0)))};if(document.readyState!=='loading')ready();else document.addEventListener('DOMContentLoaded',ready,{once:true});setTimeout(out,3000)}catch(e){}})();`;
+export const SPLASH_BOOT = `(function(){try{var d=document.documentElement,q=/[?&]splash=1(&|$)/.test(location.search);var app=matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true||document.referrer.indexOf('android-app://')===0;if(app)d.setAttribute('data-app','');if(!q&&(!app||sessionStorage.getItem('df-splash')))return;try{sessionStorage.setItem('df-splash','1')}catch(e){}d.setAttribute('data-splash','in');(new Image()).src='/icon-192.png';var t0=Date.now(),gone=false;var out=function(){if(gone)return;gone=true;d.setAttribute('data-splash','out');setTimeout(function(){d.removeAttribute('data-splash')},380)};var ready=function(){setTimeout(out,Math.max(0,600-(Date.now()-t0)))};if(document.readyState!=='loading')ready();else document.addEventListener('DOMContentLoaded',ready,{once:true});setTimeout(out,3000)}catch(e){}})();`;
 
 /** The iPhone and iPad launch images (public/splash/, drawn by the probe launch97.mjs): iOS shows the one matching the
  *  device the instant a home-screen app starts, before any page — without them it showed black. Emerald like the
