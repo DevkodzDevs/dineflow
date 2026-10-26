@@ -327,3 +327,7 @@ year. See [my-day.md](my-day.md).
   (`[data-view-switch=wages]`, `[data-wage-cards]` / `[data-wage-table]`): cards below md — the worker, Pay, days and hours,
   earned and paid, the balance in red when owed — and a bar with how many workers and what is left to pay. The 720px table
   scrolled a phone sideways.
+- **Labour's tabs on a phone (2026-10-26, the owner: "not looking good").** In the toolbar's sliding track the tabs were cut
+  ("…ments") and the badge field sat half off the screen. Under sm the three tabs are one full-width segmented row with short
+  names (Today · Wages · QR labels, `[data-labour-tab]`) and the badge code its own full-width row (`[data-badge-form]`, a 48px
+  field and scan key). From sm the track is as it was (the wrapper is `display: contents`).

@@ -156,8 +156,19 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
         <div className="space-y-4" data-new-job-form>
           <label className="block"><span className="text-[13px] font-semibold text-steel">What needs doing</span>
             <input className="mt-1" value={f.title} onChange={(e) => set("title", e.target.value)} maxLength={120} placeholder="Tap leaking · Mow the lawn · Set up the hall" data-job-title autoFocus /></label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="min-w-0"><span className="text-[13px] font-semibold text-steel">Kind of job</span>
+          {/* a phone (2026-10-26, the owner: "not looking good"): side by side the two fields were cut ("Engineering & mainte…").
+              Kind of job is a sliding row of icon chips — one tap, and it picks the department as the select does — and For takes
+              the whole line. From sm both stay selects, side by side. */}
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+            <div className="sm:hidden min-w-0" data-job-kinds><span className="text-[13px] font-semibold text-steel">Kind of job</span>
+              <div className="mt-1.5 -mx-4 px-4 flex gap-2 overflow-x-auto [scrollbar-width:none] rail-fade" role="radiogroup" aria-label="Kind of job">
+                {Object.entries(CATEGORY).map(([k, c]) => { const on = f.category === k; return (
+                  <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setF((x) => ({ ...x, category: k, department: c.dept ?? x.department }))} data-job-kind={k}
+                    className={cn("shrink-0 !min-h-11 h-11 rounded-full pl-2 pr-3.5 inline-flex items-center gap-2 text-[14px] font-bold transition-colors", on ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)]")}>
+                    <span className={cn("h-7 w-7 rounded-full grid place-items-center", on ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-bg-2)]")}><c.Icon size={15} aria-hidden /></span>{c.label}</button>); })}
+              </div>
+            </div>
+            <label className="min-w-0 max-sm:hidden"><span className="text-[13px] font-semibold text-steel">Kind of job</span>
               <select className="mt-1" value={f.category} onChange={(e) => { const c = e.target.value; setF((x) => ({ ...x, category: c, department: CATEGORY[c]?.dept ?? x.department })); }} data-job-category>
                 {Object.entries(CATEGORY).map(([k, c]) => <option key={k} value={k}>{c.label}</option>)}</select></label>
             <label className="min-w-0"><span className="text-[13px] font-semibold text-steel">For</span>

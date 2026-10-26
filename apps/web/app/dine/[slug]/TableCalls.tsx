@@ -26,7 +26,8 @@ type Open = { kind: Kind; phase: "sending" | "sent" | "again" | "error"; error?:
  * to the staff (their Orders floor, their alert and, since 2026-10-23, a call dialog on every staff device that hears
  * table calls — CallAlert.tsx) and opens a dialog here that says what was sent, when, and where it stands: sent →
  * the staff have it → someone is on the way, live. A second tap while it is open sends nothing new. The page asks every
- * 15 seconds, every 5 while the dialog is open; a request turning "on the way" buzzes the phone.
+ * 15 seconds, every 5 while the dialog is open; a request turning "on the way" buzzes the phone, shows on its tile for a minute,
+ * and the tile is then plain again.
  * Public pages have no ToastProvider — everything is said here, inline or in the dialog.
  */
 export function TableCalls({ slug, token, table }: { slug: string; token: string; table: string }) {
@@ -49,11 +50,15 @@ export function TableCalls({ slug, token, table }: { slug: string; token: string
     });
   }, [slug, token]);
   useEffect(() => { load(); const t = setInterval(load, open ? 5000 : 15000); return () => clearInterval(t); }, [load, open]);
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(t); }, []);
   useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(null), 7000); return () => clearTimeout(t); }, [note]);
 
   /* the newest call of each kind, within the half hour the server keeps */
   const latest = (k: Kind) => calls.find((c) => c.kind === k) ?? null;
+  /* a tile shows "On the way" for a minute after a waiter answers, then it is a plain tile again, ready for the next ask
+     (2026-10-27, the owner: "after the staff attend, the three go back to normal") — the dialog keeps the whole story */
+  const ANSWERED_FOR = 60_000;
+  const onTile = (k: Kind) => { const c = latest(k); if (c?.status === "done" && now - new Date(c.done_at ?? c.at ?? 0).getTime() > ANSWERED_FOR) return null; return c; };
 
   const ask = async (k: Kind) => {
     buzz("tap");
@@ -79,7 +84,7 @@ export function TableCalls({ slug, token, table }: { slug: string; token: string
       </div>
       <div className="grid grid-cols-3 gap-2.5">
         {KINDS.map((k) => {
-          const { label, idle, asked, Icon, hue, hue2 } = ASK[k]; const c = latest(k); const st = c?.status ?? null;
+          const { label, idle, asked, Icon, hue, hue2 } = ASK[k]; const c = onTile(k); const st = c?.status ?? null;
           const busy = open?.kind === k && open.phase === "sending";
           return (
             <button key={k} type="button" disabled={busy} data-call-kind={k} data-state={st ?? "none"} onClick={() => void ask(k)}

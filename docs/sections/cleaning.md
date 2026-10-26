@@ -109,3 +109,6 @@ node cleaner.mjs     # 42 checks: a restaurant Cleaner's phone and a resort's at
   green, **Average clean** cyan, now a flap of minutes ("min a clean"). The phone keeps `[data-clean-stats]`. An empty
   column (`Column` in JobCard.tsx, shared with Work) is an `EmptyState size="sm"` from sm (`[data-col-empty]`): the column's
   icon and hue, its sentence and one line on what lands there.
+- **The flap tiles on the phone too (2026-10-26, the owner: "the flaps are tiny; Average clean is a dash").** `CleanTiles` is
+  now every width (`[data-clean-tiles]`, which also carries `data-clean-stats`); the small phone row with 34px flaps is gone.
+  On a phone each flap is 76px and Average clean is a flap of minutes ("none timed yet" at none).

@@ -67,7 +67,9 @@ function describe(kind: NotifyKind, r: Row): { title: string; sub: string } {
     case "taken": return { title: `${str(r.who ?? "Someone")} took ${str(r.label ?? r.title)}`, sub: `Started ${hm(r.taken_at)}${r.title && r.place ? ` · ${str(r.place)}` : ""}` };
     case "assigned": return { title: `Given to you · ${r.title ? str(r.title) : r.room_id ? `Room ${str(r.place)}` : str(r.place) || "a job"}`, sub: r.title ? [str(r.place), str(r.details)].filter(Boolean).join(" — ") || "A job for you" : str(r.notes).startsWith("Failed inspection") ? str(r.notes) : r.room_id ? "A room to clean" : "A table to clean" };
     // 2026-10-23: the table and its zone, looked up when the call arrives — "A table…" made a waiter open Orders to find out which
-    case "call": { const t = str(r.table) || "A table"; return { title: r.kind === "bill" ? `${t} wants the bill` : r.kind === "water" ? `${t} wants water` : `${t} is calling a waiter`, sub: [str(r.zone), `asked ${hm(r.created_at)}`].filter(Boolean).join(" · ") }; }
+    case "call": { const t = str(r.table) || "A table";
+      if (r.kind === "order") return { title: `${t} placed an order`, sub: [Number(r.items_n) ? `${Number(r.items_n)} item${Number(r.items_n) === 1 ? "" : "s"}` : "", Number(r.gross) ? formatINR(Number(r.gross), { whole: true }) : "", "accept it to send it to the kitchen"].filter(Boolean).join(" · ") };
+      return { title: r.kind === "bill" ? `${t} wants the bill` : r.kind === "water" ? `${t} wants water` : `${t} is calling a waiter`, sub: [str(r.zone), `asked ${hm(r.created_at)}`].filter(Boolean).join(" · ") }; }
     case "feedback": return { title: `Low rating · ${str(r.rating)}★`, sub: [str(r.comment).slice(0, 80), (r.tags as string[] | null)?.join(", ")].filter(Boolean).join(" — ") || "Read it under Customers → Feedback" };
     // 0124: `ev` is set where the event is heard — "new" and "reply" reach the owner, "answer" the person who sent it
     case "voice": {
@@ -169,7 +171,8 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
       const ins = (table: string, kind: NotifyKind, ok: (r: Row) => boolean = () => true) => {
         if (kinds.includes(kind)) on(table, "INSERT", (r) => { if (ok(r)) announce(kind, r); });
       };
-      ins("online_orders", "online");
+      // a table's QR order is a call card for whoever hears calls (below); the online-orders toast is for the rest
+      ins("online_orders", "online", (r) => !(r.table_id && kinds.includes("call")));
       ins("reservations", "reservation");
       ins("bookings", "booking", (r) => !r.is_block);
       ins("kots", "kot");
@@ -187,6 +190,21 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
           }
         }));
         on("service_calls", "UPDATE", (r) => { if (r.status === "done") setCalls((cs) => cs.filter((c) => c.id !== str(r.id))); });
+        /* a guest's order from the table's QR (2026-10-27, the owner: "notify the table section, orders and the kitchen"):
+           a card like a call — Accept sends it to the kitchen (a KOT, which rings the kitchen as every ticket does). Held a
+           moment first: a channel that accepts by itself answers in the same breath, and that order needs no card. Once
+           anyone accepts or refuses it, the card leaves every device. */
+        const settled = new Set<string>();
+        on("online_orders", "UPDATE", (r) => { if (r.status !== "new" || r.order_id) { settled.add(str(r.id)); setCalls((cs) => cs.filter((c) => c.id !== str(r.id))); } });
+        on("online_orders", "INSERT", (r) => { if (!r.table_id || r.status !== "new" || r.order_id) return; setTimeout(() => { if (settled.has(str(r.id))) return; void tableOf(r.table_id).then((t) => {
+          const n = Array.isArray(r.items) ? (r.items as { qty?: unknown }[]).reduce((x, i) => x + (Number(i.qty) || 1), 0) : 0;
+          const row = { ...r, kind: "order", items_n: n, table: t?.name ?? null, zone: t?.zone ?? null };
+          announce("call", row);
+          if (live.current.prefs?.kinds.call && !settled.has(str(r.id))) {
+            setCalls((cs) => cs.some((c) => c.id === str(r.id)) ? cs : [{ id: str(r.id), table_id: str(r.table_id), kind: "order", table: row.table, zone: row.zone, at: str(r.created_at) || new Date().toISOString(), total: Number(r.gross) || 0, items: n }, ...cs]);
+            buzz("called");
+          }
+        }); }, 1500); });
       }
       ins("guest_feedback", "feedback", (r) => Number(r.rating) <= 3);
       ins("table_cleanings", "clean");

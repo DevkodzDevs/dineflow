@@ -774,3 +774,9 @@ Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.
   (`top: 0`; its env() offset and `::before` band were for a frame that started under the clock), and Master control's
   `.admin-frame` is pinned the same way. A browser tab (no data-app) and a phone (under 768) are unchanged.
   Probe `pw/ipadapp143.mjs` (testing-and-gates.md).
+- **A table's QR order rings like a call (2026-10-27, the owner: "notify the table section, orders and the kitchen").** For
+  whoever hears table calls, an `online_orders` INSERT with a table and status new becomes a `CallAlert` card of kind
+  `order` (violet, "T1 placed an order", items · total) with **Later** and **Accept · to kitchen** (`acceptOnline` — the KOT it
+  makes rings the kitchen as every ticket does). It waits 1.5 s first and is dropped if the order was already accepted (a
+  channel set to accept by itself) or refused; an UPDATE out of `new` takes the card off every device. Those staff no longer
+  also get the *New online order* toast for it. The Calls setting's hint says so.

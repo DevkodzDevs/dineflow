@@ -29,7 +29,7 @@ export const KINDS: { kind: NotifyKind; label: string; hint: string; href: strin
   { kind: "kot", label: "New kitchen tickets", hint: "Every KOT the moment it is fired", href: "/kitchen", module: "kitchen" },
   { kind: "ready", label: "Food ready to serve", hint: "When the kitchen marks a ticket ready", href: "/orders", module: "orders" },
   { kind: "housekeeping", label: "Rooms to clean", hint: "A new housekeeping task", href: "/housekeeping", module: "housekeeping" },
-  { kind: "call", label: "A table calls a waiter", hint: "Waiter, the bill or water — from the table's QR", href: "/orders", module: "orders" },
+  { kind: "call", label: "A table calls a waiter", hint: "Waiter, the bill, water or a new order — from the table's QR", href: "/orders", module: "orders" },
   { kind: "clean", label: "Tables to clean", hint: "A table paid and left — whoever is free cleans it", href: "/cleaning", module: "orders" },
   { kind: "assigned", label: "A job given to you", hint: "A supervisor gave you a table or a room to clean", href: "/cleaning", module: "" },
   { kind: "roomdone", label: "Rooms cleaned", hint: "A room is done — check it or sell it", href: "/cleaning", module: "housekeeping" },

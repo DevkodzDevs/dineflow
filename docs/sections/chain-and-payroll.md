@@ -144,3 +144,8 @@ node batch3.mjs     # 25 checks on a throwaway demo — see testing-and-gates.md
 - **Open a new outlet on iPad and desktop (2026-10-24, the owner: "design").** Phones keep the markup they had: every new part is `hidden md:…` and the old one `md:hidden` (or the change is `md:` classes only). An icon tile and the heading, *Copied
   from <outlet>* with Brand · GST · Sections · 7-day trial as chips, the name field with a pin, and copying the menu as a
   switch row (`[data-copy-menu]`, the whole 60px row toggles it). Both the phone's checkbox and the switch drive the same state.
+- **How pay is worked out, on a phone (2026-10-26, the owner: "not looking good — phone only").** PF and ESI read as their plain
+  names ("Provident fund", "Health insurance") — the badge already says PF / ESI, and "Include PF · Provident fund" wrapped to
+  two lines. Paid weekly offs wraps: the words take the row and the stepper sits under them, full width (`[data-offs-stepper]`),
+  − and + as 48px keys at the ends and the count on a split-flap in the middle with "days off a month" (`[data-offs-flap]`). From
+  sm both are as they were.

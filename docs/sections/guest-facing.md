@@ -272,7 +272,7 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   5 s (else 15); a request turning done buzzes and says so inline. A second tap while open says *Already on it* and sends
   nothing (`again`). After 5 minutes unanswered: *wave to any of the staff*. calls.mjs: answered from the staff side, the
   dialog turned "on the way" in 0.3–0.9 s with no refresh.
-- **Dish cards (2026-10-23).** `DishCard` + `AddControl` in StorefrontClient: the Indian food mark (green square + dot /
+- **Dish cards (2026-10-23; redrawn 2026-10-27 — + only, a drawn plate without a photo: see below).** `DishCard` + `AddControl` in StorefrontClient: the Indian food mark (green square + dot /
   red square + triangle), *Combo* / *Customisable* tags, the name in the body face (a `div role=heading` — `h3` takes the
   condensed display face), the price in whole rupees (`formatINR(…, { whole: true })` — a menu price), two lines of
   description; the photo 128/140px on the right with **ADD** (44px tall) riding its foot, the − n + stepper 44×44 buttons;
@@ -304,3 +304,40 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
 - **Two more public pages (0140, 2026-10-24):** `/track/<token>` — the customer's delivery tracking — and `/ride/<token>` — the
   rider's page. Both in `PUBLIC_PREFIX` and `SESSION_FREE`, both English like /pay (the translation scan skips `track|ride`),
   both `noindex`. See online-and-channels.md, *Delivery tracking*.
+- **A table's order could not be placed (fixed 2026-10-27, 0144).** Every order with an offer failed in `dine_order` with
+  "operator does not exist: offer_scope = text" (since 0074) — at a dining offer, a table could never order — and the page
+  said nothing: the error went to `useToast()`, which is silent here. Refusals are now said on the page, in red above the
+  button (`[data-order-error]`, `[data-book-error]`); a database message nobody should read becomes "please try again, or
+  ask a waiter" (`nice`). **The offer is the one the server takes:** a flat % or flat amount, on its `days` (0–6 from
+  Sunday, 7 also Sunday) and between `from_time`–`to_time` IST, for this kind of order, the one taking the most off; a
+  happy hour or a free item takes nothing off (the sheet showed "−₹20" for one, which the server never gave). GST to the
+  paise, the total to the rupee, as the server rounds them — the probe checks the bar, the sheet and the server agree.
+- **After ordering at a table the guest stays on the menu (2026-10-27, the owner: "show its status at the top, floating").**
+  The basket empties, the sheet closes and `TableOrders.tsx` (`[data-table-orders]`) sticks to the top of the screen: the stage
+  as a coloured tile and a headline (Order sent · In the kitchen · Cooking now · Ready — on its way · Served · enjoy! ·
+  Couldn't take this order), the number (the order's once accepted, else the reference's tail), dishes, total and a five-step
+  bar. It asks `dine_table_orders(slug, table code, ids)` (0144: both the table's code and the order's id are needed; ten ids,
+  twelve hours) every 6 s while an order moves and the page is on screen, every 30 s once all are served; a change buzzes and
+  opens the card for 9 s (a card the guest opened stays open). The phone keeps its ids in `localStorage`
+  `df-table-orders:<slug>:<code>`; a served or refused order can be put away. The stage: no order yet → sent; its dishes —
+  any cooking → cooking, all ready or served → ready, all served → served. Anywhere else (delivery, takeaway) the
+  confirmation page stays, with its tracking link.
+- **The basket survives Back (2026-10-27).** `sessionStorage` `df-basket:<slug>:<code>` keeps the lines (by id, size, add-ons),
+  the name, phone, note, address and whether the sheet was open, so the privacy page, the browser's Back or a reload bring the
+  guest back to the same basket. **The privacy link carries `?from=`** (GuestNotice is a client component now) and the legal
+  pages' Back returns there — see legal.md. The cover's Back to the directory is gone at a table.
+- **The storefront redrawn for the table (2026-10-27, the owner's screenshots: "not looking good").** **Dish cards**: the food
+  mark (and Combo, and "n in basket"), the name, the description, the price at the foot; a dish with choices says what it asks
+  (`[data-dish-options]`, "Choose · 2 sizes · add-ons" — a tap opens the chooser); on the right always a picture — the photo or,
+  without one, **`DishArt.tsx`** (`[data-dish-art]`): the dish's kind drawn on a plate (`glyphFor`, as Menu's cards) on a veg-green
+  or non-veg-amber wash, garnish dots placed from the name; **+ only** — a 44px round tint key on the picture's corner
+  (`[data-dish-add]`, no "ADD"), the − n + stepper centred under it once added; a dish with choices is never added blind.
+  **The basket bar** (`[data-basket-bar]`): one 68px capsule in the page's ink — the bag with the count on a badge, the total
+  large and "You save ₹n" under it, **View order** as its own tint key; hidden while the sheet is up. **The order sheet**
+  (`[data-order-sheet]`): the table as a green card (or Delivery · Takeaway), each line a card with the food mark, price and a
+  44×44 stepper (a bin at one), Add more; the bill on its own panel, To pay large with the saving as a chip; Your details
+  with icons (`type=tel`, autocomplete); the kitchen note with five one-tap notes (`[data-quick-notes]`); how to pay; and
+  **Place order** with the total on it, pinned at the foot by the Sheet's own footer (it must stay the sheet's last child).
+- **The call tiles go back to plain (2026-10-27, the owner).** An answered call shows *On the way* on its tile for a minute
+  after `done_at`, then the tile is plain and ready for the next ask (`now` ticks every 5 s). Bill and Water ring on the
+  floor exactly as the waiter does (they always did: one `service_calls` INSERT, one CallAlert card per kind).

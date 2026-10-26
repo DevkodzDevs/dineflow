@@ -415,3 +415,17 @@ of a second." Measured first, on the live site and on a local production build (
   set and put back). **`dropdemos.cjs` went missing from the scratchpad on 2026-10-23** and was rebuilt (demos only:
   `demo_expires_at` set). **`pnpm lint` lints any `apps/web/.next-*` folder** (only .next is ignored): a second session's
   `next dev` distDir gave 1616 errors; `.next-dev` (2026-09-20) is still there, nobody's.
+- **`pw/phone144.mjs` (20)** — the 2026-10-26 phone round on a throwaway demo resort (two expenses and a checklist seeded), WebKit
+  412×915 dark: Payroll (PF's one-line title, the offs stepper under the words with its flap, + moving it — not saved), Labour
+  (three tabs on one row on screen, the badge field its own row), Every expense (cards, amounts whole), New job (the chip row
+  picks Kitchen and sets For), Cleaning (four 76px flaps), a checklist (one-line name, the flap and the bar, no ring), a guest's
+  stays (rows and the three figures), nothing past the right edge on each; then 834 keeping Payroll's, Labour's and Expenses'
+  forms.
+- **`pw/qr147.mjs` (32)** — the 2026-10-27 table-QR round on a throwaway demo restaurant (`pw/demo147.mjs` makes it: a slug, a
+  table code, a 10% dining offer; the probe gives one dish two sizes and two dishes a library photo). A guest at 412 (paper)
+  and the owner on /orders at 412 (dark) at once: + only and drawn plates, a dish with sizes opens the chooser, the basket bar,
+  the sheet (44px steppers, the offer, the pinned button, the quick notes), privacy → "Back to the menu" → the menu with the
+  basket, sheet and name kept (and the browser's Back too), Place order → the live card in ~1.5 s with the server's discount
+  matching, sticky while scrolling; the staff card and the floor bar inside the card; Accept → a KOT and "In the kitchen";
+  dishes preparing / ready / served → the card follows; Water → a call card and a bar; On my way → the tile On the way, then
+  plain a minute later; nothing past the right edge at 412 and 1440. Screens in `s147/`.

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { LegalBack, LegalSignIn } from "./LegalBack";
 import { COMPANY, missingFacts } from "@/lib/company";
 
 /**
@@ -35,7 +35,8 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
     <div className="min-h-dvh deck">
       <div className="mx-auto max-w-3xl px-5 py-8 md:py-12">
         <header className="flex items-center gap-3 mb-8">
-          <Link href="/login" className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-card shrink-0" aria-label="Back to sign in"><ChevronLeft size={18} /></Link>
+          {/* back to the guest page it was opened from (GuestNotice ?from=), else to sign in — LegalBack.tsx */}
+          <LegalBack />
           <div className="flex items-center gap-2.5 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/mark.png" alt="" width={28} height={28} className="h-7 w-7 object-contain shrink-0" />
@@ -76,7 +77,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
           <div>{COMPANY.legalName ?? COMPANY.product} · {COMPANY.site}</div>
           <div className="legal-links flex flex-wrap gap-x-4 gap-y-1 pt-1">
             {DOCS.map((d) => <Link key={d.href} href={d.href} className="hover:text-[var(--color-label)]">{d.label}</Link>)}
-            <Link href="/login" className="hover:text-[var(--color-label)]">Sign in</Link>
+            <LegalSignIn />
           </div>
         </footer>
       </div>

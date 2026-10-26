@@ -577,6 +577,11 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   `display.allow` / `display.disallow` in the audit trail); `display_lock_note(p_action, p_key, p_mode, p_by)` (`lock` needs
   owner / manager; `release` names who — the app checks that person's sign-in first). No new table, so no new policy; both
   granted to authenticated only. [display-lock.md](display-lock.md)
+- **0144 — A table's QR order (2026-10-27, applied; dry144.sql rolled back: an order at a happy hour places with nothing off,
+  at a 10% offer with 10% off, a wrong table code sees nothing).** `dine_order` compared `offer_scope` with text and failed every
+  order that carried an offer (since 0074); it compares as text now, and an offer takes money off only when it is a flat % or
+  amount, on its days and hours (IST). `dine_table_orders(slug, table code, ids[])` — where a guest's own orders at that table
+  stand; security definer, search_path pinned, granted to anon on purpose. No table, so no policy.
 - **0143 — Audit fixes (2026-10-25, applied; dry143.mjs 6/6, rolled back).** `display_lock_note` — a release line, like a lock
   line, only from an owner or manager (the app writes it on the releasing manager's own sign-in; the actor is auth.uid()).
   `apply_ledger` — the stock trigger updates `where id = ingredient and restaurant_id = new.restaurant_id` (0098's

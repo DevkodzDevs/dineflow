@@ -105,7 +105,7 @@ one), `split_order` (one into two) — all RPCs, all atomic.
   also sends the customer's name and phone — it read `a.customer`, which the till never queued, so every order sent
   from the queue had arrived without them.
 - **Table calls on the floor (0103).** `page.tsx` reads open `service_calls` from the last 30 minutes; a calling
-  table carries an orange pulsing pill above its card (`data-call`: *Wants bill* · *Calling* · *Water*, bill
+  table carried an orange pulsing pill above its card (since 2026-10-27 a bar inside the card — see below) (`data-call`: *Wants bill* · *Calling* · *Water*, bill
   winning). Tapping it is "I have gone" — `answerCall(tableId)` → `service_call_done(p_table)` closes every open
   call on that table and the guest's card turns *On the way*. The pill is 28px inside a 44px button (`-top-6`) so a finger
   can hit it and it clears the table name; answered calls are remembered by call id, so the same table's next call
@@ -399,3 +399,13 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
 - **Tables · List is the app's ViewSwitch (2026-10-25).** `[data-view-switch=orders]` replaced the Segmented control; a tap
   shows the other for this visit, the pin keeps it (`df-view:orders`; a choice kept before under `df-orders-view` reads as
   pinned). Design-system.md, *One switch everywhere*.
+- **A table's asks are bars inside its card (2026-10-27, the owner: "the Water pill over the cards looks collapsed and
+  messy").** The 28px pill at `-top-6` sat on the card above and under LATE. Now `alertsOf(t)` puts full-width bars at the top
+  inside the card and moves the card's content down under them (`pad`): **a call** (orange, `[data-call]`) — the kind's icon,
+  Calling / Wants bill / Water (bill winning, +n for more kinds), minutes from md, a tick; a tap is "on my way"
+  (`service_call_done`); **a QR order nobody has accepted** (violet, `[data-qr-order]`) — its total and **Accept**, which runs
+  `accept_online_order` (the order on the table, a KOT, the table occupied). `page.tsx` reads those orders (online_orders,
+  status new, a table, no order yet, last twelve hours); `online_orders` is in `useLive`. Answered and accepted ids are held
+  locally so the bar goes at once and comes back if the server refuses. The bars sit 10px inside the card's border on top
+  and both sides (a card that is a link holds them from outside its 2px border, so 12px there), 44px tall, the content 12px
+  under the last; LATE is lifted to -20px so it clears the bar (2026-10-27, the owner: "more space above than beside").

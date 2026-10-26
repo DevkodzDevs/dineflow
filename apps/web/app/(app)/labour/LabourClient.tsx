@@ -48,9 +48,15 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
         <StatTile label="This month" value={formatINR(monthWages)} sub={`${attendance.length} man-days`} delay={0.1} />
         <StatTile label="Due to pay" value={formatINR(Math.max(0, monthWages - monthPaid))} sub={`${formatINR(monthPaid)} paid`} tone={monthWages - monthPaid > 0 ? "alert" : "good"} delay={0.15} />
       </div>
-      <div className="toolbar"><div className="toolbar-group">
-        {[["today", "Today"], ["wages", "Wages & payments"], ["labels", "QR labels"]].map(([k, l]) => <Link key={k} href={`/labour?tab=${k}`} className={cn("chip", tab === k && "on")}>{l}</Link>)}
-        <form className="ml-2 flex gap-1" onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await punchCode(code); if ("error" in r) setErr(r.error!); else { const x = r as unknown as { name: string; event: string; hours?: number }; setToast(`${x.name} · ${x.event === "in" ? "punched IN" : x.event === "out" ? `punched OUT · ${x.hours} h` : "already done today"}`); setCode(""); } }); }}><input placeholder="Badge code" aria-label="Badge code" value={code} onChange={(e) => setCode(e.target.value)} className="num !w-32 sm:!w-44 !py-2 !px-3 uppercase min-w-0" /><Button variant="outline" aria-label="Punch"><QrCode size={16} /></Button></form>
+      {/* a phone (2026-10-26, the owner: "not looking good"): the three tabs are one full-width segmented row with short
+          names, the badge code its own full-width row under them — in one sliding track the tabs were cut ("…ments") and
+          the badge field sat half off the screen. From sm the track is as it was (display: contents). */}
+      <div className="toolbar"><div className="toolbar-group max-sm:!flex-wrap max-sm:!overflow-visible max-sm:!gap-2.5" data-labour-tabs>
+        <div className="contents max-sm:!flex max-sm:![flex:1_1_100%] max-sm:p-1 max-sm:gap-1 max-sm:rounded-full max-sm:bg-[var(--color-fill)]" role="tablist" aria-label="Labour">
+        {[["today", "Today", "Today"], ["wages", "Wages & payments", "Wages"], ["labels", "QR labels", "QR labels"]].map(([k, l, short]) => <Link key={k} href={`/labour?tab=${k}`} role="tab" aria-selected={tab === k} data-labour-tab={k}
+          className={cn("chip", tab === k && "on", "max-sm:!flex-1 max-sm:justify-center max-sm:!min-h-11 max-sm:!border-transparent", tab !== k && "max-sm:!bg-transparent")}><span className="sm:hidden">{short}</span><span className="max-sm:hidden">{l}</span></Link>)}
+        </div>
+        <form className="ml-2 flex gap-1 max-sm:!ml-0 max-sm:![flex:1_1_100%] max-sm:!gap-2" data-badge-form onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await punchCode(code); if ("error" in r) setErr(r.error!); else { const x = r as unknown as { name: string; event: string; hours?: number }; setToast(`${x.name} · ${x.event === "in" ? "punched IN" : x.event === "out" ? `punched OUT · ${x.hours} h` : "already done today"}`); setCode(""); } }); }}><input placeholder="Badge code" aria-label="Badge code" value={code} onChange={(e) => setCode(e.target.value)} className="num !w-32 sm:!w-44 !py-2 !px-3 uppercase min-w-0 max-sm:!w-auto max-sm:flex-1 max-sm:!h-12 max-sm:!px-4" /><Button variant="outline" aria-label="Punch" className="max-sm:!h-12 max-sm:!w-12 max-sm:!px-0"><QrCode size={16} /></Button></form>
         </div><div className="toolbar-group toolbar-end"><Button onClick={() => setEdit({ daily_wage: 500, skill: "other" })}><Plus size={16} /> Labourer</Button></div>
       </div>
       {toast && <div className="feather p-3 text-sm flex items-center gap-2 border-mint"><Check size={15} className="text-mint" /> {toast}</div>}

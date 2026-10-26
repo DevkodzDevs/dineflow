@@ -98,3 +98,14 @@ node batch2.mjs     # 40 checks on a throwaway demo — see testing-and-gates.md
   it cuts, the shift and the count, and **one progress ring** (SVG, `[data-list-pct]`) — it replaced the flap % and the bar
   under it; the week's dots carry the day letters, today ringed.
 - **No expenses this month** (2026-10-24) is `Empty`'s sm+ form — the wallet, amber (design-system.md). The phone is unchanged.
+- **Every expense on a phone (2026-10-26, redone 2026-10-27 — the owner, of the first pass: "not looking good — ultra
+  modern").** Under sm the list is grouped by day (`[data-expense-day]`): the day as a heading — Today, Yesterday, else "Mon, 26
+  Oct" (IST) — with that day's total (struck-out expenses left out). Each expense is a soft card (`[data-expense-card]`) with a
+  thin bar of its category's colour on the left edge: the category's icon, the category and the amount large with the paise
+  small (`[data-expense-amount]`), who it was paid to and who wrote it, the note as a quoted line, then chips — how it was paid
+  (Cash / UPI / Card / Bank, with its icon), the bill (#BILL-4100), the GST in blue, "Struck out · reason" in red — and Strike
+  out as a round 44px key at the end of the chips (`[data-strike-phone]`). The first pass was a flat row with a labelled Strike
+  out button under every expense. The rows (`[data-expense]`) are the sm+ form, unchanged.
+- **A checklist's head on a phone (2026-10-26).** Beside the ring and the pencil the name wrapped to two lines. Under sm the name
+  keeps one line, the ring is left to sm+, and under the head runs `[data-list-progress]`: the done count on a split-flap, "/ 4
+  done", a slim bar and the percent (green when all are done, amber while some are, grey at none).

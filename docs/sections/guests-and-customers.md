@@ -112,3 +112,7 @@ points) — the same dialog the card's name opens. The cards are untouched.
   phone scrolled it sideways. Cards below md (`[data-guest-card]`): the initial, the name and VIP star, the phone (or email,
   or the ID), what they like, and stays · last stay · lifetime; a tap opens the same sheet. The table from md. A bar shows
   how many guests. `df-view:guests`.
+- **A guest's Every stay on a phone (2026-10-26, the owner: "not looking good").** `[data-stays-phone]`: each stay one row — the
+  room number on its own tile ("ROOM 207"), the dates as days ("1 Sep → 2 Sep 2026") with the nights, the state as a coloured dot
+  and word, the amount and the chevron; under them three figures, First stay · Stays · Total (`[data-stays-sum]`). From sm the
+  rows and the sentence are as they were.

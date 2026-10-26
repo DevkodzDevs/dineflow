@@ -133,3 +133,6 @@ node cleaning.mjs    # 43  ·  node cleaner.mjs  # 43 — the Cleaning board sti
   the calendar, From → To, how many days, `[data-range-days]`) beside the presets; the counts are Work's flap tiles
   (`[data-record-tiles]`) — Jobs, Done, Late (breathes red), Average response and Average work as minutes — five across from
   lg, three and two on an iPad in portrait. The phone keeps `[data-from]` / `[data-to]` and `[data-record-stats]`.
+- **New job on a phone (2026-10-26, the owner: "not looking good").** Kind of job and For side by side were cut ("Engineering &
+  mainte…"). Under sm Kind of job is a sliding row of icon chips (`[data-job-kinds]`, `[data-job-kind]`, one tap — it sets the
+  department as the select does) and For takes the whole line. From sm both are selects, side by side.

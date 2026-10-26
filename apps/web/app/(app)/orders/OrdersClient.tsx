@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone } from "lucide-react";
+import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone, Receipt, GlassWater, QrCode } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
 import { cn, Empty, useToast } from "@/components/ui";
@@ -13,12 +13,16 @@ import { Rail } from "@/components/ui/Rail";
 import { formatINR, fmtSince } from "@/lib/format";
 import { orderState, isLate, SVC_WORD, type Svc } from "@/lib/service";
 import { setTableStatus, answerCall } from "./actions";
+import { acceptOnline } from "../online-orders/actions";
 import { takeJob, finishJob } from "../cleaning/actions";
 
 type Table = { id: string; name: string; capacity: number; zone: string; status: "free" | "occupied" | "reserved" };
 type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; created_at?: string | null };
 type Order = { id: string; order_no: number; type: string; table_id: string | null; customer_name: string | null; created_at: string; token_no?: number | null; order_items: Item[]; bills?: { status: string }[] | null };
 type Call = { id: string; table_id: string; kind: "waiter" | "bill" | "water"; created_at: string };
+/** An order a guest placed from the table's QR that nobody has accepted yet (online_orders, status new). */
+type QrOrder = { id: string; table_id: string; display_id: string | null; gross: number; items: { qty: number }[]; created_at: string };
+const CALL_ICON: Record<Call["kind"], typeof HandPlatter> = { waiter: HandPlatter, bill: Receipt, water: GlassWater };
 /** A table paid and left, not yet cleaned (0111), with whoever has it. */
 export type Clean = { id: string; table_id: string; status: "pending" | "in_progress"; created_at: string; assigned_to: string | null; assigned_name: string | null; taken_by: string | null; taken_name: string | null; taken_at: string | null };
 const CALL_WORD: Record<Call["kind"], string> = { waiter: "Calling", bill: "Wants bill", water: "Water" };
@@ -43,10 +47,10 @@ const PLATE: Record<string, { word: "ordered" | "cooking" | "food_ready" | "eati
  * count each state and, tapped, show only those tables. "List" is every open order as a card with its
  * dishes, for whoever wants the detail.
  */
-export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning = [], me = "", boss = false }: { tables: Table[]; orders: Order[]; calls?: Call[]; lateAt?: number; cleaning?: Clean[]; me?: string; boss?: boolean }) {
+export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt = 15, cleaning = [], me = "", boss = false }: { tables: Table[]; orders: Order[]; calls?: Call[]; qrOrders?: QrOrder[]; lateAt?: number; cleaning?: Clean[]; me?: string; boss?: boolean }) {
   const [pending, start] = useTransition(); const toast = useToast();
   const [, tick] = useState(0);
-  useLive(["orders", "order_items", "dining_tables", "bills", "service_calls", "table_cleanings"], 30000);
+  useLive(["orders", "order_items", "dining_tables", "bills", "service_calls", "table_cleanings", "online_orders"], 30000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
   /* Tables · List as the app's one view switch (2026-10-25, the owner: "this design, everywhere it is needed"): a tap shows
      the other for this visit, the pin keeps it as this device's default; a choice kept before (df-orders-view) reads as pinned. */
@@ -67,25 +71,50 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
   const chips = (["free", "clean", "hold", "new", "cook", "ready", "eat", "bill", "late"] as const).filter((s) => (counts.get(s) ?? 0) > 0 || s === "free");
   const shows = (s: Svc, late: boolean) => !only || only === s || (only === "late" && late);
 
-  /* A table calling from its QR (0103): an orange pill on the card's top edge — Calling, Wants bill, Water — that
-     pulses until a waiter taps it. A tap answers every open call of that table. It sits over the card's link, a
-     sibling of it, not inside it. */
-  // answered calls, by call id: a later call from the same table shows again (it has a new id)
+  /* What a table is asking for (0103; redrawn 2026-10-27, the owner: "the Water pill over the cards looks collapsed and
+     messy"): bars inside the top of its card, full width, the card's content moved down under them (`alertPad`) — the pill
+     sat on the card above and under the LATE tag. **A call** (orange): the kind's icon, Calling · Wants bill · Water (bill
+     winning, +n for more kinds), how long, and a tick — a tap is "on my way": it answers every open call of the table and
+     the guest's tile turns On the way. **A QR order nobody has accepted** (violet): its total and Accept, which takes it
+     into the kitchen (accept_online_order — a KOT and the table's ticket). Both are buttons over the card's link, siblings
+     of it, never inside it. */
+  // answered calls and accepted orders, by id: a later call or order from the same table shows again (it has a new id)
   const [answered, setAnswered] = useState<Record<string, true>>({});
   const callsOf = (tableId: string) => calls.filter((c) => c.table_id === tableId && !answered[c.id]);
-  const callBadge = (t: Table) => {
-    const cs = callsOf(t.id); if (!cs.length) return null;
-    const kinds = [...new Set(cs.map((c) => c.kind))]; const word = kinds.includes("bill") ? CALL_WORD.bill : kinds.includes("waiter") ? CALL_WORD.waiter : CALL_WORD.water;
-    return (
-      <button type="button" disabled={pending} data-call={t.name} title={`${t.name}: ${kinds.map((k) => CALL_WORD[k]).join(", ")} — tap when you have gone`} aria-label={`${t.name} ${word} — mark answered`}
-        onClick={() => { const ids = cs.map((c) => c.id); setAnswered((a) => ({ ...a, ...Object.fromEntries(ids.map((i) => [i, true as const])) })); start(async () => { const r = await answerCall(t.id); if ("error" in r) { toast(r.error!, "err"); setAnswered((a) => { const n = { ...a }; ids.forEach((i) => delete n[i]); return n; }); } else toast(`${t.name} — answered`); }); }}
-        className="group absolute z-[2] -top-6 left-1 !min-h-11 px-1.5 inline-flex items-center rounded-full">
-        {/* the pill stays 28px; the button around it is the 44px a finger needs */}
-        <span className="h-7 pl-2 pr-2.5 rounded-full bg-[var(--color-orange)] text-[var(--color-bezel)] text-[12px] font-extrabold inline-flex items-center gap-1 shadow-[0_0_0_4px_var(--color-orange-2)] animate-pulse group-hover:animate-none">
-          <HandPlatter size={14} aria-hidden />{word}<Check size={13} aria-hidden className="ml-0.5 opacity-70" />
-        </span>
-      </button>
-    );
+  const qrOf = (tableId: string) => qrOrders.filter((o) => o.table_id === tableId && !answered[o.id]);
+  const mins = (iso: string) => { const m = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000)); return m ? `${m}m` : "now"; };
+  const settle = (ids: string[], on: boolean) => setAnswered((a) => { const n = { ...a }; ids.forEach((i) => { if (on) n[i] = true; else delete n[i]; }); return n; });
+  const alertsOf = (t: Table, outside = false) => {
+    const cs = callsOf(t.id); const qs = qrOf(t.id); if (!cs.length && !qs.length) return null;
+    const rows: React.ReactNode[] = [];
+    if (qs.length) {
+      const o = qs[0]; const sum = qs.reduce((x, q) => x + Number(q.gross), 0);
+      rows.push(
+        <button key="qr" type="button" disabled={pending} data-qr-order={t.name} aria-label={`${t.name}: new order from the QR, ${formatINR(sum, { whole: true })} — accept and send to the kitchen`}
+          onClick={() => { const ids = qs.map((q) => q.id); settle(ids, true); start(async () => { for (const q of qs) { const r = await acceptOnline(q.id); if ("error" in r) { toast(r.error!, "err"); settle(ids, false); return; } } toast(`${t.name} — sent to the kitchen`); }); }}
+          className="relative w-full h-11 min-h-11 rounded-[14px] px-1.5 flex items-center gap-2 bg-[var(--color-violet)] text-[var(--color-bezel)] text-[13px] font-extrabold shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-violet)_28%,transparent)] active:scale-[.97] transition">
+          <span className="h-7 w-7 shrink-0 rounded-[10px] grid place-items-center bg-[color-mix(in_srgb,var(--color-bezel)_14%,transparent)]" aria-hidden><QrCode size={15} className="animate-pulse" /></span>
+          <span className="min-w-0 flex-1 truncate text-left num"><span className="max-md:hidden">New order · </span>{formatINR(sum, { whole: true })}</span>
+          <span className="max-md:hidden shrink-0 text-[11.5px] font-bold opacity-75 num">{mins(o.created_at)}</span>
+          <span className="shrink-0 h-7 px-2.5 rounded-full grid place-items-center bg-[var(--color-bezel)] text-[var(--color-violet)] text-[12px] font-extrabold">Accept</span>
+        </button>);
+    }
+    if (cs.length) {
+      const kinds = [...new Set(cs.map((c) => c.kind))]; const lead = kinds.includes("bill") ? "bill" : kinds.includes("waiter") ? "waiter" : "water"; const KI = CALL_ICON[lead];
+      rows.push(
+        <button key="call" type="button" disabled={pending} data-call={t.name} title={`${t.name}: ${kinds.map((k) => CALL_WORD[k]).join(", ")} — tap when you are on your way`} aria-label={`${t.name} ${kinds.map((k) => CALL_WORD[k]).join(", ")} — on my way`}
+          onClick={() => { const ids = cs.map((c) => c.id); settle(ids, true); start(async () => { const r = await answerCall(t.id); if ("error" in r) { toast(r.error!, "err"); settle(ids, false); } else toast(`${t.name} — on your way`); }); }}
+          className="relative w-full h-11 min-h-11 rounded-[14px] px-1.5 flex items-center gap-2 bg-[var(--color-orange)] text-[var(--color-bezel)] text-[13px] font-extrabold shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-orange)_28%,transparent)] active:scale-[.97] transition">
+          <span className="h-7 w-7 shrink-0 rounded-[10px] grid place-items-center bg-[color-mix(in_srgb,var(--color-bezel)_14%,transparent)]" aria-hidden><KI size={15} className="animate-pulse" /></span>
+          <span className="min-w-0 flex-1 truncate text-left">{CALL_WORD[lead]}{kinds.length > 1 ? ` +${kinds.length - 1}` : ""}</span>
+          <span className="max-md:hidden shrink-0 text-[11.5px] font-bold opacity-75 num">{mins(cs[0].created_at)}</span>
+          <span className="shrink-0 h-6 w-6 rounded-full grid place-items-center bg-[var(--color-bezel)] text-[var(--color-orange)]" aria-hidden><Check size={14} strokeWidth={3} /></span>
+        </button>);
+    }
+    /* the bars sit 10px inside the card's border, top and sides alike (a card that is a link holds them from outside its 2px
+       border: 12px) (2026-10-27, the owner: "more space above than beside"); the card's
+       content starts 12px under the last one; LATE moves up off the bar (alertCls) */
+    return { pad: { paddingTop: 10 + rows.length * 44 + (rows.length - 1) * 6 + 12 }, cls: "[&>.late-tag]:!-top-[20px]", el: <div className={cn("absolute z-[2] flex flex-col gap-1.5", outside ? "top-3 inset-x-3" : "top-2.5 inset-x-2.5")} data-table-alerts>{rows}</div> };
   };
   const reserve = (t: Table) => start(async () => { const r = await setTableStatus(t.id, t.status === "reserved" ? "free" : "reserved"); if ("error" in r) toast(r.error!, "err"); });
 
@@ -97,6 +126,7 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
     /* Paid and left (0111): cyan and dashed — who has it and since when, the one move this person can make (take it,
        or Done), and + to seat the next party anyway (which closes the job as "seated again before it was cleaned"). */
     const c = !o && s === "clean" ? cleanOf.get(t.id) : undefined;
+    const al = alertsOf(t, !!o || (s !== "free" && s !== "hold" && s !== "clean"));
     if (c) {
       const theirs = !!c.assigned_to && c.assigned_to !== me;
       const canTake = c.status === "pending" && (!theirs || boss);
@@ -105,8 +135,8 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
         : c.assigned_to ? `Given to ${c.assigned_to === me ? "you" : c.assigned_name}` : "Waiting for someone";
       const since = fmtSince(c.status === "in_progress" ? c.taken_at ?? c.created_at : c.created_at);
       return (
-        <motion.div key={t.id} {...motionProps} className={cn("svc-table", stClass("clean"))} data-table-card={t.name} data-state="clean" data-clean={c.status}>
-          {callBadge(t)}
+        <motion.div key={t.id} {...motionProps} className={cn("svc-table", stClass("clean"))} style={al?.pad} data-table-card={t.name} data-state="clean" data-clean={c.status}>
+          {al?.el}
           {/* the same build as every other table (2026-10-21, the owner: "messy"): name and seats, the state, who has it,
               then the foot — how long, and one compact move with + beside it to seat the next party anyway */}
           <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span>{seats}</div>
@@ -132,8 +162,8 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
     }
     if (!o && (s === "free" || s === "hold")) {
       return (
-        <motion.div key={t.id} {...motionProps} className={cn("svc-table", stClass(s))} data-table-card={t.name} data-state={s}>
-          {callBadge(t)}
+        <motion.div key={t.id} {...motionProps} className={cn("svc-table", stClass(s))} style={al?.pad} data-table-card={t.name} data-state={s}>
+          {al?.el}
           <div className="flex items-center gap-2 min-w-0 -my-1">
             <span className="tname">{t.name}</span>{seats}
             {/* Reserve sits over the card's tap area: the whole card takes the order, this button holds the table */}
@@ -148,8 +178,8 @@ export function OrdersClient({ tables, orders, calls = [], lateAt = 15, cleaning
     }
     return (
       <motion.div key={t.id} {...motionProps} className="min-w-0 flex relative">
-        {callBadge(t)}
-        <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`} className={cn("svc-table flex-1", stClass(s))} data-table-card={t.name} data-state={s} data-late={late || undefined}>
+        {al?.el}
+        <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`} className={cn("svc-table flex-1", stClass(s), al?.cls)} style={al?.pad} data-table-card={t.name} data-state={s} data-late={late || undefined}>
           <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span>{seats}</div>
           <div className="tstate"><I size={19} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={o ? SVC_WORD[s] : "at_table"} start /></div>
           <div className="mt-auto pt-2 flex items-end gap-2 font-bold min-w-0">

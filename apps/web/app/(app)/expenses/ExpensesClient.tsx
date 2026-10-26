@@ -3,7 +3,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, FileSpreadsheet, Plus, Ban, Banknote, Smartphone, CreditCard, Landmark, Carrot, ShoppingBasket, Fish, Milk, Flame, Zap, Droplets, Building2, Users, UtensilsCrossed, Wrench, SprayCan, Package, Megaphone, Truck, Ellipsis, type LucideIcon } from "lucide-react";
 import { Card, Empty, cn, useToast } from "@/components/ui";
-import { formatINR } from "@/lib/format";
+import { formatINR, todayIST } from "@/lib/format";
 import { addExpense, voidExpense } from "./actions";
 import { Say } from "@/components/ui/Say";
 
@@ -15,6 +15,8 @@ export const CATEGORIES = ["Vegetables", "Groceries", "Meat & fish", "Dairy", "G
 const CAT_ICON: Record<string, [LucideIcon, string]> = { Vegetables: [Carrot, "green"], Groceries: [ShoppingBasket, "orange"], "Meat & fish": [Fish, "red"], Dairy: [Milk, "sky"], Gas: [Flame, "orange"], Electricity: [Zap, "saffron"], Water: [Droplets, "cyan"], Rent: [Building2, "violet"], Salaries: [Users, "blue"], "Staff food": [UtensilsCrossed, "green"], Repairs: [Wrench, "steel"], Cleaning: [SprayCan, "cyan"], Packaging: [Package, "orange"], Marketing: [Megaphone, "violet"], Transport: [Truck, "blue"], Other: [Ellipsis, "steel"] };
 const METHODS = [["cash", "Cash", Banknote], ["upi", "UPI", Smartphone], ["card", "Card", CreditCard], ["bank", "Bank", Landmark]] as const;
 const inr = (n: number) => formatINR(Number(n));
+/** "Today", "Yesterday", else "Mon, 26 Oct" — the business day is IST */
+const dayName = (d: string) => { const t = todayIST(); const y = new Date(Date.parse(t + "T00:00:00Z") - 86400000).toISOString().slice(0, 10); return d === t ? "Today" : d === y ? "Yesterday" : day(d); };
 const day = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 const shift = (m: string, by: number) => { const [y, mo] = m.split("-").map(Number); const d = new Date(Date.UTC(y, mo - 1 + by, 1)); return d.toISOString().slice(0, 7); };
 /** expense_add takes cash out of the drawer only for cash paid on the day it was entered (IST) — the same test here */
@@ -38,6 +40,8 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
   const heads = useMemo(() => { const m = new Map<string, number>(); for (const r of live) m.set(r.category, (m.get(r.category) ?? 0) + Number(r.amount)); return [...m].sort((a, b) => b[1] - a[1]); }, [live]);
   const max = Math.max(1, ...heads.map(([, v]) => v));
   const list = only ? rows.filter((r) => r.category === only) : rows;
+  /* the phone's day groups, in the list's own order (newest first) */
+  const byDay = list.reduce<[string, typeof list][]>((g, e) => { const last = g[g.length - 1]; if (last && last[0] === e.spent_on) last[1].push(e); else g.push([e.spent_on, [e]]); return g; }, []);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
 
   const save = () => start(async () => {
@@ -133,9 +137,51 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
           <button type="button" disabled={!list.length} onClick={() => void excel()} className="svc-btn quiet sm !px-4" data-expense-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>
         </div>
         {list.length === 0 ? <Empty title="No expenses this month" hint="Add one above — vegetables, gas, electricity." /> : (
-          <div className="divide-y divide-[var(--color-separator)]">
-            {list.map((e) => (
-              <div key={e.id} data-expense={e.id} className={cn("py-3 flex items-center gap-3 min-w-0", e.voided_at && "opacity-55")}>
+          <>
+          {/* A phone (2026-10-27, the owner, of the first pass: "not looking good — ultra modern"): the day is a heading with its
+              total, as a bank's app lists money; each expense is a soft card — its category's icon in its colour, what and who
+              to, the amount large with the paise small — and its details are chips (how it was paid, the bill, the GST, who
+              wrote it), with Strike out a round key at the end of them instead of a labelled button under every card. */}
+          <div className="sm:hidden space-y-5" data-expense-days>
+            {byDay.map(([d, items]) => (
+              <section key={d} data-expense-day={d}>
+                <div className="flex items-baseline justify-between gap-3 px-1 mb-2">
+                  <span className="text-[11.5px] font-extrabold uppercase tracking-[.12em] text-steel">{dayName(d)}</span>
+                  <span className="text-[12.5px] font-bold num text-[var(--color-label-2)]">{inr(items.filter((x) => !x.voided_at).reduce((t, x) => t + Number(x.amount), 0))}</span>
+                </div>
+                <div className="space-y-2.5">
+                  {items.map((e) => { const [CI, hue] = CAT_ICON[e.category] ?? CAT_ICON.Other; const M = METHODS.find(([m]) => m === e.method); const MI = M?.[2];
+                    const [whole, paise] = inr(e.amount).split("."); const by = e.created_by ? names[e.created_by] : null; return (
+                    <div key={e.id} data-expense-card={e.id} style={{ ["--hue" as string]: `var(--color-${hue})` }}
+                      className={cn("relative overflow-hidden rounded-[22px] bg-[var(--color-bg-2)] ring-1 ring-[var(--color-separator)] p-3.5 shadow-[0_8px_22px_-18px_rgb(0_0_0/0.6)]", e.voided_at && "opacity-60")}>
+                      <span aria-hidden className="absolute inset-y-4 left-0 w-[3px] rounded-r-full bg-[var(--hue)] opacity-80" />
+                      <div className="flex items-start gap-3">
+                        <span className="h-11 w-11 shrink-0 rounded-[15px] grid place-items-center bg-[color-mix(in_srgb,var(--hue)_16%,transparent)] text-[var(--hue)]" aria-hidden><CI size={20} strokeWidth={2.2} /></span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start gap-2 min-w-0">
+                            <span className={cn("min-w-0 flex-1 text-[15.5px] font-bold leading-snug truncate", e.voided_at && "line-through")}>{e.category}</span>
+                            <span className={cn("shrink-0 font-display num leading-none text-[21px] pt-0.5", e.voided_at && "line-through")} data-expense-amount>{whole}<span className="text-[13px] text-steel">.{paise}</span></span>
+                          </div>
+                          <div className="mt-1 text-[13px] text-[var(--color-label-2)] truncate">{e.payee || "No payee"}{by ? <span className="text-steel"> · by {by}</span> : null}</div>
+                        </div>
+                      </div>
+                      {e.note && <p className="mt-2.5 ml-14 text-[12.5px] leading-snug text-steel line-clamp-2 border-l-2 border-[var(--color-separator)] pl-2.5">{e.note}</p>}
+                      <div className="mt-3 ml-14 flex items-center gap-1.5 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+                          <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-bold text-[var(--color-label-2)]">{MI && <MI size={13} aria-hidden />}{M ? M[1] : e.method.toUpperCase()}</span>
+                          {e.ref && <span className="inline-flex items-center h-7 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold text-steel num max-w-[9.5rem] truncate">#{e.ref}</span>}
+                          {Number(e.gst_amount) > 0 && <span className="inline-flex items-center h-7 px-2.5 rounded-full bg-[color-mix(in_srgb,var(--color-blue)_14%,transparent)] text-[11.5px] font-bold text-[var(--color-blue)] num">GST {inr(e.gst_amount)}</span>}
+                          {e.voided_at && <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-[var(--color-red-2)] text-[11.5px] font-bold text-[var(--color-red)] max-w-full truncate"><Ban size={12} aria-hidden />Struck out{e.void_reason ? ` · ${e.void_reason}` : ""}</span>}
+                        </div>
+                        {canVoid && !e.voided_at && <button type="button" disabled={pending} onClick={() => strike(e)} className="shrink-0 h-11 w-11 -my-1 -mr-1 rounded-full grid place-items-center text-steel bg-[var(--color-fill)] hover:text-chili active:scale-95 transition" aria-label={`Strike out ${e.category}`} title="Strike out" data-strike-phone><Ban size={17} /></button>}
+                      </div>
+                    </div>); })}
+                </div>
+              </section>))}
+          </div>
+          <div className="max-sm:hidden divide-y divide-[var(--color-separator)]">
+            {list.map((e) => (<div key={e.id} className="contents">
+              <div data-expense={e.id} className={cn("max-sm:hidden py-3 flex items-center gap-3 min-w-0", e.voided_at && "opacity-55")}>
                 <div className="w-14 shrink-0 text-[12px] font-bold text-steel leading-tight">{day(e.spent_on)}</div>
                 <div className="min-w-0 flex-1">
                   <div className={cn("text-[15px] font-bold truncate", e.voided_at && "line-through")}>{e.category}{e.payee && <span className="font-normal text-steel"> · {e.payee}</span>}</div>
@@ -143,8 +189,9 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
                 </div>
                 <div className={cn("shrink-0 num font-extrabold text-[16px]", e.voided_at && "line-through")}>{inr(e.amount)}</div>
                 {canVoid && !e.voided_at && <button type="button" disabled={pending} onClick={() => strike(e)} className="shrink-0 h-11 w-11 grid place-items-center rounded-xl text-steel hover:text-chili hover:bg-[var(--color-fill)]" aria-label={`Strike out ${e.category}`} data-strike><Ban size={17} /></button>}
-              </div>))}
-          </div>)}
+              </div></div>))}
+          </div>
+          </>)}
       </Card>
     </div>
   );

@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Calculator, Lock, FileText, FileSpreadsheet, HandCoins, Check, Settings2, Wallet, IndianRupee, Landmark, CalendarClock, Minus, Plus, CalendarDays, CircleDashed, PencilLine } from "lucide-react";
-import { Card, Empty, Switch, cn, useToast } from "@/components/ui";
+import { Card, Empty, Switch, cn, useToast, FlapShuffle } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveSettings, setPay, giveAdvance, buildMonth, setLine, finalise, payLine } from "./actions";
 import { Say } from "@/components/ui/Say";
@@ -77,7 +77,9 @@ export function PayrollClient({ month, today, property, settings, people, advanc
                 ["esi", "ESI", "Health insurance", "0.75% staff + 3.25% you, pay up to ₹21,000/month. Needed from 10 staff.", "var(--color-violet)", "var(--color-violet-2)"]] as const).map(([k, badge, what, hint, hue, hue2]) => (
                 <label key={k} className="flex items-center gap-3 px-3.5 py-3 min-h-[64px] cursor-pointer hover:bg-[var(--color-fill)] transition-colors" data-switch={k}>
                   <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center text-[12.5px] font-extrabold tracking-wide" style={{ background: hue2, color: hue }}>{badge}</span>
-                  <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">Include {badge} <span className="font-semibold text-steel">· {what}</span></span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">{hint}</span></span>
+                  {/* a phone (2026-10-26, the owner: "not looking good"): the badge already says PF / ESI, so the title is the
+                      plain name on one line, the hint under it; "Include PF · Provident fund" wrapped to two lines there */}
+                  <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug"><span className="sm:hidden">{what}</span><span className="hidden sm:inline">Include {badge} <span className="font-semibold text-steel">· {what}</span></span></span><span className="block text-[12.5px] max-sm:text-[12px] text-steel leading-snug mt-0.5">{hint}</span></span>
                   <Switch on={cfg[k]} onChange={(v) => setCfg((c) => ({ ...c, [k]: v }))} name={`Include ${badge}`} />
                 </label>))}
               {cfg.pf && <label className="flex items-center gap-3 px-3.5 py-3 min-h-[64px] cursor-pointer hover:bg-[var(--color-fill)] transition-colors" data-switch="rule">
@@ -85,13 +87,19 @@ export function PayrollClient({ month, today, property, settings, people, advanc
                 <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">The 50% wage rule</span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">From 21 Nov 2025, PF is on at least half of pay. Check with your CA.</span></span>
                 <Switch on={cfg.rule} onChange={(v) => setCfg((c) => ({ ...c, rule: v }))} name="The 50% wage rule" />
               </label>}
-              <div className="flex items-center gap-3 px-3.5 py-3 min-h-[64px]" data-payroll-offs>
+              <div className="flex items-center gap-3 px-3.5 py-3 min-h-[64px] max-sm:flex-wrap max-sm:gap-y-3" data-payroll-offs>
                 <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center bg-[var(--color-cyan-2)] text-[var(--color-cyan)]"><CalendarClock size={19} aria-hidden /></span>
                 <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">Paid weekly offs a month</span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">Added to days present for monthly-paid staff</span></span>
-                <div className="shrink-0 flex items-center rounded-[14px] border border-[var(--color-separator)] bg-[var(--color-bg-2)]">
-                  <button type="button" aria-label="One fewer weekly off" disabled={cfg.offs <= 0} onClick={() => setCfg((c) => ({ ...c, offs: Math.max(0, c.offs - 1) }))} className="h-11 w-11 grid place-items-center rounded-l-[14px] hover:bg-[var(--color-fill)] disabled:opacity-35"><Minus size={16} aria-hidden /></button>
-                  <span className="num w-8 text-center text-[17px] font-bold" aria-live="polite" data-offs={cfg.offs}>{cfg.offs}</span>
-                  <button type="button" aria-label="One more weekly off" disabled={cfg.offs >= 8} onClick={() => setCfg((c) => ({ ...c, offs: Math.min(8, c.offs + 1) }))} className="h-11 w-11 grid place-items-center rounded-r-[14px] hover:bg-[var(--color-fill)] disabled:opacity-35"><Plus size={16} aria-hidden /></button>
+                {/* a phone (2026-10-26): the words take the row and the stepper sits under them, full width — − and + at the
+                    ends, the count on a split-flap in the middle (it was squeezed beside the words, which ran to four lines) */}
+                <div className="shrink-0 flex items-center rounded-[14px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] max-sm:basis-full max-sm:justify-between max-sm:p-1.5 max-sm:bg-[var(--color-fill)] max-sm:border-transparent" data-offs-stepper>
+                  <button type="button" aria-label="One fewer weekly off" disabled={cfg.offs <= 0} onClick={() => setCfg((c) => ({ ...c, offs: Math.max(0, c.offs - 1) }))} className="h-11 w-11 grid place-items-center rounded-l-[14px] hover:bg-[var(--color-fill)] disabled:opacity-35 max-sm:h-12 max-sm:w-14 max-sm:rounded-[12px] max-sm:bg-[var(--color-bg-2)] max-sm:shadow-[0_1px_3px_rgb(0_0_0/0.18)]"><Minus size={16} aria-hidden /></button>
+                  <span className="num w-8 text-center text-[17px] font-bold max-sm:hidden" aria-live="polite" data-offs={cfg.offs}>{cfg.offs}</span>
+                  <span className="sm:hidden flex items-center gap-2.5" data-offs-flap={cfg.offs}>
+                    <FlapShuffle value={cfg.offs} pad={0} size="xs" tile="40px" say={`${cfg.offs} paid weekly offs`} />
+                    <span className="text-[12.5px] font-semibold text-steel leading-tight">{cfg.offs === 1 ? "day off" : "days off"}<br />a month</span>
+                  </span>
+                  <button type="button" aria-label="One more weekly off" disabled={cfg.offs >= 8} onClick={() => setCfg((c) => ({ ...c, offs: Math.min(8, c.offs + 1) }))} className="h-11 w-11 grid place-items-center rounded-r-[14px] hover:bg-[var(--color-fill)] disabled:opacity-35 max-sm:h-12 max-sm:w-14 max-sm:rounded-[12px] max-sm:bg-[var(--color-bg-2)] max-sm:shadow-[0_1px_3px_rgb(0_0_0/0.18)]"><Plus size={16} aria-hidden /></button>
                 </div>
               </div>
             </div>

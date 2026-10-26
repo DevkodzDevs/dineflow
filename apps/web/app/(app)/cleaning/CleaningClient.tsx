@@ -98,19 +98,9 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
   return (
     <div className="space-y-5" data-cleaning>
       {error && <p className="text-[14px] font-semibold text-chili" role="alert">{error}</p>}
-      <div className="grid sm:hidden grid-cols-2 lg:grid-cols-4 gap-2.5" data-clean-stats>
-        {([[Hourglass, "Waiting", String(waiting.length)], [Timer, "On it", String(onIt.length)], [ListChecks, "Cleaned today", String(finished.filter((j) => j.status === "done").length)],
-          [Clock, "Average clean", took == null ? "—" : brief(took)]] as const).map(([I, k, v]) => (
-          <div key={k} className="feather !rounded-[18px] px-4 py-3 min-w-0 flex items-center gap-3">
-            <span className="h-10 w-10 shrink-0 rounded-xl grid place-items-center bg-[var(--color-cyan-2)] text-[var(--color-cyan)]"><I size={19} aria-hidden /></span>
-            <div className="min-w-0"><div className="text-[12px] font-bold text-steel">{k}</div>
-              {/* 2026-10-20: what waits breathes, the other counts shuffle on a change; a duration stays words (Flap.tsx) */}
-              {k === "Waiting" ? <div className="mt-1" data-clean-n={v}><FlapBreathe value={waiting.length} pad={0} size="xs" tile="34px" say={`${v} waiting`} /></div>
-                : k !== "Average clean" ? <div className="mt-1" data-clean-n={v}><FlapShuffle value={v} pad={0} size="xs" tile="34px" bare say={`${v} ${k}`} /></div>
-                : <div className="font-display num text-[24px] leading-tight truncate">{v}</div>}</div></div>))}
-      </div>
-      {/* iPad and desktop (2026-10-24, the owner: "the flaps are tiny — number flap design, perfectly sized"): Work's tiles —
-          each state its colour, the flap at .flip-stat's size, a caption beside it. The phone keeps the row above. */}
+      {/* Every width (iPad and desktop 2026-10-24; the phone 2026-10-26, the owner: "the flaps are tiny — number flap design,
+          perfectly sized", and Average clean was a dash): Work's tiles —
+          each state its colour, the flap at .flip-stat's size, a caption beside it; the average a flap of minutes. */}
       <CleanTiles waiting={waiting.length} onIt={onIt.length} done={finished.filter((j) => j.status === "done").length} took={took} />
       <div className="flex flex-wrap items-center gap-3">
         <Segmented value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "table", label: "Tables" }, ...(hasRooms ? [{ value: "room" as Filter, label: "Rooms" }] : []), { value: "mine", label: "Mine" }]} />
@@ -161,7 +151,7 @@ function CleanTiles({ waiting, onIt, done, took }: { waiting: number; onIt: numb
     ["avg", Clock, "Average clean", mins, "var(--color-cyan)", "var(--color-cyan-2)", took == null ? "none timed yet" : mins < 1 ? "under a minute" : "min a clean"],
   ] as const;
   return (
-    <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-2.5" data-clean-tiles>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5" data-clean-tiles data-clean-stats>
       {tiles.map(([key, I, k, n, hue, hue2, cap]) => (
         <div key={key} data-clean-tile={key} data-n={n} style={{ ["--hue" as string]: hue, ["--hue-2" as string]: hue2 }}
           className="@container feather !rounded-[20px] p-4 min-w-0 flex flex-col gap-3 relative overflow-hidden">

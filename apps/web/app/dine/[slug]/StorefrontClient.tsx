@@ -1,9 +1,9 @@
 "use client";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, Minus, Plus, Bike, ShoppingBag, UtensilsCrossed, BedDouble, Users, CalendarDays, Building2, TreePalm } from "lucide-react";
-import { Button, Field, Segmented, Sheet, Select, cn, useToast } from "@/components/ui";
+import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, ChevronRight, Minus, Plus, Bike, ShoppingBag, UtensilsCrossed, BedDouble, Users, CalendarDays, Building2, TreePalm, Trash2, User, Wallet, AlertCircle, Send, LoaderCircle, SlidersHorizontal } from "lucide-react";
+import { Button, Field, Segmented, Sheet, Select, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DishImage } from "@/components/menu/DishImage";
 import { slots as fetchSlots, reserve, placeOrder, trackToken } from "../actions";
@@ -12,6 +12,8 @@ import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type V
 import { GuestNotice } from "@/components/legal/GuestNotice";
 import { TableCalls } from "./TableCalls";
 import { StoreCover, coverKind } from "./StoreCover";
+import { DishArt } from "./DishArt";
+import { TableOrders, keepTableOrder } from "./TableOrders";
 
 /** As the storefront sends it: the add-on groups are carried once on the property, and a dish
  *  names the ones it offers by id. `resolve` below puts them back together for the screen. */
@@ -20,7 +22,7 @@ type Item = Omit<RawItem, "addon_group_ids"> & { addon_groups?: AddonGroup[] };
 /** One basket line: a dish with the size and extras it was chosen with. */
 type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
 type Cat = { id: string; name: string; items: RawItem[] };
-type Offer = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; code: string | null };
+type Offer = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; code: string | null; from_time?: string | null; to_time?: string | null; days?: number[] | null };
 type D = { table?: { id: string; name: string; zone: string } | null; slug: string; name: string; type: string; tagline: string | null; addon_groups?: AddonGroup[]; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; online_paused?: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
 type Slot = { time: string; left: number; full: boolean; offer_id: string | null; offer: string | null; offer_pct: number | null };
 
@@ -28,12 +30,18 @@ const KIND_WORD = { restaurant: "Restaurant", hotel: "Hotel", resort: "Resort" }
 const KIND_ICON = { restaurant: UtensilsCrossed, hotel: Building2, resort: TreePalm } as const;
 
 const today = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+const r2 = (x: number) => Math.round(x * 100) / 100;
+/** A refusal from the server, as a sentence for a guest — a database message nobody should read becomes "ask a waiter". */
+const nice = (m: string) => /operator|function|relation|column|syntax|violates|null value|permission/i.test(m) ? "Something went wrong on our side — please try again, or ask a waiter." : m.charAt(0).toUpperCase() + m.slice(1) + (/[.!?]$/.test(m) ? "" : ".");
+/* the kitchen notes a guest reaches for most — one tap puts it in, a second takes it out */
+const QUICK_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain"];
 
 export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null, busy = null }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order"; tableToken?: string | null; busy?: { paused_until: string | null; extra_min: number } | null }) {
   /* Reached from the code on a table: the menu is for ordering at that table and nothing else — no booking tab, no delivery, no address. */
   const atTable = !!(tableToken && d.table);
   const kind = coverKind(d.type, d.rooms); const KindIcon = KIND_ICON[kind];
-  const toast = useToast();
+  /* what the server refused, said on the page — public pages have no ToastProvider, so a toast here was silence */
+  const [err, setErr] = useState<string | null>(null);
   const [mode, setMode] = useState<"book" | "order">(tableToken && d.table ? "order" : d.dining ? tab : "order");
   const [pending, start] = useTransition();
   const [done, setDone] = useState<{ kind: "book" | "order"; data: Record<string, unknown> } | null>(null);
@@ -64,11 +72,19 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
   useEffect(() => { setCart((c) => c.filter((l) => sells(l.item))); }, [omode]); // eslint-disable-line react-hooks/exhaustive-deps
   const lines = cart.filter((l) => l.qty > 0 && sells(l.item));
   const sub = lines.reduce((t, l) => t + linePrice(l.item, l.variant, l.addons) * l.qty, 0);
-  const bestOffer = d.offers.filter((o) => [omode === "dine_in" ? "dining" : "delivery", "both"].includes(o.scope) && sub >= Number(o.min_order)).sort((a, b) => Number(b.value) - Number(a.value))[0];
-  const disc = bestOffer ? (bestOffer.kind === "flat_pct" ? Math.round((sub * Number(bestOffer.value)) / 100) : Math.min(Number(bestOffer.value), sub)) : 0;
+  /* 0144: the offer the server honours — a flat % or a flat amount, on its days (0–6 from Sunday, 7 also Sunday) and
+     between its hours, IST, for this kind of order — the one taking the most off. A happy hour or a free item takes
+     nothing off here (it never did on the server; the page showed it off and the order then failed). GST to the paise
+     as the server rounds it, the total to the rupee. */
+  const offOf = (o: Offer) => (o.kind === "flat_pct" ? r2((sub * Number(o.value)) / 100) : Math.min(Number(o.value), sub));
+  const ist = new Date(Date.now() + 5.5 * 3600e3); const dow = ist.getUTCDay(); const hms = ist.toISOString().slice(11, 19);
+  const onNow = (o: Offer) => (o.kind === "flat_pct" || o.kind === "flat_amount") && (!o.days?.length || o.days.includes(dow) || (dow === 0 && o.days.includes(7))) && (!o.from_time || !o.to_time || (hms >= o.from_time && hms <= o.to_time));
+  const bestOffer = d.offers.filter((o) => [omode === "dine_in" ? "dining" : "delivery", "both"].includes(o.scope) && sub >= Number(o.min_order) && onNow(o)).sort((a, b) => offOf(b) - offOf(a))[0];
+  const disc = bestOffer ? offOf(bestOffer) : 0;
   const fee = omode === "dine_in" ? 0 : (omode === "delivery" ? Number(d.delivery_fee) : 0) + Number(d.packing_charge);
-  const gst = Math.round(((sub - disc) * Number(d.gst_rate)) / 100);
+  const gst = r2(((sub - disc) * Number(d.gst_rate)) / 100);
   const total = Math.round(sub - disc + fee + gst);
+  const count = lines.reduce((t, l) => t + l.qty, 0);
   const qtyOf = (id: string) => cart.filter((l) => l.item.id === id).reduce((t, l) => t + l.qty, 0);
   const put = (item: Item, variant: Variant | null, addons: Addon[], n: number) => setCart((c) => {
     const key = lineKey(item.id, variant?.id, addons.map((a) => a.id)); const at = c.findIndex((l) => l.key === key);
@@ -82,6 +98,45 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
     if (n > 0) { if (hasOptions(item)) setChooser(item); else put(item, null, [], n); }
     else { const last = [...cart].reverse().find((l) => l.item.id === id); if (last) bumpLine(last.key, n); }
   };
+
+  /* The basket survives a trip away and back (2026-10-27: the privacy link, the browser's Back, a reload): this tab only,
+     per place and table — the lines by id, the name, phone and note, and whether the sheet was open. */
+  const bk = `df-basket:${slug}:${tableToken ?? ""}`;
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      const v = JSON.parse(sessionStorage.getItem(bk) ?? "null") as { lines?: { id: string; v: string | null; a: string[]; q: number }[]; guest?: typeof guest; note?: string; addr?: string; open?: boolean } | null;
+      if (v) {
+        const back = (v.lines ?? []).flatMap((l): CartLine[] => {
+          const item = flat.find((i) => i.id === l.id); if (!item || !(l.q > 0)) return [];
+          const variant = item.variants?.find((x) => x.id === l.v) ?? null; const addons = (item.addon_groups ?? []).flatMap((g) => g.addons).filter((a) => l.a.includes(a.id));
+          return [{ key: lineKey(item.id, variant?.id, addons.map((a) => a.id)), item, variant, addons, qty: Math.min(99, l.q) }];
+        });
+        if (back.length) setCart(back);
+        if (v.guest) setGuest((g) => ({ ...g, ...v.guest }));
+        if (v.note) setNote(v.note); if (v.addr) setAddr(v.addr);
+        if (v.open && back.length) setCartOpen(true);
+      }
+    } catch { /* nothing kept, or a private window */ }
+    restored.current = true;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!restored.current) return;
+    try { sessionStorage.setItem(bk, JSON.stringify({ lines: cart.map((l) => ({ id: l.item.id, v: l.variant?.id ?? null, a: l.addons.map((a) => a.id), q: l.qty })), guest, note, addr, open: cartOpen })); } catch { /* full or private */ }
+  }, [cart, guest, note, addr, cartOpen, bk]);
+  useEffect(() => { setErr(null); }, [cartOpen, mode]);
+  const toggleNote = (w: string) => setNote((n) => { const parts = n.split(",").map((x) => x.trim()).filter(Boolean); return (parts.includes(w) ? parts.filter((x) => x !== w) : [...parts, w]).join(", "); });
+
+  /* at a table the guest stays on the menu: the basket empties and the order's live card takes the top (TableOrders);
+     anywhere else the confirmation page, with its tracking link */
+  const placeNow = () => start(async () => {
+    setErr(null);
+    const r = await placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null, atTable ? tableToken : null);
+    if ("error" in r) { setErr(nice(r.error!)); return; }
+    const o = r.order as Record<string, unknown>;
+    if (atTable) { keepTableOrder(slug, tableToken!, String(o.id)); setCart([]); setNote(""); setCartOpen(false); }
+    else { setCartOpen(false); setDone({ kind: "order", data: o }); }
+  });
 
   if (done) return <Confirmation kind={done.kind} data={done.data} name={d.name} slug={slug} />;
   const tableBanner = atTable && (
@@ -99,7 +154,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
         <StoreCover kind={kind} photo={d.photos?.[0]} />
         <div className="absolute inset-0 store-cover-shade" />
         <div className="absolute top-0 inset-x-0 max-w-4xl mx-auto px-4 pt-4 flex items-center justify-between gap-3">
-          <Link href="/dine" aria-label="Back" className="h-11 w-11 rounded-full cover-glass grid place-items-center text-white active:scale-95 transition"><ChevronLeft size={20} /></Link>
+          {atTable ? <span /> : <Link href="/dine" aria-label="Back" className="h-11 w-11 rounded-full cover-glass grid place-items-center text-white active:scale-95 transition"><ChevronLeft size={20} /></Link>}
           <span className="cover-glass h-9 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[12.5px] font-semibold" data-store-kind><KindIcon size={14} aria-hidden /> {KIND_WORD[kind]}</span>
         </div>
         <div className="absolute bottom-0 inset-x-0 max-w-4xl mx-auto px-5 pb-10 sm:pb-6">
@@ -200,8 +255,9 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                   <span className="text-[var(--color-label-2)] flex items-center gap-1.5"><CalendarDays size={14} /> {date} · {slot.time} · <Users size={13} /> {party}</span>
                   {slot.offer_pct ? <span className="pill pill-gold">{slot.offer_pct}% off</span> : null}
                 </div>
+                {err && <div role="alert" className="mt-4 flex gap-2.5 rounded-[16px] bg-[var(--color-red-2)] text-[var(--color-red)] px-3.5 py-3 text-[13.5px] font-semibold" data-book-error><AlertCircle size={18} className="shrink-0 mt-px" aria-hidden />{err}</div>}
                 <Button size="lg" className="w-full mt-4" loading={pending} disabled={!guest.full_name || !guest.phone}
-                  onClick={() => start(async () => { const r = await reserve(slug, guest, date, slot.time, party, occasion, note, slot.offer_id); if ("error" in r) toast(r.error!, "err"); else setDone({ kind: "book", data: r.booking as Record<string, unknown> }); })}>
+                  onClick={() => start(async () => { const r = await reserve(slug, guest, date, slot.time, party, occasion, note, slot.offer_id); if ("error" in r) setErr(nice(r.error!)); else setDone({ kind: "book", data: r.booking as Record<string, unknown> }); })}>
                   Confirm booking
                 </Button>
                 <p className="text-xs text-[var(--color-label-3)] mt-2 text-center">Free to book, no card needed. Call the restaurant to cancel any time.</p>
@@ -216,6 +272,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             {/* the kitchen's pace, said before a basket is filled — a guest at a table is never paused */}
             {/* at a table: call a waiter, ask for the bill or water, rate the meal (0103) */}
+            {atTable && <TableOrders slug={slug} token={tableToken!} />}
             {atTable && <TableCalls slug={slug} token={tableToken!} table={d.table!.name} />}
             {!tableToken && busy?.paused_until && <div className="mb-5 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 text-sm"><b>Not taking online orders right now.</b> Back at {new Date(busy.paused_until).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })} — the menu is here to look at.</div>}
             {!tableToken && !busy?.paused_until && (busy?.extra_min ?? 0) > 0 && <div className="mb-5 rounded-2xl bg-[rgb(255_179_64/.14)] text-[var(--color-orange)] px-4 py-3 text-sm"><b>The kitchen is busy.</b> Orders are taking about {busy!.extra_min} minutes longer than usual.</div>}
@@ -223,7 +280,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
               <section key={c.id} className="mb-7">
                 <div className="flex items-baseline gap-2 mb-3"><h2 className="text-xl">{c.name}</h2><span className="text-[12.5px] font-semibold text-[var(--color-label-3)] num">{c.items.length} {c.items.length === 1 ? "dish" : "dishes"}</span></div>
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                  {c.items.map((i) => <DishCard key={i.id} i={i} sells={sells(i)} qty={qtyOf(i.id)} onAdd={() => add(i.id, 1)} onLess={() => add(i.id, -1)} />)}
+                  {c.items.map((i) => <DishCard key={i.id} i={i} cat={c.name} sells={sells(i)} qty={qtyOf(i.id)} onAdd={() => add(i.id, 1)} onLess={() => add(i.id, -1)} />)}
                 </div>
               </section>
             ))}
@@ -243,54 +300,111 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
         )}
       </main>
 
-      {/* floating basket */}
-      <AnimatePresence>{mode === "order" && lines.length > 0 && (
-        <motion.div initial={{ y: 80 }} animate={{ y: 0 }} exit={{ y: 80 }} transition={{ type: "spring", stiffness: 320, damping: 30 }}
-          className="fixed bottom-[max(12px,env(safe-area-inset-bottom))] inset-x-3 z-40 max-w-4xl mx-auto">
-          <button onClick={() => setCartOpen(true)} className="material-thick w-full rounded-[22px] px-5 py-3.5 flex items-center gap-3 shadow-[var(--shadow-pop)]">
-            <ShoppingBag size={18} /><span className="font-semibold text-sm">{lines.reduce((t, l) => t + l.qty, 0)} item{lines.length > 1 ? "s" : ""}{disc > 0 && <span className="text-[var(--color-green)]"> · saved {formatINR(disc)}</span>}</span>
-            <span className="ml-auto num font-bold">{formatINR(total)}</span><span className="pill pill-gold">View basket</span>
+      {/* The basket bar (2026-10-27, the owner: "not looking good"): one capsule in the page's ink — the bag with its count on a
+          badge, the total large with what was saved under it, and View order as its own bright key. Gone while the sheet is up. */}
+      <AnimatePresence>{mode === "order" && lines.length > 0 && !cartOpen && (
+        <motion.div initial={{ y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 90, opacity: 0 }} transition={{ type: "spring", stiffness: 340, damping: 30 }}
+          className="fixed bottom-[max(12px,env(safe-area-inset-bottom))] inset-x-3 z-40 max-w-xl mx-auto" data-basket-bar>
+          <button type="button" onClick={() => setCartOpen(true)} aria-label={`View your order — ${count} item${count === 1 ? "" : "s"}, ${formatINR(total)}`}
+            className="w-full h-[68px] rounded-[26px] px-2.5 flex items-center gap-3 bg-[var(--color-label)] text-[var(--color-on-label)] shadow-[0_22px_44px_-18px_rgb(0_0_0/.6)] active:scale-[.985] transition">
+            <span className="relative h-12 w-12 shrink-0 rounded-[18px] grid place-items-center bg-[color-mix(in_srgb,var(--color-on-label)_12%,transparent)]" aria-hidden>
+              <ShoppingBag size={21} />
+              <motion.span key={count} initial={{ scale: .4 }} animate={{ scale: 1 }} className="absolute -top-1.5 -right-1.5 h-[22px] min-w-[22px] px-1 rounded-full grid place-items-center text-[11.5px] font-extrabold num bg-[var(--color-tint)] text-[var(--color-on-tint)] ring-2 ring-[var(--color-label)]" data-basket-count>{count}</motion.span>
+            </span>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block font-display num text-[22px] leading-none" data-basket-total>{formatINR(total)}</span>
+              <span className={cn("block mt-1 text-[12px] font-semibold truncate", disc > 0 ? "text-[color-mix(in_srgb,var(--color-tint)_55%,var(--color-on-label))]" : "opacity-70")}>{disc > 0 ? `You save ${formatINR(disc)}` : `${count} item${count === 1 ? "" : "s"} · with GST`}</span>
+            </span>
+            <span className="shrink-0 h-12 pl-4 pr-2.5 rounded-[18px] inline-flex items-center gap-0.5 text-[14.5px] font-bold bg-[var(--color-tint)] text-[var(--color-on-tint)]">View order<ChevronRight size={18} strokeWidth={2.6} aria-hidden /></span>
           </button>
         </motion.div>
       )}</AnimatePresence>
 
+      {/* The order sheet (2026-10-27, the owner: "upgrade this design"): where it goes (the table as a card, or delivery /
+          takeaway), each line a card with the food mark, its price and a 44px stepper (the bin at one), Add more; the bill
+          on its own panel with To pay large and the saving as a chip; the guest's details with icons, the kitchen note with
+          one-tap notes; how to pay; a refusal said in red right above the button; and Place order pinned to the foot with
+          the total on it (the Sheet's own pinned footer). */}
       <Sheet open={cartOpen} onClose={() => setCartOpen(false)} title="Your order">
-        <div className="space-y-4">
-          {atTable ? <p className="text-sm font-semibold">Table {d.table!.name} · dine-in</p> : (d.delivery && d.takeaway) && <Segmented value={omode as "delivery" | "takeaway"} onChange={setOmode} className="w-full" options={[{ value: "delivery", label: "Delivery" }, { value: "takeaway", label: "Takeaway" }]} />}
-          <div className="divide-y divide-[var(--color-separator)]">
-            {lines.map((l) => (
-              <div key={l.key} className="flex items-center gap-3 py-2.5">
-                <span className="flex-1 min-w-0 text-sm"><span className="block truncate">{lineName(l.item, l.variant)}</span>{lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <span key={j} className="block text-xs text-[var(--color-label-2)] truncate">{x}</span>)}</span>
-                <div className="flex items-center gap-1 bg-[var(--color-fill)] rounded-lg h-8 px-1">
-                  <button onClick={() => bumpLine(l.key, -1)} className="h-6 w-6 grid place-items-center"><Minus size={13} /></button>
-                  <span className="num w-5 text-center text-sm font-semibold">{l.qty}</span>
-                  <button onClick={() => bumpLine(l.key, 1)} className="h-6 w-6 grid place-items-center"><Plus size={13} /></button>
+        <div className="space-y-5" data-order-sheet>
+          {atTable ? (
+            <div className="flex items-center gap-3 rounded-[18px] bg-[var(--color-green-2)] px-3.5 py-3" data-sheet-table>
+              <span className="h-11 w-11 rounded-[15px] grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] shrink-0" aria-hidden><UtensilsCrossed size={19} /></span>
+              <span className="min-w-0"><span className="block text-[15.5px] font-bold leading-tight">Table {d.table!.name}</span><span className="block text-[12.5px] text-[var(--color-label-2)] mt-0.5">Dine-in · brought to your table</span></span>
+            </div>
+          ) : (d.delivery && d.takeaway) && <Segmented value={omode as "delivery" | "takeaway"} onChange={setOmode} className="w-full" options={[{ value: "delivery", label: "Delivery" }, { value: "takeaway", label: "Takeaway" }]} />}
+
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11.5px] font-extrabold uppercase tracking-[.12em] text-[var(--color-label-2)]">{count} item{count === 1 ? "" : "s"}</span>
+              <button type="button" onClick={() => setCartOpen(false)} className="-my-2 -mr-2 h-11 px-3 rounded-full inline-flex items-center gap-1 text-[13px] font-bold text-[var(--color-tint)] hover:bg-[var(--color-fill)]" data-add-more><Plus size={15} strokeWidth={2.6} aria-hidden />Add more</button>
+            </div>
+            <div className="space-y-2" data-sheet-lines>
+              {lines.map((l) => (
+                <div key={l.key} className="flex items-center gap-3 rounded-[18px] bg-[var(--color-bg)] border border-[var(--color-separator)] p-2.5 pl-3.5" data-sheet-line>
+                  <FoodMark veg={l.item.is_veg} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[14.5px] font-semibold leading-snug truncate">{lineName(l.item, l.variant)}</span>
+                    {lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <span key={j} className="block text-[12px] text-[var(--color-label-2)] truncate">{x}</span>)}
+                    <span className="block mt-0.5 text-[13.5px] font-bold num">{formatINR(linePrice(l.item, l.variant, l.addons) * l.qty)}</span>
+                  </span>
+                  <div className="flex items-center h-11 rounded-[14px] bg-[var(--color-fill)] shrink-0" data-sheet-stepper>
+                    <button type="button" onClick={() => bumpLine(l.key, -1)} className="h-11 w-11 grid place-items-center rounded-[14px] active:scale-90 transition" aria-label={l.qty === 1 ? `Remove ${l.item.name}` : `One less ${l.item.name}`}>{l.qty === 1 ? <Trash2 size={16} className="text-[var(--color-red)]" /> : <Minus size={16} strokeWidth={2.6} />}</button>
+                    <span className="num w-6 text-center text-[15px] font-bold" aria-live="polite">{l.qty}</span>
+                    <button type="button" onClick={() => bumpLine(l.key, 1)} className="h-11 w-11 grid place-items-center rounded-[14px] active:scale-90 transition" aria-label={`One more ${l.item.name}`}><Plus size={16} strokeWidth={2.6} /></button>
+                  </div>
                 </div>
-                <span className="num text-sm w-16 text-right">{formatINR(linePrice(l.item, l.variant, l.addons) * l.qty)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="text-sm space-y-1 num border-t border-[var(--color-separator)] pt-3">
-            <Row k="Item total" v={sub} />
-            {disc > 0 && <Row k={bestOffer!.title} v={-disc} good />}
-            {fee > 0 && <Row k={omode === "delivery" ? "Delivery & packing" : "Packing"} v={fee} />}
-            <Row k={`GST ${d.gst_rate}%`} v={gst} />
-            <div className="flex justify-between text-lg font-bold pt-2 border-t border-[var(--color-label)]"><span>To pay</span><span>{formatINR(total)}</span></div>
-          </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[20px] bg-[var(--color-bg)] border border-[var(--color-separator)] p-4" data-sheet-bill>
+            <div className="space-y-2 text-[14px]">
+              <Row k="Item total" v={sub} />
+              {disc > 0 && <Row k={bestOffer!.title} v={-disc} good />}
+              {fee > 0 && <Row k={omode === "delivery" ? "Delivery & packing" : "Packing"} v={fee} />}
+              <Row k={`GST ${Number(d.gst_rate)}%`} v={gst} />
+            </div>
+            <div className="mt-3 pt-3 border-t border-dashed border-[var(--color-line-2)] flex items-end justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block text-[12px] font-extrabold uppercase tracking-[.1em] text-[var(--color-label-2)]">To pay</span>
+                {disc > 0 && <span className="mt-1 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11.5px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)] num"><Check size={12} strokeWidth={3} aria-hidden />You save {formatINR(disc)}</span>}
+              </span>
+              <span className="font-display num text-[30px] leading-none" data-sheet-total>{formatINR(total)}</span>
+            </div>
+          </section>
           {!atTable && sub < Number(d.min_order) && <p className="text-sm text-[var(--color-red)]">Add {formatINR(Number(d.min_order) - sub)} more — the minimum order here is {formatINR(d.min_order)}.</p>}
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Field label="Name"><input value={guest.full_name} onChange={(e) => setGuest({ ...guest, full_name: e.target.value })} /></Field>
-            <Field label="Phone"><input value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} className="num" /></Field>
+
+          <section className="space-y-3" data-sheet-details>
+            <span className="block text-[11.5px] font-extrabold uppercase tracking-[.12em] text-[var(--color-label-2)]">Your details</span>
+            <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+              <Field label="Name"><div className="relative"><User size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-label-3)] pointer-events-none" aria-hidden /><input aria-label="Name" autoComplete="name" value={guest.full_name} onChange={(e) => setGuest({ ...guest, full_name: e.target.value })} placeholder="Your name" className="!pl-11" /></div></Field>
+              <Field label="Phone"><div className="relative"><Phone size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-label-3)] pointer-events-none" aria-hidden /><input aria-label="Phone" type="tel" inputMode="tel" autoComplete="tel" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} placeholder="10-digit mobile" className="num !pl-11" /></div></Field>
+            </div>
+            {omode === "delivery" && <Field label="Delivery address"><textarea rows={2} value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Door number, street, landmark" /></Field>}
+            <Field label="Note for the kitchen"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Less spicy, no onion…" /></Field>
+            <div className="flex gap-2 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap [scrollbar-width:none]" data-quick-notes>
+              {QUICK_NOTES.map((w) => { const on = note.split(",").map((x) => x.trim()).includes(w); return (
+                <button key={w} type="button" onClick={() => toggleNote(w)} aria-pressed={on} className={cn("shrink-0 h-11 px-3.5 rounded-full border text-[13px] font-semibold inline-flex items-center gap-1.5 transition", on ? "bg-[var(--color-label)] text-[var(--color-on-label)] border-transparent" : "border-[var(--color-separator)] text-[var(--color-label-2)] hover:border-[var(--color-line-2)]")}>
+                  {on && <Check size={13} strokeWidth={3} aria-hidden />}{w}</button>); })}
+            </div>
+          </section>
+
+          <div className="flex items-center gap-3 rounded-[16px] bg-[var(--color-fill)] px-3.5 py-3 text-[13px] text-[var(--color-label-2)]" data-pay-note>
+            <Wallet size={18} className="shrink-0 text-[var(--color-label)]" aria-hidden />
+            <span>{atTable ? "Pay at the table when you're done — cash, UPI or card." : `Pay on ${omode === "delivery" ? "delivery" : "pickup"} — cash, UPI or card. The restaurant confirms within a few minutes.`}</span>
           </div>
-          {omode === "delivery" && <Field label="Delivery address"><textarea rows={2} value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Door number, street, landmark" /></Field>}
-          <Field label="Note for the kitchen"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Less spicy, no onion…" /></Field>
-          <p className="text-xs text-[var(--color-label-2)]">{atTable ? "Pay at the table — cash, UPI or card." : `Pay on ${omode === "delivery" ? "delivery" : "pickup"} — cash, UPI or card. The restaurant confirms within a few minutes.`}</p>
-          <Button size="lg" className="w-full" loading={pending} disabled={!guest.full_name || !guest.phone || (!atTable && sub < Number(d.min_order)) || (omode === "delivery" && !addr)}
-            onClick={() => start(async () => {
-              const r = await placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null, atTable ? tableToken : null);
-              if ("error" in r) toast(r.error!, "err"); else { setCartOpen(false); setDone({ kind: "order", data: r.order as Record<string, unknown> }); }
-            })}>Place order · {formatINR(total)}</Button>
-            <GuestNotice property={d.name} use="for this order" className="mt-2" />
+          {err && <div role="alert" className="flex gap-2.5 rounded-[16px] bg-[var(--color-red-2)] text-[var(--color-red)] px-3.5 py-3 text-[13.5px] font-semibold" data-order-error><AlertCircle size={18} className="shrink-0 mt-px" aria-hidden />{err}</div>}
+          {(!guest.full_name || !guest.phone) && <p className="text-center text-[12.5px] text-[var(--color-label-3)]" data-order-needs>Add your name and phone to place the order</p>}
+          <GuestNotice property={d.name} use="for this order" />
+          <div>
+            <button type="button" onClick={placeNow} disabled={pending || !guest.full_name || !guest.phone || (!atTable && sub < Number(d.min_order)) || (omode === "delivery" && !addr)}
+              className="w-full h-14 rounded-[18px] pl-5 pr-2 flex items-center gap-3 bg-[var(--color-tint)] text-[var(--color-on-tint)] text-[16px] font-bold shadow-[0_16px_30px_-16px_color-mix(in_srgb,var(--color-tint)_90%,transparent)] disabled:opacity-45 active:scale-[.985] transition" data-place-order>
+              {pending ? <LoaderCircle size={20} className="animate-spin shrink-0" aria-hidden /> : <Send size={18} className="shrink-0" aria-hidden />}
+              <span className="flex-1 text-left">{pending ? "Placing…" : "Place order"}</span>
+              <span className="h-10 px-3.5 rounded-[13px] grid place-items-center bg-[color-mix(in_srgb,var(--color-on-tint)_18%,transparent)] font-display num text-[19px]">{formatINR(total)}</span>
+            </button>
+          </div>
         </div>
       </Sheet>
       {/* the question a dish asks: size, extras, how many */}
@@ -306,60 +420,64 @@ const FoodMark = ({ veg }: { veg: boolean }) => (
   </span>
 );
 
-/** − n + on a dish, or Add: 44px tall, the buttons 44 wide, so a thumb lands on them. */
+/** + on a dish, or − n + once it is in the basket (2026-10-27, the owner: "no ADD — only a plus icon is enough"): a 44px
+ *  round key in the tint, ringed in the card's colour, riding the photo's corner; the stepper sits centred under the photo.
+ *  A dish that asks a question (a size, add-ons) opens the chooser on its own — it is never added blind. */
 function AddControl({ name, qty, onAdd, onLess, custom }: { name: string; qty: number; onAdd: () => void; onLess: () => void; custom: boolean }) {
   return qty ? (
-    <div className="flex items-center h-11 rounded-[14px] bg-[var(--color-tint)] text-[var(--color-on-tint)] shadow-[0_10px_22px_-12px_color-mix(in_srgb,var(--color-tint)_80%,transparent)]" data-dish-stepper>
-      <button type="button" onClick={onLess} className="h-11 w-11 grid place-items-center rounded-[14px] active:scale-90 transition" aria-label={`One less ${name}`}><Minus size={16} strokeWidth={2.6} /></button>
-      <span className="num w-7 text-center font-bold text-[15px]" aria-live="polite">{qty}</span>
-      <button type="button" onClick={onAdd} className="h-11 w-11 grid place-items-center rounded-[14px] active:scale-90 transition" aria-label={`One more ${name}`}><Plus size={16} strokeWidth={2.6} /></button>
+    <div className="flex items-center h-11 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] ring-[3px] ring-[var(--color-bg-2)] shadow-[0_12px_24px_-12px_color-mix(in_srgb,var(--color-tint)_85%,transparent)]" data-dish-stepper>
+      <button type="button" onClick={onLess} className="h-11 w-11 grid place-items-center rounded-full active:scale-90 transition" aria-label={`One less ${name}`}><Minus size={17} strokeWidth={2.8} /></button>
+      <span className="num w-5 text-center font-extrabold text-[15px]" aria-live="polite">{qty}</span>
+      <button type="button" onClick={onAdd} className="h-11 w-11 grid place-items-center rounded-full active:scale-90 transition" aria-label={`One more ${name}`}><Plus size={17} strokeWidth={2.8} /></button>
     </div>
   ) : (
     <button type="button" onClick={onAdd} aria-label={`Add ${name}${custom ? " — choose options" : ""}`} data-dish-add
-      className="relative h-11 min-w-[104px] px-5 rounded-[14px] bg-[var(--color-bg-2)] border border-[color-mix(in_srgb,var(--color-tint)_35%,transparent)] text-[var(--color-tint)] text-[14px] font-extrabold tracking-[.06em] shadow-[0_10px_24px_-14px_rgb(0_0_0/.45)] active:scale-95 transition hover:bg-[var(--color-green-2)]">
-      ADD<Plus size={12} strokeWidth={3} className="absolute top-1.5 right-2" aria-hidden />
+      className="h-11 w-11 rounded-full grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] ring-[3px] ring-[var(--color-bg-2)] shadow-[0_12px_24px_-12px_color-mix(in_srgb,var(--color-tint)_85%,transparent)] active:scale-90 hover:brightness-110 transition">
+      <Plus size={22} strokeWidth={2.8} aria-hidden />
     </button>
   );
 }
 
-/** A dish on the storefront (2026-10-23, the owner's "ultra modern" card): the food mark and tags, the name on two lines
- *  at most, the price in whole rupees, the description; the photo on the right with Add riding its foot, or Add on its
- *  own when there is no photo. A dish not sold now is dimmed and says why. */
-function DishCard({ i, sells, qty, onAdd, onLess }: { i: Item; sells: boolean; qty: number; onAdd: () => void; onLess: () => void }) {
+/** A dish on the storefront (2026-10-27, the owner: "the cards are not looking good"): the food mark (and Combo), the name on
+ *  two lines at most, the description, then the price at the foot; a dish with choices says what it asks ("2 sizes ·
+ *  add-ons") as a tappable line that opens the chooser. On the right always a picture — the photo, or the dish's drawn
+ *  plate (DishArt) — with + on its corner. In the basket the card is ringed in the tint and says how many. */
+function DishCard({ i, cat, sells, qty, onAdd, onLess }: { i: Item; cat: string; sells: boolean; qty: number; onAdd: () => void; onLess: () => void }) {
   const tp = tilePrice(i); const custom = hasOptions(i);
-  const notSold = <span className="pill pill-served" data-not-sold={i.available ? "online" : "out"}>{i.available ? "not online" : "sold out"}</span>;
+  const asks = [(i.variants?.length ?? 0) > 1 ? `${i.variants!.length} sizes` : null, (i.addon_groups?.length ?? 0) > 0 ? "add-ons" : null].filter(Boolean).join(" · ") || "options";
   return (
-    <article className={cn("relative flex gap-3.5 rounded-[22px] bg-[var(--color-bg-2)] border border-[var(--color-separator)] p-3.5 sm:p-4 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-lift)]", qty > 0 && "border-[color-mix(in_srgb,var(--color-tint)_45%,transparent)]", !sells && "opacity-60")} data-dish-row>
-      <div className="flex-1 min-w-0 flex flex-col">
-        <div className="flex items-center gap-1.5 flex-wrap">
+    <article className={cn("relative flex gap-3 rounded-[24px] bg-[var(--color-bg-2)] p-3 ring-1 ring-[var(--color-separator)] shadow-[0_14px_32px_-26px_rgb(0_0_0/.55)] transition-shadow", qty > 0 && "!ring-2 !ring-[color-mix(in_srgb,var(--color-tint)_55%,transparent)]", !sells && "opacity-60")} data-dish-row>
+      <div className="flex-1 min-w-0 flex flex-col pl-1 pt-1">
+        <div className="flex items-center gap-1.5 flex-wrap min-h-5">
           <FoodMark veg={i.is_veg} />
           {i.is_combo && <span className="h-5 px-2 rounded-full text-[10.5px] font-bold uppercase tracking-wide bg-[var(--color-violet-2)] text-[var(--color-violet)] inline-flex items-center">Combo</span>}
-          {custom && <span className="h-5 px-2 rounded-full text-[10.5px] font-bold uppercase tracking-wide bg-[var(--color-orange-2)] text-[var(--color-orange)] inline-flex items-center">Customisable</span>}
+          {qty > 0 && <span className="h-5 px-2 rounded-full text-[10.5px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)] inline-flex items-center num" data-in-basket>{qty} in basket</span>}
         </div>
         {/* a div, not an h3: headings take the condensed display face, and a dish name reads better in the body face */}
-        <div role="heading" aria-level={3} className="mt-2 text-[16.5px] font-bold leading-snug text-[var(--color-label)] line-clamp-2">{i.name}</div>
-        <div className="mt-1 flex items-baseline gap-1">
-          {tp.from && <span className="text-[12px] font-semibold text-[var(--color-label-2)]">from</span>}
-          <span className="num text-[18px] font-bold text-[var(--color-label)]">{formatINR(tp.price, { whole: true })}</span>
-        </div>
+        <div role="heading" aria-level={3} className="mt-1.5 text-[16px] font-bold leading-snug text-[var(--color-label)] line-clamp-2">{i.name}</div>
         {i.is_combo && (i.components?.length ?? 0) > 0 && <p className="mt-1 text-[12.5px] text-[var(--color-label-2)] line-clamp-2">Comes with {i.components!.map((c) => `${c.qty}× ${c.name}`).join(", ")}</p>}
-        {i.description && <p className="mt-1.5 text-[13px] leading-snug text-[var(--color-label-2)] line-clamp-2">{i.description}</p>}
-        {!i.image_url && <div className="mt-auto pt-3">{sells ? <AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /> : notSold}</div>}
-      </div>
-      {i.image_url && (
-        /* with a photo: the photo on the right, the add control riding its bottom edge */
-        <div className="relative shrink-0 w-[128px] sm:w-[140px] pb-5 self-start">
-          <DishImage src={i.image_url} w={330} alt={i.name} title={i.image_credit ?? undefined} className={cn("h-[124px] sm:h-[132px] w-full rounded-[18px] object-cover bg-[var(--color-fill)]", !sells && "grayscale")} data-dish-photo />
-          {/* a library photo carries its author and licence (CC BY / BY-SA): illustrative, and credited */}
-          {i.image_credit && <span className="absolute left-1.5 top-1.5 max-w-[calc(100%-12px)] rounded-full bg-black/45 backdrop-blur-sm px-1.5 py-px text-[8.5px] leading-tight text-white/90 truncate" data-photo-credit>Illustrative · {i.image_credit.replace(/^Photo: /, "")}</span>}
-          <div className="absolute inset-x-0 bottom-0 flex justify-center">{sells ? <AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /> : notSold}</div>
+        {i.description && <p className="mt-1 text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2">{i.description}</p>}
+        <div className="mt-auto pt-2.5 flex items-baseline gap-1">
+          {tp.from && <span className="text-[12px] font-semibold text-[var(--color-label-2)]">from</span>}
+          <span className="num text-[18px] font-bold text-[var(--color-label)]" data-dish-price>{formatINR(tp.price, { whole: true })}</span>
         </div>
-      )}
+        {custom && sells && <button type="button" onClick={onAdd} className="-ml-1 -mb-1.5 self-start min-h-11 px-1 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--color-orange)]" data-dish-options><SlidersHorizontal size={13} aria-hidden />Choose · {asks}</button>}
+      </div>
+      <div className="relative shrink-0 w-[118px] sm:w-[132px] pb-3 self-start">
+        {i.image_url
+          ? <DishImage src={i.image_url} w={330} alt={i.name} title={i.image_credit ?? undefined} className={cn("h-[118px] sm:h-[132px] w-full rounded-[20px] object-cover bg-[var(--color-fill)]", !sells && "grayscale")} data-dish-photo />
+          : <DishArt name={i.name} category={cat} veg={i.is_veg} dim={!sells} className="h-[118px] sm:h-[132px] w-full rounded-[20px]" />}
+        {/* a library photo carries its author and licence (CC BY / BY-SA): illustrative, and credited */}
+        {i.image_url && i.image_credit && <span className="absolute left-1.5 top-1.5 max-w-[calc(100%-12px)] rounded-full bg-black/45 backdrop-blur-sm px-1.5 py-px text-[8.5px] leading-tight text-white/90 truncate" data-photo-credit>Illustrative · {i.image_credit.replace(/^Photo: /, "")}</span>}
+        {!sells ? <div className="absolute bottom-1 inset-x-0 flex justify-center"><span className="pill pill-served" data-not-sold={i.available ? "online" : "out"}>{i.available ? "not online" : "sold out"}</span></div>
+          : qty ? <div className="absolute bottom-0 inset-x-0 flex justify-center"><AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /></div>
+          : <div className="absolute bottom-0 right-1"><AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /></div>}
+      </div>
     </article>
   );
 }
 
-const Row = ({ k, v, good }: { k: string; v: number; good?: boolean }) => <div className="flex justify-between"><span className="text-[var(--color-label-2)]">{k}</span><span className={good ? "text-[var(--color-green)]" : ""}>{formatINR(v)}</span></div>;
+const Row = ({ k, v, good }: { k: string; v: number; good?: boolean }) => <div className="flex justify-between gap-3"><span className="min-w-0 truncate text-[var(--color-label-2)]">{k}</span><span className={cn("num shrink-0 font-semibold", good && "text-[var(--color-green)]")}>{v < 0 ? `− ${formatINR(-v)}` : formatINR(v)}</span></div>;
 
 function Confirmation({ kind, data, name, slug }: { kind: "book" | "order"; data: Record<string, unknown>; name: string; slug: string }) {
   const d = data as never as { no?: number; ref?: string; date?: string; time?: string; party?: number; offer?: string; discount_pct?: number; total?: number; eta?: number; mode?: string; table?: string; accepted?: boolean; order_no?: number; phone?: string; address?: string; id?: string };

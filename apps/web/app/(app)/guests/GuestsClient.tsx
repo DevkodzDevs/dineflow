@@ -18,6 +18,8 @@ export type Guest = {
 const nights = (b: Booking) => Math.max(1, Math.round((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000));
 const live = (g: Guest) => (g.bookings ?? []).filter((b) => b.status !== "cancelled");
 const revenueOf = (g: Guest) => live(g).reduce((t, b) => t + nights(b) * Number(b.rate), 0);
+/** "1 Sep", and with the year on the last day of a stay: "2 Sep 2026" */
+const stayDay = (d: string, year = false) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}) });
 const byNewest = (a: Booking, b: Booking) => b.check_in.localeCompare(a.check_in);
 const lastStay = (g: Guest) => [...live(g)].sort(byNewest)[0] ?? null;
 /** wa.me wants the country on the number; ten digits on their own is an Indian one. */
@@ -195,7 +197,27 @@ function GuestDetail({ g }: { g: Guest }) {
       <div>
         <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1.5"><CalendarDays size={13} /> Every stay</div>
         {bs.length === 0 ? <p className="text-sm text-steel">No stays yet — added without a booking.</p> : (
-          <div className="rounded-2xl border border-line divide-y divide-line">
+          <>
+          {/* a phone (2026-10-26, the owner: "not looking good"): each stay a clean row — the room number on its own tile,
+              the dates as days ("1 Sep → 2 Sep 2026") and the nights, the state as a coloured dot and word, the amount and
+              the way in on the right. The rows below are the tablet and desktop form. */}
+          <div className="sm:hidden rounded-[20px] border border-line divide-y divide-line overflow-hidden" data-stays-phone>
+            {bs.map((b) => { const st = tone(b.status); const col = st === "ready" ? "var(--color-green)" : st === "pending" ? "var(--color-orange)" : st === "alert" ? "var(--color-red)" : "var(--color-label-3)"; return (
+              <Link key={b.id} href={`/frontdesk/${b.id}`} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-3 active:bg-[var(--color-fill)]" data-stay={b.id}>
+                <span className="h-12 w-12 rounded-[14px] bg-[var(--color-fill)] grid place-items-center leading-none text-center shrink-0">
+                  {b.rooms?.number ? <span><span className="block text-[9.5px] font-bold uppercase tracking-[.1em] text-steel">Room</span><span className="block font-display num text-[18px] mt-0.5">{b.rooms.number}</span></span> : <BedDouble size={18} className="text-steel" aria-hidden />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[14.5px] font-bold truncate">{stayDay(b.check_in)} → {stayDay(b.check_out, true)}</span>
+                  <span className="mt-1 flex items-center gap-2 text-[12.5px] text-steel min-w-0">
+                    <span className="num shrink-0">{nights(b)} night{nights(b) === 1 ? "" : "s"}</span>
+                    <span className="inline-flex items-center gap-1.5 min-w-0 font-semibold" style={{ color: col }}><span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: col }} /><span className="truncate">{b.status.replace("_", " ")}</span></span>
+                  </span>
+                </span>
+                <span className="flex items-center gap-1 shrink-0"><span className="num font-extrabold text-[15.5px]">{formatINR(nights(b) * Number(b.rate), { whole: true })}</span><ChevronRight size={16} className="text-steel" aria-hidden /></span>
+              </Link>); })}
+          </div>
+          <div className="max-sm:hidden rounded-2xl border border-line divide-y divide-line">
             {bs.map((b) => (
               /* the dates need ~12rem to stay off the pill, so on a phone the pill and the amount
                  drop to a line of their own rather than sitting on top of them */
@@ -213,8 +235,13 @@ function GuestDetail({ g }: { g: Guest }) {
               </Link>
             ))}
           </div>
+          </>
         )}
-        {first && <p className="text-[11px] text-steel mt-2">First stayed {first.check_in}. <Wallet size={11} className="inline" /> {formatINR(revenue)} across {bs.length} stay{bs.length === 1 ? "" : "s"}.</p>}
+        {first && <div className="sm:hidden mt-3 grid grid-cols-3 gap-2" data-stays-sum>
+          {([["First stay", stayDay(first.check_in, true)], ["Stays", String(bs.length)], ["Total", formatINR(revenue, { whole: true })]] as const).map(([k, v]) => (
+            <span key={k} className="rounded-[14px] bg-[var(--color-fill)] px-3 py-2 min-w-0"><span className="block text-[10.5px] font-bold uppercase tracking-[.08em] text-steel">{k}</span><span className="block text-[14px] font-extrabold num truncate mt-0.5">{v}</span></span>))}
+        </div>}
+        {first && <p className="max-sm:hidden text-[11px] text-steel mt-2">First stayed {first.check_in}. <Wallet size={11} className="inline" /> {formatINR(revenue)} across {bs.length} stay{bs.length === 1 ? "" : "s"}.</p>}
       </div>
     </div>
   );

@@ -61,3 +61,9 @@ node legal-shot.mjs      # 18 checks — the four documents render, the aliases 
 [guest-facing.md](guest-facing.md) · [settings.md](settings.md) ·
 [admin-and-membership.md](admin-and-membership.md) ·
 [guests-and-customers.md](guests-and-customers.md)
+- **Back from a guest page goes back to it (2026-10-27, the owner: "the QR menu's privacy link, then Back, went to Master
+  control — a security flaw").** The header's Back was a link to /login, and /login forwards a signed-in phone into the app.
+  `LegalBack.tsx`: opened from a guest page (GuestNotice adds `?from=<path>`; only a path on this site is taken), it reads
+  "Back to the menu" and goes back — the browser's Back when the policy was opened straight from that page, else to it; the
+  page is kept for the tab (`sessionStorage` `df-legal-from`) so Terms → Back still finds the menu. The footer's *Sign in* is
+  not shown to that guest (`LegalSignIn`). Opened any other way, both are as they were.

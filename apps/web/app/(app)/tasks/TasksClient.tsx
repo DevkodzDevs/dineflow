@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { Check, Sunrise, Moon, Clock3, Pencil, Plus, Sparkles, Users, Briefcase, BadgeCheck } from "lucide-react";
-import { Card, Empty, Sheet, cn, useToast } from "@/components/ui";
+import { Card, Empty, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
 import { tick, saveList } from "./actions";
 import { Say } from "@/components/ui/Say";
 import { DeptIcon, deptHue } from "../staff/StaffPositions";
@@ -113,15 +113,24 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
                 <div className="px-4 pt-4 pb-3.5">
                   <div className="flex items-start gap-3">
                     <span className={cn("h-11 w-11 shrink-0 rounded-[14px] grid place-items-center", all ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}>{all ? <Check size={20} strokeWidth={3} aria-hidden /> : <Icon size={19} aria-hidden />}</span>
-                    <div className="min-w-0 flex-1 pt-0.5"><div className="text-[16.5px] font-extrabold leading-snug line-clamp-2 [overflow-wrap:anywhere]">{l.name}</div><div className="text-[12.5px] text-steel mt-0.5">{label} · <span className="num" data-progress>{n}/{l.items.length}</span>{all ? " · all done" : ""}</div></div>
+                    <div className="min-w-0 flex-1 pt-0.5"><div className="text-[16.5px] font-extrabold leading-snug line-clamp-2 [overflow-wrap:anywhere] max-sm:line-clamp-1 max-sm:[overflow-wrap:normal] max-sm:pt-0.5" title={l.name}>{l.name}</div><div className="text-[12.5px] text-steel mt-0.5">{label}<span className="max-sm:hidden"> · <span className="num" data-progress>{n}/{l.items.length}</span>{all ? " · all done" : ""}</span></div></div>
                     {(() => { const p = n / Math.max(1, l.items.length); return (
-                      <span className="relative h-12 w-12 shrink-0" data-list-pct role="img" aria-label={`${n} of ${l.items.length} done`}>
+                      <span className="relative h-12 w-12 shrink-0 max-sm:hidden" data-list-pct role="img" aria-label={`${n} of ${l.items.length} done`}>
                         <svg viewBox="0 0 36 36" className="h-12 w-12 -rotate-90" aria-hidden><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-fill-2)" strokeWidth="3.5" />
                           <circle cx="18" cy="18" r="15.5" fill="none" stroke={all ? "var(--color-green)" : "var(--color-orange)"} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${p * 97.4} 97.4`} style={{ transition: "stroke-dasharray .4s var(--ease-out)" }} opacity={p ? 1 : 0} /></svg>
                         <span className="absolute inset-0 grid place-items-center text-[11.5px] font-extrabold num">{Math.round(p * 100)}%</span>
                       </span>); })()}
                     {editor && <button type="button" onClick={() => setEdit(l)} className="h-10 w-10 pointer-coarse:h-11 pointer-coarse:w-11 -mr-1.5 shrink-0 grid place-items-center rounded-full text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]" aria-label={`Edit ${l.name}`}><Pencil size={16} /></button>}
                   </div>
+                  {/* a phone (2026-10-26, the owner: "not looking good"): beside the ring and the pencil the name wrapped to two lines.
+                      There the name keeps one line, and under the head, across the card: how many done on a split-flap, a slim bar
+                      and the percent. From sm the ring stays as it was. */}
+                  {(() => { const p = n / Math.max(1, l.items.length); return (
+                    <div className="sm:hidden mt-3 flex items-center gap-3 min-w-0" data-list-progress={`${n}/${l.items.length}`}>
+                      <span className="flex items-center gap-2.5 shrink-0 pl-1"><FlapShuffle value={n} pad={0} size="xs" tile="36px" tone={all ? "live" : undefined} say={`${n} of ${l.items.length} done`} /><span className="text-[13px] font-bold text-steel num">/ {l.items.length}{all ? " · done" : " done"}</span></span>
+                      <span className="flex-1 h-2 rounded-full bg-[var(--color-fill-2)] overflow-hidden" aria-hidden><span className="block h-full rounded-full transition-[width] duration-500" style={{ width: `${p * 100}%`, background: all ? "var(--color-green)" : "var(--color-orange)" }} /></span>
+                      <span className="shrink-0 text-[12.5px] font-extrabold num" style={{ color: all ? "var(--color-green)" : p ? "var(--color-orange)" : "var(--color-label-3)" }}>{Math.round(p * 100)}%</span>
+                    </div>); })()}
                   <div className="mt-3 min-w-0"><ForWhom tags={tagsOf(l)} look={look} /></div>
                 </div>
                 <ul className="flex-1 border-t border-[var(--color-separator)]">
