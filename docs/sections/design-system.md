@@ -5,7 +5,7 @@
 > occasionally the disaster.
 
 **Files** `app/globals.css` · `components/ui/index.tsx` · `components/ui/flip.tsx` ·
-`components/ui/{DataTable,Theme,Ticket,AiButton,PasswordInput,Rail,AnalogClock,Say,Service}.tsx` · `lib/say.ts` · `lib/service.ts`
+`components/ui/Busy.tsx` · `components/ui/{DataTable,Theme,Ticket,AiButton,PasswordInput,Rail,AnalogClock,Say,Service}.tsx` · `lib/say.ts` · `lib/service.ts`
 
 ## What it is
 
@@ -32,7 +32,7 @@ grey patch on indigo.
 | ~630 | STEPPER | `.stepper` > `.less` / `.n` / `.more` — the till's count control, on tiles and ticket lines |
 | 527 | TOOLBARS | `.toolbar`, `.toolbar-group`, `.toolbar-end`, `.chip-rail`, `.icon-btn`, `.tap` |
 | 602 | TABLES | `.dt-*` for `DataTable` |
-| 662 | LOADERS | `.flip.loader`, `.nav-progress` |
+| 662 | LOADERS | `.flip.loader`, `.nav-progress`, `.busy-layer` / `.busy-cover` / `.busy-ring` / `.busy-float` |
 | 703 | MOTION | keyframes, reduce-motion |
 
 ## Dark and Light, rich and classic (2026-10-20)
@@ -777,3 +777,30 @@ it says — Menu's is 640). A tap now is for this visit; only the pin saves. A n
   (`font: inherit` wins over `font-bold`, `width: 100%` over `w-…`). `cn` is `clsx`, not tailwind-merge: two display
   classes on one element both stay, so swap them in code (as `from` does) rather than overriding with `className`.
   Probe: `pw/design141.mjs` (testing-and-gates.md).
+## A loader on every tap that waits (2026-10-27, `components/ui/Busy.tsx`)
+
+The owner: "when I click any option and it takes time to open, show a loader for the waiting time". One layer for the
+whole app, guest pages included — `NavProgress` (root layout) now lives in `Busy.tsx` and does both the top bar and this,
+so **no screen has to remember a spinner**.
+
+- **What a tap's wait is.** A link to another screen in the app: until the address changes (a link whose own handler
+  stopped it ends after a second with no screen fetch in flight). Anything else (button, tab, switch, tick box's label):
+  the requests that start within 150 ms of the tap, and any that starts within 150 ms of the last one ending; it ends when
+  the last answer has been *read through* (a clone of the response is read beside the screen's own reader). Only requests a
+  tap can cause count — a server action (`next-action`), a screen fetch (`rsc`, **not** `priority: "low"`: that is a
+  prefetch — IntentPrefetch's warm-up fires one every ~350 ms and was ringing any tap that landed beside it), a Supabase
+  read (`/rest|functions|storage/v1/`) or our `/api/*` — never OfflineProvider's whole-page warm-up GETs, images,
+  scripts, or `/api/assist` (its insights load by themselves; its answer streams in front of the person).
+- **What shows.** Nothing under 300 ms (a flash reads as a glitch); then at least 350 ms. A **solid** button (background
+  ≥ 60% opaque, not big): a ring in its own text colour over its label, in its own background, same radius — the button's
+  look, just busy. A tab or other see-through control: lightly frosted, the ring in a round chip (`--c` 28–40px). A **big**
+  thing (≥ 140×80, a table card): frosted, a 48px chip in its middle. A **wide short row** (width > 2.5 × height, a sidebar
+  item): the chip at its end, the words left alone. If the tapped thing can't be seen — the sheet it was in closed, a sheet
+  covers it (checked with `elementFromPoint` at its centre each frame), it scrolled away — the ring floats at the top
+  centre (`.busy-float`). The 2px bar along the top runs with any of it.
+- **Left alone:** a control that draws its own (`.loader` — `Button loading` —, `.animate-spin`, `[data-loading]`,
+  `aria-busy` set by the screen); anything inside `[data-no-busy]` (the opt-out). The ring is drawn outside React (a fixed
+  layer appended to `<body>`, positioned every frame while something waits); the tapped element only gains
+  `aria-busy="true"` + `data-df-busy` while its ring shows.
+- Probe: `pw/busy149.mjs` (testing-and-gates.md). **A probe that delays answers must block the service worker**
+  (`serviceWorkers: "block"`) — it answers screen fetches itself and Playwright's route never sees them.

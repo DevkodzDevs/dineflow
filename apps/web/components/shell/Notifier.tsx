@@ -270,13 +270,60 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
     return () => { gone = true; clearTimeout(t); if (sb && ch) void sb.removeChannel(ch); };
   }, [kinds, announce, drop, nameOf, tableOf, me, role, dept]);
 
+  /* Realtime rings a card only while this device is listening; a phone that was asleep, on another app or still loading
+     missed it (2026-10-27, the owner: "a QR order was placed — show it like the waiter's call"). So the open calls of the
+     last half hour and the table orders nobody has accepted (last three hours) are also read: on opening, whenever the
+     app comes back to the front, and every minute. What that read finds is the truth — a card answered or accepted on
+     another device goes; Later or an answer here keeps a card off this device for the visit (sessionStorage df-call-gone). */
+  const goneIds = useRef<Set<string>>(new Set());
+  useEffect(() => { try { goneIds.current = new Set(JSON.parse(sessionStorage.getItem("df-call-gone") ?? "[]") as string[]); } catch { /* none */ } }, []);
+  const callsGone = useCallback((ids: string[]) => {
+    ids.forEach((i) => goneIds.current.add(i));
+    try { sessionStorage.setItem("df-call-gone", JSON.stringify([...goneIds.current].slice(-200))); } catch { /* full */ }
+    setCalls((cs) => cs.filter((c) => !ids.includes(c.id)));
+  }, []);
+  const hearsCalls = kinds.includes("call");
+  useEffect(() => {
+    if (!hearsCalls) return;
+    let dead = false;
+    const sync = async () => {
+      if (dead || document.visibilityState !== "visible" || !live.current.prefs?.kinds.call) return;
+      try {
+        const c = await getClient();
+        const [{ data: sc }, { data: qo }] = await Promise.all([
+          c.from("service_calls").select("id, table_id, kind, created_at").eq("status", "open").gte("created_at", new Date(Date.now() - 30 * 60000).toISOString()),
+          c.from("online_orders").select("id, table_id, gross, items, created_at").eq("status", "new").is("order_id", null).not("table_id", "is", null).gte("created_at", new Date(Date.now() - 3 * 3600e3).toISOString()),
+        ]);
+        if (dead || !sc || !qo) return;
+        const rows: Row[] = [...(sc as Row[]).map((x): Row => ({ ...x, kind: str(x.kind) })), ...(qo as Row[]).map((x): Row => ({ ...x, kind: "order" }))].filter((x) => !goneIds.current.has(str(x.id)));
+        const list: LiveCall[] = await Promise.all(rows.map(async (x) => {
+          const t = await tableOf(x.table_id);
+          const n = Array.isArray(x.items) ? (x.items as { qty?: unknown }[]).reduce((a, i) => a + (Number(i.qty) || 1), 0) : 0;
+          return { id: str(x.id), table_id: str(x.table_id), kind: str(x.kind), table: t?.name ?? null, zone: t?.zone ?? null, at: str(x.created_at), ...(x.kind === "order" ? { total: Number(x.gross) || 0, items: n } : {}) };
+        }));
+        if (dead) return;
+        list.sort((a, b) => b.at.localeCompare(a.at));
+        setCalls((cs) => {
+          const had = new Set(cs.map((x) => x.id)); const fresh = list.filter((x) => !had.has(x.id));
+          if (fresh.length) buzz("called");
+          return list.length === cs.length && !fresh.length ? cs : list;
+        });
+      } catch { /* offline: realtime and the next try */ }
+    };
+    const first = setTimeout(() => void sync(), 2500);
+    const every = setInterval(() => void sync(), 60000);
+    const back = () => { if (document.visibilityState === "visible") void sync(); };
+    document.addEventListener("visibilitychange", back);
+    return () => { dead = true; clearTimeout(first); clearInterval(every); document.removeEventListener("visibilitychange", back); };
+  }, [hearsCalls, tableOf]);
+
   const markAllRead = useCallback(() => setFeed((f) => f.map((i) => ({ ...i, read: true }))), []);
   const value: Ctx = { feed, unread: feed.filter((i) => !i.read).length, markAllRead, prefs, setPrefs, kinds, propertyType, openSettings: () => setSettings(true) };
   return (
     <NotifyCtx.Provider value={value}>
       {children}
       <Sheet open={settings} onClose={() => setSettings(false)} title="Notifications on this device"><NotificationSettings /></Sheet>
-      {calls.length > 0 && <CallAlert calls={calls} onGone={(ids) => setCalls((cs) => cs.filter((c) => !ids.includes(c.id)))} />}
+      {calls.length > 0 && <CallAlert calls={calls} onGone={callsGone} />}
     </NotifyCtx.Provider>
   );
 }

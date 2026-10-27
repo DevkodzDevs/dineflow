@@ -577,6 +577,10 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   `display.allow` / `display.disallow` in the audit trail); `display_lock_note(p_action, p_key, p_mode, p_by)` (`lock` needs
   owner / manager; `release` names who — the app checks that person's sign-in first). No new table, so no new policy; both
   granted to authenticated only. [display-lock.md](display-lock.md)
+- **0145 — A table's QR order, start to end (2026-10-27, applied; dry145.sql rolled back: two rounds at one table → one
+  order, two KOTs, each dish with its own guest note; bill → 'bill', paid → 'paid').** `accept_online_order_for`: the guest's
+  note on every dish; a table's open, unbilled ticket takes the next round as a new KOT. `dine_table_orders`: stages `bill`
+  and `paid` and the bill's total. No table, so no policy; grants unchanged.
 - **0144 — A table's QR order (2026-10-27, applied; dry144.sql rolled back: an order at a happy hour places with nothing off,
   at a 10% offer with 10% off, a wrong table code sees nothing).** `dine_order` compared `offer_scope` with text and failed every
   order that carried an offer (since 0074); it compares as text now, and an offer takes money off only when it is a flat % or

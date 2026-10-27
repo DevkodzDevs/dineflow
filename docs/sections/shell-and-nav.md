@@ -780,3 +780,15 @@ Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.
   makes rings the kitchen as every ticket does). It waits 1.5 s first and is dropped if the order was already accepted (a
   channel set to accept by itself) or refused; an UPDATE out of `new` takes the card off every device. Those staff no longer
   also get the *New online order* toast for it. The Calls setting's hint says so.
+- **Call and table-order cards also from a read (2026-10-27, the owner: "a QR order placed — show it like the waiter's
+  call").** Realtime rings a card only while the device listens; a phone asleep, on another app or still loading missed it.
+  For whoever hears calls, `NotifierProvider` also reads the open `service_calls` of the last 30 minutes and the table orders
+  nobody has accepted (online_orders status new, a table, last 3 hours): 2.5 s after opening, whenever the app comes back to
+  the front, and every minute — that read is the truth, so a card answered or accepted on another device goes. *Later* or an
+  answer keeps a card off this device for the visit (`sessionStorage` `df-call-gone`). A new card from the read buzzes.
+- **The tap's wait is shown on the tap (2026-10-27).** `<NavProgress>` moved to `components/ui/Busy.tsx`: besides the top
+  bar (which now also ends when a link's handler kept it from going — it used to sit at 94 % until the next screen), a tap
+  that waits more than 300 ms gets a ring on the thing tapped — a tab, a menu row (at its end), a card, a button — and a
+  floating ring at the top when that thing has gone (the More sheet closed). Still **no `loading.tsx`**. Background
+  fetches (IntentPrefetch's `priority: "low"` warm-up, OfflineProvider's page warm-up) never ring. design-system.md has
+  the rules.

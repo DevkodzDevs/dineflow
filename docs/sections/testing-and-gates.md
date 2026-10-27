@@ -429,3 +429,17 @@ of a second." Measured first, on the live site and on a local production build (
   matching, sticky while scrolling; the staff card and the floor bar inside the card; Accept → a KOT and "In the kitchen";
   dishes preparing / ready / served → the card follows; Water → a call card and a bar; On my way → the tile On the way, then
   plain a minute later; nothing past the right edge at 412 and 1440. Screens in `s147/`.
+- **`pw/qr148.mjs` (20)** — a table's QR order from the order to the paid bill, on a fresh `demo147.mjs` demo: the cleaning
+  card's wait on the name's row; a compact dish card (104px picture, the chip on the price's row); order with two quick
+  notes → the banner steps aside; a staff page opened *after* the order still rings the card (the read); Accept from the
+  card → the note on the dish and on the kitchen screen; the other phone's card leaves; ✕ → tab → back, a swipe tucks it,
+  a new stage brings it out, served tucks it in 20 s; a second round joins the same ticket (2 KOTs); bill → "Your bill is
+  ready", paid → "Paid · thank you!". Screens in `s148/`.
+- **`pw/busy149.mjs` (14)** — a loader on every tap that waits (Busy.tsx), on a fresh `demo147.mjs` demo, with the
+  server's answers held back 1.5 s by a Playwright route (**service worker blocked**, or the route never sees screen
+  fetches): a tab-bar link rings on itself from ~330 ms, exactly its size, the bar runs, all gone when the screen arrives;
+  More (opens a sheet, no request) shows nothing — also while the warm-ups run; a More-sheet link rings; "I'll take it"
+  (a server action) gets a ring in its own colours, aria-busy, and still does its work; the same on paper; a table card
+  gets the chip in its middle; the 1440 sidebar row gets it at its end; the guest + shows nothing and Place order keeps its
+  own spinner; nothing left behind on four pages. Times are from the real click (a capture listener), not from the
+  watch's start — Playwright's retries (a call card over the button) land in between. Screens in `s149/`.

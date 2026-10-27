@@ -1270,6 +1270,21 @@ body { overflow-wrap: break-word; }
 .nav-progress { position: fixed; top: 0; left: 0; height: 2px; width: 0; background: linear-gradient(90deg, var(--color-tint), var(--color-tint-2)); box-shadow: 0 0 12px color-mix(in srgb, var(--color-tint) 80%, transparent); z-index: 100; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .nav-progress.on { opacity: 1; animation: navFill 6s cubic-bezier(.1, .9, .2, 1) forwards; }
 @keyframes navFill { 0% { width: 0 } 15% { width: 40% } 50% { width: 78% } 100% { width: 94% } }
+/* A tap that has to wait (components/ui/Busy.tsx): a ring on the tapped thing — a solid button in its own colours
+   over its label; a tab, a link or a card lightly frosted with the ring in a round chip; hidden, it floats at the top. */
+.busy-layer { position: fixed; inset: 0; z-index: 9990; pointer-events: none; }
+.busy-cover { --c: 48px; position: fixed; display: grid; place-items: center; overflow: hidden; color: var(--color-tint); background: color-mix(in srgb, var(--color-bg) 28%, transparent); -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px); animation: busyIn .18s var(--ease-out) both; }
+.busy-cover.solid { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.busy-cover.row { justify-items: end; padding-right: 6px; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.busy-cover.row::before { right: 6px; }
+.busy-cover.row .busy-ring { margin-right: calc((var(--c) - var(--s)) / 2); }
+.busy-float .busy-ring { --s: 22px; }
+.busy-cover:not(.solid)::before, .busy-float { content: ""; position: absolute; width: var(--c); height: var(--c); border-radius: 999px; background: var(--color-bg-2); border: 1px solid var(--color-separator); box-shadow: 0 10px 30px -10px rgb(0 0 0 / .45); }
+.busy-ring { --s: 18px; position: relative; width: var(--s); height: var(--s); border-radius: 999px; border: 2.5px solid color-mix(in srgb, currentColor 24%, transparent); border-top-color: currentColor; animation: busySpin .7s linear infinite; }
+.busy-float { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 12px); margin-left: -24px; display: grid; place-items: center; color: var(--color-tint); animation: busyIn .18s var(--ease-out) both; }
+@keyframes busySpin { to { transform: rotate(360deg) } }
+@keyframes busyIn { from { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .busy-ring { animation-duration: 1.6s; } }
 .paper .flip-label { color: #6b6b66; }
 
 /* A button standing on the ticket takes its colours from the paper, not from the app's surface.

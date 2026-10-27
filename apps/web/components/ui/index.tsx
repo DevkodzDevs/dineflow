@@ -1,7 +1,6 @@
 "use client";
 import { clsx } from "clsx";
 import { motion, AnimatePresence, useDragControls, useMotionValue, animate as animateValue } from "framer-motion";
-import { usePathname } from "next/navigation";
 import { X, Check, ChevronDown, Search, UtensilsCrossed, Package, Truck, Trash2, FileText, Wallet, HardHat, Users, MessageSquareHeart, Star, ClipboardList, Store, CalendarDays, Printer, Globe, LayoutGrid, ListChecks, BarChart3, Lock, Link2, Inbox, QrCode, ShoppingCart, Bike, type LucideIcon } from "lucide-react";
 import { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
@@ -13,16 +12,8 @@ export { FlapShuffle, FlapSpell, FlapPercent, FlapClock, FlapMini, FlapBreathe, 
 export { PasswordInput } from "./PasswordInput";
 import { Loader } from "./flip";
 import { FlapShuffle } from "./Flap";
-/** A hairline at the very top that fills while the next page is on its way, then vanishes. */
-export function NavProgress() {
-  const path = usePathname(); const [on, setOn] = useState(false);
-  useEffect(() => { setOn(false); }, [path]);
-  useEffect(() => {
-    const click = (e: MouseEvent) => { const a = (e.target as HTMLElement).closest("a[href]") as HTMLAnchorElement | null; if (!a || a.target === "_blank" || e.metaKey || e.ctrlKey) return; const u = new URL(a.href, location.href); if (u.origin === location.origin && u.pathname !== location.pathname) setOn(true); };
-    document.addEventListener("click", click, true); return () => document.removeEventListener("click", click, true);
-  }, []);
-  return <div className={cn("nav-progress", on && "on")} aria-hidden />;
-}
+/** The bar along the top while the next page is on its way, and a ring on any tap that has to wait (Busy.tsx). */
+export { NavProgress } from "./Busy";
 
 /** kept as the old names so existing screens keep working; both now point at the shared springs */
 export const spring = snap;

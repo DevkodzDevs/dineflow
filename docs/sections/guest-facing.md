@@ -341,3 +341,14 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
 - **The call tiles go back to plain (2026-10-27, the owner).** An answered call shows *On the way* on its tile for a minute
   after `done_at`, then the tile is plain and ready for the next ask (`now` ticks every 5 s). Bill and Water ring on the
   floor exactly as the waiter does (they always did: one `service_calls` INSERT, one CallAlert card per kind).
+- **A table's order, start to end (2026-10-27, second round, 0145).** The live card follows the order past the plate: *Your bill
+  is ready* (a bill printed, with its total) and *Paid · thank you!* — six steps now, Sent · Kitchen · Cooking · Ready · Served ·
+  Paid. It asks every 6 s while the kitchen is on it, every 12 s once served (for the bill), every 60 s once paid. **Out of the
+  way** (the owner: "after served hide it — close, swipe, an arrow to open"): ✕ (`[data-order-close]`) or a sideways swipe
+  tucks it into a tab on the right edge just above the basket bar (`[data-order-tab]`: ‹, the stage's tile and word); the
+  tab brings it back; 20 s after served (counted from the stage's arrival) it tucks itself; any new stage brings it out. The
+  tuck is kept for the visit (`sessionStorage` `df-table-orders:<slug>:<code>:tucked`). *Put away* is for a paid or refused order.
+  The *Ordering at Table* banner (`[data-table-banner]`) hides once the card exists (`main:has([data-table-orders])`).
+- **Dish cards, compact (2026-10-27, the owner: "still not looking good — compact").** The picture 104px (124 from sm), the
+  card's padding 10px, the name 15.5px; what a dish asks is a small orange chip on the price's row (`[data-dish-options]`,
+  "2 sizes · add-ons", a 44px target by its ::before) instead of its own line. A sized dish's card is 134px tall at 412.

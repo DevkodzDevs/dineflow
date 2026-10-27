@@ -409,3 +409,12 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
   locally so the bar goes at once and comes back if the server refuses. The bars sit 10px inside the card's border on top
   and both sides (a card that is a link holds them from outside its 2px border, so 12px there), 44px tall, the content 12px
   under the last; LATE is lifted to -20px so it clears the bar (2026-10-27, the owner: "more space above than beside").
+- **A QR order, start to end (2026-10-27, 0145).** The guest's *Note for the kitchen* now reaches the kitchen: accepting copies
+  it onto every dish of the ticket (`order_items.notes`, after the dish's own), which the kitchen screen (`.kt-note`) and the
+  printed KOT read — it stayed in `online_orders.raw`. **A second round from the same table joins its open ticket** while no
+  bill is printed, as a new KOT — it was a second order: the floor showed one, the table got two bills. A table whose bill
+  is printed or paid gets a new order. Accepting marks the table occupied, which closes a waiting cleaning job (0111's
+  trigger). The guest's card then follows the bill and the payment (guest-facing.md).
+- **The cleaning card on a phone, compact (2026-10-27, the owner).** How long it has waited rides the name's row
+  (`[data-clean-since]`, in place of the seats); the "who" line shows only when someone has it (`[data-clean-who-phone]`) —
+  "Nobody yet" said what *I'll take it* already says. From md as it was.

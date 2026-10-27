@@ -139,16 +139,15 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
           {al?.el}
           {/* the same build as every other table (2026-10-21, the owner: "messy"): name and seats, the state, who has it,
               then the foot — how long, and one compact move with + beside it to seat the next party anyway */}
-          <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span>{seats}</div>
+          {/* a phone (2026-10-27, the owner: "compact"): how long it has waited rides the name's row in place of the seats, so
+              the card is the name, Cleaning, who has it (only when someone does) and the one move */}
+          <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span><span className="max-md:hidden contents">{seats}</span>
+            <span className="md:hidden ml-auto shrink-0 h-7 px-2.5 rounded-full inline-flex items-center gap-1 text-[12.5px] font-bold num" style={{ background: "color-mix(in srgb, var(--st) 16%, transparent)", color: "var(--st-ink)" }} data-clean-since><Clock size={13} aria-hidden />{since}</span></div>
           <div className="tstate"><I size={19} aria-hidden /><Say w="cleaning" start /></div>
           <div className="max-md:hidden mt-1 text-[13px] font-semibold text-[var(--color-label-2)] truncate num" data-clean-who>{who} · {since}</div>
-          {/* a phone (2026-10-22, the owner: "not looking good" — the live card cut "Waiting for someone · 2d …" and wrapped
-              its button): who has it in a few words on the left, how long in a tinted pill on the right that never truncates */}
-          <div className="md:hidden mt-2 flex items-center gap-1.5 min-w-0" data-clean-who-phone>
-            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-[var(--color-label-2)]" title={who}>
-              {c.status === "in_progress" ? (c.taken_by === me ? "You're on it" : `${(c.taken_name ?? "Someone").split(" ")[0]}'s on it`) : c.assigned_to ? `For ${c.assigned_to === me ? "you" : (c.assigned_name ?? "").split(" ")[0]}` : "Nobody yet"}</span>
-            <span className="shrink-0 h-6 px-2 rounded-full inline-flex items-center gap-1 text-[12px] font-bold num" style={{ background: "color-mix(in srgb, var(--st) 16%, transparent)", color: "var(--st-ink)" }}><Clock size={12} aria-hidden />{since}</span>
-          </div>
+          {/* who has it, in a few words — left out while nobody has (the button says it: I'll take it) */}
+          {(c.status === "in_progress" || c.assigned_to) && <div className="md:hidden mt-1 min-w-0 truncate text-[12.5px] font-semibold text-[var(--color-label-2)]" title={who} data-clean-who-phone>
+            {c.status === "in_progress" ? (c.taken_by === me ? "You're on it" : `${(c.taken_name ?? "Someone").split(" ")[0]}'s on it`) : `For ${c.assigned_to === me ? "you" : (c.assigned_name ?? "").split(" ")[0]}`}</div>}
           <div className="mt-auto pt-2 flex items-center gap-2 min-w-0">
             <span className="flex items-center gap-1.5 min-w-0 w-full">
               {canTake ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold whitespace-nowrap overflow-hidden bg-[var(--st)] text-[var(--color-bezel)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-take onClick={() => start(async () => { const r = await takeJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is yours`); })}><Sparkles size={15} aria-hidden className="shrink-0 max-[399.98px]:hidden" /><span className="min-w-0 truncate"><Say w="take_it" /></span></button>

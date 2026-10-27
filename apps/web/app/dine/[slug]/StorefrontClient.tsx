@@ -140,7 +140,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
 
   if (done) return <Confirmation kind={done.kind} data={done.data} name={d.name} slug={slug} />;
   const tableBanner = atTable && (
-    <div className="mb-5 rounded-2xl border border-[var(--color-tint)] bg-[var(--color-green-2)] px-4 py-3 flex items-center gap-3">
+    <div className="mb-5 rounded-2xl border border-[var(--color-tint)] bg-[var(--color-green-2)] px-4 py-3 flex items-center gap-3" data-table-banner>
       <UtensilsCrossed size={18} className="text-[var(--color-tint)] shrink-0" />
       <div className="min-w-0"><div className="font-semibold">Ordering at Table {d.table!.name}</div><div className="text-xs text-[var(--color-label-2)]">Place your order — it comes to your table. Pay when you&apos;re done.</div></div>
     </div>
@@ -172,7 +172,8 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
         </div>
       </header>
 
-      <main className="relative max-w-4xl mx-auto px-5 py-5 -mt-5 sm:mt-0 rounded-t-[26px] sm:rounded-none bg-[var(--color-bg)]">
+      {/* once the guest has an order here, its live card says where they are — the Ordering at Table banner steps aside */}
+      <main className="relative max-w-4xl mx-auto px-5 py-5 -mt-5 sm:mt-0 rounded-t-[26px] sm:rounded-none bg-[var(--color-bg)] [&:has([data-table-orders])_[data-table-banner]]:hidden">
         {/* the property has switched online orders off, or paused them (0133): said before anyone fills a basket; a guest at
             a table (the QR) still orders */}
         {d.online_paused && !d.table && <div className="mb-4 rounded-2xl border border-[color-mix(in_srgb,var(--color-orange)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-orange)_10%,var(--color-bg-2))] px-4 py-3 flex items-center gap-3 text-[14px] font-semibold" data-online-paused>
@@ -444,34 +445,37 @@ function AddControl({ name, qty, onAdd, onLess, custom }: { name: string; qty: n
  *  plate (DishArt) — with + on its corner. In the basket the card is ringed in the tint and says how many. */
 function DishCard({ i, cat, sells, qty, onAdd, onLess }: { i: Item; cat: string; sells: boolean; qty: number; onAdd: () => void; onLess: () => void }) {
   const tp = tilePrice(i); const custom = hasOptions(i);
-  const asks = [(i.variants?.length ?? 0) > 1 ? `${i.variants!.length} sizes` : null, (i.addon_groups?.length ?? 0) > 0 ? "add-ons" : null].filter(Boolean).join(" · ") || "options";
+  const asks = [(i.variants?.length ?? 0) > 1 ? `${i.variants!.length} sizes` : null, (i.addon_groups?.length ?? 0) > 0 ? "add-ons" : null].filter(Boolean).join(" · ") || "Options";
   return (
-    <article className={cn("relative flex gap-3 rounded-[24px] bg-[var(--color-bg-2)] p-3 ring-1 ring-[var(--color-separator)] shadow-[0_14px_32px_-26px_rgb(0_0_0/.55)] transition-shadow", qty > 0 && "!ring-2 !ring-[color-mix(in_srgb,var(--color-tint)_55%,transparent)]", !sells && "opacity-60")} data-dish-row>
-      <div className="flex-1 min-w-0 flex flex-col pl-1 pt-1">
+    <article className={cn("relative flex gap-3 rounded-[22px] bg-[var(--color-bg-2)] p-2.5 ring-1 ring-[var(--color-separator)] shadow-[0_14px_32px_-26px_rgb(0_0_0/.55)] transition-shadow", qty > 0 && "!ring-2 !ring-[color-mix(in_srgb,var(--color-tint)_55%,transparent)]", !sells && "opacity-60")} data-dish-row>
+      <div className="flex-1 min-w-0 flex flex-col pl-1.5 pt-1">
         <div className="flex items-center gap-1.5 flex-wrap min-h-5">
           <FoodMark veg={i.is_veg} />
           {i.is_combo && <span className="h-5 px-2 rounded-full text-[10.5px] font-bold uppercase tracking-wide bg-[var(--color-violet-2)] text-[var(--color-violet)] inline-flex items-center">Combo</span>}
           {qty > 0 && <span className="h-5 px-2 rounded-full text-[10.5px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)] inline-flex items-center num" data-in-basket>{qty} in basket</span>}
         </div>
         {/* a div, not an h3: headings take the condensed display face, and a dish name reads better in the body face */}
-        <div role="heading" aria-level={3} className="mt-1.5 text-[16px] font-bold leading-snug text-[var(--color-label)] line-clamp-2">{i.name}</div>
+        <div role="heading" aria-level={3} className="mt-1 text-[15.5px] font-bold leading-snug text-[var(--color-label)] line-clamp-2">{i.name}</div>
         {i.is_combo && (i.components?.length ?? 0) > 0 && <p className="mt-1 text-[12.5px] text-[var(--color-label-2)] line-clamp-2">Comes with {i.components!.map((c) => `${c.qty}× ${c.name}`).join(", ")}</p>}
-        {i.description && <p className="mt-1 text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2">{i.description}</p>}
-        <div className="mt-auto pt-2.5 flex items-baseline gap-1">
-          {tp.from && <span className="text-[12px] font-semibold text-[var(--color-label-2)]">from</span>}
-          <span className="num text-[18px] font-bold text-[var(--color-label)]" data-dish-price>{formatINR(tp.price, { whole: true })}</span>
+        {i.description && <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2">{i.description}</p>}
+        {/* the foot: the price, and what a dish with choices asks as a small chip beside it (a 44px target by its ::before) */}
+        <div className="mt-auto pt-2 pb-0.5 flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
+          <span className="inline-flex items-baseline gap-1">
+            {tp.from && <span className="text-[11.5px] font-semibold text-[var(--color-label-2)]">from</span>}
+            <span className="num text-[17px] font-bold text-[var(--color-label)]" data-dish-price>{formatINR(tp.price, { whole: true })}</span>
+          </span>
+          {custom && sells && <button type="button" onClick={onAdd} aria-label={`Choose ${asks} for ${i.name}`} className="relative h-7 px-2.5 rounded-full inline-flex items-center gap-1 text-[11.5px] font-bold bg-[color-mix(in_srgb,var(--color-orange)_14%,transparent)] text-[var(--color-orange)] max-w-full before:absolute before:-inset-y-2 before:inset-x-0 before:content-['']" data-dish-options><SlidersHorizontal size={12} aria-hidden className="shrink-0" /><span className="truncate">{asks}</span></button>}
         </div>
-        {custom && sells && <button type="button" onClick={onAdd} className="-ml-1 -mb-1.5 self-start min-h-11 px-1 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--color-orange)]" data-dish-options><SlidersHorizontal size={13} aria-hidden />Choose · {asks}</button>}
       </div>
-      <div className="relative shrink-0 w-[118px] sm:w-[132px] pb-3 self-start">
+      <div className="relative shrink-0 w-[104px] sm:w-[124px] pb-2.5 self-start">
         {i.image_url
-          ? <DishImage src={i.image_url} w={330} alt={i.name} title={i.image_credit ?? undefined} className={cn("h-[118px] sm:h-[132px] w-full rounded-[20px] object-cover bg-[var(--color-fill)]", !sells && "grayscale")} data-dish-photo />
-          : <DishArt name={i.name} category={cat} veg={i.is_veg} dim={!sells} className="h-[118px] sm:h-[132px] w-full rounded-[20px]" />}
+          ? <DishImage src={i.image_url} w={330} alt={i.name} title={i.image_credit ?? undefined} className={cn("h-[104px] sm:h-[124px] w-full rounded-[18px] object-cover bg-[var(--color-fill)]", !sells && "grayscale")} data-dish-photo />
+          : <DishArt name={i.name} category={cat} veg={i.is_veg} dim={!sells} className="h-[104px] sm:h-[124px] w-full rounded-[18px]" />}
         {/* a library photo carries its author and licence (CC BY / BY-SA): illustrative, and credited */}
         {i.image_url && i.image_credit && <span className="absolute left-1.5 top-1.5 max-w-[calc(100%-12px)] rounded-full bg-black/45 backdrop-blur-sm px-1.5 py-px text-[8.5px] leading-tight text-white/90 truncate" data-photo-credit>Illustrative · {i.image_credit.replace(/^Photo: /, "")}</span>}
         {!sells ? <div className="absolute bottom-1 inset-x-0 flex justify-center"><span className="pill pill-served" data-not-sold={i.available ? "online" : "out"}>{i.available ? "not online" : "sold out"}</span></div>
-          : qty ? <div className="absolute bottom-0 inset-x-0 flex justify-center"><AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /></div>
-          : <div className="absolute bottom-0 right-1"><AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /></div>}
+          : qty ? <div className="absolute bottom-0 -inset-x-2 flex justify-center"><AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /></div>
+          : <div className="absolute bottom-0 -right-0.5"><AddControl name={i.name} qty={qty} onAdd={onAdd} onLess={onLess} custom={custom} /></div>}
       </div>
     </article>
   );

@@ -35,7 +35,7 @@ export async function callTable(slug: string, table: string, kind: "waiter" | "b
   const { data, error } = await anon().rpc("dine_call", { p_slug: slug, p_table: table, p_kind: kind });
   if (error) return { error: error.message }; return { ok: true, call: data as { kind: string; status: string; again?: boolean } };
 }
-export type TableOrder = { id: string; ref: string; at: string; total: number; order_no: number | null; items: { name: string; qty: number }[]; n: number; ready: number; served: number; stage: "sent" | "accepted" | "cooking" | "ready" | "served" | "rejected" };
+export type TableOrder = { id: string; ref: string; at: string; total: number; order_no: number | null; items: { name: string; qty: number }[]; n: number; ready: number; served: number; bill?: number | null; stage: "sent" | "accepted" | "cooking" | "ready" | "served" | "bill" | "paid" | "rejected" };
 /** Where the orders this phone placed at this table stand (0144 `dine_table_orders`): the table's code and the order's id are both needed. */
 export async function tableOrders(slug: string, table: string, ids: string[]) {
   if (!ids.length) return { ok: true as const, orders: [] as TableOrder[] };
