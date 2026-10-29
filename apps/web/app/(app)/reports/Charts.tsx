@@ -8,7 +8,7 @@ function Empty({ text }: { text: string }) {
 
 /** Split out so the charting library loads only when Reports is opened, not with the app shell. */
 export function SalesChart({ data }: { data: { day: string; total: number }[] }) {
-  if (!data.some((d) => Number(d.total) > 0)) return <Empty text="No paid bills in this period yet." />;
+  if (!data.some((d) => Number(d.total) > 0)) return <Empty text="No paid bills yet" />;
   return (
     <div className="h-56"><ResponsiveContainer>
       <AreaChart data={data}>
@@ -22,7 +22,7 @@ export function SalesChart({ data }: { data: { day: string; total: number }[] })
   );
 }
 export function TopChart({ data }: { data: { name: string; qty: number }[] }) {
-  if (!data.some((d) => Number(d.qty) > 0)) return <Empty text="Nothing sold in this window yet." />;
+  if (!data.some((d) => Number(d.qty) > 0)) return <Empty text="Nothing sold yet" />;
   return (
     <div className="h-56"><ResponsiveContainer>
       <BarChart data={data} layout="vertical" margin={{ left: 0, right: 8 }}>
@@ -42,7 +42,7 @@ const tip = { borderRadius: 12, border: "1px solid var(--color-separator)", back
 
 /** Income beside outgoings, one pair of bars per day — the shape of the period at a glance. */
 export function MoneyChart({ data }: { data: { label: string; income: number; outgoings: number }[] }) {
-  if (!data.some((d) => d.income > 0 || d.outgoings > 0)) return <Empty text="Nothing came in or went out in this period yet." />;
+  if (!data.some((d) => d.income > 0 || d.outgoings > 0)) return <Empty text="No money in or out" />;
   const many = data.length > 31;
   return (
     <div className="h-60"><ResponsiveContainer>
@@ -61,7 +61,7 @@ export function MoneyChart({ data }: { data: { label: string; income: number; ou
 /** Where the money came from, or went — a ring, the biggest slice first. */
 export function ShareChart({ slices, label }: { slices: { name: string; value: number }[]; label: string }) {
   const data = slices.filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
-  if (!data.length) return <Empty text={`No ${label.toLowerCase()} in this period yet.`} />;
+  if (!data.length) return <Empty text={`No ${label.toLowerCase()} yet`} />;
   const total = data.reduce((a, s) => a + s.value, 0);
   return (
     <div className="h-60"><ResponsiveContainer>

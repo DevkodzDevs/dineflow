@@ -51,11 +51,11 @@ export function PasswordClient({ email, contactEmail, forced }:
         {active === "send" && (
           <div className="mt-7 space-y-4">
             <p className="text-sm text-[var(--color-label-2)]">
-              {forced ? "You signed in with a temporary password. " : ""}
-              We&apos;ll email you a 6-digit code.
+              {forced ? "Temporary password · " : ""}
+              6-digit code by email
             </p>
             {contactEmail
-              ? <p className="text-sm">The code goes to <span className="num font-semibold">{contactEmail}</span>.</p>
+              ? <p className="text-sm">Goes to <span className="num font-semibold">{contactEmail}</span></p>
               : <p className="text-sm text-[var(--color-orange)]">No email — ask Master control to add one.</p>}
             {sendErr && <p className="text-sm text-[var(--color-red)] bg-[var(--color-red-2)] rounded-xl px-3 py-2">{sendErr}</p>}
             <Button size="lg" className="w-full" disabled={pending || !contactEmail} onClick={send}>
@@ -68,11 +68,11 @@ export function PasswordClient({ email, contactEmail, forced }:
         {active === "code" && (
           <form action={vAct} className="mt-7 space-y-4">
             <p className="text-sm text-[var(--color-label-2)]">
-              Code sent to <span className="num">{sentTo}</span>. Valid 10 minutes.
+              Sent to <span className="num">{sentTo}</span> · 10 min
             </p>
             {echoed && (
               <p className="text-sm bg-[var(--color-fill)] rounded-xl px-3 py-2">
-                Email is off on this server. Your code:{" "}
+                Email off. Code:{" "}
                 <span className="num font-semibold tracking-[0.25em]">{echoed}</span>
               </p>
             )}
@@ -93,13 +93,7 @@ export function PasswordClient({ email, contactEmail, forced }:
         {/* Step 3: set the password */}
         {active === "password" && (
           <form action={pAct} className="mt-7 space-y-4">
-            {skipOtp ? (
-              <p className="text-sm text-[var(--color-label-2)]">
-                Now choose your own password.
-              </p>
-            ) : (
-              <p className="text-sm text-[var(--color-green)]">Code OK. Set your password within 15 minutes.</p>
-            )}
+            {!skipOtp && <p className="text-sm text-[var(--color-green)]">Code OK · 15 minutes</p>}
             <Field label="New password" hint="At least 8 characters">
               <PasswordInput name="password" required minLength={8} autoComplete="new-password" autoFocus />
             </Field>

@@ -114,7 +114,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
       {/* master_password_is_default (0098): the login still signs in with the password migration 0011 shipped with */}
       {defaultPassword && (
         <div role="alert" data-default-password className="rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
-          <p className="text-sm font-semibold sm:flex-1 min-w-0">This login still uses its install password, which is in the code. Anyone could sign in. Change it now.</p>
+          <p className="text-sm font-semibold sm:flex-1 min-w-0">Default password: anyone can sign in. Change it now.</p>
           <Button className="min-h-11 w-full sm:w-auto shrink-0" onClick={() => { setErr(null); setSheet("password"); }}><KeyIcon size={15} /> Change master password</Button>
         </div>
       )}
@@ -181,11 +181,11 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
         {/* the toolbar above filters and searches both; with no choice made, CSS picks by width */}
         <div className={view === null ? cardStyles.onlyNarrow : undefined} hidden={view === "table"} data-estate-cards>
           <PropertyCards rows={list} codeOf={codeOf} onBox={onBox} actions={(t) => rowActions(t, true)}
-            empty={filtered ? "No properties match this filter" : "No properties yet — press New property"} />
+            empty={filtered ? "No matches" : "No properties yet"} />
         </div>
         <div className={view === null ? cardStyles.onlyWide : undefined} hidden={view === "cards"} data-estate-table>
         <DataTable className={cardStyles.estateTable} rows={list as unknown as Record<string, unknown>[]} rowKey="id" pageSize={20}
-          empty={filtered ? "No properties match this filter" : "No properties yet — press New property"}
+          empty={filtered ? "No matches" : "No properties yet"}
           columns={[
             { key: "name", label: "Property", primary: true, render: (r) => { const t = r as unknown as T; return <div className="flex items-center gap-3"><span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0"><Icon t={t.property_type} /></span><div className="min-w-0"><div className="font-semibold truncate">{t.name}</div><div className="text-xs text-steel truncate">{codeOf(t.id) ? <span className="num">{codeOf(t.id)}</span> : t.property_type}{boxes.find((b) => b.restaurant_id === t.id)?.runs_on_box ? " · on a Box" : ""}</div></div></div>; } },
             { key: "membership", label: "Membership", render: (r) => { const t = r as unknown as T; return <><Pill tone={tone(t.membership)}>{t.membership}</Pill><div className="text-xs text-steel mt-1 num">{t.membership === "trial" ? `${daysLeft(t.trial_ends_at)}d left` : t.membership_ends_at ? `${daysLeft(t.membership_ends_at)}d left` : ""}</div></>; } },
@@ -242,9 +242,9 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
               })()}
             </div>
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-steel">Issue a key for this property</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-steel">Issue a key</div>
               <div className="grid grid-cols-2 gap-2"><Button disabled={pending} onClick={() => start(async () => { const r = await issueKey("monthly", sel.id); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Monthly key</Button><Button disabled={pending} variant="ink" onClick={() => start(async () => { const r = await issueKey("yearly", sel.id); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Yearly key</Button></div>
-              {issued && <div className="feather p-4 text-center"><div className="num text-2xl tracking-[0.2em] font-semibold">{issued}</div><button className="text-xs text-steel mt-1 underline" onClick={() => copyText(issued)}>Copy and send to the owner</button></div>}
+              {issued && <div className="feather p-4 text-center"><div className="num text-2xl tracking-[0.2em] font-semibold">{issued}</div><button className="text-xs text-steel mt-1 underline" onClick={() => copyText(issued)}>Copy for owner</button></div>}
             </div>
             <div className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-steel">Owner login</div>
@@ -256,16 +256,16 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
                     <Button size="sm" variant="outline" onClick={() => copyText(`${creds.email} / ${creds.password}`)}><Copy size={14} /> Copy</Button>
                     <Button size="sm" variant="plain" onClick={() => setCreds(null)}>Hide</Button>
                   </div>
-                  <p className="text-xs text-steel">Shown once. They set their own at next sign-in.</p>
+                  <p className="text-xs text-steel">Shown once</p>
                 </div>
               ) : (
                 <Button variant="outline" className="w-full" disabled={pending} onClick={() => start(async () => {
                   setErr(null);
                   const r = await resetPropertyPassword(sel.id);
                   if ("error" in r) setErr(r.error!); else setCreds({ title: "", email: r.login_email, password: r.temp_password });
-                })}><KeyIcon size={15} /> Issue a new temporary password</Button>
+                })}><KeyIcon size={15} /> New temporary password</Button>
               )}
-              <Field label="Owner's real email" hint="Gets the code they need to change their password.">
+              <Field label="Owner's real email" hint="For password resets">
                 <input value={contact} onChange={(e) => setContact(e.target.value)} type="email" placeholder="priya@gmail.com" />
               </Field>
               <Button size="sm" variant="outline" disabled={pending || !contact.trim()} onClick={() => start(async () => {
@@ -299,8 +299,8 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
       <Sheet open={sheet === "delete" && !!sel} onClose={() => { setSheet(null); setDel(null); setDelText(""); setErr(null); }} title={sel ? `Delete ${sel.name}?` : "Delete"}>
         {sel && (
           <div className="space-y-4">
-            <p className="text-sm">This deletes <b>{sel.name}</b>, all its data and its logins. <b>It cannot be undone.</b></p>
-            {!del ? <p className="text-sm text-steel">Counting what is in there…</p> : (<>
+            <p className="text-sm">Deletes <b>{sel.name}</b>, its data and logins. <b>Cannot be undone.</b></p>
+            {!del ? <p className="text-sm text-steel">Counting…</p> : (<>
               <div className="feather p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">What goes with it</div>
                 <ul className="text-sm grid grid-cols-2 gap-x-4 gap-y-1">
@@ -333,51 +333,45 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
         )}
       </Sheet>
       <Sheet open={sheet === "estate"} onClose={() => setSheet(null)} title="Load the sample estate" wide>
-        {pending && <Waiting expect={60} line="Building six properties and sixty days of history" className="mb-4" />}
+        {pending && <Waiting expect={60} line="Building sample estate" className="mb-4" />}
         <div className="space-y-4">
           {!estate ? (<>
-            <p className="text-sm text-steel">Creates <b>six working properties</b> (2 restaurants, 2 hotels, 2 resorts) with logins and 60 days of history, in one district.</p>
-            <ul className="text-sm text-steel space-y-1 list-disc pl-5">
-              <li>Sealed months, so <b>Proof of business</b> has a verified record to share</li>
-              <li>Two months of covers, so the <b>Tomorrow brief</b> actually predicts</li>
-              <li>Priced purchases, so <b>Neighbours → What things cost</b> has a median to compare against</li>
-            </ul>
-            <p className="text-xs text-steel">Takes about a minute. Safe to re-run — it skips what exists.</p>
+            <p className="text-sm text-steel"><b>2 restaurants, 2 hotels, 2 resorts</b> · 60 days</p>
+            <p className="text-xs text-steel">About a minute · safe to re-run</p>
             {err && <p className="text-sm text-chili">{err}</p>}
-            <Button className="w-full" disabled={pending} onClick={() => start(async () => { const r = await installEstate(); if ("error" in r) setErr(r.error!); else setEstate(r.properties!); })}>{pending ? "Building six properties…" : "Load the sample estate"}</Button>
+            <Button className="w-full" disabled={pending} onClick={() => start(async () => { const r = await installEstate(); if ("error" in r) setErr(r.error!); else setEstate(r.properties!); })}>{pending ? "Building…" : "Load the sample estate"}</Button>
           </>) : (<>
-            <p className="text-sm text-mint font-semibold">Six properties created. Copy the logins now — passwords show only here.</p>
+            <p className="text-sm text-mint font-semibold">Copy logins — shown once</p>
             <div className="feather overflow-hidden"><div className="table-wrap"><table className="w-full text-sm"><thead><tr><th className="text-left px-3 py-2">Property</th><th className="text-left px-3 py-2">Type</th><th className="text-left px-3 py-2">Email</th><th className="text-left px-3 py-2">Password</th></tr></thead>
               <tbody>{estate.map((p) => <tr key={p.email} className="border-t border-line"><td className="px-3 py-2 font-semibold">{p.name}</td><td className="px-3 py-2 capitalize text-steel">{p.type}</td><td className="px-3 py-2 num">{p.email}</td><td className="px-3 py-2 num">{p.password ?? <span className="text-steel">unchanged</span>}</td></tr>)}</tbody></table></div></div>
             <Button variant="outline" className="w-full" onClick={() => { copyText(estate.map((p) => `${p.name} (${p.type}) — ${p.email} / ${p.password ?? "(password unchanged)"}`).join("\n")); }}>Copy all logins</Button>
-            <p className="text-xs text-steel">Sign in as one to see the client view, or press <b>Open</b> on its row. Change or delete these before going live.</p>
+            <p className="text-xs text-steel">Remove before going live</p>
             <Button className="w-full" onClick={() => { setEstate(null); setSheet(null); }}>Done</Button>
           </>)}
         </div>
       </Sheet>
-      <Sheet open={sheet === "new"} onClose={() => { setSheet(null); setCreds(null); }} title={creds ? "Give these to the owner" : "Create a property"}>
+      <Sheet open={sheet === "new"} onClose={() => { setSheet(null); setCreds(null); }} title={creds ? "Owner's login" : "Create a property"}>
         <div className="space-y-4">
           {creds ? (<>
-            <p className="text-sm text-steel">{creds.title} The password is shown <b>once</b> and cannot be read again. Lost it? Issue a new one from the property&rsquo;s row.</p>
+            <p className="text-sm text-steel">{creds.title} Password shown <b>once</b>.</p>
             <div className="feather p-4 space-y-3">
               {creds.code && <div><div className="text-[11px] uppercase tracking-wide text-steel">DineFlow code</div><div className="num text-lg font-semibold break-all">{creds.code}</div></div>}
               <div><div className="text-[11px] uppercase tracking-wide text-steel">User ID</div><div className="num text-lg font-semibold break-all">{creds.email}</div></div>
               <div><div className="text-[11px] uppercase tracking-wide text-steel">Temporary password</div><div className="num text-lg font-semibold">{creds.password}</div></div>
             </div>
             <Button variant="outline" className="w-full" onClick={() => copyText([creds.code && `DineFlow code: ${creds.code}`, `User ID: ${creds.email}`, `Temporary password: ${creds.password}`].filter(Boolean).join("\n"))}><Copy size={15} /> Copy all</Button>
-            <p className="text-xs text-steel">At first sign-in they must set their own password.</p>
+            <p className="text-xs text-steel">Changed at first sign-in</p>
             <Button className="w-full" onClick={() => { setCreds(null); setSheet(null); router.push("/dashboard"); }}>Done, open the property</Button>
           </>) : (<>
-            <p className="text-sm text-steel">Creates the property <b>and its owner login</b>, then opens it. The owner sees only their own property.</p>
             <Field label="Property name"><input value={np.name} onChange={(e) => setNp({ ...np, name: e.target.value })} placeholder="Kanyakumari Bay Resort" autoFocus /></Field>
             <Field label="Type"><div className="grid grid-cols-3 gap-2">
               {([["restaurant", "Restaurant", UC], ["hotel", "Hotel", B2], ["resort", "Resort", PT]] as const).map(([v, l, I]) => (
                 <button key={v} type="button" onClick={() => setNp({ ...np, type: v })} className={cn("feather feather-lift flex flex-col items-center gap-1.5 py-3 text-xs font-semibold", np.type === v && "!border-saffron shadow-glow")}><I size={18} />{l}</button>
               ))}
             </div></Field>
-            <Field label="Owner's name" hint="Optional — shown in the app and on the bill"><input value={np.owner} onChange={(e) => setNp({ ...np, owner: e.target.value })} placeholder="Priya Kumar" /></Field>
+            <Field label="Owner's name" hint="Optional · shown on bill"><input value={np.owner} onChange={(e) => setNp({ ...np, owner: e.target.value })} placeholder="Priya Kumar" /></Field>
             <LoginIdField value={np.email} onChange={(v) => setNp({ ...np, email: v })} name={np.name} type={np.type} ownerName={np.owner} />
-            <Field label="Owner's real email *" hint="Gets their password-change code. Not used to sign in.">
+            <Field label="Owner's real email *" hint="For password resets only">
               <input value={np.contact} onChange={(e) => setNp({ ...np, contact: e.target.value })} type="email" required placeholder="owner@gmail.com" className={cn(!np.contact.trim() && np.name && "!border-[var(--color-orange)]")} />
             </Field>
             {/* sample data toggle — a proper switch instead of a bare checkbox */}
@@ -391,8 +385,8 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
                     np.demo ? "translate-x-4" : "translate-x-0.5")} />
                 </span>
                 <div className="min-w-0">
-                  <div className={cn("text-sm font-semibold", np.demo && "text-[var(--color-tint)]")}>Fill it with sample data</div>
-                  <div className="text-xs text-steel mt-0.5 leading-relaxed">Sample menu, rooms, bookings, staff and printers. Off means it starts empty.</div>
+                  <div className={cn("text-sm font-semibold", np.demo && "text-[var(--color-tint)]")}>Add sample data</div>
+                  <div className="text-xs text-steel mt-0.5 leading-relaxed">Menu, rooms, staff, printers</div>
                 </div>
               </div>
             </button>
@@ -409,15 +403,15 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
       <Sheet open={sheet === "password"} onClose={() => setSheet(null)} title="Change the master password">
         <div className="space-y-4">
           {/* never print the password the login shipped with: it is in the repository, so on screen it only helps whoever is looking */}
-          <p className="text-sm text-steel">At least 10 characters. Don't reuse another password.</p>
+          <p className="text-sm text-steel">10+ characters, never reused</p>
           <input type="password" autoComplete="new-password" placeholder="New password (10+ characters)" value={pw} onChange={(e) => setPw(e.target.value)} />
           {err && <p className="text-sm text-chili">{err}</p>}
-          <Button className="w-full" disabled={pending || pw.length < 10} onClick={() => start(async () => { const r = await setMasterPassword(pw); if ("error" in r) setErr(r.error!); else { setPw(""); setSheet(null); alert("Password changed. Use it from your next login."); } })}>Save new password</Button>
+          <Button className="w-full" disabled={pending || pw.length < 10} onClick={() => start(async () => { const r = await setMasterPassword(pw); if ("error" in r) setErr(r.error!); else { setPw(""); setSheet(null); alert("Password changed"); } })}>Save new password</Button>
         </div>
       </Sheet>
       <Sheet open={sheet === "key"} onClose={() => setSheet(null)} title="Issue membership key">
         <div className="space-y-4">
-          <p className="text-sm text-steel">Any property can redeem an open key. Use Manage to lock one to a client.</p>
+          <p className="text-sm text-steel">Works for any property</p>
           <div className="grid grid-cols-2 gap-2"><Button disabled={pending} onClick={() => start(async () => { const r = await issueKey("monthly", null); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Monthly · 30 days</Button><Button disabled={pending} variant="ink" onClick={() => start(async () => { const r = await issueKey("yearly", null); if ("code" in r) setIssued(r.code!); else setErr(r.error!); })}>Yearly · 365 days</Button></div>
           {issued && <div className="feather p-4 text-center"><div className="num text-2xl tracking-[0.2em] font-semibold">{issued}</div><button className="text-xs text-steel mt-1 underline" onClick={() => copyText(issued)}>Copy</button></div>}
           {err && <p className="text-sm text-chili">{err}</p>}
@@ -507,7 +501,7 @@ function AccessPanel({ sel, mods, setMods, pending, err, onSave, onCancel }: {
         <span className="text-xs text-steel ml-auto num">{count} of {allowedByType.length} on</span>
       </div>
 
-      <p className="text-xs text-steel">Switch a module off and it leaves the menu. <b>Dashboard</b> and <b>Settings</b> are always on.</p>
+      <p className="text-xs text-steel"><b>Dashboard</b> and <b>Settings</b> always on</p>
 
       {/* module toggles */}
       {visibleGroups.map((g) => (

@@ -582,6 +582,11 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   (Mumbai, ap-south-1) → `DATABASE_URL=<staging> node scripts/migrate.mjs` builds it from 0001 → `apps/web/.env.local` gets the
   staging URL and anon key (and its service-role key) → everyday work and probes run there; Vercel keeps the live keys; a
   migration reaches live only by a deliberate `--live` after its staging run.
+- **0155 — Room charge GST per dish (2026-10-29, applied; dry155 rolled back: one 18% dish and two at the property's 5% →
+  ₹64.80 + ₹34.00 = ₹98.80).** `post_order_to_room` asks `bill_tax` (front-desk.md).
+- **0154 — Hold on time (2026-10-29, applied; dry156 rolled back, 11 cases).** `reservations.held_at`; `hold_due()`
+  (authenticated only, `auth_restaurant_id()`, advisory lock per property); `reservation_set` frees a held table
+  (rooms-and-reservations.md).
 - **0153 — The delivery webhook says who it is (2026-10-29, applied; checked inside SQL without printing a token: a real
   channel returns its name, a wrong token null).** `channel_hello(token)` (anon, authenticated): label, kind, is_live of the
   channel with that webhook token (8+ characters), nothing else (connections.md).

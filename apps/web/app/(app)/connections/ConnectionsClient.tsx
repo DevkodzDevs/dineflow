@@ -25,10 +25,10 @@ type Rest = { id: string; name: string; type: string; slug: string | null; booki
 /** the food apps and the room sites a property connects, in the order the add tiles show them — each with its colour (tokens
  *  only) and the commission it usually takes, so a new channel starts with sensible numbers */
 const FOOD: { kind: string; name: string; hue: string; commission: number; prep: number; how: string }[] = [
-  { kind: "swiggy", name: "Swiggy", hue: "--color-orange", commission: 22, prep: 20, how: "Paste the webhook in your Swiggy partner tools (UrbanPiper / Petpooja Connect)" },
-  { kind: "zomato", name: "Zomato", hue: "--color-red", commission: 25, prep: 20, how: "Paste the webhook in your Zomato partner tools (UrbanPiper / Petpooja Connect)" },
-  { kind: "ondc", name: "ONDC", hue: "--color-violet", commission: 5, prep: 20, how: "Give the webhook to your ONDC seller app" },
-  { kind: "website", name: "Your website", hue: "--color-tint", commission: 0, prep: 20, how: "Orders from your own storefront land here with no commission" },
+  { kind: "swiggy", name: "Swiggy", hue: "--color-orange", commission: 22, prep: 20, how: "Paste webhook in UrbanPiper / Petpooja" },
+  { kind: "zomato", name: "Zomato", hue: "--color-red", commission: 25, prep: 20, how: "Paste webhook in UrbanPiper / Petpooja" },
+  { kind: "ondc", name: "ONDC", hue: "--color-violet", commission: 5, prep: 20, how: "Give webhook to your ONDC app" },
+  { kind: "website", name: "Your website", hue: "--color-tint", commission: 0, prep: 20, how: "Storefront orders, no commission" },
 ];
 const ROOMS: { kind: string; name: string; hue: string; commission: number }[] = [
   { kind: "booking_com", name: "Booking.com", hue: "--color-blue", commission: 15 }, { kind: "makemytrip", name: "MakeMyTrip / Goibibo", hue: "--color-orange", commission: 20 },
@@ -81,7 +81,7 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
 
   return (
     <div className="space-y-6" data-connections>
-      <SvcHead icon="online" title="Connections" sub="Every outside link, in one place" actions={<OnlineSwitch off={restaurant.paused} canEdit />} />
+      <SvcHead icon="online" title="Connections" sub="All outside links" actions={<OnlineSwitch off={restaurant.paused} canEdit />} />
 
       {/* what is live, what needs a hand — a tap scrolls to the block */}
       <div className="fill-tiles" data-conn-health>
@@ -93,7 +93,7 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
       </div>
 
       {/* ── food delivery apps ── */}
-      <Block id="food" icon={<Bike size={20} />} hue="--color-orange" title="Food delivery apps" sub="Swiggy, Zomato, ONDC and your website send orders to Online orders" data="food"
+      <Block id="food" icon={<Bike size={20} />} hue="--color-orange" title="Food delivery apps" sub="Swiggy, Zomato, ONDC, website" data="food"
         right={<Link href="/online-orders" className="svc-btn quiet sm !px-4"><UtensilsCrossed size={16} aria-hidden /> Online orders</Link>}>
         <div className="flex flex-wrap gap-2" data-add-food>
           {FOOD.filter((f) => !orderChannels.some((c) => c.kind === f.kind)).map((f) => (
@@ -115,20 +115,20 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
             <li key={c.id} data-oc={c.kind} className="feather @container overflow-hidden flex flex-col min-w-0">
               <div className="p-4 flex flex-col gap-3 flex-1 min-w-0">
                 <Head hue={hue} label={c.label} live={c.is_live} meta={<><span><span className="num">{c.commission_pct}%</span> commission</span><span aria-hidden>·</span><span><span className="num">{c.prep_minutes}</span> min prep</span>{c.auto_accept && <><span aria-hidden>·</span><span className="font-semibold text-[var(--color-orange)]">auto-accept</span></>}</>} />
-                <LinkField icon={<Link2 size={16} />} label="Webhook URL — paste it in the app's partner tools" value={hook} keep={10} copied={copied === c.id} onCopy={() => copyLink(c.id, hook)} aria={`Copy the webhook URL for ${c.label}`} data="webhook" />
+                <LinkField icon={<Link2 size={16} />} label="Webhook — paste in app" value={hook} keep={10} copied={copied === c.id} onCopy={() => copyLink(c.id, hook)} aria={`Copy the webhook URL for ${c.label}`} data="webhook" />
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-steel" data-status>
-                  {c.last_sync_at ? <span className="flex items-center gap-1"><Check size={12} className="text-mint" /> Last order {when(c.last_sync_at)}</span> : <span className="flex items-center gap-1"><Clock size={12} /> No orders received yet</span>}
+                  {c.last_sync_at ? <span className="flex items-center gap-1"><Check size={12} className="text-mint" /> Last order {when(c.last_sync_at)}</span> : <span className="flex items-center gap-1"><Clock size={12} /> No orders yet</span>}
                   {t && <span className="flex items-center gap-1 font-semibold text-[var(--color-label)]"><Bike size={12} /> Today <span className="num">{t.n}</span> · ₹<span className="num">{Math.round(t.gross).toLocaleString("en-IN")}</span></span>}
                 </div>
               </div>
               <CardStrip actions={acts} data-actions />
             </li>); })}
-          {orderChannels.length === 0 && <li className="feather p-5 text-sm text-steel">No food app connected yet. Tap one above — you get a link to paste in its partner tools, and a Test order to prove it.</li>}
+          {orderChannels.length === 0 && <li className="feather p-5 text-sm text-steel">No food apps yet</li>}
         </ul>
       </Block>
 
       {/* ── room booking sites ── */}
-      {lodging && <Block id="rooms" icon={<BedDouble size={20} />} hue="--color-blue" title="Room booking sites" sub="Booking.com, MakeMyTrip, Agoda, Airbnb — calendars both ways, so a room is never sold twice" data="rooms"
+      {lodging && <Block id="rooms" icon={<BedDouble size={20} />} hue="--color-blue" title="Room booking sites" sub="Two-way room calendars" data="rooms"
         right={<><Button variant="outline" className="[&>svg]:shrink-0" disabled={!!busy || !ota.length} onClick={() => syncNow()}><RefreshCw size={15} className={cn(busy === "sync:all" && "animate-spin")} /> {busy === "sync:all" ? "Syncing…" : "Sync all"}</Button><Link href="/channels" className="svc-btn quiet sm !px-4"><Calendar size={16} aria-hidden /> Rates</Link></>}>
         <div className="flex flex-wrap gap-2" data-add-rooms>
           {ROOMS.filter((f) => f.kind === "ical" || !ota.some((c) => c.kind === f.kind)).map((f) => (
@@ -153,19 +153,19 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
                 <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-steel min-w-0" data-status>
                   {c.last_error ? <span className="text-chili flex items-center gap-1 min-w-0 max-w-full"><AlertTriangle size={12} className="shrink-0" /> <span className="truncate" title={c.last_error}>{c.last_error}</span></span>
                     : c.last_import_at ? <span className="text-mint flex items-center gap-1"><Check size={12} /> Synced {when(c.last_import_at)}</span> : <span className="flex items-center gap-1"><Clock size={12} /> Never synced</span>}
-                  {c.import_url ? <span className="flex items-center gap-1 min-w-0 max-w-full" title={c.import_url}><Link2 size={12} className="shrink-0" /> <span className="truncate">Their calendar is pasted</span></span> : <span className="flex items-center gap-1 text-[var(--color-orange)] font-semibold"><Link2 size={12} /> Paste their calendar link with Edit</span>}
+                  {c.import_url ? <span className="flex items-center gap-1 min-w-0 max-w-full" title={c.import_url}><Link2 size={12} className="shrink-0" /> <span className="truncate">Their calendar is pasted</span></span> : <span className="flex items-center gap-1 text-[var(--color-orange)] font-semibold"><Link2 size={12} /> Paste their link</span>}
                 </div>
-                <LinkField icon={<Calendar size={16} />} label={`Your calendar — paste into ${to}`} value={link} keep={12} copied={copied === c.id} onCopy={() => copyLink(c.id, link)} aria={`Copy the calendar link for ${c.label}`} data="cal-link" />
+                <LinkField icon={<Calendar size={16} />} label={`Paste into ${to}`} value={link} keep={12} copied={copied === c.id} onCopy={() => copyLink(c.id, link)} aria={`Copy the calendar link for ${c.label}`} data="cal-link" />
               </div>
               <CardStrip actions={acts} data-actions />
             </li>); })}
-          {ota.length === 0 && <li className="feather p-5 text-sm text-steel">No room site connected yet. Tap one above: you get a calendar link to paste on their extranet, and paste theirs here — the rooms stay in step.</li>}
+          {ota.length === 0 && <li className="feather p-5 text-sm text-steel">No room sites yet</li>}
         </ul>
         {log.length > 0 && <div className="text-xs text-steel flex flex-wrap gap-x-4 gap-y-1" data-sync-log>{log.slice(0, 3).map((l) => <span key={l.id} className="flex items-center gap-1 min-w-0"><span className={cn("h-1.5 w-1.5 rounded-full shrink-0", l.ok ? "bg-mint" : "bg-chili")} /><span className="num">{when(l.created_at)}</span><span className="truncate">{l.message}</span></span>)}</div>}
       </Block>}
 
       {/* ── payments ── */}
-      <Block id="pay" icon={<CreditCard size={20} />} hue="--color-green" title="Payments" sub="Every bill carries a pay link and a UPI QR; Razorpay takes cards, netbanking and wallets on your own account" data="pay"
+      <Block id="pay" icon={<CreditCard size={20} />} hue="--color-green" title="Payments" sub="UPI QR and cards" data="pay"
         right={<span className={cn("inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12.5px] font-bold", pay === "ready" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : pay === "keys" ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "bg-[var(--color-fill)] text-steel")} data-pay-state={pay}>
           <span className={cn("h-1.5 w-1.5 rounded-full", pay === "ready" && "animate-pulse")} style={{ background: "currentColor" }} />{pay === "ready" ? "Razorpay ready" : pay === "keys" ? "Secret missing" : "Razorpay not set up"}</span>}>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -173,22 +173,22 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
             <div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel">How a guest pays</div>
             {/* iPad and up (2026-10-24, the owner: "design"): the steps as a connected timeline; phones keep the numbered list */}
             <div className="hidden md:block"><Flow hue="var(--color-green)" steps={[
-              { Icon: QrCode, title: "The bill's QR", body: <>Printed on every bill and shown at the till — a UPI payment to <span className="num font-semibold text-[var(--color-label)]">{restaurant.upi_vpa || "your UPI ID (set it on the right)"}</span>.</> },
-              { Icon: Link2, title: "The pay link", body: <><span className="num">{base}/pay/…</span> on each bill — card, netbanking and wallets through Razorpay once the keys are saved; UPI always.</> },
-              { Icon: Webhook, title: "The webhook", body: "Razorpay tells DineFlow the moment a payment lands, so the bill turns paid by itself." },
+              { Icon: QrCode, title: "The bill's QR", body: <>UPI to <span className="num font-semibold text-[var(--color-label)]">{restaurant.upi_vpa || "your UPI ID"}</span></> },
+              { Icon: Link2, title: "The pay link", body: <><span className="num">{base}/pay/…</span> · cards via Razorpay</> },
+              { Icon: Webhook, title: "The webhook", body: "Marks the bill paid" },
             ]} /></div>
             <ol className="text-sm space-y-2 md:hidden">
-              <li className="flex gap-2.5"><Step n={1} /><span><b>The bill's QR.</b> Printed on every bill and shown at the till: a UPI payment to <span className="num">{restaurant.upi_vpa || "your UPI ID (set it below)"}</span>.</span></li>
-              <li className="flex gap-2.5"><Step n={2} /><span><b>The pay link.</b> <span className="num text-steel">{base}/pay/…</span> on each bill — card, netbanking and wallets through Razorpay once the keys are saved; UPI always.</span></li>
-              <li className="flex gap-2.5"><Step n={3} /><span><b>The webhook.</b> Razorpay tells DineFlow the moment a payment lands, so the bill turns paid by itself.</span></li>
+              <li className="flex gap-2.5"><Step n={1} /><span><b>The bill's QR.</b> UPI to <span className="num">{restaurant.upi_vpa || "your UPI ID"}</span></span></li>
+              <li className="flex gap-2.5"><Step n={2} /><span><b>The pay link.</b> <span className="num text-steel">{base}/pay/…</span> · cards via Razorpay</span></li>
+              <li className="flex gap-2.5"><Step n={3} /><span><b>The webhook.</b> Marks the bill paid</span></li>
             </ol>
-            <LinkField icon={<Link2 size={16} />} label="Webhook address — Razorpay → Webhooks → payment.captured" value={`${base}/api/webhooks/razorpay`} keep={18} copied={copied === "rzp-hook"} onCopy={() => copyLink("rzp-hook", `${base}/api/webhooks/razorpay`)} aria="Copy the Razorpay webhook address" data="rzp-webhook" />
+            <LinkField icon={<Link2 size={16} />} label="Razorpay → Webhooks → payment.captured" value={`${base}/api/webhooks/razorpay`} keep={18} copied={copied === "rzp-hook"} onCopy={() => copyLink("rzp-hook", `${base}/api/webhooks/razorpay`)} aria="Copy the Razorpay webhook address" data="rzp-webhook" />
           </div>
           {owner ? (
             <form className="rounded-[18px] bg-[var(--color-fill)] p-4 space-y-3 min-w-0 md:bg-[var(--color-bg-2)] md:border md:border-[var(--color-separator)] md:p-5 md:space-y-4" data-pay-form action={(fd) => start(async () => { const r = await savePayments(fd); if ("error" in r) toast(r.error!, "err"); else { toast("Payment settings saved"); setTested(null); router.refresh(); } })}>
               <input type="hidden" name="id" value={restaurant.id} />
               <div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel md:hidden">UPI</div>
-              <GroupHead Icon={QrCode} hue="var(--color-green)" title="UPI" sub="The ID every bill's QR pays" />
+              <GroupHead Icon={QrCode} hue="var(--color-green)" title="UPI" sub="For the bill QR" />
               <div className="grid sm:grid-cols-2 gap-3 md:rounded-[16px] md:border md:border-[var(--color-separator)] md:bg-[var(--color-bg)] md:p-3.5" data-pay-upi>
                 <Field label="UPI ID"><input name="upi_vpa" defaultValue={restaurant.upi_vpa ?? ""} placeholder="hotel@okaxis" className="num" autoCapitalize="none" /></Field>
                 <Field label="Payee name" hint="Blank = property name"><input name="upi_payee" defaultValue={restaurant.upi_payee ?? ""} /></Field>
@@ -200,7 +200,7 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
                 <Field label="Key ID"><input name="razorpay_key_id" defaultValue={gateway.key_id} placeholder="rzp_live_…" className="num" autoCapitalize="none" /></Field>
                 <Field label="Key secret" hint={gateway.hasSecret ? "Saved. Blank keeps it; 'clear' removes." : ""}><PasswordInput name="razorpay_key_secret" autoComplete="new-password" placeholder={gateway.hasSecret ? "••••••••" : ""} /></Field>
               </div>
-              <Field label="Webhook secret" hint={gateway.hasWebhook ? "Saved. Blank keeps it; 'clear' removes." : "From the webhook you add at Razorpay"}><PasswordInput name="razorpay_webhook_secret" autoComplete="new-password" placeholder={gateway.hasWebhook ? "••••••••" : ""} /></Field>
+              <Field label="Webhook secret" hint={gateway.hasWebhook ? "Saved. Blank keeps it; 'clear' removes." : "From Razorpay webhook"}><PasswordInput name="razorpay_webhook_secret" autoComplete="new-password" placeholder={gateway.hasWebhook ? "••••••••" : ""} /></Field>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button disabled={pending}>Save payments</Button>
@@ -213,38 +213,38 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
               <div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel">Keys</div>
               <p>UPI ID: <span className="num font-semibold">{restaurant.upi_vpa || "not set"}</span></p>
               <p>Razorpay: <b>{pay === "ready" ? "ready" : pay === "keys" ? "key saved, secret missing" : "not set up"}</b></p>
-              <p className="text-steel">Only the owner can change payment keys.</p>
+              <p className="text-steel">Owner only</p>
             </div>
           )}
         </div>
       </Block>
 
       {/* ── delivery tracking ── */}
-      <Block id="track" icon={<MapPin size={20} />} hue="--color-cyan" title="Delivery tracking" sub="The customer watches the rider come; the rider shares the trip from a link, no app to install" data="track"
+      <Block id="track" icon={<MapPin size={20} />} hue="--color-cyan" title="Delivery tracking" sub="Live rider tracking" data="track"
         right={<label className="flex items-center gap-3 text-sm font-semibold"><span data-tracking-state>{tracking ? "On" : "Off"}</span><Switch on={tracking} name="Delivery tracking" onChange={(v) => { setTrackingOn(v); start(async () => { const r = await setTracking(v); if ("error" in r) { setTrackingOn(!v); toast(r.error!, "err"); } else toast(v ? "Delivery tracking is on" : "Delivery tracking is off"); }); }} /></label>}>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
           {/* iPad and up: the steps as a timeline with the two demo pages under them; phones keep the list */}
           <div className="hidden md:block rounded-[18px] bg-[var(--color-bg-2)] border border-[var(--color-separator)] p-5 min-w-0" data-track-how>
             <Flow hue="var(--color-cyan)" steps={[
-              { Icon: Send, title: "Food ready → Send out", body: "On Online orders, pick who rides it — a staff member, or just a name and phone." },
-              { Icon: Link2, title: "Two links", body: <>The rider gets <span className="num">{base}/ride/…</span> on WhatsApp — Picked up, Share my location, Delivered. The customer gets <span className="num">{base}/track/…</span>.</> },
-              { Icon: MapPin, title: "Live", body: "The customer's page shows the stage, the rider's name, a call button and the rider on a map while the trip is on." },
+              { Icon: Send, title: "Food ready → Send out", body: "Online orders → pick a rider" },
+              { Icon: Link2, title: "Two links", body: <>Rider <span className="num">{base}/ride/…</span> · customer <span className="num">{base}/track/…</span></> },
+              { Icon: MapPin, title: "Live", body: "Live rider map" },
             ]} />
             <div className="mt-4 flex flex-wrap gap-2.5"><a href="/track/demo" target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4"><Smartphone size={16} aria-hidden /> See the customer&apos;s page</a><a href="/ride/demo" target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4"><Bike size={16} aria-hidden /> See the rider&apos;s page</a></div>
           </div>
           <ol className="rounded-[18px] bg-[var(--color-fill)] p-4 text-sm space-y-2.5 min-w-0 md:hidden">
-            <li className="flex gap-2.5"><Step n={1} /><span><b>Food ready → Send out.</b> On Online orders, pick who rides it (a staff member, or just a name and phone).</span></li>
-            <li className="flex gap-2.5"><Step n={2} /><span><b>Two links.</b> The rider gets <span className="num text-steel">{base}/ride/…</span> on WhatsApp — Picked up, Share my location, Delivered. The customer gets <span className="num text-steel">{base}/track/…</span>.</span></li>
-            <li className="flex gap-2.5"><Step n={3} /><span><b>Live.</b> The customer's page shows the stage, the rider's name, a call button and the rider on a map while the trip is on.</span></li>
+            <li className="flex gap-2.5"><Step n={1} /><span><b>Food ready → Send out.</b> Online orders → pick a rider</span></li>
+            <li className="flex gap-2.5"><Step n={2} /><span><b>Two links.</b> Rider <span className="num text-steel">{base}/ride/…</span> · customer <span className="num text-steel">{base}/track/…</span></span></li>
+            <li className="flex gap-2.5"><Step n={3} /><span><b>Live.</b> Live rider map</span></li>
             <li className="flex gap-2.5 pt-1"><a href="/track/demo" target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4" data-track-demo><Smartphone size={16} aria-hidden /> See the customer's page</a><a href="/ride/demo" target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4" data-ride-demo><Bike size={16} aria-hidden /> See the rider's page</a></li>
           </ol>
           <div className="rounded-[18px] bg-[var(--color-fill)] p-4 min-w-0 md:bg-[var(--color-bg-2)] md:border md:border-[var(--color-separator)] md:p-5" data-riders>
             <div className="flex items-center justify-between gap-2 mb-2"><div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel">Your riders</div><Link href="/staff" className="text-[12.5px] font-semibold text-steel hover:text-[var(--color-label)] underline-offset-2 hover:underline">Staff →</Link></div>
             {riders.length ? <ul className="space-y-1.5 text-sm">{riders.map((r) => <li key={r.id} className="flex items-center gap-2 min-w-0"><span className="h-7 w-7 rounded-full grid place-items-center bg-[var(--color-bg-2)] text-[12px] font-bold shrink-0">{r.full_name.slice(0, 1)}</span><span className="truncate font-semibold">{r.full_name}</span><span className="num text-xs text-steel ml-auto shrink-0">{r.phone ?? "no phone"}</span></li>)}</ul>
               : <>
-                <p className="text-sm text-steel md:hidden">No one has the Delivery Rider position yet. Any name and phone still works when you send an order out; adding riders in Staff makes it one tap.</p>
+                <p className="text-sm text-steel md:hidden">No riders yet</p>
                 <div className="hidden md:block"><EmptyState size="sm" icon={Bike} hue="cyan" title="No riders yet" data-riders-empty
-                  hint="Any name and phone works when you send an order out. Give someone the Delivery Rider position in Staff and they're one tap."
+                  hint="Optional · add in Staff"
                   actions={<Link href="/staff" className="svc-btn quiet sm !px-3.5">Staff</Link>} /></div>
               </>}
           </div>
@@ -252,21 +252,21 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
       </Block>
 
       {/* ── public links ── */}
-      <Block id="links" icon={<Globe size={20} />} hue="--color-violet" title="Your public links" sub="Where guests order, book and find you — paste them on Google, Instagram and WhatsApp" data="links"
+      <Block id="links" icon={<Globe size={20} />} hue="--color-violet" title="Your public links" sub="For Google, Instagram, WhatsApp" data="links"
         right={restaurant.slug ? <a href={`${base}/dine/${restaurant.slug}`} target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4"><ExternalLink size={16} aria-hidden /> Open</a> : <Link href="/settings/storefront" className="svc-btn quiet sm !px-4">Set up</Link>}>
         {restaurant.slug ? <>
-          {!restaurant.listed && <p className="text-sm text-[var(--color-orange)] font-semibold flex items-center gap-1.5"><AlertTriangle size={14} /> Not listed publicly yet — switch it on in Settings → Storefront so these links work.</p>}
+          {!restaurant.listed && <p className="text-sm text-[var(--color-orange)] font-semibold flex items-center gap-1.5"><AlertTriangle size={14} /> Not listed · Settings → Storefront</p>}
           <GoogleLinks base={base} slug={restaurant.slug} listed={restaurant.listed} dining={restaurant.dining} ordering={restaurant.ordering} rooms={lodging} />
           <div className="flex flex-wrap gap-2 text-[13px]">
             <Link href="/pulse/qr" className="svc-btn quiet sm !px-4"><QrCode size={16} aria-hidden /> Join by QR</Link>
             <Link href="/settings/table-qr" className="svc-btn quiet sm !px-4"><QrCode size={16} aria-hidden /> Table QR codes</Link>
             <Link href="/settings/screens" className="svc-btn quiet sm !px-4"><Smartphone size={16} aria-hidden /> Screens & feedback</Link>
           </div>
-        </> : <p className="text-sm text-steel">Give the property a web address in Settings → Storefront, and its links appear here.</p>}
+        </> : <p className="text-sm text-steel">No web address yet</p>}
       </Block>
 
       {/* ── who may open this page ── */}
-      <Block id="who" icon={<Users size={20} />} hue="--color-label-2" title="Who can open this page" sub="The owner always; a manager or supervisor when the owner switches it on in Staff → Access" data="who"
+      <Block id="who" icon={<Users size={20} />} hue="--color-label-2" title="Who can open this page" sub="Owner, plus Staff → Access" data="who"
         right={owner && <Link href="/staff" className="svc-btn quiet sm !px-4"><Users size={16} aria-hidden /> Staff</Link>}>
         <ul className="flex flex-wrap gap-2" data-who>{who.map((p) => <li key={p.id} className="inline-flex items-center gap-2 h-9 pl-1.5 pr-3 rounded-full bg-[var(--color-fill)] text-[13px] font-semibold"><span className="h-6 w-6 rounded-full grid place-items-center bg-[var(--color-bg-2)] text-[11px] font-bold">{p.full_name.slice(0, 1)}</span>{p.full_name}<span className="text-steel font-medium">· {p.role === "owner" ? "owner" : "given access"}</span></li>)}</ul>
       </Block>
@@ -274,15 +274,15 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
       {err && <p className="text-sm text-chili">{err}</p>}
 
       <Sheet open={!!editOc} onClose={() => setEditOc(null)} title={editOc?.id ? editOc.label ?? "" : `Connect ${FOOD.find((f) => f.kind === editOc?.kind)?.name ?? "a food app"}`}>
-        {editOc && <form className="space-y-4" action={(fd) => start(async () => { const r = await saveChannel(fd); if ("error" in r) setErr(r.error!); else { setErr(null); setEditOc(null); toast(editOc.id ? "Channel saved" : "Connected — copy its webhook into the app's partner tools"); } })}>
+        {editOc && <form className="space-y-4" action={(fd) => start(async () => { const r = await saveChannel(fd); if ("error" in r) setErr(r.error!); else { setErr(null); setEditOc(null); toast(editOc.id ? "Channel saved" : "Connected — copy the webhook"); } })}>
           {editOc.id && <input type="hidden" name="id" value={editOc.id} />}
           {!editOc.id && FOOD.find((f) => f.kind === editOc.kind) && <p className="text-sm text-steel">{FOOD.find((f) => f.kind === editOc.kind)!.how}.</p>}
           <div className="grid grid-cols-2 gap-3"><Field label="Platform"><select name="kind" defaultValue={editOc.kind ?? "swiggy"}><option value="swiggy">Swiggy</option><option value="zomato">Zomato</option><option value="ondc">ONDC</option><option value="website">My website</option><option value="other">Other</option></select></Field>
             <Field label="Label"><input name="label" defaultValue={editOc.label} required placeholder="Swiggy — Main outlet" /></Field>
-            <Field label="Outlet id at the platform"><input name="outlet_ref" className="num" defaultValue={editOc.outlet_ref ?? ""} /></Field>
+            <Field label="Outlet ID"><input name="outlet_ref" className="num" defaultValue={editOc.outlet_ref ?? ""} /></Field>
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOc.commission_pct ?? 22} /></Field>
             <Field label="Prep time (min)"><input name="prep_minutes" type="number" className="num" defaultValue={editOc.prep_minutes ?? 20} /></Field></div>
-          <Field label="Partner API base (optional)" hint="Only if you have partner credentials"><input name="api_base" defaultValue={editOc.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
+          <Field label="Partner API base (optional)" hint="Partner accounts only"><input name="api_base" defaultValue={editOc.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
           <Field label="API key (optional)" hint={editOc.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOc.has_api_key ? "Saved" : "••••••"} /></Field>
           <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="auto_accept" defaultChecked={editOc.auto_accept} /> Auto-accept matched orders</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_live" defaultChecked={editOc.is_live} /> Live</label></div>
           <Button className="w-full" disabled={pending}>{editOc.id ? "Save" : "Connect"}</Button></form>}
@@ -292,18 +292,18 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
           /* a pasted calendar link is proved at once, like Test keys (2026-10-29): sync it now and say what happened, rather
              than leave it "Never synced" until the nightly run */
           if (String(fd.get("import_url") ?? "").trim() && r.id) void syncNow(r.id);
-          else toast(editOta.id ? "Channel saved" : "Connected — copy your calendar link into their extranet"); } })}>
+          else toast(editOta.id ? "Channel saved" : "Connected — copy your link"); } })}>
           {editOta.id && <input type="hidden" name="id" value={editOta.id} />}
-          {!editOta.id && <p className="text-sm text-steel">Two calendars, both ways: paste their iCal export link here, and after saving, copy your DineFlow calendar link into their extranet. Syncs every night and on Sync.</p>}
+          {!editOta.id && <p className="text-sm text-steel">Paste their iCal link below. Save, copy yours to their extranet. Syncs nightly.</p>}
           <div className="grid grid-cols-2 gap-3"><Field label="Site"><select name="kind" defaultValue={editOta.kind ?? "booking_com"}><option value="booking_com">Booking.com</option><option value="makemytrip">MakeMyTrip / Goibibo</option><option value="airbnb">Airbnb</option><option value="agoda">Agoda</option><option value="expedia">Expedia</option><option value="ical">Any iCal calendar</option><option value="other">Other</option></select></Field>
             <Field label="Label"><input name="label" defaultValue={editOta.label} required placeholder="Booking.com — Deluxe" /></Field>
             <Field label="Mode"><select name="mode" defaultValue={editOta.mode ?? "ical"}><option value="ical">iCal (works today)</option><option value="api">API (needs credentials)</option></select></Field>
             <Field label="Room type"><select name="room_type_id" defaultValue={editOta.room_type_id ?? ""}><option value="">All types</option>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOta.commission_pct ?? 15} /></Field>
-            <Field label="Rate offset %" hint="Higher on OTAs protects direct rates"><input name="rate_offset_pct" type="number" step="0.1" className="num" defaultValue={editOta.rate_offset_pct ?? 0} /></Field></div>
-          <Field label="Their calendar link (iCal export)"><input name="import_url" className="num text-xs min-w-0" defaultValue={editOta.import_url ?? ""} placeholder="https://ical.booking.com/v1/export?t=…" /></Field>
+            <Field label="Rate offset %" hint="Higher protects direct rates"><input name="rate_offset_pct" type="number" step="0.1" className="num" defaultValue={editOta.rate_offset_pct ?? 0} /></Field></div>
+          <Field label="Their iCal link"><input name="import_url" className="num text-xs min-w-0" defaultValue={editOta.import_url ?? ""} placeholder="https://ical.booking.com/v1/export?t=…" /></Field>
           <Field label="API base (API mode)"><input name="api_base" defaultValue={editOta.api_base ?? ""} /></Field>
-          <div className="grid grid-cols-2 gap-3"><Field label="Property id at the site"><input name="hotel_ref" className="num" defaultValue={editOta.hotel_ref ?? ""} /></Field><Field label="API key" hint={editOta.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOta.has_api_key ? "Saved" : "••••••"} /></Field></div>
+          <div className="grid grid-cols-2 gap-3"><Field label="Property ID"><input name="hotel_ref" className="num" defaultValue={editOta.hotel_ref ?? ""} /></Field><Field label="API key" hint={editOta.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOta.has_api_key ? "Saved" : "••••••"} /></Field></div>
           <label className="flex items-center gap-2 text-sm normal-case"><input type="checkbox" name="is_live" defaultChecked={editOta.is_live} /> Live</label>
           <Button className="w-full" disabled={pending}>{editOta.id ? "Save" : "Connect"}</Button></form>}
       </Sheet>

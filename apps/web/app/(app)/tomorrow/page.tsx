@@ -27,15 +27,15 @@ export default async function Tomorrow({ searchParams }: { searchParams: Promise
     if (failed) console.error(`[tomorrow] forecast_day failed for ${target}:`, failed.message);
     return (
       <>
-        <PageHeader eyebrow="Before you lock up tonight" title="Tomorrow"
+        <PageHeader eyebrow="Before lock-up" title="Tomorrow"
           sub={new Date(target).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} />
         <Empty
-          title={nobody ? "No property open on this login" : "No brief for this day yet"}
+          title={nobody ? "No property open" : "No brief yet"}
           hint={nobody
-            ? "Open a property from Master control, then come back."
+            ? "Open one in Master control"
             : failed
               ? `Tomorrow's brief could not be built: ${failed.message}`
-              : "After a few days of orders, tomorrow's plan shows here."}
+              : "Needs a few days of orders"}
           action={<Link href={nobody ? "/admin" : "/dashboard"}><Button variant="outline">{nobody ? "Go to master control" : "Back to today"}</Button></Link>}
         />
       </>

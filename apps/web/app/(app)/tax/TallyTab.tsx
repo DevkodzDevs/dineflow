@@ -8,9 +8,9 @@ import { tallyDays, saveTallyNames } from "./actions";
 
 const LABEL: Record<keyof Ledgers, string> = {
   sales: "Food sales", service: "Service charge", cgst: "Output CGST", sgst: "Output SGST", round_off: "Round off", other_income: "Other income",
-  cash: "Cash", upi: "UPI", card: "Card", other: "Other payments", bank: "Bank (expenses not in cash)", input_gst: "Input GST (expenses)",
-  room_sales: "Room revenue (stays)", guest_services: "Guest services (laundry, spa…)", discount: "Discount allowed (stays)", debtors: "Guests still owing (stays)",
-  expense_prefix: "Before each expense head (optional)",
+  cash: "Cash", upi: "UPI", card: "Card", other: "Other payments", bank: "Bank (non-cash expenses)", input_gst: "Input GST (expenses)",
+  room_sales: "Room revenue (stays)", guest_services: "Guest services", discount: "Discount allowed (stays)", debtors: "Guest dues (stays)",
+  expense_prefix: "Expense prefix (optional)",
 };
 const lastDay = (ym: string) => { const [y, m] = ym.split("-").map(Number); return `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`; };
 
@@ -69,23 +69,23 @@ export function TallyTab({ month, company: company0, ledgers: ledgers0, canEdit 
             <button type="button" disabled={!data || loading} onClick={() => void file("daybook")} className="svc-btn quiet sm" data-tally-daybook><FileSpreadsheet size={17} aria-hidden /> Day book (.xlsx)</button>
           </div>
           <ol className="mt-4 list-decimal pl-5 text-[13.5px] text-steel space-y-1">
-            <li>First time only: in Tally, <b>Gateway of Tally → Import → Masters</b>, pick the Ledgers file. Existing ledgers stay as they are.</li>
-            <li>Every month: <b>Import → Vouchers</b>, pick the Vouchers file. Dining: one a day (DF-S). Stays: one per invoice (DF-R/DF-F). Expenses: one each (DF-E).</li>
-            <li>Match Tally&apos;s day book with the Day book sheet.</li>
+            <li>First time: <b>Gateway → Import → Masters</b>, Ledgers file.</li>
+            <li>Monthly: <b>Import → Vouchers</b>, Vouchers file.</li>
+            <li>Match Tally day book to sheet.</li>
           </ol>
         </Card>
         <Card className="!p-0 overflow-hidden">
           <div className="px-4 pt-4 text-[15px] font-extrabold">Days in the file</div>
           <div className="overflow-x-auto"><table className="w-full text-sm mt-2"><thead><tr className="text-left text-steel text-xs"><th className="px-4 py-1.5">Day</th><th className="py-1.5 text-right">Bills</th><th className="py-1.5 text-right">Taxable</th><th className="py-1.5 text-right">GST</th><th className="px-4 py-1.5 text-right">Total</th></tr></thead>
             <tbody>{(data?.sales ?? []).map((d) => <tr key={d.day} className="border-t border-line"><td className="px-4 py-2 num">{d.day}</td><td className="py-2 text-right num">{d.bills}</td><td className="py-2 text-right num">{formatINR(Number(d.taxable))}</td><td className="py-2 text-right num">{formatINR(Number(d.cgst) + Number(d.sgst))}</td><td className="px-4 py-2 text-right num font-bold">{formatINR(Number(d.total))}</td></tr>)}
-              {data && data.sales.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-steel">No paid bills in this period.</td></tr>}</tbody></table></div>
+              {data && data.sales.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-steel">No paid bills</td></tr>}</tbody></table></div>
         </Card>
       </div>
 
       <Card className="min-w-0 self-start" data-tally-names>
         <div className="text-[17px] font-extrabold">Names in your Tally</div>
-        <p className="text-[13px] text-steel mt-1 mb-3">Must match Tally exactly. Blank uses the grey name.</p>
-        <label className="block"><span className="text-[13px] font-semibold text-steel">Company (as in Tally)</span><input className="mt-1" value={company} disabled={!canEdit} onChange={(e) => setCompany(e.target.value)} maxLength={80} placeholder="Leave blank to import into the open company" /></label>
+        <p className="text-[13px] text-steel mt-1 mb-3">Must match Tally exactly</p>
+        <label className="block"><span className="text-[13px] font-semibold text-steel">Company (as in Tally)</span><input className="mt-1" value={company} disabled={!canEdit} onChange={(e) => setCompany(e.target.value)} maxLength={80} placeholder="Blank = open company" /></label>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(Object.keys(DEFAULT_LEDGERS) as (keyof Ledgers)[]).map((k) => (
             <label key={k} className={cn("min-w-0", k === "expense_prefix" && "sm:col-span-2")}><span className="text-[12.5px] font-semibold text-steel">{LABEL[k]}</span>
@@ -93,7 +93,7 @@ export function TallyTab({ month, company: company0, ledgers: ledgers0, canEdit 
         </div>
         {canEdit ? <button type="button" disabled={pending} className="svc-btn go w-full mt-4" data-save-tally
           onClick={() => start(async () => { setSaved(false); const r = await saveTallyNames(company, Object.fromEntries(Object.entries(names).filter(([, v]) => (v ?? "").trim())) as Record<string, string>); if ("error" in r) setErr(r.error!); else setSaved(true); })}>
-          {pending ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} aria-hidden />} Save names</button> : <p className="mt-3 text-[13px] text-steel">Owner or manager can change these</p>}
+          {pending ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} aria-hidden />} Save names</button> : <p className="mt-3 text-[13px] text-steel">Owner or manager only</p>}
         {saved && <p className="mt-2 text-[13.5px] font-semibold text-mint">Saved.</p>}
       </Card>
     </div>

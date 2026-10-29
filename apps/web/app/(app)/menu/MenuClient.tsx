@@ -50,7 +50,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
       const set = (n: string, v: string) => { const el = f.elements.namedItem(n) as HTMLInputElement | HTMLTextAreaElement | null; if (el) el.value = v; };
       set("description", r.description); set("price", String(r.price_inr)); set("prep_minutes", String(r.prep_minutes));
       const veg = f.elements.namedItem("is_veg") as HTMLInputElement | null; if (veg) veg.checked = r.is_veg;
-      toast("Filled in — check it and save");
+      toast("Filled in — check it");
     } finally { setFilling(false); }
   };
   const [catSheet, setCatSheet] = useState(false);
@@ -78,7 +78,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
     const KEY = "dineflow.autoPhotos";
     try { if (sessionStorage.getItem(KEY)) return; sessionStorage.setItem(KEY, "1"); } catch { return; }
     let on = true; setFinding(true);
-    autoPhotos().then((r) => { if (!on || "error" in r) return; if (r.found) { toast(`Photos added to ${r.found} dish${r.found === 1 ? "" : "es"}`); router.refresh(); } })
+    autoPhotos().then((r) => { if (!on || "error" in r) return; if (r.found) { toast(`${r.found} photo${r.found === 1 ? "" : "s"} added`); router.refresh(); } })
       .catch(() => {}).finally(() => { if (on) setFinding(false); });
     return () => { on = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on the first open with dishes missing photos
@@ -99,7 +99,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
      The chef, a manager or an online supervisor (canOnline, lib/online.ts) switches it here or in Online orders. */
   const [onl, setOnl] = useState<Record<string, boolean>>({});
   const isOnline = (it: Item) => onl[it.id] ?? it.online_available !== false;
-  const toggleOnline = (it: Item, v: boolean) => { setOnl((m) => ({ ...m, [it.id]: v })); start(async () => { const r = await setOnlineAvailable([it.id], v); if ("error" in r) { setOnl((m) => ({ ...m, [it.id]: !v })); toast(r.error!, "err"); } else toast(v ? `${it.name} is online again` : `${it.name} is off online — still sold in the restaurant`); }); };
+  const toggleOnline = (it: Item, v: boolean) => { setOnl((m) => ({ ...m, [it.id]: v })); start(async () => { const r = await setOnlineAvailable([it.id], v); if ("error" in r) { setOnl((m) => ({ ...m, [it.id]: !v })); toast(r.error!, "err"); } else toast(v ? `${it.name} is online again` : `${it.name} · dine-in only`); }); };
   const onlineBtn = (it: Item, size: string) => canOnline && (
     <button type="button" onClick={() => toggleOnline(it, !isOnline(it))} disabled={!it.is_available} aria-pressed={isOnline(it)} data-online-toggle={isOnline(it) ? "on" : "off"}
       aria-label={`${isOnline(it) ? "Take off online" : "Sell online"} — ${it.name}`} title={!it.is_available ? "Sold out everywhere" : isOnline(it) ? "Online — tap to stop selling online" : "Off online — tap to sell online again"}
@@ -110,7 +110,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
 
   return (
     <div className="space-y-5">
-      <SvcHead icon="menu" title="Menu" sub="Switch a dish off when it runs out"
+      <SvcHead icon="menu" title="Menu" sub="Mark sold-out dishes"
         actions={<>
           <button type="button" className="svc-btn quiet sm" onClick={() => setTools((v) => !v)} aria-expanded={tools} data-menu-tools><Wrench size={17} aria-hidden /> More tools<ChevronDown size={16} aria-hidden className={cn("transition-transform", tools && "rotate-180")} /></button>
           <button type="button" className="svc-btn go sm !px-5" onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15, category_id: cat === "all" || cat === "soldout" ? null : cat })} data-new-dish><Plus size={19} aria-hidden /><Say w="new_dish" /></button>
@@ -127,7 +127,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
             { k: "recipes", Icon: FlaskConical, hue: "--color-orange", label: "Recipes", sub: "What each dish uses", on: () => setRecipesOpen(true) },
             { k: "photos", Icon: Images, hue: "--color-cyan", label: finding ? "Finding…" : "Find photos", sub: "For dishes with none", on: async () => {
               if (finding) return; setFinding(true);
-              try { const r = await autoPhotos(); if ("error" in r) toast(r.error!, "err"); else toast(r.found ? `Photos added to ${r.found} dish${r.found === 1 ? "" : "es"}${r.left ? ` · ${r.left} to choose by hand` : ""}` : r.left ? `No sure match for ${r.left} — open a dish to choose` : "Every dish has a photo"); }
+              try { const r = await autoPhotos(); if ("error" in r) toast(r.error!, "err"); else toast(r.found ? `${r.found} photo${r.found === 1 ? "" : "s"} added${r.left ? ` · ${r.left} to pick` : ""}` : r.left ? `No match · ${r.left} to pick` : "All dishes have photos"); }
               finally { setFinding(false); }
             } },
           ] as const).map(({ k, Icon, hue, label, sub, on }) => (
@@ -153,13 +153,13 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
         {soldOut > 0 && <button type="button" onClick={() => setCat("soldout")} aria-pressed={cat === "soldout"} className={cn("svc-chip st-late shrink-0", cat === "soldout" && "ring-2 ring-[var(--color-red)]")} data-cat="soldout"><Ban size={16} aria-hidden /><Say w="sold_out" start /><b className="num">{soldOut}</b></button>}
       </Rail>
       {items.length > 0 && <div className="max-sm:ml-auto shrink-0"><ViewSwitch label="Show dishes as" data="menu" shown={dishShown} onPick={dishLay.pick} saved={dishLay.saved}
-        onKeep={(v) => { dishLay.keep(v); toast(v === "list" ? "The list is your default here" : "Cards are your default here"); }}
+        onKeep={(v) => { dishLay.keep(v); toast(v === "list" ? "List set as default" : "Cards set as default"); }}
         options={[{ v: "list", label: "List", icon: List, word: "List" }, { v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }]} /></div>}
       </div>
 
       {visible.length === 0 ? (
         cat === "soldout" ? <Empty title="Nothing is sold out" hint="All dishes are on." /> :
-        <Empty title="No dishes yet" hint="Add a dish, then its recipe." action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
+        <Empty title="No dishes yet" hint="Add your first dish" action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
       ) : (<>
         {/* A phone: a list, one row per dish — the photo, the name, the price and its state, and the switch at
             the end of the row. A tap on the name opens the dish (its sizes, add-ons and recipe are in there). */}
@@ -296,7 +296,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
             <select name="category_id" defaultValue={editing?.category_id ?? ""} onChange={(e) => setDishCat(e.target.value || null)}><option value="">— none —</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           </Field>
           {stations.length > 0 && (
-            <Field label="Kitchen station" hint="Only if made at another station">
+            <Field label="Kitchen station" hint="If cooked elsewhere">
               <select name="station" defaultValue={editing?.station ?? ""}><option value="">— same as its category —</option>{stations.map((s) => <option key={s} value={s}>{s}</option>)}</select>
             </Field>
           )}
@@ -315,7 +315,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
             <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_veg" defaultChecked={editing?.is_veg ?? true} /> Vegetarian</label>
             <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_available" defaultChecked={editing?.is_available ?? true} /> Available now</label>
           </div>
-          <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_combo" checked={combo} onChange={(e) => setCombo(e.target.checked)} /> Combo — a meal made of other dishes</label>
+          <label className="flex items-center gap-2 normal-case tracking-normal text-sm"><input type="checkbox" name="is_combo" checked={combo} onChange={(e) => setCombo(e.target.checked)} /> Combo meal</label>
           {combo && <ComboParts items={items.filter((m) => m.id !== editing?.id && !m.is_combo)} rows={parts} onChange={setParts} />}
           <input type="hidden" name="parts" value={JSON.stringify(parts)} />
           {err && <p className="text-sm text-chili">{err}</p>}
@@ -355,7 +355,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
       <Sheet open={catSheet} onClose={() => setCatSheet(false)} title="Categories">
         {/* iPad and desktop (2026-10-24, the owner: "the categories box doesn't look good"): the icon, the dish count and a
             rename on each row, the add field as one control. The phone keeps the plain rows and form. */}
-        {categories.length === 0 && <div className="hidden sm:flex items-center gap-3 rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-3.5 mb-4 text-[13.5px] text-steel" data-cat-none><Tag size={17} className="shrink-0 text-[var(--color-tint)]" aria-hidden />No categories yet. Add the first one below, or tap a usual one.</div>}
+        {categories.length === 0 && <div className="hidden sm:flex items-center gap-3 rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-3.5 mb-4 text-[13.5px] text-steel" data-cat-none><Tag size={17} className="shrink-0 text-[var(--color-tint)]" aria-hidden />No categories yet</div>}
         <ul className="space-y-2 mb-5 sm:space-y-1.5">
           {categories.map((c) => { const n = items.filter((i) => i.category_id === c.id).length; return (
             <li key={c.id} className="flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-2 text-sm sm:rounded-2xl sm:px-2.5 sm:py-2 sm:gap-2.5 sm:bg-[var(--color-bg)] sm:min-h-[60px]" data-cat-row={c.id}>
@@ -408,22 +408,22 @@ function RecipesOverview({ items, categories, recipeMap, ingredients, std, onEdi
     try {
       const r = await autoRecipes();
       if ("error" in r) { toast(r.error!, "err"); return; }
-      toast(`${r.done} dish${r.done === 1 ? "" : "es"} set up${r.created ? ` · ${r.created} ingredient${r.created === 1 ? "" : "s"} added to the pantry` : ""}${r.unknown.length ? ` · ${r.unknown.length} to map by hand` : ""}`);
+      toast(`${r.done} dish${r.done === 1 ? "" : "es"} set up${r.created ? ` · ${r.created} added to pantry` : ""}${r.unknown.length ? ` · ${r.unknown.length} by hand` : ""}`);
       router.refresh();
     } finally { setBusy(false); }
   };
   const applyStd = async (it: Item) => {
     setBusy(true);
-    try { const r = await applyStandardRecipe(it.id, it.name); if (!r.ok) toast(r.error ?? "Could not map the recipe", "err"); else { toast(`${r.mapped} ingredients mapped from "${r.dish}"`); router.refresh(); } }
+    try { const r = await applyStandardRecipe(it.id, it.name); if (!r.ok) toast(r.error ?? "Could not map the recipe", "err"); else { toast(`${r.mapped} ingredients mapped`); router.refresh(); } }
     finally { setBusy(false); }
   };
   const groups = [{ id: null as string | null, name: "Uncategorised" }, ...categories].map((c) => ({ c, rows: rows.filter((r) => (r.it.category_id ?? null) === c.id) })).filter((g) => g.rows.length);
   return (
     <div className="space-y-4" data-recipes-overview>
       <div className="rounded-2xl bg-[var(--color-fill)] p-3.5">
-        <div className="text-[15px] font-semibold" data-recipes-summary>{withRecipe} of {rows.length} dishes move the pantry</div>
-        <p className="text-xs text-[var(--color-label-2)] mt-1 leading-relaxed">Stock comes off when sent or cooked.{ready > 0 && <> <b>{ready}</b> ready in the library.</>}{byHand > 0 && <> <b>{byHand}</b> to map by hand.</>}</p>
-        {ready > 0 && <Button className="mt-3 w-full" loading={busy} onClick={() => { void setupAll(); }} data-setup-recipes><Sparkles size={16} /> Set up {ready} dish{ready === 1 ? "" : "es"} from the library</Button>}
+        <div className="text-[15px] font-semibold" data-recipes-summary>{withRecipe} of {rows.length} have recipes</div>
+        {(ready > 0 || byHand > 0) && <p className="text-xs text-[var(--color-label-2)] mt-1 leading-relaxed">{ready > 0 && <><b>{ready}</b> in library. </>}{byHand > 0 && <><b>{byHand}</b> by hand.</>}</p>}
+        {ready > 0 && <Button className="mt-3 w-full" loading={busy} onClick={() => { void setupAll(); }} data-setup-recipes><Sparkles size={16} /> Set up {ready} dish{ready === 1 ? "" : "es"}</Button>}
       </div>
       {groups.map(({ c, rows: g }) => (
         <section key={c.id ?? "none"}>
@@ -439,13 +439,13 @@ function RecipesOverview({ items, categories, recipeMap, ingredients, std, onEdi
                   <button type="button" onClick={() => setOpen(isOpen ? null : it.id)} className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left min-h-12" aria-expanded={isOpen}>
                     <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", lines.length ? "bg-[var(--color-green)]" : std ? "bg-[var(--color-orange)]" : "bg-[var(--color-red)]")} />
                     <span className="flex-1 min-w-0"><span className="block font-semibold text-[14px] truncate">{it.name}</span>
-                      <span className="block text-xs text-[var(--color-label-2)] truncate">{lines.length ? `${lines.length} ingredient${lines.length === 1 ? "" : "s"} per plate` : std ? `No recipe · library knows "${std.dish}"` : "No recipe · map by hand"}</span></span>
+                      <span className="block text-xs text-[var(--color-label-2)] truncate">{lines.length ? `${lines.length} ingredient${lines.length === 1 ? "" : "s"} per plate` : std ? "No recipe · in library" : "No recipe"}</span></span>
                     <ChevronDown size={16} className={cn("shrink-0 text-[var(--color-label-3)] transition-transform", isOpen && "rotate-180")} />
                   </button>
                   {isOpen && (
                     <div className="px-3.5 pb-3.5 -mt-1">
                       {text.length ? <p className={cn("text-[13px] leading-relaxed", lines.length ? "" : "text-[var(--color-label-2)]")} data-recipe-lines>{text.join(" · ")}{!lines.length && <span className="text-xs"> (the library&apos;s plate)</span>}</p>
-                        : <p className="text-[13px] text-[var(--color-label-2)]">Not mapped — moves no stock.</p>}
+                        : <p className="text-[13px] text-[var(--color-label-2)]">No recipe</p>}
                       <div className="flex gap-2 mt-2.5">
                         {!lines.length && std && <Button size="sm" disabled={busy} onClick={() => { void applyStd(it); }} data-use-standard><Sparkles size={14} /> Use the library plate</Button>}
                         <Button size="sm" variant="outline" onClick={() => onEdit(it)}><Pencil size={14} /> {lines.length ? "Edit" : "Map by hand"}</Button>
@@ -477,23 +477,23 @@ function RecipeEditor({ item, ingredients, initial, std, onDone, ai = false }: {
       const r = await suggestRecipe(item.name);
       if ("error" in r) { toast(r.error!, "err"); return; }
       setRows(r.rows);
-      toast(r.missing.length ? `${r.rows.length} lines proposed · not stocked: ${r.missing.join(", ")}` : `${r.rows.length} lines proposed — check the amounts`);
+      toast(r.missing.length ? `${r.rows.length} lines · not stocked: ${r.missing.join(", ")}` : `${r.rows.length} lines · check amounts`);
     } finally { setProposing(false); }
   };
   const useStandard = () => start(async () => {
     const r = await applyStandardRecipe(item.id, item.name);
     if (!r.ok) { toast(r.error ?? "Could not map the recipe", "err"); return; }
-    toast(`${r.mapped} ingredients mapped from "${r.dish}"${r.created ? ` · ${r.created} added to the pantry` : ""}${r.skipped.length ? ` · skipped ${r.skipped.join(", ")}: the pantry keeps it in another unit` : ""}`);
+    toast(`${r.mapped} ingredients mapped${r.created ? ` · ${r.created} added to pantry` : ""}${r.skipped.length ? ` · skipped ${r.skipped.join(", ")} (other unit)` : ""}`);
     onDone();
   });
   const standard = std && (
     <div className="rounded-xl bg-[var(--color-fill)] p-3 flex items-center gap-3">
       <Sparkles size={16} className="text-saffron shrink-0" />
-      <div className="text-sm flex-1 min-w-0">Standard recipe for <b>{std.dish}</b>: {std.lines.length} ingredients for one plate{ingredients.length === 0 ? ", added to the pantry for you" : ""}.</div>
+      <div className="text-sm flex-1 min-w-0">Library recipe: <b>{std.dish}</b> · {std.lines.length} ingredients{ingredients.length === 0 ? " · adds to pantry" : ""}</div>
       <Button size="sm" variant="outline" disabled={pending} onClick={useStandard}>Use it</Button>
     </div>
   );
-  if (ingredients.length === 0) return <div className="space-y-3">{standard}<p className="text-sm text-steel">{std ? "Or add" : "Add"} ingredients in Pantry first.</p></div>;
+  if (ingredients.length === 0) return <div className="space-y-3">{standard}<p className="text-sm text-steel">{std ? "Or add" : "Add"} pantry items first.</p></div>;
   return (
     <div className="space-y-3">
       {standard}

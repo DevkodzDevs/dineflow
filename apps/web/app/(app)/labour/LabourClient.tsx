@@ -62,7 +62,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
       {toast && <div className="feather p-3 text-sm flex items-center gap-2 border-mint"><Check size={15} className="text-mint" /> {toast}</div>}
       {err && <p className="text-sm text-chili">{err}</p>}
 
-      {tab === "today" && (active.length === 0 ? <Empty title="No labourers yet" hint="Add workers or scan an ID" action={<Link href="/scan"><Button>Scan an ID</Button></Link>} /> : (
+      {tab === "today" && (active.length === 0 ? <Empty title="No labourers yet" hint="Add or scan an ID" action={<Link href="/scan"><Button>Scan an ID</Button></Link>} /> : (
         <div className="space-y-3">
         <div className="flex justify-end">
           <label className="inline-flex items-center gap-2.5 min-h-11 pl-3.5 pr-2 rounded-2xl bg-[var(--color-fill)] text-[13px] font-semibold text-[var(--color-label-2)] cursor-pointer select-none" data-cal-toggle>
@@ -97,7 +97,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
         <div className="flex items-center gap-3 mb-3" data-wages-bar>
           <span className="text-[13px] text-steel"><b className="num text-[var(--color-label)]">{labourers.length}</b> {labourers.length === 1 ? "worker" : "workers"} · <b className="num text-[var(--color-label)]">{formatINR(labourers.reduce((t, l) => t + Math.max(0, earned(l.id) - paid(l.id)), 0))}</b> to pay</span>
           <div className="ml-auto"><ViewSwitch label="Show wages as" data="wages" shown={wagesShown} onPick={wagesLay.pick} saved={wagesLay.saved}
-            onKeep={(v) => { wagesLay.keep(v); notify(v === "table" ? "The table is your default here" : "Cards are your default here"); }}
+            onKeep={(v) => { wagesLay.keep(v); notify(v === "table" ? "Table set as default" : "Cards set as default"); }}
             options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} /></div>
         </div>
         <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3", wagesLay.chosen === "table" ? "hidden" : wagesLay.chosen === "cards" ? "" : "md:hidden")} data-wage-cards>
@@ -136,7 +136,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
       </Sheet>
       <Sheet open={!!link} onClose={() => setLink(null)} title={`Punch link · ${link?.full_name ?? ""}`}>
         {link && <div className="space-y-4" data-link-sheet>
-          <p className="text-sm text-steel">{link.full_name} punches in on their phone with {[methods.includes("biometric") && "fingerprint / Face ID", methods.includes("selfie") && "a selfie at the property"].filter(Boolean).join(" or ")}. For them only — don&apos;t share.</p>
+          <p className="text-sm text-steel">{link.full_name}: {[methods.includes("biometric") && "fingerprint / Face ID", methods.includes("selfie") && "selfie"].filter(Boolean).join(" or ")}. Don&apos;t share.</p>
           <div className="grid place-items-center rounded-2xl bg-white p-4"><QR value={linkUrl(link)} size={200} /></div>
           <div className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[12px] num break-all" data-link-url>{linkUrl(link)}</div>
           <div className="grid grid-cols-2 gap-2">
@@ -162,10 +162,10 @@ function Labels({ property, labourers, rooms, ingredients }: { property: string;
   return (
     <div>
       <div className="no-print flex items-center gap-2 mb-4">{(["rooms", "products", "labour"] as const).map((k) => <button key={k} onClick={() => setKind(k)} className={cn("chip capitalize", kind === k && "on")}>{k}</button>)}<Button variant="outline" className="ml-auto" onClick={() => window.print()}><Printer size={16} /> Print sheet</Button></div>
-      <p className="no-print text-xs text-steel mb-4">Stick on doors, bins and badges</p>
+      <p className="no-print text-xs text-steel mb-4">For doors, bins, badges</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 print:grid-cols-4 gap-3">{items.map((it) => <div key={it.v} className="feather p-3 text-center print:break-inside-avoid"><QR value={it.v} size={120} /><div className="font-semibold text-sm mt-1">{it.t}</div><div className="text-[10px] text-steel">{it.s} · {property}</div></div>)}{items.length === 0 && <p className="sm:hidden text-sm text-steel col-span-full">Nothing to print yet.</p>}{items.length === 0 && <EmptyState from="sm" className="col-span-full no-print" icon={QrCode} hue="tint" data-labels-empty={kind}
-        title={kind === "rooms" ? "No rooms to label yet" : kind === "products" ? "No products to label yet" : "No labourers to label yet"}
-        hint={kind === "rooms" ? "Add rooms under Rooms, then print a sticker for each door." : kind === "products" ? "Add items in Pantry, then print a sticker for each bin." : "Add a labourer, then print their badge."} />}</div>
+        title={kind === "rooms" ? "No rooms yet" : kind === "products" ? "No products yet" : "No labourers yet"}
+        hint={kind === "rooms" ? "Add rooms first" : kind === "products" ? "Add pantry items first" : "Add a labourer first"} />}</div>
     </div>
   );
 }

@@ -118,11 +118,11 @@ export function RecordsClient({ log, error, from, to, today, property }: { log: 
       {/* iPad and desktop: the counts as split-flaps (Work's tiles) — five across from lg; on an iPad in portrait Jobs, Done,
           Late on top and the two averages under them */}
       <div className="hidden sm:grid grid-cols-6 lg:grid-cols-5 gap-2.5" data-record-tiles>
-        {([["jobs", ListChecks, "Jobs", rows.length, "var(--color-blue)", "var(--color-blue-2)", rows.length ? "raised in this period" : "none raised"],
+        {([["jobs", ListChecks, "Jobs", rows.length, "var(--color-blue)", "var(--color-blue-2)", rows.length ? "raised" : "none raised"],
           ["done", CircleCheck, "Done", done.length, "var(--color-green)", "var(--color-green-2)", done.length ? "finished" : "none finished"],
           ["late", AlertTriangle, "Late", lateN, "var(--color-red)", "var(--color-red-2)", lateN ? "past their time" : "none late"],
-          ["resp", Hourglass, "Average response", resp == null ? 0 : Math.round(resp), "var(--color-orange)", "var(--color-orange-2)", resp == null ? "none taken yet" : resp < 1 ? "under a minute to take a job" : "min to take a job"],
-          ["work", Timer, "Average work", work == null ? 0 : Math.round(work), "var(--color-cyan)", "var(--color-cyan-2)", work == null ? "none finished yet" : work < 1 ? "under a minute a job" : "min a job"]] as const).map(([key, I, k, n, hue, hue2, cap]) => (
+          ["resp", Hourglass, "Average response", resp == null ? 0 : Math.round(resp), "var(--color-orange)", "var(--color-orange-2)", resp == null ? "none taken yet" : resp < 1 ? "under a minute" : "min to take"],
+          ["work", Timer, "Average work", work == null ? 0 : Math.round(work), "var(--color-cyan)", "var(--color-cyan-2)", work == null ? "none finished yet" : work < 1 ? "under a minute" : "min a job"]] as const).map(([key, I, k, n, hue, hue2, cap]) => (
           <div key={key} data-record-tile={key} data-n={n} style={{ ["--hue" as string]: hue, ["--hue-2" as string]: hue2 }}
             className={cn("@container feather !rounded-[20px] p-4 min-w-0 flex flex-col gap-3 relative overflow-hidden", key === "resp" || key === "work" ? "col-span-3 lg:col-span-1" : "col-span-2 lg:col-span-1", key === "late" && n > 0 && "!border-[color-mix(in_srgb,var(--color-red)_45%,transparent)]")}>
             <span className="absolute inset-x-0 top-0 h-1 bg-[var(--hue)] opacity-80" aria-hidden />
@@ -152,14 +152,14 @@ export function RecordsClient({ log, error, from, to, today, property }: { log: 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card className="!p-4 min-w-0" data-by-person>
           <div className="flex items-center gap-2 text-[17px] font-extrabold mb-2"><Users size={18} aria-hidden /> By person</div>
-          {people.length === 0 ? <p className="text-[13.5px] text-steel">No jobs finished in this period.</p> : (
+          {people.length === 0 ? <p className="text-[13.5px] text-steel">None finished</p> : (
             <div className="overflow-x-auto"><table className="w-full text-[13.5px]"><thead><tr className="text-left text-steel text-[12px]"><th className="py-1.5 pr-3">Person</th><th className="py-1.5 px-2 text-right">Done</th><th className="py-1.5 px-2 text-right">Each</th><th className="py-1.5 px-2 text-right">On time</th><th className="py-1.5 px-2 text-right">On it</th><th className="py-1.5 pl-2 text-right"><ChefHat size={13} className="inline" aria-label="Tickets cooked" /></th></tr></thead>
               <tbody>{people.map(([n, p]) => <tr key={n} className="border-t border-line" data-record-person={n}><td className="py-2 pr-3 font-bold">{n}</td><td className="py-2 px-2 text-right num">{p.done}</td><td className="py-2 px-2 text-right num">{fmtMin(avg(p.took))}</td>
                 <td className="py-2 px-2 text-right num">{p.done ? `${Math.round((p.onTime / p.done) * 100)}%` : "—"}</td><td className="py-2 px-2 text-right num">{p.open || "—"}</td><td className="py-2 pl-2 text-right num">{p.cooked || "—"}{p.cookMin != null && p.cooked > 0 && <span className="text-steel"> · {p.cookMin} min</span>}</td></tr>)}</tbody></table></div>)}
         </Card>
         <Card className="!p-4 min-w-0" data-by-dept>
           <div className="flex items-center gap-2 text-[17px] font-extrabold mb-2"><Building2 size={18} aria-hidden /> By department</div>
-          {depts.length === 0 ? <p className="text-[13.5px] text-steel">No jobs in this period.</p> : (
+          {depts.length === 0 ? <p className="text-[13.5px] text-steel">No jobs</p> : (
             <ul className="divide-y divide-[var(--color-separator)]">{depts.map(([k, e]) => <li key={k} className="py-2 flex items-center gap-3 min-w-0" data-record-dept={k}>
               <span className="font-bold text-[14px] flex-1 min-w-0 truncate">{deptLabel(k || null)}</span>
               <span className="text-[12.5px] text-steel num shrink-0">{e.done}/{e.all} done · {fmtMin(avg(e.took))} each</span>

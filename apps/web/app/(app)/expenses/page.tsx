@@ -26,7 +26,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const { data: people } = ids.length ? await s.from("profiles").select("id, full_name").in("id", ids) : { data: [] };
   return (
     <>
-      <PageHeader eyebrow="Money going out" title="Expenses" sub="Cash paid today leaves the drawer" />
+      <PageHeader eyebrow="Money going out" title="Expenses" sub="Today's cash leaves drawer" />
       <ExpensesClient month={month} today={todayIST()} rows={(rows ?? []) as Expense[]} names={Object.fromEntries((people ?? []).map((p) => [p.id, p.full_name]))}
         canVoid={["owner", "manager"].includes(session.profile.role)} property={session.restaurant.name} />
     </>

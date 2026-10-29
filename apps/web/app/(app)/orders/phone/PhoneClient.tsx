@@ -75,10 +75,10 @@ export function PhoneClient() {
 
       <div className="space-y-4 min-w-0" aria-live="polite">
         {!ready ? <>
-          <div className="sm:hidden feather !rounded-[22px] p-8 text-center text-steel"><Phone size={30} className="mx-auto mb-2 opacity-60" aria-hidden />The caller&apos;s history shows here.</div>
+          <div className="sm:hidden feather !rounded-[22px] p-8 text-center text-steel"><Phone size={30} className="mx-auto mb-2 opacity-60" aria-hidden />Caller history</div>
           <EmptyState from="sm" icon={Phone} hue="blue" className="!bg-[var(--color-bg-2)]" data-caller-waiting
-            title="The caller's history shows here."
-            hint="Type ten digits: their name, last address and last five orders come up, with Same again. Tap Call to ring them back."
+            title="Caller history"
+            hint="Type 10 digits"
             actions={callBtn("h-12 px-6 rounded-full text-[15px]", "data-call-waiting")} />
         </>
           : loading ? <div className="feather !rounded-[22px] p-8 grid place-items-center text-steel"><Loader2 className="animate-spin" /></div> : (<>
@@ -87,7 +87,7 @@ export function PhoneClient() {
               <span className="h-14 w-14 shrink-0 rounded-full grid place-items-center bg-[var(--color-fill)]"><UserRound size={26} aria-hidden /></span>
               <div className="min-w-0 flex-1">
                 <div className="text-[19px] font-extrabold truncate">{card?.customer?.name ?? (name || "New caller")}</div>
-                <div className="text-[13.5px] text-steel">{card?.customer ? `${card.customer.visits} visit${card.customer.visits === 1 ? "" : "s"} · ${formatINR(Number(card.customer.spend), { whole: true })} spent${card.customer.last ? ` · last ${ago(card.customer.last)}` : ""}` : "New customer — the order saves them."}</div>
+                <div className="text-[13.5px] text-steel">{card?.customer ? `${card.customer.visits} visit${card.customer.visits === 1 ? "" : "s"} · ${formatINR(Number(card.customer.spend), { whole: true })} spent${card.customer.last ? ` · last ${ago(card.customer.last)}` : ""}` : "New customer"}</div>
               </div>
               {callBtn("shrink-0 h-12 px-5 rounded-full text-[15px]", "data-call-caller")}
             </div>
@@ -96,7 +96,7 @@ export function PhoneClient() {
           </Card>
           <Card data-last-orders>
             <div className="text-[15px] font-extrabold mb-2">Last orders</div>
-            {!card?.orders?.length ? <p className="text-sm text-steel">No orders from this number yet.</p> : <div className="divide-y divide-[var(--color-separator)]">
+            {!card?.orders?.length ? <p className="text-sm text-steel">No past orders</p> : <div className="divide-y divide-[var(--color-separator)]">
               {card.orders.map((o) => { const total = o.items.reduce((a, i) => a + Number(i.price) * i.qty, 0); return (
                 <div key={o.id} className="py-3 flex items-start gap-3 min-w-0" data-last-order>
                   <div className="min-w-0 flex-1">

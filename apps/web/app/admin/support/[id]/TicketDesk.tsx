@@ -90,7 +90,7 @@ export function TicketDesk({ full, urls }: { full: Full; urls: Record<string, st
                     m.internal ? "bg-[color-mix(in_srgb,var(--color-orange)_12%,var(--color-bg-2))] border border-dashed border-[color-mix(in_srgb,var(--color-orange)_45%,transparent)] rounded-tr-md"
                       : ours ? "bg-[color-mix(in_srgb,var(--color-tint)_12%,var(--color-bg-2))] rounded-tr-md" : "bg-[var(--color-bg-2)] border border-[var(--color-separator)] rounded-tl-md")}>
                     <div className="text-[11.5px] font-semibold text-[var(--color-label-2)] flex gap-2 flex-wrap" suppressHydrationWarning>
-                      <span>{m.internal ? "Internal note · only Master control sees this" : ours ? "DineFlow support" : `${m.author_name ?? "Property"}`}</span><span className="font-normal text-[var(--color-label-3)]">{stamp(m.created_at)}</span>
+                      <span>{m.internal ? "Internal note · private" : ours ? "DineFlow support" : `${m.author_name ?? "Property"}`}</span><span className="font-normal text-[var(--color-label-3)]">{stamp(m.created_at)}</span>
                     </div>
                     <p className="mt-1 text-[14px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">{m.body}</p>
                     {m.attachments?.length > 0 && (
@@ -124,7 +124,7 @@ export function TicketDesk({ full, urls }: { full: Full; urls: Record<string, st
               </div>
             )}
             <textarea rows={4} value={body} onChange={(e) => setBody(e.target.value.slice(0, 5000))} aria-label={mode === "reply" ? "Reply" : "Internal note"}
-              placeholder={mode === "reply" ? `Write to ${t.raised_name ?? "the property"} — they see this on Help & support` : "Only Master control sees notes — what you checked, what's next"} />
+              placeholder={mode === "reply" ? `Reply to ${t.raised_name ?? "the property"}…` : "Private note…"} />
             <div className="flex flex-wrap items-center gap-2">
               {previews.map((x, i) => (
                 <div key={x} className="relative h-14 w-14 rounded-xl overflow-hidden ring-1 ring-[var(--color-separator)]">
@@ -180,7 +180,7 @@ export function TicketDesk({ full, urls }: { full: Full; urls: Record<string, st
               </div>
               <div className={cn("rounded-xl p-3 flex items-start gap-2.5 text-[12.5px] leading-snug", t.allow_access ? "bg-[var(--color-green-2)]" : "bg-[var(--color-fill)]")} data-consent-state={t.allow_access ? "allowed" : "not"}>
                 {t.allow_access ? <ShieldCheck size={16} className="shrink-0 text-[var(--color-tint)] mt-px" /> : <ShieldAlert size={16} className="shrink-0 text-[var(--color-orange)] mt-px" />}
-                <span>{t.allow_access ? <><b>They allowed access</b> for this request. All you do inside is logged.</> : <><b>Access not allowed.</b> Ask in a reply before you open the property.</>}</span>
+                <span>{t.allow_access ? <><b>Access allowed</b> · actions logged</> : <><b>Access not allowed.</b> Ask first.</>}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Link href={`/admin/${p.id}`} className="btn btn-gray !h-11 !text-[13px] !px-3"><ExternalLink size={15} /> Property</Link>
@@ -205,7 +205,7 @@ export function TicketDesk({ full, urls }: { full: Full; urls: Record<string, st
                   <a href={`tel:${person.phone}`} className="flex items-center gap-2 min-h-11 px-3 rounded-xl bg-[var(--color-fill)] text-[13px] hover:bg-[var(--color-fill-2)] transition-colors min-w-0"><Phone size={15} className="shrink-0" /><span className="truncate num">{person.phone}</span></a>
                   <a href={`https://wa.me/${digits(person.phone).length === 10 ? `91${digits(person.phone)}` : digits(person.phone)}?text=${encodeURIComponent(`Hello ${person.name ?? ""}, this is DineFlow support about ${ticketNo(t.ticket_no)} — ${t.subject}.`)}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 min-h-11 px-3 rounded-xl bg-[var(--color-fill)] text-[13px] text-[var(--color-tint)] hover:bg-[var(--color-fill-2)] transition-colors"><MessageCircle size={15} className="shrink-0" /> WhatsApp</a>
                 </div>}
-                {!person.email && !person.phone && <p className="text-[12.5px] text-[var(--color-label-2)]">No email or phone on this login — reply here.</p>}
+                {!person.email && !person.phone && <p className="text-[12.5px] text-[var(--color-label-2)]">No contact — reply here</p>}
               </div>
             </div>
           )}

@@ -54,7 +54,7 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
       </div>
       <div className="text-[12px] text-steel -mt-2" aria-live="polite">Live{at && <> · updated {at.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kolkata" })}</>}</div>
 
-      {list.length <= 1 && <Empty title="One outlet so far" hint={owner ? "Open your next outlet below" : "Ask the owner for access"} />}
+      {list.length <= 1 && <Empty title="One outlet so far" hint={owner ? "Open one below" : "Ask the owner"} />}
 
       <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3" data-outlets>
         {list.map((o) => (
@@ -97,14 +97,14 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
             {/* phones: the heading and line as they were */}
             <div className="md:hidden">
               <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Plus size={18} aria-hidden /> Open a new outlet</div>
-              <p className="text-[13px] text-steel mb-3">Copies <b>{currentName}</b>&apos;s brand, GST and sections. Trial up to 7 days.</p>
+              <p className="text-[13px] text-steel mb-3">Copies <b>{currentName}</b> · 7-day trial</p>
             </div>
             {/* iPad and up (2026-10-24, the owner: "design"): an icon tile and the heading, then what the new outlet brings along
                 as chips, the name with a pin in the field, and copying the menu as a switch row */}
             <div className="hidden md:block" data-new-outlet-head>
               <div className="flex items-center gap-3">
                 <span className="h-12 w-12 shrink-0 rounded-[15px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-green)_22%,transparent)]"><Store size={22} aria-hidden /></span>
-                <div className="min-w-0"><div className="text-[18px] font-extrabold leading-tight">Open a new outlet</div><div className="text-[13px] text-steel mt-0.5">A second branch, run from this same login</div></div>
+                <div className="min-w-0"><div className="text-[18px] font-extrabold leading-tight">Open a new outlet</div><div className="text-[13px] text-steel mt-0.5">Run from this login</div></div>
               </div>
               <div className="mt-4 text-[11.5px] font-bold uppercase tracking-[.08em] text-steel">Copied from {currentName}</div>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -117,20 +117,20 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
               <MapPin size={17} className="hidden md:block absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
               <input id="outlet-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Anna Nagar" maxLength={80} data-outlet-name className="md:!pl-10" />
             </div>
-            <label className="mt-3 flex items-center gap-3 !min-h-11 md:hidden"><input type="checkbox" checked={copy} onChange={(e) => setCopy(e.target.checked)} className="h-5 w-5" /> <span className="text-[14px] font-semibold">Copy this outlet&apos;s menu and prices</span></label>
+            <label className="mt-3 flex items-center gap-3 !min-h-11 md:hidden"><input type="checkbox" checked={copy} onChange={(e) => setCopy(e.target.checked)} className="h-5 w-5" /> <span className="text-[14px] font-semibold">Copy menu &amp; prices</span></label>
             <label className="hidden md:flex mt-3 items-center gap-3 rounded-[16px] border border-[var(--color-separator)] bg-[var(--color-bg)] px-3.5 py-2.5 min-h-[60px] cursor-pointer" data-copy-menu>
               <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><ShoppingBag size={18} aria-hidden /></span>
-              <span className="flex-1 min-w-0"><span className="block text-[14.5px] font-bold">Copy this outlet&apos;s menu and prices</span><span className="block text-[12.5px] text-steel">Off: the new outlet starts with an empty menu</span></span>
+              <span className="flex-1 min-w-0"><span className="block text-[14.5px] font-bold">Copy menu &amp; prices</span><span className="block text-[12.5px] text-steel">Off: empty menu</span></span>
               <Switch on={copy} onChange={setCopy} name="Copy this outlet's menu and prices" />
             </label>
             <button type="button" disabled={pending || name.trim().length < 2} className="svc-btn go w-full mt-3" data-create-outlet
-              onClick={() => start(async () => { const r = await createOutlet(name.trim(), copy); if ("error" in r) toast(r.error!, "err"); else { toast(`${name.trim()} is open — switch to it from the top bar`); setName(""); const x = await chainOverview(); if ("list" in x && x.list) setList(x.list); } })}>
+              onClick={() => start(async () => { const r = await createOutlet(name.trim(), copy); if ("error" in r) toast(r.error!, "err"); else { toast(`${name.trim()} open · switch from top bar`); setName(""); const x = await chainOverview(); if ("list" in x && x.list) setList(x.list); } })}>
               {pending ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} aria-hidden />}<Say w="open_outlet" /></button>
           </Card>)}
         {(owner || role === "manager") && list.length > 1 && (
           <Card data-push-menu>
-            <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Send size={18} aria-hidden /> Send this menu to other outlets</div>
-            <p className="text-[13px] text-steel mb-3">From <b>{currentName}</b>. Matched by name: adds and updates, never deletes.</p>
+            <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Send size={18} aria-hidden /> Send menu to outlets</div>
+            <p className="text-[13px] text-steel mb-3">From <b>{currentName}</b> · never deletes</p>
             <div className="flex flex-wrap gap-2">
               {list.filter((o) => o.id !== current).map((o) => <button key={o.id} type="button" aria-pressed={targets.includes(o.id)} onClick={() => setTargets((t) => (t.includes(o.id) ? t.filter((x) => x !== o.id) : [...t, o.id]))}
                 className={cn("!min-h-11 rounded-full px-4 text-[14px] font-bold inline-flex items-center gap-1.5", targets.includes(o.id) ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)]")} data-push-target>{targets.includes(o.id) && <Check size={15} aria-hidden />}{o.name}</button>)}
@@ -144,9 +144,9 @@ export function ChainClient({ initial, people, role, current, currentName, isDem
 
       {owner && list.length > 1 && (
         <Card data-chain-people>
-          <div className="text-[17px] font-extrabold mb-1">Managers who can switch outlets</div>
-          <p className="text-[13px] text-steel mb-3">Tick the outlets each may open</p>
-          {people.length === 0 ? <p className="text-sm text-steel">No managers or supervisors yet — add them in Staff.</p> : (
+          <div className="text-[17px] font-extrabold mb-1">Who can switch outlets</div>
+          <p className="text-[13px] text-steel mb-3">Tick allowed outlets</p>
+          {people.length === 0 ? <p className="text-sm text-steel">Add managers in Staff</p> : (
             <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-steel text-xs"><th className="py-1.5 pr-3">Person</th>{list.map((o) => <th key={o.id} className="py-1.5 px-2 text-center font-semibold">{o.name}</th>)}</tr></thead>
               <tbody>{people.map((p) => <tr key={p.id} className="border-t border-line"><td className="py-2 pr-3"><div className="font-bold">{p.name}</div><div className="text-[12px] text-steel capitalize">{p.role}</div></td>
                 {list.map((o) => { const home = p.home === o.id; const on = home || p.outlets.includes(o.id); return <td key={o.id} className="py-2 px-2 text-center">

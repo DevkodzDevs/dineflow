@@ -81,7 +81,7 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
         {kitchen && (
           <Card>
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3"><h3 className="text-xl">Speed of service</h3><span className="text-xs text-steel num">target {kitchen.target ?? 15} min · {kitchen.tickets} ticket{Number(kitchen.tickets) === 1 ? "" : "s"} · {kitchen.recalls} recall{Number(kitchen.recalls) === 1 ? "" : "s"}</span></div>
-            {Number(kitchen.tickets) === 0 ? <p className="text-sm text-steel">No tickets marked ready in this window yet.{Number(kitchen.ignored ?? 0) > 0 && <> {kitchen.ignored} ticket{Number(kitchen.ignored) === 1 ? "" : "s"} left open too long — not counted.</>}</p> : (
+            {Number(kitchen.tickets) === 0 ? <p className="text-sm text-steel">No tickets yet{Number(kitchen.ignored ?? 0) > 0 && <> · {kitchen.ignored} stale, not counted</>}</p> : (
               /* side by side only when the card itself is wide (52rem): at an iPad's half of the screen
                  the three tiles had ~100px each and "5.7 min" was cut. Otherwise the figures sit in a
                  row on top and the hour chart takes the card's full width under them. */
@@ -92,7 +92,7 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
                     <Mini label="Slowest 10%" value={Number(kitchen.p90_min).toFixed(1)} unit="min" />
                     <Mini label="On target" value={String(kitchen.within_pct)} unit="%" bar={Number(kitchen.within_pct)} tone={Number(kitchen.within_pct) >= 90 ? "good" : Number(kitchen.within_pct) < 70 ? "alert" : undefined} />
                   </div>
-                  {Number(kitchen.ignored ?? 0) > 0 && <p className="text-[11px] text-steel mt-2">{kitchen.ignored} ticket{Number(kitchen.ignored) === 1 ? "" : "s"} left open too long — not counted as cooking time.</p>}
+                  {Number(kitchen.ignored ?? 0) > 0 && <p className="text-[11px] text-steel mt-2">{kitchen.ignored} stale ticket{Number(kitchen.ignored) === 1 ? "" : "s"} not counted</p>}
                   {kitchen.slowest.length > 0 && <div className="mt-4"><div className="text-xs uppercase text-steel mb-1.5">Slowest dishes</div><ul className="text-sm space-y-1">{kitchen.slowest.map((d) => <li key={d.name} className="flex justify-between gap-3"><span className="truncate">{d.name}</span><span className="num text-steel shrink-0">{Number(d.avg_min).toFixed(1)} min · {d.n}</span></li>)}</ul></div>}
                 </div>
                 <div className="min-w-0"><div className="text-xs uppercase text-steel mb-1.5">By hour of day</div><Hours rows={kitchen.by_hour} target={Number(kitchen.target ?? 15)} /></div>
@@ -125,11 +125,11 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
         <Card><h3 className="text-xl mb-3">Stock consumption</h3>
           <div className="overflow-x-auto -mx-2 px-2 table-wrap"><table className="w-full text-sm min-w-[360px]"><thead className="text-xs uppercase text-steel"><tr><th className="text-left py-1">Ingredient</th><th className="text-right">Used</th><th className="text-right">Wasted</th><th className="text-right">Cost</th></tr></thead>
             <tbody>{consumption.map((c) => <tr key={c.name} className="border-t border-line"><td className="py-2">{c.name}</td><td className="text-right num">{c.used.toFixed(2)} {c.unit}</td><td className={cn("text-right num", c.waste > 0 && "text-chili")}>{c.waste.toFixed(2)}</td><td className="text-right num">{formatINR(c.used * c.cost)}</td></tr>)}
-              {consumption.length === 0 && <tr><td colSpan={4} className="py-4 text-steel">Nothing yet — add recipes on the Menu page.</td></tr>}</tbody></table></div></Card>
+              {consumption.length === 0 && <tr><td colSpan={4} className="py-4 text-steel">Add recipes in Menu</td></tr>}</tbody></table></div></Card>
         <Card><h3 className="text-xl mb-3">Day closes</h3>
           <div className="overflow-x-auto -mx-2 px-2 table-wrap"><table className="w-full text-sm min-w-[360px]"><thead className="text-xs uppercase text-steel"><tr><th className="text-left py-1">Date</th><th className="text-right">Bills</th><th className="text-right">Cash</th><th className="text-right">UPI</th><th className="text-right">Total</th></tr></thead>
             <tbody>{closes.map((c) => <tr key={c.business_date} className="border-t border-line"><td className="py-2 num">{c.business_date}</td><td className="text-right num">{c.orders_count}</td><td className="text-right num">{formatINR(Number(c.cash))}</td><td className="text-right num">{formatINR(Number(c.upi))}</td><td className="text-right num font-semibold">{formatINR(Number(c.total_sales))}</td></tr>)}
-              {closes.length === 0 && <tr><td colSpan={5} className="py-4 text-steel">Days closed in Billing show here</td></tr>}</tbody></table></div></Card>
+              {closes.length === 0 && <tr><td colSpan={5} className="py-4 text-steel">No closed days yet</td></tr>}</tbody></table></div></Card>
       </div>
     </div>
   );
@@ -175,7 +175,7 @@ function Hours({ rows, target }: { rows: { h: number; n: number; avg_min: number
  *  whose bars all ran full width and whose names wrapped in a 110px axis. Plain HTML — no chart library for a list. */
 function TopDishes({ data }: { data: { name: string; qty: number; rev?: number }[] }) {
   const rows = data.filter((d) => Number(d.qty) > 0).slice(0, 8);
-  if (!rows.length) return <p className="h-40 grid place-items-center text-[14px] text-steel">Nothing sold in this window yet.</p>;
+  if (!rows.length) return <p className="h-40 grid place-items-center text-[14px] text-steel">Nothing sold yet</p>;
   const max = Math.max(...rows.map((d) => Number(d.qty)), 1);
   return (
     <ol className="space-y-3" data-top-dishes>

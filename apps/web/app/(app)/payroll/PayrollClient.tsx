@@ -70,11 +70,11 @@ export function PayrollClient({ month, today, property, settings, people, advanc
           <Card className="min-w-0" data-payroll-settings>
             <div className="flex items-center gap-3 mb-4">
               <span className="h-11 w-11 shrink-0 rounded-[14px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]"><Settings2 size={20} aria-hidden /></span>
-              <div className="min-w-0"><div className="text-[17px] font-extrabold leading-tight">How pay is worked out</div><div className="text-[12.5px] text-steel mt-0.5">Used each time you work out a month</div></div>
+              <div className="min-w-0"><div className="text-[17px] font-extrabold leading-tight">Pay rules</div><div className="text-[12.5px] text-steel mt-0.5">Applied each month</div></div>
             </div>
             <div className="rounded-[18px] border border-[var(--color-separator)] divide-y divide-[var(--color-separator)] overflow-hidden bg-[var(--color-bg)]">
-              {([["pf", "PF", "Provident fund", "12% staff + 12% you, on pay up to ₹15,000. Needed from 20 staff.", "var(--color-blue)", "var(--color-blue-2)"],
-                ["esi", "ESI", "Health insurance", "0.75% staff + 3.25% you, pay up to ₹21,000/month. Needed from 10 staff.", "var(--color-violet)", "var(--color-violet-2)"]] as const).map(([k, badge, what, hint, hue, hue2]) => (
+              {([["pf", "PF", "Provident fund", "12% staff + 12% you · to ₹15,000 · 20+ staff", "var(--color-blue)", "var(--color-blue-2)"],
+                ["esi", "ESI", "Health insurance", "0.75% staff + 3.25% you · to ₹21,000 · 10+ staff", "var(--color-violet)", "var(--color-violet-2)"]] as const).map(([k, badge, what, hint, hue, hue2]) => (
                 <label key={k} className="flex items-center gap-3 px-3.5 py-3 min-h-[64px] cursor-pointer hover:bg-[var(--color-fill)] transition-colors" data-switch={k}>
                   <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center text-[12.5px] font-extrabold tracking-wide" style={{ background: hue2, color: hue }}>{badge}</span>
                   {/* a phone (2026-10-26, the owner: "not looking good"): the badge already says PF / ESI, so the title is the
@@ -84,12 +84,12 @@ export function PayrollClient({ month, today, property, settings, people, advanc
                 </label>))}
               {cfg.pf && <label className="flex items-center gap-3 px-3.5 py-3 min-h-[64px] cursor-pointer hover:bg-[var(--color-fill)] transition-colors" data-switch="rule">
                 <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center text-[12.5px] font-extrabold bg-[var(--color-orange-2)] text-[var(--color-orange)]">50%</span>
-                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">The 50% wage rule</span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">From 21 Nov 2025, PF is on at least half of pay. Check with your CA.</span></span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">The 50% wage rule</span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">From 21 Nov 2025: PF on ≥50% pay</span></span>
                 <Switch on={cfg.rule} onChange={(v) => setCfg((c) => ({ ...c, rule: v }))} name="The 50% wage rule" />
               </label>}
               <div className="flex items-center gap-3 px-3.5 py-3 min-h-[64px] max-sm:flex-wrap max-sm:gap-y-3" data-payroll-offs>
                 <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center bg-[var(--color-cyan-2)] text-[var(--color-cyan)]"><CalendarClock size={19} aria-hidden /></span>
-                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">Paid weekly offs a month</span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">Added to days present for monthly-paid staff</span></span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold leading-snug">Paid weekly offs</span><span className="block text-[12.5px] text-steel leading-snug mt-0.5">For monthly-paid staff</span></span>
                 {/* a phone (2026-10-26): the words take the row and the stepper sits under them, full width — − and + at the
                     ends, the count on a split-flap in the middle (it was squeezed beside the words, which ran to four lines) */}
                 <div className="shrink-0 flex items-center rounded-[14px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] max-sm:basis-full max-sm:justify-between max-sm:p-1.5 max-sm:bg-[var(--color-fill)] max-sm:border-transparent" data-offs-stepper>
@@ -105,14 +105,14 @@ export function PayrollClient({ month, today, property, settings, people, advanc
             </div>
             {(() => { const dirty = cfg.pf !== saved.pf || cfg.esi !== saved.esi || cfg.offs !== saved.offs || cfg.rule !== saved.rule; return (
               <button type="button" disabled={pending || !dirty} className={cn("svc-btn sm w-full mt-3", dirty ? "go" : "quiet")} data-save-payroll-settings data-dirty={dirty}
-                onClick={() => { const next = cfg; start(async () => { const r = await saveSettings(next.pf, next.esi, next.offs, next.rule); if ("error" in r && r.error) toast(r.error, "err"); else { toast("Saved — work the month out again to use it"); setSaved(next); } }); }}>
+                onClick={() => { const next = cfg; start(async () => { const r = await saveSettings(next.pf, next.esi, next.offs, next.rule); if ("error" in r && r.error) toast(r.error, "err"); else { toast("Saved · rework the month"); setSaved(next); } }); }}>
                 <Check size={16} aria-hidden />{dirty ? <Say w="save" /> : "Saved"}</button>); })()}
           </Card>
 
           {/* ── advances ── */}
           <Card className="min-w-0" data-advances>
             <div className="flex items-center gap-2 text-[17px] font-extrabold mb-1"><Wallet size={18} aria-hidden /> Advances</div>
-            <p className="text-[12.5px] text-steel mb-3">From the drawer; cut from next pay.</p>
+            <p className="text-[12.5px] text-steel mb-3">From drawer · cut from pay</p>
             <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-2">
               <select value={adv.who} onChange={(e) => setAdv((a) => ({ ...a, who: e.target.value }))} aria-label="Who">{people.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}</select>
               <input inputMode="decimal" className="num" placeholder="₹" value={adv.amount} onChange={(e) => setAdv((a) => ({ ...a, amount: e.target.value.replace(/[^\d.]/g, "") }))} data-advance-amount />
@@ -139,7 +139,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
           </div>
           {people.length > 0 && <span className="shrink-0 rounded-full px-3 h-8 inline-flex items-center text-[12.5px] font-bold bg-[var(--color-fill)] num" data-rates-count>{people.filter((p) => p.pay).length} of {people.length} on the sheet</span>}
         </div>
-        {people.length === 0 ? <Empty title="No staff yet" hint="Add people under Staff first." /> : (
+        {people.length === 0 ? <Empty title="No staff yet" hint="Add them in Staff" /> : (
           <div className="@container" style={{ "--rate-cols": ["minmax(0,1.5fr)", "8.75rem", "minmax(9rem,1fr)", ...(cfg.pf ? ["12rem"] : []), ...(cfg.esi ? ["5.75rem"] : []), "7rem"].join(" ") } as React.CSSProperties}>
             <div className="hidden @[62rem]:grid [grid-template-columns:var(--rate-cols)] gap-x-3 px-3 pb-2 border-b border-[var(--color-separator)] text-[12px] font-semibold text-steel" aria-hidden>
               <span>Person</span><span>Paid by</span><span>Rate</span>{cfg.pf && <span>PF · basic + DA</span>}{cfg.esi && <span>ESI</span>}<span />
@@ -226,8 +226,8 @@ export function PayrollClient({ month, today, property, settings, people, advanc
             {lines.length > 0 && <button type="button" className="svc-btn quiet sm !px-4 max-sm:flex-1" onClick={() => void excel()} data-payroll-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>}
           </div>
         </div>
-        {!run ? <div className="p-4"><EmptyState size="sm" icon={Calculator} hue="blue" title={`${monthName(month)} is not worked out yet`} hint={<>Set the rates above, then <b>Work out pay</b> — days come from attendance.</>} data-payroll-empty="none" /></div>
-          : lines.length === 0 ? <div className="p-4"><EmptyState size="sm" icon={IndianRupee} hue="orange" title="Nobody has a pay rate yet" hint="Give each person a monthly or daily rate under Pay rates, then work it out again." data-payroll-empty="rates" /></div> : (<>
+        {!run ? <div className="p-4"><EmptyState size="sm" icon={Calculator} hue="blue" title={`${monthName(month)} not worked out`} hint={<>Set rates, then <b>Work out pay</b></>} data-payroll-empty="none" /></div>
+          : lines.length === 0 ? <div className="p-4"><EmptyState size="sm" icon={IndianRupee} hue="orange" title="No pay rates yet" hint="Add rates, then rework" data-payroll-empty="rates" /></div> : (<>
           <div className="overflow-x-auto"><table className="w-full text-[13.5px] lg:min-w-[900px] max-lg:block">
             <thead className="max-lg:hidden"><tr className="text-left text-steel text-[12px] border-b border-[var(--color-separator)]">{["Name", "Days", "Gross", "Bonus", "PF", "ESI", "Advance", "Other", "Net", ""].map((h, i) => <th key={i} className={cn("py-2 font-semibold", i === 0 ? "pl-4" : "text-right pr-3", i === 9 && "pr-4")}>{h}</th>)}</tr></thead>
             <tbody className="max-lg:grid max-lg:gap-3 max-lg:p-3 sm:max-lg:grid-cols-2">{lines.map((l) => { const e = edits[l.id] ?? { bonus: String(Number(l.bonus) || ""), other: String(Number(l.other_deduction) || "") }; const dirty = Number(e.bonus || 0) !== Number(l.bonus) || Number(e.other || 0) !== Number(l.other_deduction); return (
@@ -247,7 +247,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
                 <td className="text-right pr-3 num font-extrabold text-[15px] max-lg:col-span-2 max-lg:flex max-lg:items-center max-lg:justify-between max-lg:gap-3 max-lg:!px-3.5 max-lg:!py-3 max-lg:rounded-xl max-lg:bg-[color-mix(in_srgb,var(--color-tint)_13%,transparent)] max-lg:text-[19px] max-lg:before:content-[attr(data-label)] max-lg:before:font-sans max-lg:before:text-[13px] max-lg:before:font-bold max-lg:before:text-[var(--color-tint)]" data-label="Net pay" data-net>{inr(l.net)}</td>
                 <td className="pr-4 py-2 max-lg:col-span-2 max-lg:!p-0 max-lg:has-[>div:empty]:hidden"><div className="flex flex-wrap justify-end gap-1.5">
                   {!final && dirty && <button type="button" disabled={pending} className="svc-btn go sm !px-3" onClick={() => act(setLine(l.id, Number(e.bonus || 0), Number(e.other || 0), l.note ?? ""), `${l.name} updated`)} data-save-line>Save</button>}
-                  {final && !l.paid_at && <select disabled={pending} defaultValue="" onChange={(x) => { const m = x.target.value; if (m) act(payLine(l.id, m), `${l.name} paid — written down as a Salaries expense`); }} className="!w-auto !h-10 !min-h-10 text-[13px] font-bold" aria-label={`Pay ${l.name}`} data-pay><option value="" disabled>Pay…</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option></select>}
+                  {final && !l.paid_at && <select disabled={pending} defaultValue="" onChange={(x) => { const m = x.target.value; if (m) act(payLine(l.id, m), `${l.name} paid · in Salaries`); }} className="!w-auto !h-10 !min-h-10 text-[13px] font-bold" aria-label={`Pay ${l.name}`} data-pay><option value="" disabled>Pay…</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option></select>}
                   {l.paid_at && <span className="self-center rounded-full px-2.5 py-1 text-[12px] font-extrabold bg-[var(--color-green-2)] text-[var(--color-green)]" data-paid>Paid · {(l.paid_method ?? "").toUpperCase()}</span>}
                   {final && <button type="button" className="h-10 w-10 grid place-items-center rounded-xl bg-[var(--color-fill)]" onClick={() => void payslip(l)} aria-label={`Payslip for ${l.name}`} title="Payslip (PDF)" data-payslip><FileText size={16} /></button>}
                 </div></td>
@@ -281,7 +281,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
           </div>}
         </>)}
       </Card>
-      <p className="text-[12.5px] text-steel">PF is 12% + 12% of basic + DA{cfg.rule ? ", at least half of pay," : ""} up to ₹15,000 a month. Day labourers are under Labour.</p>
+      <p className="text-[12.5px] text-steel">PF: 12% + 12% of basic + DA{cfg.rule ? " (≥50% pay)" : ""}, to ₹15,000/month</p>
     </div>
   );
 }

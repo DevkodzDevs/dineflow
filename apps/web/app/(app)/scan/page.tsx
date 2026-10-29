@@ -14,7 +14,7 @@ export default async function ScanPage() {
   ]);
   return (
     <>
-      <PageHeader eyebrow="Point the camera at anything" title="Smart" accent="scan" sub="Food, packets, doors, IDs, QR labels" />
+      <PageHeader eyebrow="Scan anything" title="Smart" accent="scan" sub="Items, IDs, QR labels" />
       <ScanClient categories={categories ?? []} recent={(recent ?? []) as never} aiEnabled={!!process.env.ANTHROPIC_API_KEY} propertyType={session.restaurant.property_type} />
     </>
   );

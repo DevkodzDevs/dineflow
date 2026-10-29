@@ -28,10 +28,10 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
             <h2 className="text-xl mb-1">What guests can do</h2>
             <p className="text-xs text-[var(--color-label-2)] mb-4">Hidden until <b>Listed</b> is on.</p>
             <div className="space-y-3">
-              {([["listed", "is_listed", "Listed publicly", "Shown at /dine and in search", Globe],
+              {([["listed", "is_listed", "Listed publicly", "Public and searchable", Globe],
                  ["dining", "dining_enabled", "Table booking", "Shows in Reservations", UtensilsCrossed],
-                 ["delivery", "delivery_enabled", "Delivery", "Orders arrive on your Online orders screen", Bike],
-                 ["takeaway", "takeaway_enabled", "Takeaway", "Same, but the guest collects", ShoppingBag]] as const).map(([k, name, title, hint, I]) => (
+                 ["delivery", "delivery_enabled", "Delivery", "Into Online orders", Bike],
+                 ["takeaway", "takeaway_enabled", "Takeaway", "Guest collects", ShoppingBag]] as const).map(([k, name, title, hint, I]) => (
                 <label key={k} className={cn("card p-4 flex items-center gap-3 cursor-pointer transition-colors", on[k] && "!border-[color-mix(in_srgb,var(--color-green)_45%,transparent)]")}>
                   <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0"><I size={17} /></span>
                   <span className="flex-1 min-w-0"><span className="block font-semibold text-[15px]">{title}</span><span className="block text-xs text-[var(--color-label-2)]">{hint}</span></span>
@@ -45,17 +45,17 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
           <Card>
             <h2 className="text-xl mb-4">How you appear</h2>
             <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Tagline"><div className="flex gap-2 items-center"><input name="tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Coastal Tamil food, cooked to order" className="flex-1 min-w-0" />
+              <Field label="Tagline"><div className="flex gap-2 items-center"><input name="tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Coastal Tamil food" className="flex-1 min-w-0" />
                 {ai && <AiButton label="Write one" busy={tagBusy} onClick={() => { setTagBusy(true); void suggestTagline().then((x) => { if ("error" in x) toast(x.error!, "err"); else { setTagline(x.tagline!); if (x.alternatives?.length) toast(`Or: ${x.alternatives.join(" · ")}`, "info"); } }).finally(() => setTagBusy(false)); }} />}</div></Field>
-              <Field label="Cuisines" hint="Comma separated — guests search on these"><input name="cuisines" defaultValue={r.cuisines?.join(", ")} placeholder="South Indian, Chettinad, Seafood" /></Field>
+              <Field label="Cuisines" hint="Comma separated"><input name="cuisines" defaultValue={r.cuisines?.join(", ")} placeholder="South Indian, Chettinad, Seafood" /></Field>
               <Field label="Price for two (₹)"><input name="price_for_two" type="number" className="num" defaultValue={r.price_for_two ?? ""} /></Field>
-              <Field label="Photos" hint="Image links, one per line; first is cover"><textarea name="photos" rows={2} defaultValue={r.photos?.join("\n")} placeholder="https://…" /></Field>
+              <Field label="Photos" hint="One per line · 1st is cover"><textarea name="photos" rows={2} defaultValue={r.photos?.join("\n")} placeholder="https://…" /></Field>
             </div>
           </Card>
 
           <Card>
             <h2 className="text-xl mb-1">Table booking</h2>
-            <p className="text-xs text-[var(--color-label-2)] mb-4">Blank seats = all your tables.</p>
+            <p className="text-xs text-[var(--color-label-2)] mb-4">Blank seats = all tables</p>
             <div className="grid sm:grid-cols-4 gap-3">
               <Field label="Opens"><input name="opens_at" type="time" className="num" defaultValue={r.opens_at?.slice(0, 5)} /></Field>
               <Field label="Closes"><input name="closes_at" type="time" className="num" defaultValue={r.closes_at?.slice(0, 5)} /></Field>
@@ -78,8 +78,8 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
 
         <Card>
           <div className="flex items-center justify-between mb-1"><h2 className="text-xl">Offers</h2><Button size="sm" onClick={() => setOffer({ kind: "flat_pct", scope: "both", value: 15, is_active: true })}><Plus size={15} /> New offer</Button></div>
-          <p className="text-xs text-[var(--color-label-2)] mb-4">Timed offers show as “happy hour”.</p>
-          {offers.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">No offers yet. Try 15% off early evening.</p> : (
+          <p className="text-xs text-[var(--color-label-2)] mb-4">Timed = “happy hour”</p>
+          {offers.length === 0 ? <p className="text-sm text-[var(--color-label-2)]">No offers yet</p> : (
             <div className="space-y-2">{offers.map((o) => (
               <div key={o.id} className="card p-3 flex items-center gap-3">
                 <span className="h-9 w-9 rounded-xl bg-[var(--color-champagne-2)] grid place-items-center shrink-0"><Percent size={16} /></span>
@@ -101,13 +101,13 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
         <div className="flex gap-2 mt-3"><Button size="sm" variant="gray" className="flex-1" onClick={() => { copyText(url); toast("Link copied"); }}><Copy size={14} /> Copy</Button>
           <a href={url} target="_blank" rel="noreferrer" className="flex-1"><Button size="sm" className="w-full"><ExternalLink size={14} /> Open</Button></a></div>
         {r.rating && <p className="text-sm mt-4">★ {r.rating} from {r.rating_count} review{r.rating_count === 1 ? "" : "s"}</p>}
-        <p className="text-xs text-[var(--color-label-2)] mt-3 text-left">Print this QR for your tables. <b>0% commission</b>, vs 18–25% on apps.</p>
+        <p className="text-xs text-[var(--color-label-2)] mt-3 text-left">Print for your tables. <b>0% commission</b>.</p>
       </Card>
 
       <Sheet open={!!offer} onClose={() => setOffer(null)} title={offer?.id ? "Edit offer" : "New offer"}>
         <form className="space-y-4" action={(fd) => start(async () => { const x = await saveOffer(fd); if ("error" in x) toast(x.error!, "err"); else { setOffer(null); toast("Offer saved"); } })}>
           {offer?.id && <input type="hidden" name="id" value={offer.id} />}
-          <Field label="Title" hint="This is what the guest sees"><input name="title" defaultValue={offer?.title} required placeholder="15% off before 7pm" autoFocus /></Field>
+          <Field label="Title" hint="Guests see this"><input name="title" defaultValue={offer?.title} required placeholder="15% off before 7pm" autoFocus /></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Kind"><select name="kind" defaultValue={offer?.kind ?? "flat_pct"}><option value="flat_pct">Percentage off</option><option value="flat_amount">Flat amount off</option></select></Field>
             <Field label="Value"><input name="value" type="number" className="num" defaultValue={offer?.value ?? 15} /></Field>

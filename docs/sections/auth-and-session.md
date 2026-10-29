@@ -139,7 +139,7 @@ pnpm --filter @dineflow/web build
   account is logged and answered like any other request.
 - **"Try a demo"** no longer calls `sweep_expired_demos` (Master control's only, since it deletes
   sign-ins); `create_demo_sandbox` sweeps expired sandboxes itself.
-- **"Install the app on this phone"** sits under the form on sign-in, Join and Open a restaurant (`InstallRow`,
+- **"Install on this phone"** sits under the form on sign-in, Join and Open a restaurant (`InstallRow`,
   see [shell-and-nav.md](shell-and-nav.md)): one tap where the browser has offered its install, otherwise the
   install sheet for the device. It is the first screen on a new device, and installing before signing in is
   the right order — on an iPhone the Home Screen app keeps its own sign-in. Hidden once installed.
@@ -165,3 +165,6 @@ pnpm --filter @dineflow/web build
 - **`/` is the public front page (2026-10-29, site.md).** `app/page.tsx` no longer redirects to /login. The middleware still sends
   a signed-in person on `/` to their screens, and now sends the **Windows app** (user agent `DineFlowDesktop/`) to /login when
   signed out. `/for/` and `/blog` joined `PUBLIC_PREFIX` and `SESSION_FREE`.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

@@ -275,7 +275,7 @@ follows; More opens the sheet).
   installed app. At rest it is the floating card. The till's sticky rows measure it
   (`bar.offsetHeight + 12`) — they assumed `top-4` before. Probe: `tbar.mjs` (5 widths + the till, 11).
 - **`MasterBanner`** — the amber "viewing X as its owner" strip when a master is acting as a
-  property. Everything done under it is real and logged.
+  property. Real changes, logged.
 - **`PageHeader`** — the title block each screen passes its own copy into.
 - **`Theme`** — `dark` | `paper` | `colour` (0117) | `bright` (0118) | `royal` (0119) — the last two worn as `data-theme="paper"` +
   `data-palette="bright" | "royal"` (`lib/themeLook.ts`) | `system`. `THEME_BOOT` and `ThemeKeeper` set and hold both attributes. Until a person chooses, the app follows the device
@@ -390,7 +390,7 @@ follows; More opens the sheet).
     16.4 in another browser → Safari; inside Instagram or WhatsApp → ⋯ → Open in Safari, and Copy;
   - Mac Safari → File → Add to Dock (Safari 16 or older → Chrome or Edge);
   - installed from here already → "Installed on this PC — open it from your Start menu and taskbar" with *Not
-    there? Install it again*; opened as the app → "You're in the app".
+    there? Install again*; opened as the app → "You're in the app".
   It replaced three copies that disagreed: one said only Safari can add to an iPhone's Home Screen (wrong since
   iOS 16.4), the Settings card said Firefox does not install on Android.
   **Where it opens from:** the download button in the top bar (`InstallButton`) — at every width since the
@@ -417,8 +417,7 @@ follows; More opens the sheet).
   **Windows PC** the `.exe`, is the big tint button *first* (`[data-download=android|windows]`), then "or install
   from the browser" and the plan as before (the browser's one-tap install stays); the other file sits under
   *Another device*; an iPhone, iPad or Mac (which cannot run either) gets both quietly under *For Android phones and
-  Windows PCs*. Each is a real `<a href download>`; a file that does not exist keeps its slot greyed — "Coming soon —
-  the build is being prepared" (`[data-download-soon]`). **Which files exist** is `/api/download` →
+  Windows PCs*. Each is a real `<a href download>`; a file that does not exist keeps its slot greyed — "Coming soon" (`[data-download-soon]`). **Which files exist** is `/api/download` →
   `availableDownloads()` (`lib/installers.ts`, async since 0128): the file uploaded on Master control → App files
   (`app_releases`, public Storage, kept 60 s) wins; then `NEXT_PUBLIC_APK_URL` / `NEXT_PUBLIC_EXE_URL` (or the older
   `NEXT_PUBLIC_DOWNLOAD_ANDROID` / `_WINDOWS`; versions `NEXT_PUBLIC_APK_VERSION` / `_EXE_VERSION`); else the
@@ -608,7 +607,7 @@ board counts as pinned in Edit bar (it was filtered by modules and dropped).
   | Device | Shows |
   | --- | --- |
   | running as the app (any display-mode, iOS standalone, DineFlow's Android app — referrer `android-app://cloud.dineflow.app`, kept for the visit in sessionStorage `df-shell` — or the Windows app — UA `Electron/` / `DineFlowDesktop/`) | nothing; Settings says "installed" and keeps one row to /get |
-  | installed from this browser before | "Installed — open it from its icon" (+ "Not there? Install it again") |
+  | installed from this browser before | "Installed — open it from its icon" (+ "Install again") |
   | Android, .apk available | "Download for Android (.apk)" only — not the browser's install as well |
   | Windows, .exe available | "Download for Windows (.exe)" only |
   | Android / Windows, no file yet | the browser's install (one tap, or the menu's taps, or one tap to Chrome / Edge) |
@@ -851,3 +850,6 @@ Left for the owner, outside the code (each measured above): make **dineflow.clou
 every visit to the bare name is still a 308 to www first, ~0.3 s; confirm **Fluid compute** is on (Settings → Functions); a free
 **uptime ping** on `https://www.dineflow.cloud/api/health?deep=1` every 5 minutes keeps a function warm (cold starts are the
 2–4.7 s first loads); the Supabase compute size (**Micro** — the 2 s Menu render, the rare slow sign-in).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

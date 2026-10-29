@@ -54,3 +54,6 @@ node audit-isolation.mjs # tenant isolation — 66 policies, cross-tenant read/w
 ## See also
 
 [data-and-rls.md](data-and-rls.md) · [legal.md](legal.md) · [inventory.md](inventory.md)
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

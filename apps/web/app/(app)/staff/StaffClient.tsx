@@ -58,12 +58,12 @@ function Credentials({ title, loginId, password, staffCode, canIssue }: { title:
         ) : (
           <div className="flex items-center gap-3 px-4 py-3 text-[13.5px] text-steel" data-cred-own>
             <ShieldCheck size={17} className="shrink-0 text-[var(--color-green)]" aria-hidden />
-            <span className="min-w-0">{canIssue ? "Own password set. Reset if locked out." : "Own password set. Only the owner can reset it."}</span>
+            <span className="min-w-0">{canIssue ? "Own password set" : "Own password · owner resets"}</span>
           </div>
         )}
       </div>
       {password && <div className="flex items-center gap-2 px-4 py-2.5 border-t border-[var(--color-separator)] text-[12.5px] text-steel" data-cred-next>
-        <KeyRound size={14} className="shrink-0" aria-hidden /><span>First sign-in: they set their own.</span></div>}
+        <KeyRound size={14} className="shrink-0" aria-hidden /><span>Changed on first sign-in</span></div>}
     </div>
   );
 }
@@ -314,7 +314,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
           {([
             [Users, "Team", String(active_), staff.length > active_ ? `${staff.length - active_} switched off` : `${staff.length === 1 ? "person" : "people"} active`, "var(--color-blue)"],
             [UserCheck, "On duty today", String(onDuty), `of ${active_} in`, "var(--color-green)"],
-            [Building2, "Departments", String(deptCount), `of ${hierarchyFor(type).length} for a ${type}`, "var(--color-violet)"],
+            [Building2, "Departments", String(deptCount), `of ${hierarchyFor(type).length}`, "var(--color-violet)"],
             [AlertCircle, "Needs a hand", String(attention), attention ? [waiting && `${waiting} not signed in`, unconfirmed && `${unconfirmed} email`, noPos && `${noPos} no position`].filter(Boolean).join(" · ") : "all set", attention ? "var(--color-orange)" : "var(--color-green)"],
           ] as const).map(([I, k, v, sub, hue]) => (
             <div key={k} className="min-w-0 rounded-[20px] bg-[color-mix(in_srgb,var(--color-fill)_70%,transparent)] px-4 py-3 flex items-center gap-3" data-stat={k}>
@@ -335,7 +335,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
         </div>
         {view === "people" && <div className="flex items-center gap-2 lg:flex-1 min-w-0">
           <div className="relative flex-1 md:max-w-md min-w-0"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
-            <input className="!h-12 !rounded-full !pl-11 !pr-11" placeholder="Name, title, phone or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find someone" data-staff-search />
+            <input className="!h-12 !rounded-full !pl-11 !pr-11" placeholder="Search staff" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find someone" data-staff-search />
             {q && <button type="button" onClick={() => setQ("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 !min-h-9 rounded-full grid place-items-center text-steel hover:bg-[var(--color-fill)]" aria-label="Clear"><X size={16} /></button>}</div>
           {/* Cards · Table (2026-10-22): the cards as they were, or the data grid; the default is the grid from an iPad up */}
           <div className="ml-auto shrink-0" data-staff-layout><ViewSwitch label="Show staff as" data="staff" shown={shownAs} onPick={lay.pick} saved={lay.saved}
@@ -361,19 +361,19 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             iPad) — so the first paint is right at every width with nothing to correct after load. */}
         <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4", layout === "auto" ? "md:hidden" : layout === "table" && "hidden")} data-people>
           {shown.map((p) => personCard(p))}
-          {staff.length === 0 && <p className="p-6 text-sm text-steel">Nobody yet. Add or invite someone.</p>}
-          {staff.length > 0 && shown.length === 0 && <p className="p-6 text-sm text-steel sm:col-span-2">Nobody found. Try another name.</p>}
+          {staff.length === 0 && <p className="p-6 text-sm text-steel">No staff yet</p>}
+          {staff.length > 0 && shown.length === 0 && <p className="p-6 text-sm text-steel sm:col-span-2">No match</p>}
         </div>
         <div className={cn(layout === "auto" ? "hidden md:block" : layout === "cards" && "hidden")}>
           {staff.length === 0
-            ? <p className="p-6 text-sm text-steel rounded-[24px] border border-[var(--color-separator)] bg-[var(--color-bg-2)]">Nobody yet. Add or invite someone.</p>
+            ? <p className="p-6 text-sm text-steel rounded-[24px] border border-[var(--color-separator)] bg-[var(--color-bg-2)]">No staff yet</p>
             : <StaffGrid people={shown} everyone={staff} type={type} me={me} duty={duty} howOf={howOf} phoneOut={phoneOut} onOpen={(p) => setDetail(p)} />}
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-[22px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4">
             <div className="flex items-center gap-2 mb-2"><Ticket size={16} className="text-steel" aria-hidden /><span className="text-[13px] font-bold uppercase tracking-wide text-steel flex-1">Open invites</span>{invites.length > 0 && <span className="num text-xs text-steel">{invites.length}</span>}</div>
-            {invites.length === 0 && <p className="text-sm text-steel">None. Invite codes last 7 days.</p>}
+            {invites.length === 0 && <p className="text-sm text-steel">None open</p>}
             <ul className="space-y-2">{invites.map((i) => <li key={i.code} className="flex items-center justify-between gap-2 text-sm rounded-xl bg-[var(--color-fill)] px-3 py-2"><span className="num font-semibold tracking-wider">{i.code}</span><span className="text-[12px] font-semibold text-steel">{ROLE_LABEL[i.role]}</span></li>)}</ul>
           </div>
           {/* the two ways in as the two buttons they are (2026-10-24, the owner: "design") — each a tile with its icon, what
@@ -384,13 +384,13 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               {canIssue && <button type="button" onClick={openAdd} data-way="add"
                 className="group w-full flex items-center gap-3 rounded-[16px] border border-[var(--color-separator)] bg-[var(--color-bg)] px-3 py-2.5 min-h-[64px] text-left hover:border-[color-mix(in_srgb,var(--color-green)_45%,transparent)] active:scale-[.99] transition">
                 <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]"><UserPlus size={19} aria-hidden /></span>
-                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold text-[var(--color-label)]">Add staff</span><span className="block text-[12.5px] text-steel leading-snug">You make their sign-in — they can start today</span></span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold text-[var(--color-label)]">Add staff</span><span className="block text-[12.5px] text-steel leading-snug">Instant sign-in</span></span>
                 <ChevronRight size={18} className="shrink-0 text-steel group-hover:translate-x-0.5 transition-transform" aria-hidden />
               </button>}
               <button type="button" onClick={() => { setCode(null); setOpen(true); }} data-way="invite"
                 className="group w-full flex items-center gap-3 rounded-[16px] border border-[var(--color-separator)] bg-[var(--color-bg)] px-3 py-2.5 min-h-[64px] text-left hover:border-[color-mix(in_srgb,var(--color-blue)_45%,transparent)] active:scale-[.99] transition">
                 <span className="h-11 w-11 shrink-0 rounded-[13px] grid place-items-center bg-[var(--color-blue-2)] text-[var(--color-blue)]"><Ticket size={19} aria-hidden /></span>
-                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold text-[var(--color-label)]">Invite with a code</span><span className="block text-[12.5px] text-steel leading-snug">They join at <b className="text-[var(--color-label)]">/join</b> — a code lasts 7 days</span></span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-bold text-[var(--color-label)]">Invite with a code</span><span className="block text-[12.5px] text-steel leading-snug">Join at <b className="text-[var(--color-label)]">/join</b> · 7 days</span></span>
                 <ChevronRight size={18} className="shrink-0 text-steel group-hover:translate-x-0.5 transition-transform" aria-hidden />
               </button>
             </div>
@@ -444,19 +444,19 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
                 return (
                   <div className={cn("mt-3 rounded-2xl p-3 border", matches ? "bg-[color-mix(in_srgb,var(--color-green)_9%,transparent)] border-[color-mix(in_srgb,var(--color-green)_28%,transparent)]" : "bg-[color-mix(in_srgb,var(--color-orange)_9%,transparent)] border-[color-mix(in_srgb,var(--color-orange)_28%,transparent)]")} data-position-access={matches ? "match" : "custom"}>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-[13px] flex-1 min-w-[12rem]">A <b>{positionByKey(accPos.position)?.title}</b> usually has <b>{ROLE_LABEL[want]}</b>{opens ? ", opening:" : " with everything the role allows."}</p>
+                      <p className="text-[13px] flex-1 min-w-[12rem]">Usual: <b>{ROLE_LABEL[want]}</b>{opens ? "" : " · everything"}</p>
                       {matches ? <span className="inline-flex items-center gap-1 text-[12.5px] font-bold text-[var(--color-green)]"><Check size={14} aria-hidden /> Matches</span>
                         : acc.id !== me && <button type="button" className="svc-btn go sm !px-4" data-use-position-access onClick={() => { setRole(want); setTicks(opens); }}>Use these</button>}
                     </div>
                     {opens && <ModuleChips modules={opens} className="mt-2" />}
-                    {!matches && <p className="text-[12px] text-steel mt-2">Different from their position. <b>Use these</b> sets them to the position&apos;s.</p>}
+                    {!matches && <p className="text-[12px] text-steel mt-2">Differs from position</p>}
                   </div>);
               })()}</div>
             <Field label="Role" hint={ROLE_HINT[role]}>
               <select value={role} onChange={(e) => { setRole(e.target.value as Role); setTicks(null); }} disabled={acc.id === me}>{assignable.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
             </Field>
-            {myRole !== "owner" && <p className="text-xs text-steel -mt-2">Only lower levels, only your sections.</p>}
-            {role === "owner" ? <p className="text-sm text-steel">An owner has full access. Nothing to tick.</p> : (<>
+            {myRole !== "owner" && <p className="text-xs text-steel -mt-2">Lower roles, your sections</p>}
+            {role === "owner" ? <p className="text-sm text-steel">Full access</p> : (<>
               {controlRoomSwitch(ticks, role, () => toggle("dashboard"))}
               <div className="grid sm:grid-cols-2 gap-x-6">
                 {MODULE_GROUPS.map((g) => { const keys = g.keys.filter((k) => ceiling(role).includes(k.key)); if (!keys.length) return null; return (
@@ -471,16 +471,16 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setAccess(acc.id, role, role === "owner" ? null : ticks, active); if ("error" in r) { setErr(r.error!); return; } if (!samePos(accPos, posOf(acc))) { const x = await savePos(acc.id, accPos); if ("error" in x) { setErr(x.error!); return; } } setAcc(null); })} data-save-access>Save</Button><Button variant="gray" onClick={() => setAcc(null)}>Cancel</Button></div>
             {/* the owner gives a manager or a supervisor the two owner's screens (0140): saved at once, like Assist */}
             {myRole === "owner" && ["manager", "supervisor", "supervisor_2"].includes(acc.role) && <div className={SWITCH_GROUP} data-grants>
-              <SwitchRow title="Connections" hint="Swiggy, Zomato, room sites, payments, tracking — every outside link" icon={<Plug size={18} />} on={grantsOf(acc).includes("connections")} data={{ "data-grant-switch": "connections" }} onToggle={() => flipGrant(acc, "connections")} />
-              <SwitchRow title="Reports" hint="Every in and out, by department, with Excel and PDF" icon={<BarChart3 size={18} />} on={grantsOf(acc).includes("reports")} data={{ "data-grant-switch": "reports" }} onToggle={() => flipGrant(acc, "reports")} />
+              <SwitchRow title="Connections" hint="Swiggy, Zomato, payments" icon={<Plug size={18} />} on={grantsOf(acc).includes("connections")} data={{ "data-grant-switch": "connections" }} onToggle={() => flipGrant(acc, "connections")} />
+              <SwitchRow title="Reports" hint="Money in and out" icon={<BarChart3 size={18} />} on={grantsOf(acc).includes("reports")} data={{ "data-grant-switch": "reports" }} onToggle={() => flipGrant(acc, "reports")} />
             </div>}
             {myRole === "owner" && acc.role === "manager" && <div className={SWITCH_GROUP} data-password-right>
-              <SwitchRow title="Temporary passwords" hint="Can add staff and reset passwords" icon={<KeyRound size={18} />} on={issueOn(acc)} data={{ "data-password-right-switch": "" }}
+              <SwitchRow title="Temporary passwords" hint="Add staff, reset passwords" icon={<KeyRound size={18} />} on={issueOn(acc)} data={{ "data-password-right-switch": "" }}
                 onToggle={() => { const p = acc, on = !issueOn(p); setIssue((m) => ({ ...m, [p.id]: on })); start(async () => { const r = await setPasswordRight(p.id, on); if ("error" in r) { setIssue((m) => ({ ...m, [p.id]: !on })); setErr(r.error!); } else toast(on ? `${p.full_name} can now give temporary passwords` : "Only you give temporary passwords now"); }); }} />
             </div>}
             {canIssue && acc.id !== me && <div className="pt-1 border-t border-line">
               <Button variant="ghost" size="sm" disabled={pending} onClick={() => { const p = acc; setAcc(null); resetPw(p); }}><KeyRound size={14} /> Reset their password</Button>
-              <p className="text-xs text-steel mt-1">Locked out? Gives a one-time password.</p>
+              <p className="text-xs text-steel mt-1">One-time password</p>
             </div>}
           </div>
         )}
@@ -491,12 +491,12 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
           <div className="space-y-4">
             <Credentials title={made.title} loginId={made.login_id} password={made.temp_password} staffCode={made.staff_code} canIssue={canIssue} />
             {made.verify && (otpDone ? (
-              <div className="feather p-4 flex items-center gap-2 text-sm"><Check size={16} className="text-mint" /> <span><b>{made.verify.email}</b> confirmed. They can now reset their own password.</span></div>
+              <div className="feather p-4 flex items-center gap-2 text-sm"><Check size={16} className="text-mint" /> <span><b>{made.verify.email}</b> confirmed</span></div>
             ) : (
               <div className="feather p-4 space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-wide text-steel">Confirm their email</div>
                 {made.verify.mailed
-                  ? <p className="text-sm text-steel">A 6-digit code went to <b>{made.verify.email}</b>. Enter it now. Until then, they can't reset a lost password.{made.verify.echoed && <> <span className="num">(dev: {made.verify.echoed})</span></>}</p>
+                  ? <p className="text-sm text-steel">6-digit code sent to <b>{made.verify.email}</b>{made.verify.echoed && <> <span className="num">(dev: {made.verify.echoed})</span></>}</p>
                   : <p className="text-sm text-chili">The code could not be sent: {made.verify.mailError} Confirm it later from the staff list.</p>}
                 <div className="flex gap-2">
                   <input className="num flex-1 tracking-[0.3em]" inputMode="numeric" maxLength={6} value={otp} placeholder="000000"
@@ -511,7 +511,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
                 <button type="button" className="text-xs text-steel underline" disabled={pending} onClick={() => start(async () => {
                   setOtpErr(null);
                   const r = await sendStaffVerification(made.verify!.userId);
-                  if ("error" in r) setOtpErr(r.error!); else setOtpErr("A new code has been sent.");
+                  if ("error" in r) setOtpErr(r.error!); else setOtpErr("New code sent");
                 })}>Send a new code</button>
                 {otpErr && <p className="text-sm text-chili">{otpErr}</p>}
               </div>
@@ -540,14 +540,14 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             <div><div className="eyebrow mb-2">Position</div>
               <PositionFields type={type} people={staff} value={addPos} onChange={pickAddPos} />
               {addPos.position && <div className="mt-3 rounded-2xl bg-[color-mix(in_srgb,var(--color-tint)_9%,transparent)] border border-[color-mix(in_srgb,var(--color-tint)_25%,transparent)] p-3" data-position-preset>
-                <p className="text-[13px]">Suggested access for a <b>{positionByKey(addPos.position)?.title}</b>: <b>{ROLE_LABEL[addRole]}</b>{posTicks(addPos.position, addRole) ? ", opening:" : " — everything the role allows."}</p>
+                <p className="text-[13px]">Suggested: <b>{ROLE_LABEL[addRole]}</b>{posTicks(addPos.position, addRole) ? "" : " · everything"}</p>
                 {posTicks(addPos.position, addRole) && <ModuleChips modules={posTicks(addPos.position, addRole)!} className="mt-2" />}
                 <p className="text-[12px] text-steel mt-2">Ticked below. Change any.</p>
               </div>}</div>
             <Field label="Role" hint={ROLE_HINT[addRole]}>
               <select value={addRole} onChange={(e) => { setAddRole(e.target.value as Role); setAddTicks(null); }}>{assignable.filter((r) => r !== "owner").map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
             </Field>
-            <Field label="Their email" hint="Required. Reset codes go here.">
+            <Field label="Their email" hint="For reset codes">
               <input name="contact_email" type="email" required placeholder="ravi@example.com" />
             </Field>
             <Field label="Phone" hint="10 digits.">
@@ -564,8 +564,8 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
                   onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9 +()-]/g, ""); }} />
               </Field>
             </div>
-            <Field label="Login ID" hint={`Blank = made from their name. @${loginDomain} is added.`}>
-              <div className="flex items-center gap-2"><input name="login_id" className="flex-1" placeholder="made from their name" /><span className="text-sm text-steel shrink-0">@{loginDomain}</span></div>
+            <Field label="Login ID" hint="Blank = from name">
+              <div className="flex items-center gap-2"><input name="login_id" className="flex-1" placeholder="Optional" /><span className="text-sm text-steel shrink-0">@{loginDomain}</span></div>
             </Field>
             <div>
               <div className="eyebrow mb-2">Sections they can open</div>
@@ -576,7 +576,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               </div>
             </div>
             {addErr && <p className="text-sm text-chili">{addErr}</p>}
-            <Button className="w-full" disabled={pending}>Add and make their sign-in</Button>
+            <Button className="w-full" disabled={pending}>Add staff</Button>
           </form>
         )}
       </Sheet>
@@ -595,7 +595,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             <Button className="w-full" disabled={pending}>Generate code</Button>
           </form>
         ) : (
-          <div className="text-center space-y-4"><p className="text-sm text-steel">Works once, for 7 days.</p>
+          <div className="text-center space-y-4"><p className="text-sm text-steel">One use · 7 days</p>
             <div className="num text-4xl tracking-[0.3em] font-semibold">{code}</div>
             <Button variant="outline" onClick={() => copyText(code)}><Copy size={16} /> Copy</Button></div>
         )}

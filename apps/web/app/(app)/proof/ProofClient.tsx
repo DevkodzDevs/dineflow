@@ -33,8 +33,8 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
 
   return (
     <>
-      <PageHeader eyebrow="Trading history for your bank" title="Proof of" accent="business"
-        sub="Sealed monthly figures, shared by link"
+      <PageHeader eyebrow="Trading history" title="Proof of" accent="business"
+        sub="Sealed monthly figures"
         actions={<div className="flex gap-2 no-print">
           <Button variant="outline" onClick={() => window.print()}><Printer size={16} /> Print</Button>
           <Button onClick={() => setSheet(true)}><Link2 size={16} /> Share a record</Button>
@@ -49,7 +49,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
         <div className="md:hidden"><Empty title="No months sealed yet" hint="Months seal after they end"
           action={<Button disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(`${r.sealed} month(s) sealed.`); })}>Seal my trading history</Button>} /></div>
         <div className="hidden md:block"><EmptyState icon={ShieldCheck} hue="blue" title="No months sealed yet" data-proof-empty
-          hint="Each finished month's sales are sealed so nobody can change them — a record your bank, a supplier or a landlord can trust. Seal the months you already have now."
+          hint="Sealed months can't be changed"
           actions={<Button disabled={pending} onClick={() => start(async () => { const r = await sealAll(); if ("error" in r) setErr(r.error!); else setMsg(`${r.sealed} month(s) sealed.`); })}><Lock size={16} /> Seal my trading history</Button>} /></div>
         </>
       ) : (<>
@@ -57,7 +57,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
         <Card className={cn("flex flex-wrap sm:flex-nowrap items-start gap-3 mb-5", v?.intact ? "!bg-mint-2 border-mint" : "!bg-chili-2 border-chili")}>
           {v?.intact ? <ShieldCheck size={20} className="shrink-0 mt-0.5" /> : <ShieldAlert size={20} className="shrink-0 mt-0.5 text-chili" />}
           <div className="text-sm flex-1 min-w-[12rem]">
-            {v?.intact ? <><b>{v.periods} months sealed and verified.</b> Unchanged since sealing.</>
+            {v?.intact ? <><b>{v.periods} months sealed, verified</b></>
               : <><b className="text-chili">The chain is broken.</b> {v?.broken.map((b) => `${mon(b.period)}: ${b.reason}`).join(" · ")}. Your links show this too.</>}
             {v?.head && <div className="num text-[11px] text-steel mt-1.5 break-all">Head fingerprint {v.head.slice(0, 32)}…</div>}
           </div>
@@ -68,13 +68,12 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
           <StatTile label="Verified turnover" value={formatINR(record.total_revenue)} sub={`${record.months} months to ${mon(record.to)}`} />
           <StatTile label="Average month" value={formatINR(record.avg_monthly)} delay={0.05} />
           <StatTile label="GST collected" value={formatINR(record.gst_collected)} sub="paid to government" delay={0.1} />
-          <StatTile label="Growth" value={growth === null ? "—" : `${growth > 0 ? "+" : ""}${growth}%`} sub="first half vs second half" tone={growth !== null && growth > 0 ? "good" : undefined} delay={0.15} />
+          <StatTile label="Growth" value={growth === null ? "—" : `${growth > 0 ? "+" : ""}${growth}%`} sub="first vs second half" tone={growth !== null && growth > 0 ? "good" : undefined} delay={0.15} />
         </div>
 
         {/* the chart a lender actually wants */}
         <Card className="mb-4">
-          <h2 className="text-2xl mb-1">Month by month</h2>
-          <p className="text-xs text-steel mb-5">Rooms, dining and delivery, from sealed figures.</p>
+          <h2 className="text-2xl mb-5">Month by month</h2>
           <div className="flex items-end gap-1.5 h-48 overflow-x-auto pb-1">
             {periods.map((p, i) => (
               <motion.div key={p.period} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }} className="flex-1 min-w-[26px] flex flex-col items-center gap-1 group">
@@ -126,15 +125,15 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
           <div className="flex items-start gap-3 min-w-0 flex-1 basis-[16rem]">
             <span className="h-11 w-11 shrink-0 rounded-[12px] grid place-items-center bg-[color-mix(in_srgb,var(--color-blue)_16%,transparent)] text-[var(--color-blue)]" aria-hidden><Link2 size={19} /></span>
             <div className="min-w-0">
-              <h2 className="text-[21px] leading-tight">Who you have shared it with</h2>
-              <p className="mt-1 text-[12.5px] text-steel leading-snug">View-only, no login · revoke any time</p>
+              <h2 className="text-[21px] leading-tight">Shared links</h2>
+              <p className="mt-1 text-[12.5px] text-steel leading-snug">View-only · revocable</p>
             </div>
           </div>
           <button type="button" onClick={() => setSheet(true)} className="no-print svc-btn go sm !px-4 shrink-0 max-sm:w-full" data-new-link><Plus size={17} strokeWidth={2.4} aria-hidden /> New link</button>
         </div>
         {links.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[var(--color-separator)] p-4" data-links-empty>
-            <p className="text-[13.5px] text-[var(--color-label-2)]">One link each: bank, supplier, landlord</p>
+            <p className="text-[13.5px] text-[var(--color-label-2)]">One link each</p>
             <div className="mt-3 grid grid-cols-3 gap-2" aria-hidden>
               {(["bank", "supplier", "landlord"] as const).map((k) => { const { l, Icon } = PURPOSE[k]; return (
                 <div key={k} className="min-w-0 rounded-xl bg-[var(--color-fill)] px-2 py-2.5 flex flex-col items-center gap-1.5 text-center">
@@ -165,10 +164,10 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
         )}
       </Card>
 
-      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Lock size={13} className="mt-0.5 shrink-0" /> Only you share it — DineFlow never does.</p>
+      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Lock size={13} className="mt-0.5 shrink-0" /> Only you can share it</p>
 
-      <Sheet open={sheet} onClose={() => setSheet(false)} title="Share your business record">
-        <NewLink periods={periods} onDone={(t, label) => { setSheet(false); copyText(`${base}/record/${t}`); setMsg(`"${label}" created and copied to the clipboard.`); }} onError={setErr} />
+      <Sheet open={sheet} onClose={() => setSheet(false)} title="Share record">
+        <NewLink periods={periods} onDone={(t, label) => { setSheet(false); copyText(`${base}/record/${t}`); setMsg(`"${label}" link copied`); }} onError={setErr} />
       </Sheet>
     </>
   );
@@ -187,7 +186,7 @@ function NewLink({ periods, onDone, onError }: { periods: P[]; onDone: (token: s
             className={cn("feather feather-lift flex items-center gap-2 p-3 text-sm font-semibold", f.purpose === k && "!border-saffron shadow-glow")}><Icon size={16} /> {l}</button>
         ))}
       </div></Field>
-      <Field label="Label (only you see this)"><input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} /></Field>
+      <Field label="Label (private)"><input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="From"><select value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })}>{periods.map((p) => <option key={p.period} value={p.period}>{mon(p.period)}</option>)}</select></Field>
         <Field label="To"><select value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })}>{periods.map((p) => <option key={p.period} value={p.period}>{mon(p.period)}</option>)}</select></Field>
@@ -195,7 +194,7 @@ function NewLink({ periods, onDone, onError }: { periods: P[]; onDone: (token: s
       <Field label="Link expires in"><div className="flex gap-2">{[7, 30, 90, 180].map((d) => <button key={d} onClick={() => setF({ ...f, days: d })} className={cn("chip", f.days === d && "on")}>{d} days</button>)}</div></Field>
       <label className={cn("feather p-3 flex gap-3 cursor-pointer text-sm", f.showCosts && "border-mint")}>
     <input type="checkbox" checked={f.showCosts} onChange={(e) => setF({ ...f, showCosts: e.target.checked })} className="mt-0.5" />
-        <span><b>Include supplier and wage costs</b><br /><span className="text-steel text-xs">For a bank, not a supplier</span></span>
+        <span><b>Include costs</b><br /><span className="text-steel text-xs">For banks, not suppliers</span></span>
       </label>
       <Button className="w-full" disabled={pending} onClick={() => start(async () => { const r = await createLink(f); if ("error" in r) onError(r.error!); else onDone(r.link!.token, f.label); })}>Create link</Button>
     </div>

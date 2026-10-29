@@ -24,9 +24,9 @@ export function CrashList({ rows }: { rows: Crash[] }) {
     <section className="card p-5" data-crash-list>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="text-2xl">Crashes people saw</h2>
-        <span className="text-sm text-steel">Last 7 days · “This screen did not load” · {crashes} crash{crashes === 1 ? "" : "es"}</span>
+        <span className="text-sm text-steel">Last 7 days · {crashes} crash{crashes === 1 ? "" : "es"}</span>
       </div>
-      {rows.length === 0 ? <p className="text-sm text-steel mt-3">None in the last 7 days.</p> : (
+      {rows.length === 0 ? <p className="text-sm text-steel mt-3">None in 7 days</p> : (
         <ul className="mt-4 divide-y divide-[var(--color-separator)]">
           {rows.map((r) => (
             <li key={r.id} className="py-3 flex items-start gap-3 min-w-0" data-crash={r.kind}>

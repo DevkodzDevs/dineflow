@@ -40,12 +40,12 @@ export default async function CompliancePage() {
     <div>
       <div className="eyebrow">Platform</div>
       <h1 className="text-[34px] md:text-[48px] mt-1">Compliance <em>across {rows.length} propert{rows.length === 1 ? "y" : "ies"}</em></h1>
-      <p className="text-sm text-[var(--color-label-2)] mt-2 max-w-2xl">FY {fy}. Overdue means past due and not marked filed. You can’t file for them, but you can see who to call.</p>
+      <p className="text-sm text-[var(--color-label-2)] mt-2 max-w-2xl">FY {fy} · view only</p>
       {/* on a phone each total is a compact row, label left and figure right, not a tall card of air */}
       <div className="grid sm:grid-cols-3 gap-3 sm:gap-4 mt-6">
         <div className="card p-4 sm:p-5 flex items-center justify-between gap-3 sm:block"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)] min-w-0">Returns overdue</div><div className={`num text-3xl sm:mt-1 shrink-0 ${totals.overdue ? "text-[var(--color-red)]" : ""}`}>{totals.overdue}</div></div>
         <div className="card p-4 sm:p-5 flex items-center justify-between gap-3 sm:block"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)] min-w-0">Profiles incomplete</div><div className={`num text-3xl sm:mt-1 shrink-0 ${totals.missing ? "text-[var(--color-orange)]" : ""}`}>{totals.missing}</div></div>
-        <div className="card p-4 sm:p-5 flex items-center justify-between gap-3 sm:block"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)] min-w-0">Documents expiring in 60 days</div><div className={`num text-3xl sm:mt-1 shrink-0 ${totals.expiring ? "text-[var(--color-orange)]" : ""}`}>{totals.expiring}</div></div>
+        <div className="card p-4 sm:p-5 flex items-center justify-between gap-3 sm:block"><div className="text-[11px] uppercase tracking-wide text-[var(--color-label-2)] min-w-0">Expiring in 60 days</div><div className={`num text-3xl sm:mt-1 shrink-0 ${totals.expiring ? "text-[var(--color-orange)]" : ""}`}>{totals.expiring}</div></div>
       </div>
       <div className="card mt-6 overflow-hidden">
         <div className="table-wrap"><table className="w-full text-sm">
@@ -64,7 +64,7 @@ export default async function CompliancePage() {
             {rows.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-[var(--color-label-2)]">No properties yet.</td></tr>}
           </tbody></table></div>
       </div>
-      <p className="footnote mt-4">Each property files from <Link href="/admin" className="underline">its Tax &amp; GST screen</Link>; open it for the detail.</p>
+      <p className="footnote mt-4">Filed in each <Link href="/admin" className="underline">Tax &amp; GST screen</Link></p>
     </div>
   );
 }

@@ -163,3 +163,11 @@ pnpm --filter @dineflow/web typecheck
 - **Empty columns (2026-10-24).** No arrivals, nothing upcoming and nobody in house are `EmptyState`s (design-system.md):
   Arrivals and Upcoming the 76px row (with a *Booking* button on Arrivals), In house the full panel with **New booking**
   (`[data-fd-empty]`). The stay cards (`Row`) are unchanged.
+- **A booked room turns Arriving on its arrival day (2026-10-29, 0154)** — `hold_due` on the Front desk and Rooms screens; it used to
+  happen only for a booking made for today (rooms-and-reservations.md).
+- **Food charged to a room is taxed per dish (2026-10-29, 0155).** `post_order_to_room` taxed the posted food at the property's one
+  rate, so an 18% dish was taxed 5% on the folio (₹360 → ₹18 instead of ₹64.80). It now groups the order's lines by rate and asks
+  `bill_tax`, the bill's own sum (billing-and-invoices.md). Found by `pw/links156.mjs`; checked by `m/gst156b.mjs`.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

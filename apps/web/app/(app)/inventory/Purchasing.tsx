@@ -53,7 +53,7 @@ export function PurchaseOrders({ orders, suppliers, ingredients, restaurant }: {
           options={([["2", Columns2], ["3", Columns3], ["4", Columns4]] as const).map(([v, I]) => ({ value: v, label: <span className="inline-flex items-center gap-1.5" title={`${v} across`}><I size={16} aria-hidden /><span className="num">{v}</span></span> }))} /></div>}
         <button type="button" onClick={() => setEditing("new")} className="svc-btn go sm !px-5 max-sm:w-full sm:self-center" data-new-po><Plus size={17} strokeWidth={2.4} aria-hidden /> New order</button>
       </div>
-      {orders.length === 0 ? <Empty title="No purchase orders yet" hint="Order stock, send on WhatsApp" action={<Button onClick={() => setEditing("new")}>Draft the first</Button>} /> : (
+      {orders.length === 0 ? <Empty title="No purchase orders yet" hint="Order via WhatsApp" action={<Button onClick={() => setEditing("new")}>Draft the first</Button>} /> : (
         <ul className={cn("grid gap-3 md:grid-cols-2 [&>*]:min-w-0", COLS_CLASS[cols])} aria-label="Purchase orders" data-po-grid={cols}>
           {[...orders].sort((a, b) => PO_RANK[a.status] - PO_RANK[b.status]).map((po) => {
             const S = PO_STATUS[po.status]; const live = po.status === "draft" || po.status === "sent";
@@ -157,10 +157,10 @@ function PoForm({ po, suppliers, ingredients, onDone }: { po: Po | null; supplie
   const total = rows.map(toUnits).reduce((t, l) => t + l.qty * l.unit_cost, 0);
   const fill = () => start(async () => {
     const r = await suggestPo(); if ("error" in r) { toast(r.error!, "err"); return; }
-    if (!r.lines.length) { toast("Nothing is below its reorder level."); return; }
+    if (!r.lines.length) { toast("Nothing is low"); return; }
     setRows(r.lines.map((l) => ({ ingredient_id: l.ingredient_id, qty: Number(l.qty), unit_cost: Number(l.unit_cost), packs: false })));
     const sup = r.lines.find((l) => l.supplier_id)?.supplier_id; if (sup && !supplier) setSupplier(sup);
-    toast(`${r.lines.length} low ingredient${r.lines.length === 1 ? "" : "s"} listed — check the amounts`);
+    toast(`${r.lines.length} low item${r.lines.length === 1 ? "" : "s"} · check amounts`);
   });
   return (
     <div className="space-y-4">
@@ -193,7 +193,7 @@ function PoForm({ po, suppliers, ingredients, onDone }: { po: Po | null; supplie
       <div className="flex justify-between items-center border-t border-line pt-3"><span className="text-sm text-steel">Total</span><span className="num text-xl font-semibold">{formatINR(total)}</span></div>
       <Button className="w-full" disabled={pending} onClick={() => start(async () => {
         const r = await savePo({ id: po?.id || null, supplier_id: supplier || null, expected_on: expected || null, notes, lines: rows.map(toUnits) });
-        if ("error" in r) toast(r.error!, "err"); else { toast(po?.id ? "Order updated" : "Order drafted — send it on WhatsApp when ready"); onDone(); }
+        if ("error" in r) toast(r.error!, "err"); else { toast(po?.id ? "Order updated" : "Draft saved"); onDone(); }
       })}>{po?.id ? "Save changes" : "Save draft"}</Button>
     </div>
   );
@@ -208,7 +208,7 @@ function ReceiveForm({ po, ingredients, onDone }: { po: Po; ingredients: Ing[]; 
   const short = po.purchase_order_items.filter((l) => (got[l.id]?.received_qty ?? 0) < Number(l.qty));
   return (
     <div className="space-y-4">
-      <p className="text-sm text-steel">Enter what came, at invoice price.</p>
+      <p className="text-sm text-steel">Enter at invoice price</p>
       <div className="grid grid-cols-2 gap-3"><Field label="Supplier invoice no."><input value={inv} onChange={(e) => setInv(e.target.value)} /></Field><Field label="Received on"><input type="date" className="num" value={on} onChange={(e) => setOn(e.target.value)} /></Field></div>
       <div className="space-y-2">
         <div className="grid grid-cols-[minmax(0,1fr)_70px_90px_90px] gap-2 text-[11px] uppercase text-steel font-semibold"><span>Ingredient</span><span>Asked</span><span>Received</span><span>Cost/unit</span></div>
@@ -221,11 +221,11 @@ function ReceiveForm({ po, ingredients, onDone }: { po: Po; ingredients: Ing[]; 
           </div>
         ))}
       </div>
-      {short.length > 0 && <p className="text-xs text-[var(--color-orange)]">{short.length} line{short.length === 1 ? "" : "s"} short — noted on the order.</p>}
+      {short.length > 0 && <p className="text-xs text-[var(--color-orange)]">{short.length} line{short.length === 1 ? "" : "s"} short · noted</p>}
       <div className="flex justify-between items-center border-t border-line pt-3"><span className="text-sm text-steel">Goods received</span><span className="num text-xl font-semibold">{formatINR(total)}</span></div>
       <Button className="w-full" disabled={pending} onClick={() => start(async () => {
         const r = await receivePo(po.id, po.purchase_order_items.map((l) => ({ id: l.id, received_qty: got[l.id]?.received_qty ?? 0, unit_cost: got[l.id]?.unit_cost ?? Number(l.unit_cost) })), inv, on);
-        if ("error" in r) toast(r.error!, "err"); else { toast("Received — the pantry is updated"); onDone(); }
+        if ("error" in r) toast(r.error!, "err"); else { toast("Received · pantry updated"); onDone(); }
       })}><PackageCheck size={16} /> Receive into the pantry</Button>
     </div>
   );
@@ -240,7 +240,7 @@ export function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3"><p className="text-sm text-steel">Who you buy from</p><Button onClick={() => setEditing({})}><Plus size={16} /> Supplier</Button></div>
-      {suppliers.length === 0 ? <Empty title="No suppliers yet" hint="Add your vegetable, dairy and grocery suppliers." action={<Button onClick={() => setEditing({})}>Add the first</Button>} /> : (
+      {suppliers.length === 0 ? <Empty title="No suppliers yet" hint="Veg, dairy, grocery" action={<Button onClick={() => setEditing({})}>Add the first</Button>} /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {/* A supplier card (2026-10-23, the owner: "modern") built like an OTA channel card: the initial on its own hue, the
               name and what they bring (the notes), the lead time as a pill; a soft panel with the phone and the GSTIN that never
@@ -274,7 +274,7 @@ export function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
           <div className="grid grid-cols-2 gap-3"><Field label="Phone" hint="for WhatsApp orders"><input name="phone" className="num" inputMode="tel" defaultValue={editing?.phone ?? ""} /></Field><Field label="Lead days"><input name="lead_days" type="number" min={0} className="num" defaultValue={editing?.lead_days ?? 1} /></Field></div>
           <div className="grid grid-cols-2 gap-3"><Field label="GSTIN"><input name="gstin" className="num uppercase" defaultValue={editing?.gstin ?? ""} /></Field><Field label="Email"><input name="email" type="email" defaultValue={editing?.email ?? ""} /></Field></div>
           <Field label="Address"><input name="address" defaultValue={editing?.address ?? ""} /></Field>
-          <Field label="Notes"><textarea name="notes" rows={2} defaultValue={editing?.notes ?? ""} placeholder="Delivers Mon/Thu. Pay by the 10th." /></Field>
+          <Field label="Notes"><textarea name="notes" rows={2} defaultValue={editing?.notes ?? ""} placeholder="Delivers Mon/Thu" /></Field>
           <div className="flex gap-2"><Button className="flex-1" disabled={pending}>Save</Button>{editing?.id && <Button type="button" variant="danger" disabled={pending} onClick={() => start(async () => { await archiveSupplier(editing.id!); setEditing(null); })} aria-label="Remove"><Trash2 size={16} /></Button>}</div>
         </form>
       </Sheet>
@@ -284,7 +284,7 @@ export function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
 
 /* ═══════ wastage ═══════ */
 export function WastageView({ w }: { w: Wastage }) {
-  if (!w || w.lines === 0) return <Empty title="No wastage recorded" hint="Log thrown-away stock under Adjust → Wastage." />;
+  if (!w || w.lines === 0) return <Empty title="No wastage recorded" hint="Log under Adjust → Wastage" />;
   const max = Math.max(...w.by_reason.map((r) => Number(r.cost)), 1);
   return (
     <div className="space-y-5">

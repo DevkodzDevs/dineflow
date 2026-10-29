@@ -130,10 +130,10 @@ export function HomeClient({ home }: { home: Home }) {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-home-tiles>
         <Tile k="work" hue="var(--color-blue)" Icon={ListTodo} title="My work" figure={home.jobs.length} unit={home.jobs.length === 1 ? "open job" : "open jobs"}
-          sub={<>{given.length} given to you · {busy} in progress · {home.doneToday} done today</>}
+          sub={<>{given.length} assigned · {busy} in progress · {home.doneToday} done</>}
           badge={fresh.length > 0 && <span className="inline-flex items-center gap-1.5 min-h-7 py-0.5 pl-0.5 pr-2.5 rounded-full bg-[var(--color-red)] text-white text-[12px] font-bold" data-home-new-work><span className="sr-only">{fresh.length}</span><FlapMini value={fresh.length} /> new</span>}
           onOpen={openWork}>
-          {home.jobs.length === 0 ? <span className="text-[13px] text-steel">Nothing on you right now.</span> : (
+          {home.jobs.length === 0 ? <span className="text-[13px] text-steel">No open jobs</span> : (
             <span className="block space-y-1.5">
               {home.jobs.slice(0, 3).map((j) => (
                 <span key={j.id} className="flex items-center gap-2 min-w-0 text-[13.5px]">
@@ -145,7 +145,7 @@ export function HomeClient({ home }: { home: Home }) {
         </Tile>
 
         <Tile k="lists" hue="var(--color-green)" Icon={ListChecks} title="My checklists" figure={duties ? <FlapPercent value={(ticks / duties) * 100} size="xs" tile="40px" bare bar={false} say={`${ticks} of ${duties} duties done`} /> : "—"} unit={duties ? `${ticks} of ${duties} duties done` : undefined}
-          sub={home.lists.length ? home.lists.map((l) => l.name).join(" · ") : "No lists for you yet"} onOpen={() => setOpen("lists")}>
+          sub={home.lists.length ? home.lists.map((l) => l.name).join(" · ") : "No lists yet"} onOpen={() => setOpen("lists")}>
           {duties > 0 && <span className="block h-2 rounded-full bg-[var(--color-fill)] overflow-hidden"><span className="block h-full rounded-full transition-all" style={{ width: `${(ticks / duties) * 100}%`, background: ticks >= duties ? "var(--color-green)" : "var(--color-orange)" }} /></span>}
         </Tile>
 
@@ -163,21 +163,21 @@ export function HomeClient({ home }: { home: Home }) {
           </span>
         </Tile>
 
-        <Tile k="leave" hue="var(--color-cyan)" Icon={Plane} title="Leave" figure={yearLeave} unit={`day${yearLeave === 1 ? "" : "s"} taken this year`}
-          sub={next ? <>Next: {dmy(next.from_date)}{next.to_date !== next.from_date ? ` → ${dmy(next.to_date)}` : ""} · {LEAVE_KIND[next.kind]}</> : waiting.length ? <>{waiting.length} waiting for an answer</> : "No leave coming up"}
+        <Tile k="leave" hue="var(--color-cyan)" Icon={Plane} title="Leave" figure={yearLeave} unit={`day${yearLeave === 1 ? "" : "s"} this year`}
+          sub={next ? <>Next: {dmy(next.from_date)}{next.to_date !== next.from_date ? ` → ${dmy(next.to_date)}` : ""} · {LEAVE_KIND[next.kind]}</> : waiting.length ? <>{waiting.length} awaiting reply</> : "No leave coming up"}
           badge={lastDecided && lastDecided.decided_at && Date.now() - new Date(lastDecided.decided_at).getTime() < 3 * 86400000 && <span className={cn("h-7 px-2.5 rounded-full text-[12px] font-bold grid place-items-center", LEAVE_STATE[lastDecided.status].cls)} data-home-leave-news>{LEAVE_STATE[lastDecided.status].label}</span>}
           onOpen={() => setOpen("leave")}>
           <span className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-[var(--color-fill)] text-[13px] font-bold">Apply for leave <ChevronRight size={14} aria-hidden /></span>
         </Tile>
 
         <Tile k="salary" hue="var(--color-orange)" Icon={Wallet} title="Salary" figure={estimate != null ? formatINR(estimate, { whole: true }) : "—"} unit={estimate != null ? "so far this month" : undefined}
-          sub={home.pay ? <>{formatINR(home.pay.amount, { whole: true })} {home.pay.basis === "monthly" ? "a month" : "a day"} · {present} day{present === 1 ? "" : "s"} counted{owed ? <> · advance {formatINR(owed, { whole: true })}</> : null}</> : "Pay rate not set yet"}
+          sub={home.pay ? <>{formatINR(home.pay.amount, { whole: true })} {home.pay.basis === "monthly" ? "a month" : "a day"} · {present} day{present === 1 ? "" : "s"} counted{owed ? <> · advance {formatINR(owed, { whole: true })}</> : null}</> : "Pay rate not set"}
           onOpen={() => setOpen("salary")}>
           {lastSlip && <span className="flex items-center gap-2 text-[13px] min-w-0"><FileText size={14} className="shrink-0 text-steel" aria-hidden /><span className="truncate">{monthName(lastSlip.month)}: <b className="num">{formatINR(Number(lastSlip.net), { whole: true })}</b> · {lastSlip.paid_at ? "paid" : "not paid yet"}</span></span>}
         </Tile>
 
         <Tile k="messages" hue="var(--color-tint)" Icon={MessagesSquare} title="Messages" figure={<FlapShuffle value={home.unread} pad={0} size="xs" tile="40px" bare say={`${home.unread} new`} />} unit={home.unread === 1 ? "new answer" : "new answers"}
-          sub="Owner's replies to your feedback" href="/voice"
+          sub="Replies to feedback" href="/voice"
           badge={home.unread > 0 && <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-red)]" aria-hidden />} />
       </div>
 
@@ -190,7 +190,7 @@ export function HomeClient({ home }: { home: Home }) {
       {/* ── the full views ─────────────────────────────────────────────────────────────────────── */}
       <Sheet open={open === "work"} onClose={() => setOpen(null)} title="My work" wide>
         <div className="space-y-2" data-home-work>
-          {home.jobs.length === 0 && <p className="text-[14px] text-steel py-6 text-center">No jobs for you now.</p>}
+          {home.jobs.length === 0 && <p className="text-[14px] text-steel py-6 text-center">No jobs</p>}
           {home.jobs.map((j) => (
             <div key={j.id} className="rounded-2xl bg-[var(--color-fill)] p-3.5 flex items-start gap-3 min-w-0">
               <span className={cn("mt-1 h-2.5 w-2.5 shrink-0 rounded-full", j.status === "in_progress" ? "bg-[var(--color-blue)]" : "bg-[var(--color-label-3)]")} aria-hidden />
@@ -230,7 +230,7 @@ function ListsView({ home, done, setDone }: { home: Home; done: Record<string, R
     setDone((d) => ({ ...d, [id]: on ? { ...was, [String(i)]: { name: "You", at: new Date().toISOString() } } : Object.fromEntries(Object.entries(was).filter(([k]) => k !== String(i))) }));
     start(async () => { const r = await tick(id, i, on); if ("error" in r) { toast(r.error!, "err"); setDone((d) => ({ ...d, [id]: was })); } else setDone((d) => ({ ...d, [id]: r.run.done })); });
   };
-  if (!home.lists.length) return <p className="text-[14px] text-steel py-6 text-center">No lists yet. Your manager adds them.</p>;
+  if (!home.lists.length) return <p className="text-[14px] text-steel py-6 text-center">No lists yet</p>;
   return (
     <div className="space-y-4" data-home-lists>
       {home.lists.map((l) => (
@@ -272,7 +272,7 @@ function AttendanceView({ home, present, hours }: { home: Home; present: number;
         })}
       </div>
       <p className="text-[12.5px] text-steel">Green: present. Blue: leave.</p>
-      {home.attend && <Link href="/attendance" className="svc-btn go w-full"><Fingerprint size={18} aria-hidden /> My attendance — punch in or out</Link>}
+      {home.attend && <Link href="/attendance" className="svc-btn go w-full"><Fingerprint size={18} aria-hidden /> Punch in / out</Link>}
     </div>
   );
 }
@@ -284,7 +284,7 @@ function LeaveView({ home }: { home: Home }) {
   const days = from && to && to >= from ? Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 : 0;
   const send = () => start(async () => {
     setErr(null); const r = await askLeave(from, to || from, kind, reason);
-    if ("error" in r) setErr(r.error!); else { toast("Leave asked — you will see the answer here"); setFrom(""); setTo(""); setReason(""); }
+    if ("error" in r) setErr(r.error!); else { toast("Leave requested"); setFrom(""); setTo(""); setReason(""); }
   });
   const withdraw = (id: string) => start(async () => { const r = await cancelLeave(id); if ("error" in r) toast(r.error!, "err"); else toast("Withdrawn"); });
   const sorted = useMemo(() => [...home.leave].sort((a, b) => b.from_date.localeCompare(a.from_date)), [home.leave]);
@@ -299,7 +299,7 @@ function LeaveView({ home }: { home: Home }) {
         <div className="flex flex-wrap gap-2" role="group" aria-label="Kind of leave">
           {Object.entries(LEAVE_KIND).map(([k, v]) => <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={cn("chip", kind === k && "on")} data-leave-kind={k}>{v}</button>)}
         </div>
-        <label className="block"><span className="text-[12.5px] font-semibold text-steel">Reason — if you like</span><textarea className="mt-1" rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="A family wedding · fever · going home" data-leave-reason /></label>
+        <label className="block"><span className="text-[12.5px] font-semibold text-steel">Reason — if you like</span><textarea className="mt-1" rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Family wedding, fever…" data-leave-reason /></label>
         {err && <p className="text-[13.5px] font-semibold text-chili" role="alert">{err}</p>}
         <button type="button" disabled={pending || !from} onClick={send} className="svc-btn go w-full" data-leave-send><Plane size={18} aria-hidden />{days ? `Ask for ${days} day${days === 1 ? "" : "s"}` : "Ask for leave"}</button>
       </section>
@@ -342,11 +342,11 @@ function SalaryView({ home, present, daysInMonth, estimate, owed }: { home: Home
     <div className="space-y-5" data-home-salary>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-2xl bg-[var(--color-fill)] p-3.5"><div className="text-[12px] text-steel">Your rate</div><div className="mt-1 font-display num text-[22px] leading-none">{home.pay ? formatINR(home.pay.amount, { whole: true }) : "—"}</div><div className="mt-1 text-[12px] text-steel">{home.pay ? (home.pay.basis === "monthly" ? "a month" : "a day") : "not set yet"}</div></div>
-        <div className="rounded-2xl bg-[var(--color-fill)] p-3.5"><div className="text-[12px] text-steel">So far this month</div><div className="mt-1 font-display num text-[22px] leading-none">{estimate != null ? formatINR(estimate, { whole: true }) : "—"}</div><div className="mt-1 text-[12px] text-steel">{present} of {daysInMonth} days · an estimate</div></div>
+        <div className="rounded-2xl bg-[var(--color-fill)] p-3.5"><div className="text-[12px] text-steel">So far this month</div><div className="mt-1 font-display num text-[22px] leading-none">{estimate != null ? formatINR(estimate, { whole: true }) : "—"}</div><div className="mt-1 text-[12px] text-steel">{present} of {daysInMonth} days</div></div>
       </div>
-      <p className="text-[12.5px] text-steel">An estimate — the payslip is final.</p>
+      <p className="text-[12.5px] text-steel">Estimate only</p>
       {owed > 0 && (
-        <section><div className="text-[13px] font-bold text-steel mb-2">Advances to come off your pay · {formatINR(owed, { whole: true })}</div>
+        <section><div className="text-[13px] font-bold text-steel mb-2">Advances due · {formatINR(owed, { whole: true })}</div>
           <div className="space-y-1.5">{home.advances.map((a, i) => <div key={i} className="flex items-center gap-2 rounded-xl bg-[var(--color-fill)] px-3.5 py-2.5 text-[13.5px]"><span className="flex-1 min-w-0 truncate">{dmy(a.given_on)}{a.note ? ` · ${a.note}` : ""}</span><b className="num">{formatINR(a.amount, { whole: true })}</b></div>)}</div>
         </section>)}
       <section>

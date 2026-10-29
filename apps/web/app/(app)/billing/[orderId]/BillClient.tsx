@@ -175,11 +175,11 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
             )}
             {scPct > 0 && !eco && (
               <div className="mt-3 flex items-center gap-3 rounded-xl bg-[var(--color-fill)] px-3 py-2.5 min-h-11" data-service-charge>
-                <span className="flex-1 min-w-0 leading-tight"><span className="block text-sm font-semibold">Service charge {scPct}%</span><span className="block text-xs text-steel">Optional — only if the guest agrees</span></span>
+                <span className="flex-1 min-w-0 leading-tight"><span className="block text-sm font-semibold">Service charge {scPct}%</span><span className="block text-xs text-steel">Only if guest agrees</span></span>
                 <button type="button" role="switch" aria-checked={scOn} data-on={scOn ? "true" : "false"} className="switch shrink-0" onClick={() => setScOn((v) => !v)} aria-label={`Service charge ${scPct}%`} />
               </div>
             )}
-            {eco && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5" data-gst-operator><b className="capitalize">{order.order_channels?.kind}</b> pays the GST on this order (section 9(5)) — none on this bill.</p>}
+            {eco && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5" data-gst-operator><b className="capitalize">{order.order_channels?.kind}</b> pays GST · 9(5)</p>}
             <div className="mt-4 pt-4 border-t border-dashed border-line space-y-3">
               <div className="text-xs font-semibold uppercase tracking-wide text-steel flex items-center gap-1.5"><UserRound size={12} /> Guest</div>
               <div className="grid grid-cols-2 gap-3"><input placeholder="Phone" inputMode="tel" className="num" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} /><input placeholder="Name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} /></div>
@@ -189,7 +189,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
                   {restaurant.loyalty_enabled && <span className={cn("num", canRedeem ? "text-mint font-semibold" : "text-steel")}>{Math.round(Number(known.points))} points</span>}
                   {known.notes && <span className="w-full text-steel">{known.notes}</span>}
                 </div>
-              ) : guest.phone.replace(/\D/g, "").length >= 10 ? <p className="text-xs text-steel">New guest — this bill starts their record.</p> : null}
+              ) : guest.phone.replace(/\D/g, "").length >= 10 ? <p className="text-xs text-steel">New guest</p> : null}
               {canRedeem && (
                 <div className="flex items-center gap-2">
                   <Coins size={14} className="text-mint shrink-0" />
@@ -234,26 +234,26 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
                     ? lateBy !== null && lateBy > 0
                       ? `Delivered ${hhmm(servedAt)} — ${lateBy} min late.`
                       : `Delivered ${hhmm(servedAt)}, on time.`
-                    : "No delivery recorded — promise stands."}
+                    : "No delivery logged."}
                 </p>
                 <p className={cn("text-xs font-semibold mt-1.5", kept ? "text-[var(--color-tint)]" : "text-[var(--color-red)]")}>
-                  {kept ? `Kept — ${order.promise_pct}% added to the food.` : "Missed — the food is free."}
+                  {kept ? `Kept · +${order.promise_pct}% on food` : "Missed · food free"}
                 </p>
                 <button type="button" onClick={() => setKeptOverride(!kept)}
                   className="mt-2.5 text-xs font-semibold underline text-steel hover:text-[var(--color-label)]">
-                  {kept ? "We were late — make this meal free" : "It was on time after all — charge it"}
+                  {kept ? "Mark late (free)" : "Mark on time"}
                 </button>
               </div>
             )}
-            {!eco && <p className="text-xs text-steel mt-3">{dishRates.length > 1 ? <>GST by dish ({dishRates.map((x) => `${x}%`).join(" and ")}), split as CGST + SGST. Set on each dish in Menu.</> : <>GST {dishRates[0] ?? restaurant.gst_rate}% split as CGST + SGST. Set in Settings.</>}</p>}
-            {live.some((i) => i.status === "pending" || i.status === "preparing") && <p className="text-xs text-chili mt-2">Some items are still in the kitchen.</p>}
+            {!eco && <p className="text-xs text-steel mt-3">{dishRates.length > 1 ? <>GST by dish: {dishRates.map((x) => `${x}%`).join(", ")}</> : <>GST {dishRates[0] ?? restaurant.gst_rate}% (CGST + SGST)</>}</p>}
+            {live.some((i) => i.status === "pending" || i.status === "preparing") && <p className="text-xs text-chili mt-2">Items still in kitchen</p>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
             <Button size="lg" className="w-full mt-5" data-kbd-primary disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt, kept, { phone: guest.phone, name: guest.name, redeem, coupon: coupon?.code }, scPct > 0 && !eco ? scOn : undefined); if ("error" in r) setErr(r.error!); else setPays([{ method: "upi", amount: 0, ref: "" }]); })}>Generate bill</Button>
             {inHouse.length > 0 && order.status === "open" && (
               <div className="mt-4 pt-4 border-t border-dashed border-line"><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1"><BedDouble size={12} /> Or charge to a room</div>
                 <div className="flex gap-2"><select value={roomFor} onChange={(e) => setRoomFor(e.target.value)}><option value="">In-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
                   <Button variant="outline" disabled={pending || !roomFor} onClick={() => start(async () => { const r = await postOrderToRoom(order.id, roomFor); if ("error" in r) setErr(r.error!); else router.push(`/frontdesk/${roomFor}`); })}>Post</Button></div>
-                <p className="text-xs text-steel mt-2">On the folio with GST; paid at check-out.</p></div>
+                <p className="text-xs text-steel mt-2">Paid at check-out</p></div>
             )}
           </Card>
         ) : bill.status === "unpaid" ? (<>
@@ -269,7 +269,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
             {bill.pay_claim_ref && (
               <div className="mt-3 flex items-center gap-2 rounded-xl bg-mint-2 px-3 py-2 text-sm">
                 <Smartphone size={15} className="shrink-0 text-mint" />
-                <span className="min-w-0">Guest says they paid by UPI{bill.pay_claim_ref !== "UPI" && <> · ref <b className="num">{bill.pay_claim_ref}</b></>}. Check your UPI app, then</span>
+                <span className="min-w-0">Guest paid by UPI?{bill.pay_claim_ref !== "UPI" && <> · ref <b className="num">{bill.pay_claim_ref}</b></>} Check app</span>
                 <Button size="sm" variant="outline" className="ml-auto shrink-0" onClick={() => setPays([{ method: "upi", amount: totals.total, ref: bill.pay_claim_ref === "UPI" ? "" : bill.pay_claim_ref! }])}>Use it</Button>
               </div>
             )}
@@ -315,8 +315,8 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
               if (!online) { await enqueue("settle_bill", { bill_id: bill.id, payments: settled, client_id: crypto.randomUUID() }, `Payment · ${bill.bill_no}`); router.push("/billing?queued=1"); return; }
               const r = await settleBill(bill.id, settled); if ("error" in r) setErr(r.error!);   // the action's answer is the re-rendered bill — no second render
             })}>Mark paid{!online && " (offline)"}</Button>
-            <button type="button" className="mt-3 text-xs text-steel hover:text-chili w-full" disabled={pending} onClick={() => setVoiding(true)} data-void-bill>Void bill and edit order</button>
-            <ReasonDialog open={voiding} onClose={() => setVoiding(false)} title={`Void bill ${bill.bill_no}?`} hint="Reopens the order; name and reason logged."
+            <button type="button" className="mt-3 text-xs text-steel hover:text-chili w-full" disabled={pending} onClick={() => setVoiding(true)} data-void-bill>Void &amp; edit</button>
+            <ReasonDialog open={voiding} onClose={() => setVoiding(false)} title={`Void bill ${bill.bill_no}?`} hint="Reopens order; reason logged"
               chips={["Wrong table", "Item missed", "Discount missed", "Guest changed order", "Billed twice"]} confirmLabel="Void the bill"
               onConfirm={async (reason) => { const r = await voidBill(bill.id, reason); if ("error" in r) return { error: r.error }; }} />
           </Card>
@@ -332,7 +332,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
               <Card className="mt-4 !p-0 overflow-hidden" data-scan-pay data-mode={mode}>
                 <div className="p-5 pb-6 flex flex-col items-center text-center">
                   <div className="w-full flex items-center justify-between gap-2">
-                    <h3 className="text-[15px] font-semibold flex items-center gap-1.5"><QrCode size={16} /> {mode === "upi" ? "Scan to pay" : "Guest can scan the bill"}</h3>
+                    <h3 className="text-[15px] font-semibold flex items-center gap-1.5"><QrCode size={16} /> {mode === "upi" ? "Scan to pay" : "Scan the bill"}</h3>
                     <span className="h-6 px-2.5 rounded-full text-[11px] font-semibold inline-flex items-center gap-1.5 shrink-0"
                       style={{ background: mode === "upi" ? "var(--color-green-2)" : "var(--color-fill)", color: mode === "upi" ? "var(--color-tint)" : "var(--color-label-2)" }}>
                       <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />{mode === "upi" ? "UPI · exact amount" : "UPI or card"}
@@ -343,7 +343,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
                     <QR value={upiQr ?? payUrl!} size={216} />
                   </div>
                   {mode === "upi" ? (<>
-                    <div className="mt-5 text-[11px] font-semibold uppercase tracking-[.16em] text-steel">Pay with any UPI app</div>
+                    <div className="mt-5 text-[11px] font-semibold uppercase tracking-[.16em] text-steel">Any UPI app</div>
                     <div className="font-display num text-[44px] leading-none mt-1.5" data-upi-amount>{formatINR(upiAmount)}</div>
                     {upiAmount + 0.01 < totals.total && <div className="text-xs text-steel mt-1.5 num">UPI part of {formatINR(totals.total)}</div>}
                     <div className="mt-3 text-[13px] leading-snug max-w-full"><span className="text-steel">To </span><b className="break-words">{restaurant.upi_payee || restaurant.name}</b></div>
@@ -353,13 +353,12 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
                     </div>
                   </>) : (<>
                     <div className="font-display num text-[36px] leading-none mt-5">{formatINR(totals.total)}</div>
-                    <p className="mt-2.5 text-[13px] text-steel max-w-[19rem] leading-snug">Scan to pay by UPI or card.</p>
-                    {upiChosen && !hasVpa && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-left" data-upi-missing><b>Want the exact amount in the QR?</b> Add your UPI ID in <Link href="/settings" className="underline">Settings → Payments</Link>.</p>}
+                    {upiChosen && !hasVpa && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-left" data-upi-missing><b>Exact-amount QR:</b> add <Link href="/settings" className="underline">UPI ID</Link></p>}
                   </>)}
                 </div>
                 {payUrl && (
                   <div className="border-t border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)]">
-                    {mode === "upi" && <div className="px-5 pt-2.5 text-[11px] font-semibold uppercase tracking-[.14em] text-steel text-left">Or send the bill to their phone</div>}
+                    {mode === "upi" && <div className="px-5 pt-2.5 text-[11px] font-semibold uppercase tracking-[.14em] text-steel text-left">Or send to phone</div>}
                     <div className="grid divide-x divide-[var(--color-separator)]" style={{ gridTemplateColumns: `repeat(${waPhone.length === 10 ? 3 : 2}, minmax(0, 1fr))` }} data-link-actions>
                       <a href={payUrl} target="_blank" rel="noreferrer" className="h-12 inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] transition-colors"><ExternalLink size={15} /> Open</a>
                       <button type="button" onClick={async () => { if (await copyText(payUrl)) { setCopied(true); setTimeout(() => setCopied(false), 2000); } }}

@@ -126,7 +126,7 @@ export function Waiting({ expect, line, done, className }: { expect: number; lin
     <div className={cn("flex items-center gap-4", className)} role="status" aria-live="polite">
       {done ? <Flip value="✓" size="sm" tone="live" /> : <Loader size="sm" />}
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline justify-between gap-3"><span className="text-[14px] truncate">{done ? "Done" : line}<span className={cn(!done && "loader-dots")} /></span><span className="num text-[13px] text-[var(--color-label-2)] tabular-nums">{m}:{sec}{!done && t > expect && <span className="text-[var(--color-label-3)]"> · a little longer than usual</span>}</span></div>
+        <div className="flex items-baseline justify-between gap-3"><span className="text-[14px] truncate">{done ? "Done" : line}<span className={cn(!done && "loader-dots")} /></span><span className="num text-[13px] text-[var(--color-label-2)] tabular-nums">{m}:{sec}{!done && t > expect && <span className="text-[var(--color-label-3)]"> · taking longer</span>}</span></div>
         <div className="wait-track w-full mt-2"><div className={cn("wait-fill", done && "done")} style={{ width: `${pct}%`, transition: "width 1s linear" }} /></div>
       </div>
     </div>

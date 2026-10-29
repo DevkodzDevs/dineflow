@@ -17,7 +17,7 @@ export default async function MyAttendancePage() {
   const [m, t] = await Promise.all([methodsFor(sub.restaurant), todayFor(sub)]);
   return (
     <>
-      <PageHeader eyebrow="Your day" title="My attendance" sub="Punch in on arrival, out on leaving" />
+      <PageHeader eyebrow="Your day" title="My attendance" sub="Punch in and out" />
       <PunchPanel token={null} name={sub.name} property={sub.property} methods={m.methods} today={t.today} passkeys={t.passkeys} locationSet={m.lat != null && m.lng != null} />
     </>
   );

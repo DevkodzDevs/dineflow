@@ -12,12 +12,12 @@ export const LANG_COOKIE = "df-lang";
 /** "ta-all" / "hi-all" (2026-10-18): the whole app in Tamil or Hindi, not a second line —
  *  components/ui/FullLanguage.tsx does the screens, and `say` gives the word alone. */
 export const LANGS: { v: Lang; label: string; short: string; hint: string; group: "line" | "all" }[] = [
-  { v: "en", label: "English", short: "A", hint: "The whole app in English.", group: "line" },
-  { v: "ta", label: "English + தமிழ்", short: "அ", hint: "Tamil under the English on the floor's buttons.", group: "line" },
-  { v: "hi", label: "English + हिन्दी", short: "अ", hint: "Hindi under the English on the floor's buttons.", group: "line" },
+  { v: "en", label: "English", short: "A", hint: "All English", group: "line" },
+  { v: "ta", label: "English + தமிழ்", short: "அ", hint: "Tamil under buttons", group: "line" },
+  { v: "hi", label: "English + हिन्दी", short: "अ", hint: "Hindi under buttons", group: "line" },
   // each whole-app choice describes itself in its own script — the menu is never translated, so it can always be read
-  { v: "ta-all", label: "தமிழ் — முழுவதும்", short: "த", hint: "ஒவ்வொரு திரை, மெனு, பட்டன் — எல்லாம் தமிழில்.", group: "all" },
-  { v: "hi-all", label: "हिन्दी — पूरा ऐप", short: "हि", hint: "हर स्क्रीन, मेनू और बटन — सब हिन्दी में।", group: "all" },
+  { v: "ta-all", label: "தமிழ் — முழுவதும்", short: "த", hint: "எல்லாம் தமிழில்", group: "all" },
+  { v: "hi-all", label: "हिन्दी — पूरा ऐप", short: "हि", hint: "सब हिन्दी में", group: "all" },
 ];
 export const readLang = (v: string | null | undefined): Lang => (v === "ta" || v === "hi" || v === "ta-all" || v === "hi-all" ? v : "en");
 /** The script a choice is written in: "ta" for both Tamil choices, "hi" for both Hindi ones. */

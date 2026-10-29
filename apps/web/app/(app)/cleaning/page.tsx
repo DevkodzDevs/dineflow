@@ -20,7 +20,7 @@ export default async function CleaningPage() {
   const board = (data ?? { jobs: [], people: [], can_assign: false, tables_on: true }) as Board;
   return (
     <>
-      <SvcHead icon="cleaning" title="Cleaning" sub="Tables and rooms to clean" />
+      <SvcHead icon="cleaning" title="Cleaning" sub="Tables and rooms" />
       <CleaningClient board={board} error={error?.message ?? null} me={session.profile.id} role={session.profile.role}
         canSet={["owner", "manager"].includes(session.profile.role)} hasRooms={session.restaurant.property_type !== "restaurant"} />
     </>

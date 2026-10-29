@@ -55,8 +55,8 @@ still the Cooking request sheet.
 
 **The ticket rail** (`CartPanel`, `[data-cart]`, used in the desktop `<aside>` and the phone sheet alike) reads
 top to bottom: where it is going, big (*Table T2*, or *Parcel* / *Delivery* / *Room*) with **Change** (or a green
-**Table** when none is picked) that opens a 5-across grid of the **free** tables only (2026-10-20, below), the "already has order #n
-running" notice under it · the order type as three or four picture tiles (Dine in / Parcel / Delivery / Room
+**Table** when none is picked) that opens a 5-across grid of the **free** tables only (2026-10-20, below), the "{table} has #n
+open" notice under it · the order type as three or four picture tiles (Dine in / Parcel / Delivery / Room
 when guests are in; icon over word when there are four) · for dine-in the guest folded into one row (*Guest name
 or phone (optional)*, opening Name + Phone — the phone drives `lookupCustomer`); parcel and delivery show Name +
 Phone directly · "Ticket · n items", Courses, Clear · the line cards · then a fixed foot: the on-time promise,
@@ -418,3 +418,9 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
 - **The cleaning card on a phone, compact (2026-10-27, the owner).** How long it has waited rides the name's row
   (`[data-clean-since]`, in place of the seats); the "who" line shows only when someone has it (`[data-clean-who-phone]`) —
   "Nobody yet" said what *I'll take it* already says. From md as it was.
+- **A booking holds its table on the floor (2026-10-29, 0154).** From 30 min before a booking's time its table shows *Reserved*
+  here and on /orders/new — a booking with no table is given one that seats the party — and goes back to free 30 min after the
+  time if the party has not been seated, or when the booking is cancelled (rooms-and-reservations.md).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

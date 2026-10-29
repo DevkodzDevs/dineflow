@@ -52,7 +52,7 @@ export default async function TasksPage() {
 
   return (
     <>
-      <PageHeader eyebrow="The day's duties" title="Checklists" sub="Tick each duty when done" />
+      <PageHeader eyebrow="The day's duties" title="Checklists" sub="Tick when done" />
       <TasksClient lists={(lists ?? []) as List[]} runs={(runs ?? []) as Run[]} today={today} editor={editor}
         teams={teams} jobs={jobs} positions={positions} people={people} me={me} />
     </>

@@ -40,7 +40,7 @@ export function MenuImport({ existing, onDone }: { existing: string[]; onDone: (
         <span className="h-11 w-11 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-[var(--color-tint)]">{reading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-semibold">{reading ? "Reading the menu…" : rows ? "Read another page" : "Photograph your menu"}</span>
-          <span className="block text-xs text-[var(--color-label-2)]">Page by page — check before adding.</span>
+          <span className="block text-xs text-[var(--color-label-2)]">Page by page</span>
         </span>
         <input type="file" accept="image/*" capture="environment" className="sr-only !w-px !h-px !min-w-0 !p-0 !border-0" disabled={reading}
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void read(f); }} />
@@ -52,7 +52,7 @@ export function MenuImport({ existing, onDone }: { existing: string[]; onDone: (
           <b className="text-[13px]">{rows.length} dish{rows.length === 1 ? "" : "es"} read</b>{sample && <Pill tone="gold">sample</Pill>}
           <button type="button" className="ml-auto h-9 px-2 font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)]" onClick={() => setRows(rows.map((r) => ({ ...r, keep: !rows.every((x) => x.keep) })))}>{rows.every((x) => x.keep) ? "Untick all" : "Tick all"}</button>
         </div>
-        {sample && <p className="text-xs text-[var(--color-label-2)] -mt-2">Sample only — ask support to turn it on.</p>}
+        {sample && <p className="text-xs text-[var(--color-label-2)] -mt-2">Sample only — ask support</p>}
         <div className="rounded-2xl border border-[var(--color-separator)] divide-y divide-[var(--color-separator)] overflow-hidden">
           {rows.map((r, i) => {
             const dup = have.has(r.name.trim().toLowerCase());
@@ -63,7 +63,7 @@ export function MenuImport({ existing, onDone }: { existing: string[]; onDone: (
                   className={cn("h-9 w-9 rounded-lg grid place-items-center shrink-0", r.is_veg ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-red-2)] text-[var(--color-red)]")}>{r.is_veg ? <Leaf size={14} /> : <Drumstick size={14} />}</button>
                 <span className="flex-1 min-w-0">
                   <input value={r.name} onChange={(e) => set(i, { name: e.target.value })} className="!min-h-10 [@media(pointer:coarse)]:!min-h-11 !py-1.5 !px-2 !text-[14px] font-semibold" />
-                  <span className="block text-[11px] text-[var(--color-label-2)] px-2 mt-0.5 truncate">{r.category || "No section"}{dup ? " · already on your menu" : ""}</span>
+                  <span className="block text-[11px] text-[var(--color-label-2)] px-2 mt-0.5 truncate">{r.category || "No section"}{dup ? " · already on menu" : ""}</span>
                 </span>
                 <input type="number" min={0} value={r.price || ""} onChange={(e) => set(i, { price: Number(e.target.value) })} className="num !w-20 !min-h-10 [@media(pointer:coarse)]:!min-h-11 !py-1.5 !px-2 !text-[14px] text-right" aria-label={`Price of ${r.name}`} />
               </div>
@@ -73,7 +73,7 @@ export function MenuImport({ existing, onDone }: { existing: string[]; onDone: (
         <Button className="w-full" disabled={pending || kept.length === 0} onClick={() => start(async () => {
           const r = await importDishes(kept.map(({ keep: _k, ...d }) => d));
           if ("error" in r) { setErr(r.error ?? "Could not add"); return; }
-          toast(`${r.added} dish${r.added === 1 ? "" : "es"} added to the menu`); onDone();
+          toast(`${r.added} dish${r.added === 1 ? "" : "es"} added`); onDone();
         })}>{pending ? "Adding…" : `Add ${kept.length} dish${kept.length === 1 ? "" : "es"}`}</Button>
       </>)}
     </div>

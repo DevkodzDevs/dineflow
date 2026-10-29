@@ -111,7 +111,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
         <div className="space-y-6">
           {/* appearance */}
           <Card>
-            <Section icon={<Palette size={16} />} title="Appearance" description="This device only. Guest pages stay bright.">
+            <Section icon={<Palette size={16} />} title="Appearance" description="This device only">
               <ThemePicker />
               {/* the device's language: a second line under the Dining screens' buttons, or the whole app (lib/say.ts) —
                   the picker names its own two groups */}
@@ -126,7 +126,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               front desk each pick their own tone and alerts */}
           <Card>
             <div id="notifications" className="scroll-mt-28">
-              <Section icon={<BellRing size={16} />} title="Notifications" description="This device's role, sound and alerts">
+              <Section icon={<BellRing size={16} />} title="Notifications" description="Role, sound, alerts">
                 <NotificationSettings />
               </Section>
             </div>
@@ -135,7 +135,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           {/* install — sits beside Appearance because it is the other thing that belongs to the
               device in front of you rather than to the property */}
           <Card>
-            <Section icon={<MonitorSmartphone size={16} />} title="Install on this device" description="Install on each phone and till">
+            <Section icon={<MonitorSmartphone size={16} />} title="Install on this device" description="Phones and tills">
               <InstallApp />
               {/* one row to /get for the staff's devices is part of InstallApp now (installPlanFor, 2026-10-20) */}
             </Section>
@@ -149,7 +149,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             <input type="hidden" name="id" value={restaurant.id} />
             <Card>
               <Section icon={<Building2 size={16} />} title="Property details" description="Type, name and contact">
-                <Field label="Property type" hint="Hotel/resort adds Front desk, Rooms, Housekeeping, Guests.">
+                <Field label="Property type" hint="Hotel adds room modules">
                   <select name="property_type" defaultValue={restaurant.property_type}>
                     <option value="restaurant">Restaurant</option><option value="hotel">Hotel</option><option value="resort">Resort</option>
                   </select>
@@ -163,7 +163,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             </Card>
 
             <Card>
-              <Section icon={<Palette size={16} />} title="Brand" description="Logo and colour on bills and pages">
+              <Section icon={<Palette size={16} />} title="Brand" description="Logo and colour">
                 <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-start">
                   <LogoUpload restaurantId={restaurant.id} initial={restaurant.logo_url ?? null} name={restaurant.name} />
                   <Field label="Brand colour" hint="Hex, e.g. #c9302c"><input name="brand_colour" defaultValue={restaurant.brand_colour ?? ""} placeholder="#c9302c" className="num" /></Field>
@@ -172,45 +172,45 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             </Card>
 
             <Card>
-              <Section icon={<Receipt size={16} />} title="Tax & billing" description={`GST and service charge${isHotel ? ", room GST slabs" : ""}`}>
+              <Section icon={<Receipt size={16} />} title="Tax & billing" description={isHotel ? "GST, service, room slabs" : "GST and service charge"}>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <Field label="GSTIN" hint={gstinOn ? undefined : "Empty: no tax on bills"}><input name="gstin" defaultValue={restaurant.gstin ?? ""} className="num uppercase" onChange={(e) => setGstinOn(e.target.value.trim() !== "")} /></Field>
-                  <Field label="GST rate %" hint="5% for most; split as CGST + SGST"><input name="gst_rate" type="number" step="0.01" defaultValue={restaurant.gst_rate} className="num" /></Field>
+                  <Field label="GSTIN" hint={gstinOn ? undefined : "Blank = no tax"}><input name="gstin" defaultValue={restaurant.gstin ?? ""} className="num uppercase" onChange={(e) => setGstinOn(e.target.value.trim() !== "")} /></Field>
+                  <Field label="GST rate %" hint="Usually 5% · CGST + SGST"><input name="gst_rate" type="number" step="0.01" defaultValue={restaurant.gst_rate} className="num" /></Field>
                 </div>
                 {!gstinOn && (
                   <p className="text-xs mt-2 text-[var(--color-orange)]">
-                    No GSTIN, no GST — only registered businesses may charge it.
+                    No GSTIN = no GST
                   </p>
                 )}
                 <div className="grid gap-3 mt-3 sm:grid-cols-2">
                   <Field label="Service charge %"><input name="service_charge_pct" type="number" step="0.01" defaultValue={restaurant.service_charge_pct} className="num" /></Field>
-                  {isHotel && <Field label="Room GST % (up to the slab)" hint="5% since 22 Sep 2025"><input name="room_gst_rate" type="number" step="0.01" defaultValue={restaurant.room_gst_rate} className="num" /></Field>}
+                  {isHotel && <Field label="Room GST % below slab" hint="5% since 22 Sep 2025"><input name="room_gst_rate" type="number" step="0.01" defaultValue={restaurant.room_gst_rate} className="num" /></Field>}
                 </div>
                 {isHotel && (
                   <div className="grid sm:grid-cols-3 gap-3 mt-3">
-                    <Field label="Slab at ₹ / night" hint="Above this, the higher rate applies">
+                    <Field label="Slab at ₹ / night" hint="Higher rate above this">
                       <input name="room_gst_threshold" type="number" step="1" defaultValue={restaurant.room_gst_threshold ?? 7500} className="num" />
                     </Field>
-                    <Field label="Room GST % above the slab" hint="18% since 22 Sep 2025">
+                    <Field label="Room GST % above slab" hint="18% since 22 Sep 2025">
                       <input name="room_gst_rate_high" type="number" step="0.01" defaultValue={restaurant.room_gst_rate_high ?? 18} className="num" />
                     </Field>
-                    <Field label="Extras GST %" hint="Spa, laundry, transport on the folio">
+                    <Field label="Extras GST %" hint="Spa, laundry, transport">
                       <input name="facility_gst_rate" type="number" step="0.01" defaultValue={restaurant.facility_gst_rate ?? 18} className="num" />
                     </Field>
                   </div>
                 )}
-                {isHotel && <p className="text-xs text-steel mt-2">By law, each night is taxed at its own rate.</p>}
+                {isHotel && <p className="text-xs text-steel mt-2">Each night taxed separately</p>}
                 {!isHotel && <><input type="hidden" name="room_gst_rate" value={restaurant.room_gst_rate} /><input type="hidden" name="room_gst_rate_high" value={restaurant.room_gst_rate_high ?? 18} /><input type="hidden" name="room_gst_threshold" value={restaurant.room_gst_threshold ?? 7500} /><input type="hidden" name="facility_gst_rate" value={restaurant.facility_gst_rate ?? 18} /><input type="hidden" name="check_in_time" value={restaurant.check_in_time} /><input type="hidden" name="check_out_time" value={restaurant.check_out_time} /></>}
               </Section>
             </Card>
 
             {isHotel && (
               <Card>
-                <Section icon={<BedDouble size={16} />} title="Rooms & stays" description="Check-in times and the housekeeping rule.">
-                  <Field label="Check-in and check-out" hint="Shown on bookings and the guest's confirmation"><div className="grid grid-cols-2 gap-2"><input name="check_in_time" type="time" defaultValue={restaurant.check_in_time?.slice(0, 5)} className="num" /><input name="check_out_time" type="time" defaultValue={restaurant.check_out_time?.slice(0, 5)} className="num" /></div></Field>
+                <Section icon={<BedDouble size={16} />} title="Rooms & stays" description="Check-in and housekeeping">
+                  <Field label="Check-in and check-out" hint="Shown on bookings"><div className="grid grid-cols-2 gap-2"><input name="check_in_time" type="time" defaultValue={restaurant.check_in_time?.slice(0, 5)} className="num" /><input name="check_out_time" type="time" defaultValue={restaurant.check_out_time?.slice(0, 5)} className="num" /></div></Field>
                   <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
                     <input type="checkbox" name="hk_inspect_required" className="mt-0.5" defaultChecked={restaurant.hk_inspect_required ?? false} />
-                    <span>Check each room before it is sold<span className="block text-xs text-steel mt-0.5">Supervisor approves the clean before check-in</span></span>
+                    <span>Inspect rooms before sale<span className="block text-xs text-steel mt-0.5">Supervisor approves each clean</span></span>
                   </label>
                 </Section>
               </Card>
@@ -223,15 +223,15 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                 </Field>
                 <div className="grid sm:grid-cols-2 gap-3 mt-3">
                   <Field label="Hurry after (minutes)" hint="The ticket turns amber"><input name="kds_warn_minutes" type="number" min={1} max={120} step={1} defaultValue={restaurant.kds_warn_minutes ?? 10} className="num" /></Field>
-                  <Field label="Late after (minutes)" hint="Ticket turns red and counts as late"><input name="kds_target_minutes" type="number" min={1} max={240} step={1} defaultValue={restaurant.kds_target_minutes ?? 15} className="num" /></Field>
+                  <Field label="Late after (minutes)" hint="Ticket turns red"><input name="kds_target_minutes" type="number" min={1} max={240} step={1} defaultValue={restaurant.kds_target_minutes ?? 15} className="num" /></Field>
                 </div>
                 {/* when a dish's recipe leaves the pantry (0092): the moment the ticket is sent, or when the
                     kitchen presses Start cooking. A kitchen that only prints tickets never presses Start. */}
                 <div className="mt-4" data-stock-draw>
                   <div className="text-[13px] font-semibold mb-1.5">Pantry stock leaves when…</div>
                   <div className="grid sm:grid-cols-2 gap-2">
-                    {([["ticket", "the order reaches the kitchen", "Recommended. Returns if cancelled before cooking"],
-                       ["cook", "the kitchen presses Start cooking", "For kitchens using the board"]] as const).map(([v, t, d]) => (
+                    {([["ticket", "order reaches kitchen", "Recommended"],
+                       ["cook", "kitchen taps Start", "Kitchen board users"]] as const).map(([v, t, d]) => (
                       <label key={v} className="flex items-start gap-2.5 rounded-2xl border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-3 cursor-pointer has-[:checked]:border-[var(--color-tint)] has-[:checked]:bg-[var(--color-green-2)] normal-case tracking-normal">
                         <input type="radio" name="stock_draw" value={v} defaultChecked={(restaurant.stock_draw ?? "ticket") === v} className="mt-0.5" />
                         <span className="min-w-0"><span className="block text-[14px] font-semibold">{t}</span><span className="block text-xs font-normal text-[var(--color-label-2)] mt-0.5">{d}</span></span>
@@ -241,26 +241,26 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                 {/* 0137: a dish the pantry cannot make cannot be ordered — the till, the kiosk and the table QR (on by default) */}
                 <label className="mt-4 flex items-start gap-3 rounded-2xl border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-3 cursor-pointer has-[:checked]:border-[var(--color-tint)] has-[:checked]:bg-[var(--color-green-2)] normal-case" data-stock-block>
                   <input type="checkbox" name="stock_block" defaultChecked={restaurant.stock_block !== false} className="mt-0.5 h-5 w-5 accent-[var(--color-tint)]" />
-                  <span className="min-w-0"><span className="block text-[14px] font-semibold">Stop orders when the pantry is short</span><span className="block text-xs font-normal text-[var(--color-label-2)] mt-0.5">A dish its recipe cannot make is shown out of stock</span></span>
+                  <span className="min-w-0"><span className="block text-[14px] font-semibold">Block short-stock dishes</span><span className="block text-xs font-normal text-[var(--color-label-2)] mt-0.5">Shown out of stock</span></span>
                 </label>
               </Section>
             </Card>
 
             <Card>
-              <Section icon={<Timer size={16} />} title="On-time promise" description="Sell a delivery deadline with an order.">
+              <Section icon={<Timer size={16} />} title="On-time promise" description="Paid delivery deadline">
                 <label className="flex items-start gap-2.5 normal-case tracking-normal text-sm">
                   <input type="checkbox" name="promise_enabled" className="mt-0.5" defaultChecked={restaurant.promise_enabled ?? false} onChange={(e) => setPromise(e.target.checked)} />
-                  <span>Offer guests a delivery deadline<span className="block text-xs text-steel mt-0.5">“On your table in {restaurant.promise_minutes ?? 30} minutes, or it&apos;s free.” Guest pays the % below. Late = ₹0 bill.</span></span>
+                  <span>Offer a deadline<span className="block text-xs text-steel mt-0.5">{restaurant.promise_minutes ?? 30} min or free · late = ₹0 bill</span></span>
                 </label>
                 {/* switched off, the two fields are not on the page — carry the saved values, or every Save
                     would reset the rate to 0 and the window to 30 minutes */}
                 {!promise && <><input type="hidden" name="promise_minutes" value={restaurant.promise_minutes ?? 30} /><input type="hidden" name="promise_pct" value={restaurant.promise_pct ?? 5} /></>}
                 {promise && (
                   <div className="grid sm:grid-cols-2 gap-3 mt-3">
-                    <Field label="Minutes promised" hint="From order taken to food served">
+                    <Field label="Minutes promised" hint="Order to served">
                       <input name="promise_minutes" type="number" min={5} max={240} step={1} defaultValue={restaurant.promise_minutes ?? 30} className="num" />
                     </Field>
-                    <Field label="Charged for it %" hint="Added after any discount, then taxed">
+                    <Field label="Charged for it %" hint="After discount, then taxed">
                       <input name="promise_pct" type="number" min={0} max={50} step="0.5" defaultValue={restaurant.promise_pct ?? 5} className="num" />
                     </Field>
                   </div>
@@ -271,7 +271,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             <Card>
               <Section icon={<Sunrise size={16} />} title="Tomorrow brief" description="Tomorrow's prep list">
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <Field label="Prep buffer %" hint="Extra the Tomorrow brief adds"><input name="prep_buffer_pct" type="number" className="num" defaultValue={restaurant.prep_buffer_pct ?? 10} /></Field>
+                  <Field label="Prep buffer %" hint="Extra prep added"><input name="prep_buffer_pct" type="number" className="num" defaultValue={restaurant.prep_buffer_pct ?? 10} /></Field>
                   <Field label="WhatsApp for the brief" hint="'Send to the team' opens this"><input name="brief_whatsapp" className="num" defaultValue={restaurant.brief_whatsapp ?? ""} placeholder="98400 11223" /></Field>
                 </div>
               </Section>
@@ -285,7 +285,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               const failed = !!msg && !pending && /error|fail|not|cannot|only/i.test(msg);
               const saved = !pending && !dirty && msg === "Saved.";
               const title = pending ? "Saving…" : failed ? "Couldn't save" : dirty ? "Unsaved changes" : saved ? "All changes saved" : "No changes yet";
-              const sub = pending ? "Saving all the cards" : failed ? msg : dirty ? "Saves all the cards at once" : saved ? "Saved just now" : "Edit a card, then save";
+              const sub = pending ? "Saving all cards" : failed ? msg : dirty ? "Saves every card" : saved ? "Saved just now" : "Edit, then save";
               return (
                 <div className={cn("settings-savebar sticky bottom-[calc(var(--tabbar)+12px)] md:bottom-4 z-10 flex items-center gap-3 border transition-[margin,border-radius,box-shadow,background-color] duration-200",
                   floating
@@ -312,7 +312,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
 
           {/* account & security */}
           <Card>
-            <Section icon={<Shield size={16} />} title="Account & security" description="Sign-in, codes and your DineFlow plan.">
+            <Section icon={<Shield size={16} />} title="Account & security" description="Sign-in and plan">
               {/* three rows in one panel: each an icon tile, a title over one line of detail, and its
                   action at the end — "Signed in as ." no longer shows when there is no sign-in ID */}
               <div className="rounded-2xl border border-[var(--color-separator)] overflow-hidden divide-y divide-[var(--color-separator)]">
@@ -320,7 +320,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   <span className="h-11 w-11 shrink-0 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><KeyRound size={18} /></span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-[15px] font-semibold">Password</span>
-                    <span className="block text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2 [overflow-wrap:anywhere] mt-0.5">{signInId ? <>Sign-in ID <span className="text-[var(--color-label)] font-medium">{signInId}</span></> : "Signed in from Master control"}</span>
+                    <span className="block text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2 [overflow-wrap:anywhere] mt-0.5">{signInId ? <>Sign-in ID <span className="text-[var(--color-label)] font-medium">{signInId}</span></> : "Via Master control"}</span>
                   </span>
                   <a href="/account/password" className="btn btn-gray !h-11 !px-4 !rounded-full shrink-0 inline-flex items-center gap-1 text-[14px] font-semibold">Change <ChevronRight size={15} className="-mr-1" /></a>
                 </div>
@@ -328,7 +328,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   <span className={cn("h-11 w-11 shrink-0 rounded-2xl grid place-items-center", contactEmail ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]")}><Mail size={18} /></span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-[15px] font-semibold">Recovery email</span>
-                    <span className="block text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2 [overflow-wrap:anywhere] mt-0.5">{contactEmail ? <>Codes go to <span className="text-[var(--color-label)] font-medium">{contactEmail}</span></> : "Not set — ask Master control to add one"}</span>
+                    <span className="block text-[12.5px] leading-snug text-[var(--color-label-2)] line-clamp-2 [overflow-wrap:anywhere] mt-0.5">{contactEmail ? <>Codes go to <span className="text-[var(--color-label)] font-medium">{contactEmail}</span></> : "Not set · ask Master control"}</span>
                   </span>
                   {contactEmail
                     ? <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]" aria-label="Set"><Check size={15} strokeWidth={2.6} /></span>
@@ -364,7 +364,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             <QuickLink href="/channels" icon={<Wifi size={16} />} label="Online orders & OTA" hint="Swiggy, Zomato, Booking.com" />
             <QuickLink href="/settings/booking-page" icon={<ExternalLink size={16} />} label="Direct booking page" hint="Your own booking link" />
             <QuickLink href="/tax" icon={<Building2 size={16} />} label="Tax & GST" hint="Returns, filings, documents" />
-            <QuickLink href="/settings/screens" icon={<MonitorSmartphone size={16} />} label="Screens & feedback" hint="TV menu and tokens, kiosk, feedback QR" />
+            <QuickLink href="/settings/screens" icon={<MonitorSmartphone size={16} />} label="Screens & feedback" hint="TV, kiosk, feedback QR" />
           </div>
         </div>
       )}
@@ -372,14 +372,14 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
       {/* ═══════ PAYMENTS ═══════ */}
       {tab === "payments" && (
         <Card>
-          <Section icon={<CreditCard size={16} />} title="Pay by scanning the bill"
-            description="Guests scan the bill's QR to pay">
+          <Section icon={<CreditCard size={16} />} title="Scan to pay"
+            description="Bill QR payments">
             <form className="space-y-4" action={(fd) => start(async () => { const r = await savePayments(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
               <input type="hidden" name="id" value={restaurant.id} />
 
               <div className="rounded-xl bg-[var(--color-fill)] p-4 space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-wide text-steel">UPI</div>
-                <p className="text-xs text-steel">Every bill gets a UPI pay QR.</p>
+                <p className="text-xs text-steel">On every bill</p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Field label="UPI ID"><input name="upi_vpa" defaultValue={restaurant.upi_vpa ?? ""} placeholder="hotel@okaxis" className="num" autoCapitalize="none" /></Field>
                   <Field label="Payee name" hint="Blank = property name"><input name="upi_payee" defaultValue={restaurant.upi_payee ?? ""} /></Field>
@@ -388,14 +388,14 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
 
               <div className="rounded-xl bg-[var(--color-fill)] p-4 space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-wide text-steel">Razorpay (cards, netbanking, wallets)</div>
-                <p className="text-xs text-steel">Optional. Keys: Razorpay → Account & Settings → API keys.</p>
+                <p className="text-xs text-steel">Optional. Razorpay → Account & Settings → API keys</p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Field label="Key ID"><input name="razorpay_key_id" defaultValue={gateway.key_id} placeholder="rzp_live_…" className="num" autoCapitalize="none" /></Field>
                   <Field label="Key secret" hint={gateway.hasSecret ? "Saved. Blank keeps it; 'clear' removes." : ""}>
                     <PasswordInput name="razorpay_key_secret" autoComplete="new-password" placeholder={gateway.hasSecret ? "••••••••" : ""} />
                   </Field>
                 </div>
-                <Field label="Webhook secret" hint={`Add a webhook for payment.captured at ${origin || "https://…"}/api/webhooks/razorpay${gateway.hasWebhook ? ". Saved." : ""}`}>
+                <Field label="Webhook secret" hint={`payment.captured → ${origin || "https://…"}/api/webhooks/razorpay${gateway.hasWebhook ? " · Saved" : ""}`}>
                   <PasswordInput name="razorpay_webhook_secret" autoComplete="new-password" placeholder={gateway.hasWebhook ? "••••••••" : ""} />
                 </Field>
               </div>
@@ -404,22 +404,22 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
             </form>
           </Section>
           <Section icon={<HeartHandshake size={16} />} title="Loyalty points"
-            description="Points on paid bills, by phone">
+            description="Points by phone">
             <form className="space-y-4" action={(fd) => start(async () => { const r = await saveLoyalty(fd); setMsg("error" in r ? r.error! : "Saved."); })}>
               <input type="hidden" name="id" value={restaurant.id} />
               {/* a switch row like Storefront's, not a bare checkbox floating under the description;
                   the form still posts loyalty_enabled from a checkbox kept in step and out of sight */}
               <label className="card p-3.5 flex items-center gap-3 cursor-pointer">
-                <span className="flex-1 min-w-0"><span className="block text-[15px] font-semibold">Give points on paid bills</span><span className="block text-xs text-[var(--color-label-2)] mt-0.5">{loyaltyOn ? "On — every paid bill earns points" : "Off — nobody earns or spends points"}</span></span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] font-semibold">Earn points on bills</span><span className="block text-xs text-[var(--color-label-2)] mt-0.5">{loyaltyOn ? "On · paid bills earn" : "Off · no points"}</span></span>
                 <Switch on={loyaltyOn} onChange={setLoyaltyOn} name="Give points on paid bills" />
                 <input type="checkbox" name="loyalty_enabled" checked={loyaltyOn} readOnly hidden style={{ display: "none" }} />
               </label>
               <div className="grid sm:grid-cols-3 gap-3">
-                <Field label="Earn" hint="% of the food value, after discounts"><input name="loyalty_earn_pct" type="number" step="0.5" min={0} max={50} className="num" defaultValue={Number(restaurant.loyalty_earn_pct ?? 5)} /></Field>
+                <Field label="Earn" hint="% of food, after discount"><input name="loyalty_earn_pct" type="number" step="0.5" min={0} max={50} className="num" defaultValue={Number(restaurant.loyalty_earn_pct ?? 5)} /></Field>
                 <Field label="A point is worth (₹)"><input name="loyalty_point_value" type="number" step="0.1" min={0.1} className="num" defaultValue={Number(restaurant.loyalty_point_value ?? 1)} /></Field>
-                <Field label="Redeem from" hint="points a guest must hold"><input name="loyalty_min_redeem" type="number" min={0} className="num" defaultValue={Number(restaurant.loyalty_min_redeem ?? 50)} /></Field>
+                <Field label="Redeem from" hint="Minimum points"><input name="loyalty_min_redeem" type="number" min={0} className="num" defaultValue={Number(restaurant.loyalty_min_redeem ?? 50)} /></Field>
               </div>
-              <p className="text-xs text-steel">5% at ₹1 a point: ₹1,000 earns ₹50. Taken off before GST.</p>
+              <p className="text-xs text-steel">e.g. ₹1,000 earns ₹50 · off before GST</p>
               <Button className="w-full sm:w-auto" disabled={pending}>Save loyalty</Button>
             </form>
           </Section>
@@ -430,11 +430,11 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
       {tab === "tables" && (
         <Card>
           <Section icon={<QrCode size={16} />} title="Order from the table"
-            description="Guests scan the table QR and order">
+            description="Table QR ordering">
             <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
               <Link href="/settings/table-qr" className="btn btn-filled"><QrCode size={16} /> Print table codes</Link>
-              <Link href="/channels" className="btn btn-gray">Accept on their own · Channels</Link>
-              {!restaurant.booking_slug && <span className="text-xs text-steel">Set a web name in Storefront first.</span>}
+              <Link href="/channels" className="btn btn-gray">Auto-accept · Channels</Link>
+              {!restaurant.booking_slug && <span className="text-xs text-steel">Set web name first</span>}
             </div>
           </Section>
           <Section icon={<LayoutGrid size={16} />} title="Tables & zones"
@@ -482,17 +482,17 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           {/* box mode */}
           <Card>
             <Section icon={<Server size={16} />} title="Runs on a Box"
-              description="A local computer that works offline">
+              description="Offline local computer">
               <div className="rounded-xl bg-[var(--color-fill)] p-4 space-y-3">
                 <p className="text-xs text-steel leading-relaxed">
-                  Paste the token into the Box launcher.
+                  Paste token in Box launcher.
                   {restaurant.runs_on_box && <span className="text-[var(--color-tint)] font-semibold"> Box connected{restaurant.box_last_seen ? ` · last seen ${new Date(restaurant.box_last_seen).toLocaleString("en-IN")}` : ""}.</span>}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" disabled={pending} onClick={() => start(async () => {
                     const r = await issueBoxToken();
                     if ("error" in r) setMsg(r.error!);
-                    else { setBoxToken(r.token!); copyText(r.token!); setMsg("Box token copied to clipboard."); }
+                    else { setBoxToken(r.token!); copyText(r.token!); setMsg("Box token copied"); }
                   })}>Issue box token</Button>
                   {boxToken && <span className="num text-xs text-steel break-all">{boxToken}</span>}
                 </div>
@@ -503,7 +503,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           {/* sample data */}
           <Card>
             <Section icon={<Sparkles size={16} />} title="Sample data"
-              description="Test menu, pantry, tables and rooms">
+              description="Demo menu, tables, rooms">
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" disabled={pending} onClick={() => start(async () => {
                   const r = await loadDemoData();

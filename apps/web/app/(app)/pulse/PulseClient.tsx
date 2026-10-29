@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition, useEffect, type ReactNode } from "react";
-import { type LucideIcon, Phone, Bell, BellRing, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check, Hourglass, Clock, Timer, ArrowRight, Info } from "lucide-react";
+import { type LucideIcon, Phone, Bell, BellRing, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check, Hourglass, Clock, Timer, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { waHref, firstName } from "@/lib/wa";
 import { Card, useToast, cn, FlapShuffle, FlapSpell, FlapClock, FlapBreathe } from "@/components/ui";
@@ -103,20 +103,20 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
   const fit = tables.filter((t) => kindOf(t) === "free" && t.capacity >= party).sort((a, b) => a.capacity - b.capacity)[0];
   const bigEnough = tables.some((t) => t.capacity >= party);
   const wait = q === undefined ? { tone: "st-new", big: "…", small: "Working out the wait" }
-    : q === 0 ? { tone: "st-ready", big: "Seat now", small: fit ? `${fit.name} is free and seats ${fit.capacity}` : "A table that fits is free" }
-      : q === null ? { tone: "st-cook", big: bigEnough ? "Long wait" : "No table fits", small: bigEnough ? "More parties this size than tables" : `No single table seats ${party} — put two together` }
-        : { tone: "st-new", big: `About ${dur(q)}`, small: `until a table for ${party} is likely free` };
-  const add = () => { if (!online) { void enqueue("walkin_add", { name: form.name, phone: form.phone, party }, `Queue · ${form.name}`); toast(`${form.name} added — will send when the line is back`); setForm({ name: "", phone: "" }); return; } start(async () => { const r = await addWalkin(form.name, form.phone, party); if ("error" in r) toast(r.error ?? "Could not add", "err"); else { toast(`${form.name} added · ~${r.quoted_min ?? "?"} min`); setForm({ name: "", phone: "" }); } }); };
+    : q === 0 ? { tone: "st-ready", big: "Seat now", small: fit ? `${fit.name} free · seats ${fit.capacity}` : "A table is free" }
+      : q === null ? { tone: "st-cook", big: bigEnough ? "Long wait" : "No table fits", small: bigEnough ? "Many parties this size" : "Join two tables" }
+        : { tone: "st-new", big: `About ${dur(q)}`, small: `for a table of ${party}` };
+  const add = () => { if (!online) { void enqueue("walkin_add", { name: form.name, phone: form.phone, party }, `Queue · ${form.name}`); toast(`${form.name} added · syncs later`); setForm({ name: "", phone: "" }); return; } start(async () => { const r = await addWalkin(form.name, form.phone, party); if ("error" in r) toast(r.error ?? "Could not add", "err"); else { toast(`${form.name} added · ~${r.quoted_min ?? "?"} min`); setForm({ name: "", phone: "" }); } }); };
   const callNow = (w: W) => act(w, "called");
   const glance = [
     { k: "free", Icon: Armchair, n: String(counts.free), of: `of ${tables.length}`, label: "Tables free to seat", tone: "var(--color-green)" },
     { k: "wait", Icon: Users, n: String(live.length), of: "", label: live.length === 1 ? "Party waiting" : "Parties waiting", tone: "var(--color-blue)" },
-    { k: "sit", Icon: Timer, n: dur(pulse.avg_dwell), of: "", label: "A sitting usually takes", tone: "var(--color-orange)" },
+    { k: "sit", Icon: Timer, n: dur(pulse.avg_dwell), of: "", label: "Avg sitting time", tone: "var(--color-orange)" },
   ];
 
   return (
     <div>
-      <SvcHead icon="pulse" title="Pulse" sub="Queue and next free table"
+      <SvcHead icon="pulse" title="Pulse" sub="Queue & free tables"
         actionsClassName="max-md:hidden"
         actions={<Link href="/pulse/qr" className="svc-btn quiet sm" data-joinqr-link><QrCode size={18} aria-hidden /><span>Join by QR</span></Link>} />
 
@@ -139,7 +139,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
               <span className="inline-flex items-center gap-1.5 min-w-0 text-[11.5px] font-bold" style={{ color: tone }}><I size={14} aria-hidden className="shrink-0" /><span className="truncate">{word}</span></span>
               {k === "free" ? <div className="flex items-end gap-1 min-w-0" data-glance-n={String(counts.free)}><FlapShuffle value={counts.free} pad={0} size="xs" tile="40px" bare say={`${counts.free} of ${tables.length} tables free to seat`} /><span className="text-[14px] font-semibold text-steel num pb-1">/{tables.length}</span></div>
                 : k === "wait" ? <div data-glance-n={String(live.length)}><FlapBreathe value={live.length} pad={0} size="xs" tile="40px" say={`${live.length} waiting`} /></div>
-                : <div className="font-display num text-[30px] leading-[40px] truncate" title="A sitting usually takes">{dur(pulse.avg_dwell)}</div>}
+                : <div className="font-display num text-[30px] leading-[40px] truncate" title="Avg sitting time">{dur(pulse.avg_dwell)}</div>}
             </div>))}
         </div>
       </Card>
@@ -164,7 +164,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
           answer to step 1. Right: who is waiting, each with one big next move. Side by side from lg. */}
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5 mb-8 items-start" data-pulse-top>
         <Card className="min-w-0 !rounded-[24px] @container" data-quote>
-          <Head icon={UserPlus} title="Add a guest who is waiting" sub="Three steps. We quote the wait." />
+          <Head icon={UserPlus} title="Add waiting guest" sub="We quote the wait" />
 
           <Step n={1}>How many people?</Step>
           <div className="grid grid-cols-4 @[34rem]:grid-cols-8 gap-2" role="group" aria-label="Party size">
@@ -191,11 +191,11 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             <input placeholder="Name" aria-label="Guest's name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="!h-12" autoComplete="off" />
             <input placeholder="Phone (optional)" aria-label="Guest's phone (optional)" inputMode="tel" className="num !h-12" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} autoComplete="off" />
           </div>
-          <p className="mt-1.5 text-[12px] text-steel">Add a phone for a WhatsApp alert.</p>
+          <p className="mt-1.5 text-[12px] text-steel">Phone for WhatsApp alert</p>
 
-          <div className="mt-5"><Step n={3}>Put them on the list</Step></div>
+          <div className="mt-5"><Step n={3}>Add to list</Step></div>
           <button type="button" className="svc-btn go xl w-full" disabled={!form.name.trim() || pending} onClick={add} data-add-walkin><UserPlus size={21} aria-hidden /><Say w="add_waiting" /></button>
-          <p className="mt-2 text-[12px] text-steel">{pulse.history_days >= 7 ? `Wait times learned from ${pulse.history_days} days of your own service.` : "Using 45 minutes a table until we learn your times."}</p>
+          <p className="mt-2 text-[12px] text-steel">{pulse.history_days >= 7 ? `Learned from ${pulse.history_days} days` : "Assumes 45 min a table"}</p>
         </Card>
 
         <Card className="min-w-0 !rounded-[24px]" data-queue>
@@ -205,7 +205,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             <div className="rounded-[20px] border border-dashed border-[var(--color-separator)] px-5 py-8 text-center">
               <span className="mx-auto h-14 w-14 rounded-[18px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><Users size={26} aria-hidden /></span>
               <div className="mt-3 text-[16px] font-bold">Nobody is waiting</div>
-              <p className="mt-1 text-[13px] text-steel">Add one here, or they scan the door QR.</p>
+              <p className="mt-1 text-[13px] text-steel">Add here or via QR</p>
               <Link href="/pulse/qr" className="mt-3 inline-flex items-center gap-1.5 min-h-11 px-4 rounded-full bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] text-[13px] font-semibold"><QrCode size={15} aria-hidden /> Show the door QR <ArrowRight size={14} aria-hidden /></Link>
             </div>
           )}
@@ -244,7 +244,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                       onClick={() => act(w, "left")}><X size={18} aria-hidden /><span className="hidden @[36rem]:inline">Left</span></button>
                   </div>
                   {seat?.id === w.id && <div className="mt-3 pt-3 border-t border-[var(--color-separator)]" data-seat-picker>
-                    <div className="text-[13px] font-semibold text-steel mb-2">Pick a free table for {w.party}</div>
+                    <div className="text-[13px] font-semibold text-steel mb-2">Pick a table for {w.party}</div>
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-2">
                       {fits.map((t) => {
                         const r = nextBooking(t.id);
@@ -257,23 +257,22 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                         );
                       })}
                     </div>
-                    {fits.length === 0 && <p className="text-[13px] text-steel">No table big enough is free yet.</p>}
+                    {fits.length === 0 && <p className="text-[13px] text-steel">No table fits yet</p>}
                   </div>}
                 </div>
               );
             })}
           </div>
-          {live.length > 0 && <p className="mt-3 text-[12px] text-steel flex gap-1.5"><Info size={14} className="shrink-0 mt-px" aria-hidden />Table ready tells them (WhatsApp too). ✕ removes someone who left.</p>}
         </Card>
       </div>
 
       {/* the tables that free next — what a host quoting a wait looks at */}
       {/* the two floor sections are cards like the two above, each head with its icon (2026-10-21, the owner: "messy") */}
       <Card className="mb-5 min-w-0 !rounded-[24px]" data-frees-next>
-        <Head icon={Timer} tone="var(--color-orange)" title="Next tables to free up" sub="For “how long?”" />
+        <Head icon={Timer} tone="var(--color-orange)" title="Freeing up next" sub="For “how long?”" />
         {soon.length === 0 ? <div className="rounded-[18px] border border-dashed border-[var(--color-separator)] px-4 py-4 flex items-center gap-3" data-frees-empty>
             <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]">{busy.length ? <AlertTriangle size={18} aria-hidden /> : <Check size={18} aria-hidden />}</span>
-            <p className="text-[14px] text-[var(--color-label-2)] leading-snug">{busy.length ? "Only old open tables — close them in Every table below." : "Every table is free — seat straight away."}</p>
+            <p className="text-[14px] text-[var(--color-label-2)] leading-snug">{busy.length ? "Only stale tables open" : "All tables free"}</p>
           </div> : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {soon.map((t) => (
@@ -288,7 +287,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
       </Card>
 
       <Card className="min-w-0 !rounded-[24px]" data-every-table>
-        <Head icon={Armchair} tone="var(--color-green)" title="Every table" sub="Free, booked or in use"
+        <Head icon={Armchair} tone="var(--color-green)" title="Every table" sub="Free, booked, in use"
           end={<span className="text-[12.5px] font-semibold text-steel num shrink-0 mt-1 hidden sm:block">{busy.length} in use · {pulse.seats_free_now} seats free</span>} />
         {/* Free · Reserved · In use as tabs, each with its count; the tables as tiles you can read
             from across the floor. In use is sorted by when it frees (a forgotten table first). */}
@@ -333,7 +332,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                     ? <div data-stale>
                         <div className="flex items-baseline justify-between gap-2"><span className="num text-[20px] font-semibold leading-none text-[var(--color-orange)]">{dur(t.age)}</span><span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-[var(--color-orange)]"><AlertTriangle size={12} aria-hidden />overdue</span></div>
                         <div className="h-1.5 rounded-full bg-[var(--color-orange)] mt-2" aria-hidden />
-                        <div className="text-[11.5px] text-[var(--color-label-2)] mt-1.5">Open too long — bill or close it</div>
+                        <div className="text-[11.5px] text-[var(--color-label-2)] mt-1.5">Bill or close it</div>
                       </div>
                     : <div>
                         <div className="flex items-baseline justify-between gap-2"><span className="num text-[20px] font-semibold leading-none">{dur(t.mins_left)}</span><span className="text-[11.5px] text-[var(--color-label-2)] num">frees ~{t.free_at}</span></div>
@@ -346,12 +345,12 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             );
           })}
           {shown.length === 0 && <div className="col-span-full rounded-2xl border border-dashed border-[var(--color-separator)] p-6 text-center text-sm text-[var(--color-label-2)]">
-            {tab === "free" ? "No table is free right now." : tab === "reserved" ? "No table is held for a booking today." : tab === "busy" ? "Every table is free." : "No tables yet — add them in Settings → Tables."}
+            {tab === "free" ? "None free" : tab === "reserved" ? "No bookings today" : tab === "busy" ? "All tables free" : "Add tables in Settings"}
           </div>}
         </motion.div>
       </Card>
       {/* Join by QR moved to its own screen (/pulse/qr, 2026-10-20); `listed` stays a prop for the link's wording */}
-      {!listed && <p className="mt-6 text-[12.5px] text-steel">Guests cannot join by QR yet — <Link href="/pulse/qr" className="font-semibold text-[var(--color-tint)] inline-flex min-h-11 items-center -my-3">see how to turn it on</Link>.</p>}
+      {!listed && <p className="mt-6 text-[12.5px] text-steel">Join by QR is off — <Link href="/pulse/qr" className="font-semibold text-[var(--color-tint)] inline-flex min-h-11 items-center -my-3">turn on</Link></p>}
     </div>
   );
 }

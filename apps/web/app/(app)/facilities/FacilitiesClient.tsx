@@ -71,8 +71,7 @@ export function FacilitiesClient({ facilities, slots, inHouse }: { facilities: F
         ))}
         {/* nothing yet (2026-10-24): one start per kind, each opening the form already set to it */}
         {facilities.length === 0 && (
-          <EmptyState icon={Sparkles} hue="violet" title="No spa, activities or venues yet" data-fac-empty
-            hint="Add what guests can book — a massage, a guided trek, the banquet hall. Then book them in from here."
+          <EmptyState icon={Sparkles} hue="violet" title="Nothing to book yet" data-fac-empty
             actions={([["spa", "Spa", Flower2], ["activity", "Activity", Waves], ["venue", "Venue", Tent]] as const).map(([k, label, I]) => (
               <button key={k} type="button" data-fac-start={k} onClick={() => setEdit({ kind: k, duration_minutes: k === "venue" ? 240 : 60, capacity: k === "venue" ? 100 : 1 })}
                 className={`h-11 pl-2 pr-4 rounded-full inline-flex items-center gap-2 text-[14px] font-bold border border-[var(--color-separator)] bg-[var(--color-bg-2)] hover:border-[var(--color-line-2)] active:scale-[.97] transition`}>
@@ -114,7 +113,7 @@ export function FacilitiesClient({ facilities, slots, inHouse }: { facilities: F
         {book && <div className="space-y-4">
           <Field label="When"><input type="datetime-local" className="num" value={bf.when} onChange={(e) => setBf({ ...bf, when: e.target.value })} /></Field>
           <Field label="People"><input type="number" min={1} max={book.capacity} className="num" value={bf.people} onChange={(e) => setBf({ ...bf, people: Number(e.target.value) })} /></Field>
-          <Field label="Charge to room (in-house guest)"><select value={bf.booking} onChange={(e) => setBf({ ...bf, booking: e.target.value })}><option value="">— walk-in / pay now —</option>{inHouse.map((b) => <option key={b.id} value={b.id}>Room {b.rooms?.number} · {b.guests?.full_name}</option>)}</select></Field>
+          <Field label="Charge to room"><select value={bf.booking} onChange={(e) => setBf({ ...bf, booking: e.target.value })}><option value="">— walk-in / pay now —</option>{inHouse.map((b) => <option key={b.id} value={b.id}>Room {b.rooms?.number} · {b.guests?.full_name}</option>)}</select></Field>
           {!bf.booking && <Field label="Guest name"><input value={bf.guest} onChange={(e) => setBf({ ...bf, guest: e.target.value })} /></Field>}
           <div className="flex justify-between border-t border-dashed border-line pt-3"><span className="text-sm text-steel">{bf.people} × {formatINR(Number(book.rate))}</span><span className="num text-xl font-semibold">{formatINR(bf.people * Number(book.rate))}</span></div>
           {err && <p className="text-sm text-chili">{err}</p>}

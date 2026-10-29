@@ -21,7 +21,7 @@ export default async function WorkRecordsPage({ searchParams }: { searchParams: 
   const { data, error } = await s.rpc("work_log", { p_from: from, p_to: to });
   return (
     <>
-      <PageHeader eyebrow="Owner & managers" title="Work records" sub="Who did each job, when, how long" />
+      <PageHeader eyebrow="Owner & managers" title="Work records" sub="Who, when, how long" />
       <RecordsClient log={(data ?? { rows: [], cooks: [] }) as Log} error={error?.message ?? null} from={from} to={to} today={today} property={session.restaurant.name} />
     </>
   );

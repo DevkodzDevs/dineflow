@@ -42,10 +42,10 @@ export function LoginIdField({ value, onChange, name, type, ownerName }:
   }, [value, problem]);
 
   const hint = value.trim() === ""
-    ? "Leave blank to get a numbered DineFlow code."
+    ? "Blank gets a DineFlow code"
     : typedOwnDomain
-      ? "You typed a full address, so it is used as it is."
-      : "@dineflow.cloud is added for you.";
+      ? "Full address, used as is"
+      : "@dineflow.cloud is added";
 
   return (
     <Field label="Sign-in ID" hint={hint}>
@@ -77,7 +77,7 @@ export function LoginIdField({ value, onChange, name, type, ownerName }:
       <p className={cn("mt-2 text-xs flex items-start gap-1.5",
         problem || state?.ok === false ? "text-chili" : state?.ok ? "text-[var(--color-green)]" : "text-steel")}>
         {problem ? <><CircleAlert size={13} className="mt-px shrink-0" />{problem}</>
-          : value.trim() === "" ? <>Will be assigned on save.</>
+          : value.trim() === "" ? <>Assigned on save</>
           : checking ? <>Checking <span className="num">{preview}</span></>
           : state
             ? <>{state.ok ? <Check size={13} className="mt-px shrink-0" /> : <CircleAlert size={13} className="mt-px shrink-0" />}

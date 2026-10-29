@@ -48,12 +48,12 @@ export function SupportDesk({ rows, error }: { rows: Row[]; error: string | null
     && (!needle || [r.subject, r.first_line, r.raised_name, r.property, String(r.ticket_no)].some((x) => (x ?? "").toLowerCase().includes(needle))));
 
   const tiles: { label: string; value: string | number; sub: string; Icon: typeof Inbox; tone?: string }[] = [
-    { label: "Needs a reply", value: stats.reply, sub: "the property spoke last", Icon: Inbox, tone: stats.reply ? "--color-red" : undefined },
+    { label: "Needs a reply", value: stats.reply, sub: "property spoke last", Icon: Inbox, tone: stats.reply ? "--color-red" : undefined },
     { label: "In progress", value: stats.progress, sub: "being worked on", Icon: Loader },
     { label: "Waiting on customer", value: stats.waiting, sub: "we asked, they owe", Icon: Hourglass },
     { label: "Urgent & high", value: stats.hot, sub: "still open", Icon: Flame, tone: stats.hot ? "--color-orange" : undefined },
     { label: "Privacy due", value: stats.privacy, sub: "≤ 3 days left of 15", Icon: ShieldAlert, tone: stats.privacy ? "--color-red" : undefined },
-    { label: "Resolved", value: stats.resolved7, sub: "in the last 7 days", Icon: CheckCircle2, tone: "--color-green" },
+    { label: "Resolved", value: stats.resolved7, sub: "last 7 days", Icon: CheckCircle2, tone: "--color-green" },
     { label: "First reply", value: stats.firstReply ?? "—", sub: stats.firstN ? `median of ${stats.firstN}, 30 days` : "no replies yet", Icon: Clock3 },
     { label: "Rating", value: stats.rating ? `${stats.rating} ★` : "—", sub: stats.ratedN ? `${stats.ratedN} rated, 30 days` : "none rated yet", Icon: Star },
   ];
@@ -63,7 +63,7 @@ export function SupportDesk({ rows, error }: { rows: Row[]; error: string | null
       <div className="aurora">
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Help & support</div>
         <h1 className="text-4xl">{rows.filter(live).length} open <em>request{rows.filter(live).length === 1 ? "" : "s"}</em></h1>
-        <p className="text-sm text-[var(--color-label-2)] mt-1.5 max-w-2xl">Requests from every property — who raised them, from where, with screenshots.</p>
+        <p className="text-sm text-[var(--color-label-2)] mt-1.5 max-w-2xl">From every property</p>
       </div>
       {error && <p className="rounded-xl bg-[var(--color-red-2)] px-4 py-3 text-sm text-[var(--color-red)]">{error}</p>}
 
@@ -89,12 +89,12 @@ export function SupportDesk({ rows, error }: { rows: Row[]; error: string | null
           <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind"><option value="all">Every kind</option>{KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}</select>
           <select value={prop} onChange={(e) => setProp(e.target.value)} aria-label="Property"><option value="all">Every property</option>{properties.map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select>
           <label className="relative block min-w-0"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a subject, a name, a property, SUP-12" aria-label="Search requests" className="!pl-9 w-full min-w-0" /></label>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Subject, name, SUP-12…" aria-label="Search requests" className="!pl-9 w-full min-w-0" /></label>
         </div>
       </div>
 
       {shown.length === 0 ? (
-        <div className="feather p-10 text-center text-sm text-[var(--color-label-2)]" data-desk-empty>{rows.length ? "No request matches." : "No requests yet. They arrive here from Help & support."}</div>
+        <div className="feather p-10 text-center text-sm text-[var(--color-label-2)]" data-desk-empty>{rows.length ? "No matches" : "No requests yet"}</div>
       ) : (
         <ul className="space-y-2" data-desk-list>
           {shown.map((r) => {

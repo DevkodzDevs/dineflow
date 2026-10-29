@@ -112,3 +112,6 @@ node cleaner.mjs     # 42 checks: a restaurant Cleaner's phone and a resort's at
 - **The flap tiles on the phone too (2026-10-26, the owner: "the flaps are tiny; Average clean is a dash").** `CleanTiles` is
   now every width (`[data-clean-tiles]`, which also carries `data-clean-stats`); the small phone row with 34px flaps is gone.
   On a phone each flap is 76px and Average clean is a flap of minutes ("none timed yet" at none).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

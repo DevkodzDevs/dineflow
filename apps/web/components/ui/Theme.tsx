@@ -41,12 +41,12 @@ export function useTheme() {
 }
 
 const OPTIONS: { v: ThemeMode; label: string; Icon: typeof Moon; hint: string }[] = [
-  { v: "dark", label: "Dark", Icon: Moon, hint: "Best in a kitchen or at night" },
-  { v: "paper", label: "Light", Icon: Sun, hint: "Best at a daylight counter" },
-  { v: "colour", label: "Colourful dark", Icon: Palette, hint: "Bright colours on deep blue" },
-  { v: "bright", label: "Colourful light", Icon: Sparkles, hint: "Bright colours on a light page" },
-  { v: "royal", label: "Royal classic", Icon: Crown, hint: "Navy, maroon and gold on cream" },
-  { v: "system", label: "Follow device", Icon: MonitorSmartphone, hint: "Follows your phone or computer" },
+  { v: "dark", label: "Dark", Icon: Moon, hint: "Kitchen or night" },
+  { v: "paper", label: "Light", Icon: Sun, hint: "Daylight counters" },
+  { v: "colour", label: "Colourful dark", Icon: Palette, hint: "Bright on deep blue" },
+  { v: "bright", label: "Colourful light", Icon: Sparkles, hint: "Bright on light" },
+  { v: "royal", label: "Royal classic", Icon: Crown, hint: "Navy, maroon, gold" },
+  { v: "system", label: "Follow device", Icon: MonitorSmartphone, hint: "Matches your device" },
 ];
 /** A small swatch of each theme, so the choice is seen before it is made. */
 const SWATCH: Record<ThemeMode, string> = {

@@ -17,10 +17,10 @@ export type Audit = {
 type Hist = { business_date: string; occupied: number; rooms_sellable: number; occupancy_pct: number; adr: number; revpar: number; room_revenue: number; arrivals: number; departures: number; no_shows: number; discrepancies: number; notes: string | null; closed_at: string };
 
 const DISC: Record<string, string> = {
-  occupied_no_guest: "Shown occupied, but nobody is checked in",
-  guest_room_not_occupied: "is checked in, but the room shows empty",
-  sellable_but_dirty: "On sale, but housekeeping says dirty",
-  stayed_past_checkout: "was due out before this date and is still in",
+  occupied_no_guest: "Occupied, nobody checked in",
+  guest_room_not_occupied: "checked in · room shows empty",
+  sellable_but_dirty: "On sale but dirty",
+  stayed_past_checkout: "past check-out, still in",
 };
 /* each kind of disagreement: a short name for its tag, its colour, and the screen that settles it */
 const KIND: Record<string, { tag: string; c: string; fix: string; where: string }> = {
@@ -59,21 +59,21 @@ export function NightAuditClient({ today, date, audit, history, canClose }: { to
       </div>
 
       <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
-        <StatTile label="Occupancy" value={`${Math.round(Number(a.occupancy_pct))}%`} sub={`${a.occupied} of ${a.rooms_sellable} sellable · ${a.ooo_rooms} out of order`} tone={Number(a.occupancy_pct) >= 80 ? "good" : undefined} />
-        <StatTile label="ADR" value={formatINR(Number(a.adr))} sub="average rate per night sold" delay={0.05} />
+        <StatTile label="Occupancy" value={`${Math.round(Number(a.occupancy_pct))}%`} sub={`${a.occupied}/${a.rooms_sellable} · ${a.ooo_rooms} out of order`} tone={Number(a.occupancy_pct) >= 80 ? "good" : undefined} />
+        <StatTile label="ADR" value={formatINR(Number(a.adr))} sub="avg rate / night" delay={0.05} />
         <StatTile label="RevPAR" value={formatINR(Number(a.revpar))} sub="revenue per sellable room" delay={0.1} />
-        <StatTile label="Room revenue" value={formatINR(Number(a.room_revenue))} sub={`${a.in_house} in house right now`} delay={0.15} />
+        <StatTile label="Room revenue" value={formatINR(Number(a.room_revenue))} sub={`${a.in_house} in house`} delay={0.15} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <h3 className="text-lg mb-1 flex items-center gap-2"><LogIn size={16} /> Arrivals <span className="num text-steel text-sm ml-auto">{a.arrived}/{a.arrivals}</span></h3>
-          <p className="text-xs text-steel mb-3">{a.no_shows > 0 ? `${a.no_shows} marked no-show · ` : ""}{a.not_arrived.length ? "Still expected:" : "Everyone expected has arrived."}</p>
+          <p className="text-xs text-steel mb-3">{a.no_shows > 0 ? `${a.no_shows} marked no-show · ` : ""}{a.not_arrived.length ? "Still expected:" : "All arrived."}</p>
           <People rows={a.not_arrived} empty="—" />
         </Card>
         <Card>
           <h3 className="text-lg mb-1 flex items-center gap-2"><LogOut size={16} /> Departures <span className="num text-steel text-sm ml-auto">{a.departed}/{a.departures}</span></h3>
-          <p className="text-xs text-steel mb-3">{a.due_out.length ? "Past check-out, still in:" : "Every departure has checked out."}</p>
+          <p className="text-xs text-steel mb-3">{a.due_out.length ? "Past check-out, still in:" : "All checked out."}</p>
           <People rows={a.due_out} empty="—" />
         </Card>
         <Card>
@@ -128,12 +128,12 @@ export function NightAuditClient({ today, date, audit, history, canClose }: { to
 
       <Card>
         <h3 className="text-lg mb-1">{a.closed ? "Close the day again" : "Close the day"}</h3>
-        <p className="text-xs text-steel mb-4">{ready ? "Nothing is outstanding." : "Settle first — open items save as-is."}{a.closed ? " Closing again replaces the old numbers." : ""}</p>
+        <p className="text-xs text-steel mb-4">{ready ? "Nothing outstanding." : "Settle open items first."}{a.closed ? " Replaces old numbers." : ""}</p>
         {canClose ? (
           <div className="space-y-3">
             <label className="flex items-start gap-2.5 text-sm"><input type="checkbox" className="mt-0.5" checked={noShows} onChange={(e) => setNoShows(e.target.checked)} />
-              <span>Mark the {a.not_arrived.length} arrival{a.not_arrived.length === 1 ? "" : "s"} that never came as no-shows<span className="block text-xs text-steel mt-0.5">Rooms reopen. Late arrivals need a new booking.</span></span></label>
-            <Field label="Notes for the record"><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Power cut 9–10 pm; 204 comped for the noise…" /></Field>
+              <span>Mark {a.not_arrived.length} no-show{a.not_arrived.length === 1 ? "" : "s"}<span className="block text-xs text-steel mt-0.5">Rooms reopen</span></span></label>
+            <Field label="Notes for the record"><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Power cut 9–10 pm…" /></Field>
             <Button size="lg" disabled={pending} onClick={close}>{pending ? "Closing…" : `Close ${date}`}</Button>
             {a.closed?.notes && <p className="text-xs text-steel">On record: {a.closed.notes}</p>}
           </div>

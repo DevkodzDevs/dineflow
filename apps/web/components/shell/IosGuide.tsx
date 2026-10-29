@@ -27,24 +27,24 @@ export function IosGuide({ ipad = false, browser = "safari" }: Props) {
   const menu = browser === "firefox" ? <Menu size={18} /> : <MoreHorizontal size={18} />;
   const steps: { title: string; text: ReactNode; screen: ReactNode }[] = [
     at === "menu"
-      ? { title: "Open the menu, then Share",
-          text: <>Tap {browser === "firefox" ? <Menu size={14} className="inline align-[-2px]" /> : <MoreHorizontal size={14} className="inline align-[-2px]" />} at the <b>{ipad ? "top right" : "bottom right"}</b> of {app}, then <b>Share</b> in the menu.</>,
+      ? { title: "Menu, then Share",
+          text: <>Tap {browser === "firefox" ? <Menu size={14} className="inline align-[-2px]" /> : <MoreHorizontal size={14} className="inline align-[-2px]" />} <b>{ipad ? "top right" : "bottom right"}</b>, then <b>Share</b></>,
           screen: <ScreenBrowser ipad={ipad} at={at} menu={menu} /> }
-      : { title: "Tap the Share button",
+      : { title: "Tap Share",
           text: at === "chrome"
-            ? <>At the right of the address bar, <b>top</b> — a square with an up arrow.</>
+            ? <>Right of the <b>address bar</b> <Share size={14} className="inline align-[-2px]" /></>
             : ipad
-              ? <>At the <b>top right</b> — a square with an up arrow.</>
-              : <>In the bar at the <b>bottom</b> — a square with an up arrow. Not there? Tap <b>More</b> <MoreHorizontal size={14} className="inline align-[-2px]" /> first, then <b>Share</b>.</>,
+              ? <>At the <b>top right</b> <Share size={14} className="inline align-[-2px]" /></>
+              : <>In the <b>bottom</b> bar <Share size={14} className="inline align-[-2px]" />. Not there? <b>More</b> <MoreHorizontal size={14} className="inline align-[-2px]" /> first.</>,
           screen: <ScreenBrowser ipad={ipad} at={at} menu={menu} /> },
     { title: "Choose “Add to Home Screen”",
-      text: <>A menu slides up. <b>Scroll down</b> — it is near Copy and Add Bookmark.</>,
+      text: <><b>Scroll down</b>, near Copy</>,
       screen: <ScreenShareSheet /> },
     { title: "Tap “Add”",
-      text: <>Keep <b>Open as Web App</b> <b>on</b> if you see it. Then tap <b>Add</b> at the top right.</>,
+      text: <>Keep <b>Open as Web App</b> on</>,
       screen: <ScreenAdd /> },
-    { title: "Done — open it from your Home Screen",
-      text: <>From now on, open DineFlow from its icon — not from {app}.</>,
+    { title: "Done — open from Home",
+      text: <>Use the icon, not {app}</>,
       screen: <ScreenHome /> },
   ];
   const [i, setI] = useState(0);
@@ -230,7 +230,7 @@ function ScreenAdd() {
         {/* the switch, on — leave it that way */}
         <span className="relative h-6 w-10 rounded-full bg-[var(--color-tint)]"><span className="absolute right-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow" /></span>
       </div>
-      <p className="mx-4 mt-2 text-[11px] text-[var(--color-label-2)]">Keep this on so DineFlow opens full screen.</p>
+      <p className="mx-4 mt-2 text-[11px] text-[var(--color-label-2)]">Keep on for full screen</p>
     </div>
   );
 }

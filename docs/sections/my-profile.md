@@ -79,3 +79,6 @@ Notifications) · [auth-and-session.md](auth-and-session.md) (`/account/password
   is 112px with a 6px ring and a shadow; the name 30px. The four facts are tiles in a row (`md:grid-cols-4`), each icon in
   its own colour (Access green, Staff code blue, Joined amber, Reports to violet — `--fh`). On a phone the facts stay the
   two-column panel (design24b.mjs asserts 2 columns at 412).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

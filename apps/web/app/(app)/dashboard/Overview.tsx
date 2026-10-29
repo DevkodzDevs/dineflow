@@ -192,7 +192,7 @@ function Week({ days }: { days: { day: string; value: number }[] }) {
   return (
     <div className="feather p-5 flex flex-col">
       <Head title="This week" note={formatINR(total)} />
-      {!traded ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">No bills in seven days.</p> : (<>
+      {!traded ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">No bills this week</p> : (<>
       {/* the curve takes whatever height the band leaves it, so a short panel is never half air */}
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full flex-1 min-h-[88px] mt-1" preserveAspectRatio="none" role="img" aria-label="Takings over the last seven days">
         <defs><linearGradient id="wk" x1="0" y1="0" x2="0" y2="1">
@@ -222,9 +222,9 @@ export function Overview({
   /* One panel, three lists — the floor, the rooms, the orders coming off the internet. They are
      the same shape, so they share a row and a tab rather than three cards the eye must re-learn. */
   const panels = [
-    { key: "floor", label: "Floor", rows: floor, href: "/orders", empty: "No open orders right now.", hint: "Orders from the till, a table's QR and online land here live.", go: "Take an order", Icon: ConciergeBell, hue: "tint" as const },
-    ...(rooms.length ? [{ key: "rooms", label: "In house", rows: rooms, href: "/frontdesk", empty: "Nobody checked in.", hint: "Guests show here once they check in at the Front desk.", go: "Front desk", Icon: BedDouble, hue: "blue" as const }] : []),
-    ...(web.length ? [{ key: "web", label: "Online", rows: web, href: "/online-orders", empty: "Nothing from the aggregators today.", hint: "Swiggy, Zomato and your own site's orders show here as they come in.", go: "Online orders", Icon: Bike, hue: "orange" as const }] : []),
+    { key: "floor", label: "Floor", rows: floor, href: "/orders", empty: "No open orders", hint: "Updates live", go: "Take an order", Icon: ConciergeBell, hue: "tint" as const },
+    ...(rooms.length ? [{ key: "rooms", label: "In house", rows: rooms, href: "/frontdesk", empty: "Nobody checked in.", hint: "Check-ins show here", go: "Front desk", Icon: BedDouble, hue: "blue" as const }] : []),
+    ...(web.length ? [{ key: "web", label: "Online", rows: web, href: "/online-orders", empty: "No online orders", hint: "Swiggy, Zomato, website", go: "Online orders", Icon: Bike, hue: "orange" as const }] : []),
   ];
   const [tab, setTab] = useState(panels[0].key);
   const shown = panels.find((p) => p.key === tab) ?? panels[0];
@@ -322,7 +322,7 @@ export function Overview({
         <Ranked title="Selling today" rows={dishes} href="/reports" empty="Nothing sold yet today." />
         <div className="feather p-5 flex flex-col min-w-0">
           <Head title="Settled" href="/billing" label="Billing" />
-          {tx.length === 0 ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">No bills settled yet today.</p> : (
+          {tx.length === 0 ? <p className="flex-1 grid place-items-center text-sm text-steel text-center py-6">No bills yet</p> : (
             <div className="space-y-2.5">
               {tx.map((t) => (
                 <div key={t.id} className="flex items-center gap-3">
@@ -353,7 +353,7 @@ export function Overview({
                 </li>
               ))}
             </ul>
-            {staff.length > 6 && <div className="mt-auto pt-3 text-[11px] text-steel num">+{staff.length - 6} more on the books</div>}
+            {staff.length > 6 && <div className="mt-auto pt-3 text-[11px] text-steel num">+{staff.length - 6} more</div>}
           </div>
         )}
       </div>

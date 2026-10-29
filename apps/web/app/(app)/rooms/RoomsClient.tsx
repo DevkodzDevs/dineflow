@@ -69,7 +69,7 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
       {rooms.length === 0 && (
         <EmptyState icon={BedDouble} hue="blue" data-rooms-empty={types.length ? "rooms" : "types"}
           title={types.length ? "No rooms yet" : "Start with a room type"}
-          hint={types.length ? `Add each room with its number and floor — you have ${types.length} room type${types.length === 1 ? "" : "s"} ready.` : "A room type is a kind of room and its nightly rate — Deluxe, Suite, Villa. Then add the rooms of that type."}
+          hint={types.length ? `${types.length} room type${types.length === 1 ? "" : "s"} ready` : "Deluxe, Suite, Villa…"}
           actions={types.length
             ? <Button onClick={() => setEdit({ floor: floors.at(-1) ?? 1 })}><Plus size={16} /> Add a room</Button>
             : <Button onClick={() => { setEdit(null); setErr(null); setTypeSheet(true); }}><Plus size={16} /> Add a room type</Button>} />
@@ -79,7 +79,7 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
         <form className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveRoom(fd); if ("error" in r) setErr(r.error!); else setEdit(null); })}>
           {edit?.id && <input type="hidden" name="id" value={edit.id} />}
           <div className="grid grid-cols-2 gap-3"><Field label="Room number"><input name="number" defaultValue={edit?.number} required className="num" placeholder="101" /></Field><Field label="Floor"><input name="floor" type="number" defaultValue={edit?.floor ?? 1} className="num" /></Field></div>
-          <Field label="Type" hint={types.length === 0 ? "Add a room type first." : undefined}>
+          <Field label="Type" hint={types.length === 0 ? "Add a type first" : undefined}>
             <select name="room_type_id" defaultValue={edit?.room_type_id ?? ""} disabled={types.length === 0}>
               <option value="">{types.length === 0 ? "— no room types yet —" : "—"}</option>
               {types.map((t) => <option key={t.id} value={t.id}>{t.name} · {formatINR(Number(t.base_rate))}</option>)}
@@ -93,7 +93,7 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
       </Sheet>
       <Sheet open={typeSheet} onClose={() => { setTypeSheet(false); setErr(null); }} title="Room types & rates">
         {err && <p className="text-sm text-chili mb-3">{err}</p>}
-        {types.length === 0 && <p className="text-sm text-steel mb-3">None yet. Add a type and rate.</p>}
+        {types.length === 0 && <p className="text-sm text-steel mb-3">None yet</p>}
         <ul className="space-y-2 mb-5">{types.map((t) => <li key={t.id} className="feather p-3"><form className="grid grid-cols-[minmax(0,1fr)_100px_60px_auto] gap-2 items-center" action={(fd) => start(async () => { setErr(null); const r = await saveRoomType(fd); if (r && "error" in r) setErr(r.error!); })}><input type="hidden" name="id" value={t.id} /><input name="name" defaultValue={t.name} /><input name="base_rate" type="number" defaultValue={t.base_rate} className="num" /><input name="capacity" type="number" defaultValue={t.capacity} className="num" /><Button size="sm" variant="outline">Save</Button></form></li>)}</ul>
         <form className="grid grid-cols-[minmax(0,1fr)_100px_60px_auto] gap-2 items-end" action={(fd) => start(async () => { setErr(null); const r = await saveRoomType(fd); if (r && "error" in r) setErr(r.error!); })}><Field label="Name"><input name="name" placeholder="Sea-view suite" required /></Field><Field label="Rate/night"><input name="base_rate" type="number" className="num" /></Field><Field label="Sleeps"><input name="capacity" type="number" defaultValue={2} className="num" /></Field><Button size="sm"><Plus size={14} /></Button></form>
       </Sheet>

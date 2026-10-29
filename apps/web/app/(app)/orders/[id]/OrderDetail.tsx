@@ -106,7 +106,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
         })}
         {orphans.length > 0 && (
           <PrintedTicket status="SPLIT"><Ticket top="slot" no={order.order_no} title={order.split_from ? "Split from another bill" : "Lines"} tone="served"
-            footer={<div className="text-[11px] text-steel">Cooked on the original ticket.</div>}>
+            footer={<div className="text-[11px] text-steel">From original ticket</div>}>
             {orphans.map((i) => <Line key={i.id} i={i} />)}
           </Ticket></PrintedTicket>
         )}
@@ -114,7 +114,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
       <Card className="h-fit lg:sticky lg:top-6">
         <div className="text-xs font-semibold uppercase tracking-wide text-steel">Running total</div>
         <div className="num text-3xl font-display mt-1">{formatINR(total)}</div>
-        <div className="text-xs text-steel mt-1">{live.reduce((s, i) => s + i.qty, 0)} items · taxes added at billing</div>
+        <div className="text-xs text-steel mt-1">{live.reduce((s, i) => s + i.qty, 0)} items · plus tax</div>
         {/* a parcel's token and a delivery's address (0103, 0105): what the counter calls and where the rider goes */}
         {(order.token_no || order.delivery_address) && (
           <div className="mt-3 rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[13.5px] space-y-1" data-deliver-to>
@@ -137,7 +137,6 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
             </div>
             {mode === "move" && (
               <div className="mt-3 space-y-2">
-                <p className="text-xs text-steel">Moves the whole order to another table.</p>
                 <div className="flex gap-2">
                   <select value={toTable} onChange={(e) => setToTable(e.target.value)} className="flex-1"><option value="">Choose a table</option>{tables.filter((t) => t.id !== order.table_id).map((t) => <option key={t.id} value={t.id}>{t.name}{t.status !== "free" ? ` · ${t.status}` : ""}</option>)}</select>
                   <Button disabled={pending || !toTable} onClick={() => start(async () => { const r = await moveOrder(order.id, toTable); if ("error" in r) fail(r.error!); else { toast("Moved"); setMode(null); } })}>Move</Button>
@@ -146,8 +145,8 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
             )}
             {mode === "merge" && (
               <div className="mt-3 space-y-2">
-                <p className="text-xs text-steel">Joins another order; billed there.</p>
-                {open.length === 0 ? <p className="text-xs text-steel">No other open order to join.</p> : (
+                <p className="text-xs text-steel">Joins another order</p>
+                {open.length === 0 ? <p className="text-xs text-steel">No open orders</p> : (
                   <div className="flex gap-2">
                     <select value={intoOrder} onChange={(e) => setIntoOrder(e.target.value)} className="flex-1"><option value="">Choose an order</option>{open.map((o) => <option key={o.id} value={o.id}>#{o.order_no} · {o.dining_tables?.name ?? "no table"}</option>)}</select>
                     <Button disabled={pending || !intoOrder} onClick={() => { if (!confirm(`Merge order #${order.order_no} into #${open.find((o) => o.id === intoOrder)?.order_no}?`)) return; start(async () => { const r = await mergeOrders(order.id, intoOrder); if ("error" in r) fail(r.error!); else { toast("Merged"); router.push(`/orders/${intoOrder}`); } }); }}>Merge</Button>
@@ -157,13 +156,13 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
             )}
             {mode === "split" && (
               <div className="mt-3 space-y-2">
-                <p className="text-xs text-steel">Pick items for the new bill.</p>
+                <p className="text-xs text-steel">Pick items to split</p>
                 <div className="flex items-center justify-between text-sm"><span className="text-steel">{picked.length} line{picked.length === 1 ? "" : "s"} chosen</span><span className="num font-semibold">{formatINR(pickedTotal)}</span></div>
                 {allPicked && <p className="text-xs text-chili">Leave at least one item on this bill.</p>}
                 <Button className="w-full" disabled={pending || picked.length === 0 || allPicked} onClick={() => start(async () => {
                   const r = await splitOrder(order.id, picked.map(([id, qty]) => ({ id, qty })));
                   if ("error" in r) fail(r.error!); else { toast(`Order #${r.orderNo} split off`); router.push(`/orders/${r.orderId}`); }
-                })}><Scissors size={14} /> Split to a new bill</Button>
+                })}><Scissors size={14} /> Split bill</Button>
               </div>
             )}
           </div>
@@ -173,11 +172,11 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
         {!isOpen && <div className="mt-4"><Pill tone="served">{order.status}</Pill></div>}
       </Card>
       <ReasonDialog open={cancelling?.kind === "order"} onClose={() => setCancelling(null)} title={`Cancel order #${order.order_no}?`}
-        hint="Cancels every dish. Used stock stays used."
+        hint="Used stock not returned"
         chips={["Guest left without eating", "Wrong table", "Duplicate order", "Kitchen could not make it", "Guest complaint"]} confirmLabel="Cancel the order"
         onConfirm={async (reason) => { const r = await cancelOrder(order.id, reason); if ("error" in r) return { error: r.error }; router.push("/orders"); }} />
       <ReasonDialog open={cancelling?.kind === "line"} onClose={() => setCancelling(null)} title={cancelling?.kind === "line" ? `Cancel ${cancelling.item.qty}× ${cancelling.item.name_snapshot}?` : ""}
-        hint={cancelling?.kind === "line" && cancelling.item.status !== "pending" ? "Cooking already — manager only. Used stock stays used." : "Off the ticket and the bill."}
+        hint={cancelling?.kind === "line" && cancelling.item.status !== "pending" ? "Cooking · manager only" : "Removes from bill"}
         chips={["Guest changed mind", "Wrong item punched", "Out of stock", "Duplicate", "Took too long"]} confirmLabel="Cancel the dish"
         onConfirm={async (reason) => { if (cancelling?.kind !== "line") return; const r = await cancelLine(cancelling.item.id, reason); if ("error" in r) return { error: r.error }; }} />
     </div>

@@ -64,7 +64,7 @@ export function MeClient({ me, day, assist = false }: { me: Me | null; day: Day 
         </div>
       ) : (
         <Card className="!p-5" data-me-acting>
-          <Head icon={<ShieldCheck size={18} />} title="You are in Master control" sub="No profile here. Device settings below." />
+          <Head icon={<ShieldCheck size={18} />} title="You are in Master control" sub="Device settings only" />
         </Card>
       )}
       <Card data-me-prefs>
@@ -100,7 +100,7 @@ function Profile({ me }: { me: Me }) {
     if ("error" in r) { setErr(r.error ?? "Could not save."); return; }
     const { contact_verified, email_changed, ...next } = r.saved;
     setSaved(next); setD(next); setVerified(contact_verified);
-    toast(email_changed && next.contact_email ? "Saved — verify your new email below" : "Saved");
+    toast(email_changed && next.contact_email ? "Saved · verify email" : "Saved");
   });
   /* `hue` colours a fact's icon on iPad and up only (2026-10-24); a phone draws them as before */
   const facts: { icon: React.ReactNode; caption: string; value: string; key: string; hue: string }[] = [
@@ -128,7 +128,7 @@ function Profile({ me }: { me: Me }) {
             style={{ background: `color-mix(in srgb, ${hue} 26%, var(--color-bg-2))`, color: `color-mix(in srgb, ${hue} 82%, var(--color-label))` }} data-me-avatar>{initials(shown)}</span>
           <div className="min-w-0 pb-1">
             <div className="text-[22px] sm:text-[26px] md:text-[30px] font-extrabold leading-tight truncate" data-me-name>{shown}</div>
-            {d.display_name.trim() && d.display_name.trim() !== me.full_name && <div className="text-[12.5px] text-steel truncate">On the staff list as {me.full_name}</div>}
+            {d.display_name.trim() && d.display_name.trim() !== me.full_name && <div className="text-[12.5px] text-steel truncate">Listed as {me.full_name}</div>}
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 min-w-0">
@@ -152,7 +152,7 @@ function Profile({ me }: { me: Me }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block min-w-0"><span className="text-[13px] font-semibold text-steel">Name you go by</span>
             <input className="mt-1" value={d.display_name} onChange={(e) => set("display_name", e.target.value)} maxLength={40} placeholder={me.full_name} disabled={!me.ready} data-me-field="display_name" />
-            <span className="mt-1 block text-[11.5px] text-steel">On the staff list you stay {me.full_name}.</span></label>
+            <span className="mt-1 block text-[11.5px] text-steel">Staff list: {me.full_name}</span></label>
           <label className="block min-w-0"><span className="text-[13px] font-semibold text-steel">Phone</span>
             <input className="mt-1" type="tel" inputMode="tel" autoComplete="tel" value={d.phone} onChange={(e) => set("phone", e.target.value)} maxLength={20} placeholder="98400 12345" data-me-field="phone" /></label>
           <div className="sm:col-span-2 min-w-0">
@@ -161,11 +161,11 @@ function Profile({ me }: { me: Me }) {
             <EmailState email={saved.contact_email} verified={verified} editing={d.contact_email.trim().toLowerCase() !== saved.contact_email.trim().toLowerCase()} onVerified={() => setVerified(true)} />
           </div>
           <label className="block min-w-0"><span className="text-[13px] font-semibold text-steel">Emergency contact</span>
-            <input className="mt-1" value={d.emergency_name} onChange={(e) => set("emergency_name", e.target.value)} maxLength={60} placeholder="Name · how they are related" disabled={!me.ready} data-me-field="emergency_name" /></label>
+            <input className="mt-1" value={d.emergency_name} onChange={(e) => set("emergency_name", e.target.value)} maxLength={60} placeholder="Name · relation" disabled={!me.ready} data-me-field="emergency_name" /></label>
           <label className="block min-w-0"><span className="text-[13px] font-semibold text-steel">Their number</span>
             <input className="mt-1" type="tel" inputMode="tel" value={d.emergency_phone} onChange={(e) => set("emergency_phone", e.target.value)} maxLength={20} placeholder="98400 67890" disabled={!me.ready} data-me-field="emergency_phone" /></label>
           <div className="sm:col-span-2 min-w-0" data-me-langs>
-            <div className="text-[13px] font-semibold text-steel mb-1.5">Languages you speak <span className="font-normal">— to a guest</span></div>
+            <div className="text-[13px] font-semibold text-steel mb-1.5">Languages you speak</div>
             <div className="flex flex-wrap gap-2" translate="no">
               {LANGS.map((l) => { const on = d.languages.includes(l.key); return (
                 <button key={l.key} type="button" aria-pressed={on} disabled={!me.ready} onClick={() => set("languages", on ? d.languages.filter((x) => x !== l.key) : [...d.languages, l.key])} data-lang-key={l.key}
@@ -175,7 +175,7 @@ function Profile({ me }: { me: Me }) {
             </div>
           </div>
           <label className="block sm:col-span-2 min-w-0"><span className="text-[13px] font-semibold text-steel">About you <span className="font-normal num">({d.about.length}/200)</span></span>
-            <textarea className="mt-1" rows={2} value={d.about} onChange={(e) => set("about", e.target.value.slice(0, 200))} placeholder="Ten years on the floor · loves the breakfast shift" disabled={!me.ready} data-me-field="about" /></label>
+            <textarea className="mt-1" rows={2} value={d.about} onChange={(e) => set("about", e.target.value.slice(0, 200))} placeholder="A line about you" disabled={!me.ready} data-me-field="about" /></label>
           <div className="sm:col-span-2 min-w-0" data-me-tones>
             <div className="text-[13px] font-semibold text-steel mb-1.5">Colour of your circle</div>
             <div className="flex flex-wrap gap-1.5">
@@ -190,7 +190,7 @@ function Profile({ me }: { me: Me }) {
             </div>
           </div>
         </div>
-        {!me.ready && <p className="mt-3 text-[12.5px] text-steel">Phone and email save now. More soon.</p>}
+        {!me.ready && <p className="mt-3 text-[12.5px] text-steel">Phone and email only</p>}
         {err && <p className="mt-3 text-[14px] font-semibold text-chili" role="alert" data-me-error>{err}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2 justify-end">
           {dirty && <button type="button" onClick={() => { setD(saved); setErr(null); }} className="svc-btn quiet sm !px-4" data-me-undo><Undo2 size={16} aria-hidden /> Undo</button>}
@@ -205,8 +205,8 @@ function Profile({ me }: { me: Me }) {
 function EmailState({ email, verified, editing, onVerified }: { email: string; verified: boolean; editing: boolean; onVerified: () => void }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [sent, setSent] = useState<string | null>(null); const [code, setCode] = useState(""); const [err, setErr] = useState<string | null>(null);
-  if (editing) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="editing">Save, then verify by code</p>;
-  if (!email) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="none">Needed to reset a password</p>;
+  if (editing) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="editing">Save, then verify</p>;
+  if (!email) return <p className="mt-1.5 text-[12px] text-steel" data-me-email-state="none">For password resets</p>;
   if (verified) return <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[var(--color-green)]" data-me-email-state="verified"><MailCheck size={14} aria-hidden /> Verified</p>;
   return (
     <div className="mt-2 rounded-2xl bg-[var(--color-orange-2)] p-3" data-me-email-state="unverified">
@@ -231,11 +231,11 @@ function EmailState({ email, verified, editing, onVerified }: { email: string; v
 function Today({ day }: { day: Day }) {
   const rows: { key: string; href: string; icon: React.ReactNode; tint: string; title: string; sub: string }[] = [
     ...(day.attendance ? [{ key: "attendance", href: "/attendance", icon: <Clock3 size={18} />, tint: "var(--color-blue)", title: "My attendance",
-      sub: day.attendance.in_at ? `In at ${hm(day.attendance.in_at)}${day.attendance.out_at ? ` · out at ${hm(day.attendance.out_at)}` : " · still in"}` : "Not punched in yet today" }] : []),
+      sub: day.attendance.in_at ? `In at ${hm(day.attendance.in_at)}${day.attendance.out_at ? ` · out at ${hm(day.attendance.out_at)}` : " · still in"}` : "Not punched in" }] : []),
     { key: "lists", href: "/tasks", icon: <ListChecks size={18} />, tint: "var(--color-green)", title: "My checklists",
-      sub: day.lists ? `${day.listsDone} of ${day.lists} done today` : "No lists for you yet" },
+      sub: day.lists ? `${day.listsDone} of ${day.lists} done` : "No lists yet" },
     { key: "jobs", href: "/work", icon: <ListTodo size={18} />, tint: "var(--color-orange)", title: "My jobs",
-      sub: day.jobs ? `${day.jobs} open — given to you or taken by you` : "Nothing open on you" },
+      sub: day.jobs ? `${day.jobs} open` : "Nothing open" },
   ];
   return (
     <Card data-me-work>
@@ -261,7 +261,7 @@ function Security({ me }: { me: Me }) {
   const bubble = (tint: string) => ({ background: `color-mix(in srgb, ${tint} 16%, transparent)`, color: `color-mix(in srgb, ${tint} 82%, var(--color-label))` });
   return (
     <Card data-me-security>
-      <Head icon={<KeyRound size={18} />} title="Sign-in & security" sub="Your keys to DineFlow" />
+      <Head icon={<KeyRound size={18} />} title="Sign-in & security" sub="ID and password" />
       <div className="flex items-center gap-3 rounded-[20px] border border-[color-mix(in_srgb,var(--color-tint)_28%,transparent)] px-4 py-3.5 min-w-0"
         style={{ background: "linear-gradient(120deg, color-mix(in srgb, var(--color-tint) 14%, transparent), color-mix(in srgb, var(--color-tint) 4%, transparent))" }} data-me-pass>
         <span className="h-11 w-11 shrink-0 rounded-full grid place-items-center bg-[var(--color-bg-2)] text-[var(--color-tint)] shadow-[0_1px_4px_rgb(0_0_0/0.16)]"><ShieldCheck size={20} aria-hidden /></span>
@@ -285,7 +285,7 @@ function Security({ me }: { me: Me }) {
       <div className="mt-3 text-[12.5px] text-steel">Forgot it? <Link href="/forgot" className="tap font-semibold text-[var(--color-label)] underline underline-offset-2">Reset</Link></div>
       <Sheet open={ask} onClose={() => setAsk(false)} title="Sign out other devices?">
         <div className="space-y-4" data-me-signout-ask>
-          <p className="text-[14px] text-steel">Every other phone and computer signs out. This one stays in.</p>
+          <p className="text-[14px] text-steel">This device stays in</p>
           <div className="flex gap-2">
             <Button className="flex-1" disabled={pending} data-me-signout-yes onClick={() => start(async () => { const r = await signOutOthers(); setAsk(false); toast("error" in r ? r.error! : "Signed out on every other device", "error" in r ? "err" : undefined); })}><MonitorSmartphone size={16} aria-hidden /> Sign out others</Button>
             <Button variant="gray" onClick={() => setAsk(false)}>Cancel</Button>
@@ -304,7 +304,7 @@ function AssistSwitch() {
   const flip = () => { const v = !on; setOn(v); try { if (v) localStorage.removeItem("df-assist-hidden"); else localStorage.setItem("df-assist-hidden", "1"); } catch { /* this visit */ } window.dispatchEvent(new Event("df-assist")); };
   return (
     <label className="mt-6 flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3 cursor-pointer" data-me-assist>
-      <span className="min-w-0 flex-1"><span className="block text-[14px] font-semibold">Show Assist</span><span className="block text-[12.5px] text-steel">The AI helper button on this device</span></span>
+      <span className="min-w-0 flex-1"><span className="block text-[14px] font-semibold">Show Assist</span><span className="block text-[12.5px] text-steel">AI helper button</span></span>
       <button type="button" role="switch" aria-checked={on} data-on={on ? "true" : "false"} className="switch shrink-0" onClick={flip} aria-label="Show Assist" />
     </label>
   );

@@ -72,7 +72,7 @@ function Card({ kind, rows, ready }: { kind: Kind; rows: Release[]; ready: boole
       const r = await publishRelease({ platform: kind, version: v, path, name, size: file.size, notes });
       setPct(null);
       if ("error" in r) { setMsg({ ok: false, text: r.error ?? "Could not publish" }); return; }
-      setFile(null); setVersion(""); setNotes(""); setMsg({ ok: true, text: `Version ${v} is live — every install screen offers it within a minute.` });
+      setFile(null); setVersion(""); setNotes(""); setMsg({ ok: true, text: `Version ${v} is live` });
     });
   };
   return (
@@ -80,7 +80,7 @@ function Card({ kind, rows, ready }: { kind: Kind; rows: Release[]; ready: boole
       <div className="p-5 flex items-center gap-3 border-b border-[var(--color-separator)]">
         <span className="h-11 w-11 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-tint)] shrink-0"><k.Icon size={20} aria-hidden /></span>
         <div className="min-w-0 flex-1"><div className="text-[17px] font-bold">{k.title} <span className="text-[var(--color-label-2)] font-semibold">({k.ext})</span></div>
-          <div className="text-[12.5px] text-[var(--color-label-2)] truncate">{cur ? <>v{cur.version} · {cur.external_url ? "link" : "uploaded"} · {mb(cur.size_bytes)} · {when(cur.created_at)}</> : "Nothing uploaded. Install screens use the local build or show “coming soon”."}</div></div>
+          <div className="text-[12.5px] text-[var(--color-label-2)] truncate">{cur ? <>v{cur.version} · {cur.external_url ? "link" : "uploaded"} · {mb(cur.size_bytes)} · {when(cur.created_at)}</> : "Nothing uploaded"}</div></div>
         {cur && <a href={cur.url} download={cur.file_name} className="h-10 px-3.5 rounded-xl inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] shrink-0" data-app-file-current><Download size={15} aria-hidden /> Test download</a>}
       </div>
 
@@ -90,8 +90,8 @@ function Card({ kind, rows, ready }: { kind: Kind; rows: Release[]; ready: boole
           onDrop={(e) => { e.preventDefault(); setOver(false); choose(e.dataTransfer.files?.[0]); }}
           className={cn("w-full min-h-[120px] rounded-2xl border-2 border-dashed grid place-items-center gap-2 px-4 py-5 text-center transition-colors disabled:opacity-50",
             over ? "border-[var(--color-tint)] bg-[color-mix(in_srgb,var(--color-tint)_8%,transparent)]" : "border-[var(--color-separator)] hover:bg-[var(--color-fill)]")}>
-          {file ? <span className="grid justify-items-center gap-1"><FileUp size={22} className="text-[var(--color-tint)]" aria-hidden /><b className="text-[14px] break-all">{file.name}</b><span className="text-[12.5px] text-[var(--color-label-2)]">{mb(file.size)} · tap to choose another</span></span>
-            : <span className="grid justify-items-center gap-1"><UploadCloud size={24} className="text-[var(--color-label-2)]" aria-hidden /><b className="text-[14px]">Drop the new {k.ext} here, or tap to choose</b><span className="text-[12px] text-[var(--color-label-3)] break-all">Built at {k.hint}</span></span>}
+          {file ? <span className="grid justify-items-center gap-1"><FileUp size={22} className="text-[var(--color-tint)]" aria-hidden /><b className="text-[14px] break-all">{file.name}</b><span className="text-[12.5px] text-[var(--color-label-2)]">{mb(file.size)} · tap to change</span></span>
+            : <span className="grid justify-items-center gap-1"><UploadCloud size={24} className="text-[var(--color-label-2)]" aria-hidden /><b className="text-[14px]">Drop {k.ext} or tap</b><span className="text-[12px] text-[var(--color-label-3)] break-all">Built at {k.hint}</span></span>}
         </button>
         <input ref={pick} type="file" accept={k.ext} hidden style={{ display: "none" }} data-app-file-input onChange={(e) => { choose(e.target.files?.[0]); e.target.value = ""; }} />
 
@@ -121,7 +121,7 @@ function Card({ kind, rows, ready }: { kind: Kind; rows: Release[]; ready: boole
         {old.map((r) => (
           <div key={r.id} className="flex items-center gap-3 min-h-11">
             <span className="min-w-0 flex-1 text-[13px]"><b className="num">v{r.version}</b> <span className="text-[var(--color-label-2)]">· {r.external_url ? "Link" : "Uploaded"} · {mb(r.size_bytes)} · {when(r.created_at)}{r.notes ? ` · ${r.notes}` : ""}</span></span>
-            <button type="button" disabled={pending} onClick={() => start(async () => { const x = await makeCurrent(r.id); setMsg("error" in x ? { ok: false, text: x.error ?? "Could not switch" } : { ok: true, text: `v${r.version} is handed out again.` }); })}
+            <button type="button" disabled={pending} onClick={() => start(async () => { const x = await makeCurrent(r.id); setMsg("error" in x ? { ok: false, text: x.error ?? "Could not switch" } : { ok: true, text: `v${r.version} is current` }); })}
               className="h-10 px-3 rounded-xl inline-flex items-center gap-1.5 text-[12.5px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] shrink-0" data-app-file-rollback={r.version}><RotateCcw size={14} aria-hidden /> Make current</button>
           </div>))}
       </div>}
@@ -150,16 +150,16 @@ function LinkForm({ kind, rows, ready, onDone }: { kind: Kind; rows: Release[]; 
     const v = version.trim();
     const r = await publishLink({ platform: kind, version: v, url, sizeMb: Number(size) || null, notes: "" });
     if ("error" in r) { onDone({ ok: false, text: r.error ?? "Could not publish the link" }); return; }
-    onDone({ ok: true, text: `Version ${v} is live from the link — every install screen offers it within a minute.` });
+    onDone({ ok: true, text: `Version ${v} is live` });
     close();
   });
   return (
     <div className="grid gap-2 border-t border-[var(--color-separator)] pt-3" data-app-file-link>
-      {kind === "windows" && <p className="text-[12.5px] text-[var(--color-label-2)]">Over 50 MB? Put it on Cloudflare R2 and paste its link.</p>}
+      {kind === "windows" && <p className="text-[12.5px] text-[var(--color-label-2)]">Over 50 MB? Link from R2</p>}
       {!open
-        ? <button type="button" disabled={!ready} onClick={() => setOpen(true)} className="justify-self-start h-11 px-3.5 rounded-xl inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] disabled:opacity-50" data-app-file-link-open><Link2 size={15} aria-hidden /> or paste a download link</button>
+        ? <button type="button" disabled={!ready} onClick={() => setOpen(true)} className="justify-self-start h-11 px-3.5 rounded-xl inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] disabled:opacity-50" data-app-file-link-open><Link2 size={15} aria-hidden /> Paste a link</button>
         : <div className="grid gap-3">
-            <label className="grid gap-1 min-w-0"><span className="text-[12.5px] font-semibold text-[var(--color-label-2)]">Public link to the {k.ext} file</span>
+            <label className="grid gap-1 min-w-0"><span className="text-[12.5px] font-semibold text-[var(--color-label-2)]">Public {k.ext} link</span>
               <input value={url} onChange={(e) => onUrl(e.target.value)} inputMode="url" placeholder={kind === "windows" ? "https://pub-xxxx.r2.dev/DineFlow-Setup-1.1.0.exe" : "https://pub-xxxx.r2.dev/DineFlow-1.0.1.apk"} data-app-file-link-url />
               {url.trim() !== "" && !urlOk && <span className="text-[12px] text-[var(--color-red)]">The link must start with https:// and end in {k.ext}.</span>}</label>
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
@@ -187,8 +187,8 @@ export function AppFilesClient({ rows, ready }: { rows: Release[]; ready: boolea
         <Card kind="windows" rows={rows.filter((r) => r.platform === "windows")} ready={ready} />
       </div>
       <div className="card p-4 text-[13px] text-[var(--color-label-2)] grid gap-1" data-app-files-help>
-        <b className="text-[var(--color-label)]">One-time Supabase setting.</b>
-        <span>Supabase Free caps uploads at 50 MB; the Windows app is about 78 MB. Put it on <b>Cloudflare R2</b> (free) and use <b>or paste a download link</b> (steps: docs/install-builds.md). On a paid plan, raise <b>Storage → Settings → Upload file size limit</b> to 100 MB. Android (under 1 MB) uploads as is.</span>
+        <b className="text-[var(--color-label)]">Upload limit</b>
+        <span>Supabase Free: 50 MB; Windows app ~78 MB. Use <b>Cloudflare R2</b> + <b>Paste a link</b> (docs/install-builds.md), or on a paid plan set <b>Storage → Settings → Upload file size limit</b> to 100 MB.</span>
       </div>
     </div>
   );

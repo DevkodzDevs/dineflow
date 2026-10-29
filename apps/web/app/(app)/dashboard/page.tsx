@@ -140,7 +140,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       {hour >= 17 && (
         <Link href="/tomorrow" className="feather feather-lift edge-lit flex items-center gap-4 p-5 mt-4 bg-gradient-to-r from-card to-champagne-2/50 border-champagne/50">
           <span className="h-11 w-11 rounded-2xl bg-gradient-to-b from-saffron-2 to-saffron text-ink grid place-items-center shrink-0"><Sun size={20} /></span>
-          <div className="flex-1 min-w-0"><div className="font-semibold">Before you lock up — tomorrow&apos;s brief is ready</div><div className="text-xs text-steel">Prep, buying and guests expected</div></div>
+          <div className="flex-1 min-w-0"><div className="font-semibold">Tomorrow&apos;s brief is ready</div><div className="text-xs text-steel">Prep, buying, guests</div></div>
           <span className="text-sm font-semibold text-steel">Open →</span>
         </Link>
       )}

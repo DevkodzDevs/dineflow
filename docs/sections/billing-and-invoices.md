@@ -123,7 +123,7 @@ pnpm --filter @dineflow/web test
   changed directly at all now — a void goes through `void_bill(p_bill, p_reason)`, which checks the role
   (owner/manager/supervisor/cashier), insists on a reason, puts the name on the bill and the order back
   to `open`, and leaves a `bill.void` row in the audit trail. The invoice's bill-to fields remain the
-  one direct update. The "Void bill and edit order" link opens a `ReasonDialog`. See
+  one direct update. The "Void & edit" link opens a `ReasonDialog`. See
   [controls-and-intelligence.md](controls-and-intelligence.md).
 - **`PrinterOutput` (the machine the bill comes out of) takes `fit`** (2026-10-13, for the folio).
   With `fit` its sides narrow from 22px to 8px to the width of the box it sits in, so a narrow column
@@ -193,7 +193,7 @@ pnpm --filter @dineflow/web test
   every rate 0), the receipt says the operator pays it (`[data-operator-note]`), the bill page says so (`[data-gst-operator]`).
 - **The service charge is a switch** (`[data-service-charge]`, `generate_bill(p_service_charge)`, `bills.service_charge_on`):
   on by default at the till as before, off by default for an order that came from a QR, the website or an aggregator —
-  that guest never saw it. "Optional — only if the guest agrees": a service charge cannot be compulsory (CCPA, 2022).
+  that guest never saw it. "Only if guest agrees": a service charge cannot be compulsory (CCPA, 2022).
 - **Credit notes** (`credit_notes`, `issue_credit_note(bill, amount, reason, method)`): only on a paid bill (an unpaid one
   is voided); owner, manager, supervisor or cashier; a reason; numbered CN-0001…; the GST in proportion (the last note on
   a bill takes exactly what is left, so the notes' tax = the bill's); cash goes out of the drawer as a `cash_movements`
@@ -216,3 +216,8 @@ and customer, a customer's name, notes and tags, the front desk's cancel, and **
 which now writes `charge.add` / `discount.give` to the audit trail (`audit_booking_charges`). Dry-run (dry150, 19 cases) and
 from the screens (`fence150.mjs`): the kitchen's Start cooking → Ready → Served, the folio's charge with its audit line.
 **A new direct write to these tables from the browser will be refused — add it as an RPC.**
+- **Room service follows the dish's GST rate (2026-10-29, 0155)** — `post_order_to_room` uses `bill_tax` with the order's lines
+  grouped by rate, like `generate_bill`; before, a dish with its own rate was taxed at the property's on the folio (front-desk.md).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

@@ -75,7 +75,7 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
                   <div className={cn("mt-1.5 text-[11.5px] leading-tight", i === stepOf(t.status) ? "font-semibold text-[var(--color-label)]" : on ? "text-[var(--color-label-2)]" : "text-[var(--color-label-3)]")}>{s.label}</div>
                 </li>); })}
             </ol>
-            {t.status === "waiting" && <p className="mt-3 text-[13px] rounded-xl bg-[var(--color-fill)] px-3 py-2.5" data-waiting><b>DineFlow is waiting for your answer.</b> Reply below.</p>}
+            {t.status === "waiting" && <p className="mt-3 text-[13px] rounded-xl bg-[var(--color-fill)] px-3 py-2.5" data-waiting><b>Waiting for your reply</b></p>}
           </Card>
 
           {/* the thread */}
@@ -116,11 +116,11 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
 
           {/* answer back */}
           {closed ? (
-            <p className="rounded-2xl bg-[var(--color-fill)] p-4 text-[13px]" data-closed>Closed. Still a problem? <Link href={`/help?kind=${t.kind}`} className="underline font-semibold">raise a new one</Link> and mention {ticketNo(t.ticket_no)}.</p>
+            <p className="rounded-2xl bg-[var(--color-fill)] p-4 text-[13px]" data-closed>Closed · <Link href={`/help?kind=${t.kind}`} className="underline font-semibold">new request</Link> · quote {ticketNo(t.ticket_no)}</p>
           ) : manage ? (
             <Card className="space-y-3" data-composer>
-              <label htmlFor="sup-reply" className="!mb-0">{done ? "Still not right? Reply and it opens again" : "Reply"}</label>
-              <textarea id="sup-reply" rows={3} value={body} onChange={(e) => setBody(e.target.value.slice(0, 5000))} placeholder="Write to the DineFlow team…" />
+              <label htmlFor="sup-reply" className="!mb-0">{done ? "Reply to reopen" : "Reply"}</label>
+              <textarea id="sup-reply" rows={3} value={body} onChange={(e) => setBody(e.target.value.slice(0, 5000))} placeholder="Your reply…" />
               <div className="flex flex-wrap items-center gap-2">
                 {previews.map((p, i) => (
                   <div key={p} className="relative h-14 w-14 rounded-xl overflow-hidden ring-1 ring-[var(--color-separator)]">
@@ -159,7 +159,7 @@ export function ThreadClient({ ticket: t, messages, urls, me, role, sent }: { ti
           {manage && !closed && (
             <label className="feather flex items-start gap-3 p-4 cursor-pointer" data-access>
               <ShieldCheck size={18} className="shrink-0 mt-0.5 text-[var(--color-tint)]" />
-              <span className="flex-1 min-w-0"><span className="block text-[13.5px] font-semibold leading-snug">DineFlow may open the property</span><span className="block text-[12px] text-[var(--color-label-2)] mt-0.5 leading-snug">{t.allow_access ? "Allowed. Everything they do is logged." : "Not allowed. Turn on if needed."}</span></span>
+              <span className="flex-1 min-w-0"><span className="block text-[13.5px] font-semibold leading-snug">DineFlow access</span><span className="block text-[12px] text-[var(--color-label-2)] mt-0.5 leading-snug">{t.allow_access ? "Allowed · all logged" : "Not allowed"}</span></span>
               <Switch on={t.allow_access} onChange={(v) => act(() => setRequestAccess(t.id, v))} name="DineFlow may open the property for this request" />
             </label>
           )}

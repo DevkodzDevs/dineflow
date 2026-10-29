@@ -92,7 +92,7 @@ fourth screen: one line in `FRESH`, a role check in its page, and the same check
   revalidates answers with the re-rendered page — the refresh rendered it a second time. Don't add one back;
   see shell-and-nav.md (speed). `actcheck.mjs`.
 - **Cash reasons are an even 2-column grid** (`[data-reasons]`, 44px tiles, a tick on the picked
-  one, a long reason wraps to two lines inside the tile), with *Something else? Type it* below —
+  one, a long reason wraps to two lines inside the tile), with *Other reason* below —
   that box shows only a typed reason, not a picked one. They were `.chip`s wrapping into ragged
   rows on a phone.
 - **Audit's kind chips sit in one `shrink-0` box inside their `Rail`** (`[data-kinds]`,
@@ -142,3 +142,6 @@ pnpm test                 # lib/print/route.test.ts covers station routing (4)
     the count on the `StatTile` flap (`.flip-stat`, the tile an `@container`) with "dishes" beside it, and what to do. Four
     across from `lg`, two below. A tapped class gets a ring in its colour and a tick; tapping again shows all. The name is
     the hue mixed 62% toward the label colour — the pure hue measured 3.4:1 on the colourful-light card.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

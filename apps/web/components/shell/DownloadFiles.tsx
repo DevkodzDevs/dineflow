@@ -31,8 +31,8 @@ export function useDownloads() {
 
 type Kind = "android" | "windows";
 const META: Record<Kind, { title: string; ext: string; Icon: typeof Smartphone; note: string }> = {
-  android: { title: "Download for Android", ext: ".apk", Icon: Smartphone, note: "Open the file, allow installs once, tap Install" },
-  windows: { title: "Download for Windows", ext: ".exe", Icon: Monitor, note: "Run it. If Windows warns: More info → Run anyway" },
+  android: { title: "Download for Android", ext: ".apk", Icon: Smartphone, note: "Open, allow installs, tap Install" },
+  windows: { title: "Download for Windows", ext: ".exe", Icon: Monitor, note: "Warned? More info → Run anyway" },
 };
 const mb = (n: number | null) => (n ? `${(n / 1048576).toFixed(n > 10485760 ? 0 : 1)} MB` : null);
 
@@ -47,7 +47,7 @@ export function FileButton({ kind, file, big }: { kind: Kind; file: File | null 
     <span className="flex-1 min-w-0">
       <span className={cn("block font-bold leading-tight", big ? "text-[17px]" : "text-[14.5px]")}>{m.title} <span className={cn("font-semibold", big ? "opacity-75" : "text-[var(--color-label-2)]")}>({m.ext})</span></span>
       <span className={cn("block mt-1 leading-snug", big ? "text-[12.5px] opacity-80" : "text-[12px] text-[var(--color-label-2)]")}>
-        {file ? <>{facts && <b className="font-semibold">{facts} · </b>}{m.note}</> : "Coming soon — the build is being prepared"}</span>
+        {file ? <>{facts && <b className="font-semibold">{facts} · </b>}{m.note}</> : "Coming soon"}</span>
     </span>
     {file && <Download size={big ? 20 : 17} aria-hidden className={cn("shrink-0", big ? "opacity-80" : "text-[var(--color-label-2)]")} />}
   </>;

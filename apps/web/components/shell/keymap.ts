@@ -43,17 +43,17 @@ const LIST: [string, string][] = [["↑ ↓", "move through the list"], ["Enter"
 
 export const SCREENS: Screen[] = [
   { match: (p) => p === "/orders/new", title: "Till", items: "main [data-tile]", open: ".more",
-    hints: [["/", "search the menu — Enter adds the first dish"], ["↑ ↓ ← →", "move between dishes"], ["Enter", "add one of the highlighted dish"],
+    hints: [["/", "search dishes"], ["↑ ↓ ← →", "move between dishes"], ["Enter", "add highlighted dish"],
       ["Backspace", "take one off it"], ["Ctrl Enter", "send to the kitchen"]] },
   { match: (p) => /^\/orders\/[^/]+$/.test(p), title: "Order", hints: [["G B", "go to Billing"]] },
   { match: (p) => p === "/orders", title: "Orders", items: "main a[href^='/orders/']:not([href='/orders/new'])", hints: [...LIST, ["N", "new order"]] },
-  { match: (p) => p === "/kitchen", title: "Kitchen", hints: [["1 – 9", "move that ticket on (start → ready → served)"], ["R", "recall the last one served"]] },
-  { match: (p) => /^\/billing\/[^/]+$/.test(p), title: "Bill", hints: [["Ctrl Enter", "generate the bill, or mark it paid"]] },
+  { match: (p) => p === "/kitchen", title: "Kitchen", hints: [["1 – 9", "move ticket on"], ["R", "recall last served"]] },
+  { match: (p) => /^\/billing\/[^/]+$/.test(p), title: "Bill", hints: [["Ctrl Enter", "bill, or mark paid"]] },
   { match: (p) => p === "/billing", title: "Billing", items: "main a[href^='/billing/']", hints: LIST },
   { match: (p) => p === "/reservations", title: "Reservations", items: "main [data-res]", hints: [...LIST, ["[  ]", "the day before / after"]] },
   { match: (p) => p === "/pulse", title: "Pulse", items: "main [data-table]", hints: LIST },
   { match: (p) => p === "/online-orders", title: "Online orders", items: "main [data-online]", hints: LIST },
-  { match: (p) => p === "/customers", title: "Customers", items: "main [data-customer]", open: "[data-open-customer]", search: "main input[placeholder='Name or phone']", hints: [["/", "search by name or phone"], ...LIST] },
+  { match: (p) => p === "/customers", title: "Customers", items: "main [data-customer]", open: "[data-open-customer]", search: "main input[placeholder='Name or phone']", hints: [["/", "search name or phone"], ...LIST] },
   { match: (p) => p === "/menu", title: "Menu", items: "main [data-dish]", open: "button[aria-label^='Edit']", hints: [["↑ ↓ ← →", "move between dishes"], ["Enter", "edit the highlighted dish"], ["Esc", "let go"]] },
   { match: (p) => p === "/inventory", title: "Pantry", items: "main [data-ing]", open: "button[aria-label='Edit']", search: "main [data-pantry-search] input", hints: [["/", "find an item"], ["↑ ↓ ← →", "move through the pantry"], ["Enter", "edit the highlighted item"], ["Esc", "let go"]] },
 ];

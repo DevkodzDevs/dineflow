@@ -102,7 +102,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
     });
   };
   const fail = (r: Room) => { const note = window.prompt(`Room ${r.number} — what failed?`); if (note === null) return; act(() => inspectRoom(r.id, false, note), r.id); };
-  const sheet = () => start(async () => { const r = await buildSheet(); if (r.error) toast(r.error, "err"); else toast(r.added ? `${r.added} task${r.added === 1 ? "" : "s"} added to today's sheet` : "Today's sheet is already complete"); });
+  const sheet = () => start(async () => { const r = await buildSheet(); if (r.error) toast(r.error, "err"); else toast(r.added ? `${r.added} task${r.added === 1 ? "" : "s"} added` : "Sheet already complete"); });
 
   const cols = [{ key: "pending", title: "To do" }, { key: "in_progress", title: "In progress" }];
   return (
@@ -117,7 +117,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
           <Button variant="outline" disabled={pending} onClick={sheet} title="Service occupied rooms, clean dirty ones"><ClipboardList size={15} /> Build today's sheet</Button>
         </div>
       </div>
-      {inspectRule && !canInspect && <p className="text-xs text-steel -mt-3">A supervisor or above signs off each room.</p>}
+      {inspectRule && !canInspect && <p className="text-xs text-steel -mt-3">Supervisor signs off rooms</p>}
 
       <div className="sm:hidden">
         <Segmented value={view} onChange={setView} className="w-full [&>button]:flex-1 [&>button]:!h-11"
@@ -324,7 +324,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             })}
           </div></div>}</section>
       ); })}
-      {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet — add them in Rooms.</p>}
+      {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet</p>}
       </div>
 
       {/* the task sheet */}
@@ -348,7 +348,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                     : <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={!!busy[t.id]} onClick={() => act(() => takeJob("room", t.id), t.id)}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={!!busy[t.id]} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Done — room goes on sale"} onClick={() => act(() => finishJob("room", t.id), t.id)}><Check size={14} /> Done</Button></div>}
                   {canInspect && <select className="mt-2 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={!!busy[t.id]} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign
                     onChange={(e) => act(() => assignJob("room", t.id, e.target.value || null), t.id)}>
-                    <option value="">{t.assigned_to ? "Nobody — anyone can take it" : "Give to…"}</option>
+                    <option value="">{t.assigned_to ? "Anyone can take" : "Give to…"}</option>
                     {crewFor(t).map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.position_title ? ` — ${p.position_title}` : ""}</option>)}</select>}
                 </motion.div>))}</AnimatePresence>{list.length === 0 && <p className="text-sm text-steel px-1 py-3">{c.key === "pending" ? "Nothing to do." : "Nothing in progress."}</p>}</div></section>); })}
           {tasks.length === 0 && <div className="sm:col-span-2"><Empty title="Nothing on the sheet" hint="Check-outs add cleans automatically." /></div>}
@@ -361,7 +361,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
             <button type="button" className="svc-btn go w-full" disabled={pending || !f.room} data-add-task onClick={() => start(async () => { const r = await addTask(f.room, f.kind, f.notes); if ("error" in r) return void toast(r.error!, "err"); setF({ room: "", kind: "clean", notes: "" }); })}><Plus size={18} strokeWidth={2.4} aria-hidden /> {f.room ? "Add task" : "Choose a room first"}</button></div></Card>
           {/* each finished task a row: the room on its key card, what and who, and how long it took (2026-10-21) */}
           <Card data-hk-done><div className="flex items-center gap-2.5 mb-3"><span className="h-9 w-9 rounded-[11px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]" aria-hidden><Check size={17} strokeWidth={2.6} /></span><h3 className="text-lg leading-none">Recently done</h3><span className="ml-auto num text-[12.5px] font-semibold text-steel">{done.length}</span></div>
-            {done.length === 0 ? <p className="text-[13.5px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] px-3 py-4 text-center">Nothing finished yet today.</p>
+            {done.length === 0 ? <p className="text-[13.5px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] px-3 py-4 text-center">None finished yet</p>
               : <ul className="divide-y divide-[var(--color-separator)]">{done.map((d) => { const took = d.taken_at ? Math.max(1, Math.round((new Date(d.done_at).getTime() - new Date(d.taken_at).getTime()) / 60000)) : null; return (
                 <li key={d.id} className="flex items-center gap-3 py-2.5 min-w-0">
                   <span className="shrink-0 min-w-11 grid place-items-center">{d.rooms?.number ? <FlapSpell text={d.rooms.number} size="xs" tile="26px" say={`Room ${d.rooms.number}`} /> : <span className="keycard h-10 w-11 grid place-items-center font-display text-[16px]">—</span>}</span>

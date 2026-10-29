@@ -93,9 +93,9 @@ export function DisplayLock({ lock }: { lock: ShownLock }) {
         <form className="space-y-4" data-lock-release onSubmit={(e) => { e.preventDefault(); unlock(); }}>
           <div className="flex items-start gap-3 rounded-[16px] bg-[var(--color-fill)] p-3.5">
             <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-bg-2)]"><ShieldCheck size={19} aria-hidden /></span>
-            <p className="text-[13.5px] leading-snug text-[var(--color-label-2)]">Locked to <b className="text-[var(--color-label)]">{lock.label}</b> — {view ? "view only" : "this page and its own steps"}. An owner, a general manager or a manager signs in here to unlock it. This device stays signed in as it is.</p>
+            <p className="text-[13.5px] leading-snug text-[var(--color-label-2)]">Locked to <b className="text-[var(--color-label)]">{lock.label}</b> — {view ? "view only" : "this page only"}. Manager unlocks.</p>
           </div>
-          <label className="block"><span className="block text-[13px] font-bold mb-1.5">Manager&apos;s sign-in ID or email</span>
+          <label className="block"><span className="block text-[13px] font-bold mb-1.5">Manager ID or email</span>
             <input value={login} onChange={(e) => setLogin(e.target.value)} autoCapitalize="none" autoComplete="off" data-lock-login /></label>
           <label className="block"><span className="block text-[13px] font-bold mb-1.5">Password</span>
             <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" data-lock-password /></label>

@@ -43,45 +43,45 @@ export function InstallPanel({ size = "md", url, others = "row" }: { size?: "md"
   let body: ReactNode;
   switch (shown) {
     case "installed":
-      body = <Done title="You're in the app">DineFlow is installed on this {name} and open as the app.</Done>;
+      body = <Done title="You're in the app" />;
       break;
     case "installed-here":
       body = <>
-        <Done title={`Installed on this ${name}`}>Open it from your <b>{iconHome(d)}</b> — the DineFlow icon. It opens on its own, without {browserName(b)} around it.</Done>
-        <button type="button" onClick={() => setAgain(true)} className="h-11 px-1 text-[13px] font-semibold text-[var(--color-tint)]" data-install-again>Not there? Install it again</button>
+        <Done title={`Installed on this ${name}`}>Open from your <b>{iconHome(d)}</b></Done>
+        <button type="button" onClick={() => setAgain(true)} className="h-11 px-1 text-[13px] font-semibold text-[var(--color-tint)]" data-install-again>Install again</button>
       </>;
       break;
     case "prompt":
       body = <Cta size={size} onClick={() => void install()} busy={busy} icon={<Download size={size === "lg" ? 22 : 20} />} title="Install DineFlow"
-        sub={busy ? `Answer ${browserName(b)}'s question…` : "One tap · no app store · updates itself"} data-install-now />;
+        sub={busy ? `Answer ${browserName(b)}'s question…` : "One tap · auto-updates"} data-install-now />;
       break;
     case "ios":
       body = <IosGuide ipad={d === "ipad"} browser={b} />;
       break;
     case "ios-safari-only":
-      body = <Card title="Open this page in Safari">
-        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">On iOS 16.3 or older, only Safari adds apps. Paste this address into Safari, or update the {name}.</p>
+      body = <Card title="Open in Safari">
+        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">iOS 16.3 or older: Safari only</p>
         <CopyRow url={address} />
       </Card>;
       break;
     case "inapp":
-      body = <Card title="This window can't install apps">
-        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">This opened inside another app. Tap <Glyph><MoreHorizontal size={13} /></Glyph> or the compass <Glyph><Compass size={13} /></Glyph>, then <b>Open in Safari</b> (or <b>Open in browser</b>). Or copy the address:</p>
+      body = <Card title="Can't install here">
+        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">Tap <Glyph><MoreHorizontal size={13} /></Glyph> or <Glyph><Compass size={13} /></Glyph> → <b>Open in Safari</b> or <b>browser</b>. Or copy:</p>
         <CopyRow url={address} />
       </Card>;
       break;
     case "mac-safari":
-      body = <Card title="In Safari on this Mac — two clicks">
+      body = <Card title="Safari — two clicks">
         <Steps>
-          <Step n={1} icon={<AppWindow size={17} />}>In the menu bar: <b>File</b> → <b>Add to Dock…</b> <span className="text-[var(--color-label-2)]">(or Share <Glyph><Share size={13} /></Glyph> → Add to Dock)</span></Step>
-          <Step n={2} icon={<Check size={17} />}>Click <b>Add</b> — DineFlow joins your Dock and Launchpad</Step>
+          <Step n={1} icon={<AppWindow size={17} />}><b>File</b> → <b>Add to Dock…</b> <span className="text-[var(--color-label-2)]">(or Share <Glyph><Share size={13} /></Glyph> → Add to Dock)</span></Step>
+          <Step n={2} icon={<Check size={17} />}>Click <b>Add</b></Step>
         </Steps>
-        <Hint>Needs macOS Sonoma or newer. No <b>Add to Dock</b>? Use Chrome or Edge.</Hint>
+        <Hint>Needs macOS Sonoma. Else Chrome or Edge.</Hint>
       </Card>;
       break;
     case "mac-old-safari":
-      body = <Card title="This Safari can't add apps">
-        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">Needs Safari 17 on macOS Sonoma or newer. Copy this into <b>Chrome</b> or <b>Edge</b>:</p>
+      body = <Card title="Safari too old">
+        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">Needs Safari 17. Copy into <b>Chrome</b> or <b>Edge</b>:</p>
         <CopyRow url={address} />
       </Card>;
       break;
@@ -97,35 +97,35 @@ export function InstallPanel({ size = "md", url, others = "row" }: { size?: "md"
             <Step n={3} icon={<Check size={17} />}>Tap <b>Add</b></Step>
           </Steps>
         </Card>
-        <a href={chromeHref(address)} className="h-11 inline-flex items-center gap-1.5 px-1 text-[13px] font-semibold text-[var(--color-tint)]" data-open-chrome>Or open it in Chrome <ChevronRight size={15} /></a>
+        <a href={chromeHref(address)} className="h-11 inline-flex items-center gap-1.5 px-1 text-[13px] font-semibold text-[var(--color-tint)]" data-open-chrome>Or use Chrome <ChevronRight size={15} /></a>
       </>;
       break;
     case "open-in-edge":
       body = <>
         <Cta size={size} href={edgeHref(address)} icon={<Globe size={size === "lg" ? 22 : 20} />} title="Open in Microsoft Edge"
-          sub="Built into Windows. Installs in one click" data-open-edge />
-        <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{browserName(b)} can&apos;t install apps. Or copy this into Chrome:</p>
+          sub="One-click install" data-open-edge />
+        <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{browserName(b)} can&apos;t install. Or copy into Chrome:</p>
         <CopyRow url={address} />
       </>;
       break;
     case "open-in-chrome":
       body = <>
         <Cta size={size} href={chromeHref(address)} icon={<Globe size={size === "lg" ? 22 : 20} />} title="Open in Chrome"
-          sub="Chrome installs DineFlow in one tap" data-open-chrome />
-        <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{b === "inapp" ? "This in-app window can't install apps." : `${browserName(b)} can't install apps.`} Or copy the address into Chrome:</p>
+          sub="One-tap install" data-open-chrome />
+        <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{b === "inapp" ? "This window can't install." : `${browserName(b)} can't install.`} Or copy into Chrome:</p>
         <CopyRow url={address} />
       </>;
       break;
     case "other-desktop":
-      body = <Card title={`${browserName(b)} can't install apps`}>
-        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">Open this page in <b>Chrome</b> or <b>Edge</b>{d === "mac" ? <>, or <b>Safari</b> (File → Add to Dock)</> : null} — copy the address:</p>
+      body = <Card title={`${browserName(b)} can't install`}>
+        <p className="text-[13.5px] text-[var(--color-label-2)] leading-snug">Copy into <b>Chrome</b> or <b>Edge</b>{d === "mac" ? <>, or <b>Safari</b> (File → Add to Dock)</> : null}:</p>
         <CopyRow url={address} />
       </Card>;
       break;
     default:
-      body = <Card title="Install from the browser's menu">
+      body = <Card title="Install from browser">
         <ul className="space-y-2 text-[13.5px] leading-snug">
-          <li><b>Chrome or Edge</b> — the install icon <Glyph><MonitorDown size={13} /></Glyph> at the right of the address bar</li>
+          <li><b>Chrome or Edge</b> — <Glyph><MonitorDown size={13} /></Glyph> in the address bar</li>
           <li><b>iPhone or iPad</b> — Safari → Share <Glyph><Share size={13} /></Glyph> → <b>Add to Home Screen</b></li>
           <li><b>Safari on a Mac</b> — File → <b>Add to Dock</b></li>
         </ul>
@@ -162,7 +162,7 @@ function MenuSteps({ env: { device: d, browser: b } }: { env: Env }) {
     </Card>;
     if (b === "edge") return <Card title="In Edge — three taps">
       <Steps>
-        <Step n={1} icon={<MoreHorizontal size={17} />}>Tap <Glyph><MoreHorizontal size={13} /></Glyph> at the bottom of the screen</Step>
+        <Step n={1} icon={<MoreHorizontal size={17} />}>Tap <Glyph><MoreHorizontal size={13} /></Glyph> at the bottom</Step>
         <Step n={2} icon={<Smartphone size={17} />}>Tap <b>Add to phone</b></Step>
         <Step n={3} icon={<Check size={17} />}>Tap <b>Install</b></Step>
       </Steps>
@@ -177,15 +177,15 @@ function MenuSteps({ env: { device: d, browser: b } }: { env: Env }) {
   }
   if (b === "edge") return <Card title="In Edge — two clicks">
     <Steps>
-      <Step n={1} icon={<MoreHorizontal size={17} />}>Click <Glyph><MoreHorizontal size={13} /></Glyph> at the top right → <b>Apps</b> → <b>Install DineFlow</b></Step>
-      <Step n={2} icon={<Check size={17} />}>Click <b>Install</b> — it opens in its own window{d === "windows" ? "; pin it to Start or the taskbar" : ""}</Step>
+      <Step n={1} icon={<MoreHorizontal size={17} />}>Click <Glyph><MoreHorizontal size={13} /></Glyph> → <b>Apps</b> → <b>Install DineFlow</b></Step>
+      <Step n={2} icon={<Check size={17} />}>Click <b>Install</b></Step>
     </Steps>
-    <Hint>Or the <b>App available</b> icon <Glyph><AppWindow size={13} /></Glyph> at the right of the address bar.</Hint>
+    <Hint>Or <b>App available</b> <Glyph><AppWindow size={13} /></Glyph> in the address bar</Hint>
   </Card>;
   return <Card title="In Chrome — two clicks">
     <Steps>
-      <Step n={1} icon={<MonitorDown size={17} />}>Click the install icon <Glyph><MonitorDown size={13} /></Glyph> at the right of the address bar</Step>
-      <Step n={2} icon={<Check size={17} />}>Click <b>Install</b> — it opens in its own window</Step>
+      <Step n={1} icon={<MonitorDown size={17} />}>Click <Glyph><MonitorDown size={13} /></Glyph> in the address bar</Step>
+      <Step n={2} icon={<Check size={17} />}>Click <b>Install</b></Step>
     </Steps>
     <Hint>No icon? <Glyph><MoreVertical size={13} /></Glyph> → <b>Cast, save and share</b> → <b>Install page as app</b>.</Hint>
   </Card>;
@@ -212,13 +212,13 @@ function Cta({ size, onClick, href, icon, title, sub, busy, ...data }:
     : <button type="button" onClick={onClick} disabled={busy} className={cls} style={shadow} {...data}>{inner}</button>;
 }
 
-function Done({ title, children }: { title: string; children: ReactNode }) {
+function Done({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="rounded-2xl bg-[var(--color-green-2)] p-4 flex items-start gap-3" data-installed>
       <span className="h-10 w-10 rounded-full bg-[var(--color-green)] text-[var(--color-on-tint)] grid place-items-center shrink-0"><Check size={20} strokeWidth={3} /></span>
       <div className="min-w-0 pt-0.5">
         <div className="font-semibold text-[15px] leading-tight">{title}</div>
-        <p className="text-[13.5px] text-[var(--color-label-2)] mt-1 leading-snug">{children}</p>
+        {children && <p className="text-[13.5px] text-[var(--color-label-2)] mt-1 leading-snug">{children}</p>}
       </div>
     </div>
   );

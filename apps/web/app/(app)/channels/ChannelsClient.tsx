@@ -93,8 +93,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
 
       {tab === "food" && (<div className="space-y-4">
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-          <b>How this works.</b> Give each link to the sender; orders show in <Link href="/online-orders" className="tap underline font-semibold">Online orders</Link>.
-          Swiggy, Zomato: paste it in UrbanPiper or Petpooja Connect.</div></Card>
+          <b>How it works.</b> Give each sender its link. Swiggy, Zomato: use UrbanPiper or Petpooja. Orders land in <Link href="/online-orders" className="tap underline font-semibold">Online orders</Link>.</div></Card>
         <div className="flex justify-end"><Button onClick={() => setEditOc({ kind: "swiggy", commission_pct: 22, prep_minutes: 20 })}><Plus size={16} /> Add channel</Button></div>
         {/* each delivery channel the way an OTA card is (2026-10-21 — the owner: "messy"): its initial in the
             platform's colour, name, commission and prep time, Live / Draft; the webhook as one field with Copy inside
@@ -102,7 +101,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
         <ul className="grid gap-3 md:grid-cols-2 [&>*]:min-w-0" aria-label="Delivery channels">{orderChannels.map((c) => {
           const hue = OC_HUE[c.kind] ?? "--color-blue"; const hook = `${base}/api/webhooks/aggregator/${c.webhook_token}`; const shown = hook.replace(/^https?:\/\//, "");
           const acts: StripAction[] = [
-            { key: "test", label: "Test order", icon: <Send />, tone: "go", disabled: pending, aria: `Send a test order · ${c.label}`, onClick: () => start(async () => { const r = await sendTestOrder(c.webhook_token, base); setMsg("error" in r ? r.error! : "Test order sent — open Online orders"); }) },
+            { key: "test", label: "Test order", icon: <Send />, tone: "go", disabled: pending, aria: `Send a test order · ${c.label}`, onClick: () => start(async () => { const r = await sendTestOrder(c.webhook_token, base); setMsg("error" in r ? r.error! : "Test order sent"); }) },
             { key: "menu", label: "Push menu", icon: <Upload />, disabled: pending, aria: `Push menu · ${c.label}`, onClick: () => start(async () => { const r = await pushChannel(c.id, "menu"); setMsg("error" in r ? r.error! : r.message!); }) },
             { key: "edit", label: "Edit", icon: <Pencil />, aria: `Edit · ${c.label}`, onClick: () => setEditOc(c) },
             { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", aria: `Remove · ${c.label}`, onClick: () => { if (confirm(`Remove ${c.label}?`)) start(async () => { const r = await deleteChannel(c.id); if ("error" in r) toast(r.error!, "err"); }); } },
@@ -136,14 +135,14 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
                 </button>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-steel" data-status>
-                {c.last_sync_at ? <><Check size={12} className="text-mint" /> Last order {new Date(c.last_sync_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</> : <><Clock size={12} /> No orders received yet</>}
+                {c.last_sync_at ? <><Check size={12} className="text-mint" /> Last order {new Date(c.last_sync_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</> : <><Clock size={12} /> No orders yet</>}
               </div>
             </div>
             <CardStrip actions={acts} data-actions />
           </li>); })}
           {orderChannels.length === 0 && <li className="text-sm text-steel">No delivery channels yet.</li>}</ul>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Test it right now</div>
-          <p className="text-sm text-steel">Press <b>Test order</b> on a channel; it shows in Online orders. From outside the app:</p>
+          <p className="text-sm text-steel">Tap <b>Test order</b> above. Or from outside:</p>
           <pre className="mt-2 text-[11px] num bg-porcelain-2 rounded-xl p-3 !whitespace-pre-wrap [overflow-wrap:anywhere]">{`curl -X POST '${base}/api/webhooks/aggregator/<token>' \\
   -H 'content-type: application/json' \\
   -d '{"id":"TEST-1","customer_name":"Ravi","total":560,
@@ -152,8 +151,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
 
       {tab === "rooms" && (<div className="space-y-4">
         <Card className="!bg-sky-2 flex items-start gap-3"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-          <b>Two ways to stop double-bookings.</b> <b>iCal</b> (Airbnb, Booking.com, Agoda, MakeMyTrip): swap calendar links both ways. Syncs 2:30 am daily.
-          <b> API</b> mode (live rates) needs a certified link.</div></Card>
+          <b>iCal:</b> swap links both ways · syncs 2:30 am daily. <b>API:</b> live rates, needs certification.</div></Card>
         {/* The OTAs as cards, one per channel (they were rows of one list, each with four loose buttons).
             The grid sizes itself from its own width (@container): one card across below a 64rem list (a
             phone, an iPad upright) — so three channels never leave one alone — and from 64rem (an iPad on
@@ -233,12 +231,12 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
         </section>
         <Card><div className="flex items-center gap-2"><Globe size={16} /><b>Your own booking page</b><Pill tone="ready">0% commission</Pill></div>
           <div className="mt-2 flex gap-2 min-w-0"><input readOnly className="num text-xs min-w-0" value={bookingUrl} /><Button size="sm" variant="outline" onClick={() => copy(bookingUrl)}><Copy size={14} /></Button><a href={bookingUrl} target="_blank" rel="noreferrer"><Button size="sm"><ExternalLink size={14} /> Open</Button></a></div>
-          <p className="text-xs text-steel mt-2">Share it anywhere. Bookings go to Front desk.</p></Card>
+          <p className="text-xs text-steel mt-2">Bookings → Front desk</p></Card>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Sync log</div><ul className="text-sm space-y-1">{log.map((l) => <li key={l.id} className="flex gap-2"><span className="num text-xs text-steel w-28">{new Date(l.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span><Pill tone={l.ok ? "ready" : "alert"}>{l.direction}</Pill><span className="flex-1">{l.message}</span></li>)}{log.length === 0 && <li className="text-steel">Nothing yet.</li>}</ul></Card>
       </div>)}
 
       {tab === "calendar" && <RateCalendar avail={avail} types={types} onSave={(a) => start(async () => { const r = await setRates(a.rt, a.from, a.to, a.rate, a.open, a.stop, a.min); if ("error" in r) setErr(r.error!); else setMsg("Calendar updated"); })}
-        onApply={(rt, nights) => start(async () => { const r = await setRatesOnly(rt, nights); if ("error" in r) setErr(r.error!); else setMsg(`${r.n} night${r.n === 1 ? "" : "s"} repriced — push rates to send them to your channels`); })} pending={pending} />}
+        onApply={(rt, nights) => start(async () => { const r = await setRatesOnly(rt, nights); if ("error" in r) setErr(r.error!); else setMsg(`${r.n} night${r.n === 1 ? "" : "s"} repriced — push rates`); })} pending={pending} />}
       {err && <p className="text-sm text-chili">{err}</p>}
 
       <Sheet open={!!editOc} onClose={() => setEditOc(null)} title={editOc?.id ? editOc.label ?? "" : "Add delivery channel"}>
@@ -246,10 +244,10 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
           {editOc?.id && <input type="hidden" name="id" value={editOc.id} />}
           <div className="grid grid-cols-2 gap-3"><Field label="Platform"><select name="kind" defaultValue={editOc?.kind ?? "swiggy"}><option value="swiggy">Swiggy</option><option value="zomato">Zomato</option><option value="ondc">ONDC</option><option value="website">My website</option><option value="other">Other</option></select></Field>
             <Field label="Label"><input name="label" defaultValue={editOc?.label} required placeholder="Swiggy — Main outlet" /></Field>
-            <Field label="Outlet id at the platform"><input name="outlet_ref" className="num" defaultValue={editOc?.outlet_ref ?? ""} /></Field>
+            <Field label="Outlet ID"><input name="outlet_ref" className="num" defaultValue={editOc?.outlet_ref ?? ""} /></Field>
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOc?.commission_pct ?? 22} /></Field>
             <Field label="Prep time (min)"><input name="prep_minutes" type="number" className="num" defaultValue={editOc?.prep_minutes ?? 20} /></Field></div>
-          <Field label="Partner API base (optional)" hint="Only if you have partner credentials"><input name="api_base" defaultValue={editOc?.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
+          <Field label="Partner API base (optional)" hint="Partner accounts only"><input name="api_base" defaultValue={editOc?.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
           <Field label="API key (optional)" hint={editOc?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOc?.has_api_key ? "Saved" : "••••••"} /></Field>
           <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="auto_accept" defaultChecked={editOc?.auto_accept} /> Auto-accept matched orders</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_live" defaultChecked={editOc?.is_live} /> Live</label></div>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
@@ -262,10 +260,10 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <Field label="Mode"><select name="mode" defaultValue={editOta?.mode ?? "ical"}><option value="ical">iCal (works today)</option><option value="api">API (needs credentials)</option></select></Field>
             <Field label="Room type"><select name="room_type_id" defaultValue={editOta?.room_type_id ?? ""}><option value="">All types</option>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOta?.commission_pct ?? 15} /></Field>
-            <Field label="Rate offset %" hint="Higher on OTAs protects direct rates"><input name="rate_offset_pct" type="number" step="0.1" className="num" defaultValue={editOta?.rate_offset_pct ?? 0} /></Field></div>
-          <Field label="Their calendar link (iCal import)"><input name="import_url" className="num text-xs min-w-0" defaultValue={editOta?.import_url ?? ""} placeholder="https://ical.booking.com/v1/export?t=..." /></Field>
+            <Field label="Rate offset %" hint="Higher protects direct rates"><input name="rate_offset_pct" type="number" step="0.1" className="num" defaultValue={editOta?.rate_offset_pct ?? 0} /></Field></div>
+          <Field label="Their iCal link"><input name="import_url" className="num text-xs min-w-0" defaultValue={editOta?.import_url ?? ""} placeholder="https://ical.booking.com/v1/export?t=..." /></Field>
           <Field label="API base (API mode)"><input name="api_base" defaultValue={editOta?.api_base ?? ""} /></Field>
-          <div className="grid grid-cols-2 gap-3"><Field label="Property id at the OTA"><input name="hotel_ref" className="num" defaultValue={editOta?.hotel_ref ?? ""} /></Field><Field label="API key" hint={editOta?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOta?.has_api_key ? "Saved" : "••••••"} /></Field></div>
+          <div className="grid grid-cols-2 gap-3"><Field label="Property ID"><input name="hotel_ref" className="num" defaultValue={editOta?.hotel_ref ?? ""} /></Field><Field label="API key" hint={editOta?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOta?.has_api_key ? "Saved" : "••••••"} /></Field></div>
           <label className="flex items-center gap-2 text-sm normal-case"><input type="checkbox" name="is_live" defaultChecked={editOta?.is_live} /> Live</label>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
       </Sheet>
@@ -307,8 +305,8 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
         <div className="feather p-4 flex flex-wrap items-center gap-3">
           <span className="h-10 w-10 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-[var(--color-tint)]"><Wand2 size={18} /></span>
           <div className="flex-1 min-w-[12rem]">
-            <div className="text-[15px] font-semibold">{moves.length ? `Suggested rates for ${moves.length} night${moves.length === 1 ? "" : "s"}` : "Rates look right for the next 14 nights"}</div>
-            <div className="text-xs text-steel">{moves.length ? `${ups} up, ${moves.length - ups} down — from bookings so far.` : "Tips show for nearly full or empty nights."}</div>
+            <div className="text-[15px] font-semibold">{moves.length ? `Suggested rates · ${moves.length} night${moves.length === 1 ? "" : "s"}` : "Rates look right"}</div>
+            <div className="text-xs text-steel">{moves.length ? `${ups} up, ${moves.length - ups} down` : "Next 14 nights"}</div>
           </div>
           {moves.length > 0 && <Button disabled={pending} onClick={() => onApply(sel, moves.map((d) => ({ date: d.stay_date, rate: hints[d.stay_date]!.rate })))}>Use suggested rates</Button>}
         </div>
@@ -318,14 +316,14 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
           to 4.5k so seven columns still fit; tap a night, then a later one, to set the bulk dates. */}
       <div className="feather p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3 px-1">
-          <div className="min-w-0"><span className="text-[15px] font-semibold">{span}</span><span className="text-xs text-steel ml-2">{shown.length} nights · tap two to pick dates</span></div>
+          <div className="min-w-0"><span className="text-[15px] font-semibold">{span}</span><span className="text-xs text-steel ml-2">{shown.length} nights · tap two dates</span></div>
           <div className="ml-auto flex items-center gap-3 text-[11px] text-steel">
             <span className="inline-flex items-center gap-1 text-[var(--color-green)] font-semibold"><TrendingUp size={12} /> raise</span>
             <span className="inline-flex items-center gap-1 text-[var(--color-orange)] font-semibold"><TrendingDown size={12} /> lower</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-[3px] w-4 rounded-full bg-[var(--color-tint)]" /> booked</span>
           </div>
         </div>
-        {days.length === 0 ? <p className="text-sm text-steel px-1">Add room types and rooms first.</p> : (
+        {days.length === 0 ? <p className="text-sm text-steel px-1">Add rooms first</p> : (
           <>
           <div className="hidden sm:grid grid-cols-[repeat(7,minmax(0,1fr))] gap-1.5">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
@@ -403,9 +401,9 @@ function RateCalendar({ avail, types, onSave, onApply, pending }: { avail: Av[];
           </div>
           </>
         )}
-        {days.length > 14 && <div className="mt-3 flex justify-center"><Button variant="outline" size="sm" onClick={() => setAll(!all)}>{all ? "Show the next 14 nights" : `Show all ${days.length} nights`}</Button></div>}
+        {days.length > 14 && <div className="mt-3 flex justify-center"><Button variant="outline" size="sm" onClick={() => setAll(!all)}>{all ? "Show 14 nights" : `Show all ${days.length} nights`}</Button></div>}
       </div>
-      <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Bulk update — sent to every channel</div>
+      <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-3">Bulk update · all channels</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
           <Field label="From"><input type="date" className="num" value={bulk.from} onChange={(e) => setBulk({ ...bulk, from: e.target.value })} /></Field>
           <Field label="To"><input type="date" className="num" value={bulk.to} onChange={(e) => setBulk({ ...bulk, to: e.target.value })} /></Field>

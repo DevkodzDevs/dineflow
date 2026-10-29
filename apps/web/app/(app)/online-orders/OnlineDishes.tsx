@@ -62,7 +62,7 @@ export function OnlineDishes({ dishes, canEdit }: { dishes: OnlineDish[]; canEdi
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Dishes online">
         <div className="space-y-4" data-online-sheet>
-          <p className="text-[14px] text-[var(--color-label-2)]">Off online = till and tables only.</p>
+          <p className="text-[14px] text-[var(--color-label-2)]">Off = in-house only</p>
           {!canEdit && <p className="flex items-center gap-2 rounded-2xl bg-[var(--color-fill)] px-3.5 py-3 text-[13.5px]" data-online-locked><Lock size={15} aria-hidden className="shrink-0" />Chef, manager or online supervisor only.</p>}
           <label className="flex items-center gap-2 h-12 rounded-2xl bg-[var(--color-fill)] px-3.5">
             <Search size={17} aria-hidden className="text-[var(--color-label-3)] shrink-0" />

@@ -31,7 +31,7 @@ ticks what they did, with their name and the time, and a missed day shows.
 - **Checklists**: `checklist_save` (owner, manager, supervisor) keeps up to 40 duties as `text[]`;
   `checklist_tick` writes today's (IST) `checklist_runs` row, keyed by duty position, with who and when, and sets
   `completed_at` when every duty is ticked (an untick clears it). The card shows a progress bar, 56px duty rows
-  and the last seven days as dots. *Start with Opening & Closing* writes two starter lists when there are none.
+  and the last seven days as dots. *Add starter lists* writes two starter lists when there are none.
 
 - **Each person sees the lists for their job (0122, 2026-10-20 — the owner's "a front-desk person sees only the
   front-desk checklists").** `checklists.departments` (department keys from `positions.ts`; empty = everyone). A person's
@@ -84,7 +84,7 @@ node batch2.mjs     # 40 checks on a throwaway demo — see testing-and-gates.md
     editor the staff as `{ d, j, p }` (no names) so **Who is this for** can say how many people a mix reaches. The
     editor groups the choices under Teams / Jobs / Positions (`[data-for-kind]`, `[data-tag]`; teams keep
     `[data-dept]`). A job chip is a briefcase in blue, a position a badge in its team's colour. The owner's filter
-    offers every tag in use; anyone else reads "Your lists — the ones for everyone and for" their team, job and position.
+    offers every tag in use; anyone else reads "For everyone and" their team, job and position.
 - **A team the property kind does not list is still a choice** (2026-10-20). A restaurant's front-desk host reads as
   Front office (`myDept`: the role's department), which `hierarchyFor('restaurant')` does not list — their lists had
   no filter chip and the card printed the bare key "front office". `page.tsx` now adds any `DEPARTMENTS` entry that
@@ -109,3 +109,6 @@ node batch2.mjs     # 40 checks on a throwaway demo — see testing-and-gates.md
 - **A checklist's head on a phone (2026-10-26).** Beside the ring and the pencil the name wrapped to two lines. Under sm the name
   keeps one line, the ring is left to sm+, and under the head runs `[data-list-progress]`: the done count on a split-flap, "/ 4
   done", a slim bar and the percent (green when all are done, amber while some are, grey at none).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

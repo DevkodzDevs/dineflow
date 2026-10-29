@@ -137,7 +137,7 @@ migration's text) decides whether the screen shows switches; anyone else (a cash
 reason (`[data-online-locked]`). A chef, who does not hold Online orders, switches it from Menu (menu.md). The website:
 `dine_storefront` carries `online` per dish; for delivery and takeaway an off-online dish shows *not online* with no Add
 (`[data-not-sold="online"]`) and leaves the basket on switching mode; `dine_order` skips it except `dine_in`. An aggregator
-keeps its own menu and can still send one: a new order's card says *Off online: X. Reject, or accept if you can make it.*
+keeps its own menu and can still send one: a new order's card says *Off online: X. Can you make it?*
 (`[data-off-online]`). Probe `online56.mjs` (16), dry run `dry132.cjs` (12).
 
 ## Before you edit
@@ -210,11 +210,11 @@ and reaches the kitchen.
 - **Delivery channel cards, redesigned (2026-10-21 — the owner: "messy").** Each order channel (`[data-oc]`) is now built
   like an OTA card: its initial in the platform's colour (`OC_HUE`: Swiggy orange, Zomato red, ONDC violet, website
   tint), name, commission · prep minutes · auto-accept, a Live / Draft badge; the webhook as one field (`[data-webhook]`)
-  with Copy inside it and the address's end kept in view; last order or *No orders received yet*; and the footer strip
+  with Copy inside it and the address's end kept in view; last order or *No orders yet*; and the footer strip
   (`CardStrip`: **Test order** · Push menu · Edit · Remove). Were outline buttons wrapping under a read-only input.
 
 - **A dish the channel sent that is not on the menu is a callout** (`[data-unmatched]`, 2026-10-21): an icon tile, *n
-  dish(es) not on your menu*, why it matters, and a red **Map now** pill (`[data-map-now]`) — was one wrapped line of
+  dish(es) not on menu*, why it matters, and a red **Map now** pill (`[data-map-now]`) — was one wrapped line of
   red text with an underlined link.
 
 ## Online orders on and off (2026-10-23, 0133)
@@ -269,3 +269,6 @@ who rides (`rider_id`, a staff member, or `rider_name` / `rider_phone`), where t
   go onto the ticket (`orders.discount_amount`, `extra_charges`) and so onto the bill; an aggregator's figures do not. An
   order through Swiggy, Zomato or ONDC is billed without GST (section 9(5)) and without a service charge by default
   (billing-and-invoices.md).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

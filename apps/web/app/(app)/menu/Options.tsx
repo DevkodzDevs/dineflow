@@ -19,8 +19,8 @@ export function OptionsEditor({ itemId, itemName, variants, groups, linked, onDo
   return (
     <div className="space-y-6">
       <section>
-        <div className="flex items-baseline justify-between gap-3 mb-2"><div className="text-xs font-semibold uppercase tracking-wide text-steel">Sizes</div><span className="text-[11px] text-steel">Half / Full — each with a price</span></div>
-        {rows.length === 0 && <p className="text-sm text-steel mb-2">One size, at the dish&apos;s price.</p>}
+        <div className="flex items-baseline justify-between gap-3 mb-2"><div className="text-xs font-semibold uppercase tracking-wide text-steel">Sizes</div><span className="text-[11px] text-steel">Price per size</span></div>
+        {rows.length === 0 && <p className="text-sm text-steel mb-2">One size only</p>}
         <div className="space-y-2">
           {rows.map((r, i) => (
             <div key={i} className="flex flex-wrap items-center gap-2">
@@ -36,7 +36,7 @@ export function OptionsEditor({ itemId, itemName, variants, groups, linked, onDo
           <Button variant="outline" size="sm" onClick={() => setRows([...rows, { name: "", price: 0, is_default: rows.length === 0 }])}><Plus size={14} /> Size</Button>
           {rows.length === 0 && <Button variant="outline" size="sm" onClick={() => setRows([{ name: "Half", price: 0, is_default: false }, { name: "Full", price: 0, is_default: true }])}>Half / Full</Button>}
         </div>
-        {rows.length > 0 && <p className="text-[11px] text-steel mt-2">Tick = default. Dish price is ignored.</p>}
+        {rows.length > 0 && <p className="text-[11px] text-steel mt-2">Tick = default</p>}
       </section>
       <section>
         <div className="flex items-baseline justify-between mb-2"><div className="text-xs font-semibold uppercase tracking-wide text-steel">Add-on groups</div><button type="button" onClick={onManageGroups} className="text-[11px] font-semibold underline text-steel">Manage groups</button></div>
@@ -95,7 +95,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
                     <button type="button" className="icon-btn icon-btn-danger" onClick={() => start(async () => { const r = await deleteAddon(a.id); if ("error" in r) toast(r.error!, "err"); })} aria-label="Remove"><Trash2 size={14} /></button>
                   </div>
                 ))}
-                {g.addons.length === 0 && <p className="px-3 py-2 text-xs text-steel">No add-ons in this group yet.</p>}
+                {g.addons.length === 0 && <p className="px-3 py-2 text-xs text-steel">No add-ons yet</p>}
               </div>
               <form className="rounded-xl bg-[var(--color-fill)] p-3 space-y-2" action={(fd) => start(async () => { const r = await saveAddon(fd); if (r && "error" in r) toast(r.error!, "err"); })}>
                 <input type="hidden" name="group_id" value={g.id} />
@@ -112,7 +112,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
               </form>
               {categories.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2 text-xs text-steel">
-                  <span>Offer this on every dish in</span>
+                  <span>Add to category</span>
                   <select className="!h-9 !py-0 min-w-[12rem] text-xs" defaultValue="" onChange={(e) => { const cid = e.target.value; if (!cid) return; e.target.value = ""; start(async () => { const r = await addGroupToCategory(cid, g.id); if ("error" in r) toast(r.error!, "err"); else toast(`Added to ${r.dishes} dish${r.dishes === 1 ? "" : "es"}`); }); }}>
                     <option value="">choose a category</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -131,7 +131,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
           <div className="w-[5.5rem]"><Field label="Max"><input name="max_select" type="number" min={0} className="num" defaultValue={0} /></Field></div>
           <Button disabled={pending} aria-label="Add group"><Plus size={16} /></Button>
         </div>
-        <p className="text-[11px] text-steel mt-2">Min 1 · Max 1 = must pick one. Min 0 · Max 0 = any extras.</p>
+        <p className="text-[11px] text-steel mt-2">1/1 = required · 0/0 = any</p>
       </form>
     </div>
   );
@@ -141,7 +141,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
 export function ComboParts({ items, rows, onChange }: { items: { id: string; name: string }[]; rows: { menu_item_id: string; qty: number }[]; onChange: (rows: { menu_item_id: string; qty: number }[]) => void }) {
   return (
     <div className="rounded-xl bg-[var(--color-fill)] p-3 space-y-2">
-      <div className="text-[11px] text-steel">Parts go to the kitchen · price above.</div>
+      <div className="text-[11px] text-steel">Parts go to kitchen</div>
       {rows.map((r, i) => (
         <div key={i} className="flex flex-wrap items-center gap-2">
           <select value={r.menu_item_id} onChange={(e) => onChange(rows.map((x, j) => (j === i ? { ...x, menu_item_id: e.target.value } : x)))}><option value="">Choose a dish</option>{items.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>

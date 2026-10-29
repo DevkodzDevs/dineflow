@@ -78,7 +78,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
 
   return (
     <div className="space-y-5">
-      <SvcHead icon="pantry" title="Pantry" sub="Red and orange need buying"
+      <SvcHead icon="pantry" title="Pantry" sub="Buy red and orange"
         actions={<>
           <Link href="/inventory/leaks" className="svc-btn quiet sm"><Droplets size={17} aria-hidden /> Leak finder</Link>
           <button type="button" className="svc-btn go sm !px-5" onClick={() => setPurchase(true)} data-goods-arrived><Truck size={19} aria-hidden /><Say w="goods_arrived" /></button>
@@ -95,13 +95,13 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           </button>); })}
       </div>
       {tab === "stock" && <div className="flex items-center justify-end gap-2">
-        {ingredients.length > 0 && <ViewSwitch label="Show stock as" data="pantry" shown={shownAs} onPick={lay.pick} saved={lay.saved} onKeep={(v) => { lay.keep(v); toast(v === "table" ? "The table is your default here" : "Cards are your default here"); }}
+        {ingredients.length > 0 && <ViewSwitch label="Show stock as" data="pantry" shown={shownAs} onPick={lay.pick} saved={lay.saved} onKeep={(v) => { lay.keep(v); toast(v === "table" ? "Table set as default" : "Cards set as default"); }}
           options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} />}
         <Button variant="outline" className="[@media(pointer:coarse)]:!min-h-11 max-sm:w-full" onClick={() => setEditing({ unit: "kg", reorder_level: 0, cost_per_unit: 0 })}><Plus size={16} /> Ingredient</Button>
       </div>}
 
       {tab === "stock" && (ingredients.length === 0 ? (
-        <Empty title="Pantry is empty" hint="Add items, then record stock" />
+        <Empty title="Pantry is empty" hint="Add your first item" />
       ) : (<>
         {/* three big tiles: how many are finished, running low, enough — tap one to see only those */}
         <div className="grid grid-cols-3 gap-2.5 sm:gap-3" data-levels>
@@ -119,8 +119,8 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           return (
           <div className="rounded-2xl border border-[var(--color-orange)]/35 bg-[color-mix(in_srgb,var(--color-orange)_8%,var(--color-bg-2))] px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2" data-low-strip data-listed={listed.length} data-unset={unset.length}>
             <div className="flex-1 min-w-[12rem] text-[13px] text-[var(--color-label-2)]">
-              {listed.length > 0 && <><b className="text-[var(--color-label)]">{listed.length} on Tomorrow&apos;s buy list</b>, topped up to twice the level.</>}
-              {unset.length > 0 && <> {unset.length} {unset.length === 1 ? "has" : "have"} no reorder level — tap the pencil.</>}
+              {listed.length > 0 && <b className="text-[var(--color-label)]">{listed.length} on Tomorrow&apos;s buy list</b>}
+              {unset.length > 0 && <>{listed.length > 0 ? " · " : ""}{unset.length} {unset.length === 1 ? "needs" : "need"} a reorder level</>}
             </div>
             <div className="flex gap-2 shrink-0">
               <Link href="/tomorrow" className="btn btn-gray !h-10 !px-3.5 !text-[13px]">Tomorrow&apos;s list</Link>
@@ -129,10 +129,10 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           </div>
         ); })()}
         <div className="relative" data-pantry-search><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find an item — or type its barcode" aria-label="Find an item" className="!h-14 !rounded-[18px] !pl-12 !pr-14 !text-[16px]" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Item or barcode" aria-label="Find an item" className="!h-14 !rounded-[18px] !pl-12 !pr-14 !text-[16px]" />
           <Link href="/scan" aria-label="Scan a barcode" title="Scan a barcode" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:right-1.5 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]"><ScanBarcode size={19} /></Link>
         </div>
-        <div className="text-[12.5px] text-steel -mt-2">Stock value <b className="num text-[var(--color-label)]">{formatINR(value)}</b> at last purchase cost · {ingredients.length} items</div>
+        <div className="text-[12.5px] text-steel -mt-2">Stock value <b className="num text-[var(--color-label)]">{formatINR(value)}</b> · {ingredients.length} items</div>
         <div className={cn(layout === "table" && "hidden", layout === "auto" && "md:hidden")} data-pantry-cards>
         {/* A phone: a list, one row per item — its picture in its state's colour, the name, the amount big with
             how it stands, a thin bar against three times the reorder level, and two square buttons: + (Add
@@ -199,7 +199,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
         </div>
       </>))}
 
-      {tab === "purchases" && (purchases.length === 0 ? <Empty title="No purchases recorded" hint="Bills add stock to the pantry" /> : (
+      {tab === "purchases" && (purchases.length === 0 ? <Empty title="No purchases recorded" hint="Bills add stock" /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {purchases.map((p) => (
             <Card key={p.id}><div className="flex justify-between"><div><div className="font-semibold">{p.supplier || "Supplier"}</div><div className="text-xs text-steel">{p.invoice_no ? `Inv ${p.invoice_no} · ` : ""}{fmtDate(p.purchased_at)}{p.po_id ? " · against an order" : ""}</div></div><div className="num font-semibold">{formatINR(Number(p.total))}</div></div></Card>
@@ -213,7 +213,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
 
       {tab === "ledger" && (
         <div className="feather divide-y divide-line">
-          {ledger.length === 0 && <p className="p-6 text-sm text-steel">Every stock change shows here.</p>}
+          {ledger.length === 0 && <p className="p-6 text-sm text-steel">No stock changes yet</p>}
           {ledger.map((l) => (
             <div key={l.id} className="flex items-center gap-3 px-4 py-3 text-sm">
               <span className={cn("num font-semibold w-24 text-right", Number(l.qty) < 0 ? "text-chili" : "text-ink")}>{Number(l.qty) > 0 ? "+" : ""}{Number(l.qty).toFixed(3)} {byId[l.ingredient_id]?.unit}</span>
@@ -242,9 +242,9 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           <div className="grid grid-cols-3 gap-3">
             <Field label="Category"><select name="category" defaultValue={editing?.category ?? "grocery"}>{INGREDIENT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></Field>
             <Field label="Brand"><input name="brand" defaultValue={editing?.brand ?? ""} /></Field>
-            <Field label="Pack qty" hint="one pack or scan adds"><input name="pack_qty" type="number" step="0.001" className="num" defaultValue={editing?.pack_qty ?? ""} /></Field>
+            <Field label="Pack qty" hint="Per pack or scan"><input name="pack_qty" type="number" step="0.001" className="num" defaultValue={editing?.pack_qty ?? ""} /></Field>
           </div>
-          <Field label="Barcode" hint="Fill from the Scan page"><input name="barcode" className="num" defaultValue={editing?.barcode ?? ""} /></Field>
+          <Field label="Barcode" hint="From Scan page"><input name="barcode" className="num" defaultValue={editing?.barcode ?? ""} /></Field>
           {editing?.id && <PriceHistoryPanel id={editing.id} unit={editing.unit ?? ""} />}
           {err && <p className="text-sm text-chili">{err}</p>}
           <div className="flex gap-2"><Button className="flex-1" disabled={pending}>Save</Button>
@@ -258,7 +258,7 @@ export function InventoryClient({ ingredients, ledger, purchases, suppliers = []
           <p className="text-sm text-steel">Currently <b className="num">{Number(move?.current_stock).toFixed(2)} {move?.unit}</b></p>
           <Field label="Reason"><select name="reason" value={reason} onChange={(e) => setReason(e.target.value)}><option value="opening">Opening balance</option><option value="adjustment">Adjustment (count correction)</option><option value="wastage">Wastage / spoilage</option></select></Field>
           {reason === "wastage"
-            ? <Field label="Why was it wasted" hint="the Wastage tab sums these up"><select name="sub_reason" defaultValue="spoilage">{WASTE_REASONS.map((w) => <option key={w} value={w}>{w}</option>)}</select></Field>
+            ? <Field label="Why was it wasted"><select name="sub_reason" defaultValue="spoilage">{WASTE_REASONS.map((w) => <option key={w} value={w}>{w}</option>)}</select></Field>
             : <Field label="Direction (for adjustment)"><select name="direction" defaultValue="in"><option value="in">Add to stock</option><option value="out">Remove from stock</option></select></Field>}
           <Field label={`Quantity (${move?.unit})`}><input name="qty" type="number" step="0.001" min="0" required className="num" /></Field>
           <Field label="Note"><input name="note" placeholder={reason === "wastage" ? "Fridge off overnight" : "Recounted after delivery"} /></Field>
@@ -325,7 +325,7 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
         <span className="h-12 w-12 rounded-2xl grid place-items-center shrink-0 bg-[var(--color-green-2)] text-[var(--color-green)]">{reading ? <Loader2 size={22} className="animate-spin" /> : <ScanText size={22} />}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-semibold">{reading ? "Reading the bill…" : readNote ? "Scan another bill" : "Scan the supplier bill"}</span>
-          <span className="block text-xs text-[var(--color-label-2)] mt-0.5">Take a photo, then check it.</span>
+          <span className="block text-xs text-[var(--color-label-2)] mt-0.5">Photo, then check</span>
         </span>
         <span className="hidden sm:inline-flex shrink-0 items-center gap-1.5 h-10 px-4 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] text-sm font-semibold"><Camera size={15} /> Take photo</span>
         <input type="file" accept="image/*" capture="environment" className="sr-only !w-px !h-px !min-w-0 !p-0 !border-0" disabled={reading}
@@ -340,13 +340,13 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
             {readNote.sample && <Pill tone="gold">sample</Pill>}
           </div>
           <div className="px-4 py-3 space-y-3 text-xs">
-            <p className="text-[var(--color-label-2)]">Check each item below before adding.{readNote.sample ? " Sample only: ask support to enable." : ""}</p>
+            <p className="text-[var(--color-label-2)]">Check before adding.{readNote.sample ? " Sample only — ask support." : ""}</p>
             {readNote.unmatched.length > 0 && (
               <div>
-                <div className="flex items-center gap-1.5 font-semibold text-[var(--color-orange)]"><AlertTriangle size={13} className="shrink-0" /> Not in your pantry yet</div>
+                <div className="flex items-center gap-1.5 font-semibold text-[var(--color-orange)]"><AlertTriangle size={13} className="shrink-0" /> Not in pantry</div>
                 <div className="flex flex-wrap gap-1.5 mt-2">{readNote.unmatched.map((l, k) => (
                   <span key={k} className="inline-flex items-center h-7 px-2.5 rounded-full bg-[color-mix(in_srgb,var(--color-orange)_14%,transparent)] text-[var(--color-orange)] font-semibold">{l.name} · {l.qty} × ₹{l.unit_cost}</span>))}</div>
-                <p className="text-[var(--color-label-2)] mt-2">Add them as ingredients first.</p>
+                <p className="text-[var(--color-label-2)] mt-2">Add as ingredients first</p>
               </div>
             )}
           </div>
@@ -390,7 +390,7 @@ function PurchaseForm({ ingredients, suppliers, onDone }: { ingredients: IngRow[
       </div>
 
       <div className="flex items-end justify-between gap-3 border-t border-[var(--color-separator)] pt-4">
-        <span><span className="block text-sm text-steel">Total</span><span className="block text-xs text-[var(--color-label-2)]">{count} item{count === 1 ? "" : "s"} · added to stock at these costs</span></span>
+        <span><span className="block text-sm text-steel">Total</span><span className="block text-xs text-[var(--color-label-2)]">{count} item{count === 1 ? "" : "s"} · at these costs</span></span>
         <span className="num font-display text-[26px] leading-none">{formatINR(total)}</span>
       </div>
       {err && <p className="text-sm text-chili">{err}</p>}

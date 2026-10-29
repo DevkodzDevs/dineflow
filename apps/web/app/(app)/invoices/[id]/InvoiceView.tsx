@@ -55,9 +55,9 @@ export function InvoiceView({ inv, restaurant, cashier }: { inv: Inv; restaurant
         {comp && <div className="mt-6 text-xs font-semibold">{COMPOSITION_NOTE}</div>}
         <div className="mt-8 flex justify-between text-xs text-steel"><span>Issued by {cashier}</span><span>Thank you — {restaurant.name}</span></div>
       </motion.div>
-      <Sheet open={edit} onClose={() => setEdit(false)} title="Guest details on invoice">
+      <Sheet open={edit} onClose={() => setEdit(false)} title="Guest details">
         <form className="space-y-4" action={(fd) => start(async () => { const r = await updateInvoiceGuest(inv.id, { name: String(fd.get("name")), phone: String(fd.get("phone")), gstin: String(fd.get("gstin")) }); if ("error" in r) return void toast(r.error!, "err"); setEdit(false); })}>
-          <Field label="Name"><input name="name" defaultValue={inv.guest_name ?? ""} /></Field><Field label="Phone"><input name="phone" defaultValue={inv.guest_phone ?? ""} /></Field><Field label="Guest GSTIN (for B2B input credit)"><input name="gstin" className="num uppercase" defaultValue={inv.guest_gstin ?? ""} /></Field>
+          <Field label="Name"><input name="name" defaultValue={inv.guest_name ?? ""} /></Field><Field label="Phone"><input name="phone" defaultValue={inv.guest_phone ?? ""} /></Field><Field label="Guest GSTIN (B2B)"><input name="gstin" className="num uppercase" defaultValue={inv.guest_gstin ?? ""} /></Field>
           <Button className="w-full" disabled={pending}>Save</Button></form>
       </Sheet>
     </div>

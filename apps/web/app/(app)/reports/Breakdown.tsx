@@ -35,8 +35,8 @@ export function BreakdownView({ d }: { d: Breakdown | null }) {
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-[1.4fr_minmax(0,1fr)]">
         <Card>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 mb-3"><h3 className="text-xl">Sales by hour</h3><span className="text-xs text-steel">when the money comes in · {d.days} day{d.days === 1 ? "" : "s"}</span></div>
-          {lit.length === 0 ? <p className="text-sm text-steel">No paid bills in this window.</p> : <HourChart day={day} maxHour={maxHour} />}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 mb-3"><h3 className="text-xl">Sales by hour</h3><span className="text-xs text-steel">{d.days} day{d.days === 1 ? "" : "s"}</span></div>
+          {lit.length === 0 ? <p className="text-sm text-steel">No paid bills</p> : <HourChart day={day} maxHour={maxHour} />}
         </Card>
         <Card>
           <h3 className="text-xl mb-3">By order type</h3>
@@ -46,7 +46,7 @@ export function BreakdownView({ d }: { d: Breakdown | null }) {
                 <div className="mt-1 h-1.5 rounded-full bg-line overflow-hidden"><div className="h-full rounded-full bg-mint" style={{ width: `${totalType ? (Number(t.rev) / totalType) * 100 : 0}%` }} /></div></div>
             ))}
             {d.by_type.length === 0 && <p className="text-sm text-steel">Nothing yet.</p>}
-            {Number(d.table_qr) > 0 && <p className="text-xs text-steel pt-1">{d.table_qr} order{Number(d.table_qr) === 1 ? "" : "s"} from the table QR.</p>}
+            {Number(d.table_qr) > 0 && <p className="text-xs text-steel pt-1">{d.table_qr} via table QR</p>}
           </div>
         </Card>
       </div>
@@ -70,8 +70,8 @@ export function BreakdownView({ d }: { d: Breakdown | null }) {
           {d.by_cashier.length > 0 && <div className="mt-4"><div className="text-xs uppercase text-steel mb-1.5">By cashier</div><ul className="text-sm space-y-1">{d.by_cashier.slice(0, 6).map((c) => <li key={c.name} className="flex justify-between"><span className="truncate">{c.name}</span><span className="num">{formatINR(Number(c.rev))} <span className="text-xs text-steel">· {c.bills}</span></span></li>)}</ul></div>}
         </Card>
         <Card>
-          <h3 className="text-xl mb-3">Sizes &amp; add-ons that sell</h3>
-          {d.variants.length === 0 && d.addons.length === 0 ? <p className="text-sm text-steel">None sold yet. Add in Menu → Options.</p> : (<>
+          <h3 className="text-xl mb-3">Top sizes &amp; add-ons</h3>
+          {d.variants.length === 0 && d.addons.length === 0 ? <p className="text-sm text-steel">None sold yet</p> : (<>
             {d.variants.length > 0 && <ul className="text-sm space-y-1">{d.variants.slice(0, 6).map((v) => <li key={v.name} className="flex justify-between"><span className="truncate">{v.name}</span><span className="num">{v.qty} · {formatINR(Number(v.rev))}</span></li>)}</ul>}
             {d.addons.length > 0 && <div className={cn(d.variants.length > 0 && "mt-3 pt-3 border-t border-line")}><div className="text-xs uppercase text-steel mb-1.5">Add-ons</div><ul className="text-sm space-y-1">{d.addons.slice(0, 6).map((a) => <li key={a.name} className="flex justify-between"><span className="truncate">+ {a.name}</span><span className="num">{a.n} · {formatINR(Number(a.rev))}</span></li>)}</ul></div>}
           </>)}

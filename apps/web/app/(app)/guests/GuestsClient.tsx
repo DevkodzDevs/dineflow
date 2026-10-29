@@ -178,25 +178,25 @@ function GuestDetail({ g }: { g: Guest }) {
         )}
         {g.email && <Row icon={<Mail size={15} />} label={g.email}><a href={`mailto:${g.email}`} className="btn btn-outline !h-8 !text-xs">Email</a></Row>}
         {g.address && <Row icon={<MapPin size={15} />} label={g.address} />}
-        {!g.phone && !g.email && !g.address && <div className="px-3 py-3 text-sm text-steel">No contact details on file.</div>}
+        {!g.phone && !g.email && !g.address && <div className="px-3 py-3 text-sm text-steel">No contact details</div>}
       </div>
 
       <Field label="How they like their stay" hint={pref !== savedPref ? "not saved yet" : undefined}>
         <input value={pref} onChange={(e) => setPref(e.target.value)} maxLength={300}
           onBlur={() => { if (pref !== savedPref) saveFlags(vip, pref); }}
           onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-          placeholder="High floor, no feather pillows, late check-out…" />
+          placeholder="e.g. High floor" />
       </Field>
 
       <Field label="Notes for the desk" hint={notes !== savedNotes ? "not saved yet" : undefined}>
         <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000}
           onBlur={() => { if (notes !== savedNotes) saveNote(notes); }}
-          placeholder="e.g. Has a driver, needs parking. Likes the corner room." />
+          placeholder="e.g. Needs parking" />
       </Field>
 
       <div>
         <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1.5"><CalendarDays size={13} /> Every stay</div>
-        {bs.length === 0 ? <p className="text-sm text-steel">No stays yet — added without a booking.</p> : (
+        {bs.length === 0 ? <p className="text-sm text-steel">No stays yet</p> : (
           <>
           {/* a phone (2026-10-26, the owner: "not looking good"): each stay a clean row — the room number on its own tile,
               the dates as days ("1 Sep → 2 Sep 2026") and the nights, the state as a coloured dot and word, the amount and

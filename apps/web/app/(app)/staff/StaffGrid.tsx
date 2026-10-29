@@ -144,7 +144,7 @@ export function StaffGrid<P extends GridPerson>({ people, everyone, type, me, du
                   <td className={cell("name", "w-10 pr-3 text-[var(--color-label-3)]")}><ChevronRight size={17} aria-hidden /></td>
                 </tr>))}
             </GroupRows>))}
-            {people.length === 0 && <tr><td colSpan={COLS.length + 1} className="p-8 text-center text-sm text-steel">Nobody found. Try another name.</td></tr>}
+            {people.length === 0 && <tr><td colSpan={COLS.length + 1} className="p-8 text-center text-sm text-steel">No match</td></tr>}
           </tbody>
         </table>
       </div>

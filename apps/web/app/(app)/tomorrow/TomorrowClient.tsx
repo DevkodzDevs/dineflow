@@ -62,7 +62,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
     if (num) { window.open(`https://wa.me/${num.length === 10 ? "91" + num : num}?text=${encodeURIComponent(text)}`, "_blank"); return; }
     const shared = await shareText({ title: "Tomorrow brief", text });
     if (shared !== "unavailable") return; // shared, or the sheet was closed
-    setMsg(await copyText(text) ? "Brief copied — paste it into your WhatsApp group" : "Couldn't copy — select the brief and copy it");
+    setMsg(await copyText(text) ? "Brief copied for WhatsApp" : "Couldn't copy — select the brief and copy it");
   };
 
   const printSheet = async () => {
@@ -89,13 +89,13 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
 
   return (
     <>
-      <PageHeader eyebrow="Before you lock up tonight" title="Tomorrow" accent={forecast.weekday}
+      <PageHeader eyebrow="Before lock-up" title="Tomorrow" accent={forecast.weekday}
         sub={nice}
         actions={<div className="flex flex-wrap gap-2 no-print w-full sm:w-auto [&>*:last-child]:basis-full sm:[&>*:last-child]:basis-auto">
           <Link href={move(-1)}><Button variant="outline" size="md" aria-label="Previous day"><ChevronLeft size={16} /></Button></Link>
           <Link href={move(1)}><Button variant="outline" size="md" aria-label="Next day"><ChevronRight size={16} /></Button></Link>
           <Button variant="outline" onClick={printSheet}><Printer size={16} /> Prep sheet</Button>
-          <Button onClick={share}><Share2 size={16} /> Send to the team</Button>
+          <Button onClick={share}><Share2 size={16} /> Send to team</Button>
         </div>} />
 
       {msg && <div className="feather p-3 mb-4 text-sm flex items-center gap-2 border-mint"><Check size={15} className="text-mint" /> {msg}</div>}
@@ -122,7 +122,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
               different gap above each. */}
           <div className="mt-5 pt-4 border-t border-line no-print" data-adjust>
             <div className="flex items-start justify-between gap-3 mb-3">
-              <span className="text-xs font-semibold text-steel leading-snug">Know better? Adjust — lists follow.</span>
+              <span className="text-xs font-semibold text-steel leading-snug">Adjust if needed</span>
               {covers !== forecast.predicted_covers && <button type="button" onClick={() => setCovers(forecast.predicted_covers)} data-reset
                 className="shrink-0 text-xs font-semibold text-[var(--color-tint)] !min-h-0 h-9 -my-2.5 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:-my-3.5 px-2 rounded-lg hover:bg-[var(--color-fill)] inline-flex items-center">Reset to {forecast.predicted_covers}</button>}
             </div>
@@ -148,7 +148,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
             /* no history for this weekday arrives as "no history yet": its first word "no" took the number's place in big
                letters (2026-10-24, the owner). It is a count of zero days on record — say it on the flaps, the words under. */
             const none = /^no\b/i.test(String(d.detail));
-            return <StatTile key={d.label} label={d.label} value={none ? "00" : head} sub={none ? `No ${d.label}s on record yet` : tail} delay={i * 0.05} tone={d.label === "Confidence" ? (conf >= 60 ? "good" : undefined) : undefined} />;
+            return <StatTile key={d.label} label={d.label} value={none ? "00" : head} sub={none ? `No ${d.label}s yet` : tail} delay={i * 0.05} tone={d.label === "Confidence" ? (conf >= 60 ? "good" : undefined) : undefined} />;
           })}
         </div>
       </div>
@@ -163,7 +163,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
       {cold && (
         <Card className="!bg-champagne-2 flex items-start gap-3 mb-5">
           <Info size={18} className="shrink-0 mt-0.5" />
-          <div className="text-sm"><b>Still learning.</b> Needs about 4 weeks of sales — check it.</div>
+          <div className="text-sm"><b>Still learning.</b> Needs ~4 weeks of sales.</div>
         </Card>
       )}
 
@@ -171,8 +171,8 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
         {/* ── prep ── */}
         <Card>
           <div className="flex items-center gap-2 mb-1"><ChefHat size={17} /><h2 className="text-2xl">Prep for the kitchen</h2></div>
-          <p className="text-xs text-steel mb-4">Includes {forecast.buffer_pct}% buffer. Chef: note what you made.</p>
-          {dishes.length === 0 ? <Empty title="Nothing to prep yet" hint="Fills in once dishes sell" /> : (
+          <p className="text-xs text-steel mb-4">Incl. {forecast.buffer_pct}% buffer</p>
+          {dishes.length === 0 ? <Empty title="Nothing to prep yet" hint="After dishes sell" /> : (
             <div className="divide-y divide-line">
               {dishes.slice(0, 18).map((d, i) => (
                 <motion.div key={d.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }} className="flex items-center gap-3 py-2.5">
@@ -187,15 +187,15 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
               ))}
             </div>
           )}
-          {dishes.length > 0 && <Button variant="outline" className="mt-4 no-print" disabled={pending} onClick={() => start(async () => { const a = await saveForecast(date, covers); if ("error" in a) { setMsg(null); return setErr(a.error!); } const b = await saveChefNotes(date, made); if ("error" in b) { setMsg(null); return setErr(b.error!); } setErr(null); setMsg("Saved. Tomorrow we check it against sales."); })}><Check size={15} /> Save tonight&apos;s brief</Button>}
+          {dishes.length > 0 && <Button variant="outline" className="mt-4 no-print" disabled={pending} onClick={() => start(async () => { const a = await saveForecast(date, covers); if ("error" in a) { setMsg(null); return setErr(a.error!); } const b = await saveChefNotes(date, made); if ("error" in b) { setMsg(null); return setErr(b.error!); } setErr(null); setMsg("Saved"); })}><Check size={15} /> Save tonight&apos;s brief</Button>}
         </Card>
 
         {/* ── market list ── */}
         <Card>
           <div className="flex items-center gap-2 mb-1"><ShoppingBasket size={17} /><h2 className="text-2xl">Buy in the morning</h2></div>
-          <p className="text-xs text-steel mb-4">Ticked items go into stock</p>
+          <p className="text-xs text-steel mb-4">Ticked items join stock</p>
           {purchase.length === 0 ? (
-            <div className="feather p-6 text-center bg-mint-2 border-mint"><Check size={22} className="mx-auto text-ink" /><p className="font-semibold mt-2">Pantry covers tomorrow</p><p className="text-xs text-steel mt-1">Nothing to buy on today&apos;s numbers.</p></div>
+            <div className="feather p-6 text-center bg-mint-2 border-mint"><Check size={22} className="mx-auto text-ink" /><p className="font-semibold mt-2">Pantry covers tomorrow</p><p className="text-xs text-steel mt-1">Nothing to buy</p></div>
           ) : (<>
             <div className="divide-y divide-line">
               {purchase.map((p, i) => (
@@ -216,8 +216,8 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
               <span className="text-sm text-steel">{chosen.length} item{chosen.length === 1 ? "" : "s"} · approx</span>
               <span className="num text-2xl font-semibold">{formatINR(cost)}</span>
             </div>
-            <Button className="w-full mt-3 no-print" disabled={pending || chosen.length === 0} onClick={() => start(async () => { const r = await buyList(date, chosen.map((p) => ({ id: p.id, buy: p.buy }))); if ("error" in r) setErr(r.error!); else setMsg(`${r.count} item(s) added to the pantry`); })}>
-              <ShoppingBasket size={16} /> I bought these — add to pantry
+            <Button className="w-full mt-3 no-print" disabled={pending || chosen.length === 0} onClick={() => start(async () => { const r = await buyList(date, chosen.map((p) => ({ id: p.id, buy: p.buy }))); if ("error" in r) setErr(r.error!); else setMsg(`${r.count} item(s) added`); })}>
+              <ShoppingBasket size={16} /> Bought — add to pantry
             </Button>
           </>)}
         </Card>
@@ -226,13 +226,13 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
       {/* ── how honest has this been? ── */}
       <Card className="mt-4">
         <div className="flex items-center gap-2 mb-1"><Target size={17} /><h2 className="text-2xl">Was it right?</h2></div>
-        <p className="text-xs text-steel mb-4">Checked next day against sales</p>
-        {!score?.days ? <p className="text-sm text-steel">Save a brief tonight, check tomorrow</p> : (
+        <p className="text-xs text-steel mb-4">Checked against sales</p>
+        {!score?.days ? <p className="text-sm text-steel">Save a brief first</p> : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               <StatTile label="Average accuracy" value={score.accuracy != null ? `${score.accuracy}%` : "—"} sub={`over ${score.days} graded days`} tone={(score.accuracy ?? 0) >= 80 ? "good" : undefined} />
-              <StatTile label="Inside the range" value={score.within_range != null ? `${score.within_range}%` : "—"} sub="fell between low and high" delay={0.05} />
-              <StatTile label="Days learned" value={String(score.days)} sub={score.days < 28 ? "improves up to ~4 weeks" : "well trained"} delay={0.1} />
+              <StatTile label="Inside the range" value={score.within_range != null ? `${score.within_range}%` : "—"} sub="within low–high" delay={0.05} />
+              <StatTile label="Days learned" value={String(score.days)} sub={score.days < 28 ? "learns for ~4 weeks" : "well trained"} delay={0.1} />
             </div>
             <div className="flex items-end gap-1.5 h-28">
               {score.recent.slice().reverse().map((r) => {
@@ -253,7 +253,7 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
         )}
       </Card>
 
-      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Sparkles size={13} className="mt-0.5 shrink-0" /> A guess from sales and bookings</p>
+      <p className="text-xs text-steel mt-4 flex items-start gap-1.5"><Sparkles size={13} className="mt-0.5 shrink-0" /> Estimate from sales, bookings</p>
     </>
   );
 }

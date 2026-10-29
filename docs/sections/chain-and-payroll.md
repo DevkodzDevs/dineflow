@@ -149,3 +149,6 @@ node batch3.mjs     # 25 checks on a throwaway demo — see testing-and-gates.md
   two lines. Paid weekly offs wraps: the words take the row and the stepper sits under them, full width (`[data-offs-stepper]`),
   − and + as 48px keys at the ends and the count on a split-flap in the middle with "days off a month" (`[data-offs-flap]`). From
   sm both are as they were.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

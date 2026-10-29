@@ -33,12 +33,12 @@ export function MarketingIdeas({ customers, minRedeem }: { customers: Person[]; 
           <div className="text-[15px] font-semibold flex items-center gap-2">Ideas from your sales {res && (res.ai ? <Pill tone="ready"><Sparkles size={10} /> AI</Pill> : <Pill tone="gold">from your numbers</Pill>)}</div>
           <div className="text-xs text-[var(--color-label-2)]">{res
             ? `Last 30 days: ${res.facts.orders} orders, average ${formatINR(res.facts.avg_ticket, { whole: true })}${res.facts.top[0] ? `, best seller ${res.facts.top[0].name}` : ""}${res.facts.slowest_day ? `, quietest on ${res.facts.slowest_day}s` : ""}.`
-            : "Offers from 30 days of sales."}</div>
+            : "Based on 30 days"}</div>
         </div>
         <Button variant={res ? "gray" : undefined} disabled={busy} onClick={get}>{busy ? <><Loader2 size={15} className="animate-spin" /> Reading…</> : res ? "Fresh ideas" : <><Sparkles size={15} /> Get ideas</>}</Button>
       </div>
 
-      {res && res.ideas.length === 0 && <p className="mt-4 text-sm text-[var(--color-label-2)]">Not enough sales yet. Try later.</p>}
+      {res && res.ideas.length === 0 && <p className="mt-4 text-sm text-[var(--color-label-2)]">Not enough sales yet</p>}
       {res && res.ideas.length > 0 && (
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {res.ideas.map((i, k) => {
@@ -64,7 +64,7 @@ export function MarketingIdeas({ customers, minRedeem }: { customers: Person[]; 
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open ? `${open.title} · ${people.length}` : ""}>
         {open && (
           <div className="space-y-3">
-            <p className="text-xs text-[var(--color-label-2)]">Message ready — send one at a time.</p>
+            <p className="text-xs text-[var(--color-label-2)]">Send one by one</p>
             <div className="rounded-2xl border border-[var(--color-separator)] divide-y divide-[var(--color-separator)] overflow-hidden">
               {people.slice(0, 300).map((c) => {
                 const href = waHref(c.phone, open.message.replace(/\{name\}/g, firstName(c.name ?? "") || "there"));
@@ -76,7 +76,7 @@ export function MarketingIdeas({ customers, minRedeem }: { customers: Person[]; 
                 );
               })}
             </div>
-            {people.length > 300 && <p className="text-xs text-[var(--color-label-2)]">First 300 shown. Rest in the CSV.</p>}
+            {people.length > 300 && <p className="text-xs text-[var(--color-label-2)]">First 300 · rest in CSV</p>}
           </div>
         )}
       </Sheet>

@@ -14,7 +14,7 @@ plus the recipe that makes the pantry move when the dish is cooked.
 
 ## How it works
 
-**The head and the chips** (Simple Service, 2026-10-15): `SvcHead` ("Switch a dish off when it runs out —
+**The head and the chips** (Simple Service, 2026-10-15): `SvcHead` ("Mark sold-out dishes —
 waiters see it at once") with **More tools** and **New dish**; More tools unfolds Categories, Add-ons, From
 photo, Recipes and Find photos (`data-tools`) — the owner's weekly tools, kept off the service screen. Under it
 the categories as a `Rail` of chips with their picture (`catIcon`) and dish count, and **Sold out** last in red
@@ -51,7 +51,7 @@ nothing. The owner ticks what to keep, fixes a name or price, toggles veg, and *
 validates every row with `menuItemSchema` (prep 15 min, available) and inserts in one go. **A dish
 whose name is already on the menu starts unticked**, so a second photo of the same page does not
 double the menu. Without the key it returns a three-dish sample (Ghee roast dosa, Mutton chukka,
-Jigarthanda) — on manoooo, Mutton chukka already exists and shows as *already on your menu*.
+Jigarthanda) — on manoooo, Mutton chukka already exists and shows as *already on menu*.
 
 **A dish with no recipe does not move stock**, and the card says so in red.
 
@@ -222,3 +222,6 @@ A new place that shows a dish photo uses `DishImage`, not a bare `<img src={imag
   property (5%)" (null) or 0 · 5 · 12 · 18 · 28 · 40%; **HSN / SAC** — 4 to 8 digits, for packaged goods (blank = restaurant
   service, SAC 996331). `saveMenuItem` checks both and only writes them when the form sends them (an import or Scan leaves a
   dish's rate alone). The rate is copied onto each order line when it is ordered (billing-and-invoices.md).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

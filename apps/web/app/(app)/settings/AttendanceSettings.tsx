@@ -6,10 +6,10 @@ import { Button, Card, Switch, cn } from "@/components/ui";
 import { saveAttendanceSettings } from "./actions";
 
 const WAYS = [
-  { key: "manual", Icon: ClipboardCheck, title: "Manual", hint: "A manager marks Present / Absent." },
-  { key: "qr", Icon: QrCode, title: "QR badge", hint: "First scan in, second scan out." },
-  { key: "biometric", Icon: Fingerprint, title: "Fingerprint / Face ID", hint: "Each person punches on their phone." },
-  { key: "selfie", Icon: Camera, title: "Selfie + location", hint: "Selfie inside the property. Photo kept." },
+  { key: "manual", Icon: ClipboardCheck, title: "Manual", hint: "Manager marks it" },
+  { key: "qr", Icon: QrCode, title: "QR badge", hint: "Scan in, scan out" },
+  { key: "biometric", Icon: Fingerprint, title: "Fingerprint / Face ID", hint: "On their own phone" },
+  { key: "selfie", Icon: Camera, title: "Selfie + location", hint: "On-site selfie, saved" },
 ] as const;
 const RADII = [50, 100, 150, 250, 500];
 
@@ -41,11 +41,11 @@ export function AttendanceSettings({ owner, phoneReady = true, initial }: { owne
 
   return (
     <div className="space-y-6" data-attendance-settings>
-      {!owner && <div className="flex items-center gap-2.5 rounded-2xl bg-[var(--color-fill)] px-4 py-3 text-[13px] text-[var(--color-label-2)]"><Lock size={15} className="shrink-0" /> Only the owner can change these.</div>}
+      {!owner && <div className="flex items-center gap-2.5 rounded-2xl bg-[var(--color-fill)] px-4 py-3 text-[13px] text-[var(--color-label-2)]"><Lock size={15} className="shrink-0" /> Owner only</div>}
       <Card>
         <div className="flex items-start gap-3 mb-4">
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><Fingerprint size={16} /></span>
-          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Ways to mark attendance</h3><p className="text-xs text-steel mt-0.5">A way that is off works nowhere.</p></div>
+          <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Ways to mark attendance</h3></div>
         </div>
         <div className="divide-y divide-[var(--color-separator)]">
           {WAYS.map(({ key, Icon, title, hint }) => { const on = methods.includes(key); return (
@@ -61,11 +61,11 @@ export function AttendanceSettings({ owner, phoneReady = true, initial }: { owne
         <Card>
           <div className="flex items-start gap-3 mb-4">
             <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><MapPin size={16} /></span>
-            <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Where the property is</h3><p className="text-xs text-steel mt-0.5">Selfies count only inside this circle.</p></div>
+            <div className="min-w-0 pt-1"><h3 className="text-base font-semibold">Where the property is</h3><p className="text-xs text-steel mt-0.5">Selfies count only here</p></div>
           </div>
           <div className="rounded-2xl bg-[var(--color-fill)] px-4 py-3 text-[13px] flex items-center gap-3 min-w-0">
             <MapPin size={15} className={cn("shrink-0", loc ? "text-[var(--color-green)]" : "text-[var(--color-orange)]")} />
-            <span className="min-w-0 flex-1 truncate num" data-loc>{loc ? `${loc.lat}, ${loc.lng}` : "Not set — selfie punches are off"}</span>
+            <span className="min-w-0 flex-1 truncate num" data-loc>{loc ? `${loc.lat}, ${loc.lng}` : "Not set · selfies off"}</span>
             {loc && <a href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`} target="_blank" rel="noreferrer" className="shrink-0 text-[12px] font-semibold text-[var(--color-tint)]">Map</a>}
           </div>
           {owner && <Button variant="outline" className="mt-3 w-full sm:w-auto" loading={finding} onClick={here} data-here><MapPin size={16} /> Use this device&apos;s location</Button>}
@@ -80,7 +80,7 @@ export function AttendanceSettings({ owner, phoneReady = true, initial }: { owne
       {(methods.includes("biometric") || methods.includes("selfie")) && (
         <Link href="/labour" className="flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3.5 hover:bg-[var(--color-fill)] transition-colors">
           <span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center shrink-0 text-steel"><QrCode size={16} /></span>
-          <span className="flex-1 min-w-0"><span className="block text-sm font-semibold">Send each worker their punch link</span><span className="block text-xs text-steel mt-0.5">Labour → worker → Punch link. Staff: My attendance.</span></span>
+          <span className="flex-1 min-w-0"><span className="block text-sm font-semibold">Send punch links</span><span className="block text-xs text-steel mt-0.5">Labour → worker → Punch link. Staff: My attendance.</span></span>
           <ChevronRight size={16} className="text-steel shrink-0" />
         </Link>
       )}

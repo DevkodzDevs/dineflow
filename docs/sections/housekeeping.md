@@ -150,3 +150,6 @@ are the whole point and they are theme-dependent.
   repair chips only when there is one. **Discrepancies** are "Needs a look" (`[data-discrepancies]`): an amber head with the
   count, then a row each — the room's tiles, what is wrong in bold, why in a quiet line ("Ravi is past check-out" / "Was due
   out 20 Oct").
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

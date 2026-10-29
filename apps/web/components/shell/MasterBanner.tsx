@@ -11,8 +11,8 @@ export function MasterBanner({ property }: { property: string }) {
     <div role="status" className={`no-print mt-3 mb-2 ${styles.bar}`}>
       <span className={styles.shield}><ShieldCheck size={15} aria-hidden="true" /></span>
       <span className={styles.text}>
-        <span className={styles.label}>Master mode</span><span className={styles.long}> — viewing <b>{property}</b> as its owner.</span><span className={styles.short}> · <b>{property}</b></span>
-        <span className={styles.note}> Everything you do here is real and logged.</span>
+        <span className={styles.label}>Master mode</span><span className={styles.long}> — <b>{property}</b></span><span className={styles.short}> · <b>{property}</b></span>
+        <span className={styles.note}> Real changes, logged</span>
       </span>
       {/* a form, not an onClick: it works before the page has hydrated (see app/admin/leave/route.ts) */}
       <form action="/admin/leave" method="post" onSubmit={() => setLeaving(true)} className="contents">

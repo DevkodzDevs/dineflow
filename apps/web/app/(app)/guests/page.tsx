@@ -26,7 +26,7 @@ export default async function Guests({ searchParams }: { searchParams: Promise<{
       <PageHeader eyebrow="Who stays with you" title="Guest" accent="book"
         actions={<form><input name="q" defaultValue={q} placeholder="Search by name" className="!w-56" /></form>} />
       {!guests?.length
-        ? <Empty title={q ? "Nobody by that name" : "No guests yet"} hint={q ? "Try part of the name." : "Guests appear with their first front-desk booking."} />
+        ? <Empty title={q ? "Nobody by that name" : "No guests yet"} hint={q ? "Try part of the name." : "Added on first booking"} />
         : <GuestsClient guests={guests as unknown as Guest[]} />}
     </>
   );

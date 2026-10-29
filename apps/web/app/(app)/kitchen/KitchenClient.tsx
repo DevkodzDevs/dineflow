@@ -53,7 +53,7 @@ function NeedsPanel({ n, col }: { n?: Needs[string]; col: Kot["status"] }) {
           </li>))}
       </ul>
       {more > 0 && <div className="text-[11px] text-steel mt-0.5">+{more} more</div>}
-      {n.unmapped.length > 0 && <div className="text-[11px] text-steel mt-1">No recipe yet: {n.unmapped.join(", ")} — stock won't move.</div>}
+      {n.unmapped.length > 0 && <div className="text-[11px] text-steel mt-1">No recipe: {n.unmapped.join(", ")}</div>}
     </div>
   );
 }
@@ -162,7 +162,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
       {/* the head: what this screen is, in one sentence a new cook can follow, with the clock and the
           board for the guests on the right */}
       <SvcHead icon="kitchen" title={<>Kitchen{view !== "all" && <span className="text-[var(--color-label-2)]"> · {view}</span>}</>}
-        sub={board.length ? `${board.length} ticket${board.length > 1 ? "s" : ""} · tap to start, tap when ready` : "All clear — new tickets show here"}
+        sub={board.length ? `${board.length} ticket${board.length > 1 ? "s" : ""}` : "All clear"}
         actions={<>
           <span className="h-11 px-4 rounded-full bg-[var(--color-fill)] inline-flex items-center justify-center gap-2 text-[15px] font-bold num" data-clock><Clock size={16} aria-hidden />{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
           <Link href="/kitchen/board" title="Guest screen of order numbers" className="h-11 px-4 rounded-full inline-flex items-center justify-center gap-2 text-[15px] font-bold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors"><Tv size={16} aria-hidden /> Order board</Link>
@@ -176,13 +176,13 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
               {s === "all" ? "Everything" : s}<span className={cn("num ml-2", view === s ? "opacity-70" : "text-steel")}>{countAt(s)}</span>
             </button>
           ))}
-          {unrouted > 0 && view === "all" && <span className="text-[12px] text-steel ml-1">{unrouted} line{unrouted > 1 ? "s" : ""} with no station — set in Menu</span>}
+          {unrouted > 0 && view === "all" && <span className="text-[12px] text-steel ml-1">{unrouted} line{unrouted > 1 ? "s" : ""} · no station</span>}
         </div>
       )}
 
       {heldList.length > 0 && (
         <div className="mb-4 rounded-2xl border-2 border-dashed border-[var(--color-orange)]/50 p-3" data-held>
-          <div className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--color-orange)] mb-2 flex items-center gap-1.5"><PauseCircle size={14} /> Waiting courses — start when the table is ready</div>
+          <div className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--color-orange)] mb-2 flex items-center gap-1.5"><PauseCircle size={14} /> Held courses</div>
           <div className="flex flex-wrap gap-2">
             {heldList.map((k) => (
               <div key={k.id} className="rounded-2xl bg-card border border-line pl-3.5 pr-1.5 py-1.5 text-[15px] flex items-center gap-3">
@@ -246,10 +246,10 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                           {leftMin !== null && (
                             <div className={cn("mt-2 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[13px] font-bold",
                               overdue ? "bg-[var(--color-red-2)] text-chili" : leftMin <= 5 ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "bg-[var(--color-green-2)] text-mint")}>
-                              <Timer size={14} />{overdue ? `Promised ${Math.abs(leftMin)} min ago — this bill is now free` : `Promised in ${leftMin} min`}
+                              <Timer size={14} />{overdue ? `${Math.abs(leftMin)} min late · bill free` : `Promised in ${leftMin} min`}
                             </div>
                           )}
-                          {(late || warn) && !due && <div className={cn("mt-2 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[13px] font-bold", late ? "bg-[var(--color-red-2)] text-chili" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")}><Timer size={14} />{late ? `Over the ${lateAt}-minute target` : `${lateAt - age} min to the target`}</div>}
+                          {(late || warn) && !due && <div className={cn("mt-2 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[13px] font-bold", late ? "bg-[var(--color-red-2)] text-chili" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")}><Timer size={14} />{late ? `Over ${lateAt} min` : `${lateAt - age} min left`}</div>}
                           {lines.map((i) => (
                             <button key={i.id} type="button" disabled={pending || key === "ready"} title={key === "ready" ? undefined : i.status === "ready" ? "Tap: not ready after all" : "Tap: this dish is ready"}
                               onClick={() => { const next = i.status === "ready" ? "preparing" : "ready"; if (!online) { void enqueue("item_status", { ids: [i.id], status: next }, `Kitchen · ${i.name_snapshot}`); return; } start(() => { setItemStatus(i.id, next); }); }}
@@ -263,7 +263,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                             </button>
                           ))}
                           {others > 0 && <div className="kt-sub mt-1">+{others} line{others > 1 ? "s" : ""} at other stations</div>}
-                          {stationDone && <div className="text-[13px] text-mint font-bold mt-1">Station done — waiting on the rest</div>}
+                          {stationDone && <div className="text-[13px] text-mint font-bold mt-1">Station done</div>}
                           <NeedsPanel n={needs[k.id]} col={key} />
                         </div>
                         {/* one big button, always in the same place: start → ready → served */}
@@ -278,11 +278,11 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                     );
                   })}
                 </AnimatePresence>
-                {list.length === 0 && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[14px] text-steel px-2 py-6 text-center">{key === "pending" ? "No new tickets" : key === "preparing" ? "Nothing cooking" : "Nothing waiting at the pass"}</motion.p>}
+                {list.length === 0 && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[14px] text-steel px-2 py-6 text-center">{key === "pending" ? "No new tickets" : key === "preparing" ? "Nothing cooking" : "Nothing ready"}</motion.p>}
                 {/* the recall strip: what was just picked up, one press from coming back */}
                 {key === "ready" && bumpedLive.length > 0 && (
                   <div className="pt-3 border-t border-dashed border-[var(--color-line)]" data-recall>
-                    <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-steel mb-2 flex items-center gap-1.5"><RotateCcw size={13} /> Picked up · R brings the latest back</div>
+                    <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-steel mb-2 flex items-center gap-1.5"><RotateCcw size={13} /> Picked up · R recalls</div>
                     <ul className="space-y-1">
                       {bumpedLive.map((b) => (
                         <li key={b.id} className="flex items-center gap-2 text-[14px]">

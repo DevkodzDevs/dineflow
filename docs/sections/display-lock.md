@@ -21,8 +21,8 @@ manager role) turns a page's lock on, locks a device, or unlocks one.
 
 - **The setting** — `/lock` lists every page the person can open, under the menu's headings (`menuGroups`), minus
   `NEVER_LOCK` (settings, the lock page itself, the person's own pages, Connections). Each row: a switch (on/off) and, when on,
-  its kind and **Lock this display**. Every change asks first in a sheet: *Enable display lock for Billing?* (with the kind to
-  pick), *How should Billing lock?*, *Turn off display lock for Billing?*, *Lock this display to Billing?*. The setting is
+  its kind and **Lock this display**. Every change asks first in a sheet: *Turn on lock: Billing?* (with the kind to
+  pick), *How Billing locks*, *Turn off lock: Billing?*, *Lock screen to Billing?*. The setting is
   `restaurants.display_lock = { "<page key>": "view"|"work" }`, written only by `display_lock_set` (role checked in the
   database; logged `display.allow` / `display.disallow`).
 - **Locking** — `lockThisDisplay(key)`: the role again, the page must be on; logs `display.lock`; sets the httpOnly cookie
@@ -67,3 +67,6 @@ pnpm --filter @dineflow/web test        # displayLock.test.ts — 4
 node dry141.mjs                          # 0141 in a rolled-back transaction — 14
 node lock25.mjs                          # the browser: set, lock, guard, release, both kinds, five widths
 ```
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

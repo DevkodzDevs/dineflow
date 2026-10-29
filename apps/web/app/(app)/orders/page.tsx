@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ShoppingBag, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { holdDue } from "@/lib/holdDue";
 import { requireSession } from "@/lib/auth";
 import { SvcHead } from "@/components/ui/Service";
 import { Say } from "@/components/ui/Say";
@@ -10,7 +11,7 @@ export const metadata = { title: "Orders" };
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
-  const s = await createClient();
+  const s = await createClient(); const held = holdDue(s);   // a booking due now holds its table or room (0154)
   const [session, { data: tables }, { data: orders }, { data: calls }, { data: cleans }, { data: people }, { data: qr }] = await Promise.all([
     requireSession(),
     s.from("dining_tables").select("*").order("sort_order"),
@@ -27,10 +28,11 @@ export default async function OrdersPage() {
   const nameOf = new Map(((people ?? []) as { id: string; full_name: string }[]).map((p) => [p.id, p.full_name]));
   const cleaning = ((cleans ?? []) as { id: string; table_id: string; status: "pending" | "in_progress"; created_at: string; assigned_to: string | null; taken_by: string | null; taken_at: string | null }[])
     .map((c) => ({ ...c, assigned_name: c.assigned_to ? nameOf.get(c.assigned_to) ?? "someone" : null, taken_name: c.taken_by ? nameOf.get(c.taken_by) ?? "someone" : null }));
+  await held;
   return (
     <>
       {/* dine-in starts from a table on the floor; the header's one button is for an order with no table */}
-      <SvcHead icon="orders" title="Orders" sub="Tap a table to order"
+      <SvcHead icon="orders" title="Orders" sub="Tap a table"
         actions={<>
           <Link href="/orders/phone" className="svc-btn quiet sm !px-4" data-phone-order-link><Phone size={18} aria-hidden /> Phone</Link>
           <Link href="/orders/new?type=takeaway" className="svc-btn go sm !px-5" data-new-parcel><ShoppingBag size={19} aria-hidden /><Say w="parcel" /></Link>

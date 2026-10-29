@@ -50,7 +50,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   // nothing left here that needs to know the property type.
   return (
     <>
-      <PageHeader eyebrow="How the business is doing" title="Reports" />
+      <PageHeader eyebrow="Business health" title="Reports" />
       <ReportsClient days={n} summary={(summary ?? {}) as Summary} closes={closes ?? []} kitchen={(kitchen ?? null) as KitchenSpeed | null} hotel={(rooms ?? null) as HotelKpis | null} audits={(audits ?? []) as AuditRow[]} breakdown={(breakdown ?? null) as Breakdown | null}
         extra={(extra ?? null) as Extra | null} dept={(dept ?? null) as Dept | null} lodging={session.restaurant.property_type !== "restaurant"} property={session.restaurant.name} />
     </>

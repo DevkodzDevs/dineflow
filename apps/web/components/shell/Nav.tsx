@@ -331,7 +331,7 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
       <Sheet open={open} onClose={() => setOpen(false)} title="Menu">
         <div className="space-y-5" ref={sheetRef} data-more>
           <div className={cn("flex items-center gap-2 rounded-2xl p-2.5 pl-3.5", editing ? "bg-[var(--color-green-2)]" : "bg-[var(--color-fill)]")}>
-            <span className="flex-1 min-w-0 text-[12.5px] leading-snug">{editing ? <><b>Tap to pin</b> up to 4 sections to your bar.</> : <>Your bar: <b>{bar.map((i) => i.label).join(" · ")}</b></>}</span>
+            <span className="flex-1 min-w-0 text-[12.5px] leading-snug">{editing ? <><b>Tap to pin</b> · max 4</> : <>Your bar: <b>{bar.map((i) => i.label).join(" · ")}</b></>}</span>
             {editing && pins && <button type="button" onClick={() => savePins(null)} className="h-10 px-3 rounded-xl text-[12.5px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)]">Reset</button>}
             <button type="button" onClick={() => setEditing((v) => !v)} aria-pressed={editing}
               className={cn("h-10 px-3.5 rounded-xl text-[13px] font-semibold shrink-0 transition-colors", editing ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-bg-2)] text-[var(--color-label)] shadow-[0_1px_2px_rgb(0_0_0/.15)]")}>{editing ? "Done" : "Edit bar"}</button>

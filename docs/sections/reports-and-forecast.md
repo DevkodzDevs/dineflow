@@ -71,19 +71,19 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
     at 30px, /14), *Waiting* (the breathing flap), *Avg sitting* (1h 30m). iPad and desktop keep the tiles and the header button.
   - **Three glance tiles** (`[data-pulse-glance]`, 3-up at every width): tables free to seat (of all — Free
     excludes Reserved), parties waiting, how long a sitting usually takes (`avg_dwell`).
-  - `[data-pulse-top]`, side by side from `lg`: **Add a guest who is waiting** (`[data-quote]`, an `@container`) as
+  - `[data-pulse-top]`, side by side from `lg`: **Add waiting guest** (`[data-quote]`, an `@container`) as
     numbered steps — **1 How many people?** (eight buttons, 4-up, 8-up from a 34rem card), the answer under them
-    (`[data-wait]`, `aria-live`): **Seat now — "T4 is free and seats 4"** (the smallest free, un-booked table that
-    fits), **About 25 min** "until a table for 3 is likely free", or, when `quote_wait` is null, *No table fits*
-    ("put two together") / *Long wait* (more parties that size waiting than tables); **2 Their name and phone**;
-    **3 Put them on the list** (`data-add-walkin`). Beside it **Waiting now** (`[data-queue]`, a card with the
+    (`[data-wait]`, `aria-live`): **Seat now — "T4 free · seats 4"** (the smallest free, un-booked table that
+    fits), **About 25 min** "for a table of 3", or, when `quote_wait` is null, *No table fits*
+    ("Join two tables") / *Long wait* (more parties that size waiting than tables); **2 Their name and phone**;
+    **3 Add to list** (`data-add-walkin`). Beside it **Waiting now** (`[data-queue]`, a card with the
     count): each guest a row (`data-walkin`, an `@container`) — party size in a square, #place, name, "waiting
     12 min · told 20 min", then the one big move (**Table ready** `data-table-ready` → **Seat now**
     `data-seat-walkin`) and Call · WhatsApp · Seat · Left as 44px squares (48 on touch) whose words show from a
-    36rem row; the separate Seat hides on a phone. Seat opens **Pick a free table for N** — the tables that fit,
+    36rem row; the separate Seat hides on a phone. Seat opens **Pick a table for N** — the tables that fit,
     smallest first, a booked one in amber with its time. Nobody waiting shows an empty state with a link to the
     door QR.
-  - **Next tables to free up** (`[data-frees-next]`, four, in the floor's colours, the stage under the time), then
+  - **Freeing up next** (`[data-frees-next]`, four, in the floor's colours, the stage under the time), then
     **Every table** — the All · Free · Reserved · In use tabs and tiles, now the full width (the right-hand QR column
     is gone).
 
@@ -191,7 +191,7 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
   hover or tab to a bar (`[data-hour]`) and the line above reads it (`[data-hour-readout]`: hour range, bills, ₹); it
   starts on the busiest hour, and a *Busiest · 8pm* pill jumps back. shots34 checks no two labels touch at 360–1440.
 
-- **Proof of business — the sharing head (2026-10-21).** *Who you have shared it with* was a 2xl title wrapping to two
+- **Proof of business — the sharing head (2026-10-21).** *Shared links* was a 2xl title wrapping to two
   lines beside a squeezed *New link* whose plus rendered as a dot. Now (`[data-links-head]`): a link icon, the title at 21px
   with what a link is under it, and *New link* (`[data-new-link]`, `svc-btn go`) beside them — its own full row on a phone.
   No links yet is a dashed box with Bank / Supplier credit / Landlord shown as who a link is for (`[data-links-empty]`).
@@ -211,7 +211,7 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
     party, the wait (`FlapClock`) and what they were told (only when > 0) as chips; one row of 44px actions — the next
     move, Seat (from sm), Call, WhatsApp, Left. Called turns the card green. `[data-walkin-name]`, `[data-walkin-state]`,
     `[data-seat-table]`.
-  - **Next tables to free up** and **Every table** are cards like the two above, each head with an icon tile (`Head`
+  - **Freeing up next** and **Every table** are cards like the two above, each head with an icon tile (`Head`
     takes `icon` and `tone`); "nothing freeing" is a dashed empty state. shots39: 16 of 16.
 
 - **Top dishes is a ranked list** (2026-10-23, the owner: "the words break"): the rank (No 1 in the tint), the name on one line
@@ -243,7 +243,10 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
   page's Excel / PDF) now carries *In and out by day* and every department before the older tables. `Charts.tsx` adds
   `MoneyChart` and `ShareChart` (recharts, tokens only). `Departments.tsx` is lower-case `deptSpec.ts`'s neighbour on purpose:
   a file named `departments.ts` beside it clashed on Windows (TS1149). Probe: `pw/conn140.mjs` (connections.md).
-- **Tomorrow's weekday tile with no history (2026-10-24).** `forecast_day` sends "no history yet", and the tile took its first word, "no", as the number in big letters. TomorrowClient now shows 00 on the flaps with "No Sundays on record yet" under it.
+- **Tomorrow's weekday tile with no history (2026-10-24).** `forecast_day` sends "no history yet", and the tile took its first word, "no", as the number in big letters. TomorrowClient now shows 00 on the flaps with "No Sundays yet" under it.
 
 - **Proof, no months sealed — iPad and desktop (2026-10-24).** Phones keep the markup they had: every new part is `hidden md:…` and the old one `md:hidden` (or the change is `md:` classes only). An `EmptyState` with a shield (`[data-proof-empty]`): why
   a sealed month is worth having, and **Seal my trading history** (the same action).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

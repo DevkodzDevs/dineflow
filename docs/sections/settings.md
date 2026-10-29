@@ -48,7 +48,7 @@ never be reachable on a real one.
 
 - **Screens & feedback** (`/settings/screens`, a quick link under General, 0103/0104): the TV link with *Menu +
   tokens · Menu only · Tokens only*, Copy, Open and **New link** (`screenKey(true)` — every old screen stops; it
-  asks first); *Open kiosk on this device*; the feedback QR with Copy, Open and *Print card* (a window of its own,
+  asks first); *Open kiosk here*; the feedback QR with Copy, Open and *Print card* (a window of its own,
   like Pulse's poster). Links are built on `NEXT_PUBLIC_CLOUD_URL`, so on a local server they point at the live
   site. Staff other than owner and manager see "Owner and managers only." in place of the screen link.
 
@@ -152,7 +152,7 @@ pnpm --filter @dineflow/web typecheck
   width of the others. **It reports state, not a fixed sentence:** "No changes yet" (grey tick, Save
   disabled) → "Unsaved changes" (amber pulsing dot, Save live) once any field fires `input` (the logo
   picker excepted — it saves itself) → "Saving…" → "All changes saved" (green tick) or "Couldn't save"
-  with the reason. The hint under the title is short ("Edit a card, then save") — pinned on a phone it
+  with the reason. The hint under the title is short ("Edit, then save") — pinned on a phone it
   has ~170px, and "Edit any card above, then save" was cut off — and wraps to two lines rather than
   truncating, so a long error reads in full. Probe: `props.mjs` (15 checks).
 - **Account & security is three rows in one panel** — Password (sign-in ID, or "Signed in from Master
@@ -161,7 +161,7 @@ pnpm --filter @dineflow/web typecheck
   Detail lines wrap to two lines on a phone rather than truncate.
 - **Attendance is its own tab** (`AttendanceSettings.tsx`): four rows — Manual, QR badge, Fingerprint /
   Face ID, Selfie + location — each a switch for the owner and an On/Off label for anyone else, under a
-  "Only the owner can change how attendance is taken" line. Turning on Selfie shows *Where the property
+  "Owner only" line. Turning on Selfie shows *Where the property
   is*: "Use this device's location" (needs `geolocation=(self)` in the Permissions-Policy) and a 50–500
   m radius. Saved through `set_attendance_settings` — the owner check is in the RPC; the switches are
   only the face of it. When the server has no `SUPABASE_SERVICE_ROLE_KEY`, an orange note says the
@@ -176,6 +176,9 @@ pnpm --filter @dineflow/web typecheck
   link land on the same section.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words (Settings tabs, Attendance, Storefront, Google links, Booking page, Printers, Screens, Table QR). The tax, kiosk-exit and token facts are kept, shorter.
 
-- **Settings → Kitchen → Stop orders when the pantry is short** (`[data-stock-block]`, `restaurants.stock_block`, 0137, on by default).
+- **Settings → Kitchen → Block short-stock dishes** (`[data-stock-block]`, `restaurants.stock_block`, 0137, on by default).
 
 - **The logo address is https only (2026-10-25 audit)** — anything else is saved as no logo.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

@@ -10,12 +10,12 @@ type T = { id: string; name: string; zone: string; qr_token: string | null };
 /** The codes, laid out to print: A4 gets six a page, each with the table's name under it. */
 export function TableQrSheet({ tables, slug, name }: { tables: T[]; slug: string | null; name: string }) {
   const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
-  if (!slug) return <Empty title="Give the property a web address first" hint="Set it in Settings → Storefront" action={<Link href="/settings/storefront"><Button>Storefront settings</Button></Link>} />;
-  if (!tables.length) return <Empty title="No tables yet" hint="Add them in Settings → Tables" action={<Link href="/settings"><Button>Settings</Button></Link>} />;
+  if (!slug) return <Empty title="No web address yet" hint="Settings → Storefront" action={<Link href="/settings/storefront"><Button>Storefront settings</Button></Link>} />;
+  if (!tables.length) return <Empty title="No tables yet" hint="Add in Settings → Tables" action={<Link href="/settings"><Button>Settings</Button></Link>} />;
   return (
     <div>
       <div className="no-print mb-4 flex flex-wrap items-center gap-3">
-        <p className="text-sm text-steel flex-1 min-w-[16rem]">One per table — guests scan and order.</p>
+        <p className="text-sm text-steel flex-1 min-w-[16rem]">One per table</p>
         <Button onClick={() => window.print()}><Printer size={16} /> Print</Button>
       </div>
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 print:grid-cols-2">

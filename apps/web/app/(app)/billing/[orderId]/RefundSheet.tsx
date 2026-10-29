@@ -25,7 +25,7 @@ export function RefundSheet({ open, onClose, billId, billNo, left, method }: { o
   return (
     <Sheet open={open} onClose={onClose} title={`Refund on bill ${billNo}`}>
       <div className="space-y-4" data-refund-sheet>
-        <p className="text-sm text-[var(--color-label-2)]">A numbered credit note; the bill stays as it was. {formatINR(left)} can still go back.</p>
+        <p className="text-sm text-[var(--color-label-2)]">Refundable: {formatINR(left)}</p>
         <div>
           <label htmlFor="refund-amount">Amount</label>
           <div className="flex items-stretch gap-2 mt-1.5">
@@ -38,12 +38,12 @@ export function RefundSheet({ open, onClose, billId, billNo, left, method }: { o
           <div className="grid grid-cols-4 gap-2" data-refund-method>
             {METHODS.map(([k, label]) => <button key={k} type="button" onClick={() => setHow(k)} className={cn("chip justify-center", how === k && "on")} aria-pressed={how === k}>{label}</button>)}
           </div>
-          {how === "cash" && <p className="footnote mt-1.5">Counted as cash out of the drawer.</p>}
+          {how === "cash" && <p className="footnote mt-1.5">Taken from drawer</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {REASONS.map((c) => <button key={c} type="button" onClick={() => { setReason(c); setErr(null); }} className={cn("chip", reason === c && "on")}>{c}</button>)}
         </div>
-        <textarea value={reason} onChange={(e) => { setReason(e.target.value); setErr(null); }} rows={2} maxLength={160} placeholder="Reason — a few words" aria-label="Reason" />
+        <textarea value={reason} onChange={(e) => { setReason(e.target.value); setErr(null); }} rows={2} maxLength={160} placeholder="Reason" aria-label="Reason" />
         {err && <p className="text-sm text-[var(--color-red)]">{err}</p>}
         <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={pending}>Keep it</Button>

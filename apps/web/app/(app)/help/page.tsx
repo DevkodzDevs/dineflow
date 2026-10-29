@@ -25,8 +25,8 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
     .order("last_message_at", { ascending: false }).limit(100);
   return (
     <>
-      <PageHeader eyebrow="We are here to help" title="Help" accent="& support"
-        sub="Ask, report or suggest — replies here" />
+      <PageHeader eyebrow="We can help" title="Help" accent="& support"
+        sub="Ask, report, suggest" />
       <SupportClient requests={(data ?? []) as Req[]} me={session.userId ?? ""} name={session.profile.full_name} role={session.profile.role}
         property={session.restaurant.name} prefill={{ kind: sp.kind ?? null, from: sp.from ?? null }} />
     </>

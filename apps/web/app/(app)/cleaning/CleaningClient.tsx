@@ -82,13 +82,13 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
       </div>
       <div className="p-4 pt-0 grid gap-2">
         {failing === r.room ? (<>
-          <input value={why} onChange={(e) => setWhy(e.target.value)} placeholder="What is wrong — stains, towels, dust…" maxLength={120} aria-label={`What is wrong in Room ${r.place}`} data-fail-why autoFocus />
+          <input value={why} onChange={(e) => setWhy(e.target.value)} placeholder="What is wrong?" maxLength={120} aria-label={`What is wrong in Room ${r.place}`} data-fail-why autoFocus />
           <div className="flex gap-2 [&>*]:flex-1 [&>*]:min-w-0">
             <button type="button" className="svc-btn quiet sm" onClick={() => setFailing(null)}>Cancel</button>
             <button type="button" disabled={pending} className="svc-btn no sm" data-fail-confirm onClick={() => { act(inspectRoom(r.room, false, why), `Room ${r.place} failed — back to ${r.cleaned_name ?? "the queue"}`); setFailing(null); setWhy(""); }}><ShieldX size={16} aria-hidden /><Say w="fail_it" /></button>
           </div></>) : (
           <div className="flex gap-2 [&>*]:flex-1 [&>*]:min-w-0">
-            <button type="button" disabled={pending} className="svc-btn go sm" data-pass onClick={() => act(inspectRoom(r.room, true), `Room ${r.place} passed — ready to sell`)}><ShieldCheck size={16} aria-hidden /><Say w="pass_it" /></button>
+            <button type="button" disabled={pending} className="svc-btn go sm" data-pass onClick={() => act(inspectRoom(r.room, true), `Room ${r.place} ready to sell`)}><ShieldCheck size={16} aria-hidden /><Say w="pass_it" /></button>
             <button type="button" disabled={pending} className="svc-btn quiet sm !text-[var(--color-red)]" data-fail onClick={() => { setFailing(r.room); setWhy(""); }}><ShieldX size={16} aria-hidden /><Say w="fail_it" /></button>
           </div>)}
       </div>
@@ -109,9 +109,9 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
 
       <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
         <Column keyName="waiting" title="waiting" n={waiting.length} hint="Nothing waiting."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
-        <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody is cleaning right now."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{onIt.map(card)}</div></Column>
-        {boss && board.inspect_required && <Column keyName="inspect" title="to_inspect" n={inspect.length} hint="No rooms to sign off."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{inspect.map(inspectCard)}</div></Column>}
-        <Column keyName="done" title="done_today" n={finished.length} hint="Nothing finished yet today."><Card className="!py-1 !px-4"><ul className="divide-y divide-[var(--color-separator)]">{finished.map(row)}</ul></Card></Column>
+        <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody cleaning"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{onIt.map(card)}</div></Column>
+        {boss && board.inspect_required && <Column keyName="inspect" title="to_inspect" n={inspect.length} hint="None to check"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{inspect.map(inspectCard)}</div></Column>}
+        <Column keyName="done" title="done_today" n={finished.length} hint="None finished yet"><Card className="!py-1 !px-4"><ul className="divide-y divide-[var(--color-separator)]">{finished.map(row)}</ul></Card></Column>
       </div>
 
       {boss && byPerson.length > 0 && (
@@ -132,9 +132,9 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
         <Card className="!p-4" data-clean-settings>
           <label className="flex items-start gap-3 !min-h-11 cursor-pointer">
             <input type="checkbox" className="h-5 w-5 mt-0.5" checked={tablesOn} disabled={pending} data-switch="tables"
-              onChange={(e) => { const v = e.target.checked; setTablesOn(v); start(async () => { const r = await saveCleanSettings(v); if ("error" in r) { setTablesOn(!v); toast(r.error!, "err"); } else toast(v ? "Paid tables now get a cleaning job" : "Tables no longer get a cleaning job"); }); }} />
-            <span><span className="block text-[15px] font-bold">Clean every table after it is paid</span>
-              <span className="block text-[12.5px] text-steel">Off for counters. Rooms still get one.</span></span>
+              onChange={(e) => { const v = e.target.checked; setTablesOn(v); start(async () => { const r = await saveCleanSettings(v); if ("error" in r) { setTablesOn(!v); toast(r.error!, "err"); } else toast(v ? "Table cleaning on" : "Table cleaning off"); }); }} />
+            <span><span className="block text-[15px] font-bold">Clean tables after payment</span>
+              <span className="block text-[12.5px] text-steel">Off for counters</span></span>
           </label>
         </Card>)}
     </div>

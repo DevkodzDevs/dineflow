@@ -35,14 +35,14 @@ export function InstallSheet({ open, onClose }: { open: boolean; onClose: () => 
           {/* eslint-disable-next-line @next/next/no-img-element -- the app's own icon, as it will look on the Home Screen */}
           <img src="/apple-touch-icon.png" alt="" width={52} height={52} className="h-[52px] w-[52px] rounded-[14px] shadow-[0_6px_18px_-6px_rgb(0_0_0/.6)]" />
           <p className="text-[13px] text-[var(--color-label-2)] leading-snug">{offer?.primary === "apk" || offer?.primary === "exe"
-            ? "One file, one click to install."
+            ? "One-click install"
             : "Own icon. Updates itself."}</p>
         </div>
 
         {open && <InstallPanel others="none" />}
 
         <a href="/get" className="flex items-center gap-2.5 rounded-2xl bg-[var(--color-fill)] px-3.5 h-12 text-[13px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors">
-          <Smartphone size={16} className="text-[var(--color-label-2)]" /> Another phone, iPad or computer?<span className="ml-auto text-[var(--color-label-2)] font-normal">QR & link →</span>
+          <Smartphone size={16} className="text-[var(--color-label-2)]" /> Another device?<span className="ml-auto text-[var(--color-label-2)] font-normal">QR & link →</span>
         </a>
       </div>}
     </Sheet>, document.body);

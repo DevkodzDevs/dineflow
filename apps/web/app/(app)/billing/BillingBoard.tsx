@@ -121,7 +121,7 @@ export function BillingBoard({ open, bills, names, cashier, me }: { open: OpenOr
           <header className="px-4 pt-4 pb-3 border-b border-[var(--color-separator)]">
             <div className="flex items-center gap-2"><h2 className="text-[17px] font-extrabold flex-1">Today&apos;s bills</h2><span className="num h-7 min-w-7 px-2 rounded-full bg-[var(--color-fill)] text-[13px] font-bold grid place-items-center">{bills.length}</span></div>
             <div className="mt-3 relative"><Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Bill, order, table or name" aria-label="Find a bill" className="!h-11 !rounded-full !pl-10 w-full" data-bill-search /></div>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Bill, table or name" aria-label="Find a bill" className="!h-11 !rounded-full !pl-10 w-full" data-bill-search /></div>
             <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] -mx-1 px-1">
               {(["all", "paid", "unpaid", "void"] as const).map((k) => <button key={k} type="button" className={chip(state === k)} onClick={() => setState(k)} aria-pressed={state === k} data-bill-state={k}>{k === "all" ? "All" : k[0].toUpperCase() + k.slice(1)}<span className="num opacity-70">{k === "all" ? bills.length : bills.filter((b) => b.status === k).length}</span></button>)}
             </div>

@@ -25,8 +25,7 @@ export function SendInstallLink({ url }: { url: string }) {
         {/* white under the code in both themes: a scanner wants dark on light */}
         <div className="rounded-xl bg-white p-2 shrink-0"><QR value={url} size={104} /></div>
         <div className="min-w-0">
-          <div className="text-[14px] font-semibold leading-tight">Scan with the other phone</div>
-          <p className="text-[13px] text-[var(--color-label-2)] mt-1 leading-snug">Point its camera here.</p>
+          <div className="text-[14px] font-semibold leading-tight">Scan to install</div>
         </div>
       </div>
       <div className={cn("grid gap-2", canShare ? "grid-cols-3" : "grid-cols-2")}>

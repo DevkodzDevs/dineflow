@@ -58,7 +58,7 @@ export function LogoUpload({ restaurantId, initial, name }: { restaurantId: stri
       const r = await uploadLogo(fd);
       if (r.error) { setErr(r.error); return; }
       setUrl(r.url ?? null);
-      setInfo(`${s.w} × ${s.h} px · ${kb(s.blob.size)}${file.size > s.blob.size ? ` (from ${kb(file.size)})` : ""}${Math.min(s.srcW, s.srcH) < 256 ? " · a little small, may look soft" : ""}`);
+      setInfo(`${s.w} × ${s.h} px · ${kb(s.blob.size)}${file.size > s.blob.size ? ` (from ${kb(file.size)})` : ""}${Math.min(s.srcW, s.srcH) < 256 ? " · small, may blur" : ""}`);
       toast("Logo saved");
     } catch (e) { setErr(e instanceof Error ? e.message : "That image could not be read."); }
     finally { setBusy(null); }
@@ -90,7 +90,7 @@ export function LogoUpload({ restaurantId, initial, name }: { restaurantId: stri
         </span>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-semibold truncate">{busy === "up" ? "Uploading…" : url ? "Your logo" : "Upload your logo"}</span>
-          <span className="block text-[11.5px] text-steel leading-snug mt-0.5">PNG, JPG or WebP · up to 5 MB · square, at least 256 px</span>
+          <span className="block text-[11.5px] text-steel leading-snug mt-0.5">PNG/JPG/WebP · 5 MB · square 256 px+</span>
           <span className="flex flex-wrap gap-2 mt-2.5">
             <button type="button" disabled={!!busy} onClick={() => pick.current?.click()} className="btn btn-filled !h-10 px-3.5 text-[13px] inline-flex items-center gap-1.5"><Upload size={14} /> {url ? "Replace" : "Choose image"}</button>
             {url && <button type="button" disabled={!!busy} onClick={() => void drop()} className="btn btn-gray !h-10 px-3 text-[13px] inline-flex items-center gap-1.5" aria-label="Remove logo">{busy === "rm" ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Remove</button>}

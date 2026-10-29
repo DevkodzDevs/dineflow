@@ -62,7 +62,7 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
 
   return (
     <div className="space-y-5">
-      <SvcHead icon="tables" title="Tables" sub="All tables, live — tap one for details"
+      <SvcHead icon="tables" title="Tables" sub="Tap for details"
         actions={canEdit ? <>
           <Link href="/settings/table-qr" className="svc-btn quiet sm"><QrCode size={17} aria-hidden /> Table QR codes</Link>
           <Link href="/settings#tables" className="svc-btn quiet sm"><Settings2 size={17} aria-hidden /> Set up tables</Link>
@@ -100,7 +100,7 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
         {zones.length > 1 && <select value={zone} onChange={(e) => setZone(e.target.value)} aria-label="Zone" className="!w-auto !h-10 !min-h-10 ml-auto text-[13px] font-semibold"><option value="all">Every zone</option>{zones.map((z) => <option key={z} value={z}>{z}</option>)}</select>}
       </div>
 
-      {tables.length === 0 ? <Card className="text-center !py-10"><Armchair className="mx-auto text-steel" size={28} /><p className="mt-3 font-semibold">No tables yet</p><p className="text-[13px] text-steel mt-1">Add them in Settings → Tables & zones.</p></Card>
+      {tables.length === 0 ? <Card className="text-center !py-10"><Armchair className="mx-auto text-steel" size={28} /><p className="mt-3 font-semibold">No tables yet</p><p className="text-[13px] text-steel mt-1">Settings → Tables & zones</p></Card>
         : zones.filter((z) => zone === "all" || z === zone).map((z) => { const list = shown.filter((t) => (t.zone || "Main") === z); if (!list.length) return null; return (
           <section key={z} className="min-w-0">
             <div className="flex items-center gap-2 mb-2.5"><span className="text-[12px] font-bold uppercase tracking-[.12em] text-steel">{z}</span><span className="num text-[11.5px] font-bold h-5 min-w-5 px-1.5 rounded-full grid place-items-center bg-[var(--color-fill)]">{list.length}</span></div>
@@ -127,7 +127,7 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
                 </button>); })}
             </div>
           </section>); })}
-      {tables.length > 0 && shown.length === 0 && <p className="text-[14px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] p-6 text-center">No table is {filter === "all" ? "in this zone" : ST[filter as St].label.toLowerCase()} right now.</p>}
+      {tables.length > 0 && shown.length === 0 && <p className="text-[14px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] p-6 text-center">No tables {filter === "all" ? "in this zone" : ST[filter as St].label.toLowerCase()}</p>}
 
       <Sheet open={!!t} onClose={() => setPick(null)} title={t ? `Table ${t.name}` : ""} wide>
         {t && <TableDetail t={t} st={stOf(t)} o={openBy.get(t.id)} bookings={bookingsOf(t.id)} bills={paidOf(t.id)} clean={cleanBy.get(t.id)} names={names} qrUrl={t.qr_token && slug && origin ? `${origin}/dine/${slug}?t=${t.qr_token}` : null} />}
@@ -171,16 +171,16 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
                   <span className="shrink-0 text-[11.5px] font-semibold px-2 h-6 rounded-full inline-flex items-center bg-[var(--color-fill)] text-[var(--color-label-2)]">{ITEM_ST[i.status] ?? i.status}</span>
                   <span className="shrink-0 num font-semibold w-16 text-right">{formatINR(Number(i.qty) * Number(i.price_snapshot), { whole: true })}</span>
                 </li>))}
-              {items.length === 0 && <li className="px-3.5 py-3 text-[13px] text-steel">Nothing on the order yet.</li>}
+              {items.length === 0 && <li className="px-3.5 py-3 text-[13px] text-steel">No items yet</li>}
             </ul>
-            <div className="px-3.5 py-3 flex items-center justify-between border-t border-[var(--color-separator)]"><span className="text-[13px] font-semibold text-steel">{o.bills?.some((b) => b.status === "unpaid") ? "Bill out — waiting to be paid" : "Running total"}</span><span className="font-display num text-[22px]">{formatINR(amountOf(o))}</span></div>
+            <div className="px-3.5 py-3 flex items-center justify-between border-t border-[var(--color-separator)]"><span className="text-[13px] font-semibold text-steel">{o.bills?.some((b) => b.status === "unpaid") ? "Bill out · unpaid" : "Running total"}</span><span className="font-display num text-[22px]">{formatINR(amountOf(o))}</span></div>
           </div>
         ) : <p className="rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-4 text-[13.5px] text-[var(--color-label-2)]">{clean ? "Waiting to be cleaned." : "Free — ready to seat."}</p>}
       </section>
 
       {/* cleaning */}
       {clean && <section><H Icon={SprayCan}>Cleaning</H>
-        <div className="rounded-2xl bg-[color-mix(in_srgb,var(--color-cyan)_10%,transparent)] px-3.5 py-3 text-[13.5px] flex items-center gap-2"><SprayCan size={16} className="text-[var(--color-cyan)]" aria-hidden />{clean.status === "in_progress" ? `${clean.taken_by ? names[clean.taken_by] ?? "Someone" : "Someone"} is cleaning it` : "Waiting for someone to clean it"}<span className="ml-auto text-steel num text-[12.5px]" suppressHydrationWarning>{fmtSince(clean.created_at)}</span></div>
+        <div className="rounded-2xl bg-[color-mix(in_srgb,var(--color-cyan)_10%,transparent)] px-3.5 py-3 text-[13.5px] flex items-center gap-2"><SprayCan size={16} className="text-[var(--color-cyan)]" aria-hidden />{clean.status === "in_progress" ? `${clean.taken_by ? names[clean.taken_by] ?? "Someone" : "Someone"} is cleaning it` : "Needs cleaning"}<span className="ml-auto text-steel num text-[12.5px]" suppressHydrationWarning>{fmtSince(clean.created_at)}</span></div>
       </section>}
 
       {/* bookings today */}
@@ -192,7 +192,7 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
             <div className="min-w-0 flex-1 leading-tight"><div className="font-semibold truncate">{b.guest_name}</div><div className="text-[12px] text-steel truncate">party of <span className="num">{b.party_size}</span>{b.occasion ? ` · ${b.occasion}` : ""}</div></div>
             <span className={cn("shrink-0 text-[11.5px] font-bold px-2 h-6 rounded-full inline-flex items-center", b.status === "seated" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[color-mix(in_srgb,var(--color-violet)_15%,transparent)] text-[var(--color-violet)]")}>{b.status === "seated" ? <><Check size={12} className="mr-1" />Seated</> : b.status === "requested" ? "Requested" : "Confirmed"}</span>
             {b.guest_phone && <a href={`tel:${b.guest_phone}`} aria-label={`Call ${b.guest_name}`} className="shrink-0 h-10 w-10 grid place-items-center rounded-full bg-[var(--color-bg-2)]"><Phone size={15} /></a>}
-          </li>))}</ul> : <p className="text-[13.5px] text-steel">No booking on this table today.</p>}
+          </li>))}</ul> : <p className="text-[13.5px] text-steel">No bookings today</p>}
       </section>
 
       {/* today at this table */}
@@ -210,7 +210,7 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
       {qrUrl && <section><H Icon={QrCode}>Table ordering QR</H>
         <div className="flex items-center gap-4 rounded-2xl bg-[var(--color-fill)] p-3">
           <div className="rounded-xl bg-white p-2 shrink-0"><QR value={qrUrl} size={96} /></div>
-          <div className="min-w-0 text-[13px] text-[var(--color-label-2)] leading-snug">Guests at {t.name} scan to order.<a href={qrUrl} target="_blank" rel="noreferrer" className="mt-1.5 block font-semibold text-[var(--color-tint)] truncate">Open the table menu</a></div>
+          <div className="min-w-0 text-[13px] text-[var(--color-label-2)] leading-snug">Guests scan to order.<a href={qrUrl} target="_blank" rel="noreferrer" className="mt-1.5 block font-semibold text-[var(--color-tint)] truncate">Open the table menu</a></div>
         </div>
       </section>}
 

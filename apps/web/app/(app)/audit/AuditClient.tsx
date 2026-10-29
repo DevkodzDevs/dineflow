@@ -78,13 +78,13 @@ export function AuditClient({ events, names, days, more, error }: { events: Even
           </Rail>
           <label className="relative block w-full lg:w-72 lg:ml-auto shrink-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a bill, a dish, a name, a reason" aria-label="Search the trail" className="!pl-9 w-full min-w-0" data-search />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Bill, dish, name, reason" aria-label="Search the trail" className="!pl-9 w-full min-w-0" data-search />
           </label>
         </div>
       </Card>
       {error && <p className="rounded-xl bg-[var(--color-red-2)] px-4 py-3 text-sm text-[var(--color-red)]">{error}</p>}
       <Card className="!p-0 overflow-hidden">
-        {rows.length === 0 ? <p className="p-8 text-center text-sm text-steel">{events.length === 0 ? `Nothing recorded in the last ${days === 1 ? "day" : `${days} days`}.` : "Nothing matches."}</p> : (
+        {rows.length === 0 ? <p className="p-8 text-center text-sm text-steel">{events.length === 0 ? `Nothing in ${days === 1 ? "1 day" : `${days} days`}` : "Nothing matches."}</p> : (
           <ul className="divide-y divide-[var(--color-separator)]">
             {rows.map((e) => { const a = ACTION[e.action] ?? { title: e.action, group: "people" as Group }; const G = GROUPS.find((g) => g.key === a.group)!.Icon; return (
               <li key={e.id} className="px-4 py-3 flex items-start gap-3 min-w-0" data-event data-action={e.action}>
@@ -101,7 +101,7 @@ export function AuditClient({ events, names, days, more, error }: { events: Even
         )}
       </Card>
       {more && rows.length > 0 && <div className="text-center"><Link href={`/audit?days=${days}&before=${events[events.length - 1].id}`} className="btn btn-gray !h-11 px-5 inline-flex items-center text-sm font-semibold">Older</Link></div>}
-      <p className="text-[11.5px] text-steel flex items-center gap-1.5"><Settings2 size={12} /> Owner, managers and supervisors only</p>
+      <p className="text-[11.5px] text-steel flex items-center gap-1.5"><Settings2 size={12} /> Owner, managers, supervisors</p>
     </div>
   );
 }

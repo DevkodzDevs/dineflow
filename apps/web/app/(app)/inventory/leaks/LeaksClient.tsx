@@ -23,19 +23,19 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
   return (
     <div>
       <Link href="/inventory" className="tap inline-flex items-center gap-1 text-sm text-steel mb-3"><ChevronLeft size={16} /> Pantry</Link>
-      <PageHeader eyebrow="Recipes versus the shelf" title="Leak finder" sub="Stock lost beyond recipe use" actions={<Button onClick={() => setCounting(true)}><ClipboardCheck size={16} /> Count stock now</Button>} />
+      <PageHeader eyebrow="Recipes versus the shelf" title="Leak finder" sub="Unexplained stock loss" actions={<Button onClick={() => setCounting(true)}><ClipboardCheck size={16} /> Count stock now</Button>} />
       <div className="flip-row mb-8">
         <Flip value={Math.round(report.lost_value / 100) / 10} label="k ₹ lost" tone={report.lost_value > 0 ? "alert" : "live"} />
         <Flip value={leaks.length} label="leaking" />
         <Flip value={report.uncounted} label="never counted" tone={report.uncounted > 0 ? undefined : "live"} />
         <Flip value={Math.round(report.logged_wastage_value / 100) / 10} label="k ₹ logged waste" />
       </div>
-      {report.uncounted === report.items.length && <Card className="mb-6"><p className="text-[15px]">Nothing counted yet. Tap <b>Count stock now</b>.</p></Card>}
+      {report.uncounted === report.items.length && <Card className="mb-6"><p className="text-[15px]">Nothing counted yet</p></Card>}
       <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
         <div className="min-w-0">
-          <div className="card-title"><h3>Where it's going</h3><span className="more">last {report.since_days} days or since last count</span></div>
+          <div className="card-title"><h3>Where it's going</h3><span className="more">last {report.since_days} days</span></div>
           <div className="group">
-            {leaks.length === 0 && <div className="row text-sm text-steel">No unexplained losses since the last count.</div>}
+            {leaks.length === 0 && <div className="row text-sm text-steel">No losses found</div>}
             {leaks.map((i) => <div key={i.name} className="row">
               <span className="h-2 w-2 rounded-full bg-chili" /><span className="flex-1">{i.name}<span className="block text-xs text-steel">used {i.used} {i.unit} · bought {i.bought} · logged waste {i.wasted}</span></span>
               <span className="num text-steel text-sm w-20 text-right">{i.gap_pct != null && `${i.gap_pct}% of use`}</span>
@@ -49,16 +49,16 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
         <Card>
           <div className="card-title"><h3>How to read this</h3></div>
           <ol className="space-y-3 text-[14px] text-steel list-decimal pl-4">
-            <li>Count the shelf — stock resets to it.</li>
-            <li>Each sale deducts its recipe.</li>
-            <li>Next count, the shortfall is the leak.</li>
-            <li>Logged waste is not a leak.</li>
+            <li>Count the shelf</li>
+            <li>Sales deduct recipes</li>
+            <li>Shortfall = leak</li>
+            <li>Waste isn&apos;t a leak</li>
           </ol>
-          <p className="text-xs text-steel mt-4">Count costly items weekly, the rest monthly.</p>
+          <p className="text-xs text-steel mt-4">Costly items: count weekly</p>
         </Card>
       </div>
       <Sheet open={counting} onClose={() => setCounting(false)} title="Count stock" wide>
-        <p className="text-sm text-steel mb-4">Type what's there. Blank = skip.</p>
+        <p className="text-sm text-steel mb-4">Blank = skip</p>
         <div className="group">
           {ingredients.map((g) => <div key={g.id} className="row"><span className="flex-1">{g.name}<span className="block text-xs text-steel">system says {Number(g.current_stock).toFixed(2)} {g.unit}</span></span><input type="number" inputMode="decimal" step="any" placeholder={g.unit} className="num !w-32 !text-right" value={vals[g.id] ?? ""} onChange={(e) => setVals({ ...vals, [g.id]: e.target.value })} /></div>)}
         </div>
@@ -68,7 +68,7 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
         <div className="sticky bottom-0 -mx-5 mt-4 px-5 pt-3 pb-1 bg-[var(--color-bg-2)] border-t border-[var(--color-separator)]">
         <Button className="w-full !h-[52px] !text-base" disabled={pending || Object.values(vals).every((v) => v === "")} onClick={() => start(async () => {
           const counts = Object.entries(vals).filter(([, v]) => v !== "").map(([ingredient_id, v]) => ({ ingredient_id, counted: Number(v) }));
-          if (!online) { await enqueue("stock_count", { counts }, `Stock count · ${counts.length} items`); toast(`${counts.length} counted — will send when the line is back`); setCounting(false); setVals({}); return; }
+          if (!online) { await enqueue("stock_count", { counts }, `Stock count · ${counts.length} items`); toast(`${counts.length} counted · sends when online`); setCounting(false); setVals({}); return; }
           const r = await stockCount(counts); if ("error" in r) toast(r.error ?? "Could not save the count", "err"); else { toast(`${r.counted} items counted · ${formatINR(r.gap_value)} moved`); setCounting(false); setVals({}); }
         })}><ClipboardCheck size={16} /> Save count</Button>
         </div>

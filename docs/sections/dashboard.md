@@ -116,3 +116,6 @@ count differs and so does the grid.
 - **The analog clock's dial is rounded (2026-10-25 audit).** Node and the browser differ in the last digit of `Math.sin`/`cos`,
   so the dial's dots came out `80.84051025731185` on the server and `…186` in the browser — a hydration mismatch on every
   load of the control room. `AnalogClock` rounds the coordinates to 1/1000 (and sin/cos to 1e-6); a fresh dev server shows none.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

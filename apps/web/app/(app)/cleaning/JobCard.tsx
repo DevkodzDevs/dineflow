@@ -97,7 +97,7 @@ export function JobCard({ j, me, boss, pending, people, labourers = [], act, sho
   const pr = (j.kind === "job" || j.what === "maintenance") && j.priority ? PRIORITY[j.priority] : null;
   const due = j.due_at ? (ms(j.due_at) > 0 ? `late by ${span(ms(j.due_at))}` : ms(j.due_at) > -20 * 3600e3 ? `due in ${span(-ms(j.due_at))}` : `due ${dayClock(j.due_at)}`) : null;
   const give = (v: string) => {
-    if (v.startsWith("lab:")) { const id = v.slice(4); const who = labourers.find((l) => l.id === id)?.name; act(assignLabour(j.id, id), `${name} given to ${who} — finish it for them when it is done`); return; }
+    if (v.startsWith("lab:")) { const id = v.slice(4); const who = labourers.find((l) => l.id === id)?.name; act(assignLabour(j.id, id), `${name} given to ${who}`); return; }
     const who = people.find((p) => p.id === v)?.name;
     act(assignJob(j.kind, j.id, v || null), v ? `${name} given to ${who}` : `${name}: anyone can take it`);
   };
@@ -139,8 +139,8 @@ export function JobCard({ j, me, boss, pending, people, labourers = [], act, sho
       <div className="px-4 pb-4 pt-3 mt-auto">
         <div className="flex items-center gap-2 min-w-0">
           {j.status === "pending" && canTake
-            ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-take onClick={() => act(takeJob(j.kind, j.id), `${name} is yours — the clock is running`)}><Hand size={18} aria-hidden /><Say w="take_it" /></button>
-            : canFinish && !noting ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-finish onClick={() => act(finishJob(j.kind, j.id), `${name} done — thank you`)}><Check size={18} aria-hidden /><Say w="clean_done" /></button>
+            ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-take onClick={() => act(takeJob(j.kind, j.id), `${name} is yours`)}><Hand size={18} aria-hidden /><Say w="take_it" /></button>
+            : canFinish && !noting ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-finish onClick={() => act(finishJob(j.kind, j.id), `${name} done`)}><Check size={18} aria-hidden /><Say w="clean_done" /></button>
             : <p className="flex-1 min-w-0 text-[13px] text-steel truncate">{j.status === "pending" ? `Waiting for ${j.assigned_name ?? "someone"}` : noting ? "Say what was done" : `${j.taken_name ?? "Someone"} is on it`}</p>}
           {hasMore && <button type="button" onClick={() => setPanel((x) => (x === "more" ? null : "more"))} aria-expanded={panel === "more"} aria-label={`More for ${name}`} title="More"
             className={cn("h-11 w-11 shrink-0 rounded-xl grid place-items-center transition-colors", panel === "more" ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-more><MoreHorizontal size={19} aria-hidden /></button>}
@@ -154,16 +154,16 @@ export function JobCard({ j, me, boss, pending, people, labourers = [], act, sho
           {canDrop && <button type="button" disabled={pending} className="svc-btn quiet sm min-w-0 !text-[var(--color-red)]" data-drop onClick={() => act(cancelJob(j.id), `${name} dropped`)}><Ban size={16} aria-hidden /><Say w="drop_it" /></button>}
         </div>
         {noting && <div className="mt-2 grid gap-2" data-note-box>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was done — part replaced, cleaned, checked…" maxLength={300} aria-label={`What was done: ${name}`} data-done-note autoFocus />
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was done?" maxLength={300} aria-label={`What was done: ${name}`} data-done-note autoFocus />
           <div className="flex gap-2 [&>*]:flex-1 [&>*]:min-w-0">
             <button type="button" className="svc-btn quiet sm" onClick={() => setNoting(false)}>Cancel</button>
-            <button type="button" disabled={pending} className="svc-btn go sm" data-finish-note onClick={() => { act(finishJob(j.kind, j.id, note), `${name} done — thank you`); setNoting(false); }}><Check size={16} aria-hidden /><Say w="with_note" /></button>
+            <button type="button" disabled={pending} className="svc-btn go sm" data-finish-note onClick={() => { act(finishJob(j.kind, j.id, note), `${name} done`); setNoting(false); }}><Check size={16} aria-hidden /><Say w="with_note" /></button>
           </div></div>}
         {boss && <label className={cn("mt-2 flex items-center gap-2 min-w-0", panel !== "give" && "!hidden")} data-give-panel><UserPlus size={18} className="shrink-0 text-steel" aria-hidden />
           <select className="!h-11 !min-h-11 min-w-0 flex-1 text-[14px] font-semibold" value={j.assigned_to ?? (j.labourer_id ? `lab:${j.labourer_id}` : "")} disabled={pending} data-assign aria-label={`Give ${name} to`} onChange={(e) => { give(e.target.value); setPanel(null); }}>
-            <option value="">{j.assigned_to || j.labourer_id ? "Nobody — anyone can take it" : "Give to…"}</option>
+            <option value="">{j.assigned_to || j.labourer_id ? "Anyone can take" : "Give to…"}</option>
             {peopleFor(people, j).map((p) => <option key={p.id} value={p.id}>{p.name}{p.title ? ` — ${p.title}` : ""}{p.on_duty ? " · on duty" : ""}</option>)}
-            {j.kind === "job" && labourers.length > 0 && <optgroup label="Day labourers (no sign-in — finish it for them)">
+            {j.kind === "job" && labourers.length > 0 && <optgroup label="Day labourers (no sign-in)">
               {labourers.map((l) => <option key={l.id} value={`lab:${l.id}`}>{l.name}{l.skill ? ` — ${l.skill}` : ""}{l.on_duty ? " · on duty" : ""}</option>)}</optgroup>}
           </select></label>}
       </div>
@@ -198,11 +198,11 @@ export function DoneRow({ j, me, inspectRequired, showDept }: { j: Job; me: stri
 }
 
 const COL_LOOK: Record<"waiting" | "on_it" | "done_today" | "to_inspect" | "coming_up", [LucideIcon, EmptyHue, string]> = {
-  waiting: [Hourglass, "orange", "New jobs land here first"],
-  on_it: [Timer, "blue", "A job moves here when someone takes it"],
-  to_inspect: [ShieldCheck, "violet", "Cleaned rooms wait here for a check"],
-  done_today: [CircleCheck, "tint", "Finished jobs collect here through the day"],
-  coming_up: [CalendarClock, "cyan", "Jobs set for later wait here"],
+  waiting: [Hourglass, "orange", ""],
+  on_it: [Timer, "blue", ""],
+  to_inspect: [ShieldCheck, "violet", ""],
+  done_today: [CircleCheck, "tint", ""],
+  coming_up: [CalendarClock, "cyan", ""],
 };
 
 /** A column of the board: its word, a count, and its cards or a quiet line. */

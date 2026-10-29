@@ -202,7 +202,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
             {lockedOut ? (
               <div className="text-xs text-[var(--color-red)] font-semibold flex items-start gap-1.5 mt-1">
                 <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                <span>Locked out — the owner can’t sign in. Issue a new password.</span>
+                <span>Locked out — issue a new password</span>
               </div>
             ) : (
               <div className="text-xs text-steel flex items-center gap-2 flex-wrap">
@@ -228,7 +228,6 @@ function UserCard({ u, restaurantId, onRefresh }: {
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-orange)]">
               <AlertTriangle size={12} /> {expired ? "Password expired" : "No password on file"}
             </div>
-            <p className="text-xs text-steel">Make a new temporary password for the owner.</p>
             <Button size="sm" disabled={pending} onClick={generate}>
               <KeyRound size={13} /> Generate password
             </Button>
@@ -240,7 +239,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
             <ShieldCheck size={16} className="text-[var(--color-green)] shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-[var(--color-green)]">Password set by owner</div>
-              <div className="text-xs text-steel mt-0.5">Issue a new temporary one if they are locked out.</div>
+              <div className="text-xs text-steel mt-0.5">Reissue if locked out</div>
             </div>
             <Button size="sm" variant="outline" disabled={pending} onClick={generate}><KeyRound size={13} /></Button>
           </div>
@@ -255,7 +254,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
               <code className="font-sans text-base font-bold tracking-wider tabular-nums break-all flex-1 min-w-0">{newPw.password}</code>
               <CopyBtn text={`${newPw.email} / ${newPw.password}`} label="Copy" />
             </div>
-            <p className="text-xs text-steel">Share with the owner. They change it at next sign-in.</p>
+            <p className="text-xs text-steel">Share with the owner</p>
           </div>
         )}
       </div>
@@ -268,12 +267,12 @@ function UserCard({ u, restaurantId, onRefresh }: {
 /* ── which fields are editable in each section ────────────────────────────── */
 const EDITABLE_PROPERTY: Record<string, { type?: string; placeholder?: string }> = {
   name: { placeholder: "Property name" },
-  legal_name: { placeholder: "Legal name on the GST certificate" },
+  legal_name: { placeholder: "Legal name (GST)" },
   phone: { type: "tel", placeholder: "+91 98765 43210" },
   address: { placeholder: "Full address" },
   district: { placeholder: "District" },
   pincode: { placeholder: "629001" },
-  tagline: { placeholder: "A short line for the booking page" },
+  tagline: { placeholder: "Booking page tagline" },
   booking_slug: { placeholder: "booking-page-url" },
 };
 
@@ -323,7 +322,7 @@ function EditableSection({ icon, title, data, editableKeys, restaurantId, onSave
   const filled = Object.values(data).filter((v) => !empty(v)).length;
   return (
     <div>
-      <Panel icon={icon} title={title} sub={editing ? "Editing — fields without a box are read only" : `${filled} of ${Object.keys(data).length} filled in`}
+      <Panel icon={icon} title={title} sub={editing ? "Editing · boxed fields only" : `${filled} of ${Object.keys(data).length} filled`}
         actions={editing
           ? <>
               <Button size="sm" variant="outline" onClick={cancel} disabled={pending} className="!h-9 [@media(pointer:coarse)]:!h-11"><X size={13} /> Cancel</Button>
@@ -415,7 +414,7 @@ export function PropertyDetailView({ detail, restaurantId, onRefresh }: {
         actions={<CopyBtn text={users.map((u) => `${u.name} (${u.role}) — ${u.login_id} — ${u.contact_email ?? "no contact"}`).join("\n")} label="" />}>
         <div className="p-3 space-y-3">
           {users.length === 0
-            ? <p className="text-sm text-steel px-1 py-2">No login has been created for this property yet.</p>
+            ? <p className="text-sm text-steel px-1 py-2">No logins yet</p>
             : users.map((u) => <UserCard key={u.login_id} u={u} restaurantId={restaurantId} onRefresh={onRefresh} />)}
         </div>
       </Panel>

@@ -59,18 +59,18 @@ function describe(kind: NotifyKind, r: Row): { title: string; sub: string } {
     case "booking": return { title: `New room booking${r.booking_no ? ` #${str(r.booking_no)}` : ""}`, sub: [`${Number(r.adults ?? 0) + Number(r.children ?? 0) || 1} guests`, r.check_in ? `arrives ${waDate(str(r.check_in))}` : "", str(r.source).replace("_", " ")].filter(Boolean).join(" · ") };
     case "kot": return { title: `New kitchen ticket${r.kot_no ? ` · KOT ${str(r.kot_no)}` : ""}`, sub: "Fired just now" };
     case "ready": return { title: `Food ready${r.kot_no ? ` · KOT ${str(r.kot_no)}` : ""}`, sub: "Ready to serve" };
-    case "housekeeping": return { title: r.place ? `Room ${str(r.place)} to clean` : "Room to clean", sub: str(r.kind).replace(/_/g, " ") || "A new housekeeping task" };
-    case "clean": return { title: `${str(r.place) || "A table"} to clean`, sub: "Paid and left — take it on Cleaning" };
-    case "roomdone": return { title: `Room ${str(r.place)} is clean`, sub: "Finished just now — inspect it, or sell it" };
+    case "housekeeping": return { title: r.place ? `Room ${str(r.place)} to clean` : "Room to clean", sub: str(r.kind).replace(/_/g, " ") || "Housekeeping task" };
+    case "clean": return { title: `${str(r.place) || "A table"} to clean`, sub: "Paid and left" };
+    case "roomdone": return { title: `Room ${str(r.place)} is clean`, sub: "Ready to inspect" };
     case "job": return { title: `${PRI[str(r.priority)] ?? ""}${str(r.title)}`, sub: [str(r.place), `for ${deptName(r.department)}`, r.guest_impact ? "a guest is waiting" : ""].filter(Boolean).join(" · ") };
     case "jobdone": { const m = mins(r.taken_at, r.done_at); return { title: `Done · ${str(r.label ?? r.title)}`, sub: [r.title ? str(r.place) : "", r.who ? `${str(r.who)}${m ? ` · ${m} min` : ""}` : "", str(r.note ?? "")].filter(Boolean).join(" — ") || "Finished just now" }; }
     case "taken": return { title: `${str(r.who ?? "Someone")} took ${str(r.label ?? r.title)}`, sub: `Started ${hm(r.taken_at)}${r.title && r.place ? ` · ${str(r.place)}` : ""}` };
     case "assigned": return { title: `Given to you · ${r.title ? str(r.title) : r.room_id ? `Room ${str(r.place)}` : str(r.place) || "a job"}`, sub: r.title ? [str(r.place), str(r.details)].filter(Boolean).join(" — ") || "A job for you" : str(r.notes).startsWith("Failed inspection") ? str(r.notes) : r.room_id ? "A room to clean" : "A table to clean" };
     // 2026-10-23: the table and its zone, looked up when the call arrives — "A table…" made a waiter open Orders to find out which
     case "call": { const t = str(r.table) || "A table";
-      if (r.kind === "order") return { title: `${t} placed an order`, sub: [Number(r.items_n) ? `${Number(r.items_n)} item${Number(r.items_n) === 1 ? "" : "s"}` : "", Number(r.gross) ? formatINR(Number(r.gross), { whole: true }) : "", "accept it to send it to the kitchen"].filter(Boolean).join(" · ") };
+      if (r.kind === "order") return { title: `${t} placed an order`, sub: [Number(r.items_n) ? `${Number(r.items_n)} item${Number(r.items_n) === 1 ? "" : "s"}` : "", Number(r.gross) ? formatINR(Number(r.gross), { whole: true }) : "", "accept to send"].filter(Boolean).join(" · ") };
       return { title: r.kind === "bill" ? `${t} wants the bill` : r.kind === "water" ? `${t} wants water` : `${t} is calling a waiter`, sub: [str(r.zone), `asked ${hm(r.created_at)}`].filter(Boolean).join(" · ") }; }
-    case "feedback": return { title: `Low rating · ${str(r.rating)}★`, sub: [str(r.comment).slice(0, 80), (r.tags as string[] | null)?.join(", ")].filter(Boolean).join(" — ") || "Read it under Customers → Feedback" };
+    case "feedback": return { title: `Low rating · ${str(r.rating)}★`, sub: [str(r.comment).slice(0, 80), (r.tags as string[] | null)?.join(", ")].filter(Boolean).join(" — ") || "See Customers → Feedback" };
     // 0124: `ev` is set where the event is heard — "new" and "reply" reach the owner, "answer" the person who sent it
     case "voice": {
       const what = ({ complaint: "complaint", feedback: "feedback", suggestion: "idea", appreciation: "thanks" } as Record<string, string>)[str(r.kind)] ?? "message";
@@ -381,8 +381,7 @@ export function NotificationBell({ lateKots }: { lateKots: number }) {
             {!lateKots && !(n?.feed.length) && (
               <div className="text-center px-6 py-8">
                 <span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><Bell size={20} /></span>
-                <div className="text-sm font-semibold mt-3">You are all caught up</div>
-                <p className="text-xs text-[var(--color-label-2)] mt-1">New orders, bookings and tickets show here, with a sound.</p>
+                <div className="text-sm font-semibold mt-3">All caught up</div>
               </div>
             )}
           </div>
@@ -417,7 +416,7 @@ export function NotificationSettings() {
       {/* master sound switch */}
       <label className="flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3.5 cursor-pointer">
         <span className={cn("h-10 w-10 rounded-xl grid place-items-center shrink-0", p.on ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-steel")}>{p.on ? <Volume2 size={18} /> : <BellOff size={18} />}</span>
-        <span className="flex-1 min-w-0"><span className="block text-sm font-semibold">Play a sound</span><span className="block text-xs text-steel">On this device, while DineFlow is open</span></span>
+        <span className="flex-1 min-w-0"><span className="block text-sm font-semibold">Play a sound</span><span className="block text-xs text-steel">This device only</span></span>
         <Switch on={p.on} onChange={(v) => set({ on: v })} name="Play a sound" />
       </label>
 
@@ -434,7 +433,7 @@ export function NotificationSettings() {
             </button>
           ); })}
         </div>
-        {p.station === "custom" && <p className="text-xs text-steel mt-2">Custom mix. Pick a device above to reset.</p>}
+        {p.station === "custom" && <p className="text-xs text-steel mt-2">Custom mix</p>}
       </div>
 
       {/* tone */}
@@ -468,7 +467,7 @@ export function NotificationSettings() {
               <Switch on={p.kinds[k.kind]} onChange={(v) => set({ kinds: { ...p.kinds, [k.kind]: v }, station: "custom" })} name={k.label} />
             </label>
           ); })}
-          {kinds.length === 0 && <p className="px-3.5 py-3 text-sm text-steel">No alert sections are on for you.</p>}
+          {kinds.length === 0 && <p className="px-3.5 py-3 text-sm text-steel">No alerts for you</p>}
         </div>
       </div>
 
@@ -476,11 +475,11 @@ export function NotificationSettings() {
       <div className="rounded-2xl border border-[var(--color-separator)] p-3.5 flex flex-wrap items-center gap-3">
         <span className="h-10 w-10 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-steel"><BellRing size={18} /></span>
         <span className="flex-1 min-w-[12rem]">
-          <span className="block text-sm font-semibold">Show when DineFlow is in the background</span>
+          <span className="block text-sm font-semibold">Background alerts</span>
           <span className="block text-xs text-steel">
             {perm === "unsupported" ? (ios ? "On iPhone, add DineFlow to the Home Screen first." : "This browser cannot show system notifications.")
               : perm === "denied" ? "Blocked — allow notifications in browser settings."
-                : "Alerts you even when another app or tab is open."}
+                : "Even in another app"}
           </span>
         </span>
         {perm === "granted" ? <Switch on={p.system} onChange={(v) => set({ system: v })} name="System notifications" />
@@ -488,7 +487,7 @@ export function NotificationSettings() {
       </div>
 
       <button type="button" onClick={() => { unlockAudio(); playTone(p.tone, p.volume); }} className="btn btn-gray w-full !h-12 inline-flex items-center justify-center gap-2"><Play size={15} /> Play a test alert</button>
-      <p className="text-xs text-steel -mt-3">Each device keeps its own sound. Tap the screen once so it can play.</p>
+      <p className="text-xs text-steel -mt-3">Per device · tap screen to enable</p>
     </div>
   );
 }

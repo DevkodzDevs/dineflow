@@ -24,9 +24,9 @@ export function StaffLeave({ rows, names, me }: { rows: LeaveRow[]; names: Recor
     <Card className="mt-5 !p-0 overflow-hidden" data-staff-leave>
       <div className="px-4 sm:px-5 pt-4 pb-3 flex items-center gap-3">
         <span className="h-10 w-10 rounded-xl grid place-items-center bg-[var(--color-cyan-2)] text-[var(--color-cyan)]"><Plane size={19} aria-hidden /></span>
-        <div className="min-w-0 flex-1"><div className="text-[16px] font-bold">Leave requests</div><div className="text-[12.5px] text-steel">{waiting.length ? `${waiting.length} waiting for your answer` : "Nothing waiting"}</div></div>
+        <div className="min-w-0 flex-1"><div className="text-[16px] font-bold">Leave requests</div><div className="text-[12.5px] text-steel">{waiting.length ? `${waiting.length} waiting` : "Nothing waiting"}</div></div>
       </div>
-      {waiting.length === 0 && decided.length === 0 && <p className="px-5 pb-5 text-[13.5px] text-steel">Leave requests from My day show here.</p>}
+      {waiting.length === 0 && decided.length === 0 && <p className="px-5 pb-5 text-[13.5px] text-steel">No requests</p>}
       <ul>
         {waiting.map((r) => (
           <li key={r.id} className="px-4 sm:px-5 py-3.5 border-t border-[var(--color-separator)]" data-leave-request={r.id}>
@@ -34,7 +34,7 @@ export function StaffLeave({ rows, names, me }: { rows: LeaveRow[]; names: Recor
             {r.reason && <div className="mt-0.5 text-[13px] text-steel">“{r.reason}”</div>}
             {r.profile_id !== me && (
               <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
-                <input value={note[r.id] ?? ""} onChange={(e) => setNote((n) => ({ ...n, [r.id]: e.target.value }))} maxLength={300} placeholder="A note for them — if you like" aria-label={`Note for ${names[r.profile_id] ?? "them"}`} />
+                <input value={note[r.id] ?? ""} onChange={(e) => setNote((n) => ({ ...n, [r.id]: e.target.value }))} maxLength={300} placeholder="Note (optional)" aria-label={`Note for ${names[r.profile_id] ?? "them"}`} />
                 <button type="button" disabled={pending} onClick={() => decide(r.id, true)} className="svc-btn go sm !px-4" data-leave-approve><Check size={17} aria-hidden /> Approve</button>
                 <button type="button" disabled={pending} onClick={() => decide(r.id, false)} className="svc-btn quiet sm !px-4" data-leave-reject><X size={17} aria-hidden /> Not approve</button>
               </div>)}

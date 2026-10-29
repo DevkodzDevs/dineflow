@@ -71,7 +71,7 @@ function Composer({ name }: { name: string }) {
     setErr(null);
     const r = await sendVoice(kind!, about, subject, body, anon);
     if ("error" in r) { setErr(r.error!); return; }
-    toast("Sent to the owner — the answer comes back here");
+    toast("Sent to the owner");
     setKind(null); setAbout(null); setSubject(""); setBody(""); setAnon(false);
   });
   const step = (n: number, label: string, opt?: string) => (
@@ -91,7 +91,7 @@ function Composer({ name }: { name: string }) {
           </button>); })}
       </div>
 
-      <div className="mt-5">{step(2, "What is it about?", "— if you like")}
+      <div className="mt-5">{step(2, "What is it about?", "(optional)")}
         <div className="flex flex-wrap gap-2" role="group" aria-label="What is it about?">
           {VOICE_TOPICS.map((x) => (
             <button key={x.key} type="button" aria-pressed={about === x.key} onClick={() => setAbout((a) => (a === x.key ? null : x.key))} data-voice-topic={x.key}
@@ -100,9 +100,9 @@ function Composer({ name }: { name: string }) {
       </div>
 
       <div className="mt-5">{step(3, "Tell the owner")}
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={120} placeholder="A short title — e.g. Split shifts every day" aria-label="Title" data-voice-subject />
+        <input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={120} placeholder="Short title" aria-label="Title" data-voice-subject />
         <textarea className="mt-2" rows={5} value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} aria-label="Your message"
-          placeholder="What happened, or what would help?" data-voice-body />
+          placeholder="Your message" data-voice-body />
         <div className="mt-1 text-right text-[11.5px] text-steel num">{body.length}/2000</div>
       </div>
 
@@ -110,7 +110,7 @@ function Composer({ name }: { name: string }) {
         <span className="h-9 w-9 rounded-xl grid place-items-center shrink-0 bg-[var(--color-bg-2)] text-steel">{anon ? <EyeOff size={17} aria-hidden /> : <Eye size={17} aria-hidden />}</span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-bold">Send without my name</span>
-          <span className="block text-[12px] text-steel leading-snug">{anon ? "Owner sees “Anonymous”; answers still come here." : <>The owner sees it is from <b className="text-[var(--color-label)]">{name}</b>.</>}</span>
+          <span className="block text-[12px] text-steel leading-snug">{anon ? "Shown as “Anonymous”" : <>Sent as <b className="text-[var(--color-label)]">{name}</b></>}</span>
         </span>
         <Switch on={anon} onChange={setAnon} name="Send without my name" />
       </label>
@@ -118,7 +118,7 @@ function Composer({ name }: { name: string }) {
       {err && <p className="mt-3 text-[14px] font-semibold text-chili" role="alert">{err}</p>}
       <button type="button" disabled={!ready || pending} onClick={send} className="svc-btn go w-full mt-4" data-voice-send>
         <Send size={18} aria-hidden /> Send to the owner</button>
-      {!ready && <p className="mt-2 text-center text-[12px] text-steel">Pick a kind, title and message.</p>}
+      {!ready && <p className="mt-2 text-center text-[12px] text-steel">Kind, title, message needed</p>}
     </section>
   );
 }
@@ -156,7 +156,7 @@ function Mine({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void }) {
       <div className="flex items-baseline justify-between gap-2 mb-3"><h2 className="text-[17px] font-extrabold">What I sent</h2><span className="text-[12.5px] text-steel num">{items.length}</span></div>
       {items.length === 0
         ? <div className="card !p-6 text-center" data-voice-empty><span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><MessagesSquare size={20} aria-hidden /></span>
-            <p className="mt-3 text-[15px] font-bold">Nothing sent yet</p><p className="mt-1 text-[13px] text-steel">Your messages and answers show here.</p></div>
+            <p className="mt-3 text-[15px] font-bold">Nothing sent yet</p></div>
         : <div className="grid gap-3">{items.map((i) => <Row key={i.id} item={i} owner={false} onOpen={onOpen} />)}</div>}
     </section>
   );
@@ -204,22 +204,22 @@ function OwnerInbox({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => voi
               </button>);
           })}
         </div>
-        {unread > 0 && <div className="flex items-center justify-center gap-2.5 pt-0.5 text-[13px] font-bold text-[var(--color-red)]" data-voice-unread>{/* new messages breathe until the owner opens them (Flap.tsx) */}<FlapBreathe value={unread} pad={0} size="xs" tile="26px" say={`${unread} new`} />new — tap one to read it</div>}
+        {unread > 0 && <div className="flex items-center justify-center gap-2.5 pt-0.5 text-[13px] font-bold text-[var(--color-red)]" data-voice-unread>{/* new messages breathe until the owner opens them (Flap.tsx) */}<FlapBreathe value={unread} pad={0} size="xs" tile="26px" say={`${unread} new`} />new</div>}
       </div>
       {items.length === 0
         ? <>
           {/* iPad and up (2026-10-24, the owner: "design"): the empty panel, and what can arrive — phones keep the card below */}
           <div className="hidden md:block"><EmptyState icon={Inbox} hue="violet" title="Nothing from your team yet" data-voice-empty-md
-            hint="When someone on your team sends a complaint, feedback, an idea or a thank-you from My day, it lands here. Only you see them."
+            hint="Only you see these"
             actions={([[AlertTriangle, "Complaints", "var(--color-red)", "var(--color-red-2)"], [MessageSquare, "Feedback", "var(--color-blue)", "var(--color-blue-2)"], [Lightbulb, "Ideas", "var(--color-orange)", "var(--color-orange-2)"], [HeartHandshake, "Thanks", "var(--color-green)", "var(--color-green-2)"]] as const).map(([I, t, h, h2]) => (
               <span key={t} className="inline-flex items-center gap-1.5 h-9 pl-1.5 pr-3 rounded-full text-[12.5px] font-bold bg-[var(--color-bg-2)] border border-[var(--color-separator)]">
                 <span className="h-6 w-6 rounded-full grid place-items-center" style={{ background: h2, color: h }}><I size={13} aria-hidden /></span>{t}</span>))} /></div>
           <div className="card !p-8 text-center md:hidden" data-voice-empty><span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-steel"><Inbox size={20} aria-hidden /></span>
             <p className="mt-3 text-[16px] font-bold">Nothing from your team yet</p>
-            <p className="mt-1 text-[13px] text-steel max-w-[46ch] mx-auto">Staff messages land here. Only you see them.</p></div>
+            <p className="mt-1 text-[13px] text-steel max-w-[46ch] mx-auto">Only you see these</p></div>
           </>
         : shown.length === 0
-          ? <div className="card !p-6 text-center text-[14px] text-steel">Nothing here — choose another filter above.</div>
+          ? <div className="card !p-6 text-center text-[14px] text-steel">Nothing here</div>
           : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{shown.map((i) => <Row key={i.id} item={i} owner onOpen={onOpen} />)}</div>}
     </div>
   );
@@ -246,11 +246,11 @@ function Thread({ item, owner }: { item: Item; owner: boolean }) {
     start(async () => { const r = await openVoice(item.id); if ("error" in r) setErr(r.error!); else setReplies(r.replies); });
   }, [item.id]);
   const topic = topicOf(item.about);
-  const from = item.anonymous ? (owner ? "Anonymous" : "You · without your name") : owner ? `${item.author_name ?? "Staff"}${item.author_role ? ` · ${roleName(item.author_role)}` : ""}` : "You";
+  const from = item.anonymous ? (owner ? "Anonymous" : "You · anonymous") : owner ? `${item.author_name ?? "Staff"}${item.author_role ? ` · ${roleName(item.author_role)}` : ""}` : "You";
   const send = () => start(async () => {
     setErr(null); const r = await replyVoice(item.id, text);
     if ("error" in r) { setErr(r.error!); return; }
-    setText(""); toast(owner ? "Answer sent" : "Added — the owner sees it");
+    setText(""); toast(owner ? "Answer sent" : "Added");
     const t2 = await openVoice(item.id); if (!("error" in t2)) setReplies(t2.replies);
   });
   const move = (s: VoiceStatus) => start(async () => { const r = await setVoiceStatus(item.id, s); if ("error" in r) toast(r.error!, "err"); else toast(VOICE_STATUS[s].label); });
@@ -278,12 +278,12 @@ function Thread({ item, owner }: { item: Item; owner: boolean }) {
               const mine = owner ? r.side === "owner" : r.side === "staff";
               const who = r.side === "owner" ? (owner ? "You" : r.by_name ?? "The owner") : owner ? (r.by_name ?? "Anonymous") : "You";
               return <Bubble key={r.id} mine={mine} who={who} when={ago(r.created_at)}>{r.body}</Bubble>; })}
-        {replies !== null && replies.length === 0 && <p className="text-center text-[12.5px] text-steel py-1">{owner ? "No answer yet — write one below." : "No answer yet — the owner will reply here."}</p>}
+        {replies !== null && replies.length === 0 && <p className="text-center text-[12.5px] text-steel py-1">No answer yet</p>}
       </div>
 
       <div className="rounded-2xl bg-[var(--color-fill)] p-2.5">
         <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} aria-label={owner ? "Your answer" : "Add to this"} data-voice-reply
-          placeholder={owner ? (item.anonymous ? "Answer them — they will see it here" : `Answer ${item.author_name ?? "them"} — they will read it here`) : "Add to this — the owner reads it"} />
+          placeholder={owner ? (item.anonymous ? "Your answer" : `Answer ${item.author_name ?? "them"}`) : "Add to this"} />
         {err && <p className="mt-2 text-[13.5px] font-semibold text-chili" role="alert">{err}</p>}
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="text-[11.5px] text-steel num">{text.length}/2000</span>

@@ -200,7 +200,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       if (r.customer_name) setCustomer((x) => ({ ...x, name: r.customer_name! }));
       setUnresolved(r.unresolved);
       const n = r.lines.reduce((a, l) => a + l.qty, 0);
-      toast(n ? `${n} item${n > 1 ? "s" : ""} added${r.table_name ? ` · ${r.table_name}` : ""} — check the ticket, then send` : "Nothing on the menu matched", n ? "ok" : "err");
+      toast(n ? `${n} item${n > 1 ? "s" : ""} added${r.table_name ? ` · ${r.table_name}` : ""}` : "Nothing on the menu matched", n ? "ok" : "err");
       if (n) setSaid("");
     } finally { setReading(false); }
   };
@@ -425,13 +425,13 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                       {free.map((t) => <button key={t.id} type="button" onClick={() => { pickTable(t); setPickOpen(false); }} aria-pressed={tableId === t.id} data-free-table={t.name}
                         className={cn("h-11 px-1 rounded-xl text-[14px] font-bold border truncate", tableId === t.id ? "bg-ink text-on-label border-ink" : "border-line hover:bg-[var(--color-fill)]")}>{t.name}</button>)}
                     </div>
-                  : <p className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[13px] font-semibold" data-no-free-table>No free table right now.</p>}
-                {hidden > 0 && <p className="mt-1.5 text-[12px] text-steel" data-hidden-tables>Free tables only · {hidden} not free</p>}
+                  : <p className="rounded-xl bg-[var(--color-fill)] px-3 py-2.5 text-[13px] font-semibold" data-no-free-table>No free tables</p>}
+                {hidden > 0 && <p className="mt-1.5 text-[12px] text-steel" data-hidden-tables>Free only · {hidden} hidden</p>}
               </div>);
           })()}
           {busy && (
             <div className="mt-2 rounded-xl border border-line bg-[var(--color-fill)] p-2.5 text-xs">
-              <div className="font-semibold">{tables.find((t) => t.id === busy.table_id)?.name ?? "That table"} already has order #{busy.order_no} running.</div>
+              <div className="font-semibold">{tables.find((t) => t.id === busy.table_id)?.name ?? "That table"} has #{busy.order_no} open</div>
               <div className="mt-2 flex gap-2">
                 <Link href={`/orders/${busy.id}`} className="btn btn-gray !h-10 !text-xs flex-1 justify-center">Open #{busy.order_no}</Link>
                 <button onClick={() => setBusy(null)} className="btn btn-outline !h-10 !text-xs flex-1">Start a separate one</button>
@@ -441,7 +441,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
           {/* the guest, folded: a phone number makes them a customer, and most tables never give one */}
           <button type="button" onClick={() => { setGuestOpen((v) => !v); setPickOpen(false); }} aria-expanded={guestOpen} data-guest
             className={cn("mt-2 !min-h-11 rounded-xl px-3 flex items-center gap-2 text-left text-[14px] transition-colors", customer.name || customer.phone ? "bg-[var(--color-fill)] font-semibold" : "text-steel hover:bg-[var(--color-fill)]")}>
-            <UserRound size={16} className="shrink-0" aria-hidden /><span className="flex-1 truncate">{customer.name || customer.phone || "Guest name or phone (optional)"}</span><ChevronDown size={15} className={cn("shrink-0 transition-transform", guestOpen && "rotate-180")} />
+            <UserRound size={16} className="shrink-0" aria-hidden /><span className="flex-1 truncate">{customer.name || customer.phone || "Add guest (optional)"}</span><ChevronDown size={15} className={cn("shrink-0 transition-transform", guestOpen && "rotate-180")} />
           </button>
           {guestOpen && (
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -456,7 +456,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-x-0">
           <input placeholder="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className="lg:!rounded-r-none lg:!text-[15px] lg:!px-3.5" data-cust-name />
           <input placeholder="Phone" inputMode="tel" className="num lg:!rounded-l-none lg:![border-left:1px_solid_var(--color-separator)] lg:!text-[15px] lg:!px-3.5" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} data-cust-phone />
-          {type === "delivery" && <textarea placeholder="Delivery address — house, street, landmark" rows={2} className="col-span-2 lg:!text-[15px] lg:!px-3.5 lg:!py-2.5 lg:!min-h-[68px] lg:resize-none" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} data-delivery-address />}
+          {type === "delivery" && <textarea placeholder="Delivery address" rows={2} className="col-span-2 lg:!text-[15px] lg:!px-3.5 lg:!py-2.5 lg:!min-h-[68px] lg:resize-none" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} data-delivery-address />}
           <div className="col-span-2 mt-1 space-y-2 lg:mt-1.5 lg:space-y-3" data-parcel-details>
             <div>
               <div className="text-[11px] font-bold uppercase tracking-[.1em] text-steel mb-1.5 lg:inline-flex lg:items-center lg:gap-1.5"><Clock size={12} className="hidden lg:inline" aria-hidden />{type === "delivery" ? "Deliver" : "Pickup"}</div>
@@ -492,8 +492,8 @@ export function PosClient({ categories, items, tables, initialTable, initialType
               className="rounded-2xl border border-dashed border-[var(--color-line-2)] grid place-items-center text-center px-6 py-8 lg:py-4 lg:px-4">
               <div className="lg:flex lg:items-center lg:gap-3 lg:text-left">
                 <span className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-fill)] grid place-items-center text-steel lg:mx-0 lg:h-10 lg:w-10 lg:shrink-0"><UtensilsCrossed size={20} /></span>
-                <div className="lg:min-w-0"><p className="mt-3 text-[15px] font-bold lg:mt-0">Nothing on the ticket yet</p>
-                <p className="mt-1 text-[13px] text-steel lg:mt-0.5">Tap a dish to add it.</p></div>
+                <div className="lg:min-w-0"><p className="mt-3 text-[15px] font-bold lg:mt-0">Ticket empty</p>
+                <p className="mt-1 text-[13px] text-steel lg:mt-0.5">Tap a dish</p></div>
               </div>
             </motion.div>
           )}
@@ -540,7 +540,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <span className={cn("h-9 w-9 rounded-xl grid place-items-center shrink-0", promised ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill)] text-steel")}><Timer size={16} /></span>
             <span className="flex-1 min-w-0">
               <span className="block text-sm font-semibold">On-time promise · {promise.minutes} min</span>
-              <span className="block text-[11px] text-steel mt-0.5">{promised ? `+${promise.pct}% on food. Late? Bill is free.` : `Guest pays ${promise.pct}% more. Late? Food is free.`}</span>
+              <span className="block text-[11px] text-steel mt-0.5">{promised ? `+${promise.pct}% · free if late` : `Adds ${promise.pct}% · free if late`}</span>
             </span>
             <span className={cn("num text-xs font-semibold shrink-0", promised ? "text-[var(--color-tint)]" : "text-steel")}>{promised ? `+${formatINR(total * promise.pct / 100)}` : "off"}</span>
           </button>
@@ -555,7 +555,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <p className="mt-1.5 text-steel">{stockBlock ? "Reduce or remove these to send." : "Shelf has it? Send anyway."}</p>
           </div>
         )}
-        {coursing && courses.length > 1 && <p className="text-[11px] text-steel mb-2">Course 1 goes now. {courses.filter((c) => c > 1).map((c) => `Course ${c}`).join(" and ")} will wait until fired.</p>}
+        {coursing && courses.length > 1 && <p className="text-[11px] text-steel mb-2">Course 1 now · {courses.filter((c) => c > 1).map((c) => `Course ${c}`).join(" and ")} held</p>}
         {/* the request for the whole ticket opens in a dialog (an iPad keyboard squeezed it inline); the
             count and the total, big, on the same row */}
         <div className="flex items-center gap-3">
@@ -602,7 +602,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
           </div>
           {/* the search is what yields, not the title */}
           <div className="relative min-w-0 basis-full order-3 lg:order-none lg:basis-auto lg:flex-1 lg:max-w-xl lg:ml-auto" data-till-search><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
-            <input ref={searchRef} className="!h-14 !rounded-[18px] !pl-12 !pr-16 !text-[16px]" placeholder="Find a dish — name, or initials like “cb”" aria-label="Search dishes; Enter adds the first" value={q} onChange={(e) => setQ(e.target.value)}
+            <input ref={searchRef} className="!h-14 !rounded-[18px] !pl-12 !pr-16 !text-[16px]" placeholder="Search dishes" aria-label="Search dishes; Enter adds the first" value={q} onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && visible[0]) { e.preventDefault(); tap(visible[0]); setQ(""); } else if (e.key === "Escape") { setQ(""); (e.target as HTMLInputElement).blur(); } }} />
             {q ? <button type="button" onClick={() => { setQ(""); searchRef.current?.focus(); }} aria-label="Clear the search" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 !min-h-0 rounded-xl grid place-items-center text-steel hover:text-[var(--color-label)]"><X size={17} /></button>
               : <kbd className="hidden lg:grid absolute right-3 top-1/2 -translate-y-1/2 h-6 min-w-6 px-1.5 place-items-center rounded-md border border-line text-[11px] text-steel pointer-events-none" aria-hidden>/</kbd>}
@@ -644,7 +644,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <form className={cn("feather flex items-center gap-2 p-2 pl-3.5", !online && "opacity-60")} onSubmit={(e) => { e.preventDefault(); void takeOrder(said); }}>
               <Sparkles size={16} className="text-[var(--color-tint)] shrink-0" />
               <input value={said} onChange={(e) => setSaid(e.target.value)} disabled={!online || reading} className="!border-0 !bg-transparent !shadow-none !px-1 flex-1 min-w-0"
-                placeholder={online ? "Say or type — “2 chicken biryani, 1 lime soda, table 4”" : "Taking orders by voice needs a connection"} />
+                placeholder={online ? "Say or type order" : "Needs internet"} />
               {canHear && <button type="button" onClick={hear} disabled={!online || reading} aria-label={hearing ? "Stop listening" : "Speak the order"}
                 className={cn("h-10 w-10 rounded-xl grid place-items-center shrink-0 transition", hearing ? "bg-[var(--color-red)] text-white" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)]")}>{hearing ? <MicOff size={16} /> : <Mic size={16} />}</button>}
               <Button type="submit" size="sm" disabled={!online || reading || !said.trim()}>{reading ? <><Loader2 size={14} className="animate-spin" /> Reading…</> : "Add to ticket"}</Button>
@@ -740,7 +740,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                   </div>
                 );
               })}
-              {visible.length === 0 && <p className="col-span-full text-sm text-steel py-8">No dishes match. Check Menu → availability.</p>}
+              {visible.length === 0 && <p className="col-span-full text-sm text-steel py-8">No dishes match</p>}
             </div>
         </div>
       </section>
@@ -754,7 +754,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
               {LINE_NOTES.map((n) => { const on = parts.includes(n); return (
                 <button key={n} type="button" aria-pressed={on} onClick={() => setNote(ln.key, (on ? parts.filter((x) => x !== n) : [...parts, n]).join(" · "))} className={cn("chip", on && "on")}>{n}</button>); })}
             </div>
-            <textarea rows={2} maxLength={120} value={ln.note} onChange={(e) => setNote(ln.key, e.target.value)} placeholder="Or type it — less salt, extra raita…" className="w-full resize-none !text-[15px] leading-snug" />
+            <textarea rows={2} maxLength={120} value={ln.note} onChange={(e) => setNote(ln.key, e.target.value)} placeholder="Or type it…" className="w-full resize-none !text-[15px] leading-snug" />
             <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
               <Button type="button" variant="outline" onClick={() => setNote(ln.key, "")} disabled={!ln.note}>Clear</Button>
               <Button type="button" onClick={() => setNoteFor(null)} data-note-done><Check size={16} /> Done</Button>
@@ -763,10 +763,10 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         </Sheet>); })()}
       <Sheet open={askNote} onClose={() => setAskNote(false)} title="Cooking request">
         <div className="space-y-4" data-note-sheet>
-          <p className="text-[13px] text-steel -mt-1">Whole order · top of the ticket.</p>
+          <p className="text-[13px] text-steel -mt-1">Whole order</p>
           <div>
             <textarea autoFocus rows={3} maxLength={200} value={ticketNote} onChange={(e) => setTicketNote(e.target.value)}
-              placeholder="All mild · no onion · serve everything together" className="w-full resize-none !text-[15px] leading-snug" />
+              placeholder="All mild · no onion" className="w-full resize-none !text-[15px] leading-snug" />
             <div className="mt-1 text-right text-[11px] text-steel num">{ticketNote.length}/200</div>
           </div>
           <div>

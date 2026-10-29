@@ -65,3 +65,6 @@ node dry124.cjs     # 34 — 0124 in a rolled-back transaction: owner, a named w
 
 - **Nothing from your team yet — iPad and desktop (2026-10-24).** Phones keep the markup they had: every new part is `hidden md:…` and the old one `md:hidden` (or the change is `md:` classes only). An `EmptyState` (`[data-voice-empty-md]`) saying what
   can arrive, with the four kinds as chips in their colours; the phone keeps its card (`[data-voice-empty]`).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

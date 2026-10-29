@@ -77,7 +77,7 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
   const raise = () => start(async () => {
     const r = await addJob({ ...f, place: f.place.trim() });
     if ("error" in r) { toast(r.error!, "err"); return; }
-    toast(`Raised — ${deptLabel(r.job.department)} will see it`); setOpen(false); setF(blank);
+    toast(`Sent to ${deptLabel(r.job.department)}`); setOpen(false); setF(blank);
   });
 
   const chip = (k: string, label: string, n?: number, warn?: number) => (
@@ -132,10 +132,10 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
-        <Column keyName="waiting" title="waiting" n={waiting.length} hint={filter === "mine" ? "Nothing waiting for you." : "Nothing waiting — tap New job."}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
-        <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody is on a job right now."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{onIt.map(card)}</div></Column>
+        <Column keyName="waiting" title="waiting" n={waiting.length} hint={filter === "mine" ? "Nothing for you" : "Nothing waiting"}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
+        <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody on a job"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{onIt.map(card)}</div></Column>
         {upcoming.length > 0 && <Column keyName="upcoming" title="coming_up" n={upcoming.length} hint=""><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{upcoming.map(card)}</div></Column>}
-        <Column keyName="done" title="done_today" n={finished.length} hint="Nothing finished yet today."><Card className="!py-1 !px-4"><ul className="divide-y divide-[var(--color-separator)]">{finished.map((j) => <DoneRow key={j.id} j={j} me={me} inspectRequired={board.inspect_required} showDept={filter === "all" || filter === "mine"} />)}</ul></Card></Column>
+        <Column keyName="done" title="done_today" n={finished.length} hint="None finished yet"><Card className="!py-1 !px-4"><ul className="divide-y divide-[var(--color-separator)]">{finished.map((j) => <DoneRow key={j.id} j={j} me={me} inspectRequired={board.inspect_required} showDept={filter === "all" || filter === "mine"} />)}</ul></Card></Column>
       </div>
 
       {isBoss && byPerson.length > 0 && (
@@ -155,7 +155,7 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
       <Sheet open={open} onClose={() => setOpen(false)} title="New job">
         <div className="space-y-4" data-new-job-form>
           <label className="block"><span className="text-[13px] font-semibold text-steel">What needs doing</span>
-            <input className="mt-1" value={f.title} onChange={(e) => set("title", e.target.value)} maxLength={120} placeholder="Tap leaking · Mow the lawn · Set up the hall" data-job-title autoFocus /></label>
+            <input className="mt-1" value={f.title} onChange={(e) => set("title", e.target.value)} maxLength={120} placeholder="e.g. Tap leaking" data-job-title autoFocus /></label>
           {/* a phone (2026-10-26, the owner: "not looking good"): side by side the two fields were cut ("Engineering & mainte…").
               Kind of job is a sliding row of icon chips — one tap, and it picks the department as the select does — and For takes
               the whole line. From sm both stay selects, side by side. */}
@@ -182,16 +182,16 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
               {board.tables.length > 0 && <optgroup label="Tables">{board.tables.map((t) => <option key={t.id} value={`table:${t.id}`}>{t.name}</option>)}</optgroup>}
               <option value="text">Somewhere else…</option>
             </select>
-            {placeKey === "text" && <input className="mt-2" value={f.place.trim()} onChange={(e) => set("place", e.target.value || " ")} maxLength={60} placeholder="Lobby · Lawn · Kitchen store · Pool" data-job-place-text />}</label>
+            {placeKey === "text" && <input className="mt-2" value={f.place.trim()} onChange={(e) => set("place", e.target.value || " ")} maxLength={60} placeholder="e.g. Lobby" data-job-place-text />}</label>
           <div><span className="text-[13px] font-semibold text-steel">How urgent</span>
             <div className="mt-1 grid grid-cols-2 sm:grid-cols-4 gap-2" role="radiogroup" aria-label="How urgent">
               {[1, 2, 3, 4].map((p) => <button key={p} type="button" role="radio" aria-checked={f.priority === p} onClick={() => set("priority", p)} data-job-priority={p}
                 className={cn("!min-h-12 rounded-xl px-2 text-[13.5px] font-bold flex flex-col items-center justify-center leading-tight", f.priority === p ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)]")}>
                 <span>{PRIORITY[p].label}</span><span className={cn("text-[11px] font-semibold", f.priority === p ? "opacity-80" : "text-steel")}>within {PRIORITY[p].target}</span></button>)}
             </div></div>
-          <label className="flex items-center gap-3 !min-h-11 cursor-pointer"><input type="checkbox" className="h-5 w-5" checked={f.guest} onChange={(e) => set("guest", e.target.checked)} data-job-guest /><span className="text-[14px] font-semibold">A guest is waiting on this</span></label>
+          <label className="flex items-center gap-3 !min-h-11 cursor-pointer"><input type="checkbox" className="h-5 w-5" checked={f.guest} onChange={(e) => set("guest", e.target.checked)} data-job-guest /><span className="text-[14px] font-semibold">Guest waiting</span></label>
           <label className="block"><span className="text-[13px] font-semibold text-steel">Details (optional)</span>
-            <textarea className="mt-1" rows={2} value={f.details} onChange={(e) => set("details", e.target.value)} maxLength={600} placeholder="Which tap, what the guest said, what to bring…" data-job-details /></label>
+            <textarea className="mt-1" rows={2} value={f.details} onChange={(e) => set("details", e.target.value)} maxLength={600} placeholder="Any details" data-job-details /></label>
           <div className="grid grid-cols-2 gap-3">
             <label className="min-w-0"><span className="text-[13px] font-semibold text-steel">By when (optional)</span>
               <input type="datetime-local" className="mt-1" value={f.due ?? ""} onChange={(e) => set("due", e.target.value ? new Date(e.target.value).toISOString() : null)} data-job-due /></label>
@@ -205,10 +205,10 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
                 onChange={(e) => { const v = e.target.value; setF((x) => ({ ...x, assigned: v && !v.startsWith("lab:") ? v : null, labourer: v.startsWith("lab:") ? v.slice(4) : null })); }}>
                 <option value="">Anyone in {deptLabel(f.department)}</option>
                 {[...board.people].sort((a, b) => Number(b.on_duty) - Number(a.on_duty) || Number(b.dept === f.department) - Number(a.dept === f.department) || a.name.localeCompare(b.name)).map((p) => <option key={p.id} value={p.id}>{p.name}{p.title ? ` — ${p.title}` : ""}{p.on_duty ? " · on duty" : ""}</option>)}
-                {board.labourers.length > 0 && <optgroup label="Day labourers (no sign-in — finish it for them)">{board.labourers.map((l) => <option key={l.id} value={`lab:${l.id}`}>{l.name}{l.skill ? ` — ${l.skill}` : ""}{l.on_duty ? " · on duty" : ""}</option>)}</optgroup>}
+                {board.labourers.length > 0 && <optgroup label="Day labourers (no sign-in)">{board.labourers.map((l) => <option key={l.id} value={`lab:${l.id}`}>{l.name}{l.skill ? ` — ${l.skill}` : ""}{l.on_duty ? " · on duty" : ""}</option>)}</optgroup>}
               </select></label>)}
           <button type="button" disabled={pending || f.title.trim().length < 2} className="svc-btn go w-full" onClick={raise} data-raise-job><Plus size={18} aria-hidden /><Say w="raise_it" /></button>
-          <p className="text-[12.5px] text-steel">Everyone in {deptLabel(f.department)} is told. {f.priority <= 2 ? "Turns red when late." : ""}</p>
+          <p className="text-[12.5px] text-steel">Notifies {deptLabel(f.department)}. {f.priority <= 2 ? "Red when late." : ""}</p>
         </div>
       </Sheet>
     </div>

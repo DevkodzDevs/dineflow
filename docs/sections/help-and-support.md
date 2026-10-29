@@ -36,8 +36,8 @@ The form takes:
 - a subject (3–140) and details (10–5000);
 - urgency (Low · Normal · High · Urgent);
 - up to 3 screenshots, shrunk in the browser to JPEG ≤1600px;
-- "Let DineFlow open your property to look into this" — consent, off by default;
-- *What is sent with it*: property, name and role, page (`?from=`), device, screen.
+- "Allow DineFlow access" — consent, off by default;
+- *Sent with it*: property, name and role, page (`?from=`), device, screen.
 
 Send runs `support_open`, then uploads the screenshots **from the browser** straight into
 `support/<property>/<request>/…` (server actions stop at 2 MB), then `support_attach`. It lands on `/help/[id]?sent=1`.
@@ -135,3 +135,6 @@ Also run it at 412, 834, 1194 and 1440.
   directly, `lib/supabase/client` put Supabase's ~235 kB back into every signed-in screen's first load — this hook is in
   the menu on every screen.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words; the privacy line still says who answers and within how many days.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

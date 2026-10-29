@@ -78,14 +78,14 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
   };
   const starters = () => start(async () => {
     for (const s of STARTERS) { const r = await saveList(null, s.name, s.shift, s.items); if ("error" in r) { toast(r.error!, "err"); return; } }
-    toast("Opening and Closing lists added");
+    toast("Lists added");
   });
 
   return (
     <div className="space-y-5">
       {editor && <div className="flex flex-wrap gap-2">
         <button type="button" className="svc-btn go sm !px-5" onClick={() => setEdit("new")} data-new-list><Plus size={18} aria-hidden /><Say w="new_list" /></button>
-        {lists.length === 0 && <button type="button" disabled={pending} className="svc-btn quiet sm !px-5" onClick={starters} data-starter-lists><Sparkles size={18} aria-hidden /> Start with Opening & Closing</button>}
+        {lists.length === 0 && <button type="button" disabled={pending} className="svc-btn quiet sm !px-5" onClick={starters} data-starter-lists><Sparkles size={18} aria-hidden /> Add starter lists</button>}
       </div>}
 
       {/* whose lists these are: the editor can look at one team's; anyone else is told which they are seeing */}
@@ -98,10 +98,10 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
         </div>)}
       {!editor && active.length > 0 && (
         <p className="flex flex-wrap items-center gap-1.5 text-[13.5px] text-steel" data-my-lists>
-          Your lists — the ones for everyone{myTags.length ? <> and for <ForWhom tags={myTags} look={look} /></> : "."}
+          For everyone{myTags.length ? <> and <ForWhom tags={myTags} look={look} /></> : "."}
         </p>)}
 
-      {active.length === 0 ? <Empty title="No checklists yet" hint={editor ? "Start with ready-made lists" : "Ask your manager to add lists"} /> : shown.length === 0 ? <Empty title="No lists for this choice" hint="Pick another above, or tap New list." /> : (
+      {active.length === 0 ? <Empty title="No checklists yet" hint={editor ? "Start with ready-made lists" : "Ask your manager"} /> : shown.length === 0 ? <Empty title="No lists for this choice" hint="Pick another" /> : (
         <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3" data-lists>
           {shown.map((l) => {
             const done = doneOf(l); const n = Object.keys(done).length; const all = n >= l.items.length; const { label, Icon } = SHIFT[l.shift];
@@ -219,12 +219,12 @@ function ListEditor({ list, teams, jobs, positions, people, look, preset, onDone
                 </button>); })}
             </div>
           </div>))}
-        <p className="mt-2 text-[12px] text-steel">Owner, managers and supervisors see all</p>
+        <p className="mt-2 text-[12px] text-steel">Managers see all</p>
       </div>
 
       <label className="block"><span className="text-[13px] font-semibold text-steel">Duties — one a line <span className="num">({items.length}/40)</span></span>
         <textarea className="mt-1" rows={9} value={text} onChange={(e) => setText(e.target.value)} placeholder={"Gas checked\nFloor cleaned\nCash float counted"} /></label>
-      {list && <label className="flex items-center gap-3 !min-h-11"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-5 w-5" /> <span className="text-[14px] font-semibold">In use (untick to hide it)</span></label>}
+      {list && <label className="flex items-center gap-3 !min-h-11"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-5 w-5" /> <span className="text-[14px] font-semibold">In use</span></label>}
       {err && <p className="text-[14px] font-semibold text-chili" role="alert">{err}</p>}
       <button type="button" disabled={pending} className="svc-btn go w-full" data-save-list
         onClick={() => start(async () => { setErr(null); const r = await saveList(list?.id ?? null, name, shift, items, active, keysOf(tags, "d"), keysOf(tags, "j"), keysOf(tags, "p")); if ("error" in r) setErr(r.error!); else { toast("Saved"); onDone(); } })}>

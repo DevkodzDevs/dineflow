@@ -44,7 +44,7 @@ export function SidebarPicker({ inSheet = false }: { inSheet?: boolean }) {
             <span className="block text-[11.5px] text-[var(--color-label-2)] leading-snug line-clamp-2">{s.hint}</span>
           </button>); })}
       </div>
-      <p className="mt-2 text-[12px] text-steel">{chosen ? "Kept on this device." : "Follows the screen size."} The collapse key folds it to icons.</p>
+      <p className="mt-2 text-[12px] text-steel">{chosen ? "Kept on this device" : "Follows screen size"}</p>
     </div>
   );
 }

@@ -54,17 +54,17 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
         <div className="glass p-8">
           <div className="flex items-center gap-3"><span className="h-11 w-11 rounded-2xl bg-ink text-on-label grid place-items-center"><Crown size={20} /></span><div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{name}</div><h1 className="text-3xl">{locked ? "Membership login" : "Membership"}</h1></div></div>
           <div className="hairline-gold my-6" />
-          {state === "trial" && <p className="text-sm text-steel">Your <b className="text-ink">7-day trial</b> has {trialDays} day{trialDays === 1 ? "" : "s"} left. Activate now; data stays.</p>}
-          {state === "expired" && <p className="text-sm text-steel">Trial for <b className="text-ink">{name}</b> ended. Enter your key — data is safe.</p>}
+          {state === "trial" && <p className="text-sm text-steel">Trial: <b className="text-ink">{trialDays} day{trialDays === 1 ? "" : "s"} left</b></p>}
+          {state === "expired" && <p className="text-sm text-steel">Trial ended · data safe</p>}
           {state === "suspended" && <p className="text-sm text-chili">This account is suspended. Contact DineFlow support.</p>}
           {state === "active" && <p className="text-sm text-steel leading-relaxed"><Check size={16} className="text-mint inline -mt-0.5 mr-1.5" />Active · <b className="text-ink capitalize">{plan}</b> plan{endsAt && <> · renews by <span className="num whitespace-nowrap">{endsAt.slice(0, 10)}</span></>}</p>}
           {state !== "suspended" && (isOwner ? (
-            <form className="mt-6 space-y-4" action={(fd) => start(async () => { const r = await redeemKey(fd); setMsg("error" in r ? { text: r.error! } : { ok: true, text: `Activated the ${r.plan} plan. Welcome aboard.` }); })}>
-              <Field label="Membership key" hint="Format XXXX-XXXX-XXXX, from DineFlow."><input name="code" required placeholder="A1B2-C3D4-E5F6" className="num uppercase tracking-[0.2em] text-lg" /></Field>
+            <form className="mt-6 space-y-4" action={(fd) => start(async () => { const r = await redeemKey(fd); setMsg("error" in r ? { text: r.error! } : { ok: true, text: `${r.plan} plan active` }); })}>
+              <Field label="Membership key" hint="From DineFlow"><input name="code" required placeholder="A1B2-C3D4-E5F6" className="num uppercase tracking-[0.2em] text-lg" /></Field>
               {msg && <p className={cn("text-sm", msg.ok ? "text-mint" : "text-chili")}>{msg.text}</p>}
               <Button size="lg" className="w-full" disabled={pending}><KeyRound size={16} /> {pending ? "Checking…" : state === "active" ? "Extend membership" : "Activate membership"}</Button>
             </form>
-          ) : <p className="mt-6 text-sm text-steel">Ask the owner to enter the membership key.</p>)}
+          ) : <p className="mt-6 text-sm text-steel">Owner enters the key</p>)}
           {planInfo && <div className="mt-6 -mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-steel" data-plan-label>{planInfo.label} plan</div>}
           <div className="mt-6 grid grid-cols-2 gap-3 text-sm" data-plan={planInfo?.key ?? ""}>
             <div className="feather p-4 flex flex-col"><div className="font-semibold">Monthly</div><div className="num text-2xl mt-1" data-price-month>{monthly != null ? formatINR(monthly, { whole: true }) : "—"}</div><div className="text-xs text-steel">per property</div>
@@ -77,7 +77,6 @@ export function MembershipClient({ state, name, plan, endsAt, trialDays, isOwner
           {!online && <p className="text-xs text-steel mt-4">
             Get a key: {COMPANY.phone ? <>WhatsApp <span className="num">{COMPANY.phone}</span> · </> : null}
             <a href={`mailto:${COMPANY.supportEmail}`} className="underline">{COMPANY.supportEmail}</a>
-            {" "}— online payment coming soon.
           </p>}
           <div className="mt-6 flex justify-between items-center">
             {!locked ? <Link href="/dashboard" className="text-sm font-semibold underline inline-flex items-center min-h-10">Back to control room</Link> : <span />}

@@ -23,7 +23,7 @@ export default async function VoicePage() {
     <>
       {owner
         ? <PageHeader eyebrow="From your team" title="Staff" accent="feedback"
-            sub="From staff — only you see these" />
+            sub="Only you see these" />
         : <PageHeader eyebrow="Straight to the owner" title="Feedback" accent="& complaints"
             sub="Only the owner reads it" />}
       <VoiceClient items={(data ?? []) as Item[]} owner={owner} name={session.profile.full_name} />

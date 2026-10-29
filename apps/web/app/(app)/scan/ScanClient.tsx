@@ -70,8 +70,8 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
           <div className="relative aspect-[4/3] md:aspect-video bg-[var(--color-bezel)]">
             <video ref={videoRef} className={cn("absolute inset-0 h-full w-full object-cover", mode !== "camera" && "hidden")} muted playsInline autoPlay />
             {photo && mode === "result" && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-contain" />}
-            {mode === "camera" && <><div className="absolute inset-x-[12%] inset-y-[18%] border-2 border-saffron/80 rounded-2xl [box-shadow:0_0_0_9999px_rgb(16_32_26/.35)]" /><motion.div className="absolute left-[12%] right-[12%] h-0.5 bg-saffron/90 shadow-[0_0_16px_rgb(232_163_61)]" animate={{ top: ["20%", "80%", "20%"] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} /><div className="absolute bottom-3 inset-x-0 text-center text-xs text-white/80">Barcodes & QR read automatically · tap <b>Capture</b> for photos</div></>}
-            {mode === "idle" && <div className="absolute inset-0 grid place-items-center text-center text-white/70 p-6"><div><ScanLine size={40} className="mx-auto mb-3 text-saffron" /><div className="font-display text-2xl text-white">Ready to scan</div><div className="text-sm mt-1">Barcode, QR label, or a photo of the item</div></div></div>}
+            {mode === "camera" && <><div className="absolute inset-x-[12%] inset-y-[18%] border-2 border-saffron/80 rounded-2xl [box-shadow:0_0_0_9999px_rgb(16_32_26/.35)]" /><motion.div className="absolute left-[12%] right-[12%] h-0.5 bg-saffron/90 shadow-[0_0_16px_rgb(232_163_61)]" animate={{ top: ["20%", "80%", "20%"] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} /><div className="absolute bottom-3 inset-x-0 text-center text-xs text-white/80">Codes auto-read · <b>Capture</b> photos</div></>}
+            {mode === "idle" && <div className="absolute inset-0 grid place-items-center text-center text-white/70 p-6"><div><ScanLine size={40} className="mx-auto mb-3 text-saffron" /><div className="font-display text-2xl text-white">Ready to scan</div><div className="text-sm mt-1">Barcode, QR or photo</div></div></div>}
             {busy && <div className="absolute inset-0 grid place-items-center bg-bezel/70 text-white"><div className="flex items-center gap-2 text-sm"><motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><RotateCcw size={16} /></motion.span>{busy}</div></div>}
           </div>
           <div className="p-3 flex flex-wrap gap-2 items-center">
@@ -79,7 +79,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
             <label className="btn-like inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-line bg-card text-sm font-semibold cursor-pointer hover:bg-porcelain"><Upload size={16} /> Upload photo<input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} /></label>
             <form className="basis-full sm:basis-auto sm:ml-auto flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (manual) handleCode(manual, "manual"); }}><input placeholder="Type code / room no." value={manual} onChange={(e) => setManual(e.target.value)} className="flex-1 min-w-0 sm:!w-44 sm:flex-none !py-2 num" /><Button variant="outline" size="md" aria-label="Look up"><Keyboard size={16} /></Button></form>
           </div>
-          {!aiEnabled && <p className="px-4 pb-3 text-xs text-steel"><b>Sample mode</b>: photos are samples. Barcode and QR are real.</p>}
+          {!aiEnabled && <p className="px-4 pb-3 text-xs text-steel"><b>Sample mode</b> · photos only</p>}
           {err && <p className="px-4 pb-3 text-sm text-chili">{err}</p>}
         </div>
 
@@ -93,12 +93,12 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
       <aside className="space-y-4">
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">How it lands</div>
           <ul className="text-sm space-y-2 text-steel">
-            <li className="flex gap-2"><Boxes size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Vegetable / packet</b> → Pantry item. Next scan adds stock.</span></li>
+            <li className="flex gap-2"><Boxes size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Vegetable / packet</b> → Pantry item</span></li>
             <li className="flex gap-2"><UtensilsCrossed size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Dish</b> → new Menu item.</span></li>
             {propertyType !== "restaurant" && <li className="flex gap-2"><BedDouble size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Room door / key tag</b> → opens the room.</span></li>}
-            <li className="flex gap-2"><HardHat size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Worker / ID card</b> → new worker; badge marks attendance.</span></li>
+            <li className="flex gap-2"><HardHat size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Worker / ID card</b> → new worker</span></li>
           </ul>
-          <Link href="/labour?tab=labels" className="mt-2 inline-flex items-center min-h-10 text-xs font-semibold underline">Print QR labels for rooms, products, workers →</Link></Card>
+          <Link href="/labour?tab=labels" className="mt-2 inline-flex items-center min-h-10 text-xs font-semibold underline">Print QR labels →</Link></Card>
         <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Recent scans</div>
           <ul className="space-y-1.5 text-sm">{recent.map((r) => <li key={r.id} className="flex items-center gap-2"><Pill tone={r.kind === "labour" ? "gold" : r.kind === "room" ? "sky" : r.kind === "dish" ? "preparing" : "ready"}>{r.kind ?? "?"}</Pill><span className="flex-1 truncate">{r.result?.name ?? r.action ?? r.source}</span><span className="num text-xs text-steel">{new Date(r.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span></li>)}{recent.length === 0 && <li className="text-steel">Nothing scanned yet.</li>}</ul></Card>
       </aside>
@@ -129,9 +129,9 @@ function FoundCard({ found, onDone, onReset }: { found: Found; onDone: (m: strin
         {r.status === "available" && <Button variant="outline" disabled={pending} onClick={() => start(async () => { const res = await roomQuick(r.id, "cleaning"); onDone("error" in res ? res.error! : `Room ${r.number} sent to cleaning`); })}>Needs cleaning</Button>}
         <Button variant="ghost" onClick={onReset}>Scan next</Button></div></motion.div>; }
   if (found.kind === "labour" && "labourer" in found) { const l = found.labourer as unknown as { id: string; code: string; full_name: string; skill: string | null; daily_wage: number };
-    return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-5"><Pill tone="gold">labour · {l.code}</Pill><h3 className="text-2xl mt-2">{l.full_name}</h3><div className="text-sm text-steel">{l.skill} · {formatINR(Number(l.daily_wage))}/day · attendance punched automatically</div><div className="mt-4 flex gap-2"><Link href={`/labour?open=${l.id}`}><Button>Open profile</Button></Link><Button variant="ghost" onClick={onReset}>Scan next</Button></div></motion.div>; }
+    return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-5"><Pill tone="gold">labour · {l.code}</Pill><h3 className="text-2xl mt-2">{l.full_name}</h3><div className="text-sm text-steel">{l.skill} · {formatINR(Number(l.daily_wage))}/day · attendance marked</div><div className="mt-4 flex gap-2"><Link href={`/labour?open=${l.id}`}><Button>Open profile</Button></Link><Button variant="ghost" onClick={onReset}>Scan next</Button></div></motion.div>; }
   if (found.kind === "staff" && "person" in found) { const p = found.person as unknown as { full_name: string; staff_code: string; role: string };
-    return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-5"><Pill tone="sky">staff · {p.staff_code}</Pill><h3 className="text-2xl mt-2">{p.full_name}</h3><div className="text-sm text-steel capitalize">{p.role} · attendance punched automatically</div><div className="mt-4 flex gap-2"><Link href="/staff"><Button>Staff</Button></Link><Button variant="ghost" onClick={onReset}>Scan next</Button></div></motion.div>; }
+    return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-5"><Pill tone="sky">staff · {p.staff_code}</Pill><h3 className="text-2xl mt-2">{p.full_name}</h3><div className="text-sm text-steel capitalize">{p.role} · attendance marked</div><div className="mt-4 flex gap-2"><Link href="/staff"><Button>Staff</Button></Link><Button variant="ghost" onClick={onReset}>Scan next</Button></div></motion.div>; }
   if (found.kind === "bill" && "bill" in found) { const b = found.bill as unknown as { id: string; bill_no: number; order_id: string; total: number; status: string; created_at: string }; return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="feather p-5"><div className="flex items-center gap-2"><Pill tone={b.status === "paid" ? "ready" : "pending"}>{b.status === "paid" ? "paid" : "unpaid"}</Pill><span className="text-xs text-steel num">{new Date(b.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span></div><h3 className="text-2xl mt-2">Bill #{b.bill_no} · <span className="num">{formatINR(Number(b.total))}</span></h3><div className="mt-4"><Link href={`/billing/${b.order_id}`}><Button>Open bill</Button></Link></div></motion.div>; }
   if (found.kind === "booking" && "booking" in found) { const b = found.booking as unknown as { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null }; return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-5"><Pill tone="sky">booking #{b.booking_no}</Pill><h3 className="text-2xl mt-2">Room {b.rooms?.number} · {b.guests?.full_name}</h3><div className="mt-4"><Link href={`/frontdesk/${b.id}`}><Button>Open folio</Button></Link></div></motion.div>; }
   return null;
@@ -178,7 +178,7 @@ function AiCard({ ai, setAi, categories, onDone, onReset }: { ai: ScanResult; se
       </>)}
 
       {ai.kind === "room" && (<>
-        <p className="text-sm text-steel">Looks like <b className="text-ink">Room {ai.room_number ?? "?"}</b>. Type the number.</p>
+        <p className="text-sm text-steel">Looks like <b className="text-ink">Room {ai.room_number ?? "?"}</b></p>
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); const n = (e.currentTarget.elements.namedItem("n") as HTMLInputElement).value; if (n) window.location.href = `/scan?code=${n}`; }}><input name="n" defaultValue={ai.room_number ?? ""} className="num !w-32" placeholder="104" /><Link href={`/rooms`}><Button variant="outline">Rooms</Button></Link><Link href="/labour?tab=labels"><Button variant="outline">Print labels</Button></Link></form>
       </>)}
 
@@ -189,7 +189,7 @@ function AiCard({ ai, setAi, categories, onDone, onReset }: { ai: ScanResult; se
           <Field label="Skill"><select value={ai.labour?.skill ?? "other"} onChange={(e) => set("labour", { ...ai.labour, skill: e.target.value })}>{LABOUR_SKILLS.map((k) => <option key={k}>{k}</option>)}</select></Field>
           <Field label="Daily wage (₹)"><input type="number" className="num" value={wage || ""} onChange={(e) => setWage(Number(e.target.value))} /></Field>
           <Field label="ID type"><input value={ai.labour?.id_type ?? ""} onChange={(e) => set("labour", { ...ai.labour, id_type: e.target.value })} placeholder="Aadhaar" /></Field>
-          <Field label="ID last 4" hint="Only the last 4 digits are stored"><input maxLength={4} className="num" value={ai.labour?.id_last4 ?? ""} onChange={(e) => set("labour", { ...ai.labour, id_last4: e.target.value })} /></Field>
+          <Field label="ID last 4" hint="Only last 4 stored"><input maxLength={4} className="num" value={ai.labour?.id_last4 ?? ""} onChange={(e) => set("labour", { ...ai.labour, id_last4: e.target.value })} /></Field>
           <div className="sm:col-span-2"><Field label="Address"><input value={ai.labour?.address ?? ""} onChange={(e) => set("labour", { ...ai.labour, address: e.target.value })} /></Field></div>
         </div>
         {err && <p className="text-sm text-chili">{err}</p>}

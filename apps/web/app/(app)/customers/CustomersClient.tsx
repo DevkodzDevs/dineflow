@@ -61,12 +61,12 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
 
   return (
     <div className="space-y-5">
-      <SvcHead icon="customers" title="Customers" sub="Call or WhatsApp in one tap"
+      <SvcHead icon="customers" title="Customers" sub="Call or WhatsApp"
         actions={<button type="button" className="svc-btn go sm !px-5" onClick={() => setAdding(true)} data-add-customer><Plus size={19} aria-hidden /><Say w="add_customer" /></button>} />
 
       {(ov.soon?.length ?? 0) > 0 && (
         <Card>
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-steel mb-2"><Cake size={13} /> Occasions in the next two weeks</div>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-steel mb-2"><Cake size={13} /> Occasions · 2 weeks</div>
           <div className="flex flex-wrap gap-2">
             {ov.soon!.map((s, i) => (
               <a key={i} target="_blank" rel="noreferrer" className="rounded-xl border border-line px-3 min-h-11 text-sm flex items-center gap-2 hover:bg-[var(--color-fill)]"
@@ -99,8 +99,8 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
       {/* guests' private ratings from the feedback QR (0103) — chosen like a filter, shown in place of the cards */}
       {filter === "feedback" ? <FeedbackBoard items={feedback} q={q} restaurant={restaurant} /> : <>
       {customers.length === 0 ? (
-        <Empty title="No customers yet" hint="A phone on a bill adds them." action={<Button onClick={() => setAdding(true)}>Add one by hand</Button>} />
-      ) : list.length === 0 ? <Empty title="Nobody matches" hint="Try another name, or clear the filter." /> : (<>
+        <Empty title="No customers yet" hint="Added from bills" action={<Button onClick={() => setAdding(true)}>Add one by hand</Button>} />
+      ) : list.length === 0 ? <Empty title="Nobody matches" hint="Try another name" /> : (<>
         {/* One card per guest: a coloured initial, the name (Regular when they have come three times) and
             the phone; visits, spend and the last visit in three boxes; Call and WhatsApp, big. A tap on the
             name opens their record: details, bills, points. */}
@@ -143,7 +143,7 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
       {/* the owner's view: how many, who came back, what they spent; and ideas from the sales */}
       <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 pt-2" data-customer-stats>
         <StatTile label="Customers" value={String(ov.total ?? customers.length)} sub={`${ov.new_30d ?? 0} new in 30 days`} />
-        <StatTile label="Came back" value={String(ov.returning ?? 0)} sub={`${ov.lapsed_60d ?? 0} not seen in 60 days`} tone={(ov.lapsed_60d ?? 0) > 0 ? "alert" : "good"} delay={0.05} />
+        <StatTile label="Came back" value={String(ov.returning ?? 0)} sub={`${ov.lapsed_60d ?? 0} away 60+ days`} tone={(ov.lapsed_60d ?? 0) > 0 ? "alert" : "good"} delay={0.05} />
         <StatTile label="Spent · 30 days" value={formatINR(Number(ov.spend_30d ?? 0))} sub="by known guests" delay={0.1} />
         <StatTile label="Points outstanding" value={String(Math.round(Number(ov.points_out ?? 0)))} sub={loyalty.enabled ? `worth ${formatINR(Number(ov.points_out ?? 0) * loyalty.pointValue)}` : "loyalty is off · Settings → Payments"} delay={0.15} />
       </div>
@@ -174,7 +174,7 @@ function CustomerForm({ c, onDone }: { c?: Customer; onDone: () => void }) {
         <Field label="Anniversary"><input name="anniversary" type="date" className="num" defaultValue={c?.anniversary ?? ""} /></Field>
       </div>
       <Field label="Tags" hint="comma-separated: vip, jain, corporate"><input name="tags" defaultValue={c?.tags.join(", ") ?? ""} /></Field>
-      <Field label="Notes" hint="what the floor should know"><textarea name="notes" rows={2} defaultValue={c?.notes ?? ""} placeholder="Prefers the window table. No onion." /></Field>
+      <Field label="Notes" hint="For the floor"><textarea name="notes" rows={2} defaultValue={c?.notes ?? ""} placeholder="e.g. No onion" /></Field>
       <Button className="w-full" disabled={pending}>Save</Button>
     </form>
   );
@@ -218,7 +218,7 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
           {!loyalty.enabled && (
             <div className="flex items-start gap-3 rounded-2xl bg-[var(--color-fill)] px-3.5 py-3" data-loyalty-off>
               <span className="h-7 w-7 shrink-0 rounded-full grid place-items-center bg-[var(--color-blue-2)] text-[var(--color-blue)]"><Info size={15} aria-hidden /></span>
-              <p className="min-w-0 text-[12.5px] leading-snug text-steel pt-1">Loyalty is off — turn it on in Settings → Payments.</p>
+              <p className="min-w-0 text-[12.5px] leading-snug text-steel pt-1">Loyalty off · Settings → Payments</p>
             </div>)}
           {/* give or take: the sign is a choice, the amount a plain number with quick picks, the reason full width, and
               the balance it leaves shown before Apply */}
@@ -226,7 +226,7 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
             <div className="flex items-center gap-3">
               <span className="h-10 w-10 shrink-0 rounded-xl grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><Gift size={18} aria-hidden /></span>
               <div className="min-w-0 flex-1"><div className="text-[15px] font-bold leading-tight">Give or take points</div>
-                <div className="text-[12.5px] text-steel">A gift, or to fix a mistake</div></div>
+                <div className="text-[12.5px] text-steel">Gift or correction</div></div>
               <span className="shrink-0 num text-[12.5px] font-bold px-2.5 h-7 rounded-full grid place-items-center bg-[var(--color-bg-2)] ring-1 ring-[var(--color-separator)]" title="Their balance now">{Math.round(bal)} pts</span>
             </div>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
@@ -253,7 +253,7 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
               <input className="mt-1" value={why} onChange={(e) => setWhy(e.target.value)} maxLength={120} placeholder="Birthday gift · complaint · correction" data-points-why /></label>
             <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3 pt-1">
               <p className="min-w-0 flex-1 text-[13px] text-steel" data-points-after>
-                {amount ? <>Balance after: <b className={cn("num", after < 0 ? "text-chili" : "text-[var(--color-label)]")}>{after} points</b></> : "Pick give or take, then how many."}
+                {amount ? <>Balance after: <b className={cn("num", after < 0 ? "text-chili" : "text-[var(--color-label)]")}>{after} points</b></> : "Pick an amount"}
               </p>
               <button type="button" disabled={pending || !amount} data-points-apply
                 className={cn("svc-btn sm w-full sm:w-auto !px-6", mode === "give" ? "go" : "no")}
@@ -266,7 +266,6 @@ function CustomerSheet({ c, loyalty, restaurant, onDone }: { c: Customer; loyalt
             <div className="flex flex-col items-center text-center gap-2 rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-6" data-points-empty>
               <span className="h-10 w-10 rounded-full grid place-items-center bg-[var(--color-fill)] text-steel"><Coins size={18} aria-hidden /></span>
               <p className="text-[14px] font-semibold">No point movements yet.</p>
-              <p className="text-[12.5px] text-steel max-w-[34ch]">Points earned, spent or given show here.</p>
             </div>) : (
             <div className="divide-y divide-line rounded-xl border border-line text-sm">
               {hist.ledger.map((l, i) => (

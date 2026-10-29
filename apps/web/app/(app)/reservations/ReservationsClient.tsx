@@ -33,7 +33,7 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
   const toast = useToast(); const [pending, start] = useTransition();
   const [tab, setTab] = useState<"day" | "month" | "reviews">("day");
   const [walkIn, setWalkIn] = useState(false); const [seating, setSeating] = useState<R | null>(null);
-  const [w, setW] = useState({ name: "", phone: "", date: day, time: "19:30", party: 2, note: "" });
+  const [w, setW] = useState({ name: "", phone: "", date: day, time: "19:30", party: 2, note: "", table: "" });
   const [replyTo, setReplyTo] = useState<V | null>(null); const [reply, setReply] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [more, setMore] = useState<string | null>(null);
@@ -79,6 +79,8 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
             <div className="font-extrabold text-[17px] leading-tight line-clamp-2 break-words">{r.guest_name}</div>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] font-semibold text-steel">
               <span className="inline-flex items-center gap-1"><Users size={15} aria-hidden />{r.party_size}</span>
+              {/* the table chosen, or given when its time came (0154) */}
+              {tbl && r.status !== "seated" && <span className="inline-flex items-center gap-1" data-res-table><Armchair size={14} aria-hidden />{tbl.name}</span>}
               {r.occasion && <span className="inline-flex items-center gap-1"><PartyPopper size={14} aria-hidden />{r.occasion}</span>}
               {r.offer_label && <span className="inline-flex items-center gap-1 text-[var(--color-orange)]"><Percent size={13} aria-hidden />{r.discount_pct}% off</span>}
             </div>
@@ -107,7 +109,7 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
 
   return (
     <>
-      <SvcHead icon="reservations" title="Reservations" sub="Tap Seat now when they arrive"
+      <SvcHead icon="reservations" title="Reservations" sub="Seat on arrival"
         actions={<button type="button" className="svc-btn go sm !px-5" onClick={() => { setW((x) => ({ ...x, date: day })); setWalkIn(true); }} data-new-booking><Plus size={19} aria-hidden /><Say w="new_booking" /></button>} />
 
       {/* one panel for "which day, and what to show": the month and the chosen day's numbers with the day arrows, the
@@ -177,17 +179,17 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
       </section>
 
       {tab === "day" ? (
-        list.length === 0 ? <Empty title="No bookings for this day" hint="Add one, or let guests book online." action={<Link href="/settings/storefront"><Button variant="gray">Set up the storefront</Button></Link>} /> : (
+        list.length === 0 ? <Empty title="No bookings for this day" hint="Add a booking" action={<Link href="/settings/storefront"><Button variant="gray">Set up the storefront</Button></Link>} /> : (
           <div className="grid gap-3 md:grid-cols-2 min-[100rem]:grid-cols-3" data-bookings>
             <AnimatePresence>{shown.map((r, i) => card(r, i))}</AnimatePresence>
-            {shown.length === 0 && <p className="text-[15px] text-steel py-6 md:col-span-2">{only ? "Nobody in this group right now." : "Everyone has arrived."}</p>}
+            {shown.length === 0 && <p className="text-[15px] text-steel py-6 md:col-span-2">{only ? "Nobody here" : "Everyone has arrived."}</p>}
           </div>
         )
       ) : tab === "month" ? (
         /* the month grid: which days are busy; tap one and it opens on Day */
         <div className="min-w-0" onClick={(e) => { if ((e.target as HTMLElement).closest("a")) setTab("day"); }}><Calendar day={day} month={month} today={today} /></div>
       ) : (
-        reviews.length === 0 ? <Empty title="No reviews yet" hint="Guests review after a visit." /> : (
+        reviews.length === 0 ? <Empty title="No reviews yet" hint="After each visit" /> : (
           <div className="space-y-3">{reviews.map((v) => (
             <Card key={v.id}>
               <div className="flex items-center gap-2"><Pill tone={v.rating >= 4 ? "ready" : v.rating >= 3 ? "preparing" : "alert"}><Star size={11} fill="currentColor" /> {v.rating}</Pill>
@@ -206,7 +208,7 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {tables.map((t) => (
               <button key={t.id} disabled={t.status === "occupied"} onClick={() => seating && act(seating, "seated", t.id)}
-                className={cn("card !min-h-16 p-3 text-center disabled:opacity-35", t.capacity < (seating?.party_size ?? 0) && "border-[var(--color-red)]/40")}>
+                className={cn("card !min-h-16 p-3 text-center disabled:opacity-35", t.capacity < (seating?.party_size ?? 0) && "border-[var(--color-red)]/40", t.id === seating?.table_id && "ring-2 ring-[var(--color-tint)]")}>
                 <div className="font-display text-xl">{t.name}</div><div className="text-[11px] text-[var(--color-label-2)]">{t.capacity} seats</div>
               </button>
             ))}
@@ -223,7 +225,12 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
             <Field label="Date"><input type="date" value={w.date} onChange={(e) => setW({ ...w, date: e.target.value })} className="num" /></Field>
             <Field label="Time"><input type="time" value={w.time} onChange={(e) => setW({ ...w, time: e.target.value })} className="num" /></Field>
           </div>
-          <Field label="How many"><div className="flex gap-1.5 flex-wrap">{[1, 2, 3, 4, 5, 6, 8, 10, 12].map((n) => <button key={n} type="button" onClick={() => setW({ ...w, party: n })} className={cn("chip !h-11 !min-w-11 justify-center", w.party === n && "on")}>{n}</button>)}</div></Field>
+          <Field label="How many"><div className="flex gap-1.5 flex-wrap">{[1, 2, 3, 4, 5, 6, 8, 10, 12].map((n) => <button key={n} type="button" onClick={() => setW({ ...w, party: n, table: (tables.find((t) => t.id === w.table)?.capacity ?? 0) >= n ? w.table : "" })} className={cn("chip !h-11 !min-w-11 justify-center", w.party === n && "on")}>{n}</button>)}</div></Field>
+          {/* Auto: a table that seats them is held when their time comes (0154) */}
+          <Field label="Table"><div className="flex gap-1.5 flex-wrap" data-new-table>
+            <button type="button" onClick={() => setW({ ...w, table: "" })} className={cn("chip !h-11 justify-center", !w.table && "on")}>Auto</button>
+            {tables.filter((t) => t.capacity >= w.party).map((t) => <button key={t.id} type="button" onClick={() => setW({ ...w, table: t.id })} className={cn("chip !h-11 !min-w-11 justify-center", w.table === t.id && "on")}>{t.name}</button>)}
+          </div></Field>
           <Field label="Note"><input value={w.note} onChange={(e) => setW({ ...w, note: e.target.value })} placeholder="Window table, birthday cake…" /></Field>
           <Button className="w-full" size="lg" loading={pending} disabled={!w.name || !w.phone} onClick={() => start(async () => { const r = await addWalkIn(w); if ("error" in r) toast(r.error!, "err"); else { setWalkIn(false); toast("Booking added"); } })}>Add booking</Button>
         </div>
@@ -232,10 +239,10 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
       <Sheet open={!!replyTo} onClose={() => setReplyTo(null)} title="Reply publicly">
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <p className="text-sm text-[var(--color-label-2)] flex-1">Shown publicly under the review.</p>
+            <p className="text-sm text-[var(--color-label-2)] flex-1">Shown publicly</p>
             {ai && <AiButton label="Draft it" busy={drafting} onClick={() => { setDrafting(true); void draftReviewReply(replyTo!.id).then((r) => { if ("error" in r) toast(r.error!, "err"); else setReply(r.reply); }).finally(() => setDrafting(false)); }} />}
           </div>
-          <textarea rows={4} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Thank you for coming — sorry the biryani was late." />
+          <textarea rows={4} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Thanks for visiting…" />
           <Button className="w-full" loading={pending} disabled={!reply} onClick={() => start(async () => { await replyReview(replyTo!.id, reply); setReplyTo(null); toast("Reply posted"); })}>Post reply</Button>
         </div>
       </Sheet>

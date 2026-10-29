@@ -56,9 +56,9 @@ export function AssignRider({ order, riders, base, property, existing, onClose }
         </div>
       ) : (
         <div className="space-y-4" data-assign-done>
-          <div className="rounded-2xl bg-[var(--color-green-2)] text-[var(--color-green)] px-4 py-3 flex items-center gap-2 font-semibold"><Check size={18} /> {done.rider ? `${done.rider} has it` : "Sent out"} — now send the two links.</div>
-          <LinkRow label="To the rider" hint="Their page: Picked up · Share my location · Delivered" href={waHref(done.phone, riderText(base, order, done.ride, property))} url={`${base}/ride/${done.ride}`} copied={copied === "ride"} onCopy={() => copy("ride", `${base}/ride/${done.ride}`)} data="rider-link" />
-          <LinkRow label="To the customer" hint="Their tracking page: the stage, the rider, the map" href={waHref(order.customer_phone, customerText(base, order, done.rider, property, done.track))} url={`${base}/track/${done.track}`} copied={copied === "track"} onCopy={() => copy("track", `${base}/track/${done.track}`)} data="customer-link" />
+          <div className="rounded-2xl bg-[var(--color-green-2)] text-[var(--color-green)] px-4 py-3 flex items-center gap-2 font-semibold"><Check size={18} /> {done.rider ? `${done.rider} has it` : "Sent out"} — send both links</div>
+          <LinkRow label="To the rider" hint="Picked up · Location · Delivered" href={waHref(done.phone, riderText(base, order, done.ride, property))} url={`${base}/ride/${done.ride}`} copied={copied === "ride"} onCopy={() => copy("ride", `${base}/ride/${done.ride}`)} data="rider-link" />
+          <LinkRow label="To the customer" hint="Live tracking page" href={waHref(order.customer_phone, customerText(base, order, done.rider, property, done.track))} url={`${base}/track/${done.track}`} copied={copied === "track"} onCopy={() => copy("track", `${base}/track/${done.track}`)} data="customer-link" />
           <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setDone(null)}>Change rider</Button><Button className="flex-1" onClick={close}>Done</Button></div>
         </div>
       )}
@@ -72,7 +72,7 @@ function LinkRow({ label, hint, href, url, copied, onCopy, data }: { label: stri
       <div><div className="text-[14px] font-bold">{label}</div><div className="text-[12px] text-steel">{hint}</div></div>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
         {href ? <a href={href} target="_blank" rel="noreferrer" className="h-11 rounded-full inline-flex items-center justify-center gap-2 bg-[var(--color-green)] text-[var(--color-on-tint)] font-semibold text-sm" data-whatsapp><MessageCircle size={16} /> Send on WhatsApp</a>
-          : <span className="h-11 rounded-full inline-flex items-center justify-center text-sm text-steel bg-[var(--color-bg-2)]">No phone — copy the link</span>}
+          : <span className="h-11 rounded-full inline-flex items-center justify-center text-sm text-steel bg-[var(--color-bg-2)]">No phone — copy link</span>}
         <button type="button" onClick={onCopy} className="h-11 px-4 rounded-full inline-flex items-center gap-1.5 bg-[var(--color-bg-2)] font-semibold text-sm" aria-label={`Copy the link ${label.toLowerCase()}`}>{copied ? <><Check size={15} className="text-[var(--color-tint)]" /> Copied</> : <><Copy size={15} /> Copy</>}</button>
       </div>
       <div className="text-[11.5px] num text-steel truncate" title={url}>{url.replace(/^https?:\/\//, "")}</div>

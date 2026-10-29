@@ -91,7 +91,7 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
       const o = qs[0]; const sum = qs.reduce((x, q) => x + Number(q.gross), 0);
       rows.push(
         <button key="qr" type="button" disabled={pending} data-qr-order={t.name} aria-label={`${t.name}: new order from the QR, ${formatINR(sum, { whole: true })} — accept and send to the kitchen`}
-          onClick={() => { const ids = qs.map((q) => q.id); settle(ids, true); start(async () => { for (const q of qs) { const r = await acceptOnline(q.id); if ("error" in r) { toast(r.error!, "err"); settle(ids, false); return; } } toast(`${t.name} — sent to the kitchen`); }); }}
+          onClick={() => { const ids = qs.map((q) => q.id); settle(ids, true); start(async () => { for (const q of qs) { const r = await acceptOnline(q.id); if ("error" in r) { toast(r.error!, "err"); settle(ids, false); return; } } toast(`${t.name} · sent to kitchen`); }); }}
           className="relative w-full h-11 min-h-11 rounded-[14px] px-1.5 flex items-center gap-2 bg-[var(--color-violet)] text-[var(--color-bezel)] text-[13px] font-extrabold shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-violet)_28%,transparent)] active:scale-[.97] transition">
           <span className="h-7 w-7 shrink-0 rounded-[10px] grid place-items-center bg-[color-mix(in_srgb,var(--color-bezel)_14%,transparent)]" aria-hidden><QrCode size={15} className="animate-pulse" /></span>
           <span className="min-w-0 flex-1 truncate text-left num"><span className="max-md:hidden">New order · </span>{formatINR(sum, { whole: true })}</span>
@@ -184,7 +184,7 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
           <div className="mt-auto pt-2 flex items-end gap-2 font-bold min-w-0">
             {o ? <><span className={cn("flex items-center gap-1 text-[14px] shrink-0", Date.now() - new Date(o.created_at).getTime() > STALE_MS ? "text-[var(--color-orange)]" : "text-[var(--color-label-2)]")}><Clock size={15} aria-hidden />{fmtSince(o.created_at)}</span>
               <span className="ml-auto font-display num text-[21px] leading-none truncate">{formatINR(totalOf(o), { whole: true })}</span></>
-              : <span className="text-[13px] text-[var(--color-label-2)]">No ticket yet — tap to order</span>}
+              : <span className="text-[13px] text-[var(--color-label-2)]">Tap to order</span>}
           </div>
           {late && <span className="late-tag"><SVC_ICON.late size={13} aria-hidden /> LATE</span>}
         </Link>
@@ -222,7 +222,7 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
           {chips.map((s) => <StateChip key={s} s={s} n={counts.get(s) ?? 0} on={only === s} onClick={() => setOnly((x) => (x === s ? null : s))} className="shrink-0 max-sm:!pl-3 max-sm:!pr-1.5 max-sm:!gap-1.5 max-sm:!text-[13px]" />)}
         </Rail>
         <div className="sm:ml-auto shrink-0"><ViewSwitch label="Show orders as" data="orders" shown={view} onPick={lay.pick} saved={lay.saved}
-          onKeep={(v) => { lay.keep(v); toast(v === "list" ? "The list is your default here" : "Tables are your default here"); }}
+          onKeep={(v) => { lay.keep(v); toast(v === "list" ? "List set as default" : "Tables set as default"); }}
           options={[{ v: "tables", label: "Tables", icon: LayoutGrid, word: "Tables" }, { v: "list", label: "List", icon: List, word: "List" }]} /></div>
       </div>
 
@@ -249,9 +249,9 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
         <section data-open-orders>
           {orders.length === 0
             ? <>
-              <div className="sm:hidden rounded-[22px] border border-dashed border-[var(--color-separator)] p-8 text-center text-sm text-steel">Nothing open. Quiet before the rush.</div>
+              <div className="sm:hidden rounded-[22px] border border-dashed border-[var(--color-separator)] p-8 text-center text-sm text-steel">No open orders</div>
               {/* iPad and desktop (2026-10-24, the owner): the empty floor said properly, with the two ways to start */}
-              <EmptyState from="sm" icon={HandPlatter} hue="blue" title="Nothing open. Quiet before the rush." hint="Orders show here as soon as a table, a parcel or a phone order starts." data-orders-empty
+              <EmptyState from="sm" icon={HandPlatter} hue="blue" title="No open orders" data-orders-empty
                 actions={<><Link href="/orders/new?type=takeaway" className="btn btn-filled" data-empty-parcel><ShoppingBag size={17} aria-hidden />Parcel</Link><Link href="/orders/phone" className="btn btn-gray" data-empty-phone><Phone size={17} aria-hidden />Phone order</Link></>} />
             </>
             : <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 min-[100rem]:grid-cols-4 gap-3 lg:gap-4" data-order-grid>

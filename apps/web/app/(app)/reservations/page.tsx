@@ -1,5 +1,6 @@
 import { aiEnabled } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
+import { holdDue } from "@/lib/holdDue";
 import { requireSession } from "@/lib/auth";
 import { todayIST } from "@/lib/format";
 import { ReservationsClient } from "./ReservationsClient";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 const plus = (d: string, n: number) => { const x = new Date(`${d}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
 export default async function Reservations({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
-  const { date } = await searchParams; const s = await createClient();
+  const { date } = await searchParams; const s = await createClient(); const held = holdDue(s);   // a booking due now holds its table or room (0154)
   const today = todayIST(); const day = date ?? today;
   /* The whole month the chosen day sits in, for the grid. Only the four fields a cell draws —
      a month of bookings is small, and asking for it here keeps the page to one round trip. */
@@ -28,5 +29,6 @@ export default async function Reservations({ searchParams }: { searchParams: Pro
     s.from("reservations").select("on_date, status").gte("on_date", start).lte("on_date", plus(start, 6)),
   ]);
   const days = Array.from({ length: 7 }, (_, i) => { const d = plus(start, i); return { date: d, n: (week ?? []).filter((r) => r.on_date === d && r.status !== "cancelled" && r.status !== "no_show").length }; });
+  await held;
   return <ReservationsClient day={day} today={today} days={days} list={(list ?? []) as never} tables={tables ?? []} reviews={(reviews ?? []) as never} month={(month ?? []) as never} ai={aiEnabled()} restaurant={session.restaurant.name} />;
 }

@@ -25,7 +25,7 @@ export function KitchenPace({ initial }: { initial: Pace }) {
     const r = await setRush(extra, mins, pause);
     if ("error" in r) { toast(r.error ?? "Could not change the pace", "err"); return; }
     setPace(r.pace);
-    toast(pause ? `Online orders paused until ${time(r.pace.online_paused_until!)}` : extra ? `Quoting ${extra} minutes longer until ${time(r.pace.rush_until!)}` : "Back to the normal pace");
+    toast(pause ? `Online orders paused until ${time(r.pace.online_paused_until!)}` : extra ? `+${extra} min until ${time(r.pace.rush_until!)}` : "Back to normal");
   });
   const opts = [
     { k: "normal", label: "Normal", hint: "Usual times", Icon: Gauge, run: () => go(0) },
@@ -42,7 +42,7 @@ export function KitchenPace({ initial }: { initial: Pace }) {
   const pct = until ? Math.min(100, (left / span) * 100) : 100;
   const pc = paused ? "var(--color-red)" : extra ? "var(--color-orange)" : "var(--color-green)";
   const stateName = paused ? "Paused" : extra >= 30 ? "Very busy" : extra ? "Busy" : "Normal";
-  const stateLine = paused ? `Online orders stopped · back at ${time(paused)}` : extra ? `Online quotes +${extra} min · until ${time(pace.rush_until!)}` : "Online orders are quoted the usual time";
+  const stateLine = paused ? `Stopped · back at ${time(paused)}` : extra ? `+${extra} min · until ${time(pace.rush_until!)}` : "Usual prep times";
   const segs = [
     { k: "normal", big: "0", label: "Normal", run: () => go(0), on: { background: "var(--color-tint)", color: "var(--color-on-tint)" } },
     { k: "15", big: "+15", label: "Busy", run: () => go(15), on: { background: "var(--color-orange)", color: "#1a1206" } },
@@ -81,14 +81,14 @@ export function KitchenPace({ initial }: { initial: Pace }) {
             })}
           </div>
         </div>
-        <p className="px-4 pt-2.5 pb-3.5 text-[11.5px] text-[var(--color-label-2)] flex items-center gap-1.5"><Info size={13} className="shrink-0" /> Busy: 1 hour · pause: 30 min · table QR never stops</p>
+        <p className="px-4 pt-2.5 pb-3.5 text-[11.5px] text-[var(--color-label-2)] flex items-center gap-1.5"><Info size={13} className="shrink-0" /> Busy 1 hr · Pause 30 min · QR stays on</p>
       </div>
 
       <div className="hidden sm:block feather p-4 mb-5">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-[15px] font-semibold">Kitchen pace</span>
           <span className={cn("text-xs", paused ? "text-[var(--color-red)] font-semibold" : extra ? "text-[var(--color-orange)] font-semibold" : "text-[var(--color-label-2)]")}>
-            {paused ? `Online orders paused until ${time(paused)}` : extra ? `+${extra} min on every quote until ${time(pace.rush_until!)}` : "Online orders are quoted the usual time"}
+            {paused ? `Paused until ${time(paused)}` : extra ? `+${extra} min until ${time(pace.rush_until!)}` : "Usual prep times"}
           </span>
         </div>
         <div className="grid grid-cols-4 gap-1.5 p-1 rounded-2xl bg-[var(--color-fill)]">
@@ -101,7 +101,7 @@ export function KitchenPace({ initial }: { initial: Pace }) {
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-[var(--color-label-2)] mt-2">Busy: 1 hour · pause: 30 min · table QR never stops</p>
+        <p className="text-[11px] text-[var(--color-label-2)] mt-2">Busy 1 hr · Pause 30 min · QR stays on</p>
       </div>
     </>
   );

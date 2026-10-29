@@ -156,7 +156,7 @@ and only then `admin_delete_property`.
 **`install_sample_estate`** builds a whole demo estate; `sweep_expired_demos` clears sandboxes.
 
 **App files by link (0129, 2026-10-20).** Supabase Free caps an upload at 50 MB and the Windows installer is ~78 MB, so
-each card also has **or paste a download link** (`[data-app-file-link]`, `[data-app-file-link-open]`, `-url`, `-version`,
+each card also has **Paste a link** (`[data-app-file-link]`, `[data-app-file-link-open]`, `-url`, `-version`,
 `-size`, `-publish`): a public https link ending in the platform's extension (the owner keeps the .exe on Cloudflare R2 —
 docs/install-builds.md), the version read from the link's file name, an optional size in MB. `app_release_publish_link`
 checks Master control, https and the extension; the row has `external_url` instead of `file_path`. The history says
@@ -297,7 +297,7 @@ and the public front page (site.md) read them; a key's length is separate (30 / 
 **Online payment** on /membership, on **DineFlow's own** Razorpay account (a guest pays a property on the property's keys —
 that is lib/razorpay.ts and /pay): **Pay ₹X** on each card for the owner or a manager when the server has
 `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` **and** `SUPABASE_SERVICE_ROLE_KEY` (`platformReady()`,
-lib/platformPay.ts); without them the page is as before (keys, "online payment coming soon"). `/api/membership/order` →
+lib/platformPay.ts); without them the page is as before (keys and the support line). `/api/membership/order` →
 `membership_checkout_begin` (the price is the plan's, never the browser's) → a Razorpay order for that amount →
 `membership_checkout_order`. `/api/membership/verify`: the HMAC of "order|payment", the order is a membership order, the
 payment is that order's and captured (an authorized hold is captured first) → `membership_paid` (amount = price; extends from
@@ -330,3 +330,6 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
   error on the same page within a day is one row with a count. Only the master can read the table; anyone's page writes
   it through `report_client_error` alone (30 an hour per person, 2,000 an hour in all; 30 days kept). A tab of its own was
   left out on purpose: the nav's row of seven stays as it is.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

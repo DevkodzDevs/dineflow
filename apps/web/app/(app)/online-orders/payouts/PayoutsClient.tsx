@@ -35,7 +35,7 @@ export function PayoutsClient({ channels, rows, today }: { channels: { id: strin
   const name = (id: string) => channels.find((c) => c.id === id)?.label ?? "Channel";
   const short = rows.filter((r) => gapOf(r) < -1);
 
-  if (!channels.length) return <Empty title="No channels yet" hint="Add Swiggy or Zomato in Channels first." />;
+  if (!channels.length) return <Empty title="No channels yet" hint="Add one in Channels" />;
   return (
     <div className="space-y-5 max-w-[1200px]">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
@@ -51,7 +51,7 @@ export function PayoutsClient({ channels, rows, today }: { channels: { id: strin
           <div className="mt-3 rounded-2xl bg-[var(--color-fill)] p-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2" data-expected>
             {loading ? <div className="col-span-full flex items-center gap-2 text-steel text-[14px]"><Loader2 size={16} className="animate-spin" /> Adding up the orders…</div> : exp ? (
               [["Orders", String(exp.orders)], ["Order value", inr(exp.gross)], ["Commission", inr(exp.commission)], ["Should pay", inr(exp.payout)]].map(([k, v]) => <div key={k} className="min-w-0"><div className="text-[12px] font-bold text-steel">{k}</div><div className={cn("num font-extrabold text-[17px] truncate", k === "Should pay" && "text-[19px]")}>{v}</div></div>)
-            ) : <div className="col-span-full text-[14px] text-steel">{err ?? "Choose a channel and a period."}</div>}
+            ) : <div className="col-span-full text-[14px] text-steel">{err ?? "Pick channel and dates"}</div>}
           </div>
           <div className="mt-3 grid grid-cols-3 gap-3">
             <label className="min-w-0"><span className="text-[13px] font-semibold text-steel">Reached the bank</span><input className="mt-1 num !text-[18px] font-bold" inputMode="decimal" value={f.received} onChange={(e) => set("received", e.target.value.replace(/[^\d.]/g, ""))} data-received /></label>
@@ -63,7 +63,7 @@ export function PayoutsClient({ channels, rows, today }: { channels: { id: strin
             <label className="min-w-0"><span className="text-[13px] font-semibold text-steel">Received on</span><input type="date" className="mt-1" value={f.received_on} max={today} onChange={(e) => set("received_on", e.target.value)} /></label>
           </div>
           {gap !== null && <div className={cn("mt-3 rounded-2xl px-4 py-3 flex items-center gap-2 text-[15px] font-bold", Math.abs(gap) < 1 ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : gap < 0 ? "bg-[var(--color-red-2)] text-[var(--color-red)]" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")} data-gap>
-            {Math.abs(gap) < 1 ? <><Check size={18} aria-hidden /> Matches the orders</> : gap < 0 ? <><AlertTriangle size={18} aria-hidden /> Short by {inr(-gap)} — ask {name(f.channel)} for the statement</> : <><AlertTriangle size={18} aria-hidden /> {inr(gap)} more than the orders say</>}
+            {Math.abs(gap) < 1 ? <><Check size={18} aria-hidden /> Matches the orders</> : gap < 0 ? <><AlertTriangle size={18} aria-hidden /> Short by {inr(-gap)} — ask {name(f.channel)}</> : <><AlertTriangle size={18} aria-hidden /> {inr(gap)} more than expected</>}
           </div>}
           {err && exp && <p className="mt-2 text-[14px] font-semibold text-chili">{err}</p>}
           <button type="button" disabled={pending || !exp || f.received === ""} className="svc-btn go w-full mt-4" data-save-payout
@@ -77,7 +77,7 @@ export function PayoutsClient({ channels, rows, today }: { channels: { id: strin
             <div className={cn("feather !rounded-[18px] px-4 py-3", short.length && "!border-[var(--color-red)]")}><div className="text-[12px] font-bold text-steel">Short</div><div className={cn("font-display num text-[24px]", short.length ? "text-chili" : "")} data-short-total>{short.length ? inr(-short.reduce((a, r) => a + gapOf(r), 0)) : "None"}</div></div>
           </div>
           <Card className="!p-0 overflow-hidden" data-payout-list>
-            {rows.length === 0 ? <p className="p-4 text-sm text-steel">None yet — note each weekly payout here.</p> : rows.map((r) => { const g = gapOf(r); return (
+            {rows.length === 0 ? <p className="p-4 text-sm text-steel">No payouts yet</p> : rows.map((r) => { const g = gapOf(r); return (
               <div key={r.id} className="px-4 py-3 border-b border-[var(--color-separator)] last:border-b-0 flex items-center gap-3 min-w-0" data-payout={r.id}>
                 <div className="min-w-0 flex-1">
                   <div className="text-[15px] font-bold truncate">{name(r.channel_id)} · {d(r.period_from)}–{d(r.period_to)}</div>

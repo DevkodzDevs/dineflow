@@ -71,7 +71,7 @@ export function OnlineClient({ orders, channels, menu, ai = false, deliveries = 
           );
         })}
       </div>
-      {shown.length === 0 ? <Empty title={tab === "new" ? "No new online orders" : tab === "cook" ? "Nothing cooking for delivery" : "Nothing waiting for a rider"} hint="New orders pop up here with a sound." /> : (
+      {shown.length === 0 ? <Empty title={tab === "new" ? "No new online orders" : tab === "cook" ? "Nothing cooking for delivery" : "Nothing to send out"} hint="Arrive with a sound" /> : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"><AnimatePresence>
           {shown.map((o) => {
             const kind = o.order_channels?.kind ?? "other"; const total = Number(o.gross);
@@ -100,13 +100,13 @@ export function OnlineClient({ orders, channels, menu, ai = false, deliveries = 
                   {(() => { const offs = o.items.filter((i) => i.menu_item_id && offOnline.has(i.menu_item_id)); return offs.length > 0 && o.status === "new" && (
                     <div className="flex items-start gap-2.5 rounded-[16px] p-2.5 pl-3 text-[13.5px] bg-[color-mix(in_srgb,var(--color-orange)_12%,transparent)]" data-off-online>
                       <Globe size={16} aria-hidden className="shrink-0 mt-0.5 text-[var(--color-orange)]" />
-                      <span className="min-w-0"><b>Off online:</b> {offs.map((i) => i.name).join(", ")}. Reject, or accept if you can make it.</span>
+                      <span className="min-w-0"><b>Off online:</b> {offs.map((i) => i.name).join(", ")}. Can you make it?</span>
                     </div>); })()}
                   {o.unmatched.length > 0 && <div className="flex items-center gap-3 rounded-[16px] p-2.5 pl-3 border border-[color-mix(in_srgb,var(--color-red)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-red)_8%,transparent)]" data-unmatched>
                     <span className="h-9 w-9 shrink-0 rounded-[11px] grid place-items-center bg-[color-mix(in_srgb,var(--color-red)_16%,transparent)] text-[var(--color-red)]" aria-hidden><AlertTriangle size={17} /></span>
                     <div className="min-w-0 flex-1 leading-tight">
-                      <div className="text-[13.5px] font-bold text-[var(--color-red)]"><span className="num">{o.unmatched.length}</span> {o.unmatched.length === 1 ? "dish" : "dishes"} not on your menu</div>
-                      <div className="text-[12px] text-[var(--color-label-2)] mt-0.5">Map {o.unmatched.length === 1 ? "it" : "them"} for the ticket and stock.</div>
+                      <div className="text-[13.5px] font-bold text-[var(--color-red)]"><span className="num">{o.unmatched.length}</span> {o.unmatched.length === 1 ? "dish" : "dishes"} not on menu</div>
+                      <div className="text-[12px] text-[var(--color-label-2)] mt-0.5">Map {o.unmatched.length === 1 ? "it" : "them"} for ticket, stock</div>
                     </div>
                     <button type="button" onClick={() => setFix({ order: o, line: o.unmatched[0] })} className="shrink-0 !min-h-10 h-10 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold bg-[var(--color-red)] text-white active:scale-[.97] transition" data-map-now><Link2 size={15} aria-hidden />Map now</button>
                   </div>}
@@ -148,12 +148,12 @@ export function OnlineClient({ orders, channels, menu, ai = false, deliveries = 
       </div>
       <Sheet open={!!fix} onClose={() => setFix(null)} title={`Map "${fix?.line ?? ""}"`}>
         <div className="flex items-start gap-3 mb-3">
-          <p className="text-sm text-steel flex-1">Pick the menu dish — remembered next time.</p>
+          <p className="text-sm text-steel flex-1">Pick the dish — remembered</p>
           {ai && <AiButton label="Find it" busy={hinting} onClick={() => { setHinting(true); void suggestDishMap([fix!.line]).then((r) => { if ("error" in r) setErr(r.error!); else setHint(r.matches?.[0] ?? null); }).finally(() => setHinting(false)); }} />}
         </div>
         {hint && hint.line === fix?.line && (
           <div className="mb-3 rounded-xl border border-[var(--color-tint)]/40 bg-[var(--color-green-2)] p-3 text-sm flex items-center gap-3">
-            <span className="flex-1 min-w-0">{hint.menu_item_id ? <>Looks like <b>{hint.name}</b> <span className="num text-xs text-steel">· {hint.confidence}% sure</span></> : <>Not on your menu — add it first.</>}</span>
+            <span className="flex-1 min-w-0">{hint.menu_item_id ? <>Looks like <b>{hint.name}</b> <span className="num text-xs text-steel">· {hint.confidence}% sure</span></> : <>Not on your menu</>}</span>
             {hint.menu_item_id && <Button size="sm" disabled={pending} onClick={() => run(mapDish(hint.menu_item_id!, fix!.order.order_channels?.kind ?? "other", fix!.line), () => { setHint(null); setFix(null); })}>Map it</Button>}
           </div>
         )}
@@ -161,7 +161,7 @@ export function OnlineClient({ orders, channels, menu, ai = false, deliveries = 
       </Sheet>
       <AssignRider order={assign} riders={riders} base={base} property={property} existing={assign ? dOf(assign) : null} onClose={() => setAssign(null)} />
       <ReasonDialog open={!!rejecting} onClose={() => setRejecting(null)} title={rejecting ? `Reject ${rejecting.display_id ?? rejecting.external_id}?` : ""}
-        hint="The guest is told. Cannot be undone." chips={["Item unavailable", "Kitchen too busy", "Closing soon", "Too far to deliver"]} confirmLabel="Reject order"
+        hint="Guest is told. No undo." chips={["Item unavailable", "Kitchen too busy", "Closing soon", "Too far to deliver"]} confirmLabel="Reject order"
         onConfirm={async (reason) => { const r = await rejectOnline(rejecting!.id, reason); if ("error" in r) return { error: r.error }; }} />
     </div>
   );

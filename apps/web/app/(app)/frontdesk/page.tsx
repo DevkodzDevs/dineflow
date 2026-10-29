@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { holdDue } from "@/lib/holdDue";
 import { requireSession } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { todayIST } from "@/lib/format";
@@ -6,7 +7,7 @@ import { FrontDeskClient } from "./FrontDeskClient";
 export const metadata = { title: "Front desk" };
 export const dynamic = "force-dynamic";
 export default async function FrontDesk() {
-  const s = await createClient(); const today = todayIST();
+  const s = await createClient(); const today = todayIST(); const held = holdDue(s);   // a booking due now holds its table or room (0154)
   // the session is fetched alongside the rows, not in front of them — one round trip, not two
   const [session, { data: bookings }, { data: rooms }, { data: types }, { data: guests }] = await Promise.all([
     requireSession(),
@@ -15,6 +16,7 @@ export default async function FrontDesk() {
     s.from("room_types").select("*").eq("is_active", true),
     s.from("guests").select("id, full_name, phone, vip").order("created_at", { ascending: false }).limit(200),
   ]);
+  await held;
   return (
     <>
       <PageHeader eyebrow={session.restaurant.property_type === "resort" ? "Resort · reception" : "Hotel · reception"} title="Front" accent="desk" sub={`Check-in ${session.restaurant.check_in_time.slice(0, 5)} · Check-out ${session.restaurant.check_out_time.slice(0, 5)}`} />

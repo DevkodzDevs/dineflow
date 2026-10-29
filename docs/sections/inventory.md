@@ -42,7 +42,7 @@ it is cooked, and the leak report cannot see it. See [menu.md](menu.md).
 
 ## Before you edit
 
-- **The Stock tab is Simple Service (2026-10-15).** `SvcHead` ("Red and orange need buying") with Leak finder and **Goods arrived** (the Record purchase sheet) — the page head moved from
+- **The Stock tab is Simple Service (2026-10-15).** `SvcHead` ("Buy red and orange") with Leak finder and **Goods arrived** (the Record purchase sheet) — the page head moved from
   `page.tsx` into the client. The tabs and **+ Ingredient** follow. On Stock: three big tiles — **Finished**
   (nothing left, red), **Running low** (at or under the reorder level, amber), **Enough** (green), each a filter
   (`data-level`, `!min-h-[84px]` because `:where(button)` would hold them at 40) · the low-stock strip (Tomorrow's
@@ -159,3 +159,6 @@ Then receive a small PO on a demo property and confirm the ledger and the level 
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
 - **Pantry is empty** (and no purchases, orders, suppliers, wastage — 2026-10-24) are `Empty`'s sm+ form with their own icons
   (design-system.md). The phone is unchanged.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

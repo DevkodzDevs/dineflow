@@ -31,18 +31,18 @@ const GROUPS: { key: GroupKey; title: string; Icon: typeof Database; hue: string
   { key: "screens", title: "Screens & code", Icon: MonitorSmartphone, hue: "var(--color-cyan)" },
 ];
 const SUITES: { key: string; title: string; what: string; Icon: typeof Database; group: GroupKey; server: boolean }[] = [
-  { key: "database", title: "Database", what: "Connection, migrations, row security, functions, indexes, clocks, data checks.", Icon: Database, group: "data", server: true },
-  { key: "integrity", title: "Money & data integrity", what: "Every bill adds up, invoice series, tampered lines, loyalty, double-booked rooms, cross-property rows.", Icon: Scale, group: "data", server: true },
-  { key: "functions", title: "Functions", what: "Every report and screen call works for the chosen property, and how fast.", Icon: FunctionSquare, group: "data", server: true },
-  { key: "security", title: "Security", what: "Headers, anonymous reads and writes refused, sign-in required, CORS, no secrets leaked.", Icon: ShieldCheck, group: "security", server: true },
-  { key: "dbsecurity", title: "Database security", what: "Pinned search paths, open policies, views that skip row security, buckets, keys in code, the master password.", Icon: ShieldAlert, group: "security", server: true },
-  { key: "performance", title: "Speed", what: "Server time per screen and call: under 600 ms good, over 1.5 s failing.", Icon: Gauge, group: "speed", server: true },
-  { key: "load", title: "Load test", what: "Bursts of visitors at once: the median and 95th percentile answer, and any error.", Icon: Zap, group: "speed", server: true },
-  { key: "dbperf", title: "Database performance", what: "Cache hits, foreign keys without an index, scans, dead rows, connections, the slowest statements.", Icon: Cpu, group: "speed", server: true },
-  { key: "ops", title: "Live operations", what: "What is stuck now: online orders, riders, overstays, no-shows, OTA syncs, cash-ups, demos.", Icon: Siren, group: "live", server: true },
-  { key: "api", title: "API & connectivity", what: "Supabase, the app's routes, outside services, mail domains and server keys.", Icon: Plug, group: "live", server: true },
-  { key: "unit", title: "Code checks", what: "Money, GST halves, lakh grouping, IST dates, recipes and till search logic.", Icon: Code2, group: "screens", server: true },
-  { key: "browser", title: "Screens & buttons", what: "Every screen at phone, iPad and laptop width — crashes, side scroll, tap targets, script errors, weight, links.", Icon: MonitorSmartphone, group: "screens", server: false },
+  { key: "database", title: "Database", what: "Connection, migrations, functions, indexes", Icon: Database, group: "data", server: true },
+  { key: "integrity", title: "Money & data integrity", what: "Bills, invoices, loyalty, bookings", Icon: Scale, group: "data", server: true },
+  { key: "functions", title: "Functions", what: "Reports and screen calls", Icon: FunctionSquare, group: "data", server: true },
+  { key: "security", title: "Security", what: "Headers, sign-in, CORS, secrets", Icon: ShieldCheck, group: "security", server: true },
+  { key: "dbsecurity", title: "Database security", what: "Policies, keys, master password", Icon: ShieldAlert, group: "security", server: true },
+  { key: "performance", title: "Speed", what: "Under 600 ms · fail over 1.5 s", Icon: Gauge, group: "speed", server: true },
+  { key: "load", title: "Load test", what: "Visitor bursts · median, p95", Icon: Zap, group: "speed", server: true },
+  { key: "dbperf", title: "Database performance", what: "Cache, indexes, slow queries", Icon: Cpu, group: "speed", server: true },
+  { key: "ops", title: "Live operations", what: "Stuck orders, syncs, cash-ups", Icon: Siren, group: "live", server: true },
+  { key: "api", title: "API & connectivity", what: "Routes, services, mail, keys", Icon: Plug, group: "live", server: true },
+  { key: "unit", title: "Code checks", what: "Money, GST, dates, recipes", Icon: Code2, group: "screens", server: true },
+  { key: "browser", title: "Screens & buttons", what: "Every screen, three widths", Icon: MonitorSmartphone, group: "screens", server: false },
 ];
 const TITLE = Object.fromEntries(SUITES.map((x) => [x.key, x.title]));
 const RANK: Record<Status, number> = { pass: 0, skip: 0, warn: 1, fail: 2 };
@@ -211,7 +211,7 @@ export function TestingClient({ last, prev: prevIn = {}, history = [], propertie
         <div className="min-w-0 flex-1">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Self-test</div>
           <h1 className="text-4xl">Is everything <em>working?</em></h1>
-          <p className="text-sm text-steel mt-1.5 max-w-xl">{SUITES.length} suites check the app from inside: data and money, security, speed, the live system and every screen. Nothing here changes a property&apos;s data.</p>
+          <p className="text-sm text-steel mt-1.5 max-w-xl">{SUITES.length} suites · read-only</p>
         </div>
         {/* a phone: the picker on its own line, the two buttons sharing the next — in one row Run all was squeezed to 46px */}
         <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:items-center sm:w-auto">
@@ -238,7 +238,7 @@ export function TestingClient({ last, prev: prevIn = {}, history = [], propertie
         {score === null ? (
           <div className="p-6 flex items-center gap-4">
             <span className="h-12 w-12 rounded-2xl bg-[var(--color-fill)] grid place-items-center text-steel shrink-0"><Activity size={20} /></span>
-            <div><div className="text-[15px] font-semibold">No results yet</div><div className="text-sm text-steel">Press <b>Run all tests</b> — it takes about two minutes, most of it the screens.</div></div>
+            <div><div className="text-[15px] font-semibold">No results yet</div><div className="text-sm text-steel">Takes about 2 minutes</div></div>
           </div>
         ) : (
           <div className="grid md:grid-cols-[auto_minmax(0,1fr)] items-center gap-5 md:gap-8 p-5 md:p-6">
@@ -277,7 +277,7 @@ export function TestingClient({ last, prev: prevIn = {}, history = [], propertie
             </div>
           </div>
         )}
-        {!acting && <div className="px-5 py-2.5 text-xs text-[var(--color-orange)] bg-[color-mix(in_srgb,var(--color-orange)_8%,transparent)] border-t border-[var(--color-separator)]">Speed and Screens need a property open — press <b>Open</b> on one, then come back.</div>}
+        {!acting && <div className="px-5 py-2.5 text-xs text-[var(--color-orange)] bg-[color-mix(in_srgb,var(--color-orange)_8%,transparent)] border-t border-[var(--color-separator)]">Open a property for Speed, Screens</div>}
       </Card>
 
       {/* ── the five areas, each with its own score: where the trouble is, at a glance ── */}
@@ -300,7 +300,7 @@ export function TestingClient({ last, prev: prevIn = {}, history = [], propertie
       <div className="flex flex-wrap items-center gap-2" data-tools>
         <label className="relative flex-1 min-w-[min(100%,16rem)]">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a check — a table, a screen, a header…" className="!h-11 !pl-10 !text-[14px]" aria-label="Find a check" data-search />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a check…" className="!h-11 !pl-10 !text-[14px]" aria-label="Find a check" data-search />
         </label>
         <Button variant="outline" onClick={() => { void runList(failingSuites); }} disabled={running || !failingSuites.length} data-rerun-issues title="Run again only the suites with warnings or failures">
           <RotateCcw size={16} /> Re-run issues{failingSuites.length ? ` (${failingSuites.length})` : ""}
@@ -313,7 +313,7 @@ export function TestingClient({ last, prev: prevIn = {}, history = [], propertie
       {found && (
         <Card className="!p-0 overflow-hidden" data-search-results>
           <div className="px-5 py-3 border-b border-[var(--color-separator)] text-[13px]"><b className="num">{found.length}</b> check{found.length === 1 ? "" : "s"} match “{q.trim()}”</div>
-          {found.length === 0 ? <div className="px-5 py-4 text-sm text-steel">Nothing matches. Try a table name, a screen like /orders, or a word like header.</div>
+          {found.length === 0 ? <div className="px-5 py-4 text-sm text-steel">No matches</div>
             : <ul className="divide-y divide-[var(--color-separator)]">{found.map((c, i) => <li key={i}><CheckRow c={c} change={change(c.suite, c)} suiteTag={c.suite} onSuite={() => jump(c.suite, false)} /></li>)}</ul>}
         </Card>
       )}
@@ -327,7 +327,7 @@ export function TestingClient({ last, prev: prevIn = {}, history = [], propertie
             {issues.length > 0 && <span className="ml-auto text-[11.5px] text-steel">{issues.filter((c) => c.fix).length} with a fix</span>}
           </div>
           {issues.length === 0
-            ? <div className="px-5 py-4 flex items-center gap-3 text-sm"><Mark status="pass" /> Nothing to fix — every check passed.</div>
+            ? <div className="px-5 py-4 flex items-center gap-3 text-sm"><Mark status="pass" /> All checks passed</div>
             : <ul className="divide-y divide-[var(--color-separator)]">
                 {issues.map((c, i) => (
                   <li key={i}>
@@ -486,7 +486,7 @@ function SpeedChart({ runs }: { runs: Run[] }) {
     <Card data-speed-chart>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="text-[15px] font-semibold">Slowest answers</h2>
-        <span className="text-xs text-steel">{slow ? `${slow} of the ${items.length} slowest are over 600 ms` : `all ${items.length} under 600 ms`}</span>
+        <span className="text-xs text-steel">{slow ? `${slow} over 600 ms` : `all ${items.length} under 600 ms`}</span>
         <span className="ml-auto flex items-center gap-3 text-[11px] text-steel"><Key c={TONE.pass} t="under 600 ms" /><Key c={TONE.warn} t="600 ms – 1.5 s" /><Key c={TONE.fail} t="over 1.5 s" /></span>
       </div>
       <div className="mt-4 grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_3.5rem] sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_4rem] gap-x-3 gap-y-2.5 items-center">

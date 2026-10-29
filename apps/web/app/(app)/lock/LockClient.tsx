@@ -12,9 +12,9 @@ type Ask = { kind: "enable" | "change" | "disable" | "lock"; key: string; label:
 
 const MODES: Record<LockMode, { title: string; short: string; Icon: typeof Eye; hue: string; hue2: string; points: string[] }> = {
   view: { title: "Static display", short: "View only", Icon: Eye, hue: "var(--color-blue)", hue2: "var(--color-blue-2)",
-    points: ["Shows the page; nothing on it can be tapped, typed or changed", "Scrolls — the page and its lists", "For a TV, a board, a customer-facing screen"] },
+    points: ["View only, no taps", "Scrolls", "For TVs and boards"] },
   work: { title: "Work on one page", short: "Work here", Icon: MousePointerClick, hue: "var(--color-green)", hue2: "var(--color-green-2)",
-    points: ["Everything on that page works, and its own steps — the till, the bill, the print", "The menu, Back and every other page are hidden", "Scrolls, like any page"] },
+    points: ["Only this page works", "Menu and Back hidden", "Scrolls"] },
 };
 
 /**
@@ -41,13 +41,13 @@ export function LockClient({ groups, setting: initial, me }: { groups: LockGroup
     const r = await setPageLock(ask.key, ask.kind === "disable" ? null : ask.mode);
     if ("error" in r && r.error) { setErr(r.error); return; }
     if ("setting" in r && r.setting) setSetting(r.setting);
-    toast(ask.kind === "disable" ? `Display lock off for ${ask.label}` : `${ask.label}: ${MODES[ask.mode].short}`);
+    toast(ask.kind === "disable" ? `Lock off: ${ask.label}` : `${ask.label}: ${MODES[ask.mode].short}`);
     close();
   });
 
   return (
     <div className="space-y-6" data-lock-page>
-      <PageHeader eyebrow="Devices" title="Display" accent="lock" sub="Pin a screen to one page — a counter tablet, a till, a TV" />
+      <PageHeader eyebrow="Devices" title="Display" accent="lock" sub="Pin a screen" />
 
       {/* the two kinds, side by side */}
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" data-lock-modes>
@@ -63,7 +63,7 @@ export function LockClient({ groups, setting: initial, me }: { groups: LockGroup
 
       <div className="flex flex-wrap items-center gap-2.5 rounded-[18px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] px-4 py-3" data-lock-who>
         <ShieldCheck size={18} className="text-[var(--color-green)] shrink-0" aria-hidden />
-        <span className="text-[13.5px] text-[var(--color-label-2)] flex-1 min-w-[16rem]">Only the <b className="text-[var(--color-label)]">owner</b>, a <b className="text-[var(--color-label)]">general manager</b> or a <b className="text-[var(--color-label)]">manager</b> can turn a lock on, lock a display or unlock one — unlocking asks for their own sign-in on that screen.</span>
+        <span className="text-[13.5px] text-[var(--color-label-2)] flex-1 min-w-[16rem]"><b className="text-[var(--color-label)]">Owner</b> and <b className="text-[var(--color-label)]">managers</b> only</span>
         <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12.5px] font-bold bg-[var(--color-fill)]" data-lock-count={on}><Lock size={13} aria-hidden />{on} {on === 1 ? "page" : "pages"} on</span>
       </div>
 
@@ -100,7 +100,7 @@ export function LockClient({ groups, setting: initial, me }: { groups: LockGroup
         </section>
       ))}
 
-      <Sheet open={!!ask} onClose={close} title={!ask ? "" : ask.kind === "enable" ? `Enable display lock for ${ask.label}?` : ask.kind === "change" ? `How should ${ask.label} lock?` : ask.kind === "disable" ? `Turn off display lock for ${ask.label}?` : `Lock this display to ${ask.label}?`}>
+      <Sheet open={!!ask} onClose={close} title={!ask ? "" : ask.kind === "enable" ? `Turn on lock: ${ask.label}?` : ask.kind === "change" ? `How ${ask.label} locks` : ask.kind === "disable" ? `Turn off lock: ${ask.label}?` : `Lock screen to ${ask.label}?`}>
         {ask && <div className="space-y-4" data-lock-ask={ask.kind}>
           {(ask.kind === "enable" || ask.kind === "change") && (
             <div className="grid gap-2.5" role="radiogroup" aria-label="How it locks">
@@ -114,15 +114,15 @@ export function LockClient({ groups, setting: initial, me }: { groups: LockGroup
                 </button>); })}
             </div>
           )}
-          {ask.kind === "enable" && <p className="text-[13.5px] text-[var(--color-label-2)] leading-relaxed">The owner, a general manager or a manager can then lock any device to <b className="text-[var(--color-label)]">{ask.label}</b> from this page. Nothing locks until someone does.</p>}
-          {ask.kind === "disable" && <p className="text-[13.5px] text-[var(--color-label-2)] leading-relaxed">A display locked to <b className="text-[var(--color-label)]">{ask.label}</b> is released the next time it loads, and nobody can lock one to it again until it is turned back on.</p>}
+          {ask.kind === "enable" && <p className="text-[13.5px] text-[var(--color-label-2)] leading-relaxed">Then lock any screen to <b className="text-[var(--color-label)]">{ask.label}</b></p>}
+          {ask.kind === "disable" && <p className="text-[13.5px] text-[var(--color-label-2)] leading-relaxed">Screens on <b className="text-[var(--color-label)]">{ask.label}</b> unlock</p>}
           {ask.kind === "lock" && (() => { const M = MODES[ask.mode]; return (
             <div className="space-y-3">
               <div className="flex items-start gap-3 rounded-[18px] p-3.5" style={{ background: M.hue2 }}>
                 <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-bg-2)]" style={{ color: M.hue }}><M.Icon size={18} aria-hidden /></span>
                 <div className="min-w-0"><div className="text-[15px] font-bold">{M.title}</div><ul className="mt-1 space-y-1">{M.points.slice(0, 2).map((p) => <li key={p} className="text-[12.5px] text-[var(--color-label-2)] leading-snug">{p}</li>)}</ul></div>
               </div>
-              <p className="text-[13.5px] text-[var(--color-label-2)] leading-relaxed"><MonitorSmartphone size={15} className="inline -mt-0.5 mr-1" aria-hidden />This device opens <b className="text-[var(--color-label)]">{ask.label}</b> and stays there. To unlock it, the owner, a general manager or a manager taps the lock and signs in. Locked by {me}.</p>
+              <p className="text-[13.5px] text-[var(--color-label-2)] leading-relaxed"><MonitorSmartphone size={15} className="inline -mt-0.5 mr-1" aria-hidden />Stays on <b className="text-[var(--color-label)]">{ask.label}</b> · locked by {me}</p>
             </div>); })()}
           {err && <p className="text-[13.5px] font-semibold text-[var(--color-red)]" role="alert" data-lock-error>{err}</p>}
           <div className="flex gap-2" data-sheet-foot>

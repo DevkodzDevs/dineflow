@@ -155,3 +155,26 @@ node cal.mjs             # 6 checks — 42 cells, 7 weekday heads, dots, the ope
   slightly, the inner content is not visible"). On paper, bright and royal the card is 78% label mixed into the card colour
   (`[data-theme="paper"] .keycard.occupied`) and its muted lines 80% of `--color-on-label`; the solid label colour was
   near-black, and the dark flap tiles and *out* date sank into it. The dark themes keep the solid card.
+## A booking holds its table or room when its time comes (2026-10-29, 0154)
+
+The owner: "when a table or room is reserved by phone or online, at that time it should be reserved automatically — the one
+already chosen, or one that fits the party."
+
+- **`hold_due()`** (authenticated, this property, one at a time per property) is started by every screen that shows tables or
+  rooms — /orders, /orders/new, /tables, /reservations, /frontdesk, /rooms — alongside its own reads (`lib/holdDue.ts`: no extra
+  round trip; it never fails a screen). Those screens redraw every 30–60 s and on any change, so nothing is scheduled.
+- **Tables:** from **30 min before** a booking's time its table is held (`dining_tables.status = 'reserved'` — the Orders floor's
+  *Reserved*, and /orders/new will not offer it). **No table chosen** → the smallest free table that seats the party (no open
+  order, no other booking on it within 90 min, one being cleaned last) is written onto the booking and held; nothing fits → left
+  for the host. **30 min after** its time a party not yet seated lets the table go — the booking stays, *Late*, for the host.
+  `reservations.held_at` marks a hold: made once, so a table the host frees by hand stays free.
+- `reservation_set` frees a held table when the booking is cancelled, a no-show, done, or seated at another table.
+- **Rooms:** on the arrival day a booked room that is Ready turns **Arriving** (`rooms.status = 'reserved'`). Before, only a booking
+  made *for today* did that, so a room booked last week stayed Ready on its day and could go to a walk-in. iCal blocks are left out.
+- **The screen:** New booking has a **Table** row — *Auto* (default) or a table that seats the party (a table too small for a
+  changed party is dropped) (`[data-new-table]`); saving runs `hold_due` at once, so a booking for now is held now. A booking card
+  shows its table before it is seated (`[data-res-table]`); the Seat sheet rings that table.
+- Checked: dry156 (11 cases, rolled back) and `pw/links156.mjs` (testing-and-gates.md).
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

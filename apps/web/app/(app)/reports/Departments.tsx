@@ -70,8 +70,8 @@ export function Departments({ d, lodging, property, fileBase, period }: { d: Dep
           </div>; })}
       </div>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <Card data-money-chart><div className="text-[15px] font-extrabold mb-2 flex items-center gap-2">In and out, by day <span className="text-[11px] font-semibold text-steel ml-auto flex items-center gap-3"><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--color-tint)]" /> income</span><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--color-red)]" /> outgoings</span></span></div><MoneyChart data={byDay} /></Card>
-        <Card data-share-in><div className="text-[15px] font-extrabold mb-2">Where income came from</div><ShareChart slices={inSlices} label="Income" /></Card>
+        <Card data-money-chart><div className="text-[15px] font-extrabold mb-2 flex items-center gap-2">Daily in &amp; out <span className="text-[11px] font-semibold text-steel ml-auto flex items-center gap-3"><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--color-tint)]" /> income</span><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--color-red)]" /> outgoings</span></span></div><MoneyChart data={byDay} /></Card>
+        <Card data-share-in><div className="text-[15px] font-extrabold mb-2">Income sources</div><ShareChart slices={inSlices} label="Income" /></Card>
         <Card data-share-out><div className="text-[15px] font-extrabold mb-2">Where it went</div><ShareChart slices={outSlices} label="Outgoings" /></Card>
       </div>
 
@@ -104,7 +104,7 @@ function DeptCard({ d, s, open, onToggle, busy, onExport }: { d: Dept; s: DeptSp
         </div>
       </div>
       {open && <div className="border-t border-[var(--color-separator)]" data-dept-table>
-        <DataTable rows={rows as never} columns={cols as never} rowKey={"__i" as never} search={s.search as never} pageSize={15} dense empty={`Nothing in ${s.title.toLowerCase()} for this period.`} />
+        <DataTable rows={rows as never} columns={cols as never} rowKey={"__i" as never} search={s.search as never} pageSize={15} dense empty="Nothing this period" />
       </div>}
     </section>
   );

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { holdDue } from "@/lib/holdDue";
 import { requireSession } from "@/lib/auth";
 import { todayIST } from "@/lib/format";
 import { TablesClient, type TableRow, type OpenOrder, type PaidBill, type Booking, type Clean } from "./TablesClient";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
  * on it, today's bills there, its cleaning job and its table-ordering QR. Each list is asked for this property by id.
  */
 export default async function TablesPage() {
-  const s = await createClient(); const session = await requireSession(); const rid = session.restaurant.id;
+  const s = await createClient(); const session = await requireSession(); const rid = session.restaurant.id; const held = holdDue(s);   // a booking due now holds its table or room (0154)
   const today = todayIST(); const dayStart = `${today}T00:00:00+05:30`;
   const [{ data: tables }, { data: open }, { data: paid }, { data: booked }, { data: cleaning }, { data: people }] = await Promise.all([
     s.from("dining_tables").select("id, name, capacity, zone, status, sort_order, qr_token").eq("restaurant_id", rid).order("sort_order"),
@@ -24,6 +25,7 @@ export default async function TablesPage() {
     s.from("profiles").select("id, full_name").eq("restaurant_id", rid),
   ]);
   const names = Object.fromEntries((people ?? []).map((p: { id: string; full_name: string }) => [p.id, p.full_name]));
+  await held;
   return <TablesClient tables={(tables ?? []) as TableRow[]} open={(open ?? []) as unknown as OpenOrder[]} paid={(paid ?? []) as unknown as PaidBill[]} booked={(booked ?? []) as Booking[]}
     cleaning={(cleaning ?? []) as Clean[]} names={names} slug={session.restaurant.booking_slug ?? ""} canEdit={["owner", "manager"].includes(session.profile.role)} />;
 }

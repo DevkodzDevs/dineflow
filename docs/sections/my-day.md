@@ -53,3 +53,6 @@ pnpm test                  # positions.test.ts: staff land on My day, the owner 
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. "In since" shows its time on flap tiles; the checklist tile's figure is a `FlapPercent`; attendance and messages figures shuffle; the "n new" work badge is a `FlapMini` (its number kept sr-only).
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

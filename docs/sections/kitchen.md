@@ -111,3 +111,6 @@ Then open `/kitchen/board` at 1920 and stand back from it.
 - **The ticket's head is a solid band** (2026-10-24, the owner: "it blends into the background"): `.kt-head` is the column's colour
   (`--st`) with its own ink (`--st-on`), not 18% of it on the paper on a column of the same tint; the title steps down to 24px
   under 640px so "Takeaway · Token 7" fits.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

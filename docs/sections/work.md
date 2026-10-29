@@ -136,3 +136,6 @@ node cleaning.mjs    # 43  ·  node cleaner.mjs  # 43 — the Cleaning board sti
 - **New job on a phone (2026-10-26, the owner: "not looking good").** Kind of job and For side by side were cut ("Engineering &
   mainte…"). Under sm Kind of job is a sliding row of icon chips (`[data-job-kinds]`, `[data-job-kind]`, one tap — it sets the
   department as the select does) and For takes the whole line. From sm both are selects, side by side.
+- **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
+  lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
+  steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.

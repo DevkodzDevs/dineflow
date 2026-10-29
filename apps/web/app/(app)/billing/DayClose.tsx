@@ -33,12 +33,12 @@ export function DayClose({ today, lastClosed }: { today: string; lastClosed: str
             </div>
             <p className="text-sm text-steel">{e.bills} bills since {new Date(e.since).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}{e.open_orders > 0 && <> · <b className="text-chili">{e.open_orders} orders still open</b></>}{e.unpaid > 0 && <> · <b className="text-chili">{e.unpaid} bills unpaid</b></>}{lastClosed && <> · last closed {lastClosed}</>}</p>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Cash counted in the till (₹)" hint="Everything in the drawer, including the float."><input type="number" inputMode="decimal" className="num !text-xl" value={counted} onChange={(x) => setCounted(x.target.value)} required autoFocus /></Field>
-              <Field label="Float kept for tomorrow (₹)"><input type="number" inputMode="decimal" className="num !text-xl" value={float} onChange={(x) => setFloat(x.target.value)} /></Field>
+              <Field label="Cash in till (₹)" hint="Including float"><input type="number" inputMode="decimal" className="num !text-xl" value={counted} onChange={(x) => setCounted(x.target.value)} required autoFocus /></Field>
+              <Field label="Float for tomorrow (₹)"><input type="number" inputMode="decimal" className="num !text-xl" value={float} onChange={(x) => setFloat(x.target.value)} /></Field>
             </div>
-            {variance !== null && <div className={`rounded-2xl p-4 flex items-center gap-4 ${Math.abs(variance) < 1 ? "bg-[var(--color-green-2)]" : "bg-[var(--color-red-2)]"}`}><span className="num text-3xl">{Math.abs(variance) < 1 ? "Exact" : `${formatINR(Math.abs(variance))} ${variance < 0 ? "short" : "over"}`}</span><span className="text-sm text-steel">against {formatINR(Number(e.cash))} of cash sales</span></div>}
-            <Field label="Anything to explain"><textarea rows={2} value={note} onChange={(x) => setNote(x.target.value)} placeholder="Gas cylinder paid from till ₹1,100…" /></Field>
-            <Button className="w-full !h-[52px] !text-base" disabled={pending || counted === ""}><Lock size={16} /> Close shift and write the summary</Button>
+            {variance !== null && <div className={`rounded-2xl p-4 flex items-center gap-4 ${Math.abs(variance) < 1 ? "bg-[var(--color-green-2)]" : "bg-[var(--color-red-2)]"}`}><span className="num text-3xl">{Math.abs(variance) < 1 ? "Exact" : `${formatINR(Math.abs(variance))} ${variance < 0 ? "short" : "over"}`}</span><span className="text-sm text-steel">vs {formatINR(Number(e.cash))} cash sales</span></div>}
+            <Field label="Anything to explain"><textarea rows={2} value={note} onChange={(x) => setNote(x.target.value)} placeholder="e.g. Gas ₹1,100 from till" /></Field>
+            <Button className="w-full !h-[52px] !text-base" disabled={pending || counted === ""}><Lock size={16} /> Close shift</Button>
           </form>
         )}
       </Sheet>

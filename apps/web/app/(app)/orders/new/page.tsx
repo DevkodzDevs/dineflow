@@ -1,5 +1,6 @@
 import { aiEnabled } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
+import { holdDue } from "@/lib/holdDue";
 import { requireSession } from "@/lib/auth";
 import { todayIST } from "@/lib/format";
 import { withOptions } from "@/lib/menuOptions";
@@ -10,7 +11,7 @@ export const metadata = { title: "New order" };
 
 export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ table?: string; type?: string }> }) {
   const { table, type } = await searchParams;
-  const s = await createClient();
+  const s = await createClient(); const held = holdDue(s);   // a booking due now holds its table or room (0154)
   // the session travels with the page's own rows, not in front of them: one trip, not two
   const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, v0, g0, l0, c0, { data: pairings }, { data: sold }, { data: booked }, { data: cleans }] = await Promise.all([
     requireSession(),
@@ -51,6 +52,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const pairs: Record<string, { id: string; n: number }[]> = {};
   for (const p of (pairings ?? []) as { item: string; pair: string; together: number }[]) (pairs[p.item] ??= []).push({ id: p.pair, n: p.together });
   const menu = withOptions(items ?? [], (variants ?? []) as never, (groups ?? []) as never, links ?? [], combos ?? []);
+  await held;
   return <PosClient stockBlock={(session.restaurant as { stock_block?: boolean }).stock_block !== false} categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={table ?? null} initialType={type === "takeaway" || type === "delivery" ? type : null}
     inHouse={(inHouse ?? []) as never} stock={(stock ?? {}) as never} running={(running ?? []) as never} ai={aiEnabled()}
     promise={session.restaurant.promise_enabled ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} pairs={pairs} popular={popular} notFree={notFree} />;

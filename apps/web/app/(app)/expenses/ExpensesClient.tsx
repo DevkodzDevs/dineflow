@@ -52,12 +52,12 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
     if (g < 0 || g > amount) return setErr("The GST cannot be more than the amount");
     const r = await addExpense({ ...f, category: f.category.trim(), amount, gst: g });
     if ("error" in r) return setErr(r.error!);
-    toast(`${f.category} · ${inr(amount)} saved${f.method === "cash" && f.spent_on === today ? " — taken from the drawer" : ""}`);
+    toast(`${f.category} · ${inr(amount)} saved${f.method === "cash" && f.spent_on === today ? " · from drawer" : ""}`);
     setF((x) => ({ ...x, payee: "", amount: "", gst: "", ref: "", note: "" }));
   });
   const strike = (e: Expense) => {
     const reason = prompt(`Strike out ${e.category} · ${inr(e.amount)}? Say why:`); if (!reason) return;
-    start(async () => { const r = await voidExpense(e.id, reason); if ("error" in r) toast(r.error!, "err"); else toast(fromDrawer(e) ? "Struck out — the cash is back in the drawer" : "Struck out"); });
+    start(async () => { const r = await voidExpense(e.id, reason); if ("error" in r) toast(r.error!, "err"); else toast(fromDrawer(e) ? "Struck out, cash returned" : "Struck out"); });
   };
   const excel = async () => {
     const { xlsx, download, XLSX_TYPE } = await import("@/lib/xlsx");
@@ -118,7 +118,7 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
           </div>
           <Card>
             <div className="text-[15px] font-extrabold mb-2.5">Where it went</div>
-            {heads.length === 0 ? <p className="text-sm text-steel">Nothing spent this month yet.</p> : <div className="space-y-2">
+            {heads.length === 0 ? <p className="text-sm text-steel">Nothing spent yet</p> : <div className="space-y-2">
               {heads.map(([c, v]) => (
                 <button key={c} type="button" onClick={() => setOnly(only === c ? null : c)} aria-pressed={only === c} className={cn("!min-h-11 w-full text-left rounded-xl px-2 -mx-2 py-1.5", only === c ? "bg-[var(--color-fill)]" : "hover:bg-[var(--color-fill)]")}>
                   <div className="flex justify-between gap-2 text-[14px]"><span className="font-bold truncate">{c}</span><span className="num font-bold shrink-0">{inr(v)}</span></div>
@@ -136,7 +136,7 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
           <span className="flex-1" />
           <button type="button" disabled={!list.length} onClick={() => void excel()} className="svc-btn quiet sm !px-4" data-expense-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>
         </div>
-        {list.length === 0 ? <Empty title="No expenses this month" hint="Add one above — vegetables, gas, electricity." /> : (
+        {list.length === 0 ? <Empty title="No expenses this month" hint="Add one above" /> : (
           <>
           {/* A phone (2026-10-27, the owner, of the first pass: "not looking good — ultra modern"): the day is a heading with its
               total, as a bank's app lists money; each expense is a soft card — its category's icon in its colour, what and who

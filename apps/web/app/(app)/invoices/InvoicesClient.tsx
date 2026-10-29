@@ -49,7 +49,7 @@ export function InvoicesClient({ invoices, months, property }: { invoices: Invoi
         <div className="flex items-center gap-3" data-invoices-bar>
           <span className="text-[13px] text-steel"><b className="num text-[var(--color-label)]">{invoices.length}</b> {invoices.length === 1 ? "invoice" : "invoices"}</span>
           <div className="ml-auto"><ViewSwitch label="Show invoices as" data="invoices" shown={shownAs} onPick={lay.pick} saved={lay.saved}
-            onKeep={(v) => { lay.keep(v); toast(v === "table" ? "The table is your default here" : "Cards are your default here"); }}
+            onKeep={(v) => { lay.keep(v); toast(v === "table" ? "Table set as default" : "Cards set as default"); }}
             options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} /></div>
         </div>
         <div className={cn("grid gap-3 sm:grid-cols-2", lay.chosen === "table" ? "hidden" : lay.chosen === "cards" ? "" : "md:hidden")} data-invoice-cards>
@@ -100,7 +100,6 @@ export function InvoicesClient({ invoices, months, property }: { invoices: Invoi
             : <div className="feather p-8 text-center">
                 <span className="h-11 w-11 rounded-2xl bg-fill grid place-items-center mx-auto text-steel"><Receipt size={18} /></span>
                 <div className="mt-3 font-semibold">Pick an invoice</div>
-                <p className="text-sm text-steel mt-1">Tap a row for details.</p>
               </div>}
         </aside>
       </div>
@@ -230,8 +229,8 @@ function Detail({ inv, property }: { inv: Invoice; property: string }) {
 
       {/* what it is made of, as a receipt */}
       <div>
-        <div className="eyebrow mb-1.5">What it is made of</div>
-        {lines.length === 0 ? <p className="text-sm text-steel">No lines recorded on this invoice.</p> : (
+        <div className="eyebrow mb-1.5">Items</div>
+        {lines.length === 0 ? <p className="text-sm text-steel">No lines</p> : (
           <ul className="divide-y divide-[var(--color-separator)] max-h-[32vh] overflow-y-auto" data-lines>
             {lines.map((l, i) => (
               <li key={i} className="py-2.5 flex items-start gap-3">

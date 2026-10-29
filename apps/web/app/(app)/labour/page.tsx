@@ -26,7 +26,7 @@ export default async function LabourPage({ searchParams }: { searchParams: Promi
   const methods = (session.restaurant.attendance_methods as string[] | undefined) ?? ["manual", "qr"];
   return (
     <>
-      <PageHeader eyebrow="Daily-wage & contract workers" title="Labour" accent="& attendance" sub="Scan a badge to punch in/out" />
+      <PageHeader eyebrow="Daily-wage & contract workers" title="Labour" accent="& attendance" sub="Scan badge to punch" />
       <LabourClient today={today} labourers={(labourers ?? []) as never} attendance={(att ?? []) as never} payments={(pays ?? []) as never} tab={tab === "labels" ? "labels" : tab === "wages" ? "wages" : "today"} openId={open ?? null} rooms={rooms ?? []} ingredients={ingredients ?? []} property={session.restaurant.name} methods={methods} log={log as never} />
     </>
   );

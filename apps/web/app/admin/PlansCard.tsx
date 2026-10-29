@@ -18,10 +18,10 @@ export function PlansCard({ plans, online }: { plans: PlanRow[]; online: boolean
     <section className="card p-5 mt-5" data-plans>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="text-2xl flex items-center gap-2"><Tag size={20} aria-hidden /> Plans &amp; prices</h2>
-        <span className="text-sm text-steel">What /membership shows and what paying online charges, per property.</span>
+        <span className="text-sm text-steel">Per-property prices</span>
       </div>
       <p className={cn("text-xs mt-2", online ? "text-mint" : "text-steel")} data-plans-online={online ? "on" : "off"}>
-        {online ? "Online payment is on (DineFlow's Razorpay keys are on the server)." : "Online payment is off until RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET and SUPABASE_SERVICE_ROLE_KEY are set on the server — keys still work."}
+        {online ? "Online payment on" : "Online payment off — set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, SUPABASE_SERVICE_ROLE_KEY on the server. Keys still work."}
       </p>
       <div className="mt-4 grid gap-3 md:grid-cols-2">{plans.map((p) => <PlanEditor key={p.key} p={p} />)}</div>
     </section>
@@ -52,7 +52,7 @@ function PlanEditor({ p }: { p: PlanRow }) {
       <p className="text-xs text-steel">{num(m) ? `${formatINR(num(m)!, { whole: true })} a month` : "No monthly online"} · {num(y) ? `${formatINR(num(y)!, { whole: true })} a year${saving >= 1 ? ` (${saving} month${saving === 1 ? "" : "s"} free)` : ""}` : "no yearly online"}</p>
       {msg && <p className={cn("text-xs", msg.ok ? "text-mint" : "text-chili")}>{msg.text}</p>}
       <Button size="sm" className="w-full" disabled={pending || bad} data-plan-save
-        onClick={() => start(async () => { const r = await setPlan(p.key, label, num(m), num(y), active); setMsg("error" in r ? { text: r.error! } : { ok: true, text: "Saved — /membership shows it now." }); })}>Save prices</Button>
+        onClick={() => start(async () => { const r = await setPlan(p.key, label, num(m), num(y), active); setMsg("error" in r ? { text: r.error! } : { ok: true, text: "Saved" }); })}>Save prices</Button>
     </div>
   );
 }

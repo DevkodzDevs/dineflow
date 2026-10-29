@@ -143,7 +143,7 @@ export function TeamChart({ type, people }: { type: PropertyType; people: Placed
 
       {mode === "tree" ? (
         <div className="rounded-[26px] border border-[var(--color-separator)] bg-[color-mix(in_srgb,var(--color-fill)_45%,transparent)] p-4 sm:p-6" data-chart-tree>
-          {!anyLines && <p className="text-[13px] text-steel mb-3">No managers set. Set them under Access.</p>}
+          {!anyLines && <p className="text-[13px] text-steel mb-3">No managers set</p>}
           <ul className="space-y-3 max-w-xl">{roots.filter((p) => levelFor(p, type) !== null || kids(p.id).length).map((p) => <Node key={p.id} p={p} depth={0} />)}</ul>
         </div>
       ) : (
@@ -160,7 +160,7 @@ export function TeamChart({ type, people }: { type: PropertyType; people: Placed
 
       {unplaced.length > 0 && <section className="rounded-[22px] border-2 border-dashed border-[var(--color-separator)] p-4" data-unplaced>
         <div className="text-[15px] font-extrabold">Not placed yet · <span className="num">{unplaced.length}</span></div>
-        <p className="text-[12.5px] text-steel mb-3">Set a position under Access.</p>
+        <p className="text-[12.5px] text-steel mb-3">Set in Access</p>
         <div className="flex flex-wrap gap-2">{unplaced.map((p) => <span key={p.id} className="inline-flex items-center gap-2 rounded-full bg-[var(--color-fill)] pl-1 pr-3 py-1 text-[13px] font-semibold"><Avatar name={p.full_name} dept={null} size={26} />{p.full_name} <span className="text-steel font-normal">· {ROLE_LABEL[p.role]}</span></span>)}</div>
       </section>}
       {live.length === 0 && <p className="text-sm text-steel">Nobody yet.</p>}
@@ -185,7 +185,7 @@ export function PositionsGuide({ type, people }: { type: PropertyType; people: P
     <div className="space-y-4" data-positions-guide>
       <div className="flex flex-col gap-3">
         <div className="relative w-full sm:max-w-md min-w-0"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
-          <input className="!h-12 !rounded-full !pl-11" placeholder="Find a position — chef, captain, manager…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a position" data-guide-search /></div>
+          <input className="!h-12 !rounded-full !pl-11" placeholder="Find a position" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a position" data-guide-search /></div>
         {/* arrows at the edge it continues past (2026-10-23, ChipRail) — the phone and the iPad slide, a wide screen wraps */}
         <ChipRail label="Level" watch={lv} wrapClassName="lg:flex-wrap" data={{ "data-level-rail": "" }}>
           {[null, ...LEVELS.map((l) => l.level)].map((l) => (
@@ -216,9 +216,9 @@ export function PositionsGuide({ type, people }: { type: PropertyType; people: P
                   <ChevronDown size={16} className={cn("shrink-0 text-steel transition-transform", isOpen && "rotate-180")} aria-hidden />
                 </button>
                 {isOpen && <div className="ml-[42px] mb-2 mt-0.5 rounded-2xl bg-[var(--color-fill)] p-3" data-guide-detail>
-                  <div className="text-[12px] font-bold text-steel mb-1.5">Opens{home ? " · starts on the one with the house" : ""}</div>
+                  <div className="text-[12px] font-bold text-steel mb-1.5">Opens{home ? " · house = first screen" : ""}</div>
                   <ModuleChips modules={[...(x.role === "owner" ? ["dashboard"] : []), ...mods, ...(home && !mods.includes(home) && home !== "dashboard" ? [home] : [])]} home={home} />
-                  <div className="text-[11.5px] text-steel mt-2">{LEVELS[x.level - 1].label} · {LEVELS[x.level - 1].hint}. Suggested access: {ROLE_LABEL[x.role]}.</div>
+                  <div className="text-[11.5px] text-steel mt-2">{LEVELS[x.level - 1].label} · {LEVELS[x.level - 1].hint} · {ROLE_LABEL[x.role]}</div>
                 </div>}
                 </li>); })}
             </ol>

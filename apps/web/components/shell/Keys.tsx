@@ -116,7 +116,7 @@ export function Keys({ modules, role, dept = null, grants = null }: { modules: s
     <Sheet open={help} onClose={() => setHelp(false)} title="Keyboard shortcuts">
       <div className="space-y-5" data-keys-help>
         {screen?.hints && <KeyList title={`On ${screen.title}`} rows={screen.hints} />}
-        <KeyList title="Everywhere" rows={[["Ctrl K", "go to any section"], ["N", "new order"], ["?", "this list"], ["Esc", "close a window, let go of a highlight"]]} />
+        <KeyList title="Everywhere" rows={[["Ctrl K", "go to any section"], ["N", "new order"], ["?", "this list"], ["Esc", "close, or let go"]]} />
         <KeyList title="Go to — press G, then" rows={go.map((g) => [g.key.toUpperCase(), g.label])} cols />
       </div>
     </Sheet>
@@ -162,7 +162,7 @@ function GoTo({ open, onClose, modules, role, dept, grants, onHelp }: { open: bo
       <div data-goto>
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-label-2)]" />
-          <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type a section — orders, kitchen, bill…" className="!pl-9" aria-label="Go to a section"
+          <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search sections…" className="!pl-9" aria-label="Go to a section"
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") { e.preventDefault(); setI((n) => Math.min(list.length - 1, n + 1)); }
               else if (e.key === "ArrowUp") { e.preventDefault(); setI((n) => Math.max(0, n - 1)); }

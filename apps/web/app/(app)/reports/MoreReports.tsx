@@ -28,13 +28,13 @@ export function MoreReports({ x }: { x: Extra | null }) {
           {[["Sales before tax", Number(x.net.sales), ""], ["Expenses before GST", Number(x.net.expenses), "text-chili"], ["What is left", left, left >= 0 ? "text-mint" : "text-chili"]].map(([k, v, c]) => (
             <div key={k as string} className="rounded-2xl bg-[var(--color-fill)] px-4 py-3 min-w-0"><div className="text-[12.5px] font-bold text-steel">{k}</div><div className={cn("font-display num text-[26px] leading-tight truncate", c as string)}>{formatINR(v as number)}</div></div>))}
         </div>
-        <p className="mt-2 text-[12.5px] text-steel">Ingredient cost not included. GST on expenses: {formatINR(Number(x.net.expense_gst))} — may be input credit.</p>
+        <p className="mt-2 text-[12.5px] text-steel">Excl. ingredients · expense GST {formatINR(Number(x.net.expense_gst))}</p>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card data-payments>
           <div className={h3}><ReceiptText size={18} aria-hidden /> How guests paid</div>
-          {x.payments.length === 0 ? <p className="text-sm text-steel">No paid bills in this period.</p> : <div className="space-y-2.5">
+          {x.payments.length === 0 ? <p className="text-sm text-steel">No paid bills</p> : <div className="space-y-2.5">
             {x.payments.map((p) => (
               <div key={p.method} className="min-w-0">
                 <div className="flex items-baseline justify-between gap-2 text-[14px]"><span className="font-bold">{METHOD[p.method] ?? p.method} <span className="font-normal text-steel">· {p.count}</span></span><span className="num font-bold">{formatINR(Number(p.amount))}</span></div>
@@ -43,8 +43,8 @@ export function MoreReports({ x }: { x: Extra | null }) {
           </div>}
         </Card>
         <Card data-staff>
-          <div className={h3}><Users size={18} aria-hidden /> Sales by staff <span className="text-[12px] font-semibold text-steel">who took the order</span></div>
-          {x.staff.length === 0 ? <p className="text-sm text-steel">No paid bills in this period.</p> : <div className="space-y-2.5">
+          <div className={h3}><Users size={18} aria-hidden /> Sales by staff <span className="text-[12px] font-semibold text-steel">order taker</span></div>
+          {x.staff.length === 0 ? <p className="text-sm text-steel">No paid bills</p> : <div className="space-y-2.5">
             {x.staff.map((s) => (
               <div key={s.name} className="min-w-0">
                 <div className="flex items-baseline justify-between gap-2 text-[14px]"><span className="font-bold truncate">{s.name} <span className="font-normal text-steel">· {s.bills} bill{Number(s.bills) === 1 ? "" : "s"}</span></span><span className="num font-bold shrink-0">{formatINR(Number(s.amount))}</span></div>
@@ -59,7 +59,7 @@ export function MoreReports({ x }: { x: Extra | null }) {
           <div className={h3}><Utensils size={18} aria-hidden /> Every dish sold <span className="text-[12px] font-semibold text-steel num">{x.items.length}</span></div>
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-steel text-xs"><th className="py-1.5 font-semibold">Dish</th><th className="py-1.5 font-semibold text-right">Qty</th><th className="py-1.5 font-semibold text-right">Amount</th></tr></thead>
             <tbody>{items.map((i) => <tr key={i.name + (i.variant ?? "")} className="border-t border-line"><td className="py-2 pr-2">{i.name}{i.variant && <span className="text-steel"> · {i.variant}</span>}</td><td className="py-2 text-right num">{i.qty}</td><td className="py-2 text-right num">{formatINR(Number(i.amount))}</td></tr>)}
-              {x.items.length === 0 && <tr><td colSpan={3} className="py-4 text-steel">Nothing sold in this period.</td></tr>}</tbody></table></div>
+              {x.items.length === 0 && <tr><td colSpan={3} className="py-4 text-steel">Nothing sold</td></tr>}</tbody></table></div>
           {x.items.length > 12 && <button type="button" className="svc-btn quiet sm w-full mt-3" onClick={() => setAllItems((v) => !v)}>{allItems ? "Show the top 12" : `Show all ${x.items.length}`}</button>}
         </Card>
         <div className="space-y-4 min-w-0">
@@ -77,7 +77,7 @@ export function MoreReports({ x }: { x: Extra | null }) {
               <div className="rounded-2xl bg-[var(--color-fill)] px-3 py-2.5"><div className="text-[12px] font-bold text-steel">Lines cancelled · {x.cancelled.lines}</div><div className="num font-display text-[20px]">{formatINR(Number(x.cancelled.amount))}</div></div>
               <div className="rounded-2xl bg-[var(--color-fill)] px-3 py-2.5"><div className="text-[12px] font-bold text-steel">Bills voided · {x.voids.bills}</div><div className="num font-display text-[20px]">{formatINR(Number(x.voids.amount))}</div></div>
             </div>
-            <Link href="/controls" className="mt-1 inline-flex items-center !min-h-11 text-[13px] font-semibold text-steel hover:underline">Who and why → Cash & controls</Link>
+            <Link href="/controls" className="mt-1 inline-flex items-center !min-h-11 text-[13px] font-semibold text-steel hover:underline">Who &amp; why → Controls</Link>
           </Card>
         </div>
       </div>
