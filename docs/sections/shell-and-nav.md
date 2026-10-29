@@ -136,7 +136,7 @@ It comes from `useSupportUnread(path)` — one `support_unread()` call shared by
 screen is up. The error screen (`components/ErrorRecovery.tsx`) has a plain-link **Report this problem** →
 `/help?kind=problem&from=<path>`. See [help-and-support.md](help-and-support.md).
 
-**A hairline under every menu group but the last** (2026-10-13). `Group` renders `div.nav-group` (it was
+**A hairline under every menu group but the last** (2026-10-13). *Since 2026-10-28 only on the icon looks — the open menu's heading carries the line ("Every group under a heading", below).* `Group` renders `div.nav-group` (it was
 `mb-5`). `.nav-group:not(:last-child)::after` is a 1px white-at-10% line with 12px above and 14px below,
 inset 12px — 200px wide in the full menu. On the rail it is 36px wide (margin 8px), centred under the
 icons. There the groups' titles are hidden, so the line is the only thing that shows where one group
@@ -792,3 +792,62 @@ Measured first (`perf75.mjs` live and local, `qtime.mjs`, `explain.cjs`, `nav76.
   floating ring at the top when that thing has gone (the More sheet closed). Still **no `loading.tsx`**. Background
   fetches (IntentPrefetch's `priority: "low"` warm-up, OfflineProvider's page warm-up) never ring. design-system.md has
   the rules.
+- **A dropped request or an old tab no longer crashes the screen (2026-10-28, the owner's screenshot: "sometimes the app
+  crashes — This screen did not load").** Reproduced (`crash150.mjs`, MODE=before): a server action that throws — the
+  network dropped it (Safari "Load failed"), or the tab is older than the deploy ("Server Action … was not found on the
+  server") — inside a transition goes to the nearest error boundary. For the guest table page (its slot read runs on
+  opening) and for anything in the app's frame (the call cards, the ready bubbles, the display lock, the outlet switcher)
+  that is the **root** boundary: the whole screen. The one quiet reload then met the same drop and the card stayed.
+  Now: **`lib/reach.ts`** — `reach(() => action(…))` returns `{ error }` instead of throwing ("No connection — check the
+  network and try again."; an old tab reloads once to the new build, at most every 30 s; Next's redirect/notFound signals
+  pass through). Used by CallAlert, ReadyDock, DisplayLock, OutletSwitcher and the guest pages (StorefrontClient's slots,
+  Place order and Reserve; TableCalls; TableOrders' poll; Discover; Track). A screen's own button with no guard still
+  reaches `(app)/error.tsx` — and **`ErrorRecovery`** now sorts what it catches by the same tests: a network failure shows
+  **Connection lost** (`[data-error-offline]`, *Try now*) and draws the same screen again by itself — `reset()`, not a
+  reload — when the phone says it is online, or after 2, 4, 8, 15, then every 30 s (`sessionStorage df-net-retry`); an
+  old tab is a stale build (caches cleared, reload); anything else as before, and the card now shows **Details:** — what the
+  browser said (`[data-error-detail]`; a server failure keeps its Reference). New server calls on a guest page or in the
+  frame: wrap them in `reach`.
+- **Every group under a heading (2026-10-28, the owner: "align all menus with proper headings and proper separation" — the
+  left sidebar).** The first group (My day / Control room · Tomorrow · Scan) is **Overview**, the last (Settings, profile,
+  feedback, Help & support) **Account & help** — both had no title. The heading (`.nav-head`, `[data-nav-head]`, 11px bold
+  uppercase at 58% white; royal: gold) carries the group's dividing line, the words then a hairline to the right edge; 20px
+  above every group (14 on Compact), 8px to its first row; the words start where the rows' icons start (28px in on
+  Classic, 24 Compact, 40 Floating). The icon looks hide the headings and keep the hairline under each group but the
+  last. Sidebar only — the phone's More sheet is unchanged. `side150.mjs`.
+- **The error card reports what broke (2026-10-29, 0149 — the owner's Stage 2 "error reporting", built in the app instead of
+  an outside service).** `ErrorRecovery` sends `report_client_error(kind, path, name, message, digest, ua)` once a visit for
+  the same error on the same page (`sessionStorage df-crash:…`), fire and forget; *crash* or *stale* (an old tab — an action
+  or chunk this build does not know); never a network drop. Master control → Testing lists them (admin-and-membership.md).
+### Speed pass — 2026-10-29 (the owner: "loading and opening speed is very, very important")
+
+Measured first, live (dineflow.cloud, older code) and a local production build, on a fresh demo (`perf153.mjs`,
+`signin153.mjs`, `tap153b.mjs`, `flood153.mjs`):
+- **A tap is ~0.15 s to the new address and ~0.15–0.2 s more to stand still** when the screen was prefetched — timed inside
+  the page (a capture listener on click, `history.pushState` patched). Playwright's own click adds ~0.5 s of actionability
+  checks: **time taps from inside the page, never from the test's clock** (the first table read 0.7–1.6 s and was wrong). A
+  screen not prefetched waits for its server render: Control room ~0.45–0.5 s; Menu once 2 s (Supabase Micro).
+- **Sign-in → first screen live 2.0 s warm, 4.7 s cold.** The sign-in request itself is 1.6 s live — most of it Supabase's
+  password check (slow on purpose) and the function waking.
+- **The guest's QR menu cold: first paint ~2 s live; warm the whole HTML in ~0.5 s.** The difference is the function waking
+  (a cold start), not the page.
+- **Every page load fired ~20 screen requests at once** — Next's own prefetch of every `<Link>` on screen (the menu's ~11
+  plus the page's), each a server render with database reads, and for these per-request screens they fetch nothing a tap
+  can use (the loading.tsx note above). On a phone they competed with the screen being used; on the Micro database with
+  everyone else.
+
+Fixed:
+- **The menu's links are `prefetch={false}`** (sidebar, phone bar, More sheet, logo, profile, attendance, Master control —
+  `Nav.tsx`). IntentPrefetch already does the useful prefetch (a touch, a resting mouse, the idle warm-up of the main
+  screens). Screen requests in the 6 s after the Control room loads: **20–22 → 12** (the 12: the warm-up and the page's own
+  links). Taps still land from the prefetch cache. Requests in the first 1.5 s of a load: Control room 54 → 44, Orders 55 → 42,
+  Billing 47 → 34, Kitchen 52 → 40. **Do not give the menu's links back their default prefetch.**
+- **The guest page reads the kitchen's pace (`dine_busy`) beside the menu and slots**, not after them — one database trip
+  fewer before anything shows.
+- **Sign-in asks "is this the master?" beside working out the landing screen**, and the sign-in gate beside the temporary-
+  password check — a trip fewer each.
+
+Left for the owner, outside the code (each measured above): make **dineflow.cloud** the primary domain (Vercel → Domains) —
+every visit to the bare name is still a 308 to www first, ~0.3 s; confirm **Fluid compute** is on (Settings → Functions); a free
+**uptime ping** on `https://www.dineflow.cloud/api/health?deep=1` every 5 minutes keeps a function warm (cold starts are the
+2–4.7 s first loads); the Supabase compute size (**Micro** — the 2 s Menu render, the rare slow sign-in).

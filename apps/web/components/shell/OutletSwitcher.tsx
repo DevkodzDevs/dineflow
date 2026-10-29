@@ -5,6 +5,7 @@ import Link from "next/link";
 import { cn } from "../ui";
 import type { Outlet } from "@/lib/auth";
 import { switchOutlet } from "@/app/(app)/chain/actions";
+import { reach } from "@/lib/reach";
 
 /**
  * The outlet this sign-in is working in, and the others it may open (0106). Choosing one stands this device in it —
@@ -25,7 +26,7 @@ export function OutletSwitcher({ outlets, className }: { outlets: Outlet[]; clas
   const cur = outlets.find((o) => o.current) ?? outlets[0];
   const go = (o: Outlet) => start(async () => {
     setErr(null); if (o.current) { setOpen(false); return; }
-    const r = await switchOutlet(o.home ? null : o.id);
+    const r = await reach(() => switchOutlet(o.home ? null : o.id));
     if ("error" in r) { setErr(r.error!); return; }
     location.assign("/dashboard");
   });

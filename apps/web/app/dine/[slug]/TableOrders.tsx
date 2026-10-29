@@ -1,11 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Send, ChefHat, Flame, BellRing, UtensilsCrossed, X, ChevronDown, ChevronLeft, Check, Receipt, PartyPopper } from "lucide-react";
+import { Send, ChefHat, Flame, BellRing, UtensilsCrossed, X, ChevronDown, ChevronLeft, Check, Receipt, PartyPopper, Wallet } from "lucide-react";
 import { cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { buzz } from "@/lib/buzz";
 import { tableOrders, type TableOrder } from "../actions";
+import { reach } from "@/lib/reach";
 
 type Stage = TableOrder["stage"];
 const STAGE: Record<Stage, { title: string; word: string; sub: (o: TableOrder) => string; Icon: typeof Send; hue: string; hue2: string; step: number }> = {
@@ -14,7 +15,7 @@ const STAGE: Record<Stage, { title: string; word: string; sub: (o: TableOrder) =
   cooking: { title: "Cooking now", word: "Cooking", sub: (o) => (o.ready ? `${o.ready} of ${o.n} dishes ready` : "Your food is on the stove"), Icon: Flame, hue: "var(--color-orange)", hue2: "var(--color-orange-2)", step: 2 },
   ready: { title: "Ready — on its way", word: "Ready", sub: () => "Coming to your table now", Icon: BellRing, hue: "var(--color-green)", hue2: "var(--color-green-2)", step: 3 },
   served: { title: "Served · enjoy!", word: "Served", sub: () => "Need anything else? Ask below — Bill please when you're done", Icon: UtensilsCrossed, hue: "var(--color-green)", hue2: "var(--color-green-2)", step: 4 },
-  bill: { title: "Your bill is ready", word: "Bill", sub: (o) => `${o.bill != null ? formatINR(Number(o.bill)) + " · " : ""}pay at the table — cash, UPI or card`, Icon: Receipt, hue: "var(--color-blue)", hue2: "var(--color-blue-2)", step: 5 },
+  bill: { title: "Your bill is ready", word: "Bill", sub: (o) => `${o.bill != null ? formatINR(Number(o.bill)) + " · " : ""}${o.pay ? "pay here — UPI or card — or at the table" : "pay at the table — cash, UPI or card"}`, Icon: Receipt, hue: "var(--color-blue)", hue2: "var(--color-blue-2)", step: 5 },
   paid: { title: "Paid · thank you!", word: "Paid", sub: () => "Hope to see you again soon", Icon: PartyPopper, hue: "var(--color-green)", hue2: "var(--color-green-2)", step: 6 },
   rejected: { title: "Couldn't take this order", word: "Not taken", sub: () => "Please ask a waiter — nothing was charged", Icon: X, hue: "var(--color-red)", hue2: "var(--color-red-2)", step: -1 },
 };
@@ -70,7 +71,7 @@ export function TableOrders({ slug, token }: { slug: string; token: string }) {
 
   const load = useCallback(() => {
     if (!ids) { setOrders([]); return; }
-    void tableOrders(slug, token, ids.split(",")).then((r) => {
+    void reach(() => tableOrders(slug, token, ids.split(","))).then((r) => {
       if (!("orders" in r) || !r.orders) return;
       let moved = false;
       for (const o of r.orders) { const was = before.current[o.id]; if (was && was !== o.stage) { moved = true; buzz(o.stage === "ready" || o.stage === "paid" ? "done" : "sent"); } }
@@ -90,7 +91,10 @@ export function TableOrders({ slug, token }: { slug: string; token: string }) {
   /* a new or changed order opens the card; it folds itself away again after a while so the menu is free */
   useEffect(() => { if (!open || !auto.current) return; const t = setTimeout(() => { auto.current = false; setOpen(false); setFresh(null); }, 9000); return () => clearTimeout(t); }, [open, orders]);
   const top = orders[0];
-  const calm = !!top && !MOVING.includes(top.stage);
+  /* 0148: a bill the guest can pay from here is not calm — the card stays out with its Pay button */
+  const calm = !!top && !MOVING.includes(top.stage) && !(top.stage === "bill" && !!top.pay);
+  // where the pay page sends the guest back to: this table's menu
+  const [here, setHere] = useState(""); useEffect(() => { setHere(location.pathname + location.search); }, []);
   /* served, waiting for the bill, paid: out of the way 20 s after the stage arrived (counted from then, not from the last
      fold), unless the guest has the detail open */
   const calmSince = useRef(0);
@@ -146,6 +150,14 @@ export function TableOrders({ slug, token }: { slug: string; token: string }) {
             {s.step >= 0 && (
               <div className="px-3.5 pb-3 -mt-0.5 grid grid-cols-6 gap-1.5" aria-label={`${s.title} — step ${Math.min(s.step + 1, 6)} of 6`} data-order-steps>
                 {STEPS.map((w, i) => <span key={w} className={cn("h-1.5 rounded-full", i < s.step ? "bg-[var(--hue)]" : i === s.step ? "bg-[var(--hue)] animate-pulse" : "bg-[var(--color-fill-2)]")} />)}
+              </div>
+            )}
+            {/* 0148 (the owner's Stage 3): the bill is printed — pay it from here, UPI or card, without waiting for anyone */}
+            {top.stage === "bill" && top.pay && (
+              <div className="px-3 pb-3 -mt-0.5">
+                <a href={`/pay/${top.pay}${here ? `?from=${encodeURIComponent(here)}` : ""}`} className="h-12 rounded-[16px] flex items-center justify-center gap-2 bg-[var(--hue)] text-white text-[15px] font-bold shadow-[0_12px_24px_-14px_var(--hue)] active:scale-[.985] transition" data-order-pay>
+                  <Wallet size={18} aria-hidden /> Pay {formatINR(Number(top.bill ?? top.total))}
+                </a>
               </div>
             )}
             <AnimatePresence initial={false}>{open && (

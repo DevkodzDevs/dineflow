@@ -218,3 +218,7 @@ A new place that shows a dish photo uses `DishImage`, not a bare `<img src={imag
   other at any width for this visit, the pin keeps it (`df-view:menu`). The list from sm is two, three, four across; cards
   on a phone are one across. On a phone the category chips take the whole row and the switch sits under them at the
   right (beside them only two chips fit); from sm they share one row.
+- **GST and HSN per dish (2026-10-29, 0146).** The editor's row under Category (`[data-dish-tax]`): **GST** — "As the
+  property (5%)" (null) or 0 · 5 · 12 · 18 · 28 · 40%; **HSN / SAC** — 4 to 8 digits, for packaged goods (blank = restaurant
+  service, SAC 996331). `saveMenuItem` checks both and only writes them when the form sends them (an import or Scan leaves a
+  dish's rate alone). The rate is copied onto each order line when it is ordered (billing-and-invoices.md).

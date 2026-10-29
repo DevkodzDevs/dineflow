@@ -83,7 +83,8 @@ Replay a webhook twice and confirm the second one changes nothing.
   in-memory per instance — a speed bump, not a quota) and size caps (8 MB image, 2,000-character
   messages).
 - **`api/webhooks/aggregator`** answers "unknown channel" or "could not record the order", never the
-  database's message.
+  database's message. Its **GET** (a platform checking the address, 0153 `channel_hello`) answers 200 with the channel's
+  name, kind and taking-orders, or 404 for an unknown token; the token is never echoed.
 - **Headers** add `object-src 'none'; base-uri 'self'` to the CSP. No `script-src` yet: Next's inline
   bootstrap needs per-request nonces (a middleware change).
 

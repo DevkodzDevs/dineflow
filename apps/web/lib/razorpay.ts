@@ -28,7 +28,8 @@ export async function gatewayFor(token: string): Promise<{ gw: Gateway } | { err
 
 /** One call to Razorpay's REST API with the property's own key pair. */
 export async function razorpay<T>(gw: Pick<Gateway, "key_id" | "key_secret">, path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(`https://api.razorpay.com/v1${path}`, {
+  // RAZORPAY_API_BASE: a stand-in gateway for the checkout probes only; unset in every real environment
+  const r = await fetch(`${process.env.RAZORPAY_API_BASE || "https://api.razorpay.com/v1"}${path}`, {
     ...init,
     headers: { authorization: "Basic " + Buffer.from(`${gw.key_id}:${gw.key_secret}`).toString("base64"), "content-type": "application/json", ...(init?.headers ?? {}) },
   });

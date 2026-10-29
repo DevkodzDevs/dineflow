@@ -17,7 +17,9 @@ type Filing = { id: string; form: string; period: string; due_on: string; filed_
 type Doc = { id: string; kind: string; title: string; number: string | null; issuer: string | null; issued_on: string | null; expires_on: string | null; period: string | null; url: string | null; notes: string | null };
 type Row = { sac: string; kind: string; rate: number; count: number; taxable: number; cgst: number; sgst: number; total: number };
 type Totals = { count: number; taxable: number; cgst: number; sgst: number; total: number };
-type Summary = { from: string; to: string; dining: Row[]; stay: Row[]; b2b: { gstin: string; name: string | null; count: number; taxable: number; cgst: number; sgst: number; total: number }[]; dining_totals: Totals; stay_totals: Totals } | null;
+type Summary = { from: string; to: string; dining: Row[]; stay: Row[]; b2b: { gstin: string; name: string | null; count: number; taxable: number; cgst: number; sgst: number; total: number }[]; dining_totals: Totals; stay_totals: Totals;
+  /* 0146: food sold through Swiggy / Zomato / ONDC (the operator paid the GST, section 9(5)) and credit notes issued */
+  eco?: { count: number; total: number }; credit_notes?: Totals } | null;
 
 const TABS: { key: Tab; label: string }[] = [{ key: "overview", label: "Overview" }, { key: "returns", label: "Returns" }, { key: "calendar", label: "Calendar" }, { key: "documents", label: "Documents" }, { key: "tally", label: "Tally" }, { key: "profile", label: "Profile & CA" }, { key: "guide", label: "Guide" }];
 const day = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -136,11 +138,15 @@ const Stat = ({ label, value }: { label: string; value: string }) => <div classN
 function Returns({ r, lab, month, today, summary, error, go, monthly, status, onFile, pending }: { r: Rest; lab: ReturnType<typeof taxLabels>; month: string; today: string; summary: Summary; error: string | null; go: (q: Record<string, string>) => void; monthly: CalendarItem[]; status: (c: CalendarItem) => { kind: string; f?: Filing; days?: number }; onFile: (c: CalendarItem, filedOn: string, ack: string) => void; pending: boolean }) {
   const rows = [...(summary?.dining ?? []), ...(summary?.stay ?? [])];
   const t = (k: keyof Totals) => Number(summary?.dining_totals?.[k] ?? 0) + Number(summary?.stay_totals?.[k] ?? 0);
+  const cn = { count: Number(summary?.credit_notes?.count ?? 0), taxable: Number(summary?.credit_notes?.taxable ?? 0), cgst: Number(summary?.credit_notes?.cgst ?? 0), sgst: Number(summary?.credit_notes?.sgst ?? 0), total: Number(summary?.credit_notes?.total ?? 0) };
+  const eco = { count: Number(summary?.eco?.count ?? 0), total: Number(summary?.eco?.total ?? 0) };
   const csv = () => {
     const lines = [["Period", month], ["GSTIN", r.gstin ?? ""], [], ["SAC", "Supply", "Rate %", "Invoices", "Taxable value", lab.central, lab.state, "Invoice value"],
       ...rows.map((x) => [x.sac, x.kind === "dining" ? "Restaurant service" : "Accommodation", x.rate, x.count, n2(x.taxable), n2(x.cgst), n2(x.sgst), n2(x.total)]),
       ["", "Total", "", t("count"), n2(t("taxable")), n2(t("cgst")), n2(t("sgst")), n2(t("total"))], [], ["B2B (recipient GSTIN)", "Name", "Invoices", "Taxable value", lab.central, lab.state, "Invoice value"],
-      ...(summary?.b2b ?? []).map((b) => [b.gstin, b.name ?? "", b.count, n2(b.taxable), n2(b.cgst), n2(b.sgst), n2(b.total)])];
+      ...(summary?.b2b ?? []).map((b) => [b.gstin, b.name ?? "", b.count, n2(b.taxable), n2(b.cgst), n2(b.sgst), n2(b.total)]),
+      [], ["Credit notes issued", "", "", cn.count, n2(-cn.taxable), n2(-cn.cgst), n2(-cn.sgst), n2(-cn.total)],
+      ["Through an e-commerce operator, u/s 9(5)", "", "", eco.count, "", "", "", n2(eco.total)]];
     const blob = new Blob([lines.map((l) => l.map(csvCell).join(",")).join("\n")], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `gst-${month}-${(r.gstin ?? r.name).replace(/\W+/g, "")}.csv`; a.click(); URL.revokeObjectURL(a.href);
   };
@@ -167,6 +173,17 @@ function Returns({ r, lab, month, today, summary, error, go, monthly, status, on
         {rows.length === 0 && <p className="py-3 text-sm text-[var(--color-label-2)]">No paid bills or stay invoices in this month.</p>}
         <p className="footnote mt-3">Rate is the tax each bill charged. Alcohol is outside GST, so not here. {lab.state === "UTGST" && "State half is UTGST (Union Territory)."}</p>
       </Card>
+      {(cn.count > 0 || eco.count > 0) && (
+        <Card data-gst-adjust>
+          <div className="card-title"><h3>Credit notes · platform sales</h3><span className="footnote">GSTR-1 table 9B · GSTR-3B 3.1.1(ii)</span></div>
+          <div className="table-wrap"><table className="w-full text-sm"><thead className="text-xs uppercase tracking-wide text-[var(--color-label-2)] border-b border-[var(--color-separator)]"><tr><th className="text-left py-2"></th><th className="text-right py-2">Nos.</th><th className="text-right py-2">Taxable</th><th className="text-right py-2">{lab.central}</th><th className="text-right py-2">{lab.state}</th><th className="text-right py-2">Value</th></tr></thead>
+            <tbody>
+              {cn.count > 0 && <tr className="border-b border-[var(--color-separator)]/60" data-gst-credit><td className="py-2">Credit notes issued</td><td className="py-2 text-right num">{cn.count}</td><td className="py-2 text-right num">−{n2(cn.taxable)}</td><td className="py-2 text-right num">−{n2(cn.cgst)}</td><td className="py-2 text-right num">−{n2(cn.sgst)}</td><td className="py-2 text-right num">−{n2(cn.total)}</td></tr>}
+              {eco.count > 0 && <tr data-gst-eco><td className="py-2">Through Swiggy · Zomato · ONDC</td><td className="py-2 text-right num">{eco.count}</td><td className="py-2 text-right num">—</td><td className="py-2 text-right num">—</td><td className="py-2 text-right num">—</td><td className="py-2 text-right num">{n2(eco.total)}</td></tr>}
+            </tbody></table></div>
+          <p className="footnote mt-3">Credit notes reduce the tax due this month. Platform sales: the operator paid their GST (section 9(5)) — report the value, no tax.</p>
+        </Card>
+      )}
       <Card>
         <div className="card-title"><h3>B2B · invoices carrying the guest's GSTIN</h3><span className="footnote">GSTR-1 table 4, invoice by invoice</span></div>
         {(summary?.b2b ?? []).length === 0 ? <p className="text-sm text-[var(--color-label-2)]">None this month. Add a guest's GSTIN on a Billing invoice.</p> : (

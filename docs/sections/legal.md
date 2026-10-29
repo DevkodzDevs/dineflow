@@ -67,3 +67,6 @@ node legal-shot.mjs      # 18 checks — the four documents render, the aliases 
   "Back to the menu" and goes back — the browser's Back when the policy was opened straight from that page, else to it; the
   page is kept for the tab (`sessionStorage` `df-legal-from`) so Terms → Back still finds the menu. The footer's *Sign in* is
   not shown to that guest (`LegalSignIn`). Opened any other way, both are as they were.
+- **The prices are set in Master control now** (2026-10-29, 0151 — admin-and-membership.md), shown on /membership and the
+  public front page (site.md). Nothing states whether they include GST: that waits on the company's registration (the seven
+  facts above). Online subscription payment is built and switched off until DineFlow's Razorpay keys are set.

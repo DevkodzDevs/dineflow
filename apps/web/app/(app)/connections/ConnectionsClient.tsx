@@ -288,7 +288,11 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
           <Button className="w-full" disabled={pending}>{editOc.id ? "Save" : "Connect"}</Button></form>}
       </Sheet>
       <Sheet open={!!editOta} onClose={() => setEditOta(null)} title={editOta?.id ? editOta.label ?? "" : `Connect ${ROOMS.find((f) => f.kind === editOta?.kind)?.name ?? "a room site"}`}>
-        {editOta && <form className="space-y-4" action={(fd) => start(async () => { const r = await saveOta(fd); if ("error" in r) setErr(r.error!); else { setErr(null); setEditOta(null); toast(editOta.id ? "Channel saved" : "Connected — copy your calendar link into their extranet"); } })}>
+        {editOta && <form className="space-y-4" action={(fd) => start(async () => { const r = await saveOta(fd); if ("error" in r) setErr(r.error!); else { setErr(null); setEditOta(null);
+          /* a pasted calendar link is proved at once, like Test keys (2026-10-29): sync it now and say what happened, rather
+             than leave it "Never synced" until the nightly run */
+          if (String(fd.get("import_url") ?? "").trim() && r.id) void syncNow(r.id);
+          else toast(editOta.id ? "Channel saved" : "Connected — copy your calendar link into their extranet"); } })}>
           {editOta.id && <input type="hidden" name="id" value={editOta.id} />}
           {!editOta.id && <p className="text-sm text-steel">Two calendars, both ways: paste their iCal export link here, and after saving, copy your DineFlow calendar link into their extranet. Syncs every night and on Sync.</p>}
           <div className="grid grid-cols-2 gap-3"><Field label="Site"><select name="kind" defaultValue={editOta.kind ?? "booking_com"}><option value="booking_com">Booking.com</option><option value="makemytrip">MakeMyTrip / Goibibo</option><option value="airbnb">Airbnb</option><option value="agoda">Agoda</option><option value="expedia">Expedia</option><option value="ical">Any iCal calendar</option><option value="other">Other</option></select></Field>

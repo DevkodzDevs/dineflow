@@ -6,6 +6,7 @@ import { HandPlatter, Receipt, GlassWater, Check, Star, X, BellRing, Footprints,
 import { cn } from "@/components/ui";
 import { buzz } from "@/lib/buzz";
 import { callTable, tableCalls } from "../actions";
+import { reach } from "@/lib/reach";
 
 type Kind = "waiter" | "bill" | "water";
 type Call = { kind: string; status: string; at?: string; done_at?: string | null };
@@ -63,7 +64,7 @@ export function TableCalls({ slug, token, table }: { slug: string; token: string
   const ask = async (k: Kind) => {
     buzz("tap");
     setOpen({ kind: k, phase: "sending" });
-    const r = await callTable(slug, token, k);
+    const r = await reach(() => callTable(slug, token, k));
     if ("error" in r) { setOpen({ kind: k, phase: "error", error: r.error }); return; }
     buzz("sent");
     /* shown at once, before the next poll: the tile turns "asked" the moment the server has it */

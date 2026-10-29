@@ -1,6 +1,7 @@
 /** A bill as its pay page shows it: what pay_link() returns. Never a secret. */
 export type PayInfo = {
   bill_no: number; status: "unpaid" | "paid" | "void"; total: number; subtotal: number; discount: number; service: number; cgst: number; sgst: number; round_off: number;
+  charges?: number; eco?: boolean;   // 0148: packing & delivery; an operator paid the GST (section 9(5))
   created_at: string; paid_at: string | null; claim_ref: string | null; where: string;
   lines: { name: string; qty: number; price: number }[];
   payments: { method: string; amount: number; ref: string | null }[];

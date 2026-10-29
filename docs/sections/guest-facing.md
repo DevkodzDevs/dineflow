@@ -352,3 +352,26 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
 - **Dish cards, compact (2026-10-27, the owner: "still not looking good — compact").** The picture 104px (124 from sm), the
   card's padding 10px, the name 15.5px; what a dish asks is a small orange chip on the price's row (`[data-dish-options]`,
   "2 sizes · add-ons", a 44px target by its ::before) instead of its own line. A sized dish's card is 134px tall at 412.
+- **A dropped request no longer replaces the guest's page (2026-10-28).** Opening the table page while the network dropped
+  its requests (or on a tab older than the deploy) went Reconnecting… → the full-screen *This screen did not load*. The
+  guest pages' server calls now go through `reach` (lib/reach.ts, shell-and-nav.md): the menu stays, Place order and
+  Reserve say "No connection — check the network and try again." in their error line, a waiter/bill/water tap shows it
+  in the call dialog instead of hanging on Sending, the order card's poll simply tries again next time.
+- **The basket is the bill (2026-10-29, 0146/0147).** The order sheet's total is the same sum the bill makes (`billTax`):
+  each dish at its own GST rate, packing and delivery taxed with the food, no GST where the property may not collect it
+  (`gst_collect` from `dine_storefront`); one rate shows "GST 5%", several "GST". `dine_order` quotes the same, and the
+  quote reaches the till with its offer and fee — the guest pays what the sheet said (`money151.mjs`: ₹704 shown, quoted,
+  previewed and billed).
+- **The guest pays from the table (2026-10-29, 0148 — the owner's Stage 3).** Once the bill is printed, the guest's order
+  card shows **Pay ₹X** (`[data-order-pay]`, the stage's blue) — `dine_table_orders` hands it the bill's own pay link
+  (`bills.pay_token`) while the bill is unpaid, only to the phone holding the table's code and its own order ids. A bill
+  that can be paid from here is not "calm": the card does not tuck itself away while it waits. The link opens `/pay/<token>
+  ?from=<the table's menu>` — the existing pay page: UPI with the amount filled in and *I've paid*, and card through the
+  property's own Razorpay account when it has connected one (Connections; the money goes straight to the property; card
+  needs `SUPABASE_SERVICE_ROLE_KEY` on the server) — with **Back to the menu** (`[data-pay-back]`, and under "Paid" as
+  `[data-pay-back-done]`; `from` is accepted only as a /dine path). The page turns to *Paid* by itself (it asks every
+  5 s); back at the table the card says *Paid · thank you!*, and paying frees the table, which opens its cleaning job
+  (pay_link_settle / settle_bill, as at the counter). The pay page also shows packing & delivery and, for an aggregator's
+  order, "GST paid by the delivery platform (section 9(5))" (`pay_link` gives `charges` and `eco`). `pay152.mjs`.
+- **The table's menu reads its three things at once (2026-10-29).** `dine_storefront`, `dine_slots` and `dine_busy` in one
+  `Promise.all` — `dine_busy` used to wait for the other two (shell-and-nav.md, speed pass 2026-10-29).

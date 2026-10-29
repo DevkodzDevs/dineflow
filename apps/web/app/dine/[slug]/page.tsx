@@ -18,12 +18,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 export default async function Storefront({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string; t?: string }> }) {
   const { slug } = await params; const { tab, t } = await searchParams;
-  const [data, { data: slots }] = await Promise.all([
+  /* the kitchen's pace right now (0079): a pause or extra minutes, said before anyone fills a basket — read beside the
+     menu and the slots, not after them (2026-10-29: one database trip fewer before the guest sees anything) */
+  const [data, { data: slots }, { data: busy }] = await Promise.all([
     storefront(slug, t ?? null),
     anon().rpc("dine_slots", { p_slug: slug, p_date: new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10), p_party: 2 }),
+    anon().rpc("dine_busy", { p_slug: slug }),
   ]);
-  /* the kitchen's pace right now (0079): a pause or extra minutes, said before anyone fills a basket */
-  const { data: busy } = await anon().rpc("dine_busy", { p_slug: slug });
   if (!data) notFound();
   /* what Google reads: the restaurant, and which links reserve and order (Settings → Storefront →
      Bookings from Google). Not on a table-QR visit — that page is for the people at the table. */

@@ -33,12 +33,17 @@ export async function saveMenuItem(fd: FormData) {
     station: fd.get("station") || null, is_combo: fd.get("is_combo") === "on",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  // 0146: the dish's own GST rate (blank = the property's) and HSN / SAC (blank = restaurant service, 996331)
+  const gr = String(fd.get("gst_rate") ?? "").trim(), hsn = String(fd.get("hsn") ?? "").replace(/s/g, "");
+  if (gr !== "" && ![0, 5, 12, 18, 28, 40].includes(Number(gr))) return { error: "GST is 0, 5, 12, 18, 28 or 40%" };
+  if (hsn && !/^[0-9]{4,8}$/.test(hsn)) return { error: "HSN / SAC is 4 to 8 digits" };
+  const tax: { gst_rate?: number | null; hsn?: string | null } = fd.has("gst_rate") ? { gst_rate: gr === "" ? null : Number(gr), hsn: hsn || null } : {};
   const id = fd.get("id") as string | null;
   // the photo rides along as three hidden fields; empty means none (0088)
   const url = String(fd.get("image_url") ?? "").trim();
   const photo = url ? photoSchema.safeParse({ url, credit: String(fd.get("image_credit") ?? "") || null, source: String(fd.get("image_source") ?? "") || null }) : null;
   if (photo && !photo.success) return { error: photo.error.issues[0].message };
-  const row = { ...parsed.data, image_url: photo?.success ? photo.data.url : null, image_credit: photo?.success ? photo.data.credit ?? null : null, image_source: photo?.success ? photo.data.source ?? null : null };
+  const row = { ...parsed.data, ...tax, image_url: photo?.success ? photo.data.url : null, image_credit: photo?.success ? photo.data.credit ?? null : null, image_source: photo?.success ? photo.data.source ?? null : null };
   const q = id ? s.from("menu_items").update(row).eq("id", id).select("id").single() : s.from("menu_items").insert(row).select("id").single();
   const { data, error } = await q; if (error) return { error: error.message };
   /* A combo's parts ride along as JSON: [{menu_item_id, qty}]. A dish that stops being a combo

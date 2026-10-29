@@ -159,3 +159,9 @@ pnpm --filter @dineflow/web build
   plain route handlers, so they do not get Next's cross-site check that server actions have; they relied on the sign-in
   cookies being SameSite=Lax. `lib/sameOrigin.ts` `crossSite(req)` refuses (403) a request the browser marks
   `Sec-Fetch-Site: cross-site`/`same-site`, or whose `Origin` host is not this request's host.
+- **Sign-in waits on fewer trips (2026-10-29).** `login` asks `login_gate` and `enforce_temp_password_lockout` together (both
+  before the attempt, neither needs the other), and `is_master` together with `startScreen` — a trip fewer each. Most of
+  sign-in's time is Supabase checking the password, and a cold function (shell-and-nav.md, speed pass 2026-10-29).
+- **`/` is the public front page (2026-10-29, site.md).** `app/page.tsx` no longer redirects to /login. The middleware still sends
+  a signed-in person on `/` to their screens, and now sends the **Windows app** (user agent `DineFlowDesktop/`) to /login when
+  signed out. `/for/` and `/blog` joined `PUBLIC_PREFIX` and `SESSION_FREE`.

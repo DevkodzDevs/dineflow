@@ -286,12 +286,25 @@ tab is the sixth in `AdminNav` (three across on a phone, six from `sm`). How to 
   capability.** It is logged; keep it that way.
 - **`/about` is the in-app version/credits page**, not marketing. Keep it factual.
 
-## Not built yet
+## Paying DineFlow online, and the plans (2026-10-29, 0151/0152 — items 8 and 10)
 
-Razorpay **subscription** checkout on `/membership` — DineFlow charging a property for its own
-membership — is designed but not implemented, and is blocked on the seven blanks in
-`lib/company.ts` (see [legal.md](legal.md)). Note the distinction: a property's *guests* pay on the
-property's own keys; a property pays DineFlow on DineFlow's.
+**Plans & prices** (Master control → Keys, under the keys — `PlansCard.tsx`, `[data-plans]`): one row a kind of property —
+**Restaurant** (restaurants) and **Hotel & resort** (hotels, resorts) — with a monthly and a yearly price (empty = not sold
+online for that period) and an on-sale switch; `admin_set_plan` (master only, logged in admin_log). Seeded at ₹2,499 / ₹24,999
+for both — the cheaper restaurant plan is the owner's number to type. /membership (its two cards, "N months free" worked out)
+and the public front page (site.md) read them; a key's length is separate (30 / 365 days).
+
+**Online payment** on /membership, on **DineFlow's own** Razorpay account (a guest pays a property on the property's keys —
+that is lib/razorpay.ts and /pay): **Pay ₹X** on each card for the owner or a manager when the server has
+`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` **and** `SUPABASE_SERVICE_ROLE_KEY` (`platformReady()`,
+lib/platformPay.ts); without them the page is as before (keys, "online payment coming soon"). `/api/membership/order` →
+`membership_checkout_begin` (the price is the plan's, never the browser's) → a Razorpay order for that amount →
+`membership_checkout_order`. `/api/membership/verify`: the HMAC of "order|payment", the order is a membership order, the
+payment is that order's and captured (an authorized hold is captured first) → `membership_paid` (amount = price; extends from
+today or the current end; twice = once). `/api/webhooks/razorpay-platform` (payment.captured, signed with the webhook secret)
+is the safety net. **Not run end to end here** — no Razorpay test keys or service-role key on this machine; the database side
+is dry-run, the page with prices is `plans151.mjs`. The Plans card could not be opened without the master sign-in. A GST
+invoice from DineFlow for the subscription needs the company's GSTIN (legal.md, item 11).
 
 ## Verify
 
@@ -310,3 +323,10 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
 - **Properties' Table · Cards is the app's ViewSwitch (2026-10-25)** (`[data-estate-view]` holds `[data-view-switch=estate]`;
   `df-view:estate`, the old `df-estate-view` read as pinned). The `.view` / `.viewBtn` rules in AdminToolbar.module.css are
   no longer used.
+- **Crashes people saw (2026-10-29, 0149).** Master control → Testing, under the suites (`CrashList.tsx`,
+  `[data-crash-list]`): the last 7 days of `client_errors`, newest first — *Crash* (red, a bug) or *Old tab* (amber, open
+  across a deploy; it reloaded itself), the error's name and message (or the server's reference), the page with ids folded
+  to `:id`, the property (or "a guest page"), the browser and device in a few words, how many times and when last. The same
+  error on the same page within a day is one row with a count. Only the master can read the table; anyone's page writes
+  it through `report_client_error` alone (30 an hour per person, 2,000 an hour in all; 30 days kept). A tab of its own was
+  left out on purpose: the nav's row of seven stays as it is.

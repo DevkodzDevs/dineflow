@@ -107,3 +107,9 @@ Then reconcile `gst_summary` for a demo month by hand against the bills for that
 
 [billing-and-invoices.md](billing-and-invoices.md) · [legal.md](legal.md) ·
 [reports-and-forecast.md](reports-and-forecast.md)
+- **By the rate each bill charged (2026-10-29, 0146).** `gst_summary` reads a bill's `tax_lines` (a bill with 5% and 18%
+  dishes shows in both rows; it used to divide the tax by the base and print a blended "9.3%"); older bills as before.
+  Swiggy / Zomato / ONDC bills are left out of the taxed rows and given as `eco` (section 9(5): the operator paid the GST —
+  GSTR-3B 3.1.1(ii)); credit notes issued in the period as `credit_notes` (GSTR-1 9B). The Returns tab shows both in
+  *Credit notes · platform sales* (`[data-gst-adjust]`, only when there are any) and in the CSV for the CA. The B2B rows
+  had added the bill's service charge to an invoice value that already held it; they use the invoice's own value now.

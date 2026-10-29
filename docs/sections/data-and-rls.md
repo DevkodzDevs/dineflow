@@ -577,6 +577,42 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   `display.allow` / `display.disallow` in the audit trail); `display_lock_note(p_action, p_key, p_mode, p_by)` (`lock` needs
   owner / manager; `release` names who — the app checks that person's sign-in first). No new table, so no new policy; both
   granted to authenticated only. [display-lock.md](display-lock.md)
+- **Applying to the live database needs `--live` (2026-10-29, item 19).** `scripts/migrate.mjs` prints its target and refuses the
+  live project (ref `saffvrkseoakalgxnbgg`) without `--live`. **Staging, when the owner makes it:** a second Supabase project
+  (Mumbai, ap-south-1) → `DATABASE_URL=<staging> node scripts/migrate.mjs` builds it from 0001 → `apps/web/.env.local` gets the
+  staging URL and anon key (and its service-role key) → everyday work and probes run there; Vercel keeps the live keys; a
+  migration reaches live only by a deliberate `--live` after its staging run.
+- **0153 — The delivery webhook says who it is (2026-10-29, applied; checked inside SQL without printing a token: a real
+  channel returns its name, a wrong token null).** `channel_hello(token)` (anon, authenticated): label, kind, is_live of the
+  channel with that webhook token (8+ characters), nothing else (connections.md).
+- **0152 — Public plans (2026-10-29, applied).** `public_plans()` (anon, authenticated): the active plans' key, label, monthly,
+  yearly — the front page's pricing. Nothing else of `plans` reaches a visitor.
+- **0151 — Plans and paying DineFlow online (2026-10-29, applied; dry151 rolled back: an owner cannot price, cannot call paid,
+  cannot write a payment row; the wrong amount is refused; paid extends a year; paid twice is once).** `plans` (read by any
+  signed-in person, written by `admin_set_plan` — master only, logged); `plan_for_me()`; `membership_payments` (read by the
+  property's owner/manager and the master; no write policy); `membership_checkout_begin` (owner/manager, price from the plan,
+  `_hit` 20/h); `membership_checkout_order` and `membership_paid` — **service role only**.
+- **0150 — Money fences (2026-10-29, applied; dry150 rolled back, 19 cases + the points case).** `_api_write()`, `fence_*`
+  triggers `money_fence` on six tables, `audit_booking_charges` (billing-and-invoices.md).
+- **0149 — The crash log (2026-10-29, applied; dry149 rolled back: two reports of one error on two ids → one row, count 2;
+  a stale report its own row).** `client_errors` (RLS: read by `is_master()` only; no write policy) and
+  `report_client_error(kind, path, name, message, digest, ua)` — security definer, granted to anon and authenticated, cut to
+  length, ids folded out of the path, `_hit` limits (30/h a person or a guest page, 2,000/h in all), same error + page within
+  a day = count + 1, rows past 30 days cleared now and then.
+- **0148 — The guest pays from the table (2026-10-29, applied; dry148 rolled back).** `dine_table_orders` gives `pay` (the
+  bill's pay_token while unpaid); `pay_link` gives `charges` and `eco`. Grants unchanged.
+- **0147 — The guest's basket makes the bill's sum (2026-10-29, applied; dry147 rolled back).** `dine_storefront` also
+  gives each dish's `gst_rate` and the property's `gst_collect` (gst_collectable). Grants unchanged.
+- **0146 — Bills that add up (2026-10-29, applied; dry146.sql rolled back: one rate = the old sum over 1,600 bases; a 5% +
+  18% till bill, a QR order's quote = its bill, a Swiggy bill with no GST, two credit notes = the bill's tax, the invoice's
+  lines = the bill, gst_summary by rate).** `menu_items.gst_rate/hsn` (checked), `order_items.gst_rate/hsn` + trigger
+  `order_item_tax` (copied from the dish, never set by hand); `orders.discount_amount/extra_charges/offer_title`;
+  `bills.charges/service_charge_on/tax_lines/gst_by_operator`; `bill_tax()` (immutable; authenticated);
+  `generate_bill` dropped and recreated with `p_service_charge` (granted to authenticated, not anon);
+  `accept_online_order_for` (not granted to API roles), `dine_order`, `generate_dining_invoice`, `gst_summary` (by
+  tax_lines; 9(5) and credit notes apart; B2B no longer adds the service charge twice), `close_day` (+ `day_closes.refunds`).
+  **`credit_notes`**: RLS read for the property, no write policy — only `issue_credit_note` (security definer, role check,
+  reason, for update on the bill) writes it.
 - **0145 — A table's QR order, start to end (2026-10-27, applied; dry145.sql rolled back: two rounds at one table → one
   order, two KOTs, each dish with its own guest note; bill → 'bill', paid → 'paid').** `accept_online_order_for`: the guest's
   note on every dish; a table's open, unbilled ticket takes the next round as a new KOT. `dine_table_orders`: stages `bill`

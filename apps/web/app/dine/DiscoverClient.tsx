@@ -6,6 +6,7 @@ import { Search, Star, MapPin, Percent, UtensilsCrossed, Bike, BedDouble, Ticket
 import { Segmented } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { discover } from "./actions";
+import { reach } from "@/lib/reach";
 
 type P = { slug: string; name: string; type: string; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; district: string | null; address: string | null; photo: string | null; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; open_now: boolean; km: number | null; offers: { title: string; kind: string; value: number }[] };
 
@@ -13,7 +14,7 @@ export function DiscoverClient({ initial, q: q0, city: c0, mode: m0 }: { initial
   const [q, setQ] = useState(q0); const [city, setCity] = useState(c0); const [mode, setMode] = useState(m0 || "all");
   const [list, setList] = useState<P[]>(initial); const [pending, start] = useTransition();
   useEffect(() => {
-    const t = setTimeout(() => start(async () => { const r = await discover(q, city, mode === "all" ? "" : mode); if ("list" in r) setList(r.list as P[]); }), 300);
+    const t = setTimeout(() => start(async () => { const r = await reach(() => discover(q, city, mode === "all" ? "" : mode)); if ("list" in r) setList(r.list as P[]); }), 300);
     return () => clearTimeout(t);
   }, [q, city, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 

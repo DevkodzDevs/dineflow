@@ -7,7 +7,9 @@
  */
 import { DICT_URL } from "./files";
 
-export const ENGLISH_ONLY_SRC = "^/(admin|legal|dine|book|pay|record|feedback|checkin|queue|screen|kiosk|get|offline)(/|$)|^/$";
+/* 2026-10-29: "/" is the public front page now (it was a redirect to sign-in), so it is translated like the app; the blog
+   is English-only, like the guest pages */
+export const ENGLISH_ONLY_SRC = "^/(admin|legal|dine|book|pay|record|feedback|checkin|queue|screen|kiosk|get|offline|blog)(/|$)";
 export const ENGLISH_ONLY = new RegExp(ENGLISH_ONLY_SRC);
 /** Fired on window when the device's language changes, so the page follows without a reload. */
 export const LANG_EVENT = "df-lang-change";

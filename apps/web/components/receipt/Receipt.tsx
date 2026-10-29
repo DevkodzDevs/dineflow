@@ -18,6 +18,9 @@ export type ReceiptData = {
   loyalty?: string;              // "You earned 50 points on this visit"
   sac?: string;                  // Services Accounting Code: 996331 restaurant, 996311 accommodation
   gstRate?: number;              // the rate the bill was raised at; each half is printed by name
+  charges?: number;              // 0146: packing & delivery an online order brought
+  taxLines?: { rate: number; base: number; cgst: number; sgst: number }[];   // 0146: the bill's tax per rate, as raised
+  operatorNote?: string;         // 0146: "GST paid by the e-commerce operator (section 9(5))"
 };
 
 export const PAPER_PX = { 58: 264, 80: 328 } as const;
@@ -50,9 +53,12 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
   // taxable value is what the tax was charged on — the dishes after the discount, plus the service charge and
   // the on-time fee — and the amounts are the bill's own. (It summed the dishes at full price and worked the
   // rate out from that: a bill with a service charge printed a 19.8% "rate".)
-  const base = d.subtotal - (d.discount ?? 0) - (d.promiseWaived ?? 0) + (d.service ?? 0) + (d.promiseFee ?? 0);
+  const base = d.subtotal - (d.discount ?? 0) - (d.promiseWaived ?? 0) + (d.service ?? 0) + (d.promiseFee ?? 0) + (d.charges ?? 0);
   const rates = [...new Set(d.lines.map((l) => l.gstRate).filter((x): x is number => x != null))];
-  const groups: { rate: number; taxable: number; cgst?: number; sgst?: number }[] = rates.length <= 1
+  // 0146: a bill that records its tax per rate prints exactly that
+  const groups: { rate: number; taxable: number; cgst?: number; sgst?: number }[] = d.taxLines?.length
+    ? d.taxLines.map((t) => ({ rate: t.rate, taxable: t.base, cgst: t.cgst, sgst: t.sgst }))
+    : rates.length <= 1
     ? [{ rate: d.gstRate ?? rates[0] ?? (base > 0 ? Math.round(((d.cgst + d.sgst) / base) * 1000) / 10 : 0), taxable: base, cgst: d.cgst, sgst: d.sgst }]
     : Object.values(d.lines.reduce((acc, l) => {
         const r = l.gstRate ?? 0;
@@ -98,6 +104,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         {!!d.promiseWaived && d.promiseWaived > 0 && <div className="paper-row"><span className="opacity-80">On-time promise not met — food free</span><span>-{m(d.promiseWaived)}</span></div>}
         {!!d.promiseFee && d.promiseFee > 0 && <div className="paper-row"><span className="opacity-80">On-time promise{d.promiseMinutes ? ` (${d.promiseMinutes} min)` : ""}</span><span>{m(d.promiseFee)}</span></div>}
         {!!d.service && <div className="paper-row"><span className="opacity-80">Service charge</span><span>{m(d.service)}</span></div>}
+        {!!d.charges && <div className="paper-row"><span className="opacity-80">Packing &amp; delivery</span><span>{m(d.charges)}</span></div>}
         {(!composition || d.cgst > 0) && <div className="paper-row"><span className="opacity-80">{taxName("central")}</span><span>{m(d.cgst)}</span></div>}
         {(!composition || d.sgst > 0) && <div className="paper-row"><span className="opacity-80">{taxName("state")}</span><span>{m(d.sgst)}</span></div>}
         {!!d.roundOff && <div className="paper-row"><span className="opacity-80">Round off</span><span>{m(d.roundOff)}</span></div>}
@@ -129,6 +136,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
           {d.sac && <>SAC {d.sac} · </>}{lab.stateName && <>Place of supply: {lab.stateName} ({d.restaurant.stateCode}) · </>}Reverse charge: No
         </div>
         {composition && <div className="text-[9.5px] font-bold mt-1 leading-snug">{COMPOSITION_NOTE}</div>}
+        {d.operatorNote && <div className="text-[9.5px] font-bold mt-1 leading-snug" data-operator-note>{d.operatorNote}</div>}
 
         {/* ── foot ── */}
         <hr className="paper-rule" />

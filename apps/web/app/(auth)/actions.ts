@@ -21,13 +21,16 @@ export async function login(_: unknown, fd: FormData) {
   const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "";
   const db = serviceRoleConfigured() ? adminClient() : null;
   if (db) {
-    const { data: open } = await db.rpc("login_gate", { p_login: email, p_ip: ip });
-    if (open === false) return { error: "Too many sign-in attempts. Wait 15 minutes and try again." };
     // Enforce temp password lockout before the sign-in attempt. If the password has been live for more
     // than 4 days without the owner changing it, the hash is scrambled and the attempt will fail with
     // "Invalid login credentials" — which is the right answer, because the password genuinely no
-    // longer works. The owner must ask Master control for a new one.
-    try { await db.rpc("enforce_temp_password_lockout"); } catch { /* best-effort */ }
+    // longer works. The owner must ask Master control for a new one. Asked beside the gate, not after it
+    // (2026-10-29): both must finish before the attempt, neither needs the other.
+    const [{ data: open }] = await Promise.all([
+      db.rpc("login_gate", { p_login: email, p_ip: ip }),
+      Promise.resolve(db.rpc("enforce_temp_password_lockout")).catch(() => null),   // best-effort
+    ]);
+    if (open === false) return { error: "Too many sign-in attempts. Wait 15 minutes and try again." };
   }
   let { data: signed, error } = await supabase.auth.signInWithPassword({ email, password: String(fd.get("password")) });
   for (const other of tries.slice(1)) { if (!error) break; ({ data: signed, error } = await supabase.auth.signInWithPassword({ email: other, password: String(fd.get("password")) })); }
@@ -36,9 +39,10 @@ export async function login(_: unknown, fd: FormData) {
     return { error: error.message };
   }
   // the master's credentials open Master control and nothing else; owners open their own property
-  const { data: master } = await supabase.rpc("is_master");
+  // where they land is worked out beside "is this the master?" rather than after it — one trip fewer (2026-10-29)
+  const [{ data: master }, start] = await Promise.all([supabase.rpc("is_master"), startScreen(supabase, signed.user?.id ?? null)]);
   if (master) redirect("/admin");
-  redirect(await startScreen(supabase, signed.user?.id ?? null));
+  redirect(start);
 }
 
 /**

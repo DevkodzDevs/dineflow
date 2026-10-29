@@ -35,8 +35,8 @@ The path → note map lives in that README. Shortcuts for the most common ones:
 requires touching B, say so before you do it.
 
 **Migrations.** Next number, additive only, RLS policy in the same file. Dry-run inside a
-transaction you roll back, then apply with `node scripts/migrate.mjs`. Never edit or renumber an
-applied migration.
+transaction you roll back, then apply with `node scripts/migrate.mjs` — against the live database it needs
+`--live` and says so. Never edit or renumber an applied migration.
 
 **Gates, all four, every time:**
 
@@ -103,7 +103,12 @@ PR descriptions end with:
 
 - Seven legal facts in `lib/company.ts` are still `null` — blocks launch and blocks subscription
   checkout. [legal.md](docs/sections/legal.md)
-- Razorpay subscription checkout and Sentry are agreed but not built.
+- Razorpay subscription checkout is built (0151) and **off until** `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
+  `RAZORPAY_WEBHOOK_SECRET` (DineFlow's own account) and `SUPABASE_SERVICE_ROLE_KEY` are set on Vercel; the plan prices are set in
+  Master control → Keys → Plans & prices. Error reporting is the in-app crash log (0149, Master control → Testing) instead of
+  Sentry. [admin-and-membership.md](docs/sections/admin-and-membership.md)
+- **Staging:** create a second Supabase project and point everyday work at it; `scripts/migrate.mjs` already refuses the live
+  database without `--live`. [data-and-rls.md](docs/sections/data-and-rls.md)
 - **Set `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` and `NEXT_PUBLIC_CLOUD_URL` on Vercel** — on
   2026-10-13 the live site had no service-role key (forgot-password, card pay links, phone attendance, OTA
   sync, the sign-in throttle and the per-visitor feedback limit all off) and no cloud URL. [api-routes.md](docs/sections/api-routes.md)
@@ -113,9 +118,9 @@ PR descriptions end with:
   the fix. support@/grievance@/privacy@dineflow.cloud have no MX record (they bounce); `master@dineflow.in`
   is on a domain that is not registered.
 - **Money still open** (the 2026-10-13 review — [billing-and-invoices.md](docs/sections/billing-and-invoices.md)):
-  staff can write `order_items` prices and quantities, `orders.status`, `bookings.rate`, `booking_charges`,
-  `customers.points` and `shift_closes` directly; aggregator orders (section 9(5)) are billed with GST; one GST
-  rate for every dish; automatic service charge; no credit notes; front-desk cash is not in the cash-up.
+  front-desk cash is not in the cash-up. (Fixed 2026-10-29 — 0146: section 9(5), a GST rate per dish, the
+  service-charge switch, credit notes, the QR offer reaching the bill; 0150: staff can no longer write prices,
+  quantities, order status, room rates, points or shift closes straight through the API.)
 - Security, after the 2026-10-13 audit (0098, 0099 — [data-and-rls.md](docs/sections/data-and-rls.md)):
   **the live master login still signs in with the password 0011 shipped with** (Master control shows a
   red notice until it is changed). The two after-deploy files were applied on

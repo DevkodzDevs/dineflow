@@ -18,7 +18,9 @@ the property's own storefront. **Channels** are room distribution — the OTAs t
 **Food in.** An aggregator posts to `api/webhooks/aggregator/[token]` and a row lands in
 `online_orders` with status `new`. `/online-orders` is the accept screen: `accept_online_order`
 turns it into a real ticket so the kitchen sees it like any other. Commission and payout are
-tracked per order so "Today's online sales" and "Commission" are both honest.
+tracked per order so "Today's online sales" and "Commission" are both honest. A **GET** on the same address is the
+platform's check: 200 with the channel's name and whether it is taking orders, 404 for an unknown token (0153,
+connections.md). Saving a room channel with their calendar link pasted syncs it at once.
 
 **Kitchen pace** (`KitchenPace.tsx`, top of `/online-orders`) is Zomato's rush-hour switch:
 *Normal* / *Busy +15* / *Very busy +30* / *Pause 30 min*. It calls `set_rush` (migration 0079), which
@@ -263,3 +265,7 @@ who rides (`rider_id`, a staff member, or `rider_name` / `rider_phone`), where t
   `ingest_online_order` with the channel's token, as the webhook route does. It used to fetch this server's own webhook URL
   built from the `Host` / `X-Forwarded-*` headers, which a caller sets: on a self-hosted (standalone / Box) build that pointed
   the server at any address and returned the reply (SSRF).
+- **Accepting an order carries its money (2026-10-29, 0146).** A website/QR order's offer discount and packing/delivery fee
+  go onto the ticket (`orders.discount_amount`, `extra_charges`) and so onto the bill; an aggregator's figures do not. An
+  order through Swiggy, Zomato or ONDC is billed without GST (section 9(5)) and without a service charge by default
+  (billing-and-invoices.md).

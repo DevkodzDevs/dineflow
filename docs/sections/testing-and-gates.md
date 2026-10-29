@@ -443,3 +443,41 @@ of a second." Measured first, on the live site and on a local production build (
   gets the chip in its middle; the 1440 sidebar row gets it at its end; the guest + shows nothing and Place order keeps its
   own spinner; nothing left behind on four pages. Times are from the real click (a capture listener), not from the
   watch's start — Playwright's retries (a call card over the button) land in between. Screens in `s149/`.
+- **`pw/crash150.mjs` (4)** — "This screen did not load", on a fresh `demo147.mjs` demo, `MODE=before|after`. A Playwright
+  route aborts (`internetdisconnected`) or re-labels (an unknown action id — an old tab) every server action for a few
+  seconds: the guest table page opening (menu stays, no card), a staff call card's *On my way* (the card says No
+  connection, no card), the floor's *I'll take it* (Connection lost inside the frame, then the floor by itself, ~2.3 s).
+  Before the fix: Reconnecting… then the card on the guest page; the whole app reloading from the call card. Screens `s150/`.
+- **`pw/side150.mjs`** — the sidebar's groups at 1440 dark, 1920 paper, 1194 Classic, Compact, Floating: every group's
+  title, where its words start against the rows' icons, the gaps between groups (`TAG=before|after`); `side150b.mjs` the
+  menu's foot, the icon rail (no headings, nine hairlines) and its drawer (ten headings), paper and royal.
+- **`pw/money151.mjs` (11)** — Stage 1 money on a fresh `demo147.mjs` demo (registered, 5%, 10% service charge): a dish set
+  to 18% + HSN in the editor; a QR order with the 10% offer — basket = quote = preview = bill; a till order with the switch
+  on, a 5% + 18% tax table, switched off billed without service charge; a Swiggy order — 9(5), no GST; paid, then ₹100 cash
+  and the rest by UPI refunded — two credit notes = the bill, cash out of the drawer, the refund link gone; Tax → Returns
+  rows; 412 paper fits. Screens `s151/`. **Note:** a dish card is drawn twice on the menu (phone list + grid) — wait with
+  `state: "attached"` and click `:visible`. `lib/billing.test.ts` (8) pins `computeBill` to the database's answers.
+- **`pw/pay152.mjs` (7)** — items 13 and 12 on a fresh `demo147.mjs` demo. 13: a QR order billed at the counter → the guest's
+  card shows "Pay ₹X" = the bill and stays out 24 s → the pay page is the bill's own link with "Back to the menu" → the
+  counter takes it → the page says Paid by itself → back at the table "Paid · thank you!", the table free, its cleaning job
+  pending. 12: a network drop on the floor's *I'll take it* → no client_errors row; the same button with an unknown action
+  id (an old tab) → one row, kind stale, path /orders. Screens `s152/`. Card through Razorpay needs a connected test account
+  and was not run here.
+- **Speed probes, 2026-10-29** (all on a fresh `demo147.mjs` demo, `BASE=` for the live site): `pw/perf153.mjs` — each
+  screen cold and warm by the browser's own clocks (first byte, first paint, load, script bytes, requests); `signin153.mjs` —
+  every request from Enter to the first screen; `tap153b.mjs` — one tap taken apart **timed inside the page** (Playwright's
+  click adds ~0.5 s of its own); `flood153.mjs` — screen requests in the 6 s after the Control room loads (20–22 live →
+  12 after the menu links stopped prefetching).
+- **`pw/fence150.mjs` (3)** — 0150 from the screens: the kitchen's Start cooking → Food ready → Served writes each line's status
+  with no refusal; the resort folio's charge posts with a `charge.add` audit line (demoResort.json — a resort demo; the folio
+  has three "Post" buttons, scope the tap to the charge's own box). `pay152` and `money151` also pass with the fences on.
+- **`pw/plans151.mjs` (3)** — /membership: the Restaurant plan's prices from the database, a price changed in the plan shows at
+  once, a resort sees the Hotel & resort plan; the prices are put back as found.
+- **`pw/site154.mjs` (9)** — the public site (site.md). Once in five runs the Tamil check failed and passed on the rerun (the
+  dictionary has 2.5 s to arrive).
+- **Migrations:** `node scripts/migrate.mjs` refuses the live database without `--live` (data-and-rls.md).
+- **`pw/conn155.mjs` (4)** — the links wait, then work (connections.md): the delivery webhook's GET names a real channel
+  (200) and 404s a mistyped one, an order POSTed there lands as `new`; on the resort, connecting a room site with a pasted
+  calendar syncs on save and the toast says so — on this machine "Channel sync is not available on this server." (no
+  service-role key), which the check accepts. It picks a site not yet connected (an earlier run takes one) and nulls the
+  demo's `enabled_modules` first. Webhook tokens stay in memory, never printed. Restaurant demo147.json, resort demoResort.json.

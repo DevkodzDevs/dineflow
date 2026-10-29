@@ -6,6 +6,7 @@ import { Sheet, cn, useToast } from "@/components/ui";
 import { getClient } from "@/lib/supabase/lazy";
 import { whenSettled } from "@/lib/idle";
 import { setKotStatus } from "@/app/(app)/orders/actions";
+import { reach } from "@/lib/reach";
 
 /**
  * Food that is ready, brought to whoever has to take it out (2026-10-24, the owner: "after the kitchen, a floating parcel
@@ -60,7 +61,7 @@ export function ReadyDock({ me, all, parcels }: { me: string; all: boolean; parc
     : r.orders?.token_no ? `Token ${r.orders.token_no}` : r.orders?.customer_name || `#${r.orders?.order_no ?? r.kot_no}`;
   const kind = (r: Row) => r.orders?.channel_id ? "Online" : r.orders?.type === "delivery" ? "Delivery" : r.orders?.type === "takeaway" ? "Takeaway" : "Dine in";
   const served = (r: Row) => start(async () => {
-    const x = await setKotStatus(r.id, "served");
+    const x = await reach(() => setKotStatus(r.id, "served"));
     if ("error" in x && x.error) { toast(x.error, "err"); return; }
     setRows((rs) => rs.filter((y) => y.id !== r.id));
     if (list.length <= 1) setOpen(null);

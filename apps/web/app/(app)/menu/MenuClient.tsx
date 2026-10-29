@@ -22,12 +22,12 @@ import { MenuImport } from "./MenuImport";
 import type { VariantRow, GroupRow, LinkRow, ComboRow } from "@/lib/menuOptions";
 
 type Cat = { id: string; name: string; sort_order: number; station?: string | null };
-type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; online_available?: boolean; prep_minutes: number; description: string | null; station?: string | null; is_combo?: boolean; image_url?: string | null; image_credit?: string | null; image_source?: string | null };
+type Item = { id: string; name: string; category_id: string | null; price: number; is_veg: boolean; is_available: boolean; online_available?: boolean; prep_minutes: number; description: string | null; station?: string | null; gst_rate?: number | null; hsn?: string | null; is_combo?: boolean; image_url?: string | null; image_credit?: string | null; image_source?: string | null };
 type Ing = { id: string; name: string; unit: string };
 type Rec = { menu_item_id: string; ingredient_id: string; qty: number };
 
-export function MenuClient({ categories, items, ingredients, recipes, std = {}, ai = false, stations = [], variants = [], groups = [], links = [], combos = [], canOnline = false }:
-  { canOnline?: boolean; categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; std?: Record<string, StandardRecipe>; ai?: boolean; stations?: string[]; variants?: VariantRow[]; groups?: GroupRow[]; links?: LinkRow[]; combos?: ComboRow[] }) {
+export function MenuClient({ categories, items, ingredients, recipes, std = {}, ai = false, stations = [], variants = [], groups = [], links = [], combos = [], canOnline = false, gstRate = 5 }:
+  { canOnline?: boolean; categories: Cat[]; items: Item[]; ingredients: Ing[]; recipes: Rec[]; std?: Record<string, StandardRecipe>; ai?: boolean; stations?: string[]; variants?: VariantRow[]; groups?: GroupRow[]; links?: LinkRow[]; combos?: ComboRow[]; gstRate?: number }) {
   const [cat, setCat] = useState<string>("all");
   const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<Partial<Item> | null>(null);
@@ -300,6 +300,12 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
               <select name="station" defaultValue={editing?.station ?? ""}><option value="">— same as its category —</option>{stations.map((s) => <option key={s} value={s}>{s}</option>)}</select>
             </Field>
           )}
+          {/* 0146: the dish's own GST rate (a packaged drink at 18%, say) and its HSN / SAC for the tax invoice; left as they are,
+              the property's rate and restaurant service (SAC 996331) */}
+          <div className="grid grid-cols-2 gap-3" data-dish-tax>
+            <Field label="GST"><select name="gst_rate" defaultValue={editing?.gst_rate == null ? "" : String(Number(editing.gst_rate))}><option value="">As the property ({gstRate}%)</option>{[0, 5, 12, 18, 28, 40].map((r) => <option key={r} value={r}>{r === 0 ? "0% — no GST" : `${r}%`}</option>)}</select></Field>
+            <Field label="HSN / SAC" hint="Packaged goods only"><input name="hsn" inputMode="numeric" maxLength={8} pattern="[0-9]{4,8}" className="num" placeholder="996331" defaultValue={editing?.hsn ?? ""} /></Field>
+          </div>
           <Field label="Description"><textarea name="description" rows={2} defaultValue={editing?.description ?? ""} /></Field>
           <div className="space-y-1.5"><label>Photo</label>
             {editing && <DishPhotoPicker key={editing.id ?? "new"} name={dishName} category={catName(dishCat)} value={photo} onChange={setPhoto} autoPick={!editing.id || !editing.image_url} />}

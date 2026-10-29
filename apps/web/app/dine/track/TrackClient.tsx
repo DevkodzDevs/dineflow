@@ -6,6 +6,7 @@ import { ChevronLeft, Search, Phone } from "lucide-react";
 import { Button, Field, Pill, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { track } from "../actions";
+import { reach } from "@/lib/reach";
 
 const STEPS = ["new", "accepted", "ready", "picked_up"];
 export function TrackClient() {
@@ -22,7 +23,7 @@ export function TrackClient() {
           <Field label="Reference"><input value={f.ref} onChange={(e) => setF({ ...f, ref: e.target.value })} placeholder="123456 or a booking number" className="num" /></Field>
           <Field label="Phone"><input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} className="num" /></Field>
           <Button className="w-full" loading={pending} disabled={!f.ref || !f.phone}
-            onClick={() => start(async () => { const x = await track(f.ref.trim(), f.phone.trim()) as { error?: string; result?: Record<string, unknown> | null }; if (x.error) toast(x.error, "err"); else if (!x.result) toast("Nothing found with that reference and number", "err"); else setRes(x.result); })}>
+            onClick={() => start(async () => { const x = await reach(() => track(f.ref.trim(), f.phone.trim())) as { error?: string; result?: Record<string, unknown> | null }; if (x.error) toast(x.error, "err"); else if (!x.result) toast("Nothing found with that reference and number", "err"); else setRes(x.result); })}>
             <Search size={16} /> Find it
           </Button>
         </div>

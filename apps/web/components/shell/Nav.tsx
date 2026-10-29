@@ -18,16 +18,21 @@ type NavItem = Section & { badge?: number; hint?: string };
 
 /** One titled block of the menu. Declared here, not inside Sidebar: a component created during
  *  render is a new type every time, which unmounts and rebuilds the whole menu on each pass. */
+/* Every menu link is prefetch={false} (2026-10-29, measured): Next prefetched each link on screen the moment a page
+   loaded — ~18 requests at once, each a server render and database reads, and for these per-request screens they
+   fetch nothing the tap can use (see the loading.tsx note). IntentPrefetch takes the real prefetch: a finger touching
+   a link, a mouse resting on one, and the warm-up of the main screens once the page is idle. */
 function Group({ title, items, path, className }: { title?: string; items: NavItem[]; path: string; className?: string }) {
   if (!items.length) return null;
   return (
-    /* .nav-group: a hairline under every group but the last (globals.css, the sidebar block) */
+    /* .nav-group under its .nav-head: the heading carries the group's dividing line, running to the right (globals.css,
+       the sidebar block); on the icon looks the heading is hidden and a hairline under the group says where it ends */
     <div className={cn("nav-group", className)}>
-      {title && <div className="px-3 pb-2 font-display text-[12px] tracking-[.12em] uppercase text-white/35 rail-hide">{title}</div>}
+      {title && <div className="nav-head rail-hide" data-nav-head><span className="min-w-0 truncate">{title}</span></div>}
       {items.map(({ key, href, label, Icon, badge, hint }) => {
         const active = isOn(path, href);
         return (
-          <Link key={key} href={href} title={hint ?? label} data-active={active ? "true" : undefined} data-help={key === "help" ? "" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] [@media(pointer:coarse)]:h-11 rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
+          <Link prefetch={false} key={key} href={href} title={hint ?? label} data-active={active ? "true" : undefined} data-help={key === "help" ? "" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] [@media(pointer:coarse)]:h-11 rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
             {active && <span className="absolute inset-0 rounded-[10px] bg-white/[.12] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/.12)]" />}
             {active && <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-[var(--color-tint)] shadow-[0_0_14px_color-mix(in_srgb,var(--color-tint)_80%,transparent)]" />}
             <span className="relative shrink-0"><Icon size={17} strokeWidth={active ? 2.2 : 1.8} />{badge ? <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-red)] ring-2 ring-[#121216]" aria-hidden /> : null}</span>
@@ -148,22 +153,24 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
         className="rail-only mb-4 h-11 w-11 shrink-0 rounded-xl grid place-items-center text-white/75 bg-white/[.06] hover:bg-white/10 hover:text-white transition">
         {open ? <X size={20} /> : <Menu size={20} />}
       </button>
-      <Link href={myDayFor(role) ? "/home" : "/dashboard"} className="px-2 flex items-center gap-2.5 min-w-0 [@media(pointer:coarse)]:min-h-11">
+      <Link prefetch={false} href={myDayFor(role) ? "/home" : "/dashboard"} className="px-2 flex items-center gap-2.5 min-w-0 [@media(pointer:coarse)]:min-h-11">
         {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 object-contain" /> : <span className="flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px] shrink-0"><span className="flip-face">{restaurant.slice(0, 1)}</span></span>}
         <div className="min-w-0"><div className="font-display text-[17px] leading-tight text-white tracking-wide rail-hide truncate">{restaurant}</div><div className="rail-hide text-[11px] text-white/45 mt-0.5 truncate">{PROPERTY_LABEL[type]}</div></div>
       </Link>
       <nav ref={navRef} className="mt-7 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] -mx-1 px-1 sidebar-scroll">
         {/* staff: My day first (their landing); the owner and managers: the control room */}
-        {groups.map((g, i) => <Group key={g.title ?? `top-${i}`} title={g.title ?? undefined} items={g.items} path={path} />)}
+        {/* every group under a heading (2026-10-28, the owner: "proper headings and proper separation") — the first group
+            (My day / Control room, Tomorrow, Scan) and the last had none */}
+        {groups.map((g, i) => <Group key={g.title ?? `top-${i}`} title={g.title ?? (i === 0 ? "Overview" : undefined)} items={g.items} path={path} />)}
         {/* the last group: Settings, the person's own settings, Feedback & complaints (and the owner's Help & support), straight after the rest and scrolling with them */}
-        <Group items={end} path={path} />
+        <Group title="Account & help" items={end} path={path} />
       </nav>
       {/* the foot: who you are, and the way out — kept short (owner, 2026-10-13). Settings and Help & support
           are the menu's last group above; installing is the top bar's download button. */}
       <div className="mt-auto pt-3">
         {/* only when the owner has turned on a way to punch from one's own phone (fingerprint or selfie) */}
-        {attend && <Link href="/attendance" title="My attendance" className={cn("mb-2 flex items-center gap-3 h-[42px] [@media(pointer:coarse)]:h-11 px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/attendance") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}><Fingerprint size={17} className="shrink-0" /><span className="rail-hide">My attendance</span></Link>}
-        {isAdmin && <Link href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
+        {attend && <Link prefetch={false} href="/attendance" title="My attendance" className={cn("mb-2 flex items-center gap-3 h-[42px] [@media(pointer:coarse)]:h-11 px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/attendance") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}><Fingerprint size={17} className="shrink-0" /><span className="rail-hide">My attendance</span></Link>}
+        {isAdmin && <Link prefetch={false} href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
         {/* the fold (2026-10-23): the open looks fold to icons, the icon looks unfold to the one they came from; kept on this
             device. From 768 up (.sb-fold), at every look — a phone has the bottom bar. */}
         {/* beside it, Menu style: the six looks in a sheet. A row on the open looks, a column on the icon looks (.sb-tools) */}
@@ -183,7 +190,7 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
             leaves once it collapses, so the avatar alone still sits square inside it */}
         <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[.04] p-[7px]">
           {accountHref
-            ? <Link href={accountHref} title={`${name} · settings`} className="flex items-center gap-2.5 min-w-0 flex-1 rounded-xl transition hover:brightness-125 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11">{who}</Link>
+            ? <Link prefetch={false} href={accountHref} title={`${name} · settings`} className="flex items-center gap-2.5 min-w-0 flex-1 rounded-xl transition hover:brightness-125 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11">{who}</Link>
             : <span className="flex items-center gap-2.5 min-w-0 flex-1">{who}</span>}
           <form action="/logout" method="post" className="rail-hide shrink-0">
             <button title="Sign out" aria-label="Sign out" className="h-8 w-8 grid place-items-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white transition"><LogOut size={15} /></button>
@@ -296,7 +303,7 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
      a docked bar in a green circle, labels under every icon). */
   const tab = "group/tab relative flex-1 min-w-0 h-full grid place-items-center text-[var(--color-label)]";
   const slot = ({ key, href, label, Icon }: Section) => { const active = isOn(path, href); return (
-    <Link key={key} href={href} aria-current={active ? "page" : undefined} aria-label={label} title={label} className={tab} data-tab={key}>
+    <Link prefetch={false} key={key} href={href} aria-current={active ? "page" : undefined} aria-label={label} title={label} className={tab} data-tab={key}>
       <TabIcon active={active} Icon={Icon} n={badge(key)} />
     </Link>); };
   const moreOn = open || onMore;
@@ -347,7 +354,7 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
                     );
                   }
                   return (
-                    <Link key={key} href={href} aria-current={active ? "page" : undefined}
+                    <Link prefetch={false} key={key} href={href} aria-current={active ? "page" : undefined}
                       className={cn("min-w-0 min-h-[76px] rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center text-[12px] font-semibold leading-tight transition-colors",
                         active ? "bg-[color-mix(in_srgb,var(--color-tint)_14%,transparent)] text-[var(--color-tint)] ring-1 ring-[color-mix(in_srgb,var(--color-tint)_40%,transparent)]" : "bg-[var(--color-fill)] text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}>
                       <span className="relative"><Icon size={20} strokeWidth={active ? 2.3 : 1.9} />{count(badge(key))}</span><span className="line-clamp-2">{label}</span>
@@ -370,16 +377,16 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
                 </>
               );
               return accountHref
-                ? <Link href={accountHref} className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors">{who}<span className="text-xs text-[var(--color-label-2)] shrink-0">Settings</span></Link>
+                ? <Link prefetch={false} href={accountHref} className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors">{who}<span className="text-xs text-[var(--color-label-2)] shrink-0">Settings</span></Link>
                 : <div className="flex items-center gap-3 rounded-2xl p-2.5 bg-[var(--color-fill)]">{who}</div>;
             })()}
             {foot.map(({ key, href, label, Icon }) => (
-              <Link key={key} href={href} aria-current={isOn(path, href) ? "page" : undefined} className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors" data-help={key === "help" ? "" : undefined} data-end={key}>
+              <Link prefetch={false} key={key} href={href} aria-current={isOn(path, href) ? "page" : undefined} className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors" data-help={key === "help" ? "" : undefined} data-end={key}>
                 <Icon size={17} /> {label}
                 {key === "help" && unread > 0 && <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] font-bold text-[var(--color-red)]"><FlapMini value={unread} say={`${unread} new`} />new</span>}
               </Link>))}
-            {attend && <Link href="/attendance" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><Fingerprint size={17} /> My attendance</Link>}
-            {isAdmin && <Link href="/admin" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><ShieldCheck size={17} /> Master control</Link>}
+            {attend && <Link prefetch={false} href="/attendance" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><Fingerprint size={17} /> My attendance</Link>}
+            {isAdmin && <Link prefetch={false} href="/admin" className="flex items-center gap-3 h-12 px-3.5 rounded-2xl bg-[var(--color-fill)] text-[14px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors"><ShieldCheck size={17} /> Master control</Link>}
             <form action="/logout" method="post">
               <button className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] text-[15px] font-semibold hover:brightness-110 transition"><LogOut size={17} /> Sign out</button>
             </form>

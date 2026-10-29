@@ -10,12 +10,14 @@ const bump = () => ["/billing", "/orders", "/reports", "/dashboard"].forEach((p)
  *  `guest` is who the bill is for and what they bring to it: a phone (which makes them a customer),
  *  points to redeem, a coupon code. All optional; the server checks every one of them. */
 export async function generateBill(orderId: string, discountPct: number, discountAmount: number, promiseKept?: boolean | null,
-  guest?: { phone?: string; name?: string; redeem?: number; coupon?: string }) {
+  guest?: { phone?: string; name?: string; redeem?: number; coupon?: string }, serviceCharge?: boolean) {
   const s = await createClient();
   const { data, error } = await s.rpc("generate_bill", {
     p_order_id: orderId, p_discount_pct: discountPct, p_discount_amount: discountAmount, p_promise_kept: promiseKept ?? null,
     p_customer_phone: guest?.phone?.trim() || null, p_customer_name: guest?.name?.trim() || null,
     p_redeem_points: Math.max(0, Number(guest?.redeem ?? 0)), p_coupon: guest?.coupon?.trim() || null,
+    // 0146: the cashier's service-charge switch; left out, the server's default (on at the till, off for an online order)
+    ...(serviceCharge === undefined ? {} : { p_service_charge: serviceCharge }),
   });
   if (error) return { error: error.message }; bump(); revalidatePath("/customers"); return { ok: true, billId: data as string };
 }
@@ -36,6 +38,15 @@ export async function checkCoupon(code: string, subtotal: number) {
 export async function voidBill(billId: string, reason: string) {
   const s = await createClient(); const { error } = await s.rpc("void_bill", { p_bill_id: billId, p_reason: reason });
   if (error) return { error: error.message }; bump(); revalidatePath("/controls"); revalidatePath("/audit"); return { ok: true };
+}
+/** A refund on a paid bill (0146 issue_credit_note): a numbered credit note, its GST in proportion, cash refunds counted
+ *  out of the drawer, a line in the audit trail. The bill itself is never changed. */
+export async function issueCreditNote(billId: string, amount: number, reason: string, method: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("issue_credit_note", { p_bill_id: billId, p_amount: amount, p_reason: reason, p_method: method });
+  if (error) return { error: error.message };
+  bump(); revalidatePath("/controls"); revalidatePath("/audit"); revalidatePath("/tax"); revalidatePath("/invoices");
+  return { ok: true as const, note: data as { id: string; cn_no: number; amount: number; cgst: number; sgst: number } };
 }
 export async function settleBill(billId: string, payments: unknown) {
   const parsed = z.array(paymentSchema).min(1).safeParse(payments);

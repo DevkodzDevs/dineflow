@@ -72,8 +72,8 @@ a reading pane beside the list; on a phone that pane becomes a sheet.
   + Z + check) and upper-cased; a failed save says so instead of closing the form.
 - Not done (see the money review in the 2026-10-13 report): staff can still write `order_items` prices and
   quantities, `orders.status`, `bookings.rate`, `booking_charges`, `customers.points` and `shift_closes`
-  directly; aggregator orders (section 9(5)) are billed with GST like any other; one GST rate for every dish
-  (no tax class for liquor); the service charge is automatic with no per-bill opt-out; no credit notes.
+  directly. *(Done 2026-10-29, 0146: 9(5), a rate per dish, the service-charge switch, credit notes — below; and 0150: the
+  direct writes are fenced — "Money changes only through the till", below.)*
 - **Scan to pay is one card, and its QR follows the payment method** (`[data-scan-pay]`, `data-mode`,
   2026-10-13). With UPI among the rows and a UPI ID set (Settings → Payments, `restaurants.upi_vpa` /
   `upi_payee`), the QR is a `upi://pay` request for exactly the UPI amount — the whole bill, or the
@@ -166,3 +166,53 @@ pnpm --filter @dineflow/web test
 - **Invoices: Cards · Table (2026-10-25, the app's ViewSwitch, `[data-view-switch=invoices]`).** The 620px table scrolled a
   phone sideways. Cards below md (`[data-invoice-card]`): the number, kind and date, the guest, the total and status, what
   is still due in red. The detail pane beside the list from xl is unchanged. `df-view:invoices`.
+## Stage 1 money (2026-10-29, 0146 / 0147 — the owner: "the money errors first, carefully")
+
+- **One tax sum: `bill_tax(groups, base, collect)`.** The dishes' value per rate (`[{rate, amount}]`) and everything taxed
+  (the dishes after the discount + service charge + on-time fee + packing & delivery) → the base shared out by value, the
+  largest rate takes the paise, each part taxed at its rate (half CGST, half SGST). `generate_bill` and `dine_order` (the
+  guest's quote) both call it; `@dineflow/shared` `billTax` / `computeBill` is the same sum line for line for the preview,
+  and `r2` now rounds as Postgres does (half away from zero — 2.475 → 2.48; the plain float sum gave 2.47). With one rate
+  it is exactly the old sum (400 bases × 4 rates, 0 differences). `lib/billing.test.ts` (8) is pinned to the database's
+  own answers.
+- **A GST rate and an HSN per dish.** `menu_items.gst_rate` (0, 5, 12, 18, 28, 40; null = the property's) and `hsn`
+  (4–8 digits; null = SAC 996331), set in the dish editor (`[data-dish-tax]`). `order_item_tax` (BEFORE INSERT on
+  order_items) copies them onto the line from the dish, whoever writes the line, and keeps them — a hand-set rate is
+  ignored, a menu change never touches an order already taken. `bills.tax_lines` (`[{rate, base, cgst, sgst}]`) is the
+  tax per rate as charged; the receipt, the thermal and the browser print show a per-rate table when there are several.
+  The tax invoice puts each dish at its own rate and code; the service charge, fee and packing become one line a rate
+  ("Service charge & charges") when the rates differ, and the lines still equal the bill to the paisa.
+- **Not IGST.** A restaurant's or hotel's place of supply is the property (IGST Act s.12(2)/(3)), so its bill is CGST + SGST
+  whoever the buyer is. Building IGST (the plan's item 3) would have made wrong invoices; only HSN/SAC was built.
+- **A QR / website order's money reaches the bill** (the owner's T3: quoted ₹132 with 10% off, billed ₹147).
+  `accept_online_order_for` adds the online order's `raw.discount` and `raw.fee` to `orders.discount_amount` /
+  `extra_charges` (website channel only — an aggregator's figures are its own), and `offer_title`; a second round adds
+  to them. `generate_bill` takes `discount_amount` off with the rest and charges `extra_charges` as `bills.charges`
+  ("Packing & delivery", taxed with the food). The bill page shows them (`[data-online-offer]`, `[data-packing]`).
+- **Section 9(5).** An order through a `swiggy` / `zomato` / `ondc` channel: no GST on the bill (`gst_by_operator`,
+  every rate 0), the receipt says the operator pays it (`[data-operator-note]`), the bill page says so (`[data-gst-operator]`).
+- **The service charge is a switch** (`[data-service-charge]`, `generate_bill(p_service_charge)`, `bills.service_charge_on`):
+  on by default at the till as before, off by default for an order that came from a QR, the website or an aggregator —
+  that guest never saw it. "Optional — only if the guest agrees": a service charge cannot be compulsory (CCPA, 2022).
+- **Credit notes** (`credit_notes`, `issue_credit_note(bill, amount, reason, method)`): only on a paid bill (an unpaid one
+  is voided); owner, manager, supervisor or cashier; a reason; numbered CN-0001…; the GST in proportion (the last note on
+  a bill takes exactly what is left, so the notes' tax = the bill's); cash goes out of the drawer as a `cash_movements`
+  'out' / 'refund' row (the shift's expected cash follows); `bill.refund` in the audit trail; the bill is never changed.
+  The paid bill lists them (`[data-credit-notes]`, each printable — `creditNoteHtml`) and offers *Refund / credit note*
+  (`[data-refund]`, gone when nothing is left) → `RefundSheet` (amount, Cash/UPI/Card/Other, reasons). `close_day` keeps
+  the day's `refunds` beside the sales. Loyalty points earned on a refunded bill are not taken back (yet); Tally's export
+  does not carry credit notes (yet).
+- Probe: `pw/money151.mjs` (11). Older bills have no `tax_lines` and print as before.
+## Money changes only through the till (2026-10-29, 0150 — item 7)
+
+A fence trigger (`money_fence`) on order_items, orders, bookings, booking_charges, customers and shift_closes looks at who
+is writing: `_api_write()` is `current_user in ('authenticated','anon')` — true only for a write straight from the API; a
+security-definer RPC runs as its owner and the service role as itself, so every RPC is untouched. Refused from the API, each
+with a sentence that says where to do it: a line's price, quantity, dish, options, a new or deleted line; an order's status,
+`discount_amount`, `extra_charges`, promise, number, channel, a new or deleted order; a booking's rate, a new or deleted
+booking; editing or deleting a room charge; customers' points, visits and spend (a new customer starts at 0); any shift
+close. Still allowed: a line's **status** (the kitchen, the waiter's Serve, the offline queue, the mobile app), an order's notes
+and customer, a customer's name, notes and tags, the front desk's cancel, and **adding** a room charge (its form inserts it) —
+which now writes `charge.add` / `discount.give` to the audit trail (`audit_booking_charges`). Dry-run (dry150, 19 cases) and
+from the screens (`fence150.mjs`): the kitchen's Start cooking → Ready → Served, the folio's charge with its audit line.
+**A new direct write to these tables from the browser will be refused — add it as an RPC.**

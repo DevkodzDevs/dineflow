@@ -5,6 +5,7 @@ import { Lock, Eye, MousePointerClick, ShieldCheck } from "lucide-react";
 import { Sheet, Button } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { releaseDisplay, clearStaleLock } from "@/app/(app)/lock/actions";
+import { reach } from "@/lib/reach";
 
 export type ShownLock = { key: string; mode: "view" | "work"; label: string; href: string; allowed: string[] };
 const under = (path: string, p: string) => path === p || path.startsWith(p + "/");
@@ -62,7 +63,7 @@ export function DisplayLock({ lock }: { lock: ShownLock }) {
 
   const unlock = () => start(async () => {
     setErr(null);
-    const r = await releaseDisplay(login, password);
+    const r = await reach(() => releaseDisplay(login, password));
     if ("error" in r && r.error) { setErr(r.error); return; }
     setPassword(""); setOpen(false);
     window.location.reload(); // the layout draws the menu again

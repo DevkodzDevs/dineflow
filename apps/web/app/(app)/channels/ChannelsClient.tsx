@@ -255,7 +255,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
       </Sheet>
       <Sheet open={!!editOta} onClose={() => setEditOta(null)} title={editOta?.id ? editOta.label ?? "" : "Add OTA channel"}>
-        <form className="space-y-4" action={(fd) => start(async () => { const r = await saveOta(fd); if ("error" in r) setErr(r.error!); else setEditOta(null); })}>
+        <form className="space-y-4" action={(fd) => start(async () => { const r = await saveOta(fd); if ("error" in r) setErr(r.error!); else { setEditOta(null); if (String(fd.get("import_url") ?? "").trim() && r.id) void syncNow(r.id); } })}>
           {editOta?.id && <input type="hidden" name="id" value={editOta.id} />}
           <div className="grid grid-cols-2 gap-3"><Field label="OTA"><select name="kind" defaultValue={editOta?.kind ?? "booking_com"}><option value="booking_com">Booking.com</option><option value="makemytrip">MakeMyTrip / Goibibo</option><option value="airbnb">Airbnb</option><option value="agoda">Agoda</option><option value="expedia">Expedia</option><option value="ical">Any iCal calendar</option><option value="other">Other</option></select></Field>
             <Field label="Label"><input name="label" defaultValue={editOta?.label} required placeholder="Booking.com — Deluxe" /></Field>

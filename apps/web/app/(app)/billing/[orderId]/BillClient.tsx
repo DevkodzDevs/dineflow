@@ -3,10 +3,11 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink, X } from "lucide-react";
+import { Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink, X, Package, Undo2 } from "lucide-react";
 import { Button, Field, Card, cn, Pill } from "@/components/ui";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
-import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod } from "@dineflow/shared";
+import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod, type TaxLine } from "@dineflow/shared";
+import { RefundSheet } from "./RefundSheet";
 import { generateBill, settleBill, voidBill, lookupCustomer, checkCoupon, type Customer, type Coupon } from "../actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
@@ -21,10 +22,16 @@ import { postOrderToRoom } from "../../frontdesk/actions";
 import { BedDouble, FileText } from "lucide-react";
 import { diningInvoice } from "../../invoices/actions";
 
-type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; notes?: string | null; addons?: { name: string; price: number }[] | null; components?: { name: string; qty: number }[] | null };
-type Order = { id: string; order_no: number; status: string; type: string; customer_name: string | null; customer_phone?: string | null; created_at: string; promised_at?: string | null; served_at?: string | null; promise_minutes?: number | null; promise_pct?: number | null; token_no?: number | null; delivery_address?: string | null; dining_tables: { name: string } | null; order_items: Item[] };
-type Bill = { id: string; bill_no: number; promise_fee?: number; promise_waived?: number; promise_kept?: boolean | null; points_redeemed?: number; points_earned?: number; coupon_code?: string | null; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; payments: { method: string; amount: number; ref: string | null }[] } | null;
+type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; gst_rate?: number | null; status: string; notes?: string | null; addons?: { name: string; price: number }[] | null; components?: { name: string; qty: number }[] | null };
+type Order = { id: string; order_no: number; status: string; type: string; customer_name: string | null; customer_phone?: string | null; created_at: string; promised_at?: string | null; served_at?: string | null; promise_minutes?: number | null; promise_pct?: number | null; token_no?: number | null; delivery_address?: string | null; dining_tables: { name: string } | null; order_items: Item[];
+  /* 0146: what an online order brought — its offer's money off, packing & delivery — and the channel it came through */
+  discount_amount?: number | null; extra_charges?: number | null; offer_title?: string | null; channel_id?: string | null; order_channels?: { kind: string } | null };
+type CreditNote = { id: string; cn_no: number; amount: number; taxable: number; cgst: number; sgst: number; refund_method: string; reason: string; created_at: string };
+type Bill = { id: string; bill_no: number; promise_fee?: number; promise_waived?: number; promise_kept?: boolean | null; points_redeemed?: number; points_earned?: number; coupon_code?: string | null; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; payments: { method: string; amount: number; ref: string | null }[];
+  charges?: number | null; service_charge_on?: boolean | null; tax_lines?: TaxLine[] | null; gst_by_operator?: boolean | null; credit_notes?: CreditNote[] } | null;
 type Rest = { name: string; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; legal_name?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; fssai_no?: string | null; loyalty_enabled?: boolean; loyalty_point_value?: number; loyalty_min_redeem?: number; upi_vpa?: string | null; upi_payee?: string | null };
+
+const OPERATOR_NOTE = "GST on this supply is paid by the e-commerce operator under section 9(5) of the CGST Act.";
 
 export function BillClient({ order, bill, restaurant, cashier, inHouse = [], billedBy = null }: { order: Order; bill: Bill; restaurant: Rest; cashier: string; inHouse?: { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null }[] ; billedBy?: string | null }) {
   const [roomFor, setRoomFor] = useState("");
@@ -54,7 +61,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
   // what the paper says about the business: the registration it files under, and the words the rules require
   const printRest = { name: restaurant.name, address: restaurant.address, phone: restaurant.phone, gstin: restaurant.gstin, fssai: restaurant.fssai_no ?? null, legalName: restaurant.legal_name ?? null, gstScheme: restaurant.gst_scheme ?? null, stateCode: restaurant.gst_state_code ?? null };
   const receiptData = (): ReceiptData => ({
-    restaurant: printRest, title: billTitle(restaurant.gst_scheme, restaurant.gstin, bill?.status === "paid"), sac: SAC.restaurant, gstRate: taxRate, no: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL — DRAFT",
+    restaurant: printRest, title: billTitle(restaurant.gst_scheme, restaurant.gstin, bill?.status === "paid"), sac: SAC.restaurant, gstRate: printRate, no: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL — DRAFT",
     when: new Date(bill?.created_at ?? Date.now()).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }),
     where: order.dining_tables?.name ? `Table ${order.dining_tables.name}` : order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery",
     cashier,
@@ -62,6 +69,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
     subtotal: Number(totals.subtotal ?? bill?.subtotal ?? 0), discount: Number(totals.discount ?? bill?.discount_amount ?? 0),
     service: Number(totals.serviceCharge ?? bill?.service_charge ?? 0),
     cgst: Number(totals.cgst ?? bill?.cgst ?? 0), sgst: Number(totals.sgst ?? bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0),
+    charges: Number(totals.charges ?? 0), taxLines: shownTax, operatorNote: eco ? OPERATOR_NOTE : undefined,
     total: Number(totals.total ?? bill?.total ?? 0),
     promiseFee: Number(bill?.promise_fee ?? preview.promiseFee ?? 0),
     promiseWaived: Number(bill?.promise_waived ?? preview.promiseWaived ?? 0),
@@ -72,11 +80,19 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
     loyalty: bill && Number(bill.points_earned ?? 0) > 0 ? `You earned ${Math.round(Number(bill.points_earned))} points on this visit` : undefined,
     offline: !online,
   });
-  const billData = () => ({ restaurant: printRest, gstRate: taxRate, sac: SAC.restaurant, billNo: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL", when: new Date(bill?.created_at ?? Date.now()).toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? `${order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"}${order.token_no ? ` · Token ${order.token_no}` : ""}${order.delivery_address ? ` · ${order.delivery_address}` : ""}`, cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null, extras: lineExtras(i) })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), service: Number(bill?.service_charge ?? 0), promiseFee: Number(bill?.promise_fee ?? 0), promiseWaived: Number(bill?.promise_waived ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng, loyalty: bill && Number(bill.points_earned ?? 0) > 0 ? `You earned ${Math.round(Number(bill.points_earned))} points on this visit` : undefined });
+  const billData = () => ({ restaurant: printRest, gstRate: printRate, sac: SAC.restaurant, charges: Number(bill?.charges ?? 0), taxLines: shownTax, operatorNote: eco ? OPERATOR_NOTE : undefined, billNo: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL", when: new Date(bill?.created_at ?? Date.now()).toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? `${order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"}${order.token_no ? ` · Token ${order.token_no}` : ""}${order.delivery_address ? ` · ${order.delivery_address}` : ""}`, cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null, extras: lineExtras(i) })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), service: Number(bill?.service_charge ?? 0), promiseFee: Number(bill?.promise_fee ?? 0), promiseWaived: Number(bill?.promise_waived ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng, loyalty: bill && Number(bill.points_earned ?? 0) > 0 ? `You earned ${Math.round(Number(bill.points_earned))} points on this visit` : undefined });
   const router = useRouter(); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   /* A composition dealer or an unregistered business may not collect tax, so the preview must not
      show any — the bill the server raises will not have it either. */
   const taxRate = gstCollectable(restaurant.gst_scheme, restaurant.gstin) ? Number(restaurant.gst_rate) : 0;
+  /* 0146. An aggregator or ONDC pays the GST on its orders (section 9(5)): none on this bill. An online order's offer and
+     its packing / delivery were quoted to the guest and come with the ticket. The service charge is a switch: on at the
+     till as before, off for an order placed online — that guest never saw it. */
+  const eco = ["swiggy", "zomato", "ondc"].includes(order.order_channels?.kind ?? "");
+  const collect = taxRate > 0 && !eco;
+  const scPct = Number(restaurant.service_charge_pct);
+  const [scOn, setScOn] = useState(!order.channel_id);
+  const onlineOff = Number(order.discount_amount ?? 0), packing = Number(order.extra_charges ?? 0);
   const [discPct, setDiscPct] = useState(0); const [discAmt, setDiscAmt] = useState(0);
   /* Who the bill is for. A phone makes them a customer — visits, spend and points build up from
      here — and what they already hold can come off this bill. A coupon code is checked by the
@@ -112,8 +128,20 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
   const lateBy = promisedAt && servedAt ? Math.round((servedAt.getTime() - promisedAt.getTime()) / 60000) : null;
   const hhmm = (d: Date) => d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
   const live = order.order_items.filter((i) => i.status !== "cancelled");
-  const preview = computeBill({ lines: live.map((i) => ({ price: Number(i.price_snapshot), qty: i.qty })), discountPct: discPct + (coupon?.pct ?? 0), discountAmount: discAmt + (coupon?.amount ?? 0) + redeemAmt, serviceChargePct: Number(restaurant.service_charge_pct), gstRate: taxRate, promiseKept: kept, promisePct: Number(order.promise_pct ?? 0) });
-  const totals = bill ? { subtotal: Number(bill.subtotal), discount: Number(bill.discount_amount), serviceCharge: Number(bill.service_charge), cgst: Number(bill.cgst), sgst: Number(bill.sgst), roundOff: Number(bill.round_off), total: Number(bill.total) } : preview;
+  const preview = computeBill({ lines: live.map((i) => ({ price: Number(i.price_snapshot), qty: i.qty, gstRate: i.gst_rate ?? null })), discountPct: discPct + (coupon?.pct ?? 0), discountAmount: discAmt + (coupon?.amount ?? 0) + redeemAmt + onlineOff, serviceChargePct: scPct, serviceCharge: scOn, gstRate: Number(restaurant.gst_rate), collectGst: collect, charges: packing, promiseKept: kept, promisePct: Number(order.promise_pct ?? 0) });
+  const totals = bill ? { subtotal: Number(bill.subtotal), discount: Number(bill.discount_amount), serviceCharge: Number(bill.service_charge), cgst: Number(bill.cgst), sgst: Number(bill.sgst), roundOff: Number(bill.round_off), total: Number(bill.total), charges: Number(bill.charges ?? 0) } : preview;
+  // the tax per rate: as the bill recorded it, else as the preview makes it; one rate prints "CGST @ 2.5%", several print a table
+  const shownTax: TaxLine[] = bill ? (bill.tax_lines ?? []) : preview.taxLines;
+  const printRate = bill && !bill.tax_lines ? taxRate : shownTax.length === 1 ? shownTax[0].rate : shownTax.length ? undefined : taxRate;
+  const dishRates = [...new Set(live.map((i) => (i.gst_rate ?? Number(restaurant.gst_rate))))].sort((a, b) => a - b);
+  // credit notes on a paid bill, and what is still left to give back
+  const notes = bill?.credit_notes ?? [];
+  const refundLeft = bill ? Math.max(0, Math.round((Number(bill.total) - notes.reduce((t, n) => t + Number(n.amount), 0)) * 100) / 100) : 0;
+  const [refunding, setRefunding] = useState(false);
+  const printNote = async (n: CreditNote) => {
+    const [{ creditNoteHtml }, { printBrowser }] = await Promise.all([import("@/lib/print/html"), import("@/lib/print/transport")]);
+    printBrowser(creditNoteHtml({ restaurant: printRest, cnNo: `CN-${String(n.cn_no).padStart(4, "0")}`, when: new Date(n.created_at).toLocaleString("en-IN"), billNo: `BILL-${String(bill!.bill_no).padStart(4, "0")}`, billWhen: new Date(bill!.created_at).toLocaleDateString("en-IN"), reason: n.reason, amount: Number(n.amount), taxable: Number(n.taxable), cgst: Number(n.cgst), sgst: Number(n.sgst), method: n.refund_method }), 80);
+  };
   const [pays, setPays] = useState<{ method: PaymentMethod; amount: number; ref: string }[]>([{ method: "upi", amount: totals.total, ref: "" }]);
   const paid = pays.reduce((t, p) => t + Number(p.amount || 0), 0);
   /* The scan-to-pay QR: a UPI request for exactly what is being paid by UPI on this screen — the whole
@@ -139,6 +167,19 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
           <Card>
             <h3 className="text-xl">Discount</h3>
             <div className="grid grid-cols-2 gap-3 mt-3"><Field label="Percent"><input type="number" min={0} max={100} value={discPct || ""} onChange={(e) => setDiscPct(Number(e.target.value))} className="num" placeholder="0" /></Field><Field label="Flat (₹)"><input type="number" min={0} value={discAmt || ""} onChange={(e) => setDiscAmt(Number(e.target.value))} className="num" placeholder="0" /></Field></div>
+            {(onlineOff > 0 || packing > 0) && (
+              <div className="mt-3 space-y-1.5" data-online-money>
+                {onlineOff > 0 && <div className="flex items-center gap-2.5 rounded-xl bg-[var(--color-green-2)] px-3 py-2 text-sm" data-online-offer><TicketIcon size={15} className="text-[var(--color-tint)] shrink-0" /><span className="flex-1 min-w-0 truncate">Ordered online{order.offer_title ? ` · ${order.offer_title}` : ""}</span><span className="num font-semibold shrink-0">−{formatINR(onlineOff)}</span></div>}
+                {packing > 0 && <div className="flex items-center gap-2.5 rounded-xl bg-[var(--color-fill)] px-3 py-2 text-sm" data-packing><Package size={15} className="text-steel shrink-0" /><span className="flex-1 min-w-0">Packing &amp; delivery</span><span className="num font-semibold shrink-0">{formatINR(packing)}</span></div>}
+              </div>
+            )}
+            {scPct > 0 && !eco && (
+              <div className="mt-3 flex items-center gap-3 rounded-xl bg-[var(--color-fill)] px-3 py-2.5 min-h-11" data-service-charge>
+                <span className="flex-1 min-w-0 leading-tight"><span className="block text-sm font-semibold">Service charge {scPct}%</span><span className="block text-xs text-steel">Optional — only if the guest agrees</span></span>
+                <button type="button" role="switch" aria-checked={scOn} data-on={scOn ? "true" : "false"} className="switch shrink-0" onClick={() => setScOn((v) => !v)} aria-label={`Service charge ${scPct}%`} />
+              </div>
+            )}
+            {eco && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5" data-gst-operator><b className="capitalize">{order.order_channels?.kind}</b> pays the GST on this order (section 9(5)) — none on this bill.</p>}
             <div className="mt-4 pt-4 border-t border-dashed border-line space-y-3">
               <div className="text-xs font-semibold uppercase tracking-wide text-steel flex items-center gap-1.5"><UserRound size={12} /> Guest</div>
               <div className="grid grid-cols-2 gap-3"><input placeholder="Phone" inputMode="tel" className="num" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} /><input placeholder="Name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} /></div>
@@ -204,10 +245,10 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
                 </button>
               </div>
             )}
-            <p className="text-xs text-steel mt-3">GST {restaurant.gst_rate}% split as CGST + SGST{Number(restaurant.service_charge_pct) > 0 && <>, service charge {restaurant.service_charge_pct}%</>}. Set in Settings.</p>
+            {!eco && <p className="text-xs text-steel mt-3">{dishRates.length > 1 ? <>GST by dish ({dishRates.map((x) => `${x}%`).join(" and ")}), split as CGST + SGST. Set on each dish in Menu.</> : <>GST {dishRates[0] ?? restaurant.gst_rate}% split as CGST + SGST. Set in Settings.</>}</p>}
             {live.some((i) => i.status === "pending" || i.status === "preparing") && <p className="text-xs text-chili mt-2">Some items are still in the kitchen.</p>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
-            <Button size="lg" className="w-full mt-5" data-kbd-primary disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt, kept, { phone: guest.phone, name: guest.name, redeem, coupon: coupon?.code }); if ("error" in r) setErr(r.error!); else setPays([{ method: "upi", amount: 0, ref: "" }]); })}>Generate bill</Button>
+            <Button size="lg" className="w-full mt-5" data-kbd-primary disabled={pending || order.status !== "open"} onClick={() => start(async () => { const r = await generateBill(order.id, discPct, discAmt, kept, { phone: guest.phone, name: guest.name, redeem, coupon: coupon?.code }, scPct > 0 && !eco ? scOn : undefined); if ("error" in r) setErr(r.error!); else setPays([{ method: "upi", amount: 0, ref: "" }]); })}>Generate bill</Button>
             {inHouse.length > 0 && order.status === "open" && (
               <div className="mt-4 pt-4 border-t border-dashed border-line"><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1"><BedDouble size={12} /> Or charge to a room</div>
                 <div className="flex gap-2"><select value={roomFor} onChange={(e) => setRoomFor(e.target.value)}><option value="">In-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
@@ -342,9 +383,23 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
                 {bill.coupon_code && <span className="text-steel">coupon {bill.coupon_code}</span>}
               </p>
             )}
+            {notes.length > 0 && (
+              <ul className="mt-3 space-y-1.5" data-credit-notes>
+                {notes.map((n) => (
+                  <li key={n.id} className="flex items-center gap-2.5 rounded-xl bg-[var(--color-red-2)] pl-3 pr-1 py-1.5 text-sm">
+                    <Undo2 size={14} className="text-[var(--color-red)] shrink-0" />
+                    <span className="flex-1 min-w-0 leading-tight"><span className="block font-semibold num">CN-{String(n.cn_no).padStart(4, "0")} · −{formatINR(Number(n.amount))} <span className="font-normal text-steel uppercase text-xs">{n.refund_method}</span></span><span className="block text-xs text-steel truncate">{n.reason}</span></span>
+                    <button type="button" onClick={() => { void printNote(n).catch((e) => setErr((e as Error).message)); }} className="h-10 w-10 shrink-0 rounded-lg grid place-items-center text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]" aria-label={`Print credit note ${n.cn_no}`} title="Print the credit note"><Printer size={15} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="mt-4 grid grid-cols-2 gap-2"><input placeholder="Customer name (optional)" value={inv.name} onChange={(e) => setInv({ ...inv, name: e.target.value })} /><input placeholder="GSTIN (optional)" className="num uppercase" value={inv.gstin} onChange={(e) => setInv({ ...inv, gstin: e.target.value })} /></div>
             <Button className="w-full mt-2" disabled={pending} onClick={() => start(async () => { const r = await diningInvoice(bill.id, { name: inv.name || order.customer_name || undefined, gstin: inv.gstin }); if ("id" in r) router.push(`/invoices/${r.id}`); else setErr(r.error!); })}><FileText size={16} /> Tax invoice</Button>
-            <div className="flex gap-2 mt-2">{waPhone.length === 10 && payUrl && <a href={waHref(`Thank you for dining at ${restaurant.name}! Your receipt for ${formatINR(Number(bill.total))}: ${payUrl}`)} target="_blank" rel="noreferrer" className="btn btn-outline" aria-label="Send the receipt on WhatsApp" title="Send the receipt on WhatsApp"><MessageCircle size={16} /></a>}<Button variant="outline" className="flex-1" onClick={() => { void printBill(billData()).catch((e) => setErr((e as Error).message)); }}><Printer size={16} /> {hasPrinter ? "Print receipt" : "Print"}</Button><Link href="/orders" className="flex-1"><Button variant="ink" className="w-full">Next order</Button></Link></div></Card>
+            <div className="flex gap-2 mt-2">{waPhone.length === 10 && payUrl && <a href={waHref(`Thank you for dining at ${restaurant.name}! Your receipt for ${formatINR(Number(bill.total))}: ${payUrl}`)} target="_blank" rel="noreferrer" className="btn btn-outline" aria-label="Send the receipt on WhatsApp" title="Send the receipt on WhatsApp"><MessageCircle size={16} /></a>}<Button variant="outline" className="flex-1" onClick={() => { void printBill(billData()).catch((e) => setErr((e as Error).message)); }}><Printer size={16} /> {hasPrinter ? "Print receipt" : "Print"}</Button><Link href="/orders" className="flex-1"><Button variant="ink" className="w-full">Next order</Button></Link></div>
+            {refundLeft > 0 && <button type="button" className="mt-3 text-xs text-steel hover:text-chili w-full min-h-10" disabled={pending} onClick={() => setRefunding(true)} data-refund>Refund / credit note</button>}
+            <RefundSheet open={refunding} onClose={() => setRefunding(false)} billId={bill.id} billNo={bill.bill_no} left={refundLeft} method={bill.payments[0]?.method ?? "cash"} />
+          </Card>
         )}
       </div>
 

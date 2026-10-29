@@ -8,22 +8,23 @@ import { formatINR } from "@/lib/format";
 import { DishImage } from "@/components/menu/DishImage";
 import { slots as fetchSlots, reserve, placeOrder, trackToken } from "../actions";
 import { OptionChooser } from "@/components/OptionChooser";
-import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
+import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, billTax, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
 import { GuestNotice } from "@/components/legal/GuestNotice";
 import { TableCalls } from "./TableCalls";
 import { StoreCover, coverKind } from "./StoreCover";
 import { DishArt } from "./DishArt";
 import { TableOrders, keepTableOrder } from "./TableOrders";
+import { reach } from "@/lib/reach";
 
 /** As the storefront sends it: the add-on groups are carried once on the property, and a dish
  *  names the ones it offers by id. `resolve` below puts them back together for the screen. */
-type RawItem = { id: string; name: string; price: number; is_veg: boolean; description: string | null; available: boolean; online?: boolean; image_url?: string | null; image_credit?: string | null; variants?: Variant[]; addon_group_ids?: string[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
+type RawItem = { id: string; name: string; price: number; gst_rate?: number | null; is_veg: boolean; description: string | null; available: boolean; online?: boolean; image_url?: string | null; image_credit?: string | null; variants?: Variant[]; addon_group_ids?: string[]; is_combo?: boolean; components?: { name: string; qty: number }[] };
 type Item = Omit<RawItem, "addon_group_ids"> & { addon_groups?: AddonGroup[] };
 /** One basket line: a dish with the size and extras it was chosen with. */
 type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
 type Cat = { id: string; name: string; items: RawItem[] };
 type Offer = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; code: string | null; from_time?: string | null; to_time?: string | null; days?: number[] | null };
-type D = { table?: { id: string; name: string; zone: string } | null; slug: string; name: string; type: string; tagline: string | null; addon_groups?: AddonGroup[]; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; online_paused?: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
+type D = { table?: { id: string; name: string; zone: string } | null; slug: string; name: string; type: string; tagline: string | null; addon_groups?: AddonGroup[]; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; gst_collect?: boolean; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; online_paused?: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
 type Slot = { time: string; left: number; full: boolean; offer_id: string | null; offer: string | null; offer_pct: number | null };
 
 const KIND_WORD = { restaurant: "Restaurant", hotel: "Hotel", resort: "Resort" } as const;
@@ -51,7 +52,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
   const [slotList, setSlotList] = useState<Slot[]>(initialSlots); const [slot, setSlot] = useState<Slot | null>(null);
   const [guest, setGuest] = useState({ full_name: "", phone: "", email: "" });
   const [occasion, setOccasion] = useState(""); const [note, setNote] = useState("");
-  useEffect(() => { start(async () => { const r = await fetchSlots(slug, date, party); if ("slots" in r) { setSlotList(r.slots as Slot[]); setSlot(null); } }); }, [slug, date, party]); // eslint-disable-line
+  useEffect(() => { start(async () => { const r = await reach(() => fetchSlots(slug, date, party)); if ("slots" in r) { setSlotList(r.slots as Slot[]); setSlot(null); } }); }, [slug, date, party]); // eslint-disable-line
 
   /* ── ordering ── */
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -82,7 +83,11 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
   const bestOffer = d.offers.filter((o) => [omode === "dine_in" ? "dining" : "delivery", "both"].includes(o.scope) && sub >= Number(o.min_order) && onNow(o)).sort((a, b) => offOf(b) - offOf(a))[0];
   const disc = bestOffer ? offOf(bestOffer) : 0;
   const fee = omode === "dine_in" ? 0 : (omode === "delivery" ? Number(d.delivery_fee) : 0) + Number(d.packing_charge);
-  const gst = r2(((sub - disc) * Number(d.gst_rate)) / 100);
+  /* 0146/0147: the bill's own sum (billTax = the database's bill_tax) — each dish at its own GST rate, packing and delivery
+     taxed with the food, no GST where the property may not collect it — so the basket is the quote and the quote the bill */
+  const tax = billTax(lines.map((l) => ({ rate: l.item.gst_rate ?? Number(d.gst_rate), amount: linePrice(l.item, l.variant, l.addons) * l.qty })), r2(sub - disc + fee), d.gst_collect !== false);
+  const gst = r2(tax.cgst + tax.sgst);
+  const gstRates = [...new Set(tax.lines.map((t) => t.rate))];
   const total = Math.round(sub - disc + fee + gst);
   const count = lines.reduce((t, l) => t + l.qty, 0);
   const qtyOf = (id: string) => cart.filter((l) => l.item.id === id).reduce((t, l) => t + l.qty, 0);
@@ -131,7 +136,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
      anywhere else the confirmation page, with its tracking link */
   const placeNow = () => start(async () => {
     setErr(null);
-    const r = await placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null, atTable ? tableToken : null);
+    const r = await reach(() => placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null, atTable ? tableToken : null));
     if ("error" in r) { setErr(nice(r.error!)); return; }
     const o = r.order as Record<string, unknown>;
     if (atTable) { keepTableOrder(slug, tableToken!, String(o.id)); setCart([]); setNote(""); setCartOpen(false); }
@@ -258,7 +263,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                 </div>
                 {err && <div role="alert" className="mt-4 flex gap-2.5 rounded-[16px] bg-[var(--color-red-2)] text-[var(--color-red)] px-3.5 py-3 text-[13.5px] font-semibold" data-book-error><AlertCircle size={18} className="shrink-0 mt-px" aria-hidden />{err}</div>}
                 <Button size="lg" className="w-full mt-4" loading={pending} disabled={!guest.full_name || !guest.phone}
-                  onClick={() => start(async () => { const r = await reserve(slug, guest, date, slot.time, party, occasion, note, slot.offer_id); if ("error" in r) setErr(nice(r.error!)); else setDone({ kind: "book", data: r.booking as Record<string, unknown> }); })}>
+                  onClick={() => start(async () => { const r = await reach(() => reserve(slug, guest, date, slot.time, party, occasion, note, slot.offer_id)); if ("error" in r) setErr(nice(r.error!)); else setDone({ kind: "book", data: r.booking as Record<string, unknown> }); })}>
                   Confirm booking
                 </Button>
                 <p className="text-xs text-[var(--color-label-3)] mt-2 text-center">Free to book, no card needed. Call the restaurant to cancel any time.</p>
@@ -364,7 +369,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
               <Row k="Item total" v={sub} />
               {disc > 0 && <Row k={bestOffer!.title} v={-disc} good />}
               {fee > 0 && <Row k={omode === "delivery" ? "Delivery & packing" : "Packing"} v={fee} />}
-              <Row k={`GST ${Number(d.gst_rate)}%`} v={gst} />
+              {gst > 0 && <Row k={gstRates.length === 1 ? `GST ${gstRates[0]}%` : "GST"} v={gst} />}
             </div>
             <div className="mt-3 pt-3 border-t border-dashed border-[var(--color-line-2)] flex items-end justify-between gap-3">
               <span className="min-w-0">

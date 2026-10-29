@@ -36,7 +36,7 @@ export class Escpos {
 }
 
 const money = (n: number) => Number(n).toFixed(2);
-export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null; extras?: string[] }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; promiseFee?: number; promiseWaived?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string; loyalty?: string };   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
+export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null; extras?: string[] }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; promiseFee?: number; promiseWaived?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string; loyalty?: string; charges?: number; taxLines?: { rate: number; base: number; cgst: number; sgst: number }[]; operatorNote?: string };   // 0146: packing & delivery; the tax per rate; the 9(5) line   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
 
 export function buildBill(d: BillData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
@@ -54,6 +54,7 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   if (d.promiseWaived) p.row("Promise missed - meal free", "-" + money(d.promiseWaived));
   if (d.promiseFee) p.row("On-time promise", money(d.promiseFee));
   if (d.service) p.row("Service charge", money(d.service));
+  if (d.charges) p.row("Packing & delivery", money(d.charges));
   const lab = taxLabels(d.restaurant.stateCode), half = d.gstRate ? d.gstRate / 2 : null, comp = d.restaurant.gstScheme === "composition";
   const tn = (k: "central" | "state") => lab[k] + (half !== null ? " @" + half + "%" : "");
   if (!comp || d.cgst > 0) p.row(tn("central"), money(d.cgst));
@@ -63,6 +64,9 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   d.payments?.forEach((x) => p.row(x.method.toUpperCase(), money(x.amount)));
   p.align("l").wrap((d.sac ? "SAC " + d.sac + " | " : "") + (lab.stateName ? "Place of supply: " + lab.stateName + " (" + d.restaurant.stateCode + ") | " : "") + "Reverse charge: No");
   if (comp) p.bold(true).wrap(COMPOSITION_NOTE).bold(false);
+  // several rates on one bill: what each was charged on, and its tax (0146)
+  if ((d.taxLines?.length ?? 0) > 1) d.taxLines!.forEach((t) => p.row(`GST ${t.rate}% on ${money(t.base)}`, money(t.cgst + t.sgst)));
+  if (d.operatorNote) p.bold(true).wrap(d.operatorNote).bold(false);
   p.rule();
   if (d.upiQr) p.align("c").line("Scan to pay (UPI / card)").qr(d.upiQr).feed(1);
   if (d.loyalty) p.align("c").bold(true).line(d.loyalty).bold(false);

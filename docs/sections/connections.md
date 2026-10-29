@@ -81,3 +81,18 @@ pnpm --filter @dineflow/web typecheck
     names are unchanged.
   - No riders: a small `EmptyState` with **Staff** (`[data-riders-empty]`).
   - The password field's own eye button (`PasswordInput`) is 36px on a touch screen — unchanged here, the shared component's.
+## Every link waits for its key, then works (2026-10-29, 0153)
+
+The owner: the delivery, room-booking and tracking links should behave like Razorpay — wait cleanly until the link or key is
+pasted, then work at once, and say honestly where they stand.
+
+- **Delivery.** The webhook address on each channel card works the moment the platform has it. A platform's partner tools
+  usually **check** the address first: `GET /api/webhooks/aggregator/<token>` now answers 200 with the channel's name, kind
+  and whether it is taking orders (`channel_hello`, 0153), and **404** for a mistyped or removed address. It used to answer
+  ok for any token, so a wrong address passed their check and then lost every order. The token is not echoed back.
+- **Room sites.** Saving a channel with **their calendar link pasted** syncs it at once (`saveOta` returns the row's id; the
+  sheet calls the same sync as the **Sync** button) and the toast says what happened — no "Never synced" until the night run.
+  Sync writes with the service role: **without `SUPABASE_SERVICE_ROLE_KEY` on the server the toast says "Channel sync is not
+  available on this server."** and the card keeps "Their calendar is pasted" — the honest "waiting for the key". Same on
+  `/channels`.
+- **Tracking** needs no outside key: the rider's phone GPS and a keyless map embed. Nothing to wait for.

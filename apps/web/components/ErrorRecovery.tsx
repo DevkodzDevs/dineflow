@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { RefreshCw, AlertTriangle, LifeBuoy } from "lucide-react";
+import { RefreshCw, AlertTriangle, LifeBuoy, WifiOff } from "lucide-react";
+import { isNetworkError, isSkewError } from "@/lib/reach";
 
 /**
  * What a screen shows when it fails to render.
@@ -18,6 +19,14 @@ const ONCE = "df-reloaded-after-stale-build";   // holds the time of the last au
    stayed there until someone pressed Reload. Now the card waits 1.5 s and reloads once by itself ("Reconnecting…"); a
    second failure inside a minute shows the card as before, so a real bug can never spin. */
 const RETRY = "df-retried-after-error";
+/* A dropped connection is not a broken screen (2026-10-28, the owner: "sometimes the app crashes like this" — reproduced:
+   the guest table page opening while the network drops its requests went Reconnecting… → reload → the reload failed too
+   → this card, for good). Now: "Connection lost", and the same screen is drawn again by itself (reset, not a reload — a
+   reload with no network is the browser's own dead page) when the phone says it is back online, or after 2, 4, 8, 15,
+   then every 30 s; Try now does it at once. A tab older than the deploy (an action the new build does not know) is a
+   stale build like a missing chunk: reload to the new one. Shared tests: lib/reach.ts. */
+const NET = "df-net-retry";   // { n: attempts so far, t: last attempt } — the back-off survives the boundary remounting
+const WAITS = [2000, 4000, 8000, 15000, 30000];
 
 export function ErrorRecovery({ error, reset, inline = false }: { error: Error & { digest?: string }; reset?: () => void; inline?: boolean }) {
   // inside the app shell the card sits in the page column, under the sidebar and above the tab bar;
@@ -25,9 +34,38 @@ export function ErrorRecovery({ error, reset, inline = false }: { error: Error &
   const frame = inline ? "min-h-[60dvh] grid place-items-center p-2" : "min-h-dvh grid place-items-center bg-[var(--color-bg)] p-6";
   const [reloading, setReloading] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const offline = isNetworkError(error) && !isSkewError(error);
+  const [again, setAgain] = useState(0);   // bumps to try the screen again now
 
   useEffect(() => {
-    const stale = STALE.test(`${error?.name} ${error?.message}`);
+    if (!offline) return;
+    let n = 0;
+    try { const v = JSON.parse(sessionStorage.getItem(NET) ?? "null") as { n: number; t: number } | null; if (v && Date.now() - v.t < 120000) n = v.n; } catch { /* none */ }
+    const tryNow = () => {
+      if (navigator.onLine === false) return;   // the online event will call again
+      try { sessionStorage.setItem(NET, JSON.stringify({ n: n + 1, t: Date.now() })); } catch { /* no storage: still try */ }
+      if (reset) reset(); else location.reload();
+    };
+    const t = setTimeout(tryNow, again ? 0 : WAITS[Math.min(n, WAITS.length - 1)]);
+    addEventListener("online", tryNow);
+    return () => { clearTimeout(t); removeEventListener("online", tryNow); };
+  }, [offline, reset, again]);
+
+  /* What broke is recorded (0149, Master control → Testing): once a visit for the same error on the same page, never a
+     network drop (not a bug, and it could not be sent). Fire and forget — the card does not wait on it. */
+  useEffect(() => {
+    if (offline) return;
+    const kind = STALE.test(`${error?.name} ${error?.message}`) || isSkewError(error) ? "stale" : "crash";
+    const key = `df-crash:${kind}:${location.pathname}:${error?.name}:${String(error?.message ?? "").slice(0, 80)}`;
+    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch { /* no storage: report anyway */ }
+    void import("@/lib/supabase/lazy").then(({ getClient }) => getClient())
+      .then((c) => c.rpc("report_client_error", { p_kind: kind, p_path: location.pathname, p_name: error?.name ?? null, p_message: error?.message ?? null, p_digest: error?.digest ?? null, p_ua: navigator.userAgent }))
+      .catch(() => { /* the log is a help, never a second failure */ });
+  }, [error, offline]);
+
+  useEffect(() => {
+    if (offline) return;
+    const stale = STALE.test(`${error?.name} ${error?.message}`) || isSkewError(error);
     if (!stale) {
       let tried = 0;
       try { tried = Number(sessionStorage.getItem(RETRY)) || 0; } catch { return; }   // no storage, no rate limit: show the card
@@ -51,7 +89,18 @@ export function ErrorRecovery({ error, reset, inline = false }: { error: Error &
       try { const rs = await navigator.serviceWorker?.getRegistrations?.(); await Promise.all((rs ?? []).map((r) => r.unregister())); } catch {}
       location.reload();
     })();
-  }, [error]);
+  }, [error, offline]);
+
+  if (offline) return (
+    <div className={frame} data-error-screen data-error-offline>
+      <div className="card p-6 max-w-sm w-full text-center">
+        <span className="mx-auto h-12 w-12 rounded-2xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]"><WifiOff size={22} /></span>
+        <h1 className="text-2xl mt-4">Connection lost</h1>
+        <p className="text-sm text-[var(--color-label-2)] mt-2">Waiting for the network — this screen comes back by itself. Nothing is lost.</p>
+        <button type="button" onClick={() => setAgain((x) => x + 1)} className="btn btn-gray w-full mt-5"><RefreshCw size={16} /> Try now</button>
+      </div>
+    </div>
+  );
 
   if (retrying) return (
     <div className={frame} data-error-screen data-error-retrying>
@@ -78,6 +127,9 @@ export function ErrorRecovery({ error, reset, inline = false }: { error: Error &
         <h1 className="text-2xl mt-4">This screen did not load</h1>
         <p className="text-sm text-[var(--color-label-2)] mt-2">Nothing is lost. Try again.</p>
         {error?.digest && <p className="footnote mt-2 num">Reference {error.digest}</p>}
+        {/* what the browser said, so a screenshot of this card tells us what broke (a server failure carries a reference
+            instead; its message is withheld in production) */}
+        {!error?.digest && error?.message && <p className="footnote mt-2 break-words" data-error-detail>Details: {`${error.name && error.name !== "Error" ? `${error.name} — ` : ""}${error.message}`.slice(0, 160)}</p>}
         <div className="flex gap-2 mt-5">
           {reset && <button onClick={reset} className="btn btn-gray flex-1">Try again</button>}
           <button onClick={() => location.reload()} className="btn btn-filled flex-1">Reload the page</button>

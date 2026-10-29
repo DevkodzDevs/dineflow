@@ -8,6 +8,17 @@ const require = createRequire(join(ROOT, "packages/db/package.json"));
 const postgres = require("postgres");
 const url = process.env.DATABASE_URL;
 if (!url) { console.error("DATABASE_URL missing"); process.exit(1); }
+/* Which database is this? (2026-10-29, the owner's item 19.) Development and production shared one Supabase project, so
+   every migration reached the live site at once. With a staging project, DATABASE_URL points there for everyday work; the
+   live project answers only to an explicit --live. The ref is the project's public id (it is in every Supabase URL). */
+const LIVE_REF = "saffvrkseoakalgxnbgg";
+const ref = (url.match(/postgres\.([a-z0-9]{20})[:@]/) || url.match(/db\.([a-z0-9]{20})\.supabase\.co/) || [])[1] ?? null;
+const live = ref === LIVE_REF;
+console.log(`Target: ${live ? "the LIVE database (production)" : ref ? `Supabase project ${ref}` : "a database outside Supabase"}`);
+if (live && !process.argv.includes("--live") && !process.argv.includes("--admin")) {
+  console.error("✖ This is the live database. Dry-run first, then re-run with --live to apply to production.");
+  process.exit(1);
+}
 const sql = postgres(url, { ssl: process.env.PGSSLMODE === "disable" ? false : "require", max: 1, onnotice: () => {} });
 try {
   const adminIdx = process.argv.indexOf("--admin");

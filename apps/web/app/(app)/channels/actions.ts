@@ -12,8 +12,9 @@ const keyOf = (fd: FormData, id: string | null): { api_key?: string | null } => 
 export async function saveOta(fd: FormData) {
   const s = await createClient(); const id = fd.get("id") as string | null;
   const row = { kind: String(fd.get("kind")), label: String(fd.get("label")), mode: String(fd.get("mode")), room_type_id: (fd.get("room_type_id") as string) || null, import_url: (fd.get("import_url") as string) || null, api_base: (fd.get("api_base") as string) || null, ...keyOf(fd, id), hotel_ref: (fd.get("hotel_ref") as string) || null, commission_pct: Number(fd.get("commission_pct") || 15), rate_offset_pct: Number(fd.get("rate_offset_pct") || 0), is_live: fd.get("is_live") === "on" };
-  const { error } = await (id ? s.from("ota_channels").update(row).eq("id", id) : s.from("ota_channels").insert(row));
-  if (error) return { error: error.message }; bump(); return { ok: true };
+  const { data, error } = await (id ? s.from("ota_channels").update(row).eq("id", id).select("id").single() : s.from("ota_channels").insert(row).select("id").single());
+  // the id comes back so the screen can sync the pasted calendar at once (2026-10-29)
+  if (error) return { error: error.message }; bump(); return { ok: true as const, id: (data as { id: string } | null)?.id ?? id };
 }
 export async function deleteOta(id: string) {
   const s = await createClient(); const bad = wrote(await s.from("ota_channels").delete().eq("id", id).select("id"), "That channel could not be removed.");

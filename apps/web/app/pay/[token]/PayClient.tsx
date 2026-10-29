@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronDown, CreditCard, ShieldCheck, Smartphone, Store, Star } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, CreditCard, ShieldCheck, Smartphone, Store, Star } from "lucide-react";
 import { Button, cn } from "@/components/ui";
 import { QR } from "@/components/QR";
 import { formatINR } from "@/lib/format";
@@ -36,7 +36,7 @@ const loadScript = (src: string) => new Promise<void>((ok, fail) => {
   document.head.appendChild(s);
 });
 
-export function PayClient({ token, initial, gatewayReady }: { token: string; initial: PayInfo; gatewayReady: boolean }) {
+export function PayClient({ token, initial, gatewayReady, back = null }: { token: string; initial: PayInfo; gatewayReady: boolean; back?: string | null }) {
   const [info, setInfo] = useState(initial);
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
   };
 
   if (info.status === "paid") return (
-    <Shell info={info}>
+    <Shell info={info} back={back}>
       <motion.div initial={{ scale: .94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card p-6 text-center mt-5">
         <div className="mx-auto h-16 w-16 rounded-full grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]"><Check size={32} strokeWidth={3} /></div>
         <h1 className="text-3xl mt-4">Paid. <em>Thank you.</em></h1>
@@ -101,6 +101,7 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
           </ul>
         )}
         <p className="footnote mt-4">Keep this page as your receipt, or ask for a printed tax invoice.</p>
+        {back && <a href={back} className="btn btn-gray w-full mt-4" data-pay-back-done>Back to the menu</a>}
       </motion.div>
       <ReviewBox token={token} />
     </Shell>
@@ -108,7 +109,7 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
 
   const counterOnly = !info.upi && !info.gateway;
   return (
-    <Shell info={info}>
+    <Shell info={info} back={back}>
       {/* the amount, with the items a tap away */}
       <div className="card p-5 mt-5">
         <div className="eyebrow">To pay</div>
@@ -123,7 +124,9 @@ export function PayClient({ token, initial, gatewayReady }: { token: string; ini
               <div className="flex justify-between"><span>Subtotal</span><span className="num">{formatINR(Number(info.subtotal))}</span></div>
               {Number(info.discount) > 0 && <div className="flex justify-between"><span>Discount</span><span className="num">−{formatINR(Number(info.discount))}</span></div>}
               {Number(info.service) > 0 && <div className="flex justify-between"><span>Service charge</span><span className="num">{formatINR(Number(info.service))}</span></div>}
-              <div className="flex justify-between"><span>CGST + SGST</span><span className="num">{formatINR(Number(info.cgst) + Number(info.sgst))}</span></div>
+              {Number(info.charges ?? 0) > 0 && <div className="flex justify-between"><span>Packing &amp; delivery</span><span className="num">{formatINR(Number(info.charges))}</span></div>}
+              {info.eco ? <div className="text-[12px]">GST paid by the delivery platform (section 9(5))</div>
+                : <div className="flex justify-between"><span>CGST + SGST</span><span className="num">{formatINR(Number(info.cgst) + Number(info.sgst))}</span></div>}
               {Number(info.round_off) !== 0 && <div className="flex justify-between"><span>Round off</span><span className="num">{formatINR(Number(info.round_off))}</span></div>}
             </div>
           </div>
@@ -216,11 +219,12 @@ function ReviewBox({ token }: { token: string }) {
   );
 }
 
-function Shell({ info, children }: { info: PayInfo; children: ReactNode }) {
+function Shell({ info, children, back = null }: { info: PayInfo; children: ReactNode; back?: string | null }) {
   const r = info.restaurant;
   return (
     <div className="min-h-dvh bg-[var(--color-bg)] p-5" style={r.brand_colour ? { ["--color-tint" as string]: r.brand_colour } : undefined}>
       <div className="max-w-md mx-auto pt-6 pb-12">
+        {back && <a href={back} className="-mt-3 mb-3 -ml-2 inline-flex items-center gap-1 h-11 px-2 rounded-xl text-[14px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)]" data-pay-back><ChevronLeft size={18} aria-hidden /> Back to the menu</a>}
         <div className="flex items-center gap-3">
           {r.logo_url
             ? <img src={r.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover shrink-0" />

@@ -14,8 +14,9 @@ export default async function BillPage({ params, searchParams }: { params: Promi
   ]);
   if (!oid) notFound();
   const [{ data: order }, { data: bill }, { data: inHouse }] = await Promise.all([
-    s.from("orders").select("*, dining_tables(name), order_items(*)").eq("id", oid).maybeSingle(),
-    s.from("bills").select("*, payments(*)").eq("order_id", oid).neq("status", "void").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    // 0146: the channel (an aggregator pays the GST — section 9(5)) and the bill's credit notes ride along in the same reads
+    s.from("orders").select("*, dining_tables(name), order_items(*), order_channels(kind)").eq("id", oid).maybeSingle(),
+    s.from("bills").select("*, payments(*), credit_notes(*)").eq("order_id", oid).neq("status", "void").order("created_at", { ascending: false }).limit(1).maybeSingle(),
     session.restaurant.property_type === "restaurant" ? Promise.resolve({ data: [] }) : s.from("bookings").select("id, booking_no, rooms(number), guests(full_name)").eq("status", "checked_in"),
   ]);
   if (!order) notFound();

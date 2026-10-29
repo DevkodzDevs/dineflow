@@ -5,6 +5,7 @@ import { HandPlatter, Receipt, GlassWater, Footprints, X, Clock, QrCode, ChefHat
 import { answerCall } from "@/app/(app)/orders/actions";
 import { acceptOnline } from "@/app/(app)/online-orders/actions";
 import { formatINR } from "@/lib/format";
+import { reach } from "@/lib/reach";
 
 /** a call (waiter, bill, water) or, kind "order", a guest's order from the table's QR waiting to be accepted (its id is the online order's) */
 export type LiveCall = { id: string; table_id: string; kind: string; table: string | null; zone: string | null; at: string; total?: number; items?: number };
@@ -59,7 +60,7 @@ export function CallAlert({ calls, onGone }: { calls: LiveCall[]; onGone: (ids: 
               <div className="mt-3 flex gap-2 pl-1.5">
                 <button type="button" onClick={() => onGone([c.id])} className="btn btn-gray flex-1 !h-11">Later</button>
                 <button type="button" disabled={pending} data-call-answer
-                  onClick={() => start(async () => { setErr(null); const r = order ? await acceptOnline(c.id) : await answerCall(c.table_id); if ("error" in r) setErr(r.error ?? "Could not answer"); else onGone(order ? [c.id] : sameTable); })}
+                  onClick={() => start(async () => { setErr(null); const r: { error?: string } = await reach<{ error?: string }>(() => order ? acceptOnline(c.id) : answerCall(c.table_id)); if ("error" in r) setErr(r.error ?? "Could not answer"); else onGone(order ? [c.id] : sameTable); })}
                   className="btn btn-filled flex-[1.6] !h-11 gap-1.5">{order ? <><ChefHat size={16} aria-hidden /> Accept · to kitchen</> : <><Footprints size={16} aria-hidden /> On my way</>}</button>
               </div>
               {err && <p className="mt-2 pl-1.5 text-[12.5px] text-[var(--color-red)]">{err}</p>}

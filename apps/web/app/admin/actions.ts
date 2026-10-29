@@ -157,3 +157,9 @@ export async function setModules(restaurantId: string, modules: string[] | null)
   if (error) return { error: error.message };
   revalidatePath("/admin"); return { ok: true as const };
 }
+/** 0151: a plan's prices (Master control → Keys → Plans & prices). Empty = not sold online for that period. */
+export async function setPlan(key: string, label: string, monthly: number | null, yearly: number | null, active: boolean) {
+  const s = await createClient();
+  const { error } = await s.rpc("admin_set_plan", { p_key: key, p_label: label, p_monthly: monthly, p_yearly: yearly, p_active: active });
+  if (error) return { error: error.message }; bump(); revalidatePath("/membership"); revalidatePath("/"); return { ok: true };   // "/": the front page's pricing
+}

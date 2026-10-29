@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { AdminClient } from "./AdminClient";
+import { PlansCard, type PlanRow } from "./PlansCard";
+import { platformReady } from "@/lib/platformPay";
 export const metadata = { title: "Master control" };
 export const dynamic = "force-dynamic";
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string; error?: string }> }) {
@@ -9,7 +11,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   try { await s.rpc("sweep_expired_demos"); } catch { /* best effort */ }
   // the names follow the order of the reads — access and boxes used to be the other way round, so the
   // property codes, the Access sheet's current modules and the "On a Box" filter each got the other's rows
-  const [{ data: tenants }, { data: keys }, { data: log }, { data: access }, { data: boxes }, { data: defaultPassword }] = await Promise.all([
+  const [{ data: tenants }, { data: keys }, { data: log }, { data: access }, { data: boxes }, { data: defaultPassword }, { data: plans }] = await Promise.all([
     s.rpc("admin_overview"),
     s.from("membership_keys").select("*").order("created_at", { ascending: false }).limit(50),
     s.from("admin_log").select("*").order("created_at", { ascending: false }).limit(30),
@@ -18,7 +20,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     s.rpc("admin_box_status"),
     // 0098: true while this login still signs in with the password migration 0011 shipped with
     s.rpc("master_password_is_default"),
+    // 0151: the plans and their prices (Keys tab)
+    tab === "keys" ? s.from("plans").select("key, label, monthly, yearly, is_active, updated_at").order("key", { ascending: false }) : Promise.resolve({ data: null }),
   ]);
   const rows = (access ?? []) as { id: string; enabled_modules: string[] | null; code: string | null; chain_id: string | null }[];
-  return <AdminClient tenants={(tenants ?? []) as never} keys={(keys ?? []) as never} log={(log ?? []) as never} tab={tab === "keys" ? "keys" : "properties"} boxes={(boxes ?? []) as never} access={rows} codes={rows.map((r) => ({ id: r.id, code: r.code }))} chains={rows.filter((r) => r.chain_id && r.chain_id !== r.id).map((r) => ({ id: r.id, head: r.chain_id! }))} openError={error ?? null} defaultPassword={defaultPassword === true} />;
+  return (<>
+    <AdminClient tenants={(tenants ?? []) as never} keys={(keys ?? []) as never} log={(log ?? []) as never} tab={tab === "keys" ? "keys" : "properties"} boxes={(boxes ?? []) as never} access={rows} codes={rows.map((r) => ({ id: r.id, code: r.code }))} chains={rows.filter((r) => r.chain_id && r.chain_id !== r.id).map((r) => ({ id: r.id, head: r.chain_id! }))} openError={error ?? null} defaultPassword={defaultPassword === true} />
+    {tab === "keys" && <div className="px-4 sm:px-6 pb-10 max-w-6xl mx-auto"><PlansCard plans={(plans ?? []) as PlanRow[]} online={platformReady()} /></div>}
+  </>);
 }

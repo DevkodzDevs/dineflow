@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 import { COMPANY } from "@/lib/company";
+import { KINDS } from "@/lib/site/content";
+import { POSTS } from "@/lib/site/posts";
 
 /**
  * Only the pages a stranger is meant to find. Everything behind a login is deliberately absent —
@@ -16,6 +18,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const at = new Date(COMPANY.effective);
   const b = base();
   return [
+    // the public site (2026-10-29, item 18): the front page, a page for each kind of business, the blog
+    { url: `${b}/`, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
+    ...KINDS.map((k) => ({ url: `${b}/for/${k.slug}`, lastModified: at, changeFrequency: "monthly" as const, priority: 0.9 })),
+    { url: `${b}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    ...POSTS.map((p) => ({ url: `${b}/blog/${p.slug}`, lastModified: new Date(p.updated ?? p.date), changeFrequency: "monthly" as const, priority: 0.6 })),
     { url: `${b}/login`, lastModified: at, changeFrequency: "monthly", priority: 0.8 },
     { url: `${b}/signup`, lastModified: at, changeFrequency: "monthly", priority: 0.8 },
     { url: `${b}/legal/terms`, lastModified: at, changeFrequency: "yearly", priority: 0.5 },
