@@ -807,3 +807,16 @@ so **no screen has to remember a spinner**.
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+- **`ask()` — the app's yes/no dialog (2026-10-30, `components/ui/Confirm.tsx`).** Never `confirm()`: `if (!(await ask({ title,
+  body, ok, tone: "danger" | "go", icon: "out" | "trash" | "alert" | "check" | "ask" }))) return;`. Title 2–4 words, one short line.
+  shell-and-nav.md has the details.
+
+- **Dropdowns have no top or bottom padding (2026-10-30, the owner on an iPad: "the dropdown text is cut in half").** The fields'
+  13px above and below with the body's 1.5 line left 18px for a 24px line in a 44px select (14px in a 40px one); WebKit — every
+  iPad browser — draws the text from the top of that box and clips the rest; Chrome centres it, so it only showed on the iPad.
+  `select` now has `padding-block: 0; line-height: normal`: the height is the box and every engine centres the line (WebKit:
+  `seltest.mjs`, `r157.mjs`). Keep a select's own height (`!h-10`, `!h-11`) — do not give one `py-*`.
+
+- **Cards, second pass (2026-10-30):** `.tcard` (Tables), `.tkt-line` (the till's ticket), `.fdt` (the front desk's table
+  booking), `.crew-*` (Assign) — one family: the state's colour as `--hue` (always a token), worn as a bar or a stub, a soft glow,
+  a pill; hover lifts 1–2px with a shadow in the hue; reduced motion stills it. Notes: orders-and-till.md, front-desk.md.

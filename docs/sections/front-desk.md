@@ -171,3 +171,17 @@ pnpm --filter @dineflow/web typecheck
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+- **Check out asks in the app's dialog (2026-10-30)** — "Check out? The room goes to cleaning and one invoice is made." (`ask`, tone
+  go), not the browser's "dineflow.cloud says" box (shell-and-nav.md).
+
+## 2026-10-30 — Table bookings on the front desk
+- **The owner: "show the table reservations here too".** Under In house, **Table bookings** — today's table bookings (requested,
+  confirmed, seated): the time, the name, how many, the table and, for a guest staying here, *Room 101* (`[data-fd-tables]`,
+  `[data-fd-table]`, `[data-fd-table-room]`), Coming / Late (15 min) / At table; a tap opens Reservations, **+ Book a table**
+  (`[data-fd-book-table]`) a new one — both only for someone holding Reservations (`canBook`, from `modulesFor`). Each in-house
+  card has a **Table** key (`[data-book-table]`) → New booking with their room chosen. Live on `reservations` too.
+
+- **Table bookings are tickets (2026-10-30, second pass — `.fdt`):** the time on a stub in its state's colour (blue coming, red
+  late, green at the table), a torn edge with notches like the stay cards, the name and its status pill, then the party, the table
+  and the room as small pills, and a round arrow. "Late" is worked out after the page mounts, so the server's HTML and the first
+  paint agree.

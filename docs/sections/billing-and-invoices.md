@@ -221,3 +221,9 @@ from the screens (`fence150.mjs`): the kitchen's Start cooking → Ready → Ser
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+- **Discount and Guest are folded (2026-10-30, the owner: "only icons — tap to open").** On the bill page they are two toggles
+  side by side (`[data-bill-toggles]`, `[data-bill-toggle="discount|guest"]`, 48px, `aria-expanded`); a tap opens its panel
+  (`[data-bill-panel]`). Discount holds Percent / Flat **and the coupon** (`data-coupon`); Guest holds phone / name, the known
+  guest and points. A closed toggle shows what it holds (`[data-bill-toggle-value]`: "10% · ₹50.00 · DIWALI", a name); Guest opens
+  by itself when the order already has a customer. Money logic and `generateBill` are unchanged; the rest of the panel (online
+  offer, service charge, 9(5), promise, Generate bill, Or charge to a room) always shows.

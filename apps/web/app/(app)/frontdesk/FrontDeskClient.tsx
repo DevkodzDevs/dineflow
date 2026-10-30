@@ -1,11 +1,11 @@
 "use client";
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, LogIn, CalendarDays, Moon, Star, ClipboardCheck, List, Check, CheckCircle2, ArrowRightLeft, Sparkles, ChevronRight } from "lucide-react";
+import { Plus, LogIn, CalendarDays, Moon, Star, ClipboardCheck, List, Check, CheckCircle2, ArrowRightLeft, Sparkles, ChevronRight, Armchair, BedDouble, Users } from "lucide-react";
 import { suggestRoom } from "@/lib/roomsuggest";
 import { useLive } from "@/lib/useLive";
-import { Button, Sheet, Field, StatTile, cn, useToast } from "@/components/ui";
+import { Button, Sheet, Field, StatTile, cn, useToast, ask } from "@/components/ui";
 import { formatINR, fmtDate } from "@/lib/format";
 import { createBooking, checkIn, cancelBooking, moveRoom } from "./actions";
 import sc from "./StayCard.module.css";
@@ -15,11 +15,13 @@ type Room = { id: string; number: string; floor: number; status: string; conditi
 type Booking = { id: string; room_id: string | null; precheckin_at?: string | null; precheckin?: { arrival_time?: string | null } | null; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; guests: { full_name: string; phone: string | null; vip?: boolean; preferences?: string | null } | null; rooms: { number: string; condition?: string | null; room_types: { name: string } | null } | null };
 type RT = { id: string; name: string; base_rate: number; capacity: number };
 type G = { id: string; full_name: string; phone: string | null; vip?: boolean };
+/** A table booking today (page.tsx), with its table and the staying guest's room when it names one (0157). */
+type TB = { id: string; at_time: string; guest_name: string; party_size: number; status: string; table: { name: string } | null; stay: { rooms: { number: string } | null } | null };
 
-export function FrontDeskClient({ today, bookings, rooms, types, guests, inspectRule = false }: { today: string; bookings: Booking[]; rooms: Room[]; types: RT[]; guests: G[]; inspectRule?: boolean }) {
+export function FrontDeskClient({ today, bookings, rooms, types, guests, inspectRule = false, tableBookings = [], canBook = false }: { today: string; bookings: Booking[]; rooms: Room[]; types: RT[]; guests: G[]; inspectRule?: boolean; tableBookings?: TB[]; canBook?: boolean }) {
   const router = useRouter(); const [pending, start] = useTransition();
   const [open, setOpen] = useState(false); const toast = useToast();
-  useLive(["bookings", "rooms"].map(String));
+  useLive(["bookings", "rooms", "reservations"].map(String));
   const arrivals = bookings.filter((b) => b.status === "reserved" && b.check_in <= today);
   const departures = bookings.filter((b) => b.status === "checked_in" && b.check_out <= today);
   const inHouse = bookings.filter((b) => b.status === "checked_in");
@@ -116,9 +118,21 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
         <section className="min-w-0"><Head icon={<LogIn size={16} />} tone="green" label="Arrivals" n={arrivals.length} />
           <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} kind="arrival" action={<Button size="sm" variant="ink" disabled={pending} data-check-in onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}><LogIn size={15} /> Check in</Button>} />)}{arrivals.length === 0 && <EmptyState size="sm" icon={LogIn} hue="tint" title="No arrivals waiting" data-fd-empty="arrivals" actions={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div>
           <div className="mt-7"><Head icon={<CalendarDays size={16} />} tone="blue" label="Upcoming" n={upcoming.length} /></div>
-          <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} kind="upcoming" action={<button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full text-[13px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors" onClick={(e) => { e.preventDefault(); if (confirm("Cancel this booking?")) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); }}>Cancel</button>} />)}{upcoming.length === 0 && <EmptyState size="sm" icon={CalendarDays} hue="blue" title="Nothing coming up" data-fd-empty="upcoming" />}</div></section>
+          <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} kind="upcoming" action={<button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full text-[13px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors" onClick={async (e) => { e.preventDefault(); if (await ask({ title: "Cancel booking?", body: "The guest's booking is cancelled.", ok: "Cancel booking", cancel: "Keep it", tone: "danger", icon: "alert" })) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); }}>Cancel</button>} />)}{upcoming.length === 0 && <EmptyState size="sm" icon={CalendarDays} hue="blue" title="Nothing coming up" data-fd-empty="upcoming" />}</div></section>
         <section className="min-w-0"><Head icon={<Moon size={16} />} tone="orange" label="In house" n={inHouse.length} />
-          <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} kind="inhouse" />)}{inHouse.length === 0 && <EmptyState icon={Moon} hue="orange" title="No guests in house" data-fd-empty="inhouse" actions={<Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>} />}</div></section>
+          <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} kind="inhouse" action={canBook ? <span className="inline-flex items-center gap-2">
+              {/* a table for this guest: New booking opens with their room chosen (0157) */}
+              <button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors" data-book-table={b.rooms?.number ?? ""}
+                onClick={(e) => { e.preventDefault(); router.push(`/reservations?new=1&stay=${b.id}`); }}><Armchair size={14} aria-hidden /> Table</button>
+              <span className={sc.folio}>Folio <ChevronRight size={16} aria-hidden /></span></span> : undefined} />)}{inHouse.length === 0 && <EmptyState icon={Moon} hue="orange" title="No guests in house" data-fd-empty="inhouse" actions={<Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>} />}</div>
+          {/* today's table bookings (2026-10-30, the owner: "show the table reservations here too"): when, who, how many, the
+              table and — a guest staying here — their room; tap one for Reservations, + for a new one */}
+          <div className="mt-7"><Head icon={<Armchair size={16} />} tone="violet" label="Table bookings" n={tableBookings.length}
+            action={canBook ? <Link href="/reservations?new=1" className="h-10 [@media(pointer:coarse)]:h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" data-fd-book-table><Plus size={15} aria-hidden /> Book a table</Link> : undefined} /></div>
+          <div className="grid gap-2" data-fd-tables>
+            {tableBookings.map((r) => <TableRow key={r.id} r={r} today={today} link={canBook} />)}
+            {tableBookings.length === 0 && <EmptyState size="sm" icon={Armchair} hue="violet" title="No tables booked today" data-fd-empty="tables" />}
+          </div></section>
       </div>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="New booking" wide>
@@ -176,13 +190,14 @@ function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: R
 }
 
 /** A section head that reads as one: its icon in a tinted tile, the name in bold, the count as a badge. */
-function Head({ icon, label, n, tone }: { icon: ReactNode; label: string; n: number; tone: "green" | "blue" | "orange" }) {
-  const c = tone === "green" ? "var(--color-green)" : tone === "blue" ? "var(--color-blue)" : "var(--color-orange)";
+function Head({ icon, label, n, tone, action }: { icon: ReactNode; label: string; n: number; tone: "green" | "blue" | "orange" | "violet"; action?: ReactNode }) {
+  const c = tone === "green" ? "var(--color-green)" : tone === "blue" ? "var(--color-blue)" : tone === "violet" ? "var(--color-violet)" : "var(--color-orange)";
   return (
     <div className="mb-3 flex items-center gap-2.5">
       <span className="h-8 w-8 rounded-[10px] grid place-items-center shrink-0" style={{ color: c, background: `color-mix(in srgb, ${c} 15%, transparent)` }}>{icon}</span>
       <h2 className="text-[17px] !font-bold tracking-[-0.01em] text-[var(--color-label)]">{label}</h2>
       <span className="num h-6 min-w-6 px-2 rounded-full grid place-items-center text-[12px] font-bold" style={{ color: n ? c : "var(--color-label-2)", background: n ? `color-mix(in srgb, ${c} 15%, transparent)` : "var(--color-fill)" }}>{n}</span>
+      {action && <span className="ml-auto shrink-0">{action}</span>}
     </div>
   );
 }
@@ -228,4 +243,39 @@ function RoomPick({ r, on, view, onPick }: { r: Room; on: boolean; view: "2" | "
       {on && <span className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] grid place-items-center shadow"><Check size={12} strokeWidth={3} /></span>}
     </button>
   );
+}
+
+/** One table booking today on the front desk, as a ticket like the stays above it (2026-10-30, the owner: "ultra-modern, unique"):
+ *  the time on a stub in its state's colour — blue coming, red late (15 minutes after), green at the table — a torn edge, then
+ *  who, and the party, the table and — staying here — the room as small pills; where it stands at the end. A link to Reservations
+ *  for whoever holds it. */
+function TableRow({ r, today, link }: { r: TB; today: string; link: boolean }) {
+  const [h, m] = r.at_time.split(":").map(Number);
+  // the clock is read in the browser only, so the server's page and the first paint agree (no hydration mismatch)
+  const [now, setNow] = useState<number | null>(null); useEffect(() => { setNow(Date.now()); }, []);
+  const ist = now === null ? null : new Date(new Date(now).toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const late = !!ist && r.status !== "seated" && ist.getHours() * 60 + ist.getMinutes() - (h * 60 + m) > 15;
+  const st = r.status === "seated" ? { w: "At table", c: "var(--color-green)" } : late ? { w: "Late", c: "var(--color-red)" } : { w: "Coming", c: "var(--color-blue)" };
+  const body = (
+    <>
+      <span className="fdt-time"><b className="num">{((h + 11) % 12) + 1}:{String(m).padStart(2, "0")}</b><small>{h < 12 ? "AM" : "PM"}</small></span>
+      <span className="fdt-perf" aria-hidden />
+      <span className="fdt-body">
+        <span className="flex items-center gap-2 min-w-0">
+          <span className="text-[15.5px] font-bold truncate">{r.guest_name}</span>
+          <span className="fdt-st"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />{st.w}</span>
+        </span>
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className="fdt-chip"><Users size={12} aria-hidden /><span className="num">{r.party_size}</span></span>
+          {r.table?.name && <span className="fdt-chip"><Armchair size={12} aria-hidden />{r.table.name}</span>}
+          {r.stay?.rooms?.number && <span className="fdt-chip fdt-room" data-fd-table-room><BedDouble size={12} aria-hidden />Room {r.stay.rooms.number}</span>}
+        </span>
+      </span>
+      {link && <span className="fdt-go" aria-hidden><ChevronRight size={16} /></span>}
+    </>
+  );
+  const style = { "--hue": st.c } as React.CSSProperties;
+  return link
+    ? <Link href={`/reservations?date=${today}`} className="fdt" style={style} data-fd-table={r.guest_name}>{body}</Link>
+    : <div className="fdt" style={style} data-fd-table={r.guest_name}>{body}</div>;
 }

@@ -28,7 +28,7 @@ export const maxDuration = 120;
 type Msg = { role: "user" | "assistant"; content: string };
 const MODEL = "claude-opus-5-5";
 
-const SCREEN: Record<string, string> = { dashboard: "Control room", orders: "Orders", kitchen: "Kitchen", billing: "Billing", inventory: "Pantry", menu: "Menu", rooms: "Rooms", frontdesk: "Front desk", housekeeping: "Housekeeping", guests: "Guests", facilities: "Facilities", reservations: "Reservations", pulse: "Pulse", tomorrow: "Tomorrow's brief", neighbours: "Neighbours", proof: "Proof of business", labour: "Labour", reports: "Reports", staff: "Staff", settings: "Settings", "online-orders": "Online orders", invoices: "Invoices", channels: "Channels", scan: "Scan" };
+const SCREEN: Record<string, string> = { dashboard: "Control room", orders: "Orders", kitchen: "Kitchen", billing: "Billing", inventory: "Pantry", menu: "Menu", rooms: "Rooms", frontdesk: "Front desk", housekeeping: "Room status", guests: "Guests", facilities: "Facilities", reservations: "Reservations", pulse: "Pulse", tomorrow: "Tomorrow's brief", neighbours: "Neighbours", proof: "Proof of business", labour: "Labour", reports: "Reports", staff: "Staff", settings: "Settings", "online-orders": "Online orders", invoices: "Invoices", channels: "Channels", scan: "Scan" };
 
 /** Gather the facts for the screen. Every branch reads; none writes. */
 async function facts(section: string, s: Awaited<ReturnType<typeof createClient>>, mods: string[]) {

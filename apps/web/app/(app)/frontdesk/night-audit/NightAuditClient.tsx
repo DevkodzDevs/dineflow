@@ -26,7 +26,7 @@ const DISC: Record<string, string> = {
 const KIND: Record<string, { tag: string; c: string; fix: string; where: string }> = {
   occupied_no_guest: { tag: "No guest", c: "var(--color-orange)", fix: "/rooms", where: "Rooms" },
   guest_room_not_occupied: { tag: "Room shows empty", c: "var(--color-blue)", fix: "/rooms", where: "Rooms" },
-  sellable_but_dirty: { tag: "Dirty on sale", c: "var(--color-red)", fix: "/housekeeping", where: "Housekeeping" },
+  sellable_but_dirty: { tag: "Dirty on sale", c: "var(--color-red)", fix: "/housekeeping", where: "Room status" },
   stayed_past_checkout: { tag: "Overstay", c: "var(--color-orange)", fix: "/frontdesk", where: "Front desk" },
 };
 

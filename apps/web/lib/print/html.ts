@@ -22,7 +22,7 @@ ${d.qrPng && img(d.qrPng) ? `<div class="c" style="margin-top:8px"><img src="${i
 <hr><div class="c">${e(d.footer ?? "Thank you, visit again")}</div>`; };
 export const kotHtml = (d: KotData) => `
 <h1>${d.reprint ? "KOT (REPRINT)" : "KOT"}</h1>${d.station ? `<div class="c">${e(d.station)}</div>` : ""}<hr>
-<div class="big">${e(d.tableOrType)}</div><div class="r"><span>${e(d.kotNo)}</span><span>${e(d.when)}</span></div>${d.waiter ? `<div>Waiter: ${e(d.waiter)}</div>` : ""}<hr>
+<div class="big">${e(d.tableOrType)}</div><div class="r"><span>${e(d.kotNo)}</span><span>${e(d.when)}</span></div>${d.heading ? `<div class="b">${e(d.heading)}</div>` : ""}${d.waiter ? `<div>Waiter: ${e(d.waiter)}</div>` : ""}<hr>
 ${d.items.map((i) => `<div class="big">${e(i.qty)} &nbsp; ${e(i.name)}</div>${i.note ? `<div>&gt; ${e(i.note.toUpperCase())}</div>` : ""}`).join("")}<hr>`;
 
 /** A credit note (0146), printed from the bill page: who issues it, its own number and date, the bill it reduces, why,

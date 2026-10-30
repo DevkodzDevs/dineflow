@@ -720,7 +720,11 @@ input::placeholder, textarea::placeholder { color: var(--color-label-3); }
    the chosen one — that springs open. Safari, Firefox and phones keep their native picker (the
    iOS wheel, Android's sheet), which is the right control under a thumb, with the closed style.
    ═══════════════════════════════════════════════════════════════════════ */
-select { padding-right: 50px; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+/* No top and bottom padding (2026-10-30, the owner on an iPad: "the dropdown text is cut in half"): the field's own 13px
+   above and below, with the body's 1.5 line, left 18px for a 24px line in a 44px select (14px in a 40px one), and WebKit
+   — every iPad browser — draws the text from the top of that box and clips the rest. With none, the height (48px, or a
+   screen's own !h-10 / !h-11) is the box and every engine centres the line in it (measured in WebKit: seltest). */
+select { padding-top: 0; padding-bottom: 0; line-height: normal; padding-right: 50px; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'%3E%3Ccircle cx='13' cy='13' r='13' fill='%23ffffff' fill-opacity='.09'/%3E%3Cpath d='m9 11.5 4 4 4-4' fill='none' stroke='%23c7c7cf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; background-size: 26px 26px; }
 [data-theme="paper"] select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'%3E%3Ccircle cx='13' cy='13' r='13' fill='%2317171c' fill-opacity='.07'/%3E%3Cpath d='m9 11.5 4 4 4-4' fill='none' stroke='%2346464f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
 select:disabled { opacity: .45; cursor: not-allowed; }
@@ -1180,18 +1184,7 @@ html[data-palette="royal"] .nav-head::after { background: rgb(201 165 74 / .3); 
     box-shadow: 0 18px 50px -22px rgb(0 0 0 / .6), inset 0 0 0 1px rgb(255 255 255 / .07); }
   html[data-sidebar="floating"] aside.ink-panel { width: 248px !important; }
 }
-/* the fold key: from 768 up, every look, at the foot over the account — with Menu style beside it (.sb-tools: a row on the
-   open looks, the two keys one over the other on the icon looks, where the bar is 52px inside) */
-.sb-fold { display: none; }
-.sb-tools { display: none; }
-@media (min-width: 768px) {
-  .sb-fold { display: flex; }
-  .sb-tools { display: flex; align-items: center; }
-  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) .sb-tools { flex-direction: column; }
-  html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) .sb-tools .sb-fold { flex: none; width: 40px; padding: 0; }
-  /* a finger on the folded rail (2026-10-25 audit): the fold key 44 wide, not 40 */
-  @media (pointer: coarse) { html:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel:not([data-open]) .sb-tools .sb-fold { width: 44px; } }
-}
+/* the fold key and the Menu style key left the menu foot (2026-10-30): folding is a switch in SidebarPicker (Settings, My profile) */
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 /* ═══ TABLES ════════════════════════════════════════════════════════════
    One look for every table: a quiet header that sticks, hairline rows, numbers right and tabular,
@@ -2015,3 +2008,96 @@ html[data-splash="out"]::after { animation: splash-leave .35s ease-in both; }
 .ready-bubble::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: 2px solid var(--hue); animation: ready-ring 1.8s ease-out infinite; pointer-events: none; }
 @keyframes ready-ring { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(1.55); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ready-bubble::after { animation: none; opacity: 0; } }
+
+/* ═══ 2026-10-30 · CARDS, SECOND PASS (the owner: "ultra-modern, latest, unique, user friendly") ═══════════════════════
+   Four places, one family: the Tables card, the till's ticket line, the front desk's table booking, the Assign sheet. Each
+   takes its state's colour as --hue (a token) and wears it the same way — a bar or a stub in it, a soft glow, a pill. */
+
+/* Tables: a bar in the state's colour along the top, a glow in its corner, a dot a seat */
+.tcard { position: relative; overflow: hidden; isolation: isolate; text-align: left; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  padding: 16px 14px 12px; border-radius: 22px; background: var(--color-bg-2);
+  border: 1px solid color-mix(in srgb, var(--hue) 30%, var(--color-separator));
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur), border-color var(--dur-fast); }
+.tcard::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--hue), color-mix(in srgb, var(--hue) 10%, transparent)); }
+.tcard[data-table-state="free"]::before { opacity: .55; }
+.tcard-glow { position: absolute; z-index: -1; right: -48px; top: -56px; width: 160px; height: 160px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--hue) 20%, transparent), transparent 68%); }
+.tcard[data-table-state="free"] .tcard-glow { opacity: .45; }
+.tcard:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--hue) 60%, transparent); box-shadow: 0 16px 34px -20px color-mix(in srgb, var(--hue) 70%, #000); }
+.tcard:active { transform: scale(.985); }
+.tcard:focus-visible { outline: 2px solid var(--hue); outline-offset: 2px; }
+.tcard-name { font-family: var(--font-display); font-size: 30px; line-height: 1; letter-spacing: -.01em; }
+.tcard-state { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px 0 8px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; color: var(--hue); background: color-mix(in srgb, var(--hue) 15%, transparent); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--hue) 35%, transparent); }
+.tcard-state[data-live] svg { animation: tcard-pulse 2.2s ease-in-out infinite; }
+@keyframes tcard-pulse { 50% { opacity: .45; } }
+.tcard-seats { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.tcard-seat { width: 9px; height: 9px; border-radius: 3px; background: var(--color-fill-2); flex: none; }
+.tcard-seat[data-on] { background: var(--hue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--hue) 22%, transparent); }
+.tcard-main { display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-label-2); min-height: 22px; }
+.tcard-main b { color: var(--color-label); font-weight: 800; font-size: 14.5px; }
+.tcard-main b.font-display { font-weight: 500; font-size: 22px; }
+/* WebKit sized a flex row inside a <button> to its content: the foot's rule and its arrow stopped half way — full width */
+.tcard > * { width: 100%; }
+.tcard > .tcard-glow { width: 160px; }
+.tcard-foot { margin-top: auto; display: flex; align-items: center; gap: 6px; padding-top: 10px; border-top: .5px dashed var(--color-separator); font-size: 11.5px; color: var(--color-label-2); min-width: 0; }
+.tcard-go { margin-left: auto; flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--color-fill);
+  transition: background-color var(--dur-fast), color var(--dur-fast), transform var(--dur-fast); }
+.tcard:hover .tcard-go { background: var(--hue); color: var(--color-bezel); transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { .tcard, .tcard-go { transition: none; } .tcard:hover { transform: none; } .tcard-state[data-live] svg { animation: none; } }
+
+/* the till: a ticket line is a compact card — the dish's photo with its veg mark, what it is, its price; the stepper and the
+   line's keys on a strip at its foot */
+.tkt-line { position: relative; overflow: hidden; border-radius: 18px; background: color-mix(in srgb, var(--color-fill) 45%, var(--color-bg-2));
+  border: .5px solid var(--color-separator); transition: border-color var(--dur-fast), box-shadow var(--dur); }
+.tkt-line:hover { border-color: color-mix(in srgb, var(--color-label) 16%, transparent); box-shadow: 0 10px 24px -18px rgb(0 0 0 / .6); }
+.tkt-line[data-ask] { border-color: color-mix(in srgb, var(--color-orange) 55%, transparent); }
+.tkt-thumb { position: relative; flex: none; width: 42px; height: 42px; border-radius: 12px; overflow: hidden; display: grid; place-items: center;
+  background: var(--color-fill-2); color: var(--color-label-3); }
+.tkt-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tkt-veg { position: absolute; left: 3px; bottom: 3px; display: grid; padding: 2px; border-radius: 5px; background: var(--color-bg-2); line-height: 0; box-shadow: 0 1px 3px rgb(0 0 0 / .3); }
+.tkt-foot { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; border-top: .5px dashed var(--color-separator);
+  background: color-mix(in srgb, var(--color-fill) 35%, transparent); }
+.tkt-foot [data-pos-stepper] { background: var(--color-bg-2); box-shadow: inset 0 0 0 .5px var(--color-separator); }
+
+/* the front desk: a table booking is a ticket — the time on a stub in its state's colour, a torn edge, then who and where */
+.fdt { position: relative; display: flex; align-items: stretch; min-height: 76px; border-radius: 20px; overflow: hidden; background: var(--color-bg-2);
+  border: .5px solid var(--color-separator); transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur), border-color var(--dur-fast); }
+a.fdt:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--hue) 45%, transparent); box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--hue) 70%, #000); }
+.fdt-time { flex: none; width: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--hue);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--hue) 22%, var(--color-bg-2)), color-mix(in srgb, var(--hue) 9%, var(--color-bg-2))); }
+.fdt-time b { font-family: var(--font-display); font-weight: 500; font-size: 26px; line-height: 1; color: var(--color-label); }
+.fdt-time small { font-size: 10.5px; font-weight: 800; letter-spacing: .12em; }
+.fdt-perf { position: relative; flex: none; width: 0; border-left: 1.5px dashed color-mix(in srgb, var(--hue) 40%, var(--color-separator)); }
+.fdt-perf::before, .fdt-perf::after { content: ""; position: absolute; left: -8px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-bg); }
+.fdt-perf::before { top: -8px; } .fdt-perf::after { bottom: -8px; }
+.fdt-body { flex: 1; min-width: 0; padding: 11px 12px 11px 16px; display: flex; flex-direction: column; justify-content: center; gap: 7px; }
+.fdt-st { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 800;
+  color: var(--hue); background: color-mix(in srgb, var(--hue) 15%, transparent); }
+.fdt-chip { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  color: var(--color-label-2); background: var(--color-fill); }
+.fdt-chip.fdt-room { color: var(--color-violet); background: color-mix(in srgb, var(--color-violet) 14%, transparent); }
+.fdt-go { flex: none; align-self: center; margin-right: 10px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--color-fill);
+  color: var(--color-label-2); transition: background-color var(--dur-fast), color var(--dur-fast); }
+a.fdt:hover .fdt-go { background: var(--hue); color: var(--color-bezel); }
+
+/* Assign: the table and how long it waited, then people as tiles — initials, a green dot on duty, "Now" on whoever has it */
+.crew-head { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 18px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-cyan) 16%, var(--color-bg-2)), var(--color-bg-2)); border: .5px solid color-mix(in srgb, var(--color-cyan) 30%, transparent); }
+.crew-table { flex: none; min-width: 52px; height: 52px; padding: 0 10px; border-radius: 15px; display: grid; place-items: center; font-size: 24px; line-height: 1;
+  color: var(--color-bezel); background: var(--color-cyan); box-shadow: 0 8px 20px -10px var(--color-cyan); }
+.crew-tile { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 10px 12px 10px 10px; border-radius: 18px; text-align: left;
+  background: var(--color-bg-2); border: .5px solid var(--color-separator);
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast), background-color var(--dur-fast); }
+.crew-tile:hover { border-color: color-mix(in srgb, var(--color-cyan) 50%, transparent); background: color-mix(in srgb, var(--color-cyan) 6%, var(--color-bg-2)); }
+.crew-tile:active { transform: scale(.985); }
+.crew-tile[data-now] { border-color: color-mix(in srgb, var(--color-cyan) 60%, transparent); background: color-mix(in srgb, var(--color-cyan) 10%, var(--color-bg-2)); opacity: 1; }
+.crew-ava { position: relative; flex: none; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-family: var(--font-display); font-size: 17px;
+  color: var(--color-label-2); background: var(--color-fill-2); }
+.crew-ava[data-cleans] { color: var(--color-cyan); background: color-mix(in srgb, var(--color-cyan) 16%, transparent); }
+.crew-duty { position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--color-green); box-shadow: 0 0 0 2.5px var(--color-bg-2); }
+.crew-now { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 800;
+  color: var(--color-bezel); background: var(--color-cyan); }
+.crew-go { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--color-fill); color: var(--color-label-2);
+  transition: background-color var(--dur-fast), color var(--dur-fast); }
+.crew-tile:hover .crew-go { background: var(--color-cyan); color: var(--color-bezel); }

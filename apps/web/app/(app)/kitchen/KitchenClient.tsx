@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, Check, Bell, BellRing, CheckCheck, Clock, AlertTriangle, Printer, Boxes, Timer, Tv, RotateCcw, PauseCircle } from "lucide-react";
+import { Flame, Check, Bell, BellRing, CheckCheck, Clock, AlertTriangle, Printer, Boxes, Timer, Tv, RotateCcw, PauseCircle, Keyboard, ChefHat } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { cn, useToast, FlapShuffle, FlapClock } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
@@ -18,7 +18,8 @@ import { usePrinters } from "@/lib/print/usePrinter";
 
 type Line = { id: string; name_snapshot: string; qty: number; status: string; notes: string | null; course?: number; addons?: { name: string }[] | null; components?: { name: string; qty: number }[] | null; menu_items?: { station: string | null; categories: { station: string | null } | null } | null };
 type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string; held?: boolean; cook?: string | null;
-  orders: { order_no: number; type: string; customer_name: string | null; token_no?: number | null; promised_at: string | null; dining_tables: { name: string } | null } | null;
+  /** `notes` is the whole order's cooking request ("Jain") — the till's "Cooking request", saved on the order, not on a dish */
+  orders: { order_no: number; type: string; customer_name: string | null; token_no?: number | null; promised_at: string | null; notes?: string | null; dining_tables: { name: string } | null } | null;
   order_items: Line[] };
 export type Bumped = { id: string; kot_no: number; served_at: string; orders: { order_no: number; type: string; customer_name: string | null; dining_tables: { name: string } | null } | null };
 /** Per ticket: what its dishes draw from the pantry, whether the shelf covers it, whether it has drawn already. */
@@ -27,6 +28,8 @@ export type Needs = Record<string, { started: boolean; unmapped: string[]; needs
 /** A line prints at its dish's station, else its category's, else nowhere in particular — the expo view only. */
 const stationOf = (i: Line) => i.menu_items?.station || i.menu_items?.categories?.station || null;
 const live = (i: Line) => i.status !== "cancelled";
+/** a number on the ticket's meta row — paper-toned so it reads on the white ticket in every theme */
+const KT_CHIP = "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[12px] font-bold leading-none bg-[color-mix(in_srgb,var(--color-paper-ink)_7%,var(--color-paper))] text-[color-mix(in_srgb,var(--color-paper-ink)_78%,transparent)]";
 /** a parcel's daily token (0103) rides with it — the number the counter calls and the TV shows */
 const where = (k: { orders: { type: string; customer_name: string | null; token_no?: number | null; dining_tables: { name: string } | null } | null }) =>
   k.orders?.dining_tables?.name ?? (k.orders?.type === "room_service" ? `Room · ${k.orders?.customer_name ?? ""}` : `${k.orders?.type === "takeaway" ? "Takeaway" : "Delivery"}${k.orders?.token_no ? ` · Token ${k.orders.token_no}` : ""}`);
@@ -241,8 +244,24 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                             <FlapClock since={k.created_at} hurry={key !== "ready" ? warnAt : null} late={key !== "ready" ? lateAt : null} size="xs" tile="34px" bare tone={overdue ? "alert" : undefined} />
                           </span>
                         </div>
-                        <div className="px-3.5 pt-2 kt-sub num">KOT #{k.kot_no} · order #{k.orders?.order_no}{hotkey ? ` · key ${hotkey}` : ""}{k.cook && <span className="font-sans" data-cook> · {k.cook}</span>}</div>
+                        {/* the ticket's numbers as small chips (2026-10-30, the owner: "ultra modern, compact"): KOT, order, the
+                            keyboard key, the cook — one quiet row instead of a sentence */}
+                        <div className="px-3.5 pt-2.5 flex flex-wrap items-center gap-1.5 num" data-kt-meta>
+                          <span className={KT_CHIP} title="Kitchen ticket"><span className="opacity-60 font-semibold">KOT</span>{k.kot_no}</span>
+                          <span className={KT_CHIP} title="Order"><span className="opacity-60 font-semibold">#</span>{k.orders?.order_no}</span>
+                          {hotkey && <span className={KT_CHIP} title={`Press ${hotkey} to move it on`}><Keyboard size={12} aria-hidden className="opacity-60" />{hotkey}</span>}
+                          {k.cook && <span className={cn(KT_CHIP, "font-sans max-w-full")} data-cook><ChefHat size={12} aria-hidden className="opacity-60 shrink-0" /><span className="truncate">{k.cook}</span></span>}
+                        </div>
                         <div className="px-3.5">
+                          {/* the whole order's cooking request (the till's "Cooking request" — Jain, no onion…) sits on the order,
+                              not on a dish, so it is read from orders.notes and put above every line it governs — a compact amber
+                              pill as wide as its words, a soft ring so it still catches a cook's eye */}
+                          {k.orders?.notes?.trim() && (
+                            <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full pl-2 pr-3 py-1 text-[14px] font-extrabold leading-tight bg-[color-mix(in_srgb,var(--color-orange)_16%,var(--color-paper))] text-[color-mix(in_srgb,var(--color-orange)_50%,var(--color-paper-ink))] shadow-[inset_0_0_0_1.5px_color-mix(in_srgb,var(--color-orange)_45%,transparent)]" data-kot-note>
+                              <span aria-hidden className="grid place-items-center h-5 w-5 shrink-0 rounded-full bg-[var(--color-orange)] text-[var(--color-paper)]"><AlertTriangle size={12} strokeWidth={2.6} /></span>
+                              <span className="min-w-0 break-words"><span className="sr-only">Whole order: </span>{k.orders.notes.trim()}</span>
+                            </div>
+                          )}
                           {leftMin !== null && (
                             <div className={cn("mt-2 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[13px] font-bold",
                               overdue ? "bg-[var(--color-red-2)] text-chili" : leftMin <= 5 ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "bg-[var(--color-green-2)] text-mint")}>
@@ -272,7 +291,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                             : key === "preparing" ? <button type="button" className="svc-btn go flex-1" disabled={(view !== "all" && pending) || stationDone} onClick={() => advance(k)} data-kot-go><BellRing size={21} aria-hidden />{view === "all" ? <Say w="food_ready" /> : stationDone ? `${view} done` : `${view} ready`}</button>
                             : <button type="button" className="svc-btn flex-1 bg-[var(--color-paper-ink)] text-[var(--color-paper)]" onClick={() => move(k.id, "served")} data-kot-go><CheckCheck size={21} aria-hidden /><Say w="served" /></button>}
                           <button type="button" title="Reprint this ticket" aria-label="Reprint this ticket" className="h-14 w-14 shrink-0 rounded-[18px] grid place-items-center bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"
-                            onClick={() => { void printKot({ kotNo: `KOT ${k.kot_no}`, when: new Date(k.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: where(k), reprint: true, items: k.order_items.filter(live).map((i) => ({ name: i.name_snapshot, qty: i.qty, note: i.notes, extras: lineExtras(i), station: stationOf(i) })) }); }}><Printer size={19} /></button>
+                            onClick={() => { void printKot({ kotNo: `KOT ${k.kot_no}`, when: new Date(k.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: where(k), reprint: true, heading: k.orders?.notes?.trim() ? `** ${k.orders.notes.trim().toUpperCase()} **` : undefined, items: k.order_items.filter(live).map((i) => ({ name: i.name_snapshot, qty: i.qty, note: i.notes, extras: lineExtras(i), station: stationOf(i) })) }); }}><Printer size={19} /></button>
                         </div>
                       </motion.article>
                     );

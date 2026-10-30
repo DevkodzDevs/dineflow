@@ -22,7 +22,7 @@ export const ITEMS: Section[] = [
   { key: "scan", href: "/scan", label: "Scan", Icon: ScanLine },
   { key: "frontdesk", href: "/frontdesk", label: "Front desk", Icon: ConciergeBell },
   { key: "rooms", href: "/rooms", label: "Rooms", Icon: BedDouble },
-  { key: "housekeeping", href: "/housekeeping", label: "Housekeeping", Icon: Sparkles },
+  { key: "housekeeping", href: "/housekeeping", label: "Room status", Icon: Sparkles },
   { key: "guests", href: "/guests", label: "Guests", Icon: Contact },
   { key: "facilities", href: "/facilities", label: "Facilities", Icon: Waves },
   { key: "reservations", href: "/reservations", label: "Reservations", Icon: CalendarCheck },

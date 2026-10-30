@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Send, Loader2, ImagePlus, X, LogIn, Building2, Mail, Phone, MessageCircle, StickyNote, ShieldCheck, ShieldAlert, Star, Monitor, ExternalLink } from "lucide-react";
-import { Button, Segmented, cn } from "@/components/ui";
+import { Button, Segmented, cn, ask } from "@/components/ui";
 import { kindOf, ticketNo, stamp, when, topicLabel, daysLeft, eventText, STATUS, PRIORITIES, SHOT_MAX, type Status } from "@/lib/support";
 import { StatusChip, PriorityChip } from "@/components/support/chips";
 import { uploadShots } from "@/components/support/shots";
@@ -103,7 +103,7 @@ export function TicketDesk({ full, urls }: { full: Full; urls: Record<string, st
                             </a>
                             {/* a screenshot that shows more than it should (a guest's details) can be taken off — the property is told */}
                             <button type="button" disabled={pending} aria-label={`Remove screenshot ${i + 1}`} title="Remove this screenshot" data-drop-shot
-                              onClick={() => { if (confirm("Delete this screenshot? The property will see it was removed.")) act(() => dropFile(t.id, m.id, path)); }}
+                              onClick={async () => { if (!(await ask({ title: "Delete this screenshot?", body: "The property will see it was removed.", ok: "Delete", tone: "danger", icon: "trash" }))) return; act(() => dropFile(t.id, m.id, path)); }}
                               className="absolute -top-2 -right-2 h-8 w-8 !min-h-0 !min-w-0 rounded-full bg-[var(--color-bg-2)] ring-1 ring-[var(--color-separator)] shadow-sm grid place-items-center text-[var(--color-red)] hover:bg-[var(--color-red-2)]"><X size={14} /></button>
                           </div>
                         ) : null)}
@@ -184,7 +184,13 @@ export function TicketDesk({ full, urls }: { full: Full; urls: Record<string, st
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Link href={`/admin/${p.id}`} className="btn btn-gray !h-11 !text-[13px] !px-3"><ExternalLink size={15} /> Property</Link>
-                <form action="/admin/open" method="post" className="contents" onSubmit={(e) => { if (!t.allow_access && !confirm(`${t.raised_name ?? "They"} did not allow access for this request. Open ${p.name} anyway?`)) e.preventDefault(); }}>
+                <form action="/admin/open" method="post" className="contents" onSubmit={async (e) => {
+                  if (t.allow_access) return;
+                  // ask first, then post the form ourselves: form.submit() does not fire onSubmit again, so no loop
+                  e.preventDefault();
+                  const form = e.currentTarget;
+                  if (await ask({ title: `Open ${p.name} anyway?`, body: `${t.raised_name ?? "They"} did not allow access for this request.`, ok: "Open anyway", tone: "danger", icon: "alert" })) form.submit();
+                }}>
                   <input type="hidden" name="id" value={p.id} />
                   <button type="submit" className={cn("btn !h-11 !text-[13px] !px-3", t.allow_access ? "btn-filled" : "btn-gray")} data-desk-open><LogIn size={15} /> {t.allow_access ? "Open" : "Open anyway"}</button>
                 </form>

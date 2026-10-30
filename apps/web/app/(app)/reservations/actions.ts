@@ -13,14 +13,15 @@ export async function setReservation(id: string, status: "confirmed" | "seated" 
   const { error } = await s.rpc("reservation_set", { p_id: id, p_status: status, p_table: tableId ?? null });
   if (error) return { error: error.message }; bump(); return { ok: true };
 }
-export async function addWalkIn(v: { name: string; phone: string; date: string; time: string; party: number; note: string; table?: string }) {
+export async function addWalkIn(v: { name: string; phone: string; date: string; time: string; party: number; note: string; table?: string; stay?: string }) {
   const s = await createClient(); const { data: { user } } = await s.auth.getUser();
   const { data: p } = await s.from("profiles").select("restaurant_id").eq("id", user!.id).maybeSingle();
   const rid = p?.restaurant_id ?? (await s.rpc("admin_acting_as")).data;
   const { data: last } = await s.from("reservations").select("reservation_no").order("reservation_no", { ascending: false }).limit(1).maybeSingle();
   // a table chosen now is held for them when their time comes; none — one that seats them is given then (0154). Another
-  // property's table is refused by the same-property trigger.
-  const { error } = await s.from("reservations").insert({ restaurant_id: rid, reservation_no: (last?.reservation_no ?? 0) + 1, guest_name: v.name, guest_phone: v.phone, on_date: v.date, at_time: v.time, party_size: v.party, note: v.note, status: "confirmed", source: "phone", table_id: v.table || null });
+  // property's table is refused by the same-property trigger. A guest staying here names their stay (0157, booking_id) —
+  // another property's stay is refused the same way.
+  const { error } = await s.from("reservations").insert({ restaurant_id: rid, reservation_no: (last?.reservation_no ?? 0) + 1, guest_name: v.name, guest_phone: v.phone, on_date: v.date, at_time: v.time, party_size: v.party, note: v.note, status: "confirmed", source: "phone", table_id: v.table || null, booking_id: v.stay || null });
   if (error) return { error: error.message }; await holdDue(s); bump(); return { ok: true };
 }
 export async function saveOffer(fd: FormData) {

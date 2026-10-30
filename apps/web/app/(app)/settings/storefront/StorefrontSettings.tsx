@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { Copy, ExternalLink, Percent, Plus, Trash2, UtensilsCrossed, Bike, ShoppingBag, Globe } from "lucide-react";
-import { Button, Card, Field, Switch, Sheet, Pill, cn, useToast } from "@/components/ui";
+import { Button, Card, Field, Switch, Sheet, Pill, cn, useToast, ask } from "@/components/ui";
 import { QR } from "../../labour/LabourClient";
 import { formatINR } from "@/lib/format";
 import { saveStorefront, suggestTagline } from "./actions";
@@ -87,7 +87,7 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
                   <div className="text-xs text-[var(--color-label-2)]">{o.kind === "flat_pct" ? `${o.value}% off` : `${formatINR(o.value)} off`} · {o.scope}{o.min_order > 0 ? ` · above ${formatINR(o.min_order)}` : ""}{o.from_time ? ` · ${o.from_time.slice(0, 5)}–${o.to_time?.slice(0, 5)}` : ""}</div></div>
                 {!o.is_active && <Pill tone="served">off</Pill>}
                 <Button size="sm" variant="gray" onClick={() => setOffer(o)}>Edit</Button>
-                <Button size="sm" variant="plain" onClick={() => { if (confirm(`Remove “${o.title}”?`)) start(async () => { const r = await deleteOffer(o.id); if ("error" in r) toast(r.error!, "err"); }); }}><Trash2 size={14} /></Button>
+                <Button size="sm" variant="plain" onClick={async () => { if (await ask({ title: "Remove this offer?", body: `“${o.title}” stops showing to guests.`, ok: "Remove", tone: "danger", icon: "trash" })) start(async () => { const r = await deleteOffer(o.id); if ("error" in r) toast(r.error!, "err"); }); }}><Trash2 size={14} /></Button>
               </div>))}</div>
           )}
         </Card>

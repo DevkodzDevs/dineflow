@@ -424,3 +424,47 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+## The ticket panel, 2026-10-30 (the owner's iPad notes) — replaces the ticket-line, head and footer lines above
+- **At a table the order-type tiles are gone** (Dine in / Parcel / Delivery / Room): a dine-in ticket with a table needs none.
+  They still show with no table (counter, parcel, delivery, room). *Change* stays.
+- **The head is one short row:** "Ticket" with a count badge (`[data-ticket-head]`, `[data-ticket-count]`), then four round icon
+  buttons — prices (`[data-pos-prices]` on/off), preview (`[data-pos-preview]`), courses (`[data-courses]`, filled when on),
+  clear (`[data-clear-ticket]`, a bin). No words.
+- **Lines are rows with a hairline**, not cards: the veg mark and name, the note in amber under it (`[data-line-request]`), then the
+  **capsule stepper** `[ − qty + ]` on the fill colour (`[data-pos-stepper]`; 36px with a mouse, 44 on touch); at qty 1 the − is a
+  red bin that removes the line (`data-last`), so the separate × is gone. Note is an icon (`[data-has-note]` when set, amber).
+- **Prices hidden by default:** line prices (`[data-line-price]`), "₹x each" (`[data-line-each]`), the total and the promise amount
+  show only after the ₹ icon or the count/total foot (`[data-total-toggle]`) is tapped; remembered per device (`df-pos-prices`).
+  `[data-total]` exists only while prices show. The dish count always shows.
+- **Preview** (`[data-pos-preview-sheet]`): every line large — stepper, course C1/C2/C3 when courses are on, Note, Options (reuses the
+  size/add-on chooser, opening on what the line already has — `OptionChooser` `initialVariant`/`initialAddons`), Remove; foot: the
+  count/total and Send to kitchen. A line answered again keeps its course.
+- The note, cooking-request and options dialogs sit after the phone's ticket sheet, so they open over it.
+- The list-space figures measured earlier (1920×1080 465px …) are out of date.
+
+- **Tables (2026-10-30):** no tables → the kit's `EmptyState` (`[data-tables-empty]`): "No tables yet", and for an owner or manager
+  **Set up tables** (`[data-tables-setup]`, /settings#tables); others read "Ask a manager to add them". **The table sheet has no
+  ordering-QR block any more** — the QR codes are on the page's *Table QR codes* button.
+- **The cooking request reaches the kitchen screen** (2026-10-30): it still prints as `** NOTE **`, and now shows on the kitchen
+  ticket too (kitchen.md).
+
+- **The Cleaning tile's move follows the job (2026-10-30)** — cleaning.md: a cleaner gets *I'll take it*, an owner / manager /
+  supervisor *Assign* (a sheet of the staff), everyone else *Waiting to clean*. page.tsx reads `role, department, position` and,
+  for a boss with a table to clean, who is on duty today.
+- **The till, 2026-10-30 (the owner: "once a dish is added the choose option hides"; "show Add guest as an icon").** A dish with
+  choices on the ticket keeps its Choose chip beside − / + (`[data-on-ticket] [data-choose]`). *Add guest* is a round 40/44px key
+  in the ticket head beside Change (`[data-guest]`): it opens Name and Phone under the head (`[data-guest-fields]`); once a name
+  is in, the key is the tint with the initial (`[data-guest-initial]`) and the name is its title — a name on it wrapped
+  "Table T4" onto two lines.
+
+## 2026-10-30, second pass — the owner: "ultra-modern, latest, unique, user friendly"
+- **Tables' cards (`.tcard`, globals.css):** a 3px bar in the state's colour along the top and a glow in the corner (`--hue`), the
+  name big and the state as a pill with its icon (pulsing while in use, billed or cleaning), a dot a seat (lit while in use, up to
+  eight), one line that matters (₹ and items · time / who is cleaning / the booking / Ready to seat), today's bills on a dashed
+  foot with a round arrow. WebKit shrank a flex row inside a `<button>` to its content, so `.tcard > *` is full width.
+- **The till's ticket line is a card (`.tkt-line`):** the dish's photo or its category's icon (42px) with the veg mark on its
+  corner, the name, extras and request, the price; on a dashed foot inside the card the stepper (`slim`: 32px with a mouse, 44
+  under a finger) and the line's keys — Options for a dish with choices (`[data-line-options]`), the course, the note. 115px tall
+  on an iPad with its 44px keys (was 128).
+- **Assign (`.crew-*`):** a head with the table in cyan, who has it and since when, how many on duty; "They clean" then "Everyone
+  else" as tiles (initials, a green dot on duty, the job, "Now" on whoever has it); a search past eight people.

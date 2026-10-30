@@ -3,9 +3,8 @@ import Link from "next/link";
 import { useNavPath } from "./useNavPath";
 import { ProfileCard } from "./ProfileCard";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LogOut, ShieldCheck, Menu, X, Fingerprint, PanelLeftClose, PanelLeftOpen, LayoutTemplate, type LucideIcon } from "lucide-react";
-import { SidebarPicker } from "./SidebarPicker";
-import { ICON_LOOKS, chosenSidebar, currentSidebar, defaultSidebar, toggleFold } from "@/lib/sidebar";
+import { LogOut, ShieldCheck, Menu, Fingerprint, type LucideIcon } from "lucide-react";
+import { ICON_LOOKS, chosenSidebar, currentSidebar, defaultSidebar } from "@/lib/sidebar";
 import { cn, Sheet, FlapMini } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
@@ -116,12 +115,11 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
     return () => { window.removeEventListener("keydown", esc); window.removeEventListener("resize", wide); window.removeEventListener("df-sidebar", wide); };
   }, [open]);
   /* The look (lib/sidebar.ts). With no choice on this device the default follows the width — rail under 1280, the full
-     menu from 1280 — so a window dragged across 1280, or an iPad turned, still gets its own; a choice holds at any width. */
-  const [folded, setFolded] = useState(false);
-  /* Menu style, from the sidebar itself (2026-10-23, the owner: "the users choose the design") — the same six as My profile */
-  const [styles, setStyles] = useState(false);
+     menu from 1280 — so a window dragged across 1280, or an iPad turned, still gets its own; a choice holds at any width.
+     The fold and Menu style keys left the sidebar (2026-10-30, the owner: "remove the Expand menu section — only in
+     Settings"): both live in SidebarPicker (Settings → Appearance, My profile → This device). */
   useEffect(() => {
-    const sync = () => { if (!chosenSidebar()) document.documentElement.setAttribute("data-sidebar", defaultSidebar(window.innerWidth)); setFolded(ICON_LOOKS.includes(currentSidebar())); };
+    const sync = () => { if (!chosenSidebar()) document.documentElement.setAttribute("data-sidebar", defaultSidebar(window.innerWidth)); };
     sync(); window.addEventListener("resize", sync); window.addEventListener("df-sidebar", sync);
     return () => { window.removeEventListener("resize", sync); window.removeEventListener("df-sidebar", sync); };
   }, []);
@@ -149,11 +147,21 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
   return (
     <>
     <aside data-open={open ? "true" : undefined} className="hidden md:flex md:flex-col w-[256px] shrink-0 ink-panel sticky top-0 self-start h-dvh px-4 py-6 overflow-hidden">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? "Close menu" : "Open menu"} title={open ? "Close menu" : "Menu"}
-        className="rail-only mb-4 h-11 w-11 shrink-0 rounded-xl grid place-items-center text-white/75 bg-white/[.06] hover:bg-white/10 hover:text-white transition">
-        {open ? <X size={20} /> : <Menu size={20} />}
+      {/* ☰ that turns into ✕ while the menu is open (2026-10-30, the owner: "the hamburger should change into a cross"): three
+          lines — the outer two swing to the cross, the middle one fades. A second tap closes, as do the scrim and Escape. */}
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? "Close menu" : "Open menu"} title={open ? "Close menu" : "Menu"} data-menu-toggle
+        className={cn("rail-only shrink-0 grid place-items-center transition-[background-color,color,box-shadow,transform] duration-200 active:scale-95",
+          /* open (2026-10-30, the owner: "compact, perfect placing"): the ✕ leaves the rail's top and sits at the end of the
+             property's row as a round glass key, so the drawer's head is one line — name on the left, close on the right */
+          open ? "absolute right-4 top-6 z-[1] h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 rounded-full text-white bg-white/[.10] shadow-[inset_0_0_0_1px_rgb(255_255_255/.14),0_6px_18px_-8px_rgb(0_0_0/.6)] backdrop-blur-md hover:bg-white/[.16]"
+            : "mb-4 h-11 w-11 rounded-xl text-white/75 bg-white/[.06] hover:bg-white/10 hover:text-white")}>
+        <span aria-hidden className="relative block h-[14px] w-[18px]">
+          <span className={cn("absolute inset-x-0 top-0 h-[2px] rounded-full bg-current transition-transform duration-300 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none", open && "translate-y-[6px] rotate-45")} />
+          <span className={cn("absolute inset-x-0 top-[6px] h-[2px] rounded-full bg-current transition-[opacity,scale] duration-200 motion-reduce:transition-none", open && "opacity-0 scale-x-0")} />
+          <span className={cn("absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-current transition-transform duration-300 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none", open && "-translate-y-[6px] -rotate-45")} />
+        </span>
       </button>
-      <Link prefetch={false} href={myDayFor(role) ? "/home" : "/dashboard"} className="px-2 flex items-center gap-2.5 min-w-0 [@media(pointer:coarse)]:min-h-11">
+      <Link prefetch={false} href={myDayFor(role) ? "/home" : "/dashboard"} className={cn("px-2 flex items-center gap-2.5 min-w-0 min-h-10 [@media(pointer:coarse)]:min-h-11", open && "pr-14")}>
         {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 object-contain" /> : <span className="flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px] shrink-0"><span className="flip-face">{restaurant.slice(0, 1)}</span></span>}
         <div className="min-w-0"><div className="font-display text-[17px] leading-tight text-white tracking-wide rail-hide truncate">{restaurant}</div><div className="rail-hide text-[11px] text-white/45 mt-0.5 truncate">{PROPERTY_LABEL[type]}</div></div>
       </Link>
@@ -171,21 +179,6 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
         {/* only when the owner has turned on a way to punch from one's own phone (fingerprint or selfie) */}
         {attend && <Link prefetch={false} href="/attendance" title="My attendance" className={cn("mb-2 flex items-center gap-3 h-[42px] [@media(pointer:coarse)]:h-11 px-3 rounded-[12px] text-[14px] font-medium transition-colors", path.startsWith("/attendance") ? "bg-white/[.12] text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}><Fingerprint size={17} className="shrink-0" /><span className="rail-hide">My attendance</span></Link>}
         {isAdmin && <Link prefetch={false} href="/admin" className="rail-hide mb-2 flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[.06] text-[12px] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"><ShieldCheck size={14} /> Master control</Link>}
-        {/* the fold (2026-10-23): the open looks fold to icons, the icon looks unfold to the one they came from; kept on this
-            device. From 768 up (.sb-fold), at every look — a phone has the bottom bar. */}
-        {/* beside it, Menu style: the six looks in a sheet. A row on the open looks, a column on the icon looks (.sb-tools) */}
-        <div className="sb-tools mb-2 gap-1">
-        <button type="button" onClick={() => { setOpen(false); toggleFold(); }} aria-pressed={folded} data-sb-fold
-          title={folded ? "Expand the menu" : "Collapse the menu to icons"} aria-label={folded ? "Expand the menu" : "Collapse the menu to icons"}
-          className="sb-fold flex-1 min-w-0 items-center justify-center gap-2.5 h-10 px-3 rounded-[12px] text-[13px] font-semibold text-white/55 hover:text-white hover:bg-white/[.06] transition-colors [@media(pointer:coarse)]:min-h-11">
-          {folded ? <PanelLeftOpen size={18} aria-hidden className="shrink-0" /> : <PanelLeftClose size={18} aria-hidden className="shrink-0" />}
-          <span className="rail-hide flex-1 text-left truncate">{folded ? "Expand menu" : "Collapse menu"}</span>
-        </button>
-        <button type="button" onClick={() => { setOpen(false); setStyles(true); }} title="Menu style" aria-label="Menu style" aria-haspopup="dialog" data-sb-style
-          className="shrink-0 h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 mx-auto grid place-items-center rounded-[12px] text-white/55 hover:text-white hover:bg-white/[.06] transition-colors">
-          <LayoutTemplate size={18} aria-hidden />
-        </button>
-        </div>
         {/* p-[7px] plus the 1px border puts the card at exactly 52px across — the width the rail
             leaves once it collapses, so the avatar alone still sits square inside it */}
         <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[.04] p-[7px]">
@@ -201,7 +194,6 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
     {/* holds the rail's 76px in the row while the open drawer floats over the page */}
     <div aria-hidden className="nav-spacer" />
     {open && <div className="nav-scrim" onClick={() => setOpen(false)} aria-hidden />}
-    <Sheet open={styles} onClose={() => setStyles(false)} title="Menu style" wide><SidebarPicker inSheet /></Sheet>
     </>
   );
 }

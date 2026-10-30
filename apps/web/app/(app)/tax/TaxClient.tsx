@@ -4,7 +4,7 @@ import Link from "next/link";
 import { csvCell } from "@/lib/csv";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Landmark, Pencil, Plus, Trash2, Undo2, UserRound, X } from "lucide-react";
-import { Button, Card, CardStrip, Field, Pill, Sheet, cn, type StripAction } from "@/components/ui";
+import { Button, Card, CardStrip, Field, Pill, Sheet, cn, type StripAction, ask } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DOC_KINDS, GST_STATES, financialYear, statutoryCalendar, taxLabels, type CalendarItem } from "@dineflow/shared";
 import { saveTaxProfile, saveDoc, deleteDoc, markFiled, unmarkFiled } from "./actions";
@@ -294,7 +294,7 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
             <CardStrip data-doc-actions actions={[
               ...(d.url ? [{ key: "open", label: "Open copy", icon: <ExternalLink />, tone: "go", href: d.url, external: true, aria: `Open the copy of ${d.title}` } satisfies StripAction] : []),
               { key: "edit", label: "Edit", icon: <Pencil />, onClick: () => setEdit(d), aria: `Edit ${d.title}` },
-              { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", disabled: pending, onClick: () => { if (confirm(`Remove "${d.title}" from the register?`)) onDelete(d.id); }, aria: `Remove ${d.title}` },
+              { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", disabled: pending, onClick: async () => { if (await ask({ title: "Remove from register?", body: `"${d.title}" leaves the register.`, ok: "Remove", tone: "danger", icon: "trash" })) onDelete(d.id); }, aria: `Remove ${d.title}` },
             ]} />
           </Card>); })}</div>
       )}

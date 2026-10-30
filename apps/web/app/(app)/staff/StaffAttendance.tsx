@@ -40,7 +40,11 @@ export function StaffAttendance({ today, staff, att, methods, canMark, canRegist
   const onLeave = people.filter((p) => away.has(p.id) && !by.get(p.id)?.in_at).length;
   const manual = methods.includes("manual") && canMark;
   return (
-    <section className="rounded-[26px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4 sm:p-5 mt-5" data-staff-attendance>
+    /* Cards across (2026-10-30, the owner on an iPad: "the grid option is not working"): the columns followed the screen —
+       three only from 1280px, so a 1194 iPad showed two whichever was picked. They follow this panel's own width now (a
+       container): two from 36rem, three from 52rem; where three would not fit (an iPad held upright) its button is not
+       offered, so every button that shows does something. */
+    <section className="@container/att rounded-[26px] border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-4 sm:p-5 mt-5 @max-[52rem]/att:[&_[data-view-pick='3']]:hidden" data-staff-attendance>
       {/* the head (2026-10-23, the owner: "not looking good on a phone"): the title broke as "Attend / ance" beside the tabs.
           Now the title never shrinks below its word; on a phone Today | Register drop to their own full-width row. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-3 mb-3 min-w-0" data-att-head>
@@ -57,7 +61,7 @@ export function StaffAttendance({ today, staff, att, methods, canMark, canRegist
       </div>
       {err && <p className="text-sm text-chili mb-2">{err}</p>}
       {tab === "today" ? (
-        <ul className={cn("grid gap-2", across === "2" && "sm:grid-cols-2", across === "3" && "sm:grid-cols-2 xl:grid-cols-3")} data-att-across={across}>
+        <ul className={cn("grid gap-2", across === "2" && "@min-[36rem]/att:grid-cols-2", across === "3" && "@min-[36rem]/att:grid-cols-2 @min-[52rem]/att:grid-cols-3")} data-att-across={across}>
           {people.map((p) => { const a = by.get(p.id); const lv = !a?.in_at ? away.get(p.id) : undefined; const H = a?.method_in ? HOW[a.method_in] : null; return (
             <li key={p.id} className={cn("flex items-center gap-3 rounded-2xl p-2.5 pr-2 min-w-0", a ? "bg-[color-mix(in_srgb,var(--color-green)_10%,transparent)]" : lv ? "bg-[color-mix(in_srgb,var(--color-violet)_10%,transparent)]" : "bg-[var(--color-fill)]")} data-staff-row data-on-leave={lv ? "" : undefined}>
               <span className={cn("h-10 w-10 shrink-0 rounded-full grid place-items-center font-display", a ? "bg-[var(--color-green)] text-[var(--color-on-tint)]" : lv ? "bg-[color-mix(in_srgb,var(--color-violet)_24%,transparent)] text-[var(--color-violet)]" : "bg-[var(--color-fill-2)] text-[var(--color-label-2)]")}>{a ? <Check size={17} /> : lv ? <Plane size={16} aria-hidden /> : p.full_name.slice(0, 1)}</span>

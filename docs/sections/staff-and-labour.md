@@ -334,3 +334,15 @@ year. See [my-day.md](my-day.md).
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+## 2026-10-30
+- **Attendance's cards across work on an iPad (the owner: "the grid option is not working").** Three across began at 1280px, so a
+  1194 iPad showed two whatever was picked. The columns follow the panel (`@container/att`): two from 36rem, three from 52rem;
+  where three cannot fit (an iPad upright) the Three across button is hidden, so every button that shows does something.
+- **Labour: the calendar switch is the app's ViewSwitch with the pin (the owner: "add the default pin here").** *Calendar |
+  Compact* (`df-view:labour-cal`; `[data-view-switch="labour-cal"]`, the calendars `[data-month-dots]`); a device that had switched
+  the old toggle off (`df-labour-cal = 0`) keeps Compact as its default.
+- **Pay fills in the amount (the owner: "add the amount by their position; change it if needed").** `PayAmount`: the balance owed
+  this month, else one day at their rate; chips for 1 day, 1 week and the balance; the rate and skill beside them; still a field
+  (`[data-pay-input]`, `[data-pay-pick]`). Adding a labourer: the skill fills its usual day's wage (`wageFor` — what this property
+  pays that skill now, else a common rate) until the wage is typed.

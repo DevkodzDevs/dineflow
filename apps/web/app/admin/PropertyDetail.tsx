@@ -27,7 +27,7 @@ function asText(d: PropertyDetail) {
   return [
     block("PROPERTY", Object.entries(d.property)),
     block("TAX & GST", Object.entries(d.tax)),
-    ["USERS", ...d.users.map((u) => [
+    [`OWNER LOGIN${d.users.length === 1 ? "" : "S"}`, ...d.users.map((u) => [
       `  ${u.name} (${u.role})`,
       `    Login id      : ${u.login_id}`,
       `    Contact email : ${u.contact_email ?? "—"}`,
@@ -36,15 +36,20 @@ function asText(d: PropertyDetail) {
         : "set by the owner"}`,
       `    Active        : ${u.is_active ? "yes" : "no"}`,
       `    Last sign-in  : ${show(u.last_sign_in_at)}`,
-    ].join("\n"))].join("\n"),
+    ].join("\n")), ...(d.staff_count ? [`  Staff logins  : ${d.staff_count} (details in the property's Staff screen)`] : [])].join("\n"),
     block("CONTENTS", Object.entries(d.contents)),
   ].join("\n\n");
 }
 
-function CopyBtn({ text, label: l = "Copy", className }: { text: string; label?: string; className?: string }) {
+/** `kind` marks what it copies — `data-copy-id` / `data-copy-password` / `data-copy-both` — so a probe can find the
+ *  button that puts only the password on the clipboard (2026-10-30: one button copied "<id> / <password>", and pasted
+ *  into the sign-in Password box that whole string became the password). */
+export function CopyBtn({ text, label: l = "Copy", className, kind, name }: { text: string; label?: string; className?: string; kind?: "id" | "password" | "both"; name?: string }) {
   const [done, setDone] = useState(false);
+  const what = name ?? "Copy";
   return (
-    <button type="button" aria-label={l ? undefined : done ? "Copied" : "Copy"} title={l ? undefined : "Copy"}
+    <button type="button" aria-label={l ? undefined : done ? "Copied" : what} title={l ? undefined : what}
+      data-copy-id={kind === "id" ? "" : undefined} data-copy-password={kind === "password" ? "" : undefined} data-copy-both={kind === "both" ? "" : undefined}
       className={cn("inline-flex items-center justify-center gap-1.5 !min-h-0 h-9 [@media(pointer:coarse)]:h-11 rounded-full text-xs font-semibold transition-colors shrink-0",
         l ? "px-3.5" : "w-9 [@media(pointer:coarse)]:w-11",
         done ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]", className)}
@@ -100,8 +105,10 @@ function daysLeft(iso: string | null) {
 }
 
 /* ── user card with inline-editable contact email ─────────────────────────── */
-function UserCard({ u, restaurantId, onRefresh }: {
-  u: PropertyDetail["users"][number]; restaurantId: string; onRefresh?: () => void }) {
+/* `canReset`: admin_reset_property_password reissues the property's first owner (by created_at), so only that card offers
+   it — on any other card the button would have reset someone else's password. */
+function UserCard({ u, restaurantId, onRefresh, canReset = true }: {
+  u: PropertyDetail["users"][number]; restaurantId: string; onRefresh?: () => void; canReset?: boolean }) {
   const [pending, start] = useTransition();
   const [newPw, setNewPw] = useState<{ email: string; password: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -156,7 +163,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
       {/* details */}
       <div className="px-4">
         <InfoRow label="Login ID" mono>
-          <span className="flex items-center gap-2"><span className="flex-1 min-w-0 font-sans text-[13px] tabular-nums break-all">{u.login_id}</span><CopyBtn text={u.login_id} label="" /></span>
+          <span className="flex items-center gap-2"><span className="flex-1 min-w-0 font-sans text-[13px] tabular-nums break-all">{u.login_id}</span><CopyBtn text={u.login_id} label="" kind="id" name="Copy login ID" /></span>
         </InfoRow>
 
         {/* contact email — editable inline */}
@@ -197,7 +204,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
             </div>
             <div className="flex items-center gap-3">
               <code className="font-sans text-base font-bold tracking-wider tabular-nums break-all flex-1 min-w-0">{u.temp_password}</code>
-              <CopyBtn text={u.temp_password!} label="" />
+              <CopyBtn text={u.temp_password!} label="" kind="password" name="Copy password" />
             </div>
             {lockedOut ? (
               <div className="text-xs text-[var(--color-red)] font-semibold flex items-start gap-1.5 mt-1">
@@ -215,7 +222,7 @@ function UserCard({ u, restaurantId, onRefresh }: {
                 <span>visible for {dLeft}d</span>
               </div>
             )}
-            {lockedOut && (
+            {lockedOut && canReset && (
               <Button size="sm" className="mt-1" disabled={pending} onClick={generate}>
                 <KeyRound size={13} /> New password
               </Button>
@@ -228,9 +235,9 @@ function UserCard({ u, restaurantId, onRefresh }: {
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-orange)]">
               <AlertTriangle size={12} /> {expired ? "Password expired" : "No password on file"}
             </div>
-            <Button size="sm" disabled={pending} onClick={generate}>
+            {canReset && <Button size="sm" disabled={pending} onClick={generate}>
               <KeyRound size={13} /> Generate password
-            </Button>
+            </Button>}
           </div>
         )}
 
@@ -239,9 +246,9 @@ function UserCard({ u, restaurantId, onRefresh }: {
             <ShieldCheck size={16} className="text-[var(--color-green)] shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-[var(--color-green)]">Password set by owner</div>
-              <div className="text-xs text-steel mt-0.5">Reissue if locked out</div>
+              {canReset && <div className="text-xs text-steel mt-0.5">Reissue if locked out</div>}
             </div>
-            <Button size="sm" variant="outline" disabled={pending} onClick={generate}><KeyRound size={13} /></Button>
+            {canReset && <Button size="sm" variant="outline" disabled={pending} onClick={generate} aria-label="Reissue a temporary password" title="Reissue a temporary password"><KeyRound size={13} /></Button>}
           </div>
         )}
 
@@ -250,9 +257,13 @@ function UserCard({ u, restaurantId, onRefresh }: {
             <div className="text-xs font-bold text-[var(--color-green)] uppercase tracking-wide">
               New password — valid 7 days
             </div>
-            <div className="flex items-center gap-3">
-              <code className="font-sans text-base font-bold tracking-wider tabular-nums break-all flex-1 min-w-0">{newPw.password}</code>
-              <CopyBtn text={`${newPw.email} / ${newPw.password}`} label="Copy" />
+            <code className="block font-sans text-base font-bold tracking-wider tabular-nums break-all">{newPw.password}</code>
+            {/* one value per button: "Copy password" puts only the password on the clipboard. "Copy both" (two labelled
+                lines, for sending to the owner) is a separate, named choice — never the default. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <CopyBtn text={newPw.password} label="Copy password" kind="password" />
+              <CopyBtn text={newPw.email} label="Copy ID" kind="id" />
+              <CopyBtn text={`Login ID: ${newPw.email}\nTemporary password: ${newPw.password}`} label="Copy both" kind="both" />
             </div>
             <p className="text-xs text-steel">Share with the owner</p>
           </div>
@@ -379,6 +390,9 @@ function ContentGrid({ data }: { data: Record<string, number> }) {
 export function PropertyDetailView({ detail, restaurantId, onRefresh }: {
   detail: PropertyDetail; restaurantId: string; onRefresh?: () => void }) {
   const { property, tax, users, contents } = detail;
+  const staff = detail.staff_count ?? 0;
+  // the login admin_reset_property_password reissues: the first owner by created_at
+  const resettable = [...users].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0]?.login_id;
 
   const p = property as Record<string, unknown>;
   const kind = String(p.property_type ?? p.type ?? "");
@@ -392,7 +406,7 @@ export function PropertyDetailView({ detail, restaurantId, onRefresh }: {
           <span className="block font-display text-[22px] leading-tight [overflow-wrap:anywhere]">{show(p.name)}</span>
           <span className="flex flex-wrap gap-1.5 mt-1.5">
             {kind && <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold capitalize">{kind}</span>}
-            <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold">{users.length} login{users.length === 1 ? "" : "s"}</span>
+            <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold">{users.length + staff} login{users.length + staff === 1 ? "" : "s"}</span>
             <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold tabular-nums">{fmt(total)} records</span>
           </span>
         </span>
@@ -409,13 +423,14 @@ export function PropertyDetailView({ detail, restaurantId, onRefresh }: {
         onSaved={onRefresh}
       />
 
-      {/* users */}
-      <Panel icon={<User size={16} />} title="Users and sign-in" sub={users.length ? `${users.length} login${users.length === 1 ? "" : "s"}` : "No logins yet"}
-        actions={<CopyBtn text={users.map((u) => `${u.name} (${u.role}) — ${u.login_id} — ${u.contact_email ?? "no contact"}`).join("\n")} label="" />}>
-        <div className="p-3 space-y-3">
+      {/* the owner's sign-in only (2026-10-30): staff details live in the property's own Staff screen, a count here */}
+      <Panel icon={<User size={16} />} title={users.length > 1 ? "Owner logins" : "Owner login"}
+        sub={[users.length ? null : "No owner login yet", staff ? `${staff} staff login${staff === 1 ? "" : "s"} · in the property's Staff screen` : null].filter(Boolean).join(" · ") || undefined}
+        actions={users.length ? <CopyBtn text={users.map((u) => `${u.name} (${u.role}) — ${u.login_id} — ${u.contact_email ?? "no contact"}`).join("\n")} label="" /> : undefined}>
+        <div className="p-3 space-y-3" data-owner-logins>
           {users.length === 0
-            ? <p className="text-sm text-steel px-1 py-2">No logins yet</p>
-            : users.map((u) => <UserCard key={u.login_id} u={u} restaurantId={restaurantId} onRefresh={onRefresh} />)}
+            ? <p className="text-sm text-steel px-1 py-2">No owner login yet</p>
+            : users.map((u) => <UserCard key={u.login_id} u={u} restaurantId={restaurantId} onRefresh={onRefresh} canReset={u.login_id === resettable} />)}
         </div>
       </Panel>
 

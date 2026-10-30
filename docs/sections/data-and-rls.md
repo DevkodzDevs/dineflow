@@ -582,6 +582,11 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   (Mumbai, ap-south-1) → `DATABASE_URL=<staging> node scripts/migrate.mjs` builds it from 0001 → `apps/web/.env.local` gets the
   staging URL and anon key (and its service-role key) → everyday work and probes run there; Vercel keeps the live keys; a
   migration reaches live only by a deliberate `--live` after its staging run.
+- **0156 — Only bosses give room jobs out (2026-10-30, applied; the dry-run cl156_dry, 24 checks, rolled back: a Room Attendant refused
+  on every assign path including a direct API update and a task born assigned; take, give back, done and offline status allowed; a
+  waiter refused; a supervisor 2, manager and owner allowed).** `_hk_assign_guard` + `trg_hk_assign_guard` (before insert or update
+  of `assigned_to` on `housekeeping_tasks`) — the narrow fix for the old `tenant_all` policy (cleaning.md). Role walls:
+  `housekeeping_tasks.assigned_to` → `trg_hk_assign_guard`.
 - **0155 — Room charge GST per dish (2026-10-29, applied; dry155 rolled back: one 18% dish and two at the property's 5% →
   ₹64.80 + ₹34.00 = ₹98.80).** `post_order_to_room` asks `bill_tax` (front-desk.md).
 - **0154 — Hold on time (2026-10-29, applied; dry156 rolled back, 11 cases).** `reservations.held_at`; `hold_due()`
@@ -636,3 +641,7 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   search_path pinned, each with its own statement timeout; anon is refused execute. No table, so no policy.
   `selftest_integrity` walks every single-column foreign key between two tables that both carry restaurant_id and counts
   rows whose restaurant differs from their parent's. See admin-and-membership.md, *The deep suites*.
+- **0157 — Room status and a table booking's stay (2026-10-30, applied; dry157.mjs 10/10, rolled back).** `role_modules`: the
+  employee, frontdesk and housekeeping ceilings and defaults lose `housekeeping` (the screen is now *Room status*, the bosses');
+  `effective_modules` trims ticks to the ceiling, no profile rewritten; no `has_module('housekeeping')` exists. `reservations.booking_id`
+  → `bookings(id)` on delete set null, indexed; `zz_same_property` rebuilt for reservations with it (another property's stay refused).

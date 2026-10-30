@@ -74,7 +74,7 @@ describe("the control room (2026-10-18)", () => {
     expect(homeFor(modulesFor("restaurant", "waiter", null, null))).toBe("orders");
     expect(homeFor(modulesFor("restaurant", "chef", null, null))).toBe("kitchen");
     expect(homeFor(modulesFor("hotel", "frontdesk", null, null))).toBe("frontdesk");
-    expect(homeFor(modulesFor("hotel", "housekeeping", null, null))).toBe("housekeeping");
+    expect(homeFor(modulesFor("hotel", "housekeeping", null, null))).toBe("rooms");
     expect(homeFor(modulesFor("hotel", "employee", null, ["scan"]), "plumber")).toBe("work");
     expect(homeFor([], null)).toBe("work");
     expect(homeFor(modulesFor("hotel", "owner", null, null))).toBe("dashboard");

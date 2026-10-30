@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { Plus, Trash2, Send, PackageCheck, XCircle, MessageCircle, Sparkles, Pencil, Truck, Flame, Undo2, FilePenLine, Columns2, Columns3, Columns4, Repeat, Phone, type LucideIcon } from "lucide-react";
-import { Button, Card, Field, Sheet, Empty, Pill, StatTile, CardStrip, Segmented, cn, useToast, type StripAction } from "@/components/ui";
+import { Button, Card, Field, Sheet, Empty, Pill, StatTile, CardStrip, Segmented, cn, useToast, type StripAction, ask } from "@/components/ui";
 import { formatINR, fmtDate } from "@/lib/format";
 import { savePo, setPoStatus, receivePo, suggestPo, saveSupplier, archiveSupplier, type PoLine } from "./actions";
 
@@ -62,7 +62,7 @@ export function PurchaseOrders({ orders, suppliers, ingredients, restaurant }: {
             const acts: StripAction[] = live ? [
               { key: "send", label: po.status === "draft" ? "Send" : "Resend", icon: <MessageCircle />, href: waTo(po.suppliers?.phone ?? null, poText(po, byId, restaurant)), external: true, aria: `Send PO-${po.po_no} on WhatsApp`, onClick: () => { if (po.status === "draft") start(async () => { await setPoStatus(po.id, "sent"); }); } },
               { key: "edit", label: "Edit", icon: <Pencil />, aria: `Edit PO-${po.po_no}`, onClick: () => setEditing(po) },
-              { key: "cancel", label: "Cancel", icon: <XCircle />, tone: "red", disabled: pending, aria: `Cancel PO-${po.po_no}`, onClick: () => { if (confirm(`Cancel PO-${po.po_no}?`)) start(async () => { const r = await setPoStatus(po.id, "cancelled"); if ("error" in r) toast(r.error!, "err"); }); } },
+              { key: "cancel", label: "Cancel", icon: <XCircle />, tone: "red", disabled: pending, aria: `Cancel PO-${po.po_no}`, onClick: async () => { if (await ask({ title: `Cancel PO-${po.po_no}?`, body: "The order to the supplier is cancelled.", ok: "Cancel PO", cancel: "Keep it", tone: "danger", icon: "alert" })) start(async () => { const r = await setPoStatus(po.id, "cancelled"); if ("error" in r) toast(r.error!, "err"); }); } },
               { key: "receive", label: "Receive", icon: <PackageCheck />, tone: "go", aria: `Receive PO-${po.po_no}`, onClick: () => setReceiving(po) },
             ] : [
               /* a closed order still has a next move: the same order again, as a new draft */

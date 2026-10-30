@@ -3,7 +3,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import { Bell, BellOff, BellRing, Bike, CalendarCheck, BedDouble, ChefHat, UtensilsCrossed, Sparkles, Play, Volume2, Monitor, Smartphone, ConciergeBell, Flame, CheckCheck, Settings2, Clock, HandPlatter, Star, SprayCan, UserCheck, CircleCheck, ListTodo, ClipboardCheck, MessagesSquare } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Bell, BellOff, BellRing, Bike, CalendarCheck, BedDouble, ChefHat, UtensilsCrossed, Sparkles, Play, Volume2, Monitor, Smartphone, ConciergeBell, Flame, CheckCheck, Settings2, Clock, HandPlatter, Star, SprayCan, UserCheck, CircleCheck, ListTodo, ClipboardCheck, MessagesSquare, X } from "lucide-react";
 import { DEPARTMENTS } from "@dineflow/shared";
 import { getClient } from "@/lib/supabase/lazy";
 import { formatINR, todayIST } from "@/lib/format";
@@ -45,6 +46,9 @@ const mins = (a: unknown, b: unknown) => (a && b ? Math.max(1, Math.round((new D
 const PRI: Record<string, string> = { "1": "Urgent · ", "2": "High · ", "4": "Low · " };
 const deptName = (k: unknown) => (k ? DEPARTMENTS.find((d) => d.key === k)?.label ?? str(k) : "anyone");
 const FEED_KEY = "df-notify-feed";
+const HK_WORD: Record<string, string> = { clean: "clean", stayover: "stayover", turndown: "turndown", pickup: "touch-up" };
+/** The cleaning alerts (2026-10-30): a card you tap to open the board, not a toast that cannot be tapped. */
+const JOB_ALERT: NotifyKind[] = ["clean", "housekeeping", "assigned"];
 type Row = Record<string, unknown>;
 const str = (v: unknown) => (v == null ? "" : String(v));
 
@@ -59,8 +63,9 @@ function describe(kind: NotifyKind, r: Row): { title: string; sub: string } {
     case "booking": return { title: `New room booking${r.booking_no ? ` #${str(r.booking_no)}` : ""}`, sub: [`${Number(r.adults ?? 0) + Number(r.children ?? 0) || 1} guests`, r.check_in ? `arrives ${waDate(str(r.check_in))}` : "", str(r.source).replace("_", " ")].filter(Boolean).join(" · ") };
     case "kot": return { title: `New kitchen ticket${r.kot_no ? ` · KOT ${str(r.kot_no)}` : ""}`, sub: "Fired just now" };
     case "ready": return { title: `Food ready${r.kot_no ? ` · KOT ${str(r.kot_no)}` : ""}`, sub: "Ready to serve" };
-    case "housekeeping": return { title: r.place ? `Room ${str(r.place)} to clean` : "Room to clean", sub: str(r.kind).replace(/_/g, " ") || "Housekeeping task" };
-    case "clean": return { title: `${str(r.place) || "A table"} to clean`, sub: "Paid and left" };
+    // 2026-10-30, the owner: short — "Room 201 · clean", "T3 needs cleaning"
+    case "housekeeping": return { title: `${r.place ? `Room ${str(r.place)}` : "A room"} · ${HK_WORD[str(r.kind)] ?? (str(r.kind).replace(/_/g, " ") || "clean")}`, sub: /^checkout clean$/i.test(str(r.notes)) ? "Checked out" : str(r.notes).startsWith("Failed inspection") ? str(r.notes) : "Tap to take it" };
+    case "clean": return { title: `${str(r.place) || "A table"} needs cleaning`, sub: "Paid and left" };
     case "roomdone": return { title: `Room ${str(r.place)} is clean`, sub: "Ready to inspect" };
     case "job": return { title: `${PRI[str(r.priority)] ?? ""}${str(r.title)}`, sub: [str(r.place), `for ${deptName(r.department)}`, r.guest_impact ? "a guest is waiting" : ""].filter(Boolean).join(" · ") };
     case "jobdone": { const m = mins(r.taken_at, r.done_at); return { title: `Done · ${str(r.label ?? r.title)}`, sub: [r.title ? str(r.place) : "", r.who ? `${str(r.who)}${m ? ` · ${m} min` : ""}` : "", str(r.note ?? "")].filter(Boolean).join(" — ") || "Finished just now" }; }
@@ -96,7 +101,7 @@ function describe(kind: NotifyKind, r: Row): { title: string; sub: string } {
  * a line in the bell's list, and — while the app is in the background, if allowed — a system
  * notification. Mounted once in the (app) layout, so it hears events on every screen.
  */
-export function NotifierProvider({ modules, propertyType, me, role = "", dept = null, children }: { modules: string[]; propertyType: string; me?: string; role?: string; dept?: string | null; children: ReactNode }) {
+export function NotifierProvider({ modules, propertyType, me, role = "", dept = null, position = null, children }: { modules: string[]; propertyType: string; me?: string; role?: string; dept?: string | null; position?: string | null; children: ReactNode }) {
   const toast = useToast();
   /* Rendered from the start with fixed defaults, replaced by this device's saved choice right after
      mount: the settings panel then has its full height in the server HTML, instead of appearing a
@@ -108,13 +113,13 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
      `modules` array, which re-made `kinds`, which tore the channel down and joined it again — an event arriving in
      that gap (a burst: a table paid, then the next one) was never announced. */
   const modKey = modules.join(",");
-  const kinds = useMemo(() => kindsFor(modKey ? modKey.split(",") : [], role), [modKey, role]);
+  const kinds = useMemo(() => kindsFor(modKey ? modKey.split(",") : [], role, dept, position), [modKey, role, dept, position]);
   const live = useRef({ prefs, toast });
   live.current = { prefs, toast };
   const seen = useRef(new Set<string>());
 
   useEffect(() => {
-    setPrefsState(loadPrefs(propertyType, role));
+    setPrefsState(loadPrefs(propertyType, role, dept));
     try { const f = JSON.parse(sessionStorage.getItem(FEED_KEY) ?? "[]") as Item[]; if (Array.isArray(f)) setFeed(f.slice(0, 40)); } catch { /* none */ }
     const onPrefs = (e: Event) => setPrefsState((e as CustomEvent<NotifyPrefs>).detail);
     window.addEventListener("df-notify-prefs", onPrefs);
@@ -122,13 +127,17 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
     // a touch's pointerdown does not count, which is why a phone stayed silent)
     const disarm = armAudioUnlock();
     return () => { window.removeEventListener("df-notify-prefs", onPrefs); disarm(); };
-  }, [propertyType, role]);
+  }, [propertyType, role, dept]);
   useEffect(() => { try { sessionStorage.setItem(FEED_KEY, JSON.stringify(feed.slice(0, 40))); } catch { /* full */ } }, [feed]);
 
   const setPrefs = useCallback((p: NotifyPrefs) => { setPrefsState(p); savePrefs(p); }, []);
 
-  /** A job someone else took or finished: its alerts leave this person's bell (a supervisor's stay — they hear who). */
-  const drop = useCallback((id: string) => { setFeed((f) => f.filter((i) => !i.id.includes(id))); }, []);
+  /* the cleaning alerts on screen (2026-10-30): up to three cards, each opens the board; gone after 15 s, on a tap, or the
+     moment someone else takes the job (drop) */
+  const [jobAlerts, setJobAlerts] = useState<Item[]>([]);
+  const dismissAlert = useCallback((id: string) => setJobAlerts((a) => a.filter((i) => i.id !== id)), []);
+  /** A job someone else took or finished: its alerts leave this person's bell and screen (a supervisor's stay — they hear who). */
+  const drop = useCallback((id: string) => { setFeed((f) => f.filter((i) => !i.id.includes(id))); setJobAlerts((a) => a.filter((i) => !i.id.includes(id))); }, []);
   const names = useRef(new Map<string, string>());
   const nameOf = useCallback(async (id: unknown) => {
     const k = str(id); if (!k) return null; if (names.current.has(k)) return names.current.get(k)!;
@@ -144,10 +153,17 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
   const announce = useCallback((kind: NotifyKind, row: Row) => {
     const p = live.current.prefs; if (!p || !p.kinds[kind]) return;
     const key = `${kind}:${str(row.id)}`; if (seen.current.has(key)) return; seen.current.add(key);
-    const { title, sub } = describe(kind, row); const href = KINDS.find((k) => k.kind === kind)!.href;
-    setFeed((f) => [{ id: key, kind, title, sub, href, at: Date.now(), read: false }, ...f].slice(0, 40));
+    const { title, sub } = describe(kind, row);
+    // a Work job given to you opens Work; a table or a room, the Cleaning board
+    const href = kind === "assigned" && row.title ? "/work" : KINDS.find((k) => k.kind === kind)!.href;
+    const item: Item = { id: key, kind, title, sub, href, at: Date.now(), read: false };
+    setFeed((f) => [item, ...f].slice(0, 40));
     if (p.on) playTone(p.tone, p.volume);
-    if (kind !== "call") live.current.toast(sub ? `${title} — ${sub}` : title, "info"); // a call has its own card (CallAlert)
+    if (JOB_ALERT.includes(kind)) {
+      setJobAlerts((a) => [item, ...a.filter((i) => i.id !== key)].slice(0, 3));
+      setTimeout(() => setJobAlerts((a) => a.filter((i) => i.id !== key)), 15000);
+      buzz("moved");
+    } else if (kind !== "call") live.current.toast(sub ? `${title} — ${sub}` : title, "info"); // a call has its own card (CallAlert)
     if (p.system && typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
       const opts = { body: sub, tag: key, icon: "/icon-192.png", badge: "/icon-192.png", data: { url: href } };
       void (async () => {
@@ -176,8 +192,9 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
       ins("reservations", "reservation");
       ins("bookings", "booking", (r) => !r.is_block);
       ins("kots", "kot");
-      // room tasks are not filtered by RLS: only Housekeeping (and the owner, managers, a supervisor with no department) hears them (0116)
-      ins("housekeeping_tasks", "housekeeping", (r) => r.kind !== "maintenance" && deptSees(role, dept, "room", null) && !(me && r.assigned_to === me && kinds.includes("assigned")));
+      /* room tasks are not filtered by RLS: only Housekeeping (and the owner, managers, a supervisor with no department) hears them (0116).
+         One already given to someone (a failed inspection going back) is theirs alone — they hear "Given to you" (2026-10-30). */
+      ins("housekeeping_tasks", "housekeeping", (r) => r.kind !== "maintenance" && deptSees(role, dept, "room", null) && !r.assigned_to);
       /* a table's call (0103): named, then shown as a call card (CallAlert) on every device that hears calls; when anyone
          answers it, the row's UPDATE takes the card off every other device too (2026-10-23) */
       if (kinds.includes("call")) {
@@ -207,7 +224,8 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
         }); }, 1500); });
       }
       ins("guest_feedback", "feedback", (r) => Number(r.rating) <= 3);
-      ins("table_cleanings", "clean");
+      // RLS (0116, _work_dept_ok) hands this only to whoever may take a table: Service, Housekeeping, the owner, managers
+      ins("table_cleanings", "clean", (r) => !r.assigned_to);
       // a job given to this person (0111): a table or a room, just now, still waiting — keyed by when, so a second
       // hand-over rings too; a task created already given to them (a failed inspection going back) as well (0112)
       if (kinds.includes("assigned") && me) for (const table of ["table_cleanings", "housekeeping_tasks", "jobs"]) for (const event of ["UPDATE", "INSERT"] as const) on(table, event, (r) => {
@@ -324,11 +342,39 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
       {children}
       <Sheet open={settings} onClose={() => setSettings(false)} title="Notifications on this device"><NotificationSettings /></Sheet>
       {calls.length > 0 && <CallAlert calls={calls} onGone={callsGone} />}
+      <JobAlerts items={jobAlerts} onGone={dismissAlert} />
     </NotifyCtx.Provider>
   );
 }
 
 const ago = (t: number) => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`; };
+
+/**
+ * A table or room to clean, or a job given to you (2026-10-30, the owner: "the work shows to the right staff, but they are
+ * not notified"): a card at the top that opens the board in one tap — "T3 needs cleaning", "Room 201 · clean". Not a
+ * dialog: no backdrop, it leaves by itself after 15 s, and × takes it off now. The bell keeps the line either way.
+ */
+function JobAlerts({ items, onGone }: { items: Item[]; onGone: (id: string) => void }) {
+  return (
+    // where the toasts sit (top, centred) — a table's call card keeps the bottom of a phone and the top right of an iPad
+    <div className="fixed z-[70] top-[max(12px,env(safe-area-inset-top))] inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[380px] flex flex-col gap-2 pointer-events-none" aria-live="assertive" data-job-alerts>
+      <AnimatePresence initial={false}>
+        {items.map((i) => { const Icon = KIND_ICON[i.kind]; return (
+          <motion.div key={i.id} layout initial={{ opacity: 0, y: -12, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: .97 }} transition={{ type: "spring", stiffness: 420, damping: 34 }}
+            className="pointer-events-auto material-thick rounded-[20px] border border-[var(--color-separator)] shadow-[var(--shadow-pop)] flex items-center min-w-0 overflow-hidden" data-job-alert={i.kind}>
+            <Link href={i.href} onClick={() => onGone(i.id)} className="flex-1 min-w-0 flex items-center gap-3 pl-3 pr-1 py-2 !min-h-[56px]">
+              <span className={cn("h-10 w-10 rounded-xl grid place-items-center shrink-0", KIND_TONE[i.kind])}><Icon size={19} aria-hidden /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-bold truncate">{i.title}</span>
+                <span className="block text-[12.5px] text-[var(--color-label-2)] truncate">{i.sub}</span>
+              </span>
+            </Link>
+            <button type="button" onClick={() => onGone(i.id)} aria-label={`Hide: ${i.title}`} className="h-11 w-11 mr-1.5 shrink-0 grid place-items-center rounded-full text-[var(--color-label-2)] hover:bg-[var(--color-fill)]" data-job-alert-hide><X size={17} aria-hidden /></button>
+          </motion.div>); })}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 /** The bell in the top bar: a count of what is new, and a panel listing it. */
 export function NotificationBell({ lateKots }: { lateKots: number }) {

@@ -19,7 +19,7 @@ describe("the phone bar", () => {
       expect(bar.every((k) => allowed.includes(k))).toBe(true);
       expect(new Set(bar).size).toBe(bar.length);
     }
-    expect(barFor("housekeeping", "hotel", allowedFor("housekeeping", "hotel"), null)[0]).toBe("housekeeping");
+    expect(barFor("housekeeping", "hotel", allowedFor("housekeeping", "hotel"), null)[0]).toBe("rooms");   // Room status is the bosses' since 0157 (2026-10-30); the next line: the Cleaning board leads when it is offered
     expect(barFor("waiter", "restaurant", allowedFor("waiter", "restaurant"), null)[0]).toBe("orders");
     expect(barFor("chef", "restaurant", allowedFor("chef", "restaurant"), null)[0]).toBe("kitchen");
   });

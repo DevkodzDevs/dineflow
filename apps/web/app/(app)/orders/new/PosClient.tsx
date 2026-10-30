@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { dishMatch } from "@/lib/tillSearch";
 import { motion, AnimatePresence } from "framer-motion";
-import { Minus, Plus, Search, ChevronDown, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils, Package } from "lucide-react";
+import { Minus, Plus, Search, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils, Package, Trash2, IndianRupee, Maximize2, Eye } from "lucide-react";
 import { Button, Sheet, cn, useToast, FlapMini } from "@/components/ui";
 import { Say, CatIcon } from "@/components/ui/Say";
 import { SVC_ICON, stClass } from "@/components/ui/Service";
@@ -50,7 +50,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   const [lines, setLines] = useState<Line[]>([]);
   /* The question a dish asks before it goes on the ticket. `replace` is the line being answered
      for — a voice-added dish that still owes a choice — and goes away when the answer lands. */
-  const [chooser, setChooser] = useState<{ item: Item; replace?: string; qty?: number; note?: string } | null>(null);
+  const [chooser, setChooser] = useState<{ item: Item; replace?: string; qty?: number; note?: string; verb?: string; variant?: Variant | null; addons?: Addon[] } | null>(null);
   const [customer, setCustomer] = useState({ name: "", phone: "" });
   /* a delivery's address (0105): typed, or filled from the customer's last one when the phone is known */
   const [address, setAddress] = useState("");
@@ -102,6 +102,14 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   /* Which lines have their note field showing. A line that already carries a note always shows it. */
   /* which line's request sheet is open — one sheet for the whole ticket, not a box inside every card */
   const [noteFor, setNoteFor] = useState<string | null>(null);
+  /* Prices on the ticket are hidden until asked for (2026-10-30, the owner: "show the product prices and the total only when
+     I tap"): the line prices, "₹x each" and the total. The dish count always shows. Remembered per device (df-pos-prices);
+     read after mount, so the server's render and the first client render agree. */
+  const [showPrices, setShowPrices] = useState(false);
+  useEffect(() => { try { if (localStorage.getItem("df-pos-prices") === "1") setShowPrices(true); } catch {} }, []);
+  const togglePrices = () => { const next = !showPrices; setShowPrices(next); try { localStorage.setItem("df-pos-prices", next ? "1" : "0"); } catch {} };
+  /* the roomy look at the whole ticket: every line with its stepper, course, request and options, and Send */
+  const [preview, setPreview] = useState(false);
 
   /* ── the ticket ── */
   const qtyOf = (id: string) => lines.filter((l) => l.item.id === id).reduce((s, l) => s + l.qty, 0);
@@ -120,6 +128,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   const bump = (key: string, d: number) => { setWarned(false); setLines((ls) => ls.map((l) => (l.key === key ? { ...l, qty: l.qty + d } : l)).filter((l) => l.qty > 0)); };
   const setNote = (key: string, note: string) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, note } : l)));
   const cycleCourse = (key: string) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, course: l.course >= 3 ? 1 : l.course + 1 } : l)));
+  const setCourse = (key: string, course: number) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, course } : l)));
   const courses = [...new Set(lines.map((l) => (coursing ? l.course : 1)))].sort();
   /** Tapping a tile — or + — puts the dish straight on the ticket (2026-10-23, the owner: "a tap on the card adds it; only
    *  Choose opens the choices"): a dish in sizes goes in its default size with no add-ons. Only a dish whose add-ons must be
@@ -339,6 +348,13 @@ export function PosClient({ categories, items, tables, initialTable, initialType
     if (type === "dine_in" && !tableId) setPickOpen(true);
     submit();
   };
+  /** The preview's Send: the same submit; when the table or the room is still missing the preview steps aside for the ticket that asks for it. */
+  const sendFromPreview = () => {
+    if ((type === "dine_in" && !tableId) || (type === "room_service" && !room)) { setPreview(false); return sendFromBar(); }
+    submit();
+  };
+  /** where the ticket is going, in words, for the preview's title */
+  const where = type === "dine_in" ? (tableName ? `Table ${tableName}` : "Dine in") : type === "takeaway" ? "Parcel" : type === "delivery" ? "Delivery" : "Room";
   const cats = [{ id: "all", name: "All", icon: "LayoutGrid" }, ...(popularIds.length >= 4 ? [{ id: "popular", name: "Popular", icon: "Star" }] : []), ...categories.map((c) => ({ ...c, icon: catIcon(c.name) }))];
   const catBtn = (c: { id: string; name: string; icon: string }, extra?: string) => (
     <button key={c.id} type="button" onClick={() => { setCat(c.id); setQ(""); }} data-cat={c.id} aria-pressed={cat === c.id && !q} className={cn("svc-cat", extra)}>
@@ -390,12 +406,28 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       {/* where it is going, big — and the one button that changes it */}
       <div className="flex items-center gap-2 min-w-0">
         <h2 className="font-display text-[26px] leading-none truncate min-w-0 flex-1" data-cart-title>{title ?? <Say w={typeWord} start />}</h2>
+        {/* the guest (2026-10-30, the owner: "show it as an icon — tap to expand"): a round person beside Change, the
+            name and phone open under the head; once given, the round key wears their initial in the tint (the name is its
+            title) — a name on it pushed "Table T4" onto two lines */}
+        {type === "dine_in" && (
+          <button type="button" onClick={() => { setGuestOpen((v) => !v); setPickOpen(false); }} aria-expanded={guestOpen} data-guest
+            aria-label={customer.name || customer.phone ? `Guest: ${customer.name || customer.phone} — change` : "Add guest (optional)"} title={customer.name || customer.phone || "Add guest (optional)"}
+            className={cn("relative h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 rounded-full grid place-items-center shrink-0 font-display text-[18px] transition-colors",
+              customer.name || customer.phone ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] text-[var(--color-label-2)]",
+              guestOpen && "ring-2 ring-offset-2 ring-offset-[var(--color-bg-2)] ring-[color-mix(in_srgb,var(--color-tint)_55%,transparent)]")}>
+            {customer.name ? <span aria-hidden data-guest-initial>{customer.name.trim().slice(0, 1).toUpperCase()}</span> : <UserRound size={17} aria-hidden />}
+          </button>
+        )}
         {type === "dine_in" && (
           <button type="button" onClick={() => { setPickOpen((v) => !v); setGuestOpen(false); }} aria-expanded={pickOpen} data-pick-table
             className={cn("h-10 px-3.5 rounded-full text-[14px] font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors", tableName ? "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" : "bg-[var(--color-tint)] text-[var(--color-on-tint)]")}>
             {tableName ? <Repeat size={15} aria-hidden /> : <Armchair size={15} aria-hidden />}<Say w={tableName ? "change" : "table"} /></button>
         )}
       </div>
+      {/* the order type, only while nothing has settled it (2026-10-30, the owner: "when the order is taken from the order
+          page, don't show the four buttons — the customer is already dining in"): a ticket for a table is dine-in, so the
+          tiles go once a table is on it; counter, parcel, delivery and room still choose here. Change still switches table. */}
+      {!(type === "dine_in" && tableId) && (
       <div className={cn("mt-3 grid gap-1.5", typeTiles.length > 3 ? "grid-cols-4" : "grid-cols-3")} role="radiogroup" aria-label="Order type" data-order-type>
         {typeTiles.map((t) => (
           <button key={t.value} type="button" role="radio" aria-checked={type === t.value} onClick={() => setType(t.value)}
@@ -404,7 +436,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <t.Icon size={16} className="shrink-0" aria-hidden /><Say w={t.w} />
           </button>
         ))}
-      </div>
+      </div>)}
 
       {/* lg+ (2026-10-24, the owner on an iPad in landscape: "screen broke the design" — the delivery details pushed Send to
           kitchen below the screen): everything between the order type and the footer scrolls as one, the footer stays.
@@ -438,13 +470,9 @@ export function PosClient({ categories, items, tables, initialTable, initialType
               </div>
             </div>
           )}
-          {/* the guest, folded: a phone number makes them a customer, and most tables never give one */}
-          <button type="button" onClick={() => { setGuestOpen((v) => !v); setPickOpen(false); }} aria-expanded={guestOpen} data-guest
-            className={cn("mt-2 !min-h-11 rounded-xl px-3 flex items-center gap-2 text-left text-[14px] transition-colors", customer.name || customer.phone ? "bg-[var(--color-fill)] font-semibold" : "text-steel hover:bg-[var(--color-fill)]")}>
-            <UserRound size={16} className="shrink-0" aria-hidden /><span className="flex-1 truncate">{customer.name || customer.phone || "Add guest (optional)"}</span><ChevronDown size={15} className={cn("shrink-0 transition-transform", guestOpen && "rotate-180")} />
-          </button>
+          {/* the guest, folded behind the head's person button: a phone number makes them a customer, and most tables never give one */}
           {guestOpen && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2" data-guest-fields>
               <input autoFocus placeholder="Name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
               <input placeholder="Phone" inputMode="tel" className="num" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") setGuestOpen(false); }} />
             </div>
@@ -479,17 +507,27 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       )}
       {known && type !== "room_service" && <div className="mt-1.5 text-[12px] text-steel">Welcome back{known.name ? `, ${known.name.split(" ")[0]}` : ""} · {known.visits} visit{known.visits === 1 ? "" : "s"}{known.notes ? ` · ${known.notes}` : ""}</div>}
 
-      <div className="mt-4 flex items-center gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel flex-1">Ticket{count ? ` · ${count} item${count === 1 ? "" : "s"}` : ""}</span>
-        <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} title="Later courses wait to be fired"
-          className={cn("h-9 rounded-full px-2.5 text-[11.5px] font-semibold flex items-center gap-1 transition", coursing ? "bg-ink text-on-label" : "bg-[var(--color-fill)] text-steel hover:text-[var(--color-label)]")}><ListOrdered size={12} /> Courses {coursing ? "on" : "off"}</button>
-        {lines.length > 0 && <button type="button" onClick={clearTicket} className="h-9 px-2 -mr-1 text-[13px] font-semibold text-steel hover:text-[var(--color-red)]">Clear</button>}
+      {/* the ticket's head (2026-10-30, the owner: "only icons"): the word and the count, then four round icons — prices,
+          preview, courses, clear — so the head is one short row and the lines get the room */}
+      <div className="mt-3 flex items-center gap-1 min-w-0" data-ticket-head>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel flex-1 min-w-0 flex items-center gap-1.5">
+          <span className="truncate">Ticket</span>
+          {count > 0 && <span className="num shrink-0 h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold tracking-normal text-[var(--color-label)] grid place-items-center" data-ticket-count={count}>{count}</span>}
+        </span>
+        <button type="button" onClick={togglePrices} aria-pressed={showPrices} aria-label="Show prices" title={showPrices ? "Hide prices" : "Show prices"} data-pos-prices={showPrices ? "on" : "off"}
+          className={cn(HEAD_BTN, showPrices ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]")}><IndianRupee size={16} aria-hidden /></button>
+        <button type="button" onClick={() => setPreview(true)} disabled={lines.length === 0} aria-haspopup="dialog" aria-label="Preview ticket" title="Preview ticket" data-pos-preview
+          className={cn(HEAD_BTN, "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] disabled:opacity-40 disabled:pointer-events-none")}><Maximize2 size={16} aria-hidden /></button>
+        <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} aria-label="Courses" title="Courses — later courses wait to be fired" data-courses
+          className={cn(HEAD_BTN, coursing ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]")}><ListOrdered size={16} aria-hidden /></button>
+        {lines.length > 0 && <button type="button" onClick={clearTicket} aria-label="Clear ticket" title="Clear ticket" data-clear-ticket
+          className={cn(HEAD_BTN, "-mr-1 text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)]")}><Trash2 size={16} aria-hidden /></button>}
       </div>
-      <div className="mt-2 !shrink flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 -mr-2 pr-2 [scrollbar-width:thin] lg:!shrink-0 lg:min-h-fit lg:overflow-visible lg:mr-0 lg:pr-0 lg:pb-1">
+      <div className="mt-2 space-y-2 !shrink flex-1 min-h-0 overflow-y-auto overscroll-contain -mr-2 pr-2 [scrollbar-width:thin] lg:!shrink-0 lg:min-h-fit lg:overflow-visible lg:mr-0 lg:pr-0 lg:pb-1" data-ticket-lines>
         <AnimatePresence initial={false}>
           {lines.length === 0 && (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="rounded-2xl border border-dashed border-[var(--color-line-2)] grid place-items-center text-center px-6 py-8 lg:py-4 lg:px-4">
+              className="mt-1 rounded-2xl border border-dashed border-[var(--color-line-2)] grid place-items-center text-center px-6 py-8 lg:py-4 lg:px-4">
               <div className="lg:flex lg:items-center lg:gap-3 lg:text-left">
                 <span className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-fill)] grid place-items-center text-steel lg:mx-0 lg:h-10 lg:w-10 lg:shrink-0"><UtensilsCrossed size={20} /></span>
                 <div className="lg:min-w-0"><p className="mt-3 text-[15px] font-bold lg:mt-0">Ticket empty</p>
@@ -497,38 +535,48 @@ export function PosClient({ categories, items, tables, initialTable, initialType
               </div>
             </motion.div>
           )}
-          {lines.map((l) => (
-            /* one card per line: the veg mark, what it is and what it comes to; then how many, the
-               course, the request and the cross — the shape a guest reads back to you */
-            <motion.div key={l.key} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
-              className="rounded-2xl bg-[var(--color-fill)] p-3" data-ticket-line>
-              <div className="flex items-start gap-2.5 min-w-0">
-                <span className="mt-[3px]"><VegMark veg={l.item.is_veg} big /></span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[15px] leading-snug">{lineName(l.item, l.variant)}</div>
-                  {lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <div key={j} className="text-[12px] text-steel truncate">{x}</div>)}
-                  {l.qty > 1 && <div className="text-[12px] text-steel num">{formatINR(unit(l), { whole: true })} each</div>}
-                  {coverOf(l.item.id) && qtyOf(l.item.id) > coverOf(l.item.id)!.portions && <div className="text-[12px] font-semibold text-[var(--color-orange)]">pantry covers {coverOf(l.item.id)!.portions}</div>}
+          {lines.map((l) => {
+            const nm = lineName(l.item, l.variant);
+            return (
+            /* one card per line (2026-10-30, a second pass — the owner: "compact, ultra-modern card, with its buttons"): the
+               dish's photo (or its category's icon) with the veg mark on its corner, the name, what it is (size, extras), its
+               request and — prices shown — what it comes to; under a hairline inside the card, the capsule stepper (its −
+               becomes a bin at one) and the line's keys: Options for a dish with choices, its course, the request. */
+            <motion.div key={l.key} layout initial={{ opacity: 0, y: 6, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, x: 24 }}
+              className="tkt-line" data-ticket-line data-ask={l.ask || undefined}>
+              <div className="flex items-start gap-2.5 min-w-0 p-2 pb-1.5">
+                <span className="tkt-thumb" aria-hidden>
+                  {l.item.image_url ? <DishImage src={l.item.image_url} w={96} /> : <CatIcon name={catIcon(catName(l.item.category_id))} size={19} />}
+                  <span className="tkt-veg"><VegMark veg={l.item.is_veg} /></span>
+                </span>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <div className="font-bold text-[14.5px] leading-tight line-clamp-2 break-words" title={nm}>{nm}</div>
+                  {lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <div key={j} className="mt-0.5 text-[12px] text-steel truncate">{x}</div>)}
+                  {l.note && <div className="mt-0.5 text-[12px] font-semibold text-[var(--color-orange)] truncate" title={l.note} data-line-request>“{l.note}”</div>}
+                  {coverOf(l.item.id) && qtyOf(l.item.id) > coverOf(l.item.id)!.portions && <div className="mt-0.5 text-[12px] font-semibold text-[var(--color-orange)]">pantry covers {coverOf(l.item.id)!.portions}</div>}
                   {l.ask && <button type="button" onClick={() => askFor(l)} className="mt-0.5 text-[12px] font-semibold text-[var(--color-orange)] underline !min-h-0">Choose options</button>}
                 </div>
-                <span className="font-display num text-[19px] leading-none shrink-0 mt-0.5">{formatINR(unit(l) * l.qty, { whole: true })}</span>
+                {showPrices && <span className="text-right shrink-0 pt-0.5">
+                  <span className="block font-display num text-[18px] leading-none" data-line-price>{formatINR(unit(l) * l.qty, { whole: true })}</span>
+                  {l.qty > 1 && <span className="block mt-1 text-[11px] text-steel num" data-line-each>{formatINR(unit(l), { whole: true })} each</span>}
+                </span>}
               </div>
-              <div className="mt-2.5 flex items-center gap-1.5 min-w-0">
-                <div className="stepper shrink-0">
-                  <button type="button" onClick={() => bump(l.key, -1)} aria-label="One less" className="less"><Minus size={16} /></button>
-                  <span className="n num !text-[18px]">{l.qty}</span>
-                  <button type="button" onClick={() => bump(l.key, 1)} aria-label="One more" className="more"><Plus size={16} /></button>
-                </div>
-                {coursing && <button type="button" onClick={() => cycleCourse(l.key)} title="Course — tap to change" className={cn("h-10 min-w-10 px-2 rounded-full text-[11px] font-bold border shrink-0", l.course > 1 ? "border-tint text-[var(--color-tint)]" : "border-line text-steel")}>C{l.course}</button>}
-                {/* the request, on the line itself: amber with its words once set */}
-                <button type="button" onClick={() => setNoteFor(l.key)} aria-label={`Request for ${lineName(l.item, l.variant)}`} data-line-note-btn title={l.note || undefined}
-                  className={cn("ml-auto h-10 min-w-0 px-3 rounded-full text-[13px] font-bold inline-flex items-center gap-1.5 transition", l.note ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]")}>
-                  {l.note ? <MessageSquareText size={14} className="shrink-0" /> : <MessageSquarePlus size={14} className="shrink-0" />}{l.note ? <span className="truncate max-w-[9rem]" data-line-request>{l.note}</span> : <Say w="note" />}</button>
-                <button type="button" onClick={() => bump(l.key, -l.qty)} aria-label={`Remove ${lineName(l.item, l.variant)}`}
-                  className="h-10 w-10 rounded-full grid place-items-center text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-fill)] shrink-0"><X size={16} /></button>
+              <div className="tkt-foot">
+                <QtyStepper qty={l.qty} name={nm} onLess={() => bump(l.key, -1)} onMore={() => bump(l.key, 1)} slim />
+                <span className="ml-auto flex items-center gap-1">
+                  {hasOptions(l.item) && <button type="button" onClick={() => askFor(l)} aria-label={`Options for ${nm}`} title="Size and add-ons" data-line-options
+                    className={cn(KEY_BTN, l.ask ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}><SlidersHorizontal size={16} aria-hidden /></button>}
+                  {coursing && <button type="button" onClick={() => cycleCourse(l.key)} title="Course — tap to change" aria-label={`Course ${l.course} — tap to change`}
+                    className={cn(KEY_BTN, "!w-auto px-2.5 text-[11.5px] font-extrabold", l.course > 1 ? "bg-[color-mix(in_srgb,var(--color-tint)_16%,transparent)] text-[var(--color-tint)]" : "text-steel hover:bg-[var(--color-fill-2)]")}>C{l.course}</button>}
+                  {/* the request, an icon on the line; amber once it carries words (the words sit under the name) */}
+                  <button type="button" onClick={() => setNoteFor(l.key)} aria-label={`Request for ${nm}`} data-line-note-btn data-has-note={l.note ? "" : undefined} title={l.note || "Note"}
+                    className={cn(KEY_BTN, l.note ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}>
+                    {l.note ? <MessageSquareText size={16} aria-hidden /> : <MessageSquarePlus size={16} aria-hidden />}</button>
+                </span>
               </div>
             </motion.div>
-          ))}
+            );
+          })}
         </AnimatePresence>
       </div>
       </div>
@@ -542,7 +590,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
               <span className="block text-sm font-semibold">On-time promise · {promise.minutes} min</span>
               <span className="block text-[11px] text-steel mt-0.5">{promised ? `+${promise.pct}% · free if late` : `Adds ${promise.pct}% · free if late`}</span>
             </span>
-            <span className={cn("num text-xs font-semibold shrink-0", promised ? "text-[var(--color-tint)]" : "text-steel")}>{promised ? `+${formatINR(total * promise.pct / 100)}` : "off"}</span>
+            <span className={cn("num text-xs font-semibold shrink-0", promised ? "text-[var(--color-tint)]" : "text-steel")}>{promised ? (showPrices ? `+${formatINR(total * promise.pct / 100)}` : "on") : "off"}</span>
           </button>
         )}
         {err && <p className="text-[15px] font-bold text-chili mb-2" data-till-error>{err}</p>}
@@ -564,10 +612,14 @@ export function PosClient({ categories, items, tables, initialTable, initialType
               ticketNote ? "border-transparent bg-[var(--color-green-2)] text-[var(--color-tint)]" : "border-line text-steel hover:text-[var(--color-label)]")}>
             {ticketNote ? <MessageSquareText size={13} className="shrink-0" /> : <Plus size={12} className="shrink-0" />} <span className="truncate">{ticketNote ? ticketNote : "Cooking request"}</span>
           </button>
-          <span className="ml-auto text-right shrink-0">
-            <span className="block text-[13px] font-bold text-steel num">{count} dish{count === 1 ? "" : "es"}</span>
-            <span className="block font-display num text-[32px] leading-none mt-0.5" data-total>{formatINR(grand)}</span>
-          </span>
+          {/* the count always; the total only with prices shown — a tap here shows or hides it, the same switch as the head's ₹ */}
+          <button type="button" onClick={togglePrices} aria-pressed={showPrices} aria-label={showPrices ? "Hide total" : "Show total"} data-total-toggle
+            className="ml-auto text-right shrink-0 !min-h-10 rounded-xl px-1.5 -mr-1.5 hover:bg-[var(--color-fill)] transition-colors">
+            <span className={cn("block font-bold num", showPrices ? "text-[13px] text-steel" : "text-[17px] text-[var(--color-label)]")}>{count} dish{count === 1 ? "" : "es"}</span>
+            {showPrices
+              ? <span className="block font-display num text-[32px] leading-none mt-0.5" data-total>{formatINR(grand)}</span>
+              : <span className="flex items-center justify-end gap-1 text-[11.5px] font-semibold text-steel mt-0.5"><Eye size={12} aria-hidden />Total</span>}
+          </button>
         </div>
         <button type="button" className="svc-btn go xl w-full mt-3" disabled={pending || lines.length === 0 || (stockBlock && shortfalls.length > 0)} onClick={submit} data-send>
           <Send size={20} aria-hidden />{pending ? "Sending…" : warned && shortfalls.length > 0 ? "Send anyway" : <Say w="send_kitchen" />}
@@ -723,10 +775,16 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                       </span>
                     </button>
                     <div className="act">
+                      {/* on the ticket, a dish with choices keeps its Choose chip beside − / + (2026-10-30, the owner: "once a
+                          dish is added the choose option hides — show it too"): another one with a different size or
+                          add-ons is a tap away, not only from the ticket's Options */}
                       {qty > 0
-                        ? <div className="stepper shrink-0 !gap-1 rounded-full p-1 bg-[var(--color-bg-2)] shadow-[0_8px_20px_-10px_rgb(0_0_0/.6)] ring-1 ring-[var(--color-separator)]">
-                            <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`} className="less !rounded-full !h-9 !w-9 !min-h-9"><Minus size={16} /></button>
-                            <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="more !rounded-full !h-9 !w-9 !min-h-9"><Plus size={17} /></button>
+                        ? <div className={cn(asks && "dish-pair !gap-1.5")} data-on-ticket>
+                            {asks && <button type="button" onClick={() => choose(it)} aria-label={`Choose options for ${it.name}`} title="Size and add-ons" data-choose className="dish-chip"><SlidersHorizontal size={17} strokeWidth={2.4} aria-hidden /></button>}
+                            <div className="stepper shrink-0 !gap-1 rounded-full p-1 bg-[var(--color-bg-2)] shadow-[0_8px_20px_-10px_rgb(0_0_0/.6)] ring-1 ring-[var(--color-separator)]">
+                              <button type="button" onClick={() => takeOne(it)} aria-label={`One less ${it.name}`} className="less !rounded-full !h-9 !w-9 !min-h-9"><Minus size={16} /></button>
+                              <button type="button" onClick={() => tap(it)} aria-label={`One more ${it.name}`} className="more !rounded-full !h-9 !w-9 !min-h-9"><Plus size={17} /></button>
+                            </div>
                           </div>
                         /* the move (2026-10-23, the owner: "compact, modern"): Add is a solid round + in the tint; a dish with
                            choices gets a slim "Choose" pill beside a +, so the card's tap adds and Choose opens the choices */
@@ -744,6 +802,94 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             </div>
         </div>
       </section>
+      <aside ref={railRef} className="hidden lg:block self-start feather !rounded-[24px] p-4 sticky top-[92px] h-[calc(100dvh-3rem)]">{CartPanel}</aside>
+      {/* The phone and tablet bar: a green strip above the tab bar (on a tablet, near the edge) — how
+          many and how much on the left, which opens the ticket, and Send to kitchen on the right. It
+          is gone, not parked half-hidden, while the ticket is empty. */}
+      <div className="lg:hidden fixed inset-x-4 z-30 bottom-[calc(var(--tabbar)+10px)] md:bottom-[max(16px,env(safe-area-inset-bottom))] pointer-events-none" data-cart-bar>
+        <AnimatePresence>{count > 0 && (
+          <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 34 }}
+            className="pointer-events-auto w-full min-h-[72px] rounded-[22px] bg-[var(--color-tint)] text-[var(--color-on-tint)] flex items-center gap-2 p-2 shadow-[0_18px_40px_-16px_rgb(0_0_0/.7)]">
+            <button type="button" onClick={() => setCartOpen(true)} className="!min-h-0 h-14 flex items-center gap-3 shrink-0 text-left rounded-2xl pl-1 pr-1" aria-label="See the ticket">
+              {/* 2026-10-20: the dish count flips as dishes are added (Flap.tsx) */}<span className="h-11 min-w-11 px-1 grid place-items-center" data-cart-count={count}><FlapMini value={count} tile="34px" say={`${count} dishes`} /></span>
+              {showPrices
+                ? <span className="min-w-0 leading-tight"><span className="block text-[12.5px] font-bold opacity-75">{count === 1 ? "1 dish" : `${count} dishes`}</span><span className="block font-display num text-[24px] leading-none mt-0.5 whitespace-nowrap">{formatINR(total)}</span></span>
+                : <span className="min-w-0 leading-tight font-bold text-[16px] whitespace-nowrap">{count === 1 ? "1 dish" : `${count} dishes`}</span>}
+            </button>
+            <button type="button" onClick={sendFromBar} disabled={pending} className="!min-h-0 h-14 px-4 ml-auto rounded-2xl bg-[var(--color-on-tint)] text-[var(--color-tint)] font-black text-[16px] inline-flex items-center justify-center gap-2 flex-1 min-w-0 max-w-[15rem]" data-bar-send>
+              <Send size={18} aria-hidden className="shrink-0" />{pending ? "Sending…" : <Say w="send_kitchen" />}
+            </button>
+          </motion.div>)}</AnimatePresence>
+      </div>
+      <AnimatePresence>
+        {cartOpen && (<>
+          <motion.div className="lg:hidden cursor-pointer fixed inset-0 z-40 bg-ink/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCartOpen(false)} />
+          <motion.div className="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-[24px] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] h-[85dvh]" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}>{CartPanel}</motion.div>
+        </>)}
+      </AnimatePresence>
+      {/* The whole ticket, roomy (2026-10-30, the owner: "one Preview option for the ordered section, with quantity adjust and
+          choose options"): every line with the same capsule stepper, its course when courses are on, its request, Options for a
+          dish with sizes or add-ons (the tile's own chooser, answering for that line) and Remove; the foot is the count, the
+          total when prices are shown (a tap there shows or hides them, as the head's ₹ does) and the same Send to kitchen.
+          Rendered after the phone's ticket sheet and before the request sheet and the chooser, so it opens over the one and
+          under the others; while one of those is open, Escape and the scrim close that one only. */}
+      <Sheet open={preview} onClose={() => { if (noteFor || chooser) return; setPreview(false); }} title={`Ticket · ${where}`} wide>
+        <div data-pos-preview-sheet>
+          {lines.length === 0
+            ? <p className="py-6 text-center text-[14px] text-steel">Ticket empty</p>
+            : <ul className="-mt-1">
+                {lines.map((l) => { const nm = lineName(l.item, l.variant); const c = coverOf(l.item.id); return (
+                  <li key={l.key} className="py-3.5 border-b border-[var(--color-separator)] last:border-b-0" data-preview-line>
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span className="mt-1"><VegMark veg={l.item.is_veg} big /></span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-[16.5px] leading-snug">{nm}</div>
+                        {lineExtras({ addons: l.addons, components: l.item.components }).map((x, j) => <div key={j} className="text-[13px] text-steel">{x}</div>)}
+                        {c && qtyOf(l.item.id) > c.portions && <div className="text-[12.5px] font-semibold text-[var(--color-orange)]">pantry covers {c.portions}</div>}
+                        {l.ask && <div className="text-[12.5px] font-semibold text-[var(--color-orange)]">Needs a choice — tap Options</div>}
+                      </div>
+                      {showPrices && <span className="text-right shrink-0">
+                        <span className="block font-display num text-[20px] leading-none">{formatINR(unit(l) * l.qty, { whole: true })}</span>
+                        {l.qty > 1 && <span className="block mt-1 text-[12px] text-steel num">{formatINR(unit(l), { whole: true })} each</span>}
+                      </span>}
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-7 min-w-0">
+                      <QtyStepper qty={l.qty} name={nm} onLess={() => bump(l.key, -1)} onMore={() => bump(l.key, 1)} />
+                      {coursing && (
+                        <div role="radiogroup" aria-label={`Course for ${nm}`} className="inline-flex items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-[3px] shrink-0" data-preview-course>
+                          {[1, 2, 3].map((k) => (
+                            <button key={k} type="button" role="radio" aria-checked={l.course === k} onClick={() => setCourse(l.key, k)}
+                              className={cn("h-9 !min-h-9 min-w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:min-w-11 px-2 rounded-full text-[12.5px] font-bold transition-colors",
+                                l.course === k ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-steel hover:text-[var(--color-label)]")}>C{k}</button>))}
+                        </div>)}
+                      {hasOptions(l.item) && (
+                        <button type="button" onClick={() => setChooser({ item: l.item, replace: l.key, qty: l.qty, note: l.note, verb: "Update", variant: l.variant, addons: l.addons })} data-preview-options
+                          className={cn(PILL, l.ask ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}><SlidersHorizontal size={15} className="shrink-0" aria-hidden />Options</button>)}
+                      <button type="button" onClick={() => setNoteFor(l.key)} aria-label={`Request for ${nm}`} title={l.note || "Note"} data-preview-note
+                        className={cn(PILL, "min-w-0 max-w-full", l.note ? "bg-[var(--color-orange-2)] text-[var(--color-orange)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
+                        {l.note ? <MessageSquareText size={15} className="shrink-0" aria-hidden /> : <MessageSquarePlus size={15} className="shrink-0" aria-hidden />}<span className="truncate">{l.note || "Note"}</span></button>
+                      <button type="button" onClick={() => bump(l.key, -l.qty)} aria-label={`Remove ${nm}`} data-preview-remove
+                        className={cn(PILL, "ml-auto text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)]")}><X size={15} className="shrink-0" aria-hidden />Remove</button>
+                    </div>
+                  </li>); })}
+              </ul>}
+          {err && <p className="mt-3 text-[14px] font-bold text-chili" data-preview-error>{err}</p>}
+          {warned && shortfalls.length > 0 && <p className="mt-2 text-[12.5px] font-semibold text-[var(--color-orange)]">{stockBlock ? "Not enough in the pantry — reduce or remove the marked dishes" : "The pantry is short — shelf has it? Send anyway."}</p>}
+          {coursing && courses.length > 1 && <p className="mt-2 text-[12px] text-steel">Course 1 now · {courses.filter((k) => k > 1).map((k) => `Course ${k}`).join(" and ")} held</p>}
+          <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+            <button type="button" onClick={togglePrices} aria-pressed={showPrices} aria-label={showPrices ? "Hide total" : "Show total"} data-preview-total
+              className="!min-h-14 rounded-2xl px-4 text-left bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors">
+              <span className={cn("block font-bold num", showPrices ? "text-[12.5px] text-steel" : "text-[16px] text-[var(--color-label)]")}>{count} dish{count === 1 ? "" : "es"}</span>
+              {showPrices
+                ? <span className="block font-display num text-[24px] leading-none mt-0.5">{formatINR(grand)}</span>
+                : <span className="flex items-center gap-1 text-[11.5px] font-semibold text-steel mt-0.5"><Eye size={12} aria-hidden />Total</span>}
+            </button>
+            <button type="button" className="svc-btn go xl w-full min-w-0" disabled={pending || lines.length === 0 || (stockBlock && shortfalls.length > 0)} onClick={sendFromPreview} data-preview-send>
+              <Send size={20} aria-hidden />{pending ? "Sending…" : warned && shortfalls.length > 0 ? "Send anyway" : <Say w="send_kitchen" />}
+            </button>
+          </div>
+        </div>
+      </Sheet>
       {/* one dish's request: the floor's usual asks as chips, a box for the rest — in a sheet, so a
           phone keyboard never squeezes the ticket, and the line itself stays two rows tall */}
       {(() => { const ln = lines.find((l) => l.key === noteFor); const parts = (ln?.note ?? "").split(" · ").filter(Boolean); return (
@@ -783,32 +929,45 @@ export function PosClient({ categories, items, tables, initialTable, initialType
           </div>
         </div>
       </Sheet>
-      <aside ref={railRef} className="hidden lg:block self-start feather !rounded-[24px] p-4 sticky top-[92px] h-[calc(100dvh-3rem)]">{CartPanel}</aside>
-      {/* The phone and tablet bar: a green strip above the tab bar (on a tablet, near the edge) — how
-          many and how much on the left, which opens the ticket, and Send to kitchen on the right. It
-          is gone, not parked half-hidden, while the ticket is empty. */}
-      <div className="lg:hidden fixed inset-x-4 z-30 bottom-[calc(var(--tabbar)+10px)] md:bottom-[max(16px,env(safe-area-inset-bottom))] pointer-events-none" data-cart-bar>
-        <AnimatePresence>{count > 0 && (
-          <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 34 }}
-            className="pointer-events-auto w-full min-h-[72px] rounded-[22px] bg-[var(--color-tint)] text-[var(--color-on-tint)] flex items-center gap-2 p-2 shadow-[0_18px_40px_-16px_rgb(0_0_0/.7)]">
-            <button type="button" onClick={() => setCartOpen(true)} className="!min-h-0 h-14 flex items-center gap-3 shrink-0 text-left rounded-2xl pl-1 pr-1" aria-label="See the ticket">
-              {/* 2026-10-20: the dish count flips as dishes are added (Flap.tsx) */}<span className="h-11 min-w-11 px-1 grid place-items-center" data-cart-count={count}><FlapMini value={count} tile="34px" say={`${count} dishes`} /></span>
-              <span className="min-w-0 leading-tight"><span className="block text-[12.5px] font-bold opacity-75">{count === 1 ? "1 dish" : `${count} dishes`}</span><span className="block font-display num text-[24px] leading-none mt-0.5 whitespace-nowrap">{formatINR(total)}</span></span>
-            </button>
-            <button type="button" onClick={sendFromBar} disabled={pending} className="!min-h-0 h-14 px-4 ml-auto rounded-2xl bg-[var(--color-on-tint)] text-[var(--color-tint)] font-black text-[16px] inline-flex items-center justify-center gap-2 flex-1 min-w-0 max-w-[15rem]" data-bar-send>
-              <Send size={18} aria-hidden className="shrink-0" />{pending ? "Sending…" : <Say w="send_kitchen" />}
-            </button>
-          </motion.div>)}</AnimatePresence>
-      </div>
-      <AnimatePresence>
-        {cartOpen && (<>
-          <motion.div className="lg:hidden cursor-pointer fixed inset-0 z-40 bg-ink/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCartOpen(false)} />
-          <motion.div className="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-[24px] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] h-[85dvh]" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}>{CartPanel}</motion.div>
-        </>)}
-      </AnimatePresence>
       {/* the question a dish asks: size, extras, how many */}
-      <OptionChooser item={chooser?.item ?? null} initialQty={chooser?.qty ?? 1} initialNote={chooser?.note ?? ""} onClose={() => setChooser(null)}
-        onAdd={(v, a, n, note) => { if (chooser) putLine(chooser.item, v, a, n, note, chooser.replace); }} />
+      <OptionChooser item={chooser?.item ?? null} initialQty={chooser?.qty ?? 1} initialNote={chooser?.note ?? ""} initialVariant={chooser?.variant} initialAddons={chooser?.addons} onClose={() => setChooser(null)} verb={chooser?.verb}
+        onAdd={(v, a, n, note) => {
+          if (!chooser) return;
+          // a line answered again (Options in the preview, or a voice line owing a choice) keeps its course
+          const was = chooser.replace ? lines.find((l) => l.key === chooser.replace) : undefined;
+          putLine(chooser.item, v, a, n, note, chooser.replace);
+          if (was && was.course > 1) { const key = lineKey(chooser.item.id, v?.id, a.map((x) => x.id)); if (!lines.some((l) => l.key === key && l.key !== was.key)) setCourse(key, was.course); }
+        }} />
+    </div>
+  );
+}
+
+/** A round icon button in the ticket's head and on a line: 36px under a mouse, 44px under a finger (the kit's :where() floor
+ *  would lift it to 40 on a mouse, so the size is stated with ! here). */
+/** A key on a ticket card's foot: 32px round under a mouse, 44 under a finger. */
+const KEY_BTN = "h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11 rounded-full grid place-items-center shrink-0 transition-colors";
+const HEAD_BTN = "h-9 w-9 !min-h-9 !min-w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11 rounded-full grid place-items-center shrink-0 transition-colors";
+/** A worded pill in the preview (Options, Note, Remove). */
+const PILL = "h-9 !min-h-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:!min-h-11 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold shrink-0 transition-colors";
+
+/** How many of a line, as one capsule (2026-10-30, the owner: "compact, modern, perfectly fitting"): [ − n + ] on the fill,
+ *  the count in the middle in tabular figures. At one the − is a bin and takes the line off — the only way to remove a line
+ *  on the rail, so there are not two controls that look alike. 36px buttons under a mouse, 44px under a finger. */
+function QtyStepper({ qty, name, onLess, onMore, slim }: { qty: number; name: string; onLess: () => void; onMore: () => void; slim?: boolean }) {
+  const last = qty <= 1;
+  // slim (the ticket card): 32px under a mouse; a finger still gets 44
+  const btn = cn(slim ? "h-8 w-8 !min-h-8 !min-w-8" : "h-9 w-9 !min-h-9 !min-w-9", "[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11 rounded-full grid place-items-center transition-colors");
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-[3px] shrink-0" data-pos-stepper={qty}>
+      <motion.button type="button" whileTap={{ scale: 0.86 }} onClick={onLess} aria-label={last ? `Remove ${name}` : `One less ${name}`} title={last ? "Remove" : "One less"} data-last={last || undefined}
+        className={cn(btn, "less", last ? "text-[var(--color-red)] hover:bg-[var(--color-red-2)]" : "text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}>
+        {last ? <Trash2 size={15} aria-hidden /> : <Minus size={16} strokeWidth={2.5} aria-hidden />}
+      </motion.button>
+      <span className="num tabular-nums min-w-7 px-0.5 text-center text-[15px] font-extrabold leading-none select-none" aria-live="polite">{qty}</span>
+      <motion.button type="button" whileTap={{ scale: 0.86 }} onClick={onMore} aria-label={`One more ${name}`} title="One more"
+        className={cn(btn, "more bg-[var(--color-label)] text-[var(--color-on-label)] hover:opacity-90")}>
+        <Plus size={16} strokeWidth={2.5} aria-hidden />
+      </motion.button>
     </div>
   );
 }

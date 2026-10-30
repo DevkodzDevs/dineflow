@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, ShieldAlert, Link2, Copy, Printer, Plus, Ban, Eye, Landmark, Truck, Building2, Briefcase, Lock, FileCheck2 } from "lucide-react";
-import { Button, Card, Field, Pill, StatTile, Sheet, cn, Empty } from "@/components/ui";
+import { Button, Card, Field, Pill, StatTile, Sheet, cn, Empty, ask } from "@/components/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { formatINR } from "@/lib/format";
 import { sealAll, createLink, revokeLink } from "./actions";
@@ -156,7 +156,7 @@ export function ProofClient({ base, record, links }: { base: string; record: Rec
                   <div className="text-xs text-steel flex items-center gap-1.5"><Eye size={13} /> {l.views} open{l.views === 1 ? "" : "s"}{l.last_viewed && ` · last ${new Date(l.last_viewed).toLocaleDateString("en-IN")}`}</div>
                   {!dead && <>
                     <Button size="sm" variant="outline" onClick={() => { copyText(url); setMsg("Link copied"); }}><Copy size={14} /> Copy</Button>
-                    <Button size="sm" variant="ghost" disabled={pending} onClick={() => { if (confirm(`Revoke "${l.label}"? Anyone holding it loses access immediately.`)) start(async () => { const r = await revokeLink(l.id); if ("error" in r) setErr(r.error!); else setMsg("Revoked"); }); }}><Ban size={14} /></Button>
+                    <Button size="sm" variant="ghost" disabled={pending} onClick={async () => { if (await ask({ title: "Revoke this link?", body: `Anyone holding "${l.label}" loses access at once.`, ok: "Revoke", tone: "danger", icon: "alert" })) start(async () => { const r = await revokeLink(l.id); if ("error" in r) setErr(r.error!); else setMsg("Revoked"); }); }}><Ban size={14} /></Button>
                   </>}
                 </div>);
             })}

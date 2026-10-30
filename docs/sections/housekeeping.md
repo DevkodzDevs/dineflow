@@ -153,3 +153,11 @@ are the whole point and they are theme-dependent.
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+## 2026-10-30 — Room status, the bosses' screen (0157)
+- **The owner: "change the name — not Housekeeping — and show it only to the owner, manager and supervisor."** The menu, the
+  page head and its title, the Staff → Access tick, Assist, the control-room tile and Night audit say **Room status**; the route
+  `/housekeeping` and the module key `housekeeping` stay. The employee, front-desk and housekeeping role ceilings and defaults lost
+  it (constants.ts, 0157 — `effective_modules` keeps a module only inside the ceiling, so ticks naming it simply stop working), and
+  so did every staff-level position list (attendants, trainee, laundry, night auditor, the trades). Attendants work from the
+  Cleaning board; their room alerts follow their team, not this module (`kindsFor`). The Laundry Attendant now starts on Cleaning.

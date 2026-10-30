@@ -7,9 +7,10 @@ import { LANG_BOOT } from "@/lib/i18n/scope";
 import { SIDEBAR_BOOT } from "@/lib/sidebar";
 import { SPLASH_BOOT, LAUNCH_IMAGES } from "@/lib/splash";
 import { INSTALL_CAPTURE } from "@/lib/install";
+import { STALE_BOOT } from "@/components/shell/staleBoot";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { FirstPaint } from "@/components/FirstPaint";
-import { NavProgress } from "@/components/ui";
+import { NavProgress, ConfirmHost } from "@/components/ui";
 
 // Fonts ship inside the app, so builds and the on-premise Box need no internet.
 const oswald = localFont({ src: "../public/fonts/Oswald.ttf", variable: "--font-oswald", display: "swap" });
@@ -72,6 +73,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning className={`${oswald.variable} ${manrope.variable} ${jet.variable} deck`}>
       <head>
+        {/* first in <head>: a build file that is gone (a tab older than the last deploy) reloads the page once onto the new
+            build, instead of Next's bare "Application error" — components/shell/staleBoot.ts */}
+        <script dangerouslySetInnerHTML={{ __html: STALE_BOOT }} />
         {/* installing: Chrome/Edge (Android, Windows, Mac) read the manifest; Safari (iPhone, iPad) reads
             these apple-* tags. Both only from <head> — see the metadata note above. The original
             apple-mobile-web-app-capable spelling is kept for iPads older than iOS 16.4. */}
@@ -83,7 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         {LAUNCH_IMAGES.map(([f, m]) => <link key={f} rel="apple-touch-startup-image" href={`/splash/${f}`} media={`screen and ${m}`} />)}
         {process.env.NEXT_PUBLIC_SUPABASE_URL && <><link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" /><link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} /></>}<script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /><script dangerouslySetInnerHTML={{ __html: LANG_BOOT }} /><script dangerouslySetInnerHTML={{ __html: SIDEBAR_BOOT }} /><script dangerouslySetInnerHTML={{ __html: SPLASH_BOOT }} /><script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} /></head>
-      <body><NavProgress /><ThemeKeeper /><FullLanguage /><FirstPaint>{children}</FirstPaint><ServiceWorker /></body>
+      <body><NavProgress /><ThemeKeeper /><FullLanguage /><FirstPaint>{children}</FirstPaint><ServiceWorker /><ConfirmHost /></body>
     </html>
   );
 }

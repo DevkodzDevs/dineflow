@@ -1,4 +1,5 @@
 "use client";
+import { ask } from "@/components/ui/Confirm";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Phone, Navigation, PackageCheck, CheckCircle2, MapPin, Banknote, BadgeCheck, XCircle, LocateFixed } from "lucide-react";
@@ -80,7 +81,7 @@ export function RideClient({ token, initial, demo = false }: { token: string; in
               <button type="button" disabled={busy} data-picked-up onClick={() => { setBusy(true); void send("picked_up", last.current?.lat ?? null, last.current?.lng ?? null).finally(() => setBusy(false)); }}
                 className="w-full h-16 rounded-full inline-flex items-center justify-center gap-2 bg-[var(--color-green)] text-[var(--color-on-tint)] font-bold text-lg"><PackageCheck size={22} /> Picked up</button>
             ) : (
-              <button type="button" disabled={busy} data-delivered onClick={() => { if (!confirm("Delivered to the customer?")) return; setBusy(true); void send("delivered", last.current?.lat ?? null, last.current?.lng ?? null).then(stop).finally(() => setBusy(false)); }}
+              <button type="button" disabled={busy} data-delivered onClick={async () => { if (!(await ask({ title: "Delivered?", body: "The order is marked handed to the customer.", ok: "Delivered", tone: "go", icon: "check" }))) return; setBusy(true); void send("delivered", last.current?.lat ?? null, last.current?.lng ?? null).then(stop).finally(() => setBusy(false)); }}
                 className="w-full h-16 rounded-full inline-flex items-center justify-center gap-2 bg-[var(--color-green)] text-[var(--color-on-tint)] font-bold text-lg"><CheckCircle2 size={22} /> Delivered</button>
             )}
             {picked && r.picked_up_at && <p className="text-[12px] text-center text-[var(--color-label-2)]">Picked up at {clock(r.picked_up_at)}</p>}

@@ -115,3 +115,38 @@ node cleaner.mjs     # 42 checks: a restaurant Cleaner's phone and a resort's at
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+## 2026-10-30 — the right people hear a job; only bosses give jobs out (0156) — replaces the alert lines above
+- **Who hears what** (`lib/notify.ts` `kindsFor(modules, role, dept)` with `deptSees`, the client copy of `_work_dept_ok`): a
+  **table** to clean — owner, managers, a supervisor with no team, the Service team and the Housekeeping team (what the board and
+  realtime already allow them); a **room** — owner, managers, a supervisor with no team, Housekeeping. Before, the table alert needed
+  the Orders section and the room one the Housekeeping section, so a Room Attendant without Orders never heard a table. A job
+  already **given to someone** reaches only that person ("Given to you").
+- **The alert is a card** at the top (`[data-job-alerts]`, `[data-job-alert]`, `[data-job-alert-hide]`): "T3 needs cleaning · Paid and
+  left", "Room 201 · clean · Checked out"; tap → /cleaning (a Work job → /work); the device's tone and a buzz; 15 s; a 44px ×; gone
+  when someone takes it; the bell keeps the line. A never-set-up Housekeeping device picks *Cleaning crew* on a tablet or desk too.
+- **Not reached:** a locked phone or a closed app (no Web Push); on iPhone, the Home Screen app with *Background alerts → Allow*;
+  sound after the first tap; a device that saved *Front desk* / *Kitchen* keeps tables off. Waiters (the Service team) still hear
+  tables because they may take them — change `deptSees` and the database rule together to stop that.
+- **Give to… / the person-plus button** were already owner / manager / supervisor / supervisor 2 on screen and in `clean_assign`,
+  `job_add`, `job_assign_labour` (`_clean_may_assign`). The gap was `housekeeping_tasks`' old `tenant_all` policy: any login could
+  `update … set assigned_to` through the API. **0156** `trg_hk_assign_guard` refuses a change of `assigned_to` (or a task born given
+  to someone) unless the caller may assign; no signed-in person (service role, cron) passes. `[data-clean-assign="open|select|new"]`.
+- **Selvi Murugan (manoooo)** is role `supervisor_2` ("Supervisor (2nd level)"), Floor Supervisor, Housekeeping — so she rightly sees
+  Give to…; a Room Attendant does not. Only first-level supervisors would mean taking `supervisor_2` out of `_clean_may_assign` (it
+  also governs Work, labourers, sign-off and inspection).
+- The browser checks `cleaner.mjs` / `cleaning.mjs` expected "*T1 to clean*"; it now reads "*T1 needs cleaning*".
+
+## 2026-10-30 — I'll take it is the cleaners'; the bosses assign
+- **The owner: "don't show I'll take it to everyone — only the housekeeping or cleaning people; a manager or supervisor gets assign."**
+  `lib/notify.ts` `isCleaner(role, dept, position)`: the Housekeeping team (profile, else position's team, else role) or a Busser —
+  never a boss (`CLEAN_BOSSES` = owner, manager, supervisor, supervisor 2). On the **Orders tile** (`OrdersClient`) and the
+  **Cleaning board** (`JobCard` with `cleaner` given — tables and rooms; Work's jobs keep their rule): a cleaner takes a job nobody
+  else was given; anyone takes the one given to them; a boss sees **Assign / Reassign** (Orders: a sheet "Who cleans T1?" — on
+  duty first, then the cleaners, then by name — `[data-clean-give]`, `[data-clean-give-sheet]`, `[data-clean-give-to="Name"]`,
+  `[data-clean-give-anyone]`; the board: the wide `[data-give-wide]` opens the Give to… select and the small person button goes)
+  and finishes only what they took; a waiter or cashier sees *Waiting to clean* / *Being cleaned* (`[data-clean-wait]`).
+- **The alert follows it:** kind `clean` reaches `deptSees(table) && (boss || isCleaner)` — waiters no longer hear tables to clean.
+  `NotifierProvider` takes `position` from the layout for it.
+- **The database is unchanged:** `clean_take` still lets anyone at the property take a job (only the button and the alert moved).
+  Make it refuse too only together with `isCleaner`.
+- Checked: `r157.mjs` (scratchpad) — owner, waiter, busser and cleaner logins made through `staff_create_login` on a demo.

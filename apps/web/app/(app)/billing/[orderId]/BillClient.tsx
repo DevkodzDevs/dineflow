@@ -2,8 +2,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink, X, Package, Undo2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink, X, Package, Undo2, Percent, ChevronDown } from "lucide-react";
 import { Button, Field, Card, cn, Pill } from "@/components/ui";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod, type TaxLine } from "@dineflow/shared";
@@ -112,6 +112,10 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
   const minRedeem = Number(known?.min_redeem ?? restaurant.loyalty_min_redeem ?? 50);
   const canRedeem = !!restaurant.loyalty_enabled && !!known && Number(known.points) >= minRedeem;
   const redeemAmt = canRedeem ? Math.min(redeem, Number(known!.points)) * pointValue : 0;
+  /* which of the two folded panels are open: Guest opens by itself when the order already names someone */
+  const [panel, setPanel] = useState({ discount: false, guest: !!(order.customer_phone || order.customer_name) });
+  const discSummary = [discPct > 0 ? `${discPct}%` : null, discAmt > 0 ? formatINR(discAmt) : null, coupon?.code ?? null].filter(Boolean).join(" · ");
+  const guestSummary = guest.name.trim() || guest.phone.trim();
   const applyCoupon = () => start(async () => { setCouponErr(null); const r = await checkCoupon(code, preview.subtotal); if ("error" in r) setCouponErr(r.error!); else setCoupon(r.coupon); });
   // a WhatsApp link to the guest with the message typed: the pay link before, the receipt after
   const waPhone = (guest.phone || order.customer_phone || "").replace(/\D/g, "").slice(-10);
@@ -165,8 +169,83 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
         </div>
         {!bill ? (
           <Card>
-            <h3 className="text-xl">Discount</h3>
-            <div className="grid grid-cols-2 gap-3 mt-3"><Field label="Percent"><input type="number" min={0} max={100} value={discPct || ""} onChange={(e) => setDiscPct(Number(e.target.value))} className="num" placeholder="0" /></Field><Field label="Flat (₹)"><input type="number" min={0} value={discAmt || ""} onChange={(e) => setDiscAmt(Number(e.target.value))} className="num" placeholder="0" /></Field></div>
+            {/* Discount and Guest fold behind two icon toggles (2026-10-30, the owner: "don't show the Discount and Guest sections
+                by default — just icons"). The coupon lives with the discount — a coupon is a discount. A panel opens by itself
+                when it already holds something (a guest on the order), and a closed one says what it holds on its toggle, so
+                nothing entered is ever out of sight. What reaches generateBill is unchanged. */}
+            <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2" data-bill-toggles>
+              {([["discount", Percent, "Discount", discSummary], ["guest", UserRound, "Guest", guestSummary]] as const).map(([k, Icon, label, summary]) => {
+                const on = panel[k];
+                return (
+                  <button key={k} type="button" aria-expanded={on} aria-controls={`bill-${k}-panel`} data-bill-toggle={k} onClick={() => setPanel((p) => ({ ...p, [k]: !p[k] }))}
+                    className={cn("h-12 min-h-11 min-w-0 rounded-2xl pl-1.5 pr-3 inline-flex items-center gap-2.5 text-[14px] font-semibold border transition-colors",
+                      on ? "bg-[var(--color-green-2)] border-[color-mix(in_srgb,var(--color-tint)_40%,transparent)] text-[var(--color-label)]" : "bg-[var(--color-fill)] border-transparent hover:bg-[var(--color-fill-2)]")}>
+                    <span className={cn("h-9 w-9 shrink-0 rounded-xl grid place-items-center transition-colors", on || summary ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-bg-2)] text-[var(--color-label-2)]")} aria-hidden><Icon size={17} /></span>
+                    <span className="min-w-0 flex-1 text-left leading-tight">
+                      <span className="block truncate">{label}</span>
+                      {summary && <span className="block truncate text-[11.5px] font-semibold text-[var(--color-tint)] num" data-bill-toggle-value>{summary}</span>}
+                    </span>
+                    <ChevronDown size={16} aria-hidden className={cn("shrink-0 text-steel transition-transform duration-200", on && "rotate-180")} />
+                  </button>
+                );
+              })}
+            </div>
+            <AnimatePresence initial={false}>
+              {panel.discount && (
+                <motion.div key="discount" id="bill-discount-panel" data-bill-panel="discount" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
+                  <div className="pt-3 pb-0.5 space-y-3">
+                    <div className="grid grid-cols-2 gap-3"><Field label="Percent"><input type="number" min={0} max={100} value={discPct || ""} onChange={(e) => setDiscPct(Number(e.target.value))} className="num" placeholder="0" /></Field><Field label="Flat (₹)"><input type="number" min={0} value={discAmt || ""} onChange={(e) => setDiscAmt(Number(e.target.value))} className="num" placeholder="0" /></Field></div>
+                    {/* The coupon: the ticket sits inside the box like a search field's glass, and Apply is the box's
+                        own height (items-stretch, !h-auto). Once applied it is a green card — the code, what it
+                        takes off, and a cross to take it back. It was a loose 14px icon beside a bare box. */}
+                    {coupon ? (
+                      <div className="flex items-center gap-3 rounded-xl bg-[var(--color-green-2)] pl-2.5 pr-1.5 py-2" data-coupon-applied>
+                        <span className="h-9 w-9 rounded-lg grid place-items-center shrink-0 bg-[var(--color-tint)] text-[var(--color-on-tint)]"><TicketIcon size={16} /></span>
+                        <span className="flex-1 min-w-0 leading-tight">
+                          <span className="block text-sm font-semibold num uppercase truncate">{coupon.code}</span>
+                          <span className="block text-xs text-steel truncate">{coupon.title} · {Number(coupon.pct) > 0 ? `${coupon.pct}% off` : `${formatINR(Number(coupon.amount))} off`}</span>
+                        </span>
+                        <button type="button" aria-label="Remove the coupon" title="Remove the coupon" className="h-10 w-10 shrink-0 rounded-lg grid place-items-center text-steel hover:text-chili hover:bg-[var(--color-fill)]" onClick={() => { setCoupon(null); setCode(""); }}><X size={16} /></button>
+                      </div>
+                    ) : (
+                      <div className="flex items-stretch gap-2" data-coupon>
+                        <div className="relative flex-1 min-w-0">
+                          <TicketIcon size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
+                          <input placeholder="Coupon code" aria-label="Coupon code" className="num uppercase !pl-11 w-full" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }} />
+                        </div>
+                        <Button variant="gray" type="button" className="!h-auto shrink-0 !px-5" disabled={!code.trim() || pending} onClick={applyCoupon}>Apply</Button>
+                      </div>
+                    )}
+                    {couponErr && <p className="text-xs text-chili">{couponErr}</p>}
+                  </div>
+                </motion.div>
+              )}
+              {panel.guest && (
+                <motion.div key="guest" id="bill-guest-panel" data-bill-panel="guest" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
+                  <div className="pt-3 pb-0.5 space-y-3">
+                    <div className="grid grid-cols-2 gap-3"><input placeholder="Phone" inputMode="tel" className="num" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} /><input placeholder="Name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} /></div>
+                    {known ? (
+                      <div className="rounded-xl bg-[var(--color-fill)] px-3 py-2 text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="font-semibold">{known.name ?? "Known guest"}</span><span className="text-steel">{known.visits} visit{known.visits === 1 ? "" : "s"} · {formatINR(Number(known.total_spend))}</span>
+                        {restaurant.loyalty_enabled && <span className={cn("num", canRedeem ? "text-mint font-semibold" : "text-steel")}>{Math.round(Number(known.points))} points</span>}
+                        {known.notes && <span className="w-full text-steel">{known.notes}</span>}
+                      </div>
+                    ) : guest.phone.replace(/\D/g, "").length >= 10 ? <p className="text-xs text-steel">New guest</p> : null}
+                    {canRedeem && (
+                      <div className="flex items-center gap-2">
+                        <Coins size={14} className="text-mint shrink-0" />
+                        <input type="number" min={0} max={Math.floor(Number(known!.points))} className="num !w-28" placeholder="Points" value={redeem || ""} onChange={(e) => setRedeem(Math.max(0, Math.min(Math.floor(Number(known!.points)), Number(e.target.value))))} />
+                        <button type="button" className="text-xs font-semibold underline text-steel" onClick={() => setRedeem(Math.floor(Number(known!.points)))}>Use all {Math.floor(Number(known!.points))}</button>
+                        {redeem > 0 && <span className="text-xs num ml-auto">−{formatINR(redeemAmt)}</span>}
+                      </div>
+                    )}
+                    {redeem > 0 && redeem < minRedeem && <p className="text-xs text-chili">At least {minRedeem} points at a time.</p>}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             {(onlineOff > 0 || packing > 0) && (
               <div className="mt-3 space-y-1.5" data-online-money>
                 {onlineOff > 0 && <div className="flex items-center gap-2.5 rounded-xl bg-[var(--color-green-2)] px-3 py-2 text-sm" data-online-offer><TicketIcon size={15} className="text-[var(--color-tint)] shrink-0" /><span className="flex-1 min-w-0 truncate">Ordered online{order.offer_title ? ` · ${order.offer_title}` : ""}</span><span className="num font-semibold shrink-0">−{formatINR(onlineOff)}</span></div>}
@@ -180,48 +259,6 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
               </div>
             )}
             {eco && <p className="mt-3 text-xs rounded-xl bg-[var(--color-fill)] px-3 py-2.5" data-gst-operator><b className="capitalize">{order.order_channels?.kind}</b> pays GST · 9(5)</p>}
-            <div className="mt-4 pt-4 border-t border-dashed border-line space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wide text-steel flex items-center gap-1.5"><UserRound size={12} /> Guest</div>
-              <div className="grid grid-cols-2 gap-3"><input placeholder="Phone" inputMode="tel" className="num" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} /><input placeholder="Name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} /></div>
-              {known ? (
-                <div className="rounded-xl bg-[var(--color-fill)] px-3 py-2 text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="font-semibold">{known.name ?? "Known guest"}</span><span className="text-steel">{known.visits} visit{known.visits === 1 ? "" : "s"} · {formatINR(Number(known.total_spend))}</span>
-                  {restaurant.loyalty_enabled && <span className={cn("num", canRedeem ? "text-mint font-semibold" : "text-steel")}>{Math.round(Number(known.points))} points</span>}
-                  {known.notes && <span className="w-full text-steel">{known.notes}</span>}
-                </div>
-              ) : guest.phone.replace(/\D/g, "").length >= 10 ? <p className="text-xs text-steel">New guest</p> : null}
-              {canRedeem && (
-                <div className="flex items-center gap-2">
-                  <Coins size={14} className="text-mint shrink-0" />
-                  <input type="number" min={0} max={Math.floor(Number(known!.points))} className="num !w-28" placeholder="Points" value={redeem || ""} onChange={(e) => setRedeem(Math.max(0, Math.min(Math.floor(Number(known!.points)), Number(e.target.value))))} />
-                  <button type="button" className="text-xs font-semibold underline text-steel" onClick={() => setRedeem(Math.floor(Number(known!.points)))}>Use all {Math.floor(Number(known!.points))}</button>
-                  {redeem > 0 && <span className="text-xs num ml-auto">−{formatINR(redeemAmt)}</span>}
-                </div>
-              )}
-              {redeem > 0 && redeem < minRedeem && <p className="text-xs text-chili">At least {minRedeem} points at a time.</p>}
-              {/* The coupon: the ticket sits inside the box like a search field's glass, and Apply is the box's
-                  own height (items-stretch, !h-auto). Once applied it is a green card — the code, what it
-                  takes off, and a cross to take it back. It was a loose 14px icon beside a bare box. */}
-              {coupon ? (
-                <div className="flex items-center gap-3 rounded-xl bg-[var(--color-green-2)] pl-2.5 pr-1.5 py-2" data-coupon-applied>
-                  <span className="h-9 w-9 rounded-lg grid place-items-center shrink-0 bg-[var(--color-tint)] text-[var(--color-on-tint)]"><TicketIcon size={16} /></span>
-                  <span className="flex-1 min-w-0 leading-tight">
-                    <span className="block text-sm font-semibold num uppercase truncate">{coupon.code}</span>
-                    <span className="block text-xs text-steel truncate">{coupon.title} · {Number(coupon.pct) > 0 ? `${coupon.pct}% off` : `${formatINR(Number(coupon.amount))} off`}</span>
-                  </span>
-                  <button type="button" aria-label="Remove the coupon" title="Remove the coupon" className="h-10 w-10 shrink-0 rounded-lg grid place-items-center text-steel hover:text-chili hover:bg-[var(--color-fill)]" onClick={() => { setCoupon(null); setCode(""); }}><X size={16} /></button>
-                </div>
-              ) : (
-                <div className="flex items-stretch gap-2" data-coupon>
-                  <div className="relative flex-1 min-w-0">
-                    <TicketIcon size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
-                    <input placeholder="Coupon code" aria-label="Coupon code" className="num uppercase !pl-11 w-full" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }} />
-                  </div>
-                  <Button variant="gray" type="button" className="!h-auto shrink-0 !px-5" disabled={!code.trim() || pending} onClick={applyCoupon}>Apply</Button>
-                </div>
-              )}
-              {couponErr && <p className="text-xs text-chili">{couponErr}</p>}
-            </div>
             {promisedAt && (
               <div className={cn("mt-4 rounded-2xl border p-3.5", kept ? "border-[var(--color-tint)]/40 bg-[var(--color-green-2)]" : "border-[var(--color-red)]/40 bg-[var(--color-red-2)]")}>
                 <div className="flex items-center gap-2 text-sm font-semibold">

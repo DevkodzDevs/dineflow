@@ -58,13 +58,15 @@ export const MODULES_BY_TYPE: Record<PropertyType, string[]> = {
  * The most each role may ever be given — the ceiling a tick list cannot pass. The three supervisory
  * ranks have a wide ceiling on purpose: their sections are chosen by whoever appoints them, not fixed
  * by the job title, which is the point of the ladder. Mirrors role_modules.ceiling in migration 0058.
+ * 2026-10-30 (0157, the owner): Room status (`housekeeping`) is the owner's, a manager's and a supervisor's — the
+ * employee, front-desk and housekeeping ceilings no longer hold it; the attendants work from the Cleaning board.
  */
 export const ROLE_ACCESS: Record<Role, string[]> = {
   owner: MODULES_BY_TYPE.resort,
   manager: MODULES_BY_TYPE.resort.filter((m) => m !== "settings"),
   supervisor: MODULES_BY_TYPE.resort.filter((m) => m !== "settings"),
   supervisor_2: MODULES_BY_TYPE.resort.filter((m) => !["settings", "tax", "channels"].includes(m)),
-  employee: MODULES_BY_TYPE.resort.filter((m) => !["settings", "staff", "tax", "reports", "proof", "neighbours", "channels"].includes(m)),
+  employee: MODULES_BY_TYPE.resort.filter((m) => !["settings", "staff", "tax", "reports", "proof", "neighbours", "channels", "housekeeping"].includes(m)),
   // every role keeps "dashboard": it is where the app puts you when you sign in and where it sends
   // you off a section you cannot open, so a role without it has nowhere to land. This list and
   // role_modules.ceiling in migration 0058 must agree — they drifted once and a housekeeper signing
@@ -73,8 +75,8 @@ export const ROLE_ACCESS: Record<Role, string[]> = {
   waiter: ["dashboard", "scan", "orders", "reservations", "pulse", "customers"],
   chef: ["dashboard", "scan", "kitchen", "menu", "online-orders", "tomorrow"],
   store: ["dashboard", "scan", "inventory", "labour", "tomorrow", "neighbours"],
-  frontdesk: ["dashboard", "scan", "frontdesk", "rooms", "guests", "facilities", "housekeeping", "reservations", "invoices", "labour", "channels", "customers"],
-  housekeeping: ["dashboard", "scan", "housekeeping", "rooms"],
+  frontdesk: ["dashboard", "scan", "frontdesk", "rooms", "guests", "facilities", "reservations", "invoices", "labour", "channels", "customers"],
+  housekeeping: ["dashboard", "scan", "rooms"],
 };
 
 /**
@@ -98,8 +100,8 @@ export const ROLE_DEFAULT: Record<Role, string[]> = {
   waiter: ["dashboard", "orders", "reservations", "pulse", "customers"],
   chef: ["dashboard", "kitchen", "menu", "tomorrow", "scan"],
   store: ["dashboard", "inventory", "scan", "tomorrow"],
-  frontdesk: ["dashboard", "frontdesk", "rooms", "guests", "facilities", "housekeeping", "reservations", "invoices", "customers"],
-  housekeeping: ["dashboard", "housekeeping", "rooms"],
+  frontdesk: ["dashboard", "frontdesk", "rooms", "guests", "facilities", "reservations", "invoices", "customers"],
+  housekeeping: ["dashboard", "rooms"],
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -143,7 +145,7 @@ export const PROPERTY_FILTERS = [
 ] as const;
 export const MODULE_GROUPS: { title: string; keys: { key: string; label: string; hint: string }[] }[] = [
   { title: "Front of house", keys: [{ key: "orders", label: "Orders & tables", hint: "Take orders, the floor" }, { key: "reservations", label: "Reservations", hint: "Bookings from the storefront" }, { key: "pulse", label: "Pulse", hint: "Wait times and the walk-in queue" }, { key: "online-orders", label: "Online orders", hint: "Delivery and takeaway" }, { key: "customers", label: "Customers", hint: "Regulars, loyalty, birthdays" }, { key: "channels", label: "Channels", hint: "Swiggy, Zomato, OTAs" }] },
-  { title: "Hotel", keys: [{ key: "frontdesk", label: "Front desk", hint: "Check-in, folios" }, { key: "rooms", label: "Rooms", hint: "The board and keys" }, { key: "housekeeping", label: "Housekeeping", hint: "Turnaround" }, { key: "guests", label: "Guests", hint: "Guest records" }, { key: "facilities", label: "Facilities", hint: "Spa, pool, hall" }] },
+  { title: "Hotel", keys: [{ key: "frontdesk", label: "Front desk", hint: "Check-in, folios" }, { key: "rooms", label: "Rooms", hint: "The board and keys" }, { key: "housekeeping", label: "Room status", hint: "Every room, at a glance" }, { key: "guests", label: "Guests", hint: "Guest records" }, { key: "facilities", label: "Facilities", hint: "Spa, pool, hall" }] },
   { title: "Kitchen & stock", keys: [{ key: "kitchen", label: "Kitchen", hint: "Tickets" }, { key: "menu", label: "Menu", hint: "Dishes and recipes" }, { key: "inventory", label: "Pantry", hint: "Stock, counts, leaks" }, { key: "scan", label: "Scan", hint: "Barcodes and photos" }, { key: "tomorrow", label: "Tomorrow", hint: "The brief" }] },
   { title: "Money", keys: [{ key: "billing", label: "Billing", hint: "Bills, payments, shift close" }, { key: "invoices", label: "Invoices", hint: "GST invoices" }, { key: "reports", label: "Reports", hint: "Sales and costs" }, { key: "tax", label: "Tax & GST", hint: "Returns, audit, documents" }, { key: "proof", label: "Proof of business", hint: "Sealed months, share links" }] },
   { title: "People & network", keys: [{ key: "labour", label: "Labour", hint: "Attendance, wages" }, { key: "staff", label: "Staff", hint: "Logins and roles" }, { key: "neighbours", label: "Neighbours", hint: "The district network" }] },

@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Calculator, Lock, FileText, FileSpreadsheet, HandCoins, Check, Settings2, Wallet, IndianRupee, Landmark, CalendarClock, Minus, Plus, CalendarDays, CircleDashed, PencilLine } from "lucide-react";
-import { Card, Empty, Switch, cn, useToast, FlapShuffle } from "@/components/ui";
+import { Card, Empty, Switch, cn, useToast, FlapShuffle, ask } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { saveSettings, setPay, giveAdvance, buildMonth, setLine, finalise, payLine } from "./actions";
 import { Say } from "@/components/ui/Say";
@@ -222,7 +222,7 @@ export function PayrollClient({ month, today, property, settings, people, advanc
           </div>
           <div className="flex flex-wrap gap-2 max-sm:w-full sm:ml-auto" data-payroll-actions>
             {!final && <button type="button" disabled={pending} className="svc-btn go sm !px-4 max-sm:basis-full" data-build onClick={() => act(buildMonth(month), run ? "Worked out again" : "Worked out")}><Calculator size={17} aria-hidden /><Say w={run ? "work_out_again" : "work_out_pay"} /></button>}
-            {run && !final && lines.length > 0 && <button type="button" disabled={pending} className="svc-btn quiet sm !px-4 max-sm:flex-1" data-finalise onClick={() => { if (confirm(`Finalise ${monthName(month)}? Lines stop changing and advances are marked recovered.`)) act(finalise(run.id), "Finalised"); }}><Lock size={16} aria-hidden /><Say w="finalise" /></button>}
+            {run && !final && lines.length > 0 && <button type="button" disabled={pending} className="svc-btn quiet sm !px-4 max-sm:flex-1" data-finalise onClick={async () => { if (await ask({ title: `Finalise ${monthName(month)}?`, body: "Lines stop changing and advances are marked recovered.", ok: "Finalise", tone: "go", icon: "check" })) act(finalise(run.id), "Finalised"); }}><Lock size={16} aria-hidden /><Say w="finalise" /></button>}
             {lines.length > 0 && <button type="button" className="svc-btn quiet sm !px-4 max-sm:flex-1" onClick={() => void excel()} data-payroll-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>}
           </div>
         </div>

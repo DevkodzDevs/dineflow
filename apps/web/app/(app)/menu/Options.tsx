@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { Plus, Trash2, Check } from "lucide-react";
-import { Button, Field, cn, useToast } from "@/components/ui";
+import { Button, Field, cn, useToast, ask } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import type { VariantRow, GroupRow } from "@/lib/menuOptions";
 import { saveVariants, setItemGroups, saveAddonGroup, deleteAddonGroup, saveAddon, deleteAddon, toggleAddon, addGroupToCategory } from "./actions";
@@ -83,7 +83,7 @@ export function GroupsManager({ groups, ingredients, categories }: { groups: Gro
                 <div className="w-[5.5rem]"><Field label="Min"><input name="min_select" type="number" min={0} className="num" defaultValue={g.min_select} /></Field></div>
                 <div className="w-[5.5rem]"><Field label="Max"><input name="max_select" type="number" min={0} className="num" defaultValue={g.max_select} /></Field></div>
                 <Button size="sm" disabled={pending}>Save</Button>
-                <Button type="button" size="sm" variant="danger" disabled={pending} aria-label="Delete group" onClick={() => { if (confirm(`Delete "${g.name}" and its add-ons?`)) start(async () => { const r = await deleteAddonGroup(g.id); if ("error" in r) toast(r.error!, "err"); }); }}><Trash2 size={14} /></Button>
+                <Button type="button" size="sm" variant="danger" disabled={pending} aria-label="Delete group" onClick={async () => { if (await ask({ title: "Delete this group?", body: `"${g.name}" and its add-ons go.`, ok: "Delete", tone: "danger", icon: "trash" })) start(async () => { const r = await deleteAddonGroup(g.id); if ("error" in r) toast(r.error!, "err"); }); }}><Trash2 size={14} /></Button>
                 <p className="w-full text-[11px] text-steel">Max 0 means any number.</p>
               </form>
               <div className="divide-y divide-line rounded-xl border border-line">

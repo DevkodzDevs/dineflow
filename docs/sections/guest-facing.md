@@ -375,3 +375,5 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   order, "GST paid by the delivery platform (section 9(5))" (`pay_link` gives `charges` and `eco`). `pay152.mjs`.
 - **The table's menu reads its three things at once (2026-10-29).** `dine_storefront`, `dine_slots` and `dine_busy` in one
   `Promise.all` — `dine_busy` used to wait for the other two (shell-and-nav.md, speed pass 2026-10-29).
+- **The service worker (v20, 2026-10-30):** a page load with no line gets its last copy only if every script and stylesheet that copy
+  names is cached too; otherwise the reconnect page (shell-and-nav.md, the boot guard).

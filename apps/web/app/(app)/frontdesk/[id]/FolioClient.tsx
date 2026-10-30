@@ -3,7 +3,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { LogIn, LogOut, Plus, Printer, UtensilsCrossed } from "lucide-react";
-import { Button, Card, Pill, cn } from "@/components/ui";
+import { Button, Card, Pill, cn, ask } from "@/components/ui";
 import { PrinterOutput } from "@/components/receipt/PrinterOutput";
 import { formatINR, PAYMENT_METHODS, type PaymentMethod } from "@dineflow/shared";
 import { checkIn, checkOut, addCharge, postOrderToRoom } from "../actions";
@@ -80,7 +80,7 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
             <div className="mt-3 space-y-2">{pays.map((p, i) => <div key={i} className="grid grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)] gap-2"><select value={p.method} onChange={(e) => setPays(pays.map((x, j) => (j === i ? { ...x, method: e.target.value as PaymentMethod } : x)))}>{PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m.toUpperCase()}</option>)}</select><input type="number" className="num" value={p.amount || ""} onChange={(e) => setPays(pays.map((x, j) => (j === i ? { ...x, amount: Number(e.target.value) } : x)))} /><input placeholder="Ref" value={p.ref} onChange={(e) => setPays(pays.map((x, j) => (j === i ? { ...x, ref: e.target.value } : x)))} /></div>)}
               <Button size="sm" variant="outline" onClick={() => setPays([...pays, { method: "cash", amount: Math.max(0, Number(t.balance) - paid), ref: "" }])}><Plus size={14} /> Split</Button></div>
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
-            <Button size="lg" variant="ink" className="w-full mt-4" disabled={pending || paid + 0.01 < Number(t.balance)} onClick={() => { if (confirm("Check out and mark room for cleaning?")) start(async () => { const r = await checkOut(b.id, pays); if ("error" in r) setErr(r.error!); else router.push(r.invoiceId ? `/invoices/${r.invoiceId}` : "/frontdesk"); }); }}><LogOut size={16} /> Check out & invoice</Button><p className="text-xs text-steel mt-2">One invoice for everything</p></Card>
+            <Button size="lg" variant="ink" className="w-full mt-4" disabled={pending || paid + 0.01 < Number(t.balance)} onClick={async () => { if (await ask({ title: "Check out?", body: "The room goes to cleaning and one invoice is made.", ok: "Check out", tone: "go", icon: "out" })) start(async () => { const r = await checkOut(b.id, pays); if ("error" in r) setErr(r.error!); else router.push(r.invoiceId ? `/invoices/${r.invoiceId}` : "/frontdesk"); }); }}><LogOut size={16} /> Check out & invoice</Button><p className="text-xs text-steel mt-2">One invoice for everything</p></Card>
         )}
         {b.status === "checked_out" && <div className="mt-4 flex gap-2"><Button disabled={pending} onClick={() => start(async () => { const r = await stayInvoice(b.id); if ("id" in r) router.push(`/invoices/${r.id}`); })}><FileText size={16} /> Final tax invoice</Button><Button variant="outline" onClick={() => window.print()}><Printer size={16} /> Print folio</Button></div>}
       </div>

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { Check, AlertTriangle, Trash2, Loader2, Landmark } from "lucide-react";
-import { Card, Empty, cn, useToast } from "@/components/ui";
+import { Card, Empty, cn, useToast, ask } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { expectedFor, addSettlement, deleteSettlement, type Expected } from "./actions";
 
@@ -84,7 +84,7 @@ export function PayoutsClient({ channels, rows, today }: { channels: { id: strin
                   <div className="text-[12.5px] text-steel truncate">{r.orders_count} orders · should pay {inr(r.expected)} · got {inr(r.received)}{Number(r.tds) ? ` + TDS ${inr(r.tds)}` : ""}{Number(r.other_deductions) ? ` + cuts ${inr(r.other_deductions)}` : ""}{r.utr ? ` · ${r.utr}` : ""}</div>
                 </div>
                 <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[12.5px] font-extrabold num", Math.abs(g) < 1 ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : g < 0 ? "bg-[var(--color-red-2)] text-[var(--color-red)]" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")}>{Math.abs(g) < 1 ? "Matches" : `${g < 0 ? "−" : "+"}${inr(Math.abs(g))}`}</span>
-                <button type="button" disabled={pending} onClick={() => { if (confirm("Remove this payout?")) start(async () => { const x = await deleteSettlement(r.id); if ("error" in x) toast(x.error!, "err"); }); }} className="h-11 w-11 shrink-0 grid place-items-center rounded-xl text-steel hover:text-chili hover:bg-[var(--color-fill)]" aria-label="Remove"><Trash2 size={16} /></button>
+                <button type="button" disabled={pending} onClick={async () => { if (await ask({ title: "Remove this payout?", body: "It leaves the payouts list.", ok: "Remove", tone: "danger", icon: "trash" })) start(async () => { const x = await deleteSettlement(r.id); if ("error" in x) toast(x.error!, "err"); }); }} className="h-11 w-11 shrink-0 grid place-items-center rounded-xl text-steel hover:text-chili hover:bg-[var(--color-fill)]" aria-label="Remove"><Trash2 size={16} /></button>
               </div>); })}
           </Card>
         </div>

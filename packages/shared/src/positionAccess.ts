@@ -12,6 +12,11 @@
  * the stock-receiving camera — the store, the kitchen leads and the managers keep it), the gardener lost Housekeeping, and
  * the guard, the cleaner, the kitchen steward and the maintenance helper hold no module at all: Work and Checklists (open
  * to everyone) are their day. 0126 moved everyone still on an untouched position list to the narrower one.
+ *
+ * 2026-10-30 (the owner: "rename Housekeeping, and show it only to the owner, managers and supervisors"): Room status
+ * (the module key stays `housekeeping`) is gone from every staff-level list — the attendants, the trainee, the night
+ * auditor, the engineering trades. They turn rooms round on the Cleaning and Work boards; the role ceilings (constants.ts,
+ * 0157) took it off too.
  */
 import type { PropertyType } from "./constants";
 
@@ -36,7 +41,7 @@ export const POSITION_ACCESS: Record<string, PositionAccess> = {
   concierge: { open: ["frontdesk", "guests", "facilities", "reservations"], home: "guests" },
   bell_captain: { open: ["rooms", "guests"], home: "rooms" },
   front_office_associate: { open: [...FO, "reservations", "invoices", "customers"], home: "frontdesk" },
-  night_auditor: { open: [...FO, "invoices", "channels", "housekeeping"], home: "frontdesk" },
+  night_auditor: { open: [...FO, "invoices", "channels"], home: "frontdesk" },
   telephone_operator: { open: ["frontdesk", "guests", "reservations"], home: "frontdesk" },
   bellboy: { open: ["rooms"], home: "rooms" },
   driver: { open: ["guests"], home: "work" },
@@ -46,11 +51,11 @@ export const POSITION_ACCESS: Record<string, PositionAccess> = {
   asst_housekeeper: { open: ["housekeeping", "rooms", "inventory", "labour", "staff", "scan"], home: "housekeeping" },
   floor_supervisor: { open: ["housekeeping", "rooms", "staff", "scan"], home: "housekeeping" },
   laundry_supervisor: { open: ["housekeeping", "inventory", "scan"], home: "housekeeping" },
-  room_attendant: { open: ["housekeeping", "rooms"], home: "cleaning" },
-  public_area_attendant: { open: ["housekeeping"], home: "cleaning" },
-  laundry_attendant: { open: ["housekeeping"], home: "housekeeping" },
+  room_attendant: { open: ["rooms"], home: "cleaning" },
+  public_area_attendant: { open: [], home: "cleaning" },
+  laundry_attendant: { open: [], home: "cleaning" },
   cleaner: { open: [], home: "cleaning" },
-  housekeeping_trainee: { open: ["housekeeping", "rooms"], home: "cleaning" },
+  housekeeping_trainee: { open: ["rooms"], home: "cleaning" },
   // restaurant & bar service
   fnb_manager: { open: MGR_FNB },
   restaurant_manager: { open: MGR_FNB },
@@ -104,11 +109,11 @@ export const POSITION_ACCESS: Record<string, PositionAccess> = {
   asst_engineer: { open: ["housekeeping", "rooms", "inventory", "labour", "scan"], home: "work" },
   shift_engineer: { open: ["housekeeping", "rooms", "inventory", "labour", "scan"], home: "work" },
   // the people who fix and grow start on the Work board (0113): the jobs of their department, given to them or waiting
-  technician: { open: ["housekeeping", "rooms"], home: "work" },
-  plumber: { open: ["housekeeping", "rooms"], home: "work" },
-  electrician: { open: ["housekeeping", "rooms"], home: "work" },
-  ac_technician: { open: ["housekeeping", "rooms"], home: "work" },
-  carpenter: { open: ["housekeeping"], home: "work" },
+  technician: { open: ["rooms"], home: "work" },
+  plumber: { open: ["rooms"], home: "work" },
+  electrician: { open: ["rooms"], home: "work" },
+  ac_technician: { open: ["rooms"], home: "work" },
+  carpenter: { open: [], home: "work" },
   gardener: { open: [], home: "work" },
   maintenance_helper: { open: [], home: "work" },
   // security

@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BadgeCheck, CalendarDays, Hash, Mail, MailCheck, Phone, ShieldCheck, Siren, Users, Pencil, Settings, Languages } from "lucide-react";
-import { Sheet, cn } from "@/components/ui";
+import { BadgeCheck, CalendarDays, Hash, Mail, MailCheck, Phone, ShieldCheck, Siren, Users, Pencil, Settings, Languages, LogOut } from "lucide-react";
+import { Sheet, cn, ask } from "@/components/ui";
 import { myCard, type MyCard } from "@/app/(app)/me/actions";
 import { DeptIcon, deptHue } from "@/app/(app)/staff/StaffPositions";
 import { hueOf } from "@/app/(app)/me/MeClient";
@@ -12,7 +12,7 @@ import { hueOf } from "@/app/(app)/me/MeClient";
  * here, and their other details"). The avatar in the top bar — and on a phone the one in the bar — opens this before any
  * page: the person in their colour, their position and team, then the facts: access, staff code, joined (and how long
  * ago), who they report to, phone, email, the emergency contact, languages and a line about them. Edit my profile goes to
- * /me; the owner also gets Settings. Read when it opens (myCard), so no screen carries it.
+ * /me; the owner also gets Settings; Sign out is a round key in the card's head (asked first). Read when it opens (myCard), so no screen carries it.
  */
 export function ProfileCard({ open, onClose, accountHref }: { open: boolean; onClose: () => void; accountHref?: string | null }) {
   const [c, setC] = useState<MyCard | null>(null); const [err, setErr] = useState<string | null>(null);
@@ -34,8 +34,15 @@ export function ProfileCard({ open, onClose, accountHref }: { open: boolean; onC
     <Sheet open={open} onClose={onClose} title="Your profile">
       <div className="space-y-4" data-profile-card>
         {!c ? (err ? <p className="text-[14px] text-steel">{err}</p> : <div className="space-y-3"><div className="shimmer h-24 rounded-[20px]" /><div className="shimmer h-40 rounded-[20px]" /></div>) : <>
-          <div className="rounded-[22px] overflow-hidden border border-[var(--color-separator)]">
+          <div className="relative rounded-[22px] overflow-hidden border border-[var(--color-separator)]">
             <div className="h-16" style={{ background: `color-mix(in srgb, ${hue} 22%, var(--color-bg-2))` }} aria-hidden />
+            {/* Sign out as a key in the card's head (2026-10-30, the owner: "icon based, in the header") — round, glassy, red on
+                hover; the same POST /logout as the sidebar, asked first with the app's own dialog */}
+            <form action="/logout" method="post" className="absolute top-3 right-3"
+              onSubmit={async (e) => { e.preventDefault(); const f = e.currentTarget; if (await ask({ title: "Sign out?", body: "You can sign in again any time.", ok: "Sign out", tone: "danger", icon: "out" })) f.submit(); }}>
+              <button type="submit" aria-label="Sign out" title="Sign out" data-profile-signout
+                className="h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 rounded-full grid place-items-center text-[var(--color-red)] bg-[color-mix(in_srgb,var(--color-card)_72%,transparent)] backdrop-blur-md shadow-[inset_0_0_0_1px_var(--color-separator),0_4px_14px_-6px_rgb(0_0_0/.35)] hover:bg-[var(--color-red)] hover:text-white active:scale-95 transition"><LogOut size={17} strokeWidth={2.3} aria-hidden /></button>
+            </form>
             <div className="px-4 pb-4 -mt-9">
               <div className="flex items-end gap-3.5 min-w-0">
                 <span className="h-[72px] w-[72px] shrink-0 rounded-full grid place-items-center font-display text-[28px] ring-4 ring-[var(--color-bg-2)]" style={{ background: `color-mix(in srgb, ${hue} 26%, var(--color-bg-2))`, color: `color-mix(in srgb, ${hue} 82%, var(--color-label))` }} aria-hidden>
@@ -61,7 +68,7 @@ export function ProfileCard({ open, onClose, accountHref }: { open: boolean; onC
           </div>
           {c.about && <p className="text-[14px] text-[var(--color-label-2)] leading-snug px-1" data-card-about>“{c.about}”</p>}
         </>}
-        <div className={cn("grid gap-2", accountHref === "/settings" ? "grid-cols-2" : "grid-cols-1")}>
+        <div className={cn("grid gap-2", accountHref === "/settings" ? "grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" : "grid-cols-1")}>
           <Link href="/me" onClick={onClose} className="svc-btn go sm" data-card-edit><Pencil size={16} aria-hidden /> Edit my profile</Link>
           {accountHref === "/settings" && <Link href="/settings" onClick={onClose} className="svc-btn quiet sm" data-card-settings><Settings size={16} aria-hidden /> Settings</Link>}
         </div>

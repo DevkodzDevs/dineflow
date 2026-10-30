@@ -333,3 +333,13 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+- **The full record shows only the owner (2026-10-30, the owner: "staff details belong to the owner's and manager's pages").**
+  `propertyDetail` keeps only `role = owner` users on the server — staff login IDs, emails and temporary passwords never reach the
+  master's browser; a `staff_count` comes instead. The panel is **Owner login(s)** (`[data-owner-logins]`), "N staff logins · in
+  the property's Staff screen"; Copy all copies the owner part and the count. **Fixed with it:** `admin_reset_property_password`
+  always resets the first owner, but every user card had the reset button — pressing it on a staff card reset the owner's password.
+  Only the first owner's card has it now. (The support ticket still shows who raised it — left in place.)
+- **Copy one value at a time:** the reissue result, Manage → Owner login → New temporary password and the new-property result copied
+  "id / password" together, and pasting into Password put both in. Each now has **Copy password** (`[data-copy-password]`), **Copy
+  ID** (`[data-copy-id]`) and a separate, labelled **Copy both** (`[data-copy-both]`, two labelled lines).
+- Suspend and the support desk's delete-screenshot / open-anyway now ask in the app's dialog (`ask`).

@@ -14,6 +14,8 @@ import { Loader } from "./flip";
 import { FlapShuffle } from "./Flap";
 /** The bar along the top while the next page is on its way, and a ring on any tap that has to wait (Busy.tsx). */
 export { NavProgress } from "./Busy";
+/** The app's own yes/no dialog — `await ask({ title, body, ok, tone })` instead of the browser's confirm() (Confirm.tsx). */
+export { ask, ConfirmHost, type AskOpts } from "./Confirm";
 
 /** kept as the old names so existing screens keep working; both now point at the shared springs */
 export const spring = snap;

@@ -81,12 +81,16 @@ export function peopleFor(people: Person[], j: Job) {
  * when; then the one move this person can make — take it, finish it (with a note, for work), give it back, drop it —
  * and, for a supervisor, who to give it to (a person, or a day labourer who has no sign-in).
  */
-export function JobCard({ j, me, boss, pending, people, labourers = [], act, showDept }: { j: Job; me: string; boss: boolean; pending: boolean; people: Person[]; labourers?: Labourer[]; act: Act; showDept?: boolean }) {
+export function JobCard({ j, me, boss, pending, people, labourers = [], act, showDept, cleaner }: { j: Job; me: string; boss: boolean; pending: boolean; people: Person[]; labourers?: Labourer[]; act: Act; showDept?: boolean; cleaner?: boolean }) {
   const [noting, setNoting] = useState(false); const [note, setNote] = useState("");
   const [panel, setPanel] = useState<"more" | "give" | null>(null);
   const theirs = !!j.assigned_to && j.assigned_to !== me;
-  const canTake = j.status === "pending" && (!theirs || boss);
-  const canFinish = j.status === "in_progress" && (j.taken_by === me || j.assigned_to === me || boss || !j.taken_by);
+  /* a table or a room on the Cleaning board (`cleaner` given, 2026-10-30 — the owner: "I'll take it only for the cleaning
+     people; a manager or supervisor gets assign"): a cleaner takes one nobody else was given, anyone takes the one given
+     to them, a boss gives it out and finishes only what they took. Work's jobs keep their rule. */
+  const cleanRule = cleaner !== undefined && j.kind !== "job";
+  const canTake = j.status === "pending" && (cleanRule ? j.assigned_to === me || (!!cleaner && !theirs) : !theirs || boss);
+  const canFinish = j.status === "in_progress" && (cleanRule ? j.taken_by === me || j.assigned_to === me || (!!cleaner && !j.taken_by) : j.taken_by === me || j.assigned_to === me || boss || !j.taken_by);
   const canBack = j.status === "in_progress" && (j.taken_by === me || boss);
   const canDrop = j.kind === "job" && isOpen(j) && (boss || j.created_by === me || j.taken_by === me || j.assigned_to === me);
   const canSkip = j.kind === "table" && j.status === "pending" && (!theirs || boss);
@@ -141,11 +145,15 @@ export function JobCard({ j, me, boss, pending, people, labourers = [], act, sho
           {j.status === "pending" && canTake
             ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-take onClick={() => act(takeJob(j.kind, j.id), `${name} is yours`)}><Hand size={18} aria-hidden /><Say w="take_it" /></button>
             : canFinish && !noting ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-finish onClick={() => act(finishJob(j.kind, j.id), `${name} done`)}><Check size={18} aria-hidden /><Say w="clean_done" /></button>
+            : cleanRule && boss && !noting ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-give-wide data-clean-assign="wide" onClick={() => setPanel((x) => (x === "give" ? null : "give"))}><UserPlus size={18} aria-hidden />{j.assigned_to || j.status === "in_progress" ? "Reassign" : "Assign"}</button>
             : <p className="flex-1 min-w-0 text-[13px] text-steel truncate">{j.status === "pending" ? `Waiting for ${j.assigned_name ?? "someone"}` : noting ? "Say what was done" : `${j.taken_name ?? "Someone"} is on it`}</p>}
           {hasMore && <button type="button" onClick={() => setPanel((x) => (x === "more" ? null : "more"))} aria-expanded={panel === "more"} aria-label={`More for ${name}`} title="More"
             className={cn("h-11 w-11 shrink-0 rounded-xl grid place-items-center transition-colors", panel === "more" ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-more><MoreHorizontal size={19} aria-hidden /></button>}
-          {boss && <button type="button" onClick={() => setPanel((x) => (x === "give" ? null : "give"))} aria-expanded={panel === "give"} aria-label={`Give ${name} to`} title="Give to…"
-            className={cn("h-11 w-11 shrink-0 rounded-xl grid place-items-center transition-colors", panel === "give" ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : (j.assigned_to || j.labourer_id) ? "bg-[var(--color-cyan-2)] text-[var(--color-cyan)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-give-open><UserPlus size={18} aria-hidden /></button>}
+          {/* Give to… is the owner's, a manager's or a supervisor's (`boss` = clean_board.can_assign = _clean_may_assign:
+              owner, manager, supervisor, supervisor 2); clean_assign refuses anyone else, and since 0156 so does a direct
+              write of a room's assigned_to. Everyone else keeps I'll take it / Done. */}
+          {boss && !(cleanRule && !noting && !(j.status === "pending" && canTake) && !canFinish) && <button type="button" onClick={() => setPanel((x) => (x === "give" ? null : "give"))} aria-expanded={panel === "give"} aria-label={`Give ${name} to`} title="Give to…"
+            className={cn("h-11 w-11 shrink-0 rounded-xl grid place-items-center transition-colors", panel === "give" ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : (j.assigned_to || j.labourer_id) ? "bg-[var(--color-cyan-2)] text-[var(--color-cyan)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-give-open data-clean-assign="open"><UserPlus size={18} aria-hidden /></button>}
         </div>
         <div className={cn("mt-2 grid grid-cols-2 gap-2", panel !== "more" && "!hidden")} data-more-panel>
           {canFinish && j.kind === "job" && <button type="button" className="svc-btn quiet sm min-w-0 col-span-2" data-add-note onClick={() => { setNoting(true); setPanel(null); }}><StickyNote size={16} aria-hidden /> Done with a note</button>}
@@ -160,7 +168,7 @@ export function JobCard({ j, me, boss, pending, people, labourers = [], act, sho
             <button type="button" disabled={pending} className="svc-btn go sm" data-finish-note onClick={() => { act(finishJob(j.kind, j.id, note), `${name} done`); setNoting(false); }}><Check size={16} aria-hidden /><Say w="with_note" /></button>
           </div></div>}
         {boss && <label className={cn("mt-2 flex items-center gap-2 min-w-0", panel !== "give" && "!hidden")} data-give-panel><UserPlus size={18} className="shrink-0 text-steel" aria-hidden />
-          <select className="!h-11 !min-h-11 min-w-0 flex-1 text-[14px] font-semibold" value={j.assigned_to ?? (j.labourer_id ? `lab:${j.labourer_id}` : "")} disabled={pending} data-assign aria-label={`Give ${name} to`} onChange={(e) => { give(e.target.value); setPanel(null); }}>
+          <select className="!h-11 !min-h-11 min-w-0 flex-1 text-[14px] font-semibold" value={j.assigned_to ?? (j.labourer_id ? `lab:${j.labourer_id}` : "")} disabled={pending} data-assign data-clean-assign="select" aria-label={`Give ${name} to`} onChange={(e) => { give(e.target.value); setPanel(null); }}>
             <option value="">{j.assigned_to || j.labourer_id ? "Anyone can take" : "Give to…"}</option>
             {peopleFor(people, j).map((p) => <option key={p.id} value={p.id}>{p.name}{p.title ? ` — ${p.title}` : ""}{p.on_duty ? " · on duty" : ""}</option>)}
             {j.kind === "job" && labourers.length > 0 && <optgroup label="Day labourers (no sign-in)">

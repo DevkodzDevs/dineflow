@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, AlertTriangle, LifeBuoy, WifiOff } from "lucide-react";
 import { isNetworkError, isSkewError } from "@/lib/reach";
+import { isStaleBuild, mayReloadStale, reloadFresh, reportCrash, RETRY } from "@/components/shell/recover";
 
 /**
  * What a screen shows when it fails to render.
@@ -12,13 +13,13 @@ import { isNetworkError, isSkewError } from "@/lib/reach";
  * Reloading picks up the new build, so do it once, automatically, and clear the cached copies on
  * the way out. Anything else is a real error and is shown with a way to retry.
  */
-const STALE = /ChunkLoadError|Loading chunk|Loading CSS chunk|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
-const ONCE = "df-reloaded-after-stale-build";   // holds the time of the last automatic reload
+/* The stale-build test, the reload keys, the fresh reload and the crash report live in components/shell/recover.ts, shared
+   with app/global-error.tsx (2026-10-30). The reload key (df-reloaded-after-stale-build) is also the inline guard's in
+   <head> (staleBoot.ts), so a page reloads itself for a stale build at most once in 30 s, whichever of the three sees it. */
 /* Any other failure gets one quiet retry too (2026-10-24, the owner: "after login the app shows 'This screen did not load'").
    That evening the shared database was briefly overloaded; every screen that asked it in that minute fell to this card and
    stayed there until someone pressed Reload. Now the card waits 1.5 s and reloads once by itself ("Reconnecting…"); a
-   second failure inside a minute shows the card as before, so a real bug can never spin. */
-const RETRY = "df-retried-after-error";
+   second failure inside a minute shows the card as before, so a real bug can never spin (RETRY, df-retried-after-error). */
 /* A dropped connection is not a broken screen (2026-10-28, the owner: "sometimes the app crashes like this" — reproduced:
    the guest table page opening while the network drops its requests went Reconnecting… → reload → the reload failed too
    → this card, for good). Now: "Connection lost", and the same screen is drawn again by itself (reset, not a reload — a
@@ -55,17 +56,12 @@ export function ErrorRecovery({ error, reset, inline = false }: { error: Error &
      network drop (not a bug, and it could not be sent). Fire and forget — the card does not wait on it. */
   useEffect(() => {
     if (offline) return;
-    const kind = STALE.test(`${error?.name} ${error?.message}`) || isSkewError(error) ? "stale" : "crash";
-    const key = `df-crash:${kind}:${location.pathname}:${error?.name}:${String(error?.message ?? "").slice(0, 80)}`;
-    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch { /* no storage: report anyway */ }
-    void import("@/lib/supabase/lazy").then(({ getClient }) => getClient())
-      .then((c) => c.rpc("report_client_error", { p_kind: kind, p_path: location.pathname, p_name: error?.name ?? null, p_message: error?.message ?? null, p_digest: error?.digest ?? null, p_ua: navigator.userAgent }))
-      .catch(() => { /* the log is a help, never a second failure */ });
+    reportCrash(isStaleBuild(error) ? "stale" : "crash", error);
   }, [error, offline]);
 
   useEffect(() => {
     if (offline) return;
-    const stale = STALE.test(`${error?.name} ${error?.message}`) || isSkewError(error);
+    const stale = isStaleBuild(error);
     if (!stale) {
       let tried = 0;
       try { tried = Number(sessionStorage.getItem(RETRY)) || 0; } catch { return; }   // no storage, no rate limit: show the card
@@ -78,17 +74,10 @@ export function ErrorRecovery({ error, reset, inline = false }: { error: Error &
     // A timestamp rather than a flag: it forgets on its own, so a deploy an hour from now can still
     // recover, while a build that is genuinely broken cannot spin — the second failure inside the
     // window falls through to the card instead of reloading again.
-    let last = 0;
-    try { last = Number(sessionStorage.getItem(ONCE)) || 0; } catch { /* storage blocked: the reload below still helps, it just cannot be rate-limited */ }
-    if (Date.now() - last < 30000) return;
+    if (!mayReloadStale()) return;
     setReloading(true);
-    void (async () => {
-      try { sessionStorage.setItem(ONCE, String(Date.now())); } catch {}
-      // drop the cached build and the worker holding it, or the reload serves the same stale files
-      try { if ("caches" in window) await Promise.all((await caches.keys()).map((k) => caches.delete(k))); } catch {}
-      try { const rs = await navigator.serviceWorker?.getRegistrations?.(); await Promise.all((rs ?? []).map((r) => r.unregister())); } catch {}
-      location.reload();
-    })();
+    // drop the cached build and the worker holding it, or the reload serves the same stale files
+    void reloadFresh();
   }, [error, offline]);
 
   if (offline) return (

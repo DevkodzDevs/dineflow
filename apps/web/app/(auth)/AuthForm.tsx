@@ -1,7 +1,8 @@
 "use client";
-import { useActionState } from "react";
+import { useActionState, useRef, type ClipboardEvent } from "react";
 import Link from "next/link";
 import { useState } from "react";
+import { sameLogin, splitPastedLogin } from "./pasteLogin";
 import { Button, Field, PasswordInput, Reveal, cn } from "@/components/ui";
 import { UtensilsCrossed, Building2, Palmtree, Sparkles } from "lucide-react";
 import { DemoDialog } from "./demo/DemoDialog";
@@ -14,6 +15,35 @@ export function AuthForm({ mode, action, pendingApproval }:
   const [state, act, pending] = useActionState(action as never, null as { error?: string } | null);
   const [ptype, setPtype] = useState("restaurant");
   const [showDemo, setShowDemo] = useState(false);
+  const idRef = useRef<HTMLInputElement>(null);
+  /* "<id> / <password>" pasted whole (pasteLogin.ts): the id goes to Login ID — only when that box is empty or already
+     holds the same login — and only the password stays in Password. Pasted into Login ID, the password moves to
+     Password (if that is empty) instead of sitting in the id, which the sign-in throttle records. On the device only. */
+  const put = (el: HTMLInputElement, text: string, replaceSelection: boolean) => {
+    if (replaceSelection) {
+      const s = el.selectionStart ?? el.value.length, e = el.selectionEnd ?? s;
+      el.value = el.value.slice(0, s) + text + el.value.slice(e);
+      const at = s + text.length;
+      try { el.setSelectionRange(at, at); } catch { /* some input types refuse a selection */ }
+    } else el.value = text;
+  };
+  const onPastePassword = (e: ClipboardEvent<HTMLInputElement>) => {
+    const got = splitPastedLogin(e.clipboardData.getData("text"));
+    const idEl = idRef.current;
+    if (!got || !idEl) return;
+    if (idEl.value.trim() && !sameLogin(idEl.value, got.id)) return;   // a different id is typed: paste as it is
+    e.preventDefault();
+    if (!idEl.value.trim()) put(idEl, got.id, false);
+    put(e.currentTarget, got.password, true);
+  };
+  const onPasteId = (e: ClipboardEvent<HTMLInputElement>) => {
+    const got = splitPastedLogin(e.clipboardData.getData("text"));
+    const pwEl = e.currentTarget.form?.elements.namedItem("password");
+    if (!got || !(pwEl instanceof HTMLInputElement)) return;
+    e.preventDefault();
+    put(e.currentTarget, got.id, false);
+    if (!pwEl.value) put(pwEl, got.password, false);
+  };
   const copy = {
     login: { title: "Welcome back", sub: "Sign in to your restaurant.", cta: "Sign in" },
     signup: { title: "Open your property", sub: "7-day free trial. No card needed.", cta: "Start free trial" },
@@ -58,11 +88,12 @@ export function AuthForm({ mode, action, pendingApproval }:
             a browser would otherwise refuse dine-htl-mano-00001 before the form was ever submitted. */}
         {mode === "login"
           ? <Field label="Login ID" hint="Your DineFlow ID or email">
-              <input name="email" required autoFocus autoComplete="username" autoCapitalize="none"
+              <input ref={idRef} onPaste={onPasteId} name="email" required autoFocus autoComplete="username" autoCapitalize="none"
                 autoCorrect="off" spellCheck={false} placeholder="Login ID or email" />
             </Field>
           : <Field label="Email"><input name="email" type="email" required autoComplete="email" placeholder="you@restaurant.in" /></Field>}
-        <Field label="Password"><PasswordInput name="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} /></Field>
+        <Field label="Password"><PasswordInput name="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"}
+          onPaste={mode === "login" ? onPastePassword : undefined} /></Field>
         {mode === "login" && (
           <div className="text-right -mt-1">
             <Link href="/forgot" className="text-sm text-steel underline">Forgot your password?</Link>

@@ -7,7 +7,7 @@ import { getClient } from "@/lib/supabase/lazy";
 import { calmRefresher } from "@/lib/liveRefresh";
 import { Ticket } from "@/components/ui/Ticket";
 import { PrinterHead } from "@/components/receipt/PrinterHead";
-import { Button, Pill, Card, cn, useToast } from "@/components/ui";
+import { Button, Pill, Card, cn, useToast, ask } from "@/components/ui";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { formatINR, fmtTime, fmtSince } from "@/lib/format";
 import { lineExtras } from "@dineflow/shared";
@@ -149,7 +149,7 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
                 {open.length === 0 ? <p className="text-xs text-steel">No open orders</p> : (
                   <div className="flex gap-2">
                     <select value={intoOrder} onChange={(e) => setIntoOrder(e.target.value)} className="flex-1"><option value="">Choose an order</option>{open.map((o) => <option key={o.id} value={o.id}>#{o.order_no} · {o.dining_tables?.name ?? "no table"}</option>)}</select>
-                    <Button disabled={pending || !intoOrder} onClick={() => { if (!confirm(`Merge order #${order.order_no} into #${open.find((o) => o.id === intoOrder)?.order_no}?`)) return; start(async () => { const r = await mergeOrders(order.id, intoOrder); if ("error" in r) fail(r.error!); else { toast("Merged"); router.push(`/orders/${intoOrder}`); } }); }}>Merge</Button>
+                    <Button disabled={pending || !intoOrder} onClick={async () => { if (!(await ask({ title: "Merge orders?", body: `Order #${order.order_no} moves into #${open.find((o) => o.id === intoOrder)?.order_no}.`, ok: "Merge", tone: "go", icon: "check" }))) return; start(async () => { const r = await mergeOrders(order.id, intoOrder); if ("error" in r) fail(r.error!); else { toast("Merged"); router.push(`/orders/${intoOrder}`); } }); }}>Merge</Button>
                   </div>
                 )}
               </div>

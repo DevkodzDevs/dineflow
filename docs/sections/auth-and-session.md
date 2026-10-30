@@ -168,3 +168,8 @@ pnpm --filter @dineflow/web build
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+- **A pasted "id / password" is split (2026-10-30).** `app/(auth)/pasteLogin.ts` `splitPastedLogin` (7 tests,
+  `pasteLogin.test.ts`) reads "id / password", a tab, two lines or labelled lines ("Login ID:", "Temporary password:"; a "DineFlow
+  code:" line ignored) and splits only when the first part looks like a login (no spaces, 3+ characters, at most one @). Pasted into
+  **Password**: the ID goes to Login ID only if that is empty or the same login; pasted into **Login ID**: the password moves to
+  Password if that is empty. On the device, at paste time — sign-in, the throttle and the log are unchanged. shots157 checks it.

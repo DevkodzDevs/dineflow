@@ -11,14 +11,16 @@ import { defaultVariant, linePrice, optionProblem, type Addon, type AddonGroup, 
  * a group's minimum and maximum — are the ones price_line() enforces on the server; here they only
  * stop the button, so a waiter is never told "no" after pressing Send.
  */
-export function OptionChooser({ item, onClose, onAdd, initialQty = 1, initialNote = "", withNote = true, verb = "Add" }:
+export function OptionChooser({ item, onClose, onAdd, initialQty = 1, initialNote = "", initialVariant, initialAddons, withNote = true, verb = "Add" }:
   { item: Optioned | null; onClose: () => void; onAdd: (variant: Variant | null, addons: Addon[], qty: number, note: string) => void;
-    initialQty?: number; initialNote?: string; withNote?: boolean; verb?: string }) {
+    initialQty?: number; initialNote?: string; withNote?: boolean; verb?: string;
+    /** a line answered again opens on what it already has (2026-10-30), not on the dish's default */
+    initialVariant?: Variant | null; initialAddons?: Addon[] }) {
   const [variant, setVariant] = useState<Variant | null>(null);
   const [picked, setPicked] = useState<Addon[]>([]);
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState("");
-  useEffect(() => { if (item) { setVariant(defaultVariant(item)); setPicked([]); setQty(initialQty); setNote(initialNote); } }, [item, initialQty, initialNote]);
+  useEffect(() => { if (item) { setVariant(initialVariant ?? defaultVariant(item)); setPicked(initialAddons ?? []); setQty(initialQty); setNote(initialNote); } }, [item, initialQty, initialNote, initialVariant, initialAddons]);
   const problem = item ? optionProblem(item, picked) : null;
   const unit = item ? linePrice(item, variant, picked) : 0;
   const toggle = (g: AddonGroup, a: Addon) => setPicked((p) => {

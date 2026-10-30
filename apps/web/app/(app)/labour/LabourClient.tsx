@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Plus, QrCode, Printer, Check, Banknote, Pencil, Link2, Copy, MessageCircle, Fingerprint, Camera, ClipboardCheck, MapPin, CalendarDays, LayoutGrid, Rows3 } from "lucide-react";
 import { copyText } from "@/lib/clipboard";
-import { Button, Sheet, Field, Card, Pill, StatTile, Switch, cn, Empty, useToast } from "@/components/ui";
+import { Button, Sheet, Field, Card, Pill, StatTile, cn, Empty, useToast } from "@/components/ui";
 import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { formatINR } from "@/lib/format";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -26,11 +26,12 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
   const linkUrl = (l: L) => (typeof window === "undefined" ? "" : window.location.origin) + `/attend/${l.punch_token ?? ""}`;
   const [edit, setEdit] = useState<Partial<L> | null>(openId ? labourers.find((l) => l.id === openId) ?? null : null);
   const [pay, setPay] = useState<L | null>(null); const [err, setErr] = useState<string | null>(null); const [pending, start] = useTransition(); const [code, setCode] = useState(""); const [toast, setToast] = useState<string | null>(null);
-  /* the month calendar on each card: shown unless this device was told to hide it (the switch above
-     the cards) — with many workers the calendars made the board long */
-  const [showCal, setShowCal] = useState(true);
-  useEffect(() => { try { if (localStorage.getItem("df-labour-cal") === "0") setShowCal(false); } catch { /* storage refused — keep the default */ } }, []);
-  const setCal = (v: boolean) => { setShowCal(v); try { localStorage.setItem("df-labour-cal", v ? "1" : "0"); } catch { /* storage refused */ } };
+  /* the month calendar on each card — with many workers the calendars made the board long. 2026-10-30 (the owner: "add the
+     default pin here"): the app's one ViewSwitch, Calendar | Compact, a tap for this visit and the pin for this device's
+     default, in place of the on/off switch; a device that had switched the calendar off keeps that as its default. */
+  useEffect(() => { try { if (localStorage.getItem("df-labour-cal") === "0" && !localStorage.getItem("df-view:labour-cal")) localStorage.setItem("df-view:labour-cal", "plain"); localStorage.removeItem("df-labour-cal"); } catch { /* storage refused */ } }, []);
+  const calLay = useViewPref("labour-cal", ["cal", "plain"] as const);
+  const showCal = (calLay.chosen ?? "cal") === "cal";
   const active = labourers.filter((l) => l.status === "active");
   const todayAtt = attendance.filter((a) => a.work_date === today);
   const byL = (id: string) => attendance.filter((a) => a.labourer_id === id);
@@ -64,11 +65,10 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
 
       {tab === "today" && (active.length === 0 ? <Empty title="No labourers yet" hint="Add or scan an ID" action={<Link href="/scan"><Button>Scan an ID</Button></Link>} /> : (
         <div className="space-y-3">
-        <div className="flex justify-end">
-          <label className="inline-flex items-center gap-2.5 min-h-11 pl-3.5 pr-2 rounded-2xl bg-[var(--color-fill)] text-[13px] font-semibold text-[var(--color-label-2)] cursor-pointer select-none" data-cal-toggle>
-            <CalendarDays size={16} className="shrink-0" /> Month calendar
-            <Switch on={showCal} onChange={setCal} name="Show the month calendar on every card" />
-          </label>
+        <div className="flex justify-end" data-cal-toggle>
+          <ViewSwitch label="Show each worker's month" data="labour-cal" shown={calLay.chosen ?? "cal"} onPick={calLay.pick} saved={calLay.saved}
+            onKeep={(v) => { calLay.keep(v); notify(v === "cal" ? "Calendar set as default" : "Compact set as default"); }}
+            options={[{ v: "cal", label: "With the month calendar", icon: CalendarDays, word: "Calendar" }, { v: "plain", label: "Compact, no calendar", icon: Rows3, word: "Compact" }]} />
         </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {active.map((l, i) => { const a = todayAtt.find((x) => x.labourer_id === l.id); return (
@@ -124,7 +124,10 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
         <form className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveLabourer(fd); if ("error" in r) setErr(r.error!); else setEdit(null); })}>
           {edit?.id && <input type="hidden" name="id" value={edit.id} />}
           <div className="grid grid-cols-2 gap-3"><Field label="Full name"><input name="full_name" defaultValue={edit?.full_name} required autoFocus /></Field><Field label="Phone"><input name="phone" defaultValue={edit?.phone ?? ""} /></Field>
-            <Field label="Skill"><select name="skill" defaultValue={edit?.skill ?? "other"}>{LABOUR_SKILLS.map((k) => <option key={k}>{k}</option>)}</select></Field><Field label="Daily wage (₹)"><input name="daily_wage" type="number" className="num" defaultValue={edit?.daily_wage ?? 500} /></Field>
+            {/* a skill picked fills its usual day's wage (2026-10-30, the owner: "the amount by their position") — what this
+                property pays that skill now, else the usual rate — until the wage is typed by hand */}
+            <Field label="Skill"><select name="skill" defaultValue={edit?.skill ?? "other"} data-labour-skill onChange={(e) => { const w = e.currentTarget.form?.elements.namedItem("daily_wage") as HTMLInputElement | null; if (w && !w.dataset.typed) w.value = String(wageFor(e.target.value, labourers)); }}>{LABOUR_SKILLS.map((k) => <option key={k}>{k}</option>)}</select></Field>
+            <Field label="Daily wage (₹)"><input name="daily_wage" type="number" className="num" defaultValue={edit?.daily_wage ?? wageFor(edit?.skill ?? "other", labourers)} onInput={(e) => { e.currentTarget.dataset.typed = "1"; }} data-labour-wage /></Field>
             <Field label="ID type"><input name="id_type" defaultValue={edit?.id_type ?? ""} placeholder="Aadhaar" /></Field><Field label="ID last 4"><input name="id_last4" maxLength={4} className="num" defaultValue={edit?.id_last4 ?? ""} /></Field>
             <Field label="Joined on"><input name="joined_on" type="date" className="num" defaultValue={edit?.joined_on ?? today} /></Field><Field label="Emergency contact"><input name="emergency_contact" defaultValue={edit?.emergency_contact ?? ""} /></Field></div>
           <Field label="Address"><input name="address" defaultValue={edit?.address ?? ""} /></Field><Field label="Notes"><textarea name="notes" rows={2} defaultValue={edit?.notes ?? ""} /></Field>
@@ -148,7 +151,10 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
       <Sheet open={!!pay} onClose={() => setPay(null)} title={`Pay · ${pay?.full_name ?? ""}`}>
         {pay && <form className="space-y-4" action={(fd) => start(async () => { const r = await payLabour(pay.id, Number(fd.get("amount")), String(fd.get("method")), String(fd.get("from")), String(fd.get("to")), String(fd.get("note"))); if ("error" in r) setErr(r.error!); else setPay(null); })}>
           <p className="text-sm text-steel">Earned this month <b className="num text-ink">{formatINR(earned(pay.id))}</b> · paid <b className="num text-ink">{formatINR(paid(pay.id))}</b> · balance <b className="num text-chili">{formatINR(earned(pay.id) - paid(pay.id))}</b></p>
-          <div className="grid grid-cols-2 gap-3"><Field label="Amount (₹)"><input name="amount" type="number" className="num" defaultValue={Math.max(0, earned(pay.id) - paid(pay.id))} required /></Field><Field label="Method"><select name="method" defaultValue="cash"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Bank</option></select></Field><Field label="From"><input name="from" type="date" className="num" defaultValue={today.slice(0, 8) + "01"} /></Field><Field label="To"><input name="to" type="date" className="num" defaultValue={today} /></Field></div>
+          {/* the amount is there already (2026-10-30, the owner: "add the amount by their position; change it if needed"): what
+              is owed this month, else one day at their rate; the chips put a day, a week or the balance in, and it stays editable */}
+          <PayAmount key={pay.id} rate={Number(pay.daily_wage)} skill={pay.skill} balance={Math.max(0, earned(pay.id) - paid(pay.id))} />
+          <div className="grid grid-cols-2 gap-3"><div className="col-span-2"><Field label="Method"><select name="method" defaultValue="cash"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Bank</option></select></Field></div><Field label="From"><input name="from" type="date" className="num" defaultValue={today.slice(0, 8) + "01"} /></Field><Field label="To"><input name="to" type="date" className="num" defaultValue={today} /></Field></div>
           <Field label="Note"><input name="note" placeholder="Weekly settlement" /></Field><Button className="w-full" disabled={pending}><Banknote size={16} /> Record payment</Button></form>}
       </Sheet>
     </div>
@@ -187,7 +193,7 @@ function MonthDots({ days, today }: { days: string[]; today: string }) {
   const count = days.filter((d) => d.slice(0, 7) === today.slice(0, 7)).length;
   const month = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-IN", { month: "long", timeZone: "UTC" });
   return (
-    <div className="mt-3 rounded-2xl bg-[color-mix(in_srgb,var(--color-fill)_60%,transparent)] p-3" role="img"
+    <div className="mt-3 rounded-2xl bg-[color-mix(in_srgb,var(--color-fill)_60%,transparent)] p-3" role="img" data-month-dots
       aria-label={`${count} of the first ${dayNow} days of ${month} worked`}>
       <div className="flex items-center gap-3 mb-2">
         <span className="text-[12.5px] font-semibold">{month}</span>
@@ -234,5 +240,30 @@ function PunchLog({ log, labourers }: { log: Log[]; labourers: L[] }) {
           </li>); })}
       </ul>
     </section>
+  );
+}
+
+/** A day's usual wage for a skill: what this property pays it now (the middle of its active workers' rates), else the
+ *  common rate for that work, else ₹500. Only a starting figure — the owner types another. */
+const USUAL: Record<string, number> = { "cook helper": 600, cleaner: 500, housekeeping: 550, gardener: 550, security: 650, driver: 800, porter: 550, electrician: 900, plumber: 900, other: 500 };
+function wageFor(skill: string, labourers: L[]): number {
+  const rates = labourers.filter((l) => l.status === "active" && l.skill === skill && Number(l.daily_wage) > 0).map((l) => Number(l.daily_wage)).sort((a, b) => a - b);
+  return rates.length ? rates[Math.floor((rates.length - 1) / 2)] : USUAL[skill] ?? 500;
+}
+
+/** The amount to pay, filled in: the balance owed, else one day at their rate — and a day, a week or the balance a tap away. */
+function PayAmount({ rate, skill, balance }: { rate: number; skill: string | null; balance: number }) {
+  const [amount, setAmount] = useState(String(balance > 0 ? balance : rate));
+  const picks: [string, number][] = [["1 day", rate], ["1 week", rate * 7], ...(balance > 0 ? [["Balance", balance] as [string, number]] : [])];
+  return (
+    <div data-pay-amount>
+      <Field label="Amount (₹)"><input name="amount" type="number" inputMode="decimal" min={1} step="0.01" className="num !text-[20px] !font-bold" value={amount} onChange={(e) => setAmount(e.target.value)} required data-pay-input /></Field>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {picks.map(([l, v]) => <button key={l} type="button" onClick={() => setAmount(String(v))} aria-pressed={Number(amount) === v} data-pay-pick={l}
+          className={cn("h-9 [@media(pointer:coarse)]:h-11 px-3 rounded-full text-[12.5px] font-bold inline-flex items-center gap-1.5 transition-colors", Number(amount) === v ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")}>
+          {l}<span className="num opacity-80">{formatINR(v, { whole: true })}</span></button>)}
+        <span className="ml-auto text-[12px] text-steel num" data-pay-rate>{skill ? `${skill} · ` : ""}{formatINR(rate, { whole: true })} a day</span>
+      </div>
+    </div>
   );
 }

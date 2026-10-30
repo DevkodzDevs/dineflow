@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/components/ui";
-import { SIDEBAR_STYLES, chosenSidebar, currentSidebar, setSidebar, type SidebarStyle } from "@/lib/sidebar";
+import { SIDEBAR_STYLES, ICON_LOOKS, chosenSidebar, currentSidebar, setSidebar, toggleFold, type SidebarStyle } from "@/lib/sidebar";
 
 /** A drawing of a look: the dark bar at its width (floating on a card, icons, icons over words), the page beside it. */
 function Sketch({ k }: { k: SidebarStyle }) {
@@ -24,12 +24,14 @@ function Sketch({ k }: { k: SidebarStyle }) {
 }
 
 /**
- * Menu style, on My profile → This device (2026-10-23): the six looks as drawings; a tap applies one at once and keeps it on
- * this device. "As the screen" goes back to the default — icons on an iPad, the whole menu on a laptop. Hidden on a phone,
+ * Menu style, on My profile → This device and Settings → Appearance (2026-10-23): the six looks as drawings; a tap applies
+ * one at once and keeps it on this device. "As the screen" goes back to the default — icons on an iPad, the whole menu on a
+ * laptop. Under it, Collapse menu (the fold — since 2026-10-30 no longer a key on the sidebar itself). Hidden on a phone,
  * which has the bottom bar and no sidebar.
  */
 export function SidebarPicker({ inSheet = false }: { inSheet?: boolean }) {
   const [now, setNow] = useState<SidebarStyle | null>(null); const [chosen, setChosen] = useState<SidebarStyle | null>(null);
+  const folded = !!now && ICON_LOOKS.includes(now);
   useEffect(() => { const sync = () => { setNow(currentSidebar()); setChosen(chosenSidebar()); }; sync(); window.addEventListener("df-sidebar", sync); window.addEventListener("resize", sync); return () => { window.removeEventListener("df-sidebar", sync); window.removeEventListener("resize", sync); }; }, []);
   return (
     <div className="max-md:hidden" data-sidebar-picker>
@@ -45,6 +47,16 @@ export function SidebarPicker({ inSheet = false }: { inSheet?: boolean }) {
           </button>); })}
       </div>
       <p className="mt-2 text-[12px] text-steel">{chosen ? "Kept on this device" : "Follows screen size"}</p>
+      {/* The fold (2026-10-30, the owner: "remove the Expand menu section from the menu — only in Settings"). It was a key at
+          the sidebar's foot; this is the same toggleFold and the same stored look (df-sidebar, df-sidebar-was): on, the menu
+          is its icon look and ☰ opens it over the page; off, it unfolds to the look it came from. The row is the tap target. */}
+      {!inSheet && now && (
+        <label className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] p-3 min-h-[60px] cursor-pointer" data-sidebar-fold>
+          <span className="h-9 w-9 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-label-2)]" aria-hidden>{folded ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}</span>
+          <span className="min-w-0 flex-1"><span className="block text-[14px] font-semibold">Collapse menu</span><span className="block text-[12.5px] text-steel">{folded ? "Icons only · ☰ opens it" : "Whole menu shown"}</span></span>
+          <button type="button" role="switch" aria-checked={folded} data-on={folded ? "true" : "false"} className="switch shrink-0" onClick={toggleFold} aria-label="Collapse menu" />
+        </label>
+      )}
     </div>
   );
 }

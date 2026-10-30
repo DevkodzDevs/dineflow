@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Copy, Check, RefreshCw, Upload, Send, Pencil, Trash2, Link2, Calendar, Clock, AlertTriangle, Loader2, Bike, BedDouble, CreditCard, MapPin, Globe, ShieldCheck, ExternalLink, Users, Smartphone, QrCode, UtensilsCrossed, Webhook, KeyRound } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SvcHead } from "@/components/ui/Service";
-import { Button, Sheet, Field, Switch, CardStrip, cn, useToast, type StripAction } from "@/components/ui";
+import { Button, Sheet, Field, Switch, CardStrip, cn, useToast, type StripAction, ask } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { copyText } from "@/lib/clipboard";
 import { saveChannel, deleteChannel } from "../online-orders/actions";
@@ -109,7 +109,7 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
             { key: "test", label: "Test order", icon: <Send />, tone: "go", disabled: pending, aria: `Send a test order · ${c.label}`, onClick: () => start(async () => { const r = await sendTestOrder(c.webhook_token); if ("error" in r) toast(r.error!, "err"); else toast("Test order sent — it is in Online orders"); }) },
             { key: "menu", label: "Push menu", icon: <Upload />, disabled: pending, aria: `Push menu · ${c.label}`, onClick: () => push(c.id, "menu") },
             { key: "edit", label: "Edit", icon: <Pencil />, aria: `Edit · ${c.label}`, onClick: () => setEditOc(c) },
-            { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", aria: `Remove · ${c.label}`, onClick: () => { if (confirm(`Remove ${c.label}?`)) start(async () => { const r = await deleteChannel(c.id); if ("error" in r) toast(r.error!, "err"); }); } },
+            { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", aria: `Remove · ${c.label}`, onClick: async () => { if (await ask({ title: `Remove ${c.label}?`, body: "This channel stops taking orders here.", ok: "Remove", tone: "danger", icon: "trash" })) start(async () => { const r = await deleteChannel(c.id); if ("error" in r) toast(r.error!, "err"); }); } },
           ];
           return (
             <li key={c.id} data-oc={c.kind} className="feather @container overflow-hidden flex flex-col min-w-0">
@@ -144,7 +144,7 @@ export function ConnectionsClient({ base, role, ota, orderChannels, types, gatew
             { key: "sync", label: syncing ? "Syncing…" : "Sync", icon: <RefreshCw className={cn(syncing && "animate-spin")} />, tone: "go", onClick: () => syncNow(c.id), disabled: !!busy, aria: `Sync · ${c.label}` },
             { key: "push", label: pushing ? "Pushing…" : "Push rates", icon: pushing ? <Loader2 className="animate-spin" /> : <Upload />, onClick: () => push(c.id, "ari"), disabled: !!busy, aria: `Push rates · ${c.label}` },
             { key: "edit", label: "Edit", icon: <Pencil />, onClick: () => setEditOta(c), aria: `Edit · ${c.label}` },
-            { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", onClick: () => { if (confirm(`Remove ${c.label}?`)) start(async () => { const r = await deleteOta(c.id); if ("error" in r) toast(r.error!, "err"); }); }, aria: `Remove · ${c.label}` },
+            { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", onClick: async () => { if (await ask({ title: `Remove ${c.label}?`, body: "Rooms stop syncing with it.", ok: "Remove", tone: "danger", icon: "trash" })) start(async () => { const r = await deleteOta(c.id); if ("error" in r) toast(r.error!, "err"); }); }, aria: `Remove · ${c.label}` },
           ];
           return (
             <li key={c.id} data-ota={c.kind} className="feather @container overflow-hidden flex flex-col min-w-0">

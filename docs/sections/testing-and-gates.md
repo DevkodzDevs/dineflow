@@ -496,3 +496,19 @@ of a second." Measured first, on the live site and on a local production build (
   error; WebKit also reports a request cut off by navigation as "access control checks" / "Load failed" — filter those, not
   real errors. **After a rebuild, stop the old `next start` by its command line** (the npx parent and the next child):
   stopping only the listener on the port left it serving the old manifest, and every screen crashed on 400 chunks.
+- **`pw/shots157.mjs` (15)** — the owner's 16 points in WebKit, failing on any native dialog: the table sheet without the QR block;
+  the POS at a table with no type tiles, prices hidden then shown, the capsule stepper, Preview; "Jain" on the kitchen ticket
+  (`[data-kot-note]`); the bill's Discount / Guest folded and opening; the rail's ☰ → ✕ with the full list and no fold row (set
+  `df-sidebar` = rail first, remove it after); the folio's Check out asking in `[data-ask]` and Cancel leaving the guest in; the
+  phone profile's Sign out asking first (open it with `[data-tab="me"]:visible` — there is a hidden copy); a pasted "id / password"
+  split on /login (a `ClipboardEvent` with a `DataTransfer`). `pw/empty157.mjs` takes a **demo's** tables away to photograph the
+  Tables empty state at 1194 and 412. Unit tests: 218 (7 new, `pasteLogin`).
+
+- **`r157.mjs` (2026-10-30, scratchpad, WebKit at 1194x834 and 834x1194 — 39 checks):** a restaurant and a hotel demo; a waiter, a
+  busser, a cleaner and a room attendant made with the owner's `staff_create_login` (a `.invalid` contact address) and deleted after.
+  Cleaning tile: owner Assign → sheet → given to the busser → busser takes it; waiter sees Waiting to clean; the board for cleaner,
+  owner, waiter. Selects: no top/bottom padding (Tables' zone, Work records). Till: Choose beside − / +, the guest key. Attendance
+  1/2/3 across at 1194, three not offered upright. Labour: Calendar | Compact + pin across a reload; Pay ₹560, 1 week ₹3,920,
+  editable. Hotel: Room status in the menu and head, an attendant sent away; New booking's Room fills the name, saves booking_id,
+  the card and the front desk show the room; the in-house Table key opens New booking with it. `next dev` ran out of memory under
+  it twice — run it against a production build (`NEXT_DIST_DIR=… next build`, then `next start`).

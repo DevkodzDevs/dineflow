@@ -21,7 +21,7 @@ type Filter = "all" | "table" | "room" | "mine";
  * bill is settled. Done today says who finished each one, how long it took and how long it waited. The card and the
  * done row are shared with the Work board (JobCard.tsx, 0113).
  */
-export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { board: Board; error: string | null; me: string; role: string; canSet: boolean; hasRooms: boolean }) {
+export function CleaningClient({ board, error, me, role, canSet, hasRooms, cleaner = false }: { board: Board; error: string | null; me: string; role: string; canSet: boolean; hasRooms: boolean; cleaner?: boolean }) {
   const toast = useToast(); const [pending, start] = useTransition(); const [, tick] = useState(0);
   useLive(["table_cleanings", "housekeeping_tasks"], 30000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
@@ -65,7 +65,7 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms }: { b
     return [...m.entries()].sort((a, b) => b[1].done - a[1].done || a[1].name.localeCompare(b[1].name));
   }, [board.jobs]);
 
-  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} boss={boss} pending={!!busy[j.id]} people={board.people} act={actOn(j.id)} />;
+  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} boss={boss} pending={!!busy[j.id]} people={board.people} act={actOn(j.id)} cleaner={cleaner} />;
   const row = (j: Job) => <DoneRow key={j.id} j={j} me={me} inspectRequired={board.inspect_required} />;
 
   /** A cleaned room the supervisor signs off: Pass puts it on sale, Fail (with what is wrong) sends it back to whoever cleaned it. */

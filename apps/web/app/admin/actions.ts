@@ -62,14 +62,22 @@ export type PropertyDetail = {
            temp_password_locked_out: boolean; temp_password_expired: boolean;
            last_sign_in_at: string | null; created_at: string }[];
   contents: Record<string, number>;
+  /** How many non-owner logins the property has — a count only; their details stay in the property's own Staff screen. */
+  staff_count?: number;
 };
 
-/** Everything Master control holds about one property, for the detail dialog. Read only. */
+/** Everything Master control holds about one property, for the detail dialog. Read only.
+ *  Only the owner account(s) leave the server (2026-10-30, the owner: "show only the owner section — other staff details
+ *  only in the owner's control / manager page"); staff logins, contacts and temporary passwords are dropped here, so they
+ *  never reach the master's browser, and the dialog gets a head-count instead. */
 export async function propertyDetail(restaurantId: string) {
   const s = await createClient();
   const { data, error } = await s.rpc("admin_property_detail", { p_restaurant_id: restaurantId });
   if (error) return { error: error.message };
-  return { ok: true, detail: data as PropertyDetail };
+  const d = data as PropertyDetail;
+  const all = Array.isArray(d?.users) ? d.users : [];
+  const owners = all.filter((u) => u.role === "owner");
+  return { ok: true, detail: { ...d, users: owners, staff_count: all.length - owners.length } as PropertyDetail };
 }
 
 /**

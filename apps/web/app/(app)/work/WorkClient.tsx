@@ -201,7 +201,7 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
           </div>
           {boss && (
             <label className="block"><span className="text-[13px] font-semibold text-steel">Give it to (optional)</span>
-              <select className="mt-1" value={f.assigned ?? (f.labourer ? `lab:${f.labourer}` : "")} data-job-give
+              <select className="mt-1" value={f.assigned ?? (f.labourer ? `lab:${f.labourer}` : "")} data-job-give data-clean-assign="new"
                 onChange={(e) => { const v = e.target.value; setF((x) => ({ ...x, assigned: v && !v.startsWith("lab:") ? v : null, labourer: v.startsWith("lab:") ? v.slice(4) : null })); }}>
                 <option value="">Anyone in {deptLabel(f.department)}</option>
                 {[...board.people].sort((a, b) => Number(b.on_duty) - Number(a.on_duty) || Number(b.dept === f.department) - Number(a.dept === f.department) || a.name.localeCompare(b.name)).map((p) => <option key={p.id} value={p.id}>{p.name}{p.title ? ` — ${p.title}` : ""}{p.on_duty ? " · on duty" : ""}</option>)}

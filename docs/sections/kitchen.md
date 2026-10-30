@@ -114,3 +114,11 @@ Then open `/kitchen/board` at 1920 and stand back from it.
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+- **The order's cooking request on the ticket (2026-10-30, the owner: "Jain was asked but the kitchen does not show it").**
+  The till saves the whole-order request ("Jain", "All mild") as `orders.notes`; `kitchen/page.tsx` never selected it, so only
+  per-dish notes ("Extra spicy") showed. Now **Reads** also `orders.notes`, and each ticket shows it under the ticket's numbers as a
+  **compact amber pill** as wide as its words (a filled orange dot with a triangle, a soft orange ring; `[data-kot-note]`), tokens only
+  so it reads on the paper ticket in every theme. The numbers themselves are **chips** now, not a sentence (`[data-kt-meta]`,
+  `KT_CHIP`): *KOT 3* · *# 3* · the keyboard key · the cook (2026-10-30, the owner: "ultra modern, compact"). shots158 checks both.
+  **Reprint** sends it as `** NOTE **` like the till, and the browser-print KOT (`kotHtml`) prints it in bold. The guest
+  board (`kitchen/board`) lists no dishes, so it is left alone.

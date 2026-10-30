@@ -2,12 +2,12 @@
 import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type FocusEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { Building2, Palmtree, UtensilsCrossed, KeyRound, Copy, Pause, Play, Clock, Search, MoreHorizontal } from "lucide-react";
-import { Button, Sheet, Field, StatTile, cn, Pill, Waiting } from "@/components/ui";
+import { Button, Sheet, Field, StatTile, cn, Pill, Waiting, ask } from "@/components/ui";
 import { formatINR, PROPERTY_LABEL, type PropertyType } from "@dineflow/shared";
 import { daysLeft } from "@/lib/format";
 import { issueKey, setMembership, matchChain, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type PropertyDetail } from "./actions";
 import { Trash2 } from "lucide-react";
-import { PropertyDetailView } from "./PropertyDetail";
+import { PropertyDetailView, CopyBtn } from "./PropertyDetail";
 import { RowActions } from "./RowActions";
 import { PropertyCards } from "./PropertyCards";
 import cardStyles from "./PropertyCards.module.css";
@@ -229,7 +229,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
                 <Button variant="outline" disabled={pending} onClick={() => start(async () => { const r = await setMembership(sel.id, "active", 30); if ("error" in r) setErr(r.error!); })}><Play size={15} /> Activate 30d</Button>
                 <Button variant="outline" disabled={pending} onClick={() => start(async () => { const r = await setMembership(sel.id, "active", 365); if ("error" in r) setErr(r.error!); })}><Play size={15} /> Activate 1 year</Button>
                 {sel.membership === "suspended" ? <Button variant="outline" disabled={pending} onClick={() => start(async () => { await setMembership(sel.id, "active", null); })}>Unsuspend</Button>
-                  : <Button variant="danger" disabled={pending} onClick={() => { if (confirm(`Suspend ${sel.name}? Their team will be locked out immediately.`)) start(async () => { await setMembership(sel.id, "suspended", null); }); }}><Pause size={15} /> Suspend</Button>}
+                  : <Button variant="danger" disabled={pending} onClick={async () => { if (!(await ask({ title: `Suspend ${sel.name}?`, body: "Their team will be locked out immediately.", ok: "Suspend", tone: "danger", icon: "alert" }))) return; start(async () => { await setMembership(sel.id, "suspended", null); }); }}><Pause size={15} /> Suspend</Button>}
               </div>
               {(() => {
                 // an outlet opened from another (0106): one tap gives it the same membership and end date as its chain's first outlet
@@ -252,8 +252,12 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
                 <div className="feather p-4 space-y-3">
                   <div><div className="text-[11px] uppercase tracking-wide text-steel">User ID</div><div className="num font-semibold break-all">{creds.email}</div></div>
                   <div><div className="text-[11px] uppercase tracking-wide text-steel">Temporary password</div><div className="num font-semibold">{creds.password}</div></div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => copyText(`${creds.email} / ${creds.password}`)}><Copy size={14} /> Copy</Button>
+                  {/* one value per button — "Copy password" copies only the password (it used to copy "<id> / <password>",
+                      which pasted whole into the sign-in Password box). "Copy both" is a separate, named choice. */}
+                  <div className="flex flex-wrap gap-2">
+                    <CopyBtn text={creds.password} label="Copy password" kind="password" />
+                    <CopyBtn text={creds.email} label="Copy ID" kind="id" />
+                    <CopyBtn text={`Login ID: ${creds.email}\nTemporary password: ${creds.password}`} label="Copy both" kind="both" />
                     <Button size="sm" variant="plain" onClick={() => setCreds(null)}>Hide</Button>
                   </div>
                   <p className="text-xs text-steel">Shown once</p>
@@ -356,10 +360,11 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
             <p className="text-sm text-steel">{creds.title} Password shown <b>once</b>.</p>
             <div className="feather p-4 space-y-3">
               {creds.code && <div><div className="text-[11px] uppercase tracking-wide text-steel">DineFlow code</div><div className="num text-lg font-semibold break-all">{creds.code}</div></div>}
-              <div><div className="text-[11px] uppercase tracking-wide text-steel">User ID</div><div className="num text-lg font-semibold break-all">{creds.email}</div></div>
-              <div><div className="text-[11px] uppercase tracking-wide text-steel">Temporary password</div><div className="num text-lg font-semibold">{creds.password}</div></div>
+              <div className="flex items-center gap-2"><div className="min-w-0 flex-1"><div className="text-[11px] uppercase tracking-wide text-steel">User ID</div><div className="num text-lg font-semibold break-all">{creds.email}</div></div><CopyBtn text={creds.email} label="Copy ID" kind="id" /></div>
+              <div className="flex items-center gap-2"><div className="min-w-0 flex-1"><div className="text-[11px] uppercase tracking-wide text-steel">Temporary password</div><div className="num text-lg font-semibold break-all">{creds.password}</div></div><CopyBtn text={creds.password} label="Copy password" kind="password" /></div>
             </div>
-            <Button variant="outline" className="w-full" onClick={() => copyText([creds.code && `DineFlow code: ${creds.code}`, `User ID: ${creds.email}`, `Temporary password: ${creds.password}`].filter(Boolean).join("\n"))}><Copy size={15} /> Copy all</Button>
+            {/* everything in one message, for sending to the owner — a separate, named choice; the buttons above copy one value each */}
+            <Button variant="outline" className="w-full" data-copy-both onClick={() => copyText([creds.code && `DineFlow code: ${creds.code}`, `User ID: ${creds.email}`, `Temporary password: ${creds.password}`].filter(Boolean).join("\n"))}><Copy size={15} /> Copy all (code, ID and password)</Button>
             <p className="text-xs text-steel">Changed at first sign-in</p>
             <Button className="w-full" onClick={() => { setCreds(null); setSheet(null); router.push("/dashboard"); }}>Done, open the property</Button>
           </>) : (<>

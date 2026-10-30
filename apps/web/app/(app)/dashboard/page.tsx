@@ -89,7 +89,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     hotel
       ? tile({ icon: "ConciergeBell", label: "Front desk", value: `${arrivals.length} in · ${departures.length} out`, sub: arrivals.length ? "Waiting to check in" : departures.length ? "Due to check out" : "Nothing due today", tone: arrivals.length + departures.length ? "amber" : "plain", href: "/frontdesk" })
       : tile({ icon: "Bike", label: "Online orders", value: (online ?? []).filter((o) => o.status === "new").length, sub: `${formatINR(onlineGross)} today`, tone: (online ?? []).some((o) => o.status === "new") ? "chili" : "plain", href: "/online-orders" }),
-    ...(hotel ? [tile({ icon: "Sparkles", label: "Housekeeping", value: hkCount, sub: hkCount ? "Rooms still to turn" : "All rooms ready", tone: hkCount > 3 ? "chili" : hkCount ? "amber" : "plain", href: "/housekeeping" })] : []),
+    ...(hotel ? [tile({ icon: "Sparkles", label: "Room status", value: hkCount, sub: hkCount ? "Rooms still to turn" : "All rooms ready", tone: hkCount > 3 ? "chili" : hkCount ? "amber" : "plain", href: "/housekeeping" })] : []),
     tile({ icon: "Timer", label: "Running late", value: late, sub: late ? "Tickets over 15 minutes" : "Kitchen is on time", tone: late ? "chili" : "plain", href: "/kitchen" }),
     tile({ icon: "Boxes", label: "Low stock", value: low?.length ?? 0, sub: low?.length ? low.slice(0, 2).map((l) => l.name).join(", ") : "Pantry healthy", tone: low?.length ? "chili" : "plain", href: "/inventory" }),
   ];

@@ -2,10 +2,10 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone, Receipt, GlassWater, QrCode } from "lucide-react";
+import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone, Receipt, GlassWater, QrCode, UserPlus, Search } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
-import { cn, Empty, useToast } from "@/components/ui";
+import { cn, Empty, Sheet, useToast } from "@/components/ui";
 import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { Say } from "@/components/ui/Say";
 import { StateChip, SVC_ICON, stClass } from "@/components/ui/Service";
@@ -14,7 +14,7 @@ import { formatINR, fmtSince } from "@/lib/format";
 import { orderState, isLate, SVC_WORD, type Svc } from "@/lib/service";
 import { setTableStatus, answerCall } from "./actions";
 import { acceptOnline } from "../online-orders/actions";
-import { takeJob, finishJob } from "../cleaning/actions";
+import { takeJob, finishJob, assignJob } from "../cleaning/actions";
 
 type Table = { id: string; name: string; capacity: number; zone: string; status: "free" | "occupied" | "reserved" };
 type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; created_at?: string | null };
@@ -47,7 +47,12 @@ const PLATE: Record<string, { word: "ordered" | "cooking" | "food_ready" | "eati
  * count each state and, tapped, show only those tables. "List" is every open order as a card with its
  * dishes, for whoever wants the detail.
  */
-export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt = 15, cleaning = [], me = "", boss = false }: { tables: Table[]; orders: Order[]; calls?: Call[]; qrOrders?: QrOrder[]; lateAt?: number; cleaning?: Clean[]; me?: string; boss?: boolean }) {
+/** Someone a table can be given to (page.tsx: on duty first, then the cleaners). */
+export type Crew = { id: string; name: string; title: string | null; on_duty: boolean; cleans: boolean };
+
+export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt = 15, cleaning = [], me = "", boss = false, cleaner = false, crew = [] }: { tables: Table[]; orders: Order[]; calls?: Call[]; qrOrders?: QrOrder[]; lateAt?: number; cleaning?: Clean[]; me?: string; boss?: boolean; cleaner?: boolean; crew?: Crew[] }) {
+  /* the table an owner, manager or supervisor is giving to someone (2026-10-30): a sheet of the crew, on duty first */
+  const [giving, setGiving] = useState<{ table: Table; job: Clean } | null>(null); const [find, setFind] = useState("");
   const [pending, start] = useTransition(); const toast = useToast();
   const [, tick] = useState(0);
   useLive(["orders", "order_items", "dining_tables", "bills", "service_calls", "table_cleanings", "online_orders"], 30000);
@@ -128,9 +133,14 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
     const c = !o && s === "clean" ? cleanOf.get(t.id) : undefined;
     const al = alertsOf(t, !!o || (s !== "free" && s !== "hold" && s !== "clean"));
     if (c) {
+      /* who gets which move (2026-10-30, the owner: "don't show I'll take it to everyone — only the cleaning people; a
+         manager or supervisor gets assign"): a cleaner takes a table nobody else was given; anyone takes the one given to
+         them; a boss gives it out (Assign, Reassign) and finishes only what they took themselves; a waiter or cashier sees
+         who has it. */
       const theirs = !!c.assigned_to && c.assigned_to !== me;
-      const canTake = c.status === "pending" && (!theirs || boss);
-      const canDone = c.status === "in_progress" && (c.taken_by === me || c.assigned_to === me || boss || !c.taken_by);
+      const canTake = c.status === "pending" && (c.assigned_to === me || (cleaner && !theirs));
+      const canDone = c.status === "in_progress" && (c.taken_by === me || c.assigned_to === me || (cleaner && !c.taken_by));
+      const canGive = boss && !canTake && !canDone;
       const who = c.status === "in_progress" ? `${c.taken_by === me ? "You are on it" : `${c.taken_name ?? "Someone"} is on it`}`
         : c.assigned_to ? `Given to ${c.assigned_to === me ? "you" : c.assigned_name}` : "Waiting for someone";
       const since = fmtSince(c.status === "in_progress" ? c.taken_at ?? c.created_at : c.created_at);
@@ -152,7 +162,8 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
             <span className="flex items-center gap-1.5 min-w-0 w-full">
               {canTake ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold whitespace-nowrap overflow-hidden bg-[var(--st)] text-[var(--color-bezel)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-take onClick={() => start(async () => { const r = await takeJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is yours`); })}><Sparkles size={15} aria-hidden className="shrink-0 max-[399.98px]:hidden" /><span className="min-w-0 truncate"><Say w="take_it" /></span></button>
                 : canDone ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold whitespace-nowrap overflow-hidden bg-[var(--color-green)] text-[var(--color-on-tint)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-done onClick={() => start(async () => { const r = await finishJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is clean`); })}><Check size={16} aria-hidden className="shrink-0 max-[399.98px]:hidden" /><span className="min-w-0 truncate"><Say w="clean_done" /></span></button>
-                : <Link href="/cleaning" className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center text-[13px] font-bold bg-[var(--color-fill-2)] before:absolute before:-inset-1 before:content-['']">See who</Link>}
+                : canGive ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold whitespace-nowrap overflow-hidden bg-[var(--st)] text-[var(--color-bezel)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-give onClick={() => setGiving({ table: t, job: c })}><UserPlus size={15} aria-hidden className="shrink-0 max-[399.98px]:hidden" /><span className="min-w-0 truncate">{c.assigned_to || c.status === "in_progress" ? "Reassign" : "Assign"}</span></button>
+                : <span className="flex-1 min-w-0 h-9 px-3 rounded-full inline-flex items-center justify-center text-[12.5px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] truncate" data-clean-wait>{c.status === "in_progress" ? "Being cleaned" : "Waiting to clean"}</span>}
               <Link href={`/orders/new?table=${t.id}`} className="relative h-9 w-9 shrink-0 rounded-full grid place-items-center bg-[var(--color-fill-2)] hover:bg-[var(--color-fill)] before:absolute before:-inset-1 before:content-['']" aria-label={`Take order at ${t.name} anyway`} title="Seat the next party now"><Plus size={17} aria-hidden /></Link>
             </span>
           </div>
@@ -309,6 +320,43 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
           </div>}
         </section>
       )}
+      {/* Assign (2026-10-30; redrawn the same day — the owner: "ultra-modern, unique, user friendly"): the table and how long it has
+          waited at the top; the people as tiles — the ones who clean first, then everyone else — each with their initials (a
+          green dot when they are on duty today), their job, and "Now" on whoever has it; a search once there are more than
+          eight; "Anyone who cleans" puts it back in the queue. clean_assign checks the boss again. */}
+      <Sheet open={!!giving} onClose={() => { setGiving(null); setFind(""); }} title={giving ? `Who cleans ${giving.table.name}?` : "Assign"}>
+        {giving && (() => {
+          const give = (id: string | null, who: string) => { const { table, job } = giving; setGiving(null); setFind(""); start(async () => { const r = await assignJob("table", job.id, id); if ("error" in r) toast(r.error!, "err"); else toast(id ? `${table.name} given to ${who}` : `${table.name}: anyone who cleans can take it`); }); };
+          const q = find.trim().toLowerCase(); const list = crew.filter((p) => !q || `${p.name} ${p.title ?? ""}`.toLowerCase().includes(q));
+          const groups = [{ k: "cleans", label: "They clean", people: list.filter((p) => p.cleans) }, { k: "rest", label: "Everyone else", people: list.filter((p) => !p.cleans) }].filter((g) => g.people.length);
+          const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
+          return (
+            <div className="space-y-4" data-clean-give-sheet>
+              <div className="crew-head">
+                <span className="crew-table font-display">{giving.table.name}</span>
+                <span className="min-w-0"><span className="block text-[14px] font-bold">{giving.job.assigned_name ? `Now with ${giving.job.assigned_name}` : "Waiting to be cleaned"}</span>
+                  <span className="block text-[12.5px] text-steel num">since {fmtSince(giving.job.created_at)} · {crew.filter((p) => p.on_duty).length} on duty</span></span>
+              </div>
+              {crew.length > 8 && <label className="relative block"><Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
+                <input className="!h-11 !min-h-11 !pl-10" value={find} onChange={(e) => setFind(e.target.value)} placeholder="Find someone" aria-label="Find someone" data-clean-give-find /></label>}
+              {crew.length === 0 && <p className="text-[14px] text-steel py-2">No staff to give it to.</p>}
+              {groups.map((g) => (
+                <section key={g.k} className="space-y-2" data-crew-group={g.k}>
+                  <div className="text-[11.5px] font-extrabold uppercase tracking-[.12em] text-steel">{g.label} <span className="num">· {g.people.length}</span></div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {g.people.map((p) => { const on = giving.job.assigned_to === p.id; return (
+                      <button key={p.id} type="button" disabled={pending || on} data-clean-give-to={p.name} data-now={on || undefined} onClick={() => give(p.id, p.name)} className="crew-tile">
+                        <span className="crew-ava" data-cleans={p.cleans || undefined}>{initials(p.name)}{p.on_duty && <span className="crew-duty" title="On duty today" />}</span>
+                        <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-bold truncate">{p.name}</span>
+                          <span className="block text-[12px] text-steel truncate">{p.title || (p.cleans ? "Cleans" : "Staff")}{p.on_duty ? " · on duty" : ""}</span></span>
+                        {on ? <span className="crew-now"><Check size={13} strokeWidth={3} aria-hidden />Now</span> : <span className="crew-go" aria-hidden><ChevronRight size={16} /></span>}
+                      </button>); })}
+                  </div>
+                </section>))}
+              {giving.job.assigned_to && <button type="button" disabled={pending} className="svc-btn quiet sm w-full" data-clean-give-anyone onClick={() => give(null, "")}>Anyone who cleans</button>}
+            </div>);
+        })()}
+      </Sheet>
     </div>
   );
 }

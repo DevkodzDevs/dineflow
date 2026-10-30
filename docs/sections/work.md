@@ -139,3 +139,9 @@ node cleaning.mjs    # 43  ·  node cleaner.mjs  # 43 — the Cleaning board sti
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+- **Work records' filters (2026-10-30, the owner: "the dropdown design is not good").** Department and Person are 44px fields with
+  their icon inside (tinted when one is picked); the status is a row of chips with what each would show (`[data-record-status]`)
+  instead of a third dropdown. The text was cut in half on an iPad — design-system.md, *Dropdowns*.
+- `JobCard` takes `cleaner` (cleaning.md, 2026-10-30): on the Cleaning board a table or room follows I'll take it / Assign;
+  without it (Work) nothing changes.

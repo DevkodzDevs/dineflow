@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Armchair, Users, Clock, Receipt, CalendarClock, SprayCan, Plus, QrCode, Settings2, ClipboardList, Phone, IndianRupee, ChevronRight, Check } from "lucide-react";
+import { Armchair, Clock, Receipt, CalendarClock, SprayCan, Plus, QrCode, Settings2, ClipboardList, Phone, IndianRupee, ChevronRight, Check } from "lucide-react";
 import { Card, Sheet, cn } from "@/components/ui";
 import { SvcHead } from "@/components/ui/Service";
-import { QR } from "@/components/QR";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
 import { formatINR, fmtSince } from "@/lib/format";
 
@@ -21,6 +21,8 @@ const ST: Record<St, { label: string; hue: string }> = {
   free: { label: "Free", hue: "--color-green" }, use: { label: "In use", hue: "--color-blue" }, bill: { label: "Bill out", hue: "--color-orange" },
   clean: { label: "Cleaning", hue: "--color-cyan" }, reserved: { label: "Reserved", hue: "--color-violet" },
 };
+/** each state's icon on the card's pill */
+const ST_ICON: Record<St, typeof Armchair> = { free: Armchair, use: ClipboardList, bill: Receipt, clean: SprayCan, reserved: CalendarClock };
 const ITEM_ST: Record<string, string> = { pending: "Ordered", sent: "Ordered", preparing: "Cooking", ready: "Ready", served: "Served", cancelled: "Cancelled" };
 const hm = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const clock = (t: string) => { const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
@@ -31,7 +33,7 @@ const amountOf = (o: OpenOrder) => { const unpaid = o.bills?.find((b) => b.statu
  * Tables (2026-10-21, the owner: "one more menu — Tables — click one and show its details completely"). The floor in
  * four numbers, the tables by zone with their state, and a tap opens everything about one: what is on it now (the order,
  * its items and their state, who took it, how long they have sat), the bookings on it today, today's bills there and
- * how long a sitting took, its cleaning job and its table-ordering QR — with Take order / Add items and Bill at the foot.
+ * how long a sitting took, its cleaning job — with Take order / Add items and Bill at the foot.
  */
 export function TablesClient({ tables, open, paid, booked, cleaning, names, slug, canEdit }: { tables: TableRow[]; open: OpenOrder[]; paid: PaidBill[]; booked: Booking[]; cleaning: Clean[]; names: Record<string, string>; slug: string; canEdit: boolean }) {
   useLive(["orders", "order_items", "bills", "dining_tables", "reservations", "table_cleanings"]);
@@ -100,29 +102,39 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
         {zones.length > 1 && <select value={zone} onChange={(e) => setZone(e.target.value)} aria-label="Zone" className="!w-auto !h-10 !min-h-10 ml-auto text-[13px] font-semibold"><option value="all">Every zone</option>{zones.map((z) => <option key={z} value={z}>{z}</option>)}</select>}
       </div>
 
-      {tables.length === 0 ? <Card className="text-center !py-10"><Armchair className="mx-auto text-steel" size={28} /><p className="mt-3 font-semibold">No tables yet</p><p className="text-[13px] text-steel mt-1">Settings → Tables & zones</p></Card>
+      {/* no tables at all (2026-10-30, the owner: "compare the other empty sections and upgrade it"): the kit's empty state, with
+          the way to the setup for whoever may set it up (the head's "Set up tables" target) */}
+      {tables.length === 0 ? <EmptyState icon={Armchair} hue="tint" title="No tables yet" hint={canEdit ? "Add tables and zones" : "Ask a manager to add them"} data-tables-empty
+          actions={canEdit ? <Link href="/settings#tables" className="btn btn-filled" data-tables-setup><Settings2 size={17} aria-hidden />Set up tables</Link> : undefined} />
         : zones.filter((z) => zone === "all" || z === zone).map((z) => { const list = shown.filter((t) => (t.zone || "Main") === z); if (!list.length) return null; return (
           <section key={z} className="min-w-0">
             <div className="flex items-center gap-2 mb-2.5"><span className="text-[12px] font-bold uppercase tracking-[.12em] text-steel">{z}</span><span className="num text-[11.5px] font-bold h-5 min-w-5 px-1.5 rounded-full grid place-items-center bg-[var(--color-fill)]">{list.length}</span></div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-3">
-              {list.map((tb) => { const s = stOf(tb); const o = openBy.get(tb.id); const nb = nextOf(tb.id); const c = cleanBy.get(tb.id); const day = paidOf(tb.id); return (
+              {/* a table (2026-10-30, the owner: "ultra-modern, unique"): a bar in its state's colour along the top and a glow in
+                  its corner, the name big and the state as a pill with its icon, a dot a seat (lit while it is in use), the one
+                  thing to know — what it has come to, who is cleaning it, who is coming, or ready — and today's bills at its foot */}
+              {list.map((tb) => { const s = stOf(tb); const o = openBy.get(tb.id); const nb = nextOf(tb.id); const c = cleanBy.get(tb.id); const day = paidOf(tb.id); const SI = ST_ICON[s];
+                const items = o ? o.order_items.filter((i) => i.status !== "cancelled").length : 0; return (
                 <button key={tb.id} type="button" onClick={() => setPick(tb.id)} data-table-row={tb.name} data-table-state={s}
-                  className="text-left min-w-0 rounded-[20px] p-3.5 flex flex-col gap-2 border transition-colors active:scale-[.99] hover:brightness-110"
-                  style={{ borderColor: `color-mix(in srgb, var(${ST[s].hue}) ${s === "free" ? 30 : 55}%, transparent)`, background: s === "free" ? "var(--color-bg-2)" : `color-mix(in srgb, var(${ST[s].hue}) 9%, var(--color-bg-2))` }}>
+                  className="tcard" style={{ "--hue": `var(${ST[s].hue})` } as React.CSSProperties}>
+                  <span className="tcard-glow" aria-hidden />
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-display text-[28px] leading-none truncate">{tb.name}</span>
-                    <span className="ml-auto inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-fill-2)] text-[11.5px] font-semibold text-[var(--color-label-2)] num shrink-0"><Users size={12} aria-hidden />{tb.capacity}</span>
+                    <span className="tcard-name truncate">{tb.name}</span>
+                    <span className="tcard-state" data-live={s === "use" || s === "bill" || s === "clean" || undefined}><SI size={13} strokeWidth={2.4} aria-hidden />{ST[s].label}</span>
                   </div>
-                  <span className="self-start inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11.5px] font-bold" style={{ color: `var(${ST[s].hue})`, background: `color-mix(in srgb, var(${ST[s].hue}) 15%, transparent)` }}>
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} aria-hidden />{ST[s].label}</span>
-                  <div className="text-[12.5px] font-semibold text-[var(--color-label-2)] min-w-0 truncate num" suppressHydrationWarning>
-                    {o ? <>{formatINR(amountOf(o), { whole: true })} · {o.order_items.filter((i) => i.status !== "cancelled").length} items · {fmtSince(o.created_at)}</>
-                      : c ? <>{c.taken_by ? `${names[c.taken_by] ?? "Someone"} on it` : "Waiting"} · {fmtSince(c.created_at)}</>
-                      : nb ? <>{nb.guest_name} · {clock(nb.at_time)} · {nb.party_size}</> : "Ready to seat"}
+                  <div className="tcard-seats" aria-label={`${tb.capacity} seats`}>
+                    {Array.from({ length: Math.min(tb.capacity, 8) }, (_, i) => <span key={i} className="tcard-seat" data-on={o ? "" : undefined} />)}
+                    <span className="ml-1 text-[11.5px] font-semibold text-steel num">{tb.capacity > 8 ? `+${tb.capacity - 8} · ` : ""}{tb.capacity} seats</span>
                   </div>
-                  <div className="mt-auto pt-2 border-t border-[var(--color-separator)] flex items-center gap-1.5 text-[11.5px] text-steel num">
-                    <Receipt size={12} aria-hidden />{day.length ? <>Today {day.length} bill{day.length === 1 ? "" : "s"} · {formatINR(day.reduce((x, b) => x + Number(b.total), 0), { whole: true })}</> : "No bills yet today"}
-                    <ChevronRight size={14} className="ml-auto" aria-hidden />
+                  <div className="tcard-main min-w-0" suppressHydrationWarning>
+                    {o ? <><b className="font-display num text-[22px] leading-none">{formatINR(amountOf(o), { whole: true })}</b><span className="truncate">{items} item{items === 1 ? "" : "s"} · {fmtSince(o.created_at)}</span></>
+                      : c ? <><b className="truncate">{c.taken_by ? `${(names[c.taken_by] ?? "Someone").split(" ")[0]} on it` : "Waiting"}</b><span className="shrink-0 num">{fmtSince(c.created_at)}</span></>
+                      : nb ? <><b className="num shrink-0">{clock(nb.at_time)}</b><span className="truncate">{nb.guest_name} · {nb.party_size}</span></>
+                      : <b>Ready to seat</b>}
+                  </div>
+                  <div className="tcard-foot num">
+                    <Receipt size={12} aria-hidden className="shrink-0" /><span className="truncate">{day.length ? <>{day.length} bill{day.length === 1 ? "" : "s"} today · {formatINR(day.reduce((x, b) => x + Number(b.total), 0), { whole: true })}</> : "No bills yet today"}</span>
+                    <span className="tcard-go" aria-hidden><ChevronRight size={14} /></span>
                   </div>
                 </button>); })}
             </div>
@@ -136,7 +148,8 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
   );
 }
 
-/** One table, completely: its facts, what is on it now, today's bookings and bills on it, cleaning, its QR — and the moves. */
+/** One table, completely: its facts, what is on it now, today's bookings and bills on it, cleaning — and the moves. Its QR
+ *  is not drawn here (2026-10-30, the owner: "no need to show here") — the head's Table QR codes has every table's. */
 function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: TableRow; st: St; o?: OpenOrder; bookings: Booking[]; bills: PaidBill[]; clean?: Clean; names: Record<string, string>; qrUrl: string | null }) {
   const items = o?.order_items.filter((i) => i.status !== "cancelled") ?? [];
   const sat = bills.filter((b) => b.orders?.created_at).map((b) => (new Date(b.paid_at).getTime() - new Date(b.orders!.created_at).getTime()) / 60000).filter((m) => m > 0 && m < 600);
@@ -205,14 +218,6 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
         {bills.length > 0 && <ul className="divide-y divide-[var(--color-separator)] text-[13px]">{bills.slice(0, 8).map((b) => (
           <li key={b.id} className="py-2 flex items-center gap-3"><span className="num font-semibold">Bill #{b.bill_no}</span><span className="text-steel num">{hm(b.paid_at)}</span><span className="ml-auto num font-bold">{formatINR(Number(b.total))}</span></li>))}</ul>}
       </section>
-
-      {/* the table's own QR */}
-      {qrUrl && <section><H Icon={QrCode}>Table ordering QR</H>
-        <div className="flex items-center gap-4 rounded-2xl bg-[var(--color-fill)] p-3">
-          <div className="rounded-xl bg-white p-2 shrink-0"><QR value={qrUrl} size={96} /></div>
-          <div className="min-w-0 text-[13px] text-[var(--color-label-2)] leading-snug">Guests scan to order.<a href={qrUrl} target="_blank" rel="noreferrer" className="mt-1.5 block font-semibold text-[var(--color-tint)] truncate">Open the table menu</a></div>
-        </div>
-      </section>}
 
       {/* the moves — the dialog's pinned footer */}
       <div className="flex gap-2">

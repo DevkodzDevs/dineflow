@@ -6,7 +6,7 @@
  *   everything else GET → stale-while-revalidate
  * Writes are never touched here; they go through the IndexedDB outbox so they survive a reload.
  */
-const V = "dineflow-v19";   // v17 dropped redirected copies; v18 kept /login and the reconnect page; v19 adds the launch loader (boot)
+const V = "dineflow-v20";   // v17 dropped redirected copies; v18 kept /login and the reconnect page; v19 adds the launch loader (boot); v20 serves a kept page only with its build (whole) and drops every older copy
 const SHELL = ["/", "/icon-192.png", "/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/scan", "/tomorrow", "/inventory", "/menu", "/login", "/offline"];
 
 /* Install and activate never fail on storage. When the browser cannot open its cache (low space,
@@ -40,6 +40,18 @@ const put = async (req, res) => {
 /* a navigation must never be answered with a redirected response (WebKit fails the whole load): rebuild it as a plain one */
 const plain = async (res) => (res && res.redirected ? new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers: res.headers }) : res);
 const copy = async (req) => { const m = await caches.match(req).catch(() => undefined); return m && !m.redirected ? m : undefined; };
+/* A kept page is only as good as its build (v20, 2026-10-30 — the owner's iPhone showed Next's bare "Application error").
+   Its scripts are named by the build that drew it; a deploy since then removes them from the server. A copy whose build
+   files are not all in this cache would load scripts that answer 404 — no error boundary of the app's can run then. So the
+   copy is served (no line at all) only when every /_next/static/ script and stylesheet it names is kept here too — then
+   it runs offline whole; else the reconnect page, which opens the live page the moment the server answers. */
+const whole = async (res) => {
+  try {
+    const files = [...new Set((await res.clone().text()).match(/\/_next\/static\/[^"'\s<>()\\]+\.(?:js|css)/g) || [])];
+    for (const f of files) if (!(await caches.match(f, { ignoreSearch: true }))) return false;   // a ?dpl= tail does not matter
+    return true;
+  } catch { return false; }
+};
 
 /* The reconnect page: whole in this file, so it shows with no line and nothing cached. It asks /api/health (free —
    no database) after 2, 3, 5, 8, 13, then every 15 s, at once when the phone says it is back online or the app comes
@@ -184,7 +196,7 @@ self.addEventListener("fetch", (e) => {
   }
   /* pages: the network first. A page never ends on the browser's own error ("This site can't be reached", a blank
      502 from the host, a load that spins forever — the owner, 2026-10-24: "never show that error or loading issue"):
-       no line at all          → the last copy of this page, else the reconnect page
+       no line at all          → the last copy of this page if its build files are kept too (whole), else the reconnect page
        the host's 502/503/504  → the reconnect page (a copy would hide that the server is back in a moment)
        no answer in 25 s       → the reconnect page
      The reconnect page retries by itself and opens the page the moment the server answers. */
@@ -210,7 +222,7 @@ self.addEventListener("fetch", (e) => {
         }
         if (r === "late") return reconnect("slow");
         return finish(e.request, r);
-      } catch { return (await copy(e.request)) || reconnect("offline"); }
+      } catch { const c = await copy(e.request); return c && (await whole(c)) ? c : reconnect("offline"); }
       finally { clearTimeout(timer); clearTimeout(bootT); }
     })());
     return;

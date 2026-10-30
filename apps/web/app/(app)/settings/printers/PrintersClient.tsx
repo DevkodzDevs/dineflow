@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Plus, Printer as P, Bluetooth, Usb, Wifi, Monitor, Trash2, Play, Info } from "lucide-react";
-import { Button, Sheet, Field, Card, Pill, Empty } from "@/components/ui";
+import { Button, Sheet, Field, Card, Pill, Empty, ask } from "@/components/ui";
 import { buildBill } from "@/lib/print/escpos";
 import { billHtml } from "@/lib/print/html";
 import { sendToPrinter } from "@/lib/print/transport";
@@ -31,7 +31,7 @@ export function PrintersClient({ printers, restaurant }: { printers: Pr[]; resta
             <Card lift className="h-full"><div className="flex items-start gap-3"><span className="h-10 w-10 rounded-2xl bg-ink text-on-label grid place-items-center"><P size={17} /></span>
               <div className="flex-1 min-w-0"><div className="font-semibold truncate">{p.name} {p.is_default && <Pill tone="gold">default</Pill>}</div><div className="text-xs text-steel flex items-center gap-1.5"><TIcon t={p.transport} /> {p.transport}{p.address ? ` · ${p.address}` : ""} · {p.width} mm</div></div></div>
               <div className="mt-3 flex flex-wrap gap-1.5 text-xs"><Pill tone={p.kind === "kot" ? "preparing" : "ready"}>{p.kind}</Pill>{p.station && <Pill tone="sky">{p.station}</Pill>}{p.copies > 1 && <Pill tone="pending">{p.copies} copies</Pill>}{p.drawer && <Pill tone="pending">opens drawer</Pill>}</div>
-              <div className="mt-3 flex gap-2"><Button size="sm" variant="outline" className="flex-1" onClick={() => test(p)}><Play size={14} /> Test print</Button><Button size="sm" variant="ghost" onClick={() => setEdit(p)}>Edit</Button><Button size="sm" variant="ghost" onClick={() => { if (confirm(`Remove ${p.name}?`)) start(async () => { const r = await deletePrinter(p.id); if ("error" in r) setErr(r.error!); }); }}><Trash2 size={14} /></Button></div>
+              <div className="mt-3 flex gap-2"><Button size="sm" variant="outline" className="flex-1" onClick={() => test(p)}><Play size={14} /> Test print</Button><Button size="sm" variant="ghost" onClick={() => setEdit(p)}>Edit</Button><Button size="sm" variant="ghost" onClick={async () => { if (await ask({ title: `Remove ${p.name}?`, body: "Tickets stop printing on it.", ok: "Remove", tone: "danger", icon: "trash" })) start(async () => { const r = await deletePrinter(p.id); if ("error" in r) setErr(r.error!); }); }}><Trash2 size={14} /></Button></div>
             </Card></motion.div>))}</div>
       )}
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? edit.name ?? "" : "Add printer"}>

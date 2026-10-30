@@ -178,3 +178,11 @@ already chosen, or one that fits the party."
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+## 2026-10-30 — New booking: Table and Room on one row; a staying guest's table (0157)
+- **The owner: "compact — and show the Room option too".** The Table chips (two rows of fourteen) are one field — *Auto* or a
+  table that seats the party (`[data-new-table-select]`); beside it, in a hotel or resort, **Room** — the guests staying now
+  (`[data-new-room-select]`, "101 · Arjun"; choosing one fills an empty Name and Phone). Saved as `reservations.booking_id`
+  (0157; another property's stay is refused by `zz_same_property`). The card shows *Room 101* (`[data-res-room]`); page.tsx reads
+  `stay:booking_id(id, rooms(number), guests(full_name))` and the in-house stays in its one round trip.
+- `/reservations?new=1&stay=<booking id>` opens New booking with that stay chosen (the front desk's *Table* key).

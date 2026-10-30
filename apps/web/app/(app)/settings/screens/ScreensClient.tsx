@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Tv, Copy, ExternalLink, RefreshCw, Tablet, Star, Printer, Lock } from "lucide-react";
-import { Card, cn, useToast } from "@/components/ui";
+import { Card, cn, useToast, ask } from "@/components/ui";
 import { QR } from "@/components/QR";
 import { screenKey } from "../actions";
 
@@ -37,7 +37,7 @@ export function ScreensClient({ base, name, slug, initialKey }: { base: string; 
             <button type="button" className="svc-btn go sm !px-4" onClick={() => copy(tv!)}><Copy size={16} aria-hidden /> Copy link</button>
             <a href={tv!} target="_blank" rel="noreferrer" className="svc-btn quiet sm !px-4"><ExternalLink size={16} aria-hidden /> Open</a>
             <button type="button" disabled={pending} className="svc-btn quiet sm !px-4" data-rotate-screen
-              onClick={() => { if (!confirm("Make a new link? Screens on the old link will stop.")) return; start(async () => { const r = await screenKey(true); if ("error" in r) toast(r.error!, "err"); else { setKey(r.key!); toast("New link made"); } }); }}>
+              onClick={async () => { if (!(await ask({ title: "Make a new link?", body: "Screens on the old link will stop.", ok: "New link", tone: "danger", icon: "alert" }))) return; start(async () => { const r = await screenKey(true); if ("error" in r) toast(r.error!, "err"); else { setKey(r.key!); toast("New link made"); } }); }}>
               <RefreshCw size={16} aria-hidden /> New link</button>
           </div>
           <p className="mt-2 text-[12.5px] text-steel">Tokens reset daily</p>

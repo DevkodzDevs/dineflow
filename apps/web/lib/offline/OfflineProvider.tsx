@@ -1,4 +1,5 @@
 "use client";
+import { ask } from "@/components/ui/Confirm";
 import { createContext, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CloudOff, RefreshCw, Check, AlertTriangle, RotateCcw, Trash2, ChevronUp } from "lucide-react";
@@ -131,7 +132,7 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
                         {j.error && <div className="text-[11px] text-chili mt-1 break-words">{j.error}</div>}
                         <div className="flex gap-2 mt-2">
                           <button onClick={() => void retryJob(j.id)} className="btn btn-gray !h-8 !px-3 !text-[12px] !rounded-[10px] flex-1"><RotateCcw size={13} /> Send again</button>
-                          <button onClick={() => { if (confirm(`Throw away "${j.label}"? It will not reach the till or the kitchen.`)) void discardJob(j.id); }}
+                          <button onClick={async () => { if (await ask({ title: "Throw this away?", body: `"${j.label}" will not reach the till or the kitchen.`, ok: "Throw away", tone: "danger", icon: "trash" })) void discardJob(j.id); }}
                             className="btn btn-danger !h-8 !px-3 !text-[12px] !rounded-[10px]"><Trash2 size={13} /></button>
                         </div>
                       </li>

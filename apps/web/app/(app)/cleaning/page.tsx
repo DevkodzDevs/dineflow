@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { seesFresh, deptOf } from "@/components/shell/sections";
+import { isCleaner } from "@/lib/notify";
 import { SvcHead } from "@/components/ui/Service";
 import { CleaningClient, type Board } from "./CleaningClient";
 
@@ -22,7 +23,8 @@ export default async function CleaningPage() {
     <>
       <SvcHead icon="cleaning" title="Cleaning" sub="Tables and rooms" />
       <CleaningClient board={board} error={error?.message ?? null} me={session.profile.id} role={session.profile.role}
-        canSet={["owner", "manager"].includes(session.profile.role)} hasRooms={session.restaurant.property_type !== "restaurant"} />
+        canSet={["owner", "manager"].includes(session.profile.role)} hasRooms={session.restaurant.property_type !== "restaurant"}
+        cleaner={isCleaner(session.profile.role, session.profile.department ?? null, session.profile.position ?? null)} />
     </>
   );
 }

@@ -5,7 +5,7 @@ import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCar
 import { NotificationSettings } from "@/components/shell/Notifier";
 import { LogoUpload } from "./LogoUpload";
 import { AttendanceSettings } from "./AttendanceSettings";
-import { Button, Card, Field, Switch, cn } from "@/components/ui";
+import { Button, Card, Field, Switch, cn, ask } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
 import { SidebarPicker } from "@/components/shell/SidebarPicker";
@@ -117,7 +117,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   the picker names its own two groups */}
               <div className="mt-5 mb-2 text-[13px] font-semibold text-[var(--color-label-2)]">Language</div>
               <LangPicker />
-              {/* the sidebar's six looks (2026-10-23) — also on My profile and behind the sidebar's own Menu style key */}
+              {/* the sidebar's six looks (2026-10-23) and Collapse menu (2026-10-30 — the fold left the sidebar) — also on My profile */}
               <SidebarPicker />
             </Section>
           </Card>
@@ -509,8 +509,8 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                   const r = await loadDemoData();
                   setMsg(r.error ? r.error : `Loaded: ${r.dishes} dishes, ${r.ingredients} pantry items, ${r.rooms ?? 0} rooms, ${r.labourers} workers`);
                 })}><Sparkles size={15} /> Load demo data</Button>
-                <Button variant="ghost" disabled={pending} onClick={() => {
-                  if (confirm("Remove demo channels and sample orders?"))
+                <Button variant="ghost" disabled={pending} onClick={async () => {
+                  if (await ask({ title: "Remove demo data?", body: "Demo channels and sample orders go.", ok: "Remove", tone: "danger", icon: "trash" }))
                     start(async () => { const r = await removeDemoData(); setMsg("error" in r ? r.error! : "Demo channels removed."); });
                 }}><Trash2 size={15} /> Remove demo channels</Button>
               </div>

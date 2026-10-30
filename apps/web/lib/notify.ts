@@ -7,6 +7,7 @@
  * soft pop for everything. A device that has never been set up picks a station from what it is
  * (a phone, a hotel's desk, a restaurant's till) — see `guessStation`.
  */
+import { positionByKey } from "@dineflow/shared";
 
 export type NotifyKind = "online" | "reservation" | "booking" | "kot" | "ready" | "housekeeping" | "call" | "feedback" | "clean" | "assigned" | "roomdone" | "job" | "jobdone" | "taken" | "voice" | "leave";
 export type ToneId = "chime" | "bell" | "ticket" | "pop" | "marimba" | "rush";
@@ -28,9 +29,10 @@ export const KINDS: { kind: NotifyKind; label: string; hint: string; href: strin
   { kind: "booking", label: "New room bookings", hint: "Direct, walk-in or from an OTA", href: "/frontdesk", module: "frontdesk" },
   { kind: "kot", label: "New kitchen tickets", hint: "Every KOT the moment it is fired", href: "/kitchen", module: "kitchen" },
   { kind: "ready", label: "Food ready to serve", hint: "When the kitchen marks a ticket ready", href: "/orders", module: "orders" },
-  { kind: "housekeeping", label: "Rooms to clean", hint: "A new housekeeping task", href: "/housekeeping", module: "housekeeping" },
+  // 2026-10-30: opens the Cleaning board, where the room is taken ("tap opens /cleaning") — it opened /housekeeping
+  { kind: "housekeeping", label: "Rooms to clean", hint: "A room checked out, or a new task", href: "/cleaning", module: "housekeeping" },
   { kind: "call", label: "A table calls a waiter", hint: "Waiter, the bill, water or a new order — from the table's QR", href: "/orders", module: "orders" },
-  { kind: "clean", label: "Tables to clean", hint: "A table paid and left — whoever is free cleans it", href: "/cleaning", module: "orders" },
+  { kind: "clean", label: "Tables to clean", hint: "A table paid and left — whoever is free cleans it", href: "/cleaning", module: "" },
   { kind: "assigned", label: "A job given to you", hint: "A supervisor gave you a table or a room to clean", href: "/cleaning", module: "" },
   { kind: "roomdone", label: "Rooms cleaned", hint: "A room is done — check it or sell it", href: "/cleaning", module: "housekeeping" },
   { kind: "job", label: "New jobs for your department", hint: "A repair, a guest request or a setup", href: "/work", module: "" },
@@ -61,9 +63,33 @@ export function deptSees(role: string, dept: string | null, kind: "table" | "roo
   return !jobDept || d === jobDept;
 }
 
-export function kindsFor(modules: string[], role: string): NotifyKind[] {
+/** The ones who give cleaning jobs out — the database's _clean_may_assign (0111). */
+export const CLEAN_BOSSES = ["owner", "manager", "supervisor", "supervisor_2"];
+/** Jobs that clean tables though their team is Service. */
+const TABLE_CLEANERS = ["busser"];
+/**
+ * Does this person clean (2026-10-30, the owner: "don't show I'll take it to everyone — only the housekeeping or cleaning
+ * people; a manager or supervisor gets assign")? The Housekeeping team — by their profile, else their position's team,
+ * else their role — and a Busser. Not a waiter, a cashier or the front desk, and not a boss: they give the job out. A job
+ * given to someone is theirs to take whatever they are. The database still lets anyone at the property take one
+ * (clean_take); this decides the button and the alert.
+ */
+export function isCleaner(role: string, dept: string | null, position?: string | null): boolean {
+  if (CLEAN_BOSSES.includes(role)) return false;
+  return (dept || positionByKey(position)?.dept || ROLE_DEPT[role] || null) === "housekeeping" || TABLE_CLEANERS.includes(position ?? "");
+}
+
+/* 2026-10-30 (the owner: "the work shows to the right staff, but they are not notified"). The cleaning alerts follow the
+   board, not the sections: whoever the Cleaning board shows a new job to hears it (deptSees — the database's
+   _work_dept_ok). A table: the owner, managers, a supervisor with no team, Service and Housekeeping. A room: the owner,
+   managers, a supervisor with no team, Housekeeping. Before, a table needed the Orders section (or role employee), so a
+   housekeeping supervisor or room attendant without Orders never heard one; a room needed the Housekeeping section. Not
+   a chef, a guard, a gardener, the front desk — they cannot take it. */
+export function kindsFor(modules: string[], role: string, dept: string | null = null, position: string | null = null): NotifyKind[] {
   return KINDS.filter((k) => {
-    if (k.kind === "clean") return modules.includes("orders") || role === "employee";
+    // a table to clean (2026-10-30): whoever may take it (isCleaner) and whoever gives it out — not the waiters any more
+    if (k.kind === "clean") return deptSees(role, dept, "table", null) && (CLEAN_BOSSES.includes(role) || isCleaner(role, dept, position));
+    if (k.kind === "housekeeping") return deptSees(role, dept, "room", null) && (modules.includes("housekeeping") || (dept ?? ROLE_DEPT[role]) === "housekeeping");
     if (k.kind === "roomdone" || k.kind === "taken") return ["owner", "manager", "supervisor", "supervisor_2"].includes(role);
     return !k.module || modules.includes(k.module);
   }).map((k) => k.kind);
@@ -88,14 +114,17 @@ export const STATIONS: { id: StationId; label: string; hint: string; tone: ToneI
   { id: "till", label: "Till / waiters", hint: "Food ready, table calls, bookings, online orders", tone: "chime", kinds: { ...NONE, ready: true, reservation: true, online: true, call: true, feedback: true, clean: true, assigned: true, job: true, jobdone: true, voice: true, leave: true } },
   { id: "phone", label: "Owner's phone", hint: "Everything, softly", tone: "pop", kinds: { ...ALL } },
   // 0111: a cleaner's phone or the housekeeping tablet — what to clean, and what is given to them
-  { id: "cleaning", label: "Cleaning crew", hint: "Tables and rooms to clean, and jobs given to you", tone: "bell", kinds: { ...NONE, housekeeping: true, clean: true, assigned: true, job: true, jobdone: true, voice: true, leave: true } },
+  // roomdone / taken only reach a supervisor (kindsFor) — on, so a housekeeping supervisor's tablet hears who took a room and that it is clean
+  { id: "cleaning", label: "Cleaning crew", hint: "Tables and rooms to clean, and jobs given to you", tone: "bell", kinds: { ...NONE, housekeeping: true, clean: true, assigned: true, roomdone: true, job: true, jobdone: true, taken: true, voice: true, leave: true } },
 ];
 
-export function guessStation(propertyType: string, role?: string): StationId {
+export function guessStation(propertyType: string, role?: string, dept?: string | null): StationId {
   if (typeof window === "undefined") return "phone";
   if (role === "housekeeping" || role === "employee") return "cleaning";
   const phone = window.matchMedia("(pointer: coarse)").matches && Math.min(window.innerWidth, window.innerHeight) < 600;
   if (phone) return "phone";
+  // a housekeeping supervisor's tablet or desk: the cleaning crew's alerts, not the front desk's (which leaves tables out)
+  if ((dept ?? (role ? ROLE_DEPT[role] : null)) === "housekeeping") return "cleaning";
   return propertyType === "restaurant" ? "till" : "front";
 }
 
@@ -105,12 +134,12 @@ export function stationPrefs(id: StationId, keep?: Partial<NotifyPrefs>): Notify
 }
 
 const KEY = "df-notify";
-export function loadPrefs(propertyType: string, role?: string): NotifyPrefs {
+export function loadPrefs(propertyType: string, role?: string, dept?: string | null): NotifyPrefs {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) { const p = JSON.parse(raw) as NotifyPrefs; if (p && p.kinds && p.tone) return { ...stationPrefs("phone"), ...p, kinds: { ...NONE, call: p.station !== "kitchen", feedback: p.station !== "kitchen", clean: p.station !== "kitchen" && p.station !== "front", assigned: true, roomdone: p.station === "front" || p.station === "phone", job: true, jobdone: p.station !== "kitchen", taken: true, voice: p.station !== "kitchen", leave: p.station !== "kitchen", ...(p.kinds as Partial<Record<NotifyKind, boolean>>) } }; }
   } catch { /* storage blocked: fall through to the guess */ }
-  return stationPrefs(guessStation(propertyType, role));
+  return stationPrefs(guessStation(propertyType, role, dept));
 }
 export function savePrefs(p: NotifyPrefs) {
   try { localStorage.setItem(KEY, JSON.stringify(p)); } catch { /* private mode: lasts this visit */ }

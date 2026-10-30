@@ -44,8 +44,11 @@ export function RecordsClient({ log, error, from, to, today, property }: { log: 
     ["Last 7 days", iso(new Date(d.getTime() - 6 * 86400e3)), today], ["This month", `${today.slice(0, 7)}-01`, today],
   ];
   const [dept, setDept] = useState(""); const [person, setPerson] = useState(""); const [status, setStatus] = useState(""); const [q, setQ] = useState("");
-  const rows = useMemo(() => log.rows.filter((r) => (!dept || (r.department ?? "") === dept) && (!person || [r.taken_name, r.done_name, r.created_name, r.assigned_name].includes(person))
-    && (!status || (status === "late" ? late(r) : r.status === status)) && (!q || `${r.title} ${r.place ?? ""} ${r.note ?? ""}`.toLowerCase().includes(q.toLowerCase()))), [log.rows, dept, person, status, q]);
+  // every filter but the status, so the status chips can count what each would show
+  const base = useMemo(() => log.rows.filter((r) => (!dept || (r.department ?? "") === dept) && (!person || [r.taken_name, r.done_name, r.created_name, r.assigned_name].includes(person))
+    && (!q || `${r.title} ${r.place ?? ""} ${r.note ?? ""}`.toLowerCase().includes(q.toLowerCase()))), [log.rows, dept, person, q]);
+  const isStatus = (r: LogRow, k: string) => (k === "late" ? late(r) : r.status === k);
+  const rows = useMemo(() => base.filter((r) => !status || isStatus(r, status)), [base, status]);
   const done = rows.filter((r) => r.status === "done");
   const resp = avg(rows.filter((r) => r.taken_at).map((r) => min(r.created_at, r.taken_at)!));
   const work = avg(done.filter((r) => r.taken_at && r.done_at).map((r) => min(r.taken_at, r.done_at)!));
@@ -168,13 +171,27 @@ export function RecordsClient({ log, error, from, to, today, property }: { log: 
       </div>
 
       <Card className="!p-0 overflow-hidden" data-record-list>
-        <div className="p-4 grid gap-2 grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))_auto] items-end">
-          <label className="relative col-span-2 lg:col-span-1 min-w-0"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
-            <input className="!h-11 !pl-9" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Job, place or note" aria-label="Search the records" data-record-search /></label>
-          <select className={cn(sel, "col-span-2 lg:col-span-1")} value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department" data-record-dept-filter><option value="">Every department</option>{allDepts.map((k) => <option key={k} value={k}>{deptLabel(k || null)}</option>)}</select>
-          <select className={sel} value={person} onChange={(e) => setPerson(e.target.value)} aria-label="Person" data-record-person-filter><option value="">Everyone</option>{allPeople.map((n) => <option key={n} value={n}>{n}</option>)}</select>
-          <select className={sel} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status" data-record-status-filter><option value="">Any status</option><option value="done">Done</option><option value="in_progress">On it</option><option value="pending">Waiting</option><option value="late">Late</option><option value="skipped">Dropped</option></select>
-          <button type="button" className="svc-btn quiet sm !px-4 col-span-2 lg:col-span-1" onClick={() => void excel()} disabled={!rows.length} data-record-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>
+        {/* the filters (2026-10-30, the owner: "the dropdown design is not good"): the search, then Department and Person as
+            fields with their icon inside and a word over them when one is picked, and Excel; under them the status as a row of
+            chips, each with how many it would show — it was a third dropdown */}
+        <div className="p-4 pb-3 grid gap-2.5 grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center" data-record-filters>
+          <label className="relative col-span-2 lg:col-span-1 min-w-0"><Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
+            <input className="!h-11 !min-h-11 !pl-10 !text-[14.5px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Job, place or note" aria-label="Search the records" data-record-search /></label>
+          <label className="relative min-w-0" title="Department"><Building2 size={17} className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-[1]", dept ? "text-[var(--color-tint)]" : "text-steel")} aria-hidden />
+            <select className={cn(sel, "!pl-10", dept && "!border-[color-mix(in_srgb,var(--color-tint)_45%,transparent)]")} value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department" data-record-dept-filter><option value="">Every department</option>{allDepts.map((k) => <option key={k} value={k}>{deptLabel(k || null)}</option>)}</select></label>
+          <label className="relative min-w-0" title="Person"><Users size={17} className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-[1]", person ? "text-[var(--color-tint)]" : "text-steel")} aria-hidden />
+            <select className={cn(sel, "!pl-10", person && "!border-[color-mix(in_srgb,var(--color-tint)_45%,transparent)]")} value={person} onChange={(e) => setPerson(e.target.value)} aria-label="Person" data-record-person-filter><option value="">Everyone</option>{allPeople.map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+          <button type="button" className="svc-btn quiet sm !h-11 !min-h-11 !px-4 col-span-2 lg:col-span-1" onClick={() => void excel()} disabled={!rows.length} data-record-xlsx><FileSpreadsheet size={16} aria-hidden /> Excel</button>
+        </div>
+        <div className="px-4 pb-4 flex gap-2 overflow-x-auto [scrollbar-width:none]" role="radiogroup" aria-label="Status" data-record-status-filter>
+          {([["", "All", null], ["pending", "Waiting", "--color-orange"], ["in_progress", "On it", "--color-blue"], ["done", "Done", "--color-green"], ["late", "Late", "--color-red"], ["skipped", "Dropped", "--color-label-3"]] as const).map(([k, l, hue]) => {
+            const n = k ? base.filter((r) => isStatus(r, k)).length : base.length; const on = status === k;
+            if (k && !n && !on) return null;
+            return <button key={k || "all"} type="button" role="radio" aria-checked={on} onClick={() => setStatus(k)} data-record-status={k || "all"}
+              className={cn("shrink-0 h-10 [@media(pointer:coarse)]:h-11 pl-3.5 pr-1.5 rounded-full inline-flex items-center gap-2 text-[13.5px] font-bold transition-colors", on ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>
+              {hue && <span className="h-2 w-2 rounded-full shrink-0" style={{ background: `var(${hue})` }} aria-hidden />}{l}
+              <span className={cn("min-w-7 h-7 px-1.5 rounded-full grid place-items-center text-[12px] num", on ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")}>{n}</span></button>;
+          })}
         </div>
         {rows.length === 0 ? <p className="px-4 pb-5 text-[13.5px] text-steel">No jobs match.</p> : (<>
           {/* wide: one row a job */}

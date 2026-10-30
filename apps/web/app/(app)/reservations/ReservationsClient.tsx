@@ -2,9 +2,9 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Phone, X, Armchair, Plus, Star, PartyPopper, Percent, ChevronLeft, ChevronRight, MessageCircle, Clock, AlarmClock, MoreHorizontal, ClipboardList, Check, CalendarDays, List, Undo2 } from "lucide-react";
+import { Users, Phone, X, Armchair, BedDouble, Plus, Star, PartyPopper, Percent, ChevronLeft, ChevronRight, MessageCircle, Clock, AlarmClock, MoreHorizontal, ClipboardList, Check, CalendarDays, List, Undo2 } from "lucide-react";
 import { waHref, waDate, waTime, firstName } from "@/lib/wa";
-import { Button, Card, Field, Pill, Sheet, cn, Empty, useToast, FlapClock } from "@/components/ui";
+import { Button, Card, Field, Pill, Sheet, cn, Empty, useToast, FlapClock, ask } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import { useLive } from "@/lib/useLive";
@@ -12,7 +12,10 @@ import { setReservation, addWalkIn, replyReview, draftReviewReply } from "./acti
 import { AiButton } from "@/components/ui/AiButton";
 import { Calendar, type Day } from "./Calendar";
 
-type R = { id: string; reservation_no: number; guest_name: string; guest_phone: string; on_date: string; at_time: string; party_size: number; occasion: string | null; note: string | null; status: string; table_id: string | null; offer_label: string | null; discount_pct: number; source: string; created_at: string };
+type R = { id: string; reservation_no: number; guest_name: string; guest_phone: string; on_date: string; at_time: string; party_size: number; occasion: string | null; note: string | null; status: string; table_id: string | null; offer_label: string | null; discount_pct: number; source: string; created_at: string;
+  booking_id?: string | null; stay?: { id: string; rooms: { number: string } | null; guests: { full_name: string } | null } | null };
+/** Someone staying now (page.tsx), for New booking's Room. */
+export type Stay = { id: string; room: string; guest: string; phone: string };
 type T = { id: string; name: string; capacity: number; status: string };
 type V = { id: string; guest_name: string | null; rating: number; body: string | null; reply: string | null; created_at: string };
 type Kind = "coming" | "late" | "seated";
@@ -29,11 +32,12 @@ const LATE_AFTER = 15;
  * booking — the time big, the name, how many — with Seat now, a call and the WhatsApp confirmation. The
  * month grid and the guests' reviews are the other two tabs.
  */
-export function ReservationsClient({ day, today, days, list, tables, reviews, month, ai = false, restaurant = "" }: { day: string; today: string; days: { date: string; n: number }[]; list: R[]; tables: T[]; reviews: V[]; month: Day[]; ai?: boolean; restaurant?: string }) {
+export function ReservationsClient({ day, today, days, list, tables, reviews, month, ai = false, restaurant = "", stays = [], openNew = null }: { day: string; today: string; days: { date: string; n: number }[]; list: R[]; tables: T[]; reviews: V[]; month: Day[]; ai?: boolean; restaurant?: string; stays?: Stay[]; openNew?: { stay: string } | null }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [tab, setTab] = useState<"day" | "month" | "reviews">("day");
-  const [walkIn, setWalkIn] = useState(false); const [seating, setSeating] = useState<R | null>(null);
-  const [w, setW] = useState({ name: "", phone: "", date: day, time: "19:30", party: 2, note: "", table: "" });
+  const opened = openNew ? stays.find((x) => x.id === openNew.stay) : undefined;
+  const [walkIn, setWalkIn] = useState(!!openNew); const [seating, setSeating] = useState<R | null>(null);
+  const [w, setW] = useState({ name: opened?.guest ?? "", phone: opened?.phone ?? "", date: day, time: "19:30", party: 2, note: "", table: "", stay: opened?.id ?? "" });
   const [replyTo, setReplyTo] = useState<V | null>(null); const [reply, setReply] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [more, setMore] = useState<string | null>(null);
@@ -81,6 +85,8 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
               <span className="inline-flex items-center gap-1"><Users size={15} aria-hidden />{r.party_size}</span>
               {/* the table chosen, or given when its time came (0154) */}
               {tbl && r.status !== "seated" && <span className="inline-flex items-center gap-1" data-res-table><Armchair size={14} aria-hidden />{tbl.name}</span>}
+              {/* staying here (0157): their room, so the bill can go to it */}
+              {r.stay?.rooms?.number && <span className="inline-flex items-center gap-1 text-[var(--color-violet)]" data-res-room><BedDouble size={14} aria-hidden />Room {r.stay.rooms.number}</span>}
               {r.occasion && <span className="inline-flex items-center gap-1"><PartyPopper size={14} aria-hidden />{r.occasion}</span>}
               {r.offer_label && <span className="inline-flex items-center gap-1 text-[var(--color-orange)]"><Percent size={13} aria-hidden />{r.discount_pct}% off</span>}
             </div>
@@ -100,7 +106,7 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
         {more === r.id && (
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button type="button" className="svc-btn quiet sm" disabled={pending} onClick={() => act(r, "no_show")}>Did not come</button>
-            <button type="button" className="svc-btn no sm" disabled={pending} onClick={() => { if (confirm(`Cancel ${r.guest_name}'s booking?`)) act(r, "cancelled"); }}><X size={16} aria-hidden /> Cancel booking</button>
+            <button type="button" className="svc-btn no sm" disabled={pending} onClick={async () => { if (await ask({ title: "Cancel booking?", body: `${r.guest_name}'s booking is cancelled.`, ok: "Cancel booking", cancel: "Keep it", tone: "danger", icon: "alert" })) act(r, "cancelled"); }}><X size={16} aria-hidden /> Cancel booking</button>
           </div>
         )}
       </motion.div>
@@ -226,11 +232,23 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
             <Field label="Time"><input type="time" value={w.time} onChange={(e) => setW({ ...w, time: e.target.value })} className="num" /></Field>
           </div>
           <Field label="How many"><div className="flex gap-1.5 flex-wrap">{[1, 2, 3, 4, 5, 6, 8, 10, 12].map((n) => <button key={n} type="button" onClick={() => setW({ ...w, party: n, table: (tables.find((t) => t.id === w.table)?.capacity ?? 0) >= n ? w.table : "" })} className={cn("chip !h-11 !min-w-11 justify-center", w.party === n && "on")}>{n}</button>)}</div></Field>
-          {/* Auto: a table that seats them is held when their time comes (0154) */}
-          <Field label="Table"><div className="flex gap-1.5 flex-wrap" data-new-table>
-            <button type="button" onClick={() => setW({ ...w, table: "" })} className={cn("chip !h-11 justify-center", !w.table && "on")}>Auto</button>
-            {tables.filter((t) => t.capacity >= w.party).map((t) => <button key={t.id} type="button" onClick={() => setW({ ...w, table: t.id })} className={cn("chip !h-11 !min-w-11 justify-center", w.table === t.id && "on")}>{t.name}</button>)}
-          </div></Field>
+          {/* Table and Room on one row (2026-10-30, the owner: "compact, and show the Room option too"): the table chips ran
+              to two rows of fourteen. Table — Auto (a table that seats them is held when their time comes, 0154) or one that
+              seats the party; Room — a hotel's or resort's guest staying now (0157), whose name and phone fill in. The words
+              are short ("Auto", "101 · Arjun" — the whole name fills the Name field) — the icons say table and room, and a half-width field on an iPad cut longer ones. */}
+          <div className={cn("grid gap-3", stays.length ? "grid-cols-2" : "grid-cols-1")}>
+            <Field label="Table"><label className="relative block min-w-0" data-new-table><Armchair size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none z-[1]" aria-hidden />
+              <select className="!pl-10 !font-semibold" value={w.table} onChange={(e) => setW({ ...w, table: e.target.value })} aria-label="Table" data-new-table-select>
+                <option value="">Auto</option>
+                {tables.filter((t) => t.capacity >= w.party).map((t) => <option key={t.id} value={t.id}>{t.name} · {t.capacity} seats</option>)}
+              </select></label></Field>
+            {stays.length > 0 && <Field label="Room"><label className="relative block min-w-0" data-new-room><BedDouble size={17} className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-[1]", w.stay ? "text-[var(--color-violet)]" : "text-steel")} aria-hidden />
+              <select className="!pl-10 !font-semibold" value={w.stay} aria-label="Room — a guest staying here" data-new-room-select
+                onChange={(e) => { const x = stays.find((y) => y.id === e.target.value); setW({ ...w, stay: e.target.value, name: x && !w.name ? x.guest : w.name, phone: x && !w.phone ? x.phone : w.phone }); }}>
+                <option value="">Not staying</option>
+                {stays.map((x) => <option key={x.id} value={x.id}>{x.room} · {x.guest.split(" ")[0]}</option>)}
+              </select></label></Field>}
+          </div>
           <Field label="Note"><input value={w.note} onChange={(e) => setW({ ...w, note: e.target.value })} placeholder="Window table, birthday cake…" /></Field>
           <Button className="w-full" size="lg" loading={pending} disabled={!w.name || !w.phone} onClick={() => start(async () => { const r = await addWalkIn(w); if ("error" in r) toast(r.error!, "err"); else { setWalkIn(false); toast("Booking added"); } })}>Add booking</Button>
         </div>

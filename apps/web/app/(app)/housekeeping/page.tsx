@@ -3,7 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { todayIST } from "@/lib/format";
 import { HousekeepingClient } from "./HousekeepingClient";
-export const metadata = { title: "Housekeeping" };
+export const metadata = { title: "Room status" };
 export const dynamic = "force-dynamic";
 
 export default async function HK() {
@@ -23,7 +23,7 @@ export default async function HK() {
   const inspectRule = !!session.restaurant.hk_inspect_required;
   return (
     <>
-      <PageHeader eyebrow="Rooms division" title="House" accent="keeping" sub={inspectRule ? "Inspected before sale" : "Clean, then on sale"} />
+      <PageHeader eyebrow="Rooms division" title="Room" accent="status" sub={inspectRule ? "Inspected before sale" : "Clean, then on sale"} />
       <HousekeepingClient today={today} tasks={(tasks ?? []) as never} rooms={(rooms ?? []) as never} stays={(stays ?? []) as never} done={(done ?? []) as never} canInspect={canInspect} inspectRule={inspectRule}
         people={(people ?? []) as never} me={session.profile.id} />
     </>

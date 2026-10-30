@@ -853,3 +853,33 @@ every visit to the bare name is still a 308 to www first, ~0.3 s; confirm **Flui
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+## 2026-10-30 — the menu key, the profile, the boot guard (replaces the fold-key / Menu-style lines above)
+- **☰ becomes ✕.** On the icon looks the menu key (`[data-menu-toggle]`, `aria-expanded`, 44×44) is three drawn lines; open, the
+  outer two cross and the middle fades (still under reduced motion); a second tap, the scrim or Escape closes. **Open, the ✕
+  moves to the end of the property row** (2026-10-30, the owner: "compact, perfect placing"): absolute at the aside's top right, a round
+  glass key 40px (44 on touch), centred on the logo row, the name given `pr-14` so it never runs under it — the drawer's head is one
+  line. Closed, ☰ stays at the rail's top as before. shots158 measures it (16px from the edge, centres equal). The open menu is
+  the full list at full height, scrolling (shots157: 15 rows in view at 1194×834).
+- **The fold key and the Menu style key left the menu foot** (both looks, open or folded; their `.sb-tools`/`.sb-fold` CSS is gone).
+  Folding is now a **Collapse menu** switch under the six looks in `SidebarPicker` (`[data-sidebar-fold]`, same `toggleFold()` and
+  `df-sidebar`/`df-sidebar-was`), in Settings → General → Appearance and in My profile → This device. There was never a shortcut.
+- **Sign out in the profile sheet** (`[data-profile-signout]`, ProfileCard): a **round key in the profile card's head** (top right of
+  the coloured band; 40px, 44 on touch; glass, red icon, solid red on hover — the owner: "icon based, in the header"); the same
+  `POST /logout`; it asks first in the app's dialog. The foot is Edit my profile (full width) and, for the owner, Settings.
+- **The yes/no dialog** (`components/ui/Confirm.tsx`, `ask()`, mounted once in the root layout as `<ConfirmHost/>`): a centred card
+  over the blurred scrim, a toned icon tile, a 2–4 word question, one line, Cancel and the action (`[data-ask]`, `[data-ask-no]`,
+  `[data-ask-yes]`). Escape / outside = No, Enter on the action = Yes, a destructive question focuses Cancel. **Every `confirm()`
+  in the app is now `await ask({...})`** — 20 places plus the admin ones; none is left in app/, components/ or lib/. No host → the
+  browser's box. shots157: no native dialog anywhere.
+- **The bare "Application error" screen** (an iPhone, after a deploy). The crash log had nothing — it happened before any boundary.
+  (1) `components/shell/staleBoot.ts`, first in `<head>`: a script or stylesheet under `/_next/static/` that fails to load, or a
+  `ChunkLoadError` thrown or rejected, reloads the page once (sessionStorage `df-reloaded-after-stale-build`, 30 s, shared with the
+  error card; storage blocked → never; never on /login or /logout). Needs the nonce if a `script-src` CSP comes. (2)
+  `app/global-error.tsx` is plain markup with inline layout and tokens — no imports that can fail — and sorts errors like
+  `ErrorRecovery` (old build → reload once; offline → "Connection lost"; else a quiet retry). (3) `components/shell/recover.ts` is
+  shared by both: the crash report goes through the browser client, and when that client's own file cannot load (an old build) it
+  posts straight to `report_client_error` (anon since 0149, `keepalive`). (4) The service worker (v20): a saved page is served offline
+  only if every script and stylesheet it names is cached too, else the reconnect page; the new cache name clears older copies.
+
+- **Room status (2026-10-30, 0157):** the Housekeeping row is *Room status*, the owner's, a manager's and a supervisor's
+  (housekeeping.md). `NotifierProvider` takes `position` for the table-to-clean alert (cleaning.md).

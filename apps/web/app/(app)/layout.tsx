@@ -104,7 +104,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
    <OfflineProvider modules={mods} outlet={s.restaurant.id}>
    <ToastProvider>
    {/* new orders, bookings and tickets: a tone, a toast and the bell's list, on every screen */}
-   <NotifierProvider modules={mods} propertyType={s.restaurant.property_type} me={s.profile.id} role={s.profile.role} dept={s.profile.department ?? null}>
+   <NotifierProvider modules={mods} propertyType={s.restaurant.property_type} me={s.profile.id} role={s.profile.role} dept={s.profile.department ?? null} position={s.profile.position ?? null}>
    <SayProvider initial={lang}>
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />

@@ -20,7 +20,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(app)/billing/**`, `app/(app)/invoices/**` | [billing-and-invoices.md](billing-and-invoices.md) |
 | `app/(app)/frontdesk/**` | [front-desk.md](front-desk.md) |
 | `app/(app)/rooms/**`, `app/(app)/reservations/**`, `app/(app)/facilities/**` | [rooms-and-reservations.md](rooms-and-reservations.md) |
-| `app/(app)/housekeeping/**` | [housekeeping.md](housekeeping.md) |
+| `app/(app)/housekeeping/**` — Room status (the menu's name since 2026-10-30) | [housekeeping.md](housekeeping.md) |
 | `app/(app)/cleaning/**` — tables and rooms after every guest, who took them | [cleaning.md](cleaning.md) |
 | `app/(app)/work/**` — every job on the property, routed to its department; `cleaning/JobCard.tsx`; `app/(app)/work-records/**` — the owner's and managers' record | [work.md](work.md) |
 | `app/(app)/guests/**`, `app/(app)/customers/**` | [guests-and-customers.md](guests-and-customers.md) |
