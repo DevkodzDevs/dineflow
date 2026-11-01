@@ -134,7 +134,7 @@ export const myDayFor = (role: Role): Section | null => (role === "owner" || rol
  * first group has no heading (the day at a glance); Settings and the person's own rows stay the last group (`endFor`).
  * `ITEMS`' own order is untouched — the phone bar fills from it.
  */
-const MENU_GROUPS: { title: string | null; keys: string[] }[] = [
+export const MENU_GROUPS: { title: string | null; keys: string[] }[] = [
   { title: null, keys: ["dashboard", "tomorrow", "scan"] },
   { title: "Rooms & stays", keys: ["frontdesk", "rooms", "housekeeping", "guests", "facilities"] },
   { title: "Guests & tables", keys: ["tables", "reservations", "pulse", "pulse-qr", "customers"] },

@@ -190,3 +190,13 @@ pnpm --filter @dineflow/web typecheck
   is its own layer (`isolation: isolate` — Safari smeared the shadow across the sheet while the sticky column scrolled), and the
   sheet's height follows a ResizeObserver (measured once, it was taken before the receipt font loaded). shots159: the name 22px clear.
 - **Printing the folio prints the slip alone** (`[data-folio]` is `data-print-root` — billing-and-invoices.md).
+
+## 2026-11-02 — one grid, level rows (the owner: "cards alignment looks zigzag")
+- **Arrivals, In house, Upcoming and Table bookings are four sections in one grid** (`[data-fd-grid]`, two columns from `lg`).
+  Two independent columns let Upcoming and Table bookings start wherever the column above ended; as rows, Arrivals | In house and
+  Upcoming | Table bookings start level. Below `lg`, one column in the order it always had (`order-*`).
+- **Every stay card has the chips row**: an in-house stay says when it leaves (`[data-out-chip]`: Checks out today / tomorrow /
+  in N days, red when today or past) — it was a chip-row shorter than the arrival beside it. **The foot is one height**
+  (`.act { min-height: 48px }`) whether it holds Check in, Cancel, Table + Folio or Folio.
+- shots49 on a demo resort at 1194/1440/1920: the heads level (556/556, 1006/1006 at 1194), the first arrival and in-house cards
+  start level and are one height (378/378); 834 and 412 one column, Arrivals → Upcoming → In house → Table bookings.

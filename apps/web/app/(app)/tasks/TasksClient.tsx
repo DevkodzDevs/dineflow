@@ -1,12 +1,12 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Check, Sunrise, Moon, Clock3, Pencil, Plus, Sparkles, Users, Briefcase, BadgeCheck } from "lucide-react";
+import { Check, Sunrise, Moon, Clock3, Pencil, Plus, Sparkles, Users, Briefcase, BadgeCheck, UserPlus, UserMinus } from "lucide-react";
 import { Card, Empty, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
 import { tick, saveList } from "./actions";
 import { Say } from "@/components/ui/Say";
 import { DeptIcon, deptHue } from "../staff/StaffPositions";
 
-export type List = { id: string; name: string; shift: "opening" | "closing" | "anytime"; items: string[]; is_active: boolean; sort_order: number; departments?: string[] | null; jobs?: string[] | null; positions?: string[] | null };
+export type List = { id: string; name: string; shift: "opening" | "closing" | "anytime"; items: string[]; is_active: boolean; sort_order: number; departments?: string[] | null; jobs?: string[] | null; positions?: string[] | null; people?: string[] | null; people_off?: string[] | null };
 export type Run = { checklist_id: string; run_date: string; done: Record<string, { name: string; at: string }>; completed_at: string | null };
 /** A team, job or position a list can be for, with how many people are in it (`team`: a position's team, for its colour). */
 export type Choice = { key: string; label: string; people: number; team?: string };
@@ -131,7 +131,11 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
                       <span className="flex-1 h-2 rounded-full bg-[var(--color-fill-2)] overflow-hidden" aria-hidden><span className="block h-full rounded-full transition-[width] duration-500" style={{ width: `${p * 100}%`, background: all ? "var(--color-green)" : "var(--color-orange)" }} /></span>
                       <span className="shrink-0 text-[12.5px] font-extrabold num" style={{ color: all ? "var(--color-green)" : p ? "var(--color-orange)" : "var(--color-label-3)" }}>{Math.round(p * 100)}%</span>
                     </div>); })()}
-                  <div className="mt-3 min-w-0"><ForWhom tags={tagsOf(l)} look={look} /></div>
+                  <div className="mt-3 min-w-0 flex flex-wrap items-center gap-1.5"><ForWhom tags={tagsOf(l)} look={look} />
+                    {/* people the owner or a manager added or took off on Staff (0162) — shown to whoever writes the lists */}
+                    {editor && ((l.people ?? []).length > 0 || (l.people_off ?? []).length > 0) && <span className="inline-flex items-center gap-2 h-7 px-2.5 rounded-full bg-[var(--color-fill)] text-[12.5px] font-bold text-steel num" title="Changed on Staff" data-list-people>
+                      {(l.people ?? []).length > 0 && <span className="inline-flex items-center gap-1"><UserPlus size={13} aria-hidden />{(l.people ?? []).length}</span>}
+                      {(l.people_off ?? []).length > 0 && <span className="inline-flex items-center gap-1"><UserMinus size={13} aria-hidden />{(l.people_off ?? []).length}</span>}</span>}</div>
                 </div>
                 <ul className="flex-1 border-t border-[var(--color-separator)]">
                   {l.items.map((it, i) => { const d = done[String(i)]; return (

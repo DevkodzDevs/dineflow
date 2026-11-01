@@ -47,6 +47,8 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
     const dueOut = kind === "inhouse" && b.check_out <= today;
     const night = Math.min(nights, Math.max(1, Math.round((at(today).getTime() - at(b.check_in).getTime()) / 86400000) + 1));
     const inDays = Math.max(1, Math.round((at(b.check_in).getTime() - at(today).getTime()) / 86400000));
+    const outIn = Math.round((at(b.check_out).getTime() - at(today).getTime()) / 86400000);
+    const outChip = kind === "inhouse" ? (outIn <= 0 ? { text: outIn < 0 ? "Past check-out" : "Checks out today", c: "var(--color-red)" } : { text: outIn === 1 ? "Checks out tomorrow" : `Checks out in ${outIn} days`, c: "var(--color-blue)" }) : null;
     const badge = kind === "arrival" ? (b.check_in < today ? `Due since ${fmtDate(at(b.check_in).toISOString())}` : "Arriving today")
       : kind === "upcoming" ? (inDays === 1 ? "Tomorrow" : `In ${inDays} days`)
       : dueOut ? "Due out" : `Night ${night} of ${nights}`;
@@ -78,9 +80,12 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
             <div className={sc.track}><span className={sc.nights}><Moon size={12} aria-hidden />{nights === 1 ? "1 night" : `${nights} nights`}</span></div>
             <div className={cn(sc.end, sc.out)}><div className={sc.endLabel}>Check-out</div><div className={sc.endDate}>{fmtDate(at(b.check_out).toISOString())}</div><div className={sc.endDay}>{wd(b.check_out)}</div></div>
           </div>
-          {(state || (b.precheckin_at && b.status === "reserved")) && (
-            <div className={sc.chips}>
-              {state && <span className={sc.chip} style={{ color: state.c, background: `color-mix(in srgb, ${state.c} 12%, transparent)` }} data-room-state><span aria-hidden className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: state.c }} /><span>{state.text}</span></span>}
+          {/* every card has this row (2026-11-02, the owner: "cards look zigzag"): an in-house stay says when it leaves, so
+              it is the same shape as the arrival beside it rather than a chip-row shorter */}
+          {(state || outChip || (b.precheckin_at && b.status === "reserved")) && (
+            <div className={sc.chips} data-chips>
+              {outChip && <span className={sc.chip} style={{ color: outChip.c, background: `color-mix(in srgb, ${outChip.c} 12%, transparent)` }} data-out-chip><span aria-hidden className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: outChip.c }} /><span>{outChip.text}</span></span>}
+              {state &&<span className={sc.chip} style={{ color: state.c, background: `color-mix(in srgb, ${state.c} 12%, transparent)` }} data-room-state><span aria-hidden className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: state.c }} /><span>{state.text}</span></span>}
               {b.precheckin_at && b.status === "reserved" && <span className={cn(sc.chip, "bg-[var(--color-green-2)] text-[var(--color-green)]")}><CheckCircle2 size={13} className="shrink-0" aria-hidden /><span>Checked in online{b.precheckin?.arrival_time ? ` · arriving ${b.precheckin.arrival_time}` : ""}</span></span>}
             </div>
           )}
@@ -114,20 +119,23 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
           <Link href="/frontdesk/night-audit" className="h-11 px-4 rounded-full grid place-items-center whitespace-nowrap text-sm font-semibold bg-card border border-line hover:bg-[var(--color-fill)] transition-colors"><span className="flex items-center gap-1.5"><ClipboardCheck size={16} /> Night audit</span></Link>
           <Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>
         </div></div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="min-w-0"><Head icon={<LogIn size={16} />} tone="green" label="Arrivals" n={arrivals.length} />
-          <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} kind="arrival" action={<Button size="sm" variant="ink" disabled={pending} data-check-in onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}><LogIn size={15} /> Check in</Button>} />)}{arrivals.length === 0 && <EmptyState size="sm" icon={LogIn} hue="tint" title="No arrivals waiting" data-fd-empty="arrivals" actions={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div>
-          <div className="mt-7"><Head icon={<CalendarDays size={16} />} tone="blue" label="Upcoming" n={upcoming.length} /></div>
+      {/* Four sections in one grid (2026-11-02, the owner: "cards alignment looks zigzag"). Two independent columns let
+          Upcoming and Table bookings start at whatever height the column above them ended; as rows, Arrivals | In house and
+          Upcoming | Table bookings start level. One column below lg, in the order it always had (order-*). */}
+      <div className="grid gap-x-6 gap-y-7 lg:grid-cols-2 items-start" data-fd-grid>
+        <section className="min-w-0 max-lg:order-1"><Head icon={<LogIn size={16} />} tone="green" label="Arrivals" n={arrivals.length} />
+          <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} kind="arrival" action={<Button size="sm" variant="ink" disabled={pending} data-check-in onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}><LogIn size={15} /> Check in</Button>} />)}{arrivals.length === 0 && <EmptyState size="sm" icon={LogIn} hue="tint" title="No arrivals waiting" data-fd-empty="arrivals" actions={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div></section>
+        <section className="min-w-0 max-lg:order-2 lg:order-3"><Head icon={<CalendarDays size={16} />} tone="blue" label="Upcoming" n={upcoming.length} />
           <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} kind="upcoming" action={<button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full text-[13px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors" onClick={async (e) => { e.preventDefault(); if (await ask({ title: "Cancel booking?", body: "The guest's booking is cancelled.", ok: "Cancel booking", cancel: "Keep it", tone: "danger", icon: "alert" })) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); }}>Cancel</button>} />)}{upcoming.length === 0 && <EmptyState size="sm" icon={CalendarDays} hue="blue" title="Nothing coming up" data-fd-empty="upcoming" />}</div></section>
-        <section className="min-w-0"><Head icon={<Moon size={16} />} tone="orange" label="In house" n={inHouse.length} />
+        <section className="min-w-0 order-3 lg:order-2"><Head icon={<Moon size={16} />} tone="orange" label="In house" n={inHouse.length} />
           <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} kind="inhouse" action={canBook ? <span className="inline-flex items-center gap-2">
               {/* a table for this guest: New booking opens with their room chosen (0157) */}
               <button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors" data-book-table={b.rooms?.number ?? ""}
                 onClick={(e) => { e.preventDefault(); router.push(`/reservations?new=1&stay=${b.id}`); }}><Armchair size={14} aria-hidden /> Table</button>
-              <span className={sc.folio}>Folio <ChevronRight size={16} aria-hidden /></span></span> : undefined} />)}{inHouse.length === 0 && <EmptyState icon={Moon} hue="orange" title="No guests in house" data-fd-empty="inhouse" actions={<Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>} />}</div>
-          {/* today's table bookings (2026-10-30, the owner: "show the table reservations here too"): when, who, how many, the
-              table and — a guest staying here — their room; tap one for Reservations, + for a new one */}
-          <div className="mt-7"><Head icon={<Armchair size={16} />} tone="violet" label="Table bookings" n={tableBookings.length}
+              <span className={sc.folio}>Folio <ChevronRight size={16} aria-hidden /></span></span> : undefined} />)}{inHouse.length === 0 && <EmptyState icon={Moon} hue="orange" title="No guests in house" data-fd-empty="inhouse" actions={<Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>} />}</div></section>
+        {/* today's table bookings (2026-10-30, the owner: "show the table reservations here too"): when, who, how many, the
+            table and — a guest staying here — their room; tap one for Reservations, + for a new one */}
+        <section className="min-w-0 order-4"><div><Head icon={<Armchair size={16} />} tone="violet" label="Table bookings" n={tableBookings.length}
             action={canBook ? <Link href="/reservations?new=1" className="h-10 [@media(pointer:coarse)]:h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" data-fd-book-table><Plus size={15} aria-hidden /> Book a table</Link> : undefined} /></div>
           <div className="grid gap-2" data-fd-tables>
             {tableBookings.map((r) => <TableRow key={r.id} r={r} today={today} link={canBook} />)}

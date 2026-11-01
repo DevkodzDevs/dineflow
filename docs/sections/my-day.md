@@ -56,3 +56,6 @@ pnpm test                  # positions.test.ts: staff land on My day, the owner 
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+- **2026-11-02 (0162):** *My checklists* also follows what the owner or a manager set for the person on Staff (given a list,
+  taken off one) — `lib/checklists.ts` `listFor`, the database's `_checklist_for_me`.

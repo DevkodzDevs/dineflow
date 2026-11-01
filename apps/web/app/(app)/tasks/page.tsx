@@ -22,7 +22,7 @@ export default async function TasksPage() {
   const s = await createClient();
   const [session, { data: lists }, { data: runs }] = await Promise.all([
     requireSession(),
-    s.from("checklists").select("id, name, shift, items, is_active, sort_order, departments, jobs, positions").order("sort_order"),
+    s.from("checklists").select("id, name, shift, items, is_active, sort_order, departments, jobs, positions, people, people_off").order("sort_order"),
     s.from("checklist_runs").select("checklist_id, run_date, done, completed_at").gte("run_date", weekAgo),
   ]);
   const editor = ["owner", "manager", "supervisor"].includes(session.profile.role);

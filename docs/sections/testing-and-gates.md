@@ -532,3 +532,30 @@ of a second." Measured first, on the live site and on a local production build (
   (`hk_inspect_required` on) and two Work jobs. Per person: Give to… / Assign / New job / New task / I'll take it / Start / To inspect on
   Cleaning, Work and Room status (**tap the Tasks segment first on a phone**; a Room Attendant has no Room status — /home), then the API
   refuses the Floor Supervisor's `clean_assign` and allows the supervisor's. dropdemos removes the demo and its sign-ins.
+
+## 2026-11-02 — Master control → Flow tests
+- The app now runs the testing flow by itself (admin-and-membership.md, *Flow tests*): the owner presses *Start full test* or
+  picks a section, a flow or a page. It is a monitor, like Testing — not a substitute for the gates or the browser suites.
+- `dry161.mjs` (9, rolled back): `flowtest_admin` prepares, frees a table, ages a job and sweeps a demo; refuses a real property,
+  the demo's owner and a stranger.
+- `t161/` (scratchpad). Probes have no master login, and running the route as the master against the live database is not
+  allowed from here, so: `run162.mjs` bundles the real route with `supabase-stub2.ts` — `is_master` answered yes and
+  `flowtest_admin` answered by the same statements 0161's function runs, demo properties only — and runs a whole plan against
+  the app at :3163 (`MODE=full | flow:<key> | group:<title> | page:<r|h>:<href>`). Everything else goes through the demo owner's
+  and staff's own sessions, as live. 2026-11-02: **full — 117 steps, 164 checks passed, 0 warnings, 0 failed, 30 s**, both demos
+  and their logins swept. `ui/build.cjs` bundles the real `FlowTestsClient`; `ui161.mjs` serves it in the app's CSS at `/__flow`
+  and answers its calls with that route in-process (`REAL=1`) or made-up answers (`MOCK=1`): five widths, the four modes, a
+  one-page run, the Room booking flow, the *Orders & kitchen* section and (`FULL=1`) the whole application. Through the screen
+  (dark and paper, 2026-11-02): all four pass; the full run read 162 passed · 2 warnings · 0 failed — the warnings are pages
+  over 2.5 s (`/tax`, `/staff`, once `/orders`) on a local `next start` talking to the Micro database. A slow page is a warning,
+  never a fail, and the probes accept it.
+- Found by the first real run: the billing steps ran Paid before the second round was cancelled, so its open order kept T1 in
+  use — `settle_bill` frees a table only when no order on it is open (correct). Void-and-cancel now runs before Paid. A cleaner
+  (employee) holds no section of their own; the roles check expects that and opens their Cleaning board instead.
+
+- **`pw/shots162.mjs` (11)** — each person's checklists (0162). Resort demo with four lists (Housekeeping, the Room Attendant
+  position, Kitchen, everyone). The owner adds a Room Attendant through Add staff at 1440: the chips start from the position, two taps
+  → "Changed", saved as one `people` and one `people_off`; Checklists shows `[data-list-people]` on 2 cards; she signs in (412): her
+  Checklists and My day, and the API refuses her tick on the list she was taken off and her own `staff_checklists_set`; the owner's
+  Access on a phone (chips ≥44px) → Reset → Save clears both; 834 paper; a supervisor reads "Sees every checklist". **At 834 the
+  Staff screen opens on Table — tap `[data-view-pick="cards"]` before "Access for …".** Add staff's slip regexes as `cleaner.mjs`.

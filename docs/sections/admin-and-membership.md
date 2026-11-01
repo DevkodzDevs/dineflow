@@ -343,3 +343,29 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
   "id / password" together, and pasting into Password put both in. Each now has **Copy password** (`[data-copy-password]`), **Copy
   ID** (`[data-copy-id]`) and a separate, labelled **Copy both** (`[data-copy-both]`, two labelled lines).
 - Suspend and the support desk's delete-screenshot / open-anyway now ask in the app's dialog (`ask`).
+
+## Flow tests (2026-11-02, 0161 — the owner: "the testing flow as a complete automatic testing tool")
+- **Where:** Master control's top bar → **Flow tests** (`/admin/flow-tests`, `AdminNav`, after Testing). Four ways in
+  (`[data-mode]`): **Full application** (every flow, then every page for a restaurant and a hotel — also the head's
+  *Start full test*, `[data-start-full]`), **By menu section** (one heading of the menu — its pages and the flows under it,
+  `GROUP_FLOWS`), **By flow** (Sign-in & roles · Order · Billing · Cleaning & work · Room booking · Table booking · Guest pages ·
+  Security & money — the stages of the *DineFlow — Full Application Testing Flow* document) and **One page** (any app page,
+  on a restaurant or a hotel; a page one kind lacks cannot be picked for it).
+- **How it runs:** `lib/flowtest/catalog.ts` is the one list (flows, steps, `PAGES` from `sections.ts` `ITEMS` / `freshFor` /
+  `endFor` under `MENU_GROUPS`, `planFor(mode)`). The screen calls `POST /api/admin/flowtest` once per step (`{ op: "step", id,
+  ctx }`), so no request nears the host's limit and each result shows as it lands; then `finish` (sweep) and `save`
+  (`selftest_runs`, suite `flow:<mode label>` — Testing's page leaves `flow:%` out). Each run makes **two throwaway demo
+  properties** (`create_demo_sandbox`) and their staff (waiter, chef, cashier, cleaner; front desk, room attendant) through the
+  owner's own `staff_create_login`, and works as them through the screens' own functions — `place_order`, the kitchen's
+  status writes, `generate_bill`, `void_bill`, `settle_bill`, `issue_credit_note`, `clean_take` / `clean_assign` /
+  `clean_auto_assign`, `create_booking`, `check_in`, `post_order_to_room`, `check_out`, `run_night_audit`,
+  `reservation_set` — checking each result in the tables (the bill's arithmetic to the paisa, the table freed, the ticket off
+  the pass …). Pages are fetched from the same deployment with the demo person's session cookie, redirects followed (HTTP and
+  Next's meta refresh), and fail on a 5xx, the error screen or landing somewhere else; over 2.5 s is a warning.
+- **The master's part** is `flowtest_admin(op, rid, ref)` (0161): `prepare` (every section on, cleaning and the 5-minute hand-out
+  on, named *Flow test · Restaurant/Hotel*), `staff` (no forced password change), `free_table`, `age_job`, `finish` (expire and
+  sweep — the logins go too). It refuses anything but a demo property and anyone but the master. A run left midway is swept
+  when its demo expires (8 hours); the screen asks before the tab is closed while one runs. Ten demos an hour is the platform's
+  limit — a run uses two.
+- **Not covered by a flow test:** what happens only in a browser (the client-side sign-in hand-off, layout at widths, gestures) —
+  the scratchpad browser suites keep those (testing-and-gates.md); and the live properties' own data, which it never touches.

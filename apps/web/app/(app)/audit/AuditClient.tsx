@@ -2,16 +2,17 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Banknote, Boxes, ChefHat, ClipboardList, Search, Settings2, Users } from "lucide-react";
+import { ArrowRight, Banknote, Boxes, ChefHat, ClipboardList, Lock, Search, Settings2, Users } from "lucide-react";
 import { Card, Segmented, cn } from "@/components/ui";
 import { Rail } from "@/components/ui/Rail";
-import { formatINR } from "@/lib/format";
+import { formatINR, todayIST } from "@/lib/format";
 
 export type Event = { id: number; at: string; actor: string | null; action: string; target_type: string; target_id: string | null; label: string | null; reason: string | null; before: Record<string, unknown> | null; after: Record<string, unknown> | null; amount: number | null };
 
 /** What each action is called on the screen, and which family it belongs to. */
 const ACTION: Record<string, { title: string; group: Group }> = {
-  "bill.void": { title: "Bill voided", group: "money" }, "discount.give": { title: "Discount given", group: "money" }, "payment.take": { title: "Payment taken", group: "money" },
+  "bill.void": { title: "Bill voided", group: "money" }, "bill.refund": { title: "Bill refunded", group: "money" }, "discount.give": { title: "Discount given", group: "money" }, "payment.take": { title: "Payment taken", group: "money" },
+  "charge.add": { title: "Charge added", group: "money" },   // 0150: a charge on a guest's folio
   "cash.in": { title: "Cash in", group: "money" }, "cash.out": { title: "Cash out", group: "money" }, "shift.close": { title: "Shift closed", group: "money" }, "day.close": { title: "Day closed", group: "money" },
   "order.cancel": { title: "Order cancelled", group: "orders" }, "order.merge": { title: "Order merged", group: "orders" }, "line.cancel": { title: "Dish cancelled", group: "orders" },
   "stock.adjust": { title: "Stock adjusted", group: "stock" }, "stock.waste": { title: "Wastage logged", group: "stock" }, "stock.opening": { title: "Opening stock", group: "stock" }, "po.status": { title: "Purchase order", group: "stock" },
@@ -25,21 +26,52 @@ const GROUPS: { key: Group | "all"; label: string; Icon: typeof Banknote }[] = [
   { key: "all", label: "All", Icon: ClipboardList }, { key: "money", label: "Money", Icon: Banknote }, { key: "orders", label: "Orders", Icon: ClipboardList },
   { key: "stock", label: "Stock", Icon: Boxes }, { key: "menu", label: "Menu", Icon: ChefHat }, { key: "people", label: "People & settings", Icon: Users },
 ];
-const TONE: Record<Group, string> = {
-  money: "bg-[var(--color-green-2)] text-[var(--color-green)]", orders: "bg-[color-mix(in_srgb,var(--color-orange)_16%,transparent)] text-[var(--color-orange)]",
-  stock: "bg-[var(--color-fill)] text-[var(--color-label)]", menu: "bg-[var(--color-fill)] text-[var(--color-label)]", people: "bg-[var(--color-red-2)] text-[var(--color-red)]",
-};
-const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
-const show = (v: unknown): string => v == null ? "—" : typeof v === "boolean" ? (v ? "on" : "off") : Array.isArray(v) ? (v.length ? v.join(", ") : "none") : typeof v === "object" ? JSON.stringify(v) : String(v);
+/** each family its colour (2026-11-02: people & settings were red, which read as an alarm on every settings change) */
+const HUE: Record<Group, string> = { money: "var(--color-green)", orders: "var(--color-orange)", stock: "var(--color-blue)", menu: "var(--color-violet)", people: "var(--color-label-2)" };
+/** an action whose picture is not its family's */
+const ICON: Record<string, typeof Banknote> = { "settings.change": Settings2, "display.allow": Lock, "display.disallow": Lock, "display.lock": Lock, "display.release": Lock };
+/** money that left — shown in red */
+const OUT = new Set(["cash.out", "line.cancel", "order.cancel", "bill.void", "bill.refund", "discount.give"]);
 
-/** The change in a line: only keys that differ, "before → after". */
-function Diff({ before, after }: { before: Record<string, unknown> | null; after: Record<string, unknown> | null }) {
-  // only what is in `after`: a void's `before` carries the total for the record, but "total 147 → —" would read as a change
-  const keys = Object.keys(after ?? {}).filter((k) => !["bill_id", "order_id", "merged_into", "ref_type"].includes(k) && show(before?.[k]) !== show(after?.[k]));
+/** a field's name as a person says it — the trail stores column names */
+const KEY: Record<string, string> = {
+  gstin: "GSTIN", gst_rate: "GST rate", gst_scheme: "GST scheme", gst_state_code: "GST state", service_charge_pct: "Service charge %", room_gst_rate: "Room GST",
+  room_gst_rate_high: "Room GST (high)", room_gst_threshold: "Room GST above", facility_gst_rate: "Facility GST", upi_vpa: "UPI ID", upi_payee: "UPI name",
+  loyalty_enabled: "Loyalty", loyalty_earn_pct: "Points earned %", loyalty_point_value: "Point value", loyalty_min_redeem: "Least to redeem", attend_radius_m: "Attendance radius (m)",
+  kds_warn_minutes: "Kitchen warn after", kds_target_minutes: "Kitchen target", promise_minutes: "Promise (min)", check_in_time: "Check-in time", check_out_time: "Check-out time",
+  enabled_modules: "Sections", membership_ends_at: "Membership ends", booking_slug: "Booking link", is_listed: "Listed", hk_inspect_required: "Inspect before sale",
+  qty: "Quantity", unit: "Unit", kind: "Type", price: "Price", is_available: "Available", is_active: "On the menu", role: "Role", modules: "Sections", active: "Active",
+};
+const keyName = (k: string) => KEY[k] ?? (k.charAt(0).toUpperCase() + k.slice(1)).replace(/_/g, " ");
+const show = (v: unknown): string => v == null || v === "" ? "—" : typeof v === "boolean" ? (v ? "On" : "Off") : Array.isArray(v) ? (v.length ? v.join(", ") : "None") : typeof v === "object" ? JSON.stringify(v) : String(v);
+const time = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
+const istDay = (iso: string) => new Date(Date.parse(iso) + 5.5 * 3600e3).toISOString().slice(0, 10);
+const dayHead = (d: string) => { const t = todayIST(); const y = new Date(Date.parse(t + "T00:00:00Z") - 86400000).toISOString().slice(0, 10);
+  return d === t ? "Today" : d === y ? "Yesterday" : new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }); };
+const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
+
+/** The change as chips: only keys that differ, "before → after", named as a person would. What the row already says is left out —
+ *  the amount when it is the row's amount, a note that is the reason, and the type of a cash in / out. */
+function Changes({ e }: { e: Event }) {
+  const { before, after } = e;
+  const keys = Object.keys(after ?? {}).filter((k) => {
+    if (["bill_id", "order_id", "merged_into", "ref_type"].includes(k)) return false;
+    if (show(before?.[k]) === show(after?.[k])) return false;
+    if (k === "amount" && e.amount != null && Math.abs(Number(after?.[k])) === Math.abs(Number(e.amount))) return false;
+    if (k === "note" && e.reason && show(after?.[k]).trim().toLowerCase() === e.reason.trim().toLowerCase()) return false;
+    if (k === "kind" && (e.action === "cash.in" || e.action === "cash.out")) return false;
+    return true;
+  });
   if (!keys.length) return null;
   return (
-    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-[var(--color-label-2)]">
-      {keys.slice(0, 6).map((k) => <span key={k} className="num"><span className="text-[var(--color-label-3)]">{k.replace(/_/g, " ")}</span> {before && k in before ? <>{show(before[k])} → </> : null}<b className="text-[var(--color-label)] font-semibold">{show(after?.[k])}</b></span>)}
+    <div className="mt-2 flex flex-wrap gap-1.5" data-changes>
+      {keys.slice(0, 6).map((k) => (
+        <span key={k} className="inline-flex items-center gap-1.5 min-h-7 max-w-full px-2.5 py-1 rounded-[10px] bg-[var(--color-fill)] text-[12.5px] leading-tight" data-change={k}>
+          <span className="text-[var(--color-label-2)] shrink-0">{keyName(k)}</span>
+          {before && k in before && <><span className="text-[var(--color-label-3)] line-through truncate max-w-[10rem]">{show(before[k])}</span><ArrowRight size={12} className="shrink-0 text-[var(--color-label-3)]" aria-hidden /></>}
+          <b className="font-semibold text-[var(--color-label)] truncate max-w-[14rem]">{k === "kind" ? show(after?.[k]).replace(/^./, (c) => c.toUpperCase()).replace(/_/g, " ") : show(after?.[k])}</b>
+        </span>
+      ))}
     </div>
   );
 }
@@ -53,6 +85,8 @@ export function AuditClient({ events, names, days, more, error }: { events: Even
     return events.filter((e) => (group === "all" || (ACTION[e.action]?.group ?? "people") === group)
       && (!needle || [e.label, e.reason, ACTION[e.action]?.title, e.action, e.actor ? names[e.actor] : "Master control"].some((x) => (x ?? "").toLowerCase().includes(needle))));
   }, [events, group, q, names]);
+  /* newest first, so a day's rows are already together — one head per IST day */
+  const byDay = useMemo(() => rows.reduce<[string, Event[]][]>((g, e) => { const d = istDay(e.at); const last = g[g.length - 1]; if (last && last[0] === d) last[1].push(e); else g.push([d, [e]]); return g; }, []), [rows]);
   const counts = events.reduce<Record<string, number>>((m, e) => { const g = ACTION[e.action]?.group ?? "people"; m[g] = (m[g] ?? 0) + 1; return m; }, {});
   return (
     <div className="space-y-4" data-audit>
@@ -83,23 +117,57 @@ export function AuditClient({ events, names, days, more, error }: { events: Even
         </div>
       </Card>
       {error && <p className="rounded-xl bg-[var(--color-red-2)] px-4 py-3 text-sm text-[var(--color-red)]">{error}</p>}
-      <Card className="!p-0 overflow-hidden">
-        {rows.length === 0 ? <p className="p-8 text-center text-sm text-steel">{events.length === 0 ? `Nothing in ${days === 1 ? "1 day" : `${days} days`}` : "Nothing matches."}</p> : (
-          <ul className="divide-y divide-[var(--color-separator)]">
-            {rows.map((e) => { const a = ACTION[e.action] ?? { title: e.action, group: "people" as Group }; const G = GROUPS.find((g) => g.key === a.group)!.Icon; return (
-              <li key={e.id} className="px-4 py-3 flex items-start gap-3 min-w-0" data-event data-action={e.action}>
-                <span className={cn("h-9 w-9 shrink-0 rounded-xl grid place-items-center mt-0.5", TONE[a.group])}><G size={16} /></span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2 min-w-0"><span className="text-sm font-semibold truncate">{a.title}</span>{e.label && <span className="text-sm text-[var(--color-label-2)] truncate">· {e.label}</span>}</div>
-                  {e.reason && <div className="text-[13px] mt-0.5 truncate">“{e.reason}”</div>}
-                  <Diff before={e.before} after={e.after} />
-                  <div className="text-[11.5px] text-steel mt-1 truncate">{e.actor ? names[e.actor] ?? "Master control" : "Server · sync"} · <span className="num">{when(e.at)}</span></div>
-                </div>
-                {e.amount != null && Number(e.amount) !== 0 && <div className={cn("num text-sm font-semibold shrink-0", e.action === "cash.out" || e.action === "line.cancel" || e.action === "order.cancel" || e.action === "bill.void" ? "text-chili" : "")}>{e.action === "menu.price" ? (Number(e.amount) > 0 ? "+" : "−") + formatINR(Math.abs(Number(e.amount)), { whole: true }) : formatINR(Number(e.amount))}</div>}
-              </li>); })}
-          </ul>
-        )}
-      </Card>
+      {rows.length === 0 ? <Card><p className="p-4 text-center text-sm text-steel">{events.length === 0 ? `Nothing in ${days === 1 ? "1 day" : `${days} days`}` : "Nothing matches."}</p></Card> : (
+        /* The rows (2026-11-02, the owner: "messy — ultra modern, user friendly"). It was one list of raw column names in the
+           narrow number font ("kind out amount 1000", "qty 5 note demo opening stock unit kg"), a bare "charge.add", and the
+           date on every line. Now the day is a heading with its count, and each event is a card: its family's icon tile, what
+           happened and to what, the reason as a quote, the changes as named chips (before struck through → after), and who —
+           an initial and a name — with the time; the amount on the right, red when money left. */
+        <div className="space-y-5" data-audit-days>
+          {byDay.map(([d, items]) => (
+            <section key={d} data-audit-day={d}>
+              <div className="flex items-center gap-3 px-1 mb-2">
+                <span className="text-[12px] font-extrabold uppercase tracking-[.12em] text-[var(--color-label-2)]">{dayHead(d)}</span>
+                <span className="h-px flex-1 bg-[var(--color-separator)]" aria-hidden />
+                <span className="text-[12px] font-semibold text-steel"><span className="num">{items.length}</span> {items.length === 1 ? "event" : "events"}</span>
+              </div>
+              <ul className="space-y-2">
+                {items.map((e) => {
+                  const a = ACTION[e.action] ?? { title: (e.action.charAt(0).toUpperCase() + e.action.slice(1)).replace(/[._]/g, " "), group: "people" as Group };
+                  const G = ICON[e.action] ?? GROUPS.find((g) => g.key === a.group)!.Icon; const hue = HUE[a.group];
+                  const who = e.actor ? names[e.actor] ?? "Master control" : "Server · sync";
+                  const amt = e.amount != null && Number(e.amount) !== 0 ? Number(e.amount) : null;
+                  return (
+                    <li key={e.id} data-event data-action={e.action} style={{ ["--hue" as string]: hue }}
+                      className="relative flex items-start gap-3 min-w-0 rounded-[20px] bg-[var(--color-bg-2)] ring-1 ring-[var(--color-separator)] p-3.5 sm:p-4 overflow-hidden">
+                      <span aria-hidden className="absolute inset-y-4 left-0 w-[3px] rounded-r-full bg-[var(--hue)] opacity-70" />
+                      <span className="h-10 w-10 shrink-0 rounded-[13px] grid place-items-center bg-[color-mix(in_srgb,var(--hue)_15%,transparent)] text-[var(--hue)]" aria-hidden><G size={18} /></span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[15px] font-bold leading-snug">{a.title}</div>
+                            {e.label && <div className="text-[13px] text-[var(--color-label-2)] leading-snug truncate" title={e.label}>{e.label}</div>}
+                          </div>
+                          {amt != null && <div className={cn("shrink-0 num text-[15px] font-bold pt-px", OUT.has(e.action) ? "text-[var(--color-red)]" : "text-[var(--color-label)]")} data-amount>
+                            {e.action === "menu.price" ? (amt > 0 ? "+" : "−") + formatINR(Math.abs(amt), { whole: true }) : (OUT.has(e.action) ? "−" : "") + formatINR(Math.abs(amt))}
+                          </div>}
+                        </div>
+                        {e.reason && <div className="mt-2 text-[13px] leading-snug text-[var(--color-label)] border-l-2 border-[color-mix(in_srgb,var(--hue)_55%,transparent)] pl-2.5 line-clamp-2" data-reason>“{e.reason}”</div>}
+                        <Changes e={e} />
+                        <div className="mt-2.5 flex items-center gap-2 min-w-0 text-[12px] text-steel">
+                          <span className="h-5 w-5 shrink-0 rounded-full grid place-items-center text-[9.5px] font-bold bg-[var(--color-fill)] text-[var(--color-label-2)]" aria-hidden>{initials(who)}</span>
+                          <span className="truncate font-semibold text-[var(--color-label-2)]">{who}</span>
+                          <span aria-hidden>·</span>
+                          <span className="num shrink-0">{time(e.at)}</span>
+                        </div>
+                      </div>
+                    </li>);
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
       {more && rows.length > 0 && <div className="text-center"><Link href={`/audit?days=${days}&before=${events[events.length - 1].id}`} className="btn btn-gray !h-11 px-5 inline-flex items-center text-sm font-semibold">Older</Link></div>}
       <p className="text-[11.5px] text-steel flex items-center gap-1.5"><Settings2 size={12} /> Owner, managers, supervisors</p>
     </div>

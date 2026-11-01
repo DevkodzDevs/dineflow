@@ -667,3 +667,15 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
 - 0158's `clean_board` with one change: `'inspect'` is built when the caller is owner / manager / supervisor / supervisor_2 (as
   `inspect_room`) instead of when `_clean_may_assign()`, and the board returns `'can_inspect'`. Dry run `dry160b.sql` (inspection
   switched on inside the rolled-back transaction): Selvi can_assign=false, can_inspect=true, 23 rooms; Kannan none. Applied live.
+
+## 0161 — flow tests (2026-11-02)
+- `flowtest_admin(p_op, p_rid, p_ref)`: master only (`is_platform_admin`), demo properties only (`demo_expires_at` set) —
+  `prepare`, `staff`, `free_table`, `age_job`, `finish` (admin-and-membership.md, *Flow tests*). Execute: authenticated.
+  Dry-run `dry161.mjs` 9/9 (rolled back); applied with `migrate.mjs --live`.
+
+## 0162 — checklists per person (2026-11-02)
+- `checklists.people` / `people_off` (uuid[]); `_checklist_default(profile, d, j, p)` (any person, 0123's rule);
+  `_checklist_for_me(d, j, p, people, off)` (5 args) behind `checklists_read` and `checklist_tick`; `staff_checklists_set(profile, lists)`
+  (owner, manager; not for an owner / manager / supervisor; active lists only). Dry runs `dry162b.sql` / `dry162c.sql` (rolled back, as
+  `authenticated` — the plain connection skips RLS): Selvi taken off all → sees none, her tick refused; Kannan given a Kitchen list → 9 → 10,
+  one entry; Reset → 9; Selvi cannot set lists; an owner target refused. Applied live with `--live`.

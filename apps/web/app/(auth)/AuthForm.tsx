@@ -71,7 +71,7 @@ export function AuthForm({ mode, action, pendingApproval }:
           : copy.sub}
       </p>
       <form action={act} className="mt-8 space-y-4">
-        {mode !== "login" && <Field label="Your name"><input name="full_name" required autoComplete="name" placeholder="Priya Kumar" /></Field>}
+        {mode !== "login" && <Field label="Your name"><input name="full_name" required autoComplete="name" placeholder="Your full name" /></Field>}
         {mode === "signup" && (<>
           <Field label="What are you running?">
             <div className="grid grid-cols-3 gap-2">
@@ -85,7 +85,7 @@ export function AuthForm({ mode, action, pendingApproval }:
         </>)}
         {mode === "join" && (
           <Field label="DineFlow code" hint="Property code or invite code">
-            <input name="code" required className="num" placeholder="dine-res-mano-00001" maxLength={40} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+            <input name="code" required className="num" placeholder="Code from your manager" maxLength={40} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
           </Field>
         )}
         {/* On sign-in this is the DineFlow id, not a mailbox, so it is not typed as an email field —
@@ -95,7 +95,7 @@ export function AuthForm({ mode, action, pendingApproval }:
               <input ref={idRef} onPaste={onPasteId} name="email" required autoFocus autoComplete="username" autoCapitalize="none"
                 autoCorrect="off" spellCheck={false} placeholder="Login ID or email" />
             </Field>
-          : <Field label="Email"><input name="email" type="email" required autoComplete="email" placeholder="you@restaurant.in" /></Field>}
+          : <Field label="Email"><input name="email" type="email" required autoComplete="email" placeholder="Your email address" /></Field>}
         <Field label="Password"><PasswordInput name="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"}
           onPaste={mode === "login" ? onPastePassword : undefined} /></Field>
         {mode === "login" && (

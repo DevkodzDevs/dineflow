@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { listFor, type ListAudience } from "@/lib/checklists";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { todayIST } from "@/lib/format";
@@ -29,7 +30,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     s.from("jobs").select("id, title, place, priority, due_at, status, assigned_at, assigned_to, taken_by, guest_impact, created_at")
       .in("status", ["pending", "in_progress"]).or(`assigned_to.eq.${me},taken_by.eq.${me}`).order("priority").order("due_at", { ascending: true, nullsFirst: false }).limit(40),
     s.from("jobs").select("id", { count: "exact", head: true }).eq("done_by", me).gte("done_at", `${today}T00:00:00+05:30`),
-    s.from("checklists").select("id, name, shift, items, departments, jobs, positions").eq("is_active", true).order("sort_order"),
+    s.from("checklists").select("id, name, shift, items, departments, jobs, positions, people, people_off").eq("is_active", true).order("sort_order"),
     s.from("checklist_runs").select("checklist_id, done, completed_at").eq("run_date", today),
     s.from("staff_attendance").select("work_date, in_at, out_at, hours").eq("profile_id", me).gte("work_date", from).order("work_date"),
     s.from("staff_leave").select("id, from_date, to_date, days, kind, reason, status, decision_note, decided_at, created_at").eq("profile_id", me).order("from_date", { ascending: false }).limit(40),
@@ -52,11 +53,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     team: DEPARTMENTS.find((d) => d.key === dept)?.label ?? null, teamKey: dept,
     property: session.restaurant.name,
     jobs: (jobs.data ?? []) as Home["jobs"], doneToday: done.count ?? 0,
-    // the lists for them — everyone's, and those naming their team, job or position (a supervisor's RLS hands them every list)
-    lists: (lists.data ?? []).filter((l) => ((l.items as string[] | null) ?? []).length).filter((l) => {
-      const d = (l.departments as string[] | null) ?? [], j = (l.jobs as string[] | null) ?? [], ps = (l.positions as string[] | null) ?? [];
-      return !d.length && !j.length && !ps.length || (!!dept && d.includes(dept)) || j.includes(session.profile.role) || (!!p.position && ps.includes(p.position));
-    }).map((l) => ({ id: l.id as string, name: l.name as string, shift: l.shift as string, items: l.items as string[], done: (runOf(l.id)?.done ?? {}) as Record<string, { name: string; at: string }> })),
+    // the lists for them — everyone's, those naming their team, job or position, and what the owner or a manager changed
+    // for them on Staff (lib/checklists.ts listFor; a supervisor's RLS hands them every list)
+    lists: (lists.data ?? []).filter((l) => ((l.items as string[] | null) ?? []).length).filter((l) =>
+      listFor(l as ListAudience, { id: me, role: session.profile.role, department: p.department ?? pos?.dept ?? null, position: p.position ?? null })).map((l) => ({ id: l.id as string, name: l.name as string, shift: l.shift as string, items: l.items as string[], done: (runOf(l.id)?.done ?? {}) as Record<string, { name: string; at: string }> })),
     attendance: (att.data ?? []) as Home["attendance"],
     leave: (leave.data ?? []) as Home["leave"],
     pay: pay.data ? { basis: pay.data.basis as string, amount: Number(pay.data.amount) } : null,

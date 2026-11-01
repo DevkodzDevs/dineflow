@@ -118,15 +118,34 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
             {[["This month", total], ["Today", month === today.slice(0, 7) ? todayTotal : 0], ["GST in it", gst]].map(([k, v]) => (
               <div key={k as string} className="feather !rounded-[18px] px-3.5 py-3 min-w-0"><div className="text-[12px] font-bold text-steel">{k}</div><div className="font-display num text-[22px] leading-tight truncate" title={inr(v as number)} data-expense-total={k}>{formatINR(Number(v), { whole: true })}</div></div>))}
           </div>
-          <Card>
-            <div className="text-[15px] font-extrabold mb-2.5">Where it went</div>
-            {heads.length === 0 ? <p className="text-sm text-steel">Nothing spent yet</p> : <div className="space-y-2">
-              {heads.map(([c, v]) => (
-                <button key={c} type="button" onClick={() => setOnly(only === c ? null : c)} aria-pressed={only === c} className={cn("!min-h-11 w-full text-left rounded-xl px-2 -mx-2 py-1.5", only === c ? "bg-[var(--color-fill)]" : "hover:bg-[var(--color-fill)]")}>
-                  <div className="flex justify-between gap-2 text-[14px]"><span className="font-bold truncate">{c}</span><span className="num font-bold shrink-0">{inr(v)}</span></div>
-                  <div className="mt-1 h-2 rounded-full bg-[var(--color-fill)] overflow-hidden"><div className="h-full rounded-full bg-[var(--color-orange)]" style={{ width: `${(v / max) * 100}%` }} /></div>
-                </button>))}
-            </div>}
+          {/* Where it went (2026-11-02, the owner: "design — not looking good"; it was a name, a figure and one long orange bar).
+              The month as one split bar in each head's colour, then a row per head: its icon tile, the name with its share, the
+              amount, and a slim bar in the same colour. A tap filters the list to that head. */}
+          <Card data-where>
+            <div className="flex items-baseline justify-between gap-3 mb-3">
+              <div className="text-[15px] font-extrabold">Where it went</div>
+              {heads.length > 0 && <div className="text-[12.5px] font-semibold text-steel"><span className="num">{heads.length}</span> {heads.length === 1 ? "head" : "heads"}</div>}
+            </div>
+            {heads.length === 0 ? <p className="text-sm text-steel">Nothing spent yet</p> : <>
+              <div className="flex h-3 rounded-full overflow-hidden bg-[var(--color-fill)] gap-[2px] mb-3" data-where-split aria-hidden>
+                {heads.map(([c, v]) => <span key={c} className="h-full first:rounded-l-full last:rounded-r-full transition-[flex-grow] duration-500" style={{ flexGrow: v, flexBasis: 0, background: `var(--color-${(CAT_ICON[c] ?? CAT_ICON.Other)[1]})`, opacity: only && only !== c ? 0.3 : 1 }} />)}
+              </div>
+              <div className="space-y-1">
+                {heads.map(([c, v]) => { const [I, hue] = CAT_ICON[c] ?? CAT_ICON.Other; const pct = total ? Math.round((v / total) * 100) : 0; return (
+                  <button key={c} type="button" onClick={() => setOnly(only === c ? null : c)} aria-pressed={only === c} data-where-head={c}
+                    style={{ ["--hue" as string]: `var(--color-${hue})` }}
+                    className={cn("!min-h-[3.25rem] w-full text-left rounded-2xl px-2.5 -mx-2.5 py-2 flex items-center gap-3 transition-colors", only === c ? "bg-[color-mix(in_srgb,var(--hue)_12%,transparent)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--hue)_40%,transparent)]" : "hover:bg-[var(--color-fill)]")}>
+                    <span className="h-9 w-9 shrink-0 rounded-[12px] grid place-items-center bg-[color-mix(in_srgb,var(--hue)_16%,transparent)] text-[var(--hue)]" aria-hidden><I size={17} strokeWidth={2.2} /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="min-w-0 truncate text-[14px] font-bold">{c} <span className="text-[12px] font-semibold text-steel num">{pct}%</span></span>
+                        <span className="num text-[14px] font-bold shrink-0">{inr(v)}</span>
+                      </span>
+                      <span className="mt-1.5 block h-1.5 rounded-full bg-[var(--color-fill)] overflow-hidden"><span className="block h-full rounded-full bg-[var(--hue)]" style={{ width: `${Math.max(4, (v / max) * 100)}%` }} /></span>
+                    </span>
+                  </button>); })}
+              </div>
+            </>}
           </Card>
         </div>
       </div>
@@ -181,17 +200,35 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
                 </div>
               </section>))}
           </div>
-          <div className="max-sm:hidden divide-y divide-[var(--color-separator)]">
-            {list.map((e) => (<div key={e.id} className="contents">
-              <div data-expense={e.id} className={cn("max-sm:hidden py-3 flex items-center gap-3 min-w-0", e.voided_at && "opacity-55")}>
-                <div className="w-14 shrink-0 text-[12px] font-bold text-steel leading-tight">{day(e.spent_on)}</div>
+          {/* From sm (2026-11-02, the owner: "design"): the date was a 56px column of "Mon, 2 / Nov" wrapping. Now each entry
+              is a soft row — a calendar tile (the day big, the weekday and month small), the head's icon in its colour, what and
+              who to, the details as chips (how paid, the bill, the GST, who wrote it, the note), the amount with small paise, and
+              Strike out as a round key. */}
+          <div className="max-sm:hidden space-y-2" data-expense-rows>
+            {list.map((e) => { const [CI, hue] = CAT_ICON[e.category] ?? CAT_ICON.Other; const M = METHODS.find(([m]) => m === e.method); const MI = M?.[2];
+              const [whole, paise] = inr(e.amount).split("."); const by = e.created_by ? names[e.created_by] : null; const dt = new Date(e.spent_on + "T00:00:00"); return (
+              <div key={e.id} data-expense={e.id} style={{ ["--hue" as string]: `var(--color-${hue})` }}
+                className={cn("flex items-center gap-3.5 min-w-0 rounded-[20px] bg-[var(--color-bg-2)] ring-1 ring-[var(--color-separator)] p-3 pr-2.5 transition-shadow hover:shadow-[0_10px_26px_-20px_rgb(0_0_0/0.7)]", e.voided_at && "opacity-60")}>
+                <span className="w-[3.25rem] shrink-0 rounded-[14px] bg-[var(--color-fill)] overflow-hidden text-center" data-expense-date title={dayName(e.spent_on)}>
+                  <span className="block text-[10px] font-extrabold uppercase tracking-[.1em] text-[var(--color-on-label)] bg-[var(--color-label)] py-[3px]">{dt.toLocaleDateString("en-IN", { month: "short" })}</span>
+                  <span className="block font-display num text-[21px] leading-none pt-1.5">{dt.getDate()}</span>
+                  <span className="block text-[10.5px] font-bold text-steel pb-1.5 pt-0.5">{dt.toLocaleDateString("en-IN", { weekday: "short" })}</span>
+                </span>
+                <span className="h-11 w-11 shrink-0 rounded-[15px] grid place-items-center bg-[color-mix(in_srgb,var(--hue)_16%,transparent)] text-[var(--hue)]" aria-hidden><CI size={20} strokeWidth={2.2} /></span>
                 <div className="min-w-0 flex-1">
-                  <div className={cn("text-[15px] font-bold truncate", e.voided_at && "line-through")}>{e.category}{e.payee && <span className="font-normal text-steel"> · {e.payee}</span>}</div>
-                  <div className="text-[12.5px] text-steel truncate">{e.method.toUpperCase()}{e.ref ? ` · ${e.ref}` : ""}{Number(e.gst_amount) > 0 ? ` · GST ${inr(e.gst_amount)}` : ""}{e.created_by && names[e.created_by] ? ` · ${names[e.created_by]}` : ""}{e.note ? ` · ${e.note}` : ""}{e.voided_at ? ` · struck out: ${e.void_reason ?? ""}` : ""}</div>
+                  <div className={cn("text-[15.5px] font-bold truncate", e.voided_at && "line-through")}>{e.category}{e.payee && <span className="font-medium text-steel"> · {e.payee}</span>}</div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 min-w-0">
+                    <span className="inline-flex items-center gap-1 h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-bold text-[var(--color-label-2)]">{MI && <MI size={12} aria-hidden />}{M ? M[1] : e.method.toUpperCase()}</span>
+                    {e.ref && <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold text-steel num max-w-[10rem] truncate">#{e.ref}</span>}
+                    {Number(e.gst_amount) > 0 && <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[color-mix(in_srgb,var(--color-blue)_14%,transparent)] text-[11.5px] font-bold text-[var(--color-blue)] num">GST {inr(e.gst_amount)}</span>}
+                    {by && <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] font-semibold text-steel max-w-[10rem] truncate">by {by}</span>}
+                    {e.note && <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-[var(--color-fill)] text-[11.5px] text-steel max-w-[16rem] truncate" title={e.note}>{e.note}</span>}
+                    {e.voided_at && <span className="inline-flex items-center gap-1 h-6 px-2.5 rounded-full bg-[var(--color-red-2)] text-[11.5px] font-bold text-[var(--color-red)] max-w-full truncate"><Ban size={12} aria-hidden />Struck out{e.void_reason ? ` · ${e.void_reason}` : ""}</span>}
+                  </div>
                 </div>
-                <div className={cn("shrink-0 num font-extrabold text-[16px]", e.voided_at && "line-through")}>{inr(e.amount)}</div>
-                {canVoid && !e.voided_at && <button type="button" disabled={pending} onClick={() => strike(e)} className="shrink-0 h-11 w-11 grid place-items-center rounded-xl text-steel hover:text-chili hover:bg-[var(--color-fill)]" aria-label={`Strike out ${e.category}`} data-strike><Ban size={17} /></button>}
-              </div></div>))}
+                <div className={cn("shrink-0 font-display num leading-none text-[22px]", e.voided_at && "line-through")} data-expense-amount>{whole}<span className="text-[13px] text-steel">.{paise}</span></div>
+                {canVoid && (!e.voided_at ? <button type="button" disabled={pending} onClick={() => strike(e)} className="shrink-0 h-11 w-11 grid place-items-center rounded-full text-steel bg-[var(--color-fill)] hover:text-chili hover:bg-[var(--color-red-2)] transition-colors" aria-label={`Strike out ${e.category}`} title="Strike out" data-strike><Ban size={17} /></button> : <span className="w-11 shrink-0" aria-hidden />)}
+              </div>); })}
           </div>
           </>)}
       </Card>

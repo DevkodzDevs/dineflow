@@ -145,3 +145,14 @@ pnpm test                 # lib/print/route.test.ts covers station routing (4)
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+## 2026-11-02 — the trail's rows (the owner: "messy — ultra modern, user friendly")
+- It was one list of raw column names in the narrow number font ("kind out amount 1000", "qty 5 note demo opening stock unit
+  kg"), a bare `charge.add`, red for every settings change, and the date on every line. Now **a heading per IST day** with its count
+  (`[data-audit-day]`), and each event a card: its family's icon tile and colour (money green, orders amber, stock blue, menu violet,
+  people & settings grey — `HUE`; settings has the sliders icon), what happened and to what, the reason as a quote, **the changes as
+  named chips** (`[data-change]`, `KEY` names the columns: GSTIN, Quantity, Type…; before struck through → after), who (an initial
+  and a name) and the time, the amount on the right — red with a minus when money left (`OUT`).
+- The chips leave out what the row already says: the amount when it is the row's amount, a note that is the reason, the type of a
+  cash in / out. `charge.add` (0150) is *Charge added* and `bill.refund` *Bill refunded*; an unknown action is spelled out
+  ("Foo bar"), never shown raw. shots49: 16 events, 0 raw names, 0 spilling, no sideways scroll at 1920/1440/1194/834/412.

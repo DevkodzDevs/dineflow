@@ -5,9 +5,11 @@ import { SlidersHorizontal as AccessIcon, Plug, BarChart3 } from "lucide-react";
 import { Button, Field, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
 import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, ROLE_DEFAULT, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
-import { createInvite, setAccess, setPasswordRight, setAssistAccess, setGrant, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency } from "./actions";
+import { createInvite, setAccess, setPasswordRight, setAssistAccess, setGrant, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency, setStaffChecklists } from "./actions";
 import { PositionFields, TeamChart, PositionsGuide, Avatar, DeptIcon, ModuleChips, titleOf, deptOf, levelFor, DEPT_ORDER, deptHue } from "./StaffPositions";
 import { StaffGrid, type Duty } from "./StaffGrid";
+import { StaffChecklists, type StaffList, type ListPick } from "./StaffChecklists";
+import { SEES_EVERY_LIST } from "@/lib/checklists";
 import { copyText } from "@/lib/clipboard";
 import { Say } from "@/components/ui/Say";
 
@@ -98,7 +100,11 @@ function Fact({ icon, tint, caption, title, className, children, ...rest }: { ic
 }
 
 const LAYOUT_KEY = "df-staff-layout";
-export function StaffClient({ me, myRole, myModules, type, enabled, staff, invites, loginDomain, onDuty = 0, duty = [], canIssue = false }: { me: string; myRole: Role; myModules: string[]; type: PropertyType; enabled: string[] | null; staff: Staff[]; invites: Invite[]; loginDomain: string; onDuty?: number; duty?: Duty[]; canIssue?: boolean }) {
+export function StaffClient({ me, myRole, myModules, type, enabled, staff, invites, loginDomain, onDuty = 0, duty = [], canIssue = false, lists = [] }: { me: string; myRole: Role; myModules: string[]; type: PropertyType; enabled: string[] | null; staff: Staff[]; invites: Invite[]; loginDomain: string; onDuty?: number; duty?: Duty[]; canIssue?: boolean; lists?: StaffList[] }) {
+  /* the checklists each person handles (0162): the owner or a manager sets them, from the position by default */
+  const canLists = myRole === "owner" || myRole === "manager";
+  const [addLists, setAddLists] = useState<ListPick>(null); const [accLists, setAccLists] = useState<ListPick>(null);
+  const listSave = (id: string, r: string, pick: ListPick) => canLists && pick !== null && !SEES_EVERY_LIST.includes(r) ? setStaffChecklists(id, pick === "position" ? null : pick) : Promise.resolve({ ok: true as const });
   /* temporary passwords (0136): the owner's switch on each manager, shown at once and saved behind */
   const [issue, setIssue] = useState<Record<string, boolean>>({});
   const issueOn = (p: Staff) => issue[p.id] ?? !!p.can_issue_passwords;
@@ -113,7 +119,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
   // the ranks below mine — the only ones I may appoint anyone to
   const assignable = rolesIMayAssign(myRole);
   const [acc, setAcc] = useState<Staff | null>(null); const [role, setRole] = useState<Role>(assignable[assignable.length - 1] ?? "employee"); const [ticks, setTicks] = useState<string[] | null>(null); const [active, setActive] = useState(true); const [err, setErr] = useState<string | null>(null);
-  const openAccess = (p: Staff) => { setAcc(p); setRole(p.role); setTicks(p.allowed_modules); setActive(p.is_active); setErr(null); setAccPos(posOf(p)); };
+  const openAccess = (p: Staff) => { setAcc(p); setRole(p.role); setTicks(p.allowed_modules); setActive(p.is_active); setErr(null); setAccPos(posOf(p)); setAccLists(null); };
   /* positions (0107): what each person is — department, title, level — as against the role that opens screens */
   const [accPos, setAccPos] = useState<Pos>(posOf(null));
   const [view, setView] = useState<"people" | "chart" | "guide">("people");
@@ -179,7 +185,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
   const [otp, setOtp] = useState(""); const [otpDone, setOtpDone] = useState(false); const [otpErr, setOtpErr] = useState<string | null>(null);
   const addOn = (k: string) => addTicks === null ? true : addTicks.includes(k);
   const addToggle = (k: string) => { const base = addTicks === null ? ceiling(addRole).filter((x) => x !== "dashboard") : addTicks; setAddTicks(base.includes(k) ? base.filter((x) => x !== k) : [...base, k]); };
-  const openAdd = () => { setAdd(true); setMade(null); setAddErr(null); setAddRole(assignable[assignable.length - 1] ?? "employee"); setAddTicks(null); setAddPos(posOf(null)); };
+  const openAdd = () => { setAdd(true); setMade(null); setAddErr(null); setAddRole(assignable[assignable.length - 1] ?? "employee"); setAddTicks(null); setAddPos(posOf(null)); setAddLists(null); };
   // the slip for someone already on the list
   const showLogin = (p: Staff) => start(async () => {
     const r = await staffLogin(p.id);
@@ -466,9 +472,11 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               <SwitchRow title="Assist (AI)" hint="The AI helper button" on={assistOn(acc)} data={{ "data-assist-switch": "" }}
                 onToggle={() => { const p = acc, on = !assistOn(p); setAiOn((m) => ({ ...m, [p.id]: on })); start(async () => { const r = await setAssistAccess(p.id, on); if ("error" in r) { setAiOn((m) => ({ ...m, [p.id]: !on })); setErr(r.error!); } }); }} />
             </div>}
+            {canLists && <div data-acc-lists><div className="eyebrow mb-2">Checklists</div>
+              <StaffChecklists lists={lists} person={{ id: acc.id, role, department: accPos.department || positionByKey(accPos.position)?.dept || null, position: accPos.position || null }} pick={accLists} onPick={setAccLists} /></div>}
             {acc.id !== me && <div className={SWITCH_GROUP}><SwitchRow title="Active" hint="Off = can't sign in" on={active} onToggle={() => setActive(!active)} /></div>}
             {err && <p className="text-sm text-chili">{err}</p>}
-            <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setAccess(acc.id, role, role === "owner" ? null : ticks, active); if ("error" in r) { setErr(r.error!); return; } if (!samePos(accPos, posOf(acc))) { const x = await savePos(acc.id, accPos); if ("error" in x) { setErr(x.error!); return; } } setAcc(null); })} data-save-access>Save</Button><Button variant="gray" onClick={() => setAcc(null)}>Cancel</Button></div>
+            <div className="flex gap-2"><Button className="flex-1" disabled={pending} onClick={() => start(async () => { const r = await setAccess(acc.id, role, role === "owner" ? null : ticks, active); if ("error" in r) { setErr(r.error!); return; } if (!samePos(accPos, posOf(acc))) { const x = await savePos(acc.id, accPos); if ("error" in x) { setErr(x.error!); return; } } const y = await listSave(acc.id, role, accLists); if ("error" in y) { setErr(y.error!); return; } setAcc(null); })} data-save-access>Save</Button><Button variant="gray" onClick={() => setAcc(null)}>Cancel</Button></div>
             {/* the owner gives a manager or a supervisor the two owner's screens (0140): saved at once, like Assist */}
             {myRole === "owner" && ["manager", "supervisor", "supervisor_2"].includes(acc.role) && <div className={SWITCH_GROUP} data-grants>
               <SwitchRow title="Connections" hint="Swiggy, Zomato, payments" icon={<Plug size={18} />} on={grantsOf(acc).includes("connections")} data={{ "data-grant-switch": "connections" }} onToggle={() => flipGrant(acc, "connections")} />
@@ -532,6 +540,8 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             // the emergency contact goes on the same way (0134); a failure leaves the sign-in made and says so
             const eName = String(fd.get("emergency_name") ?? "").trim(), ePhone = String(fd.get("emergency_phone") ?? "").trim();
             if (eName || ePhone) { const x = await setEmergency(r.user_id, eName, ePhone); if ("error" in x) setAddErr(`Added — but the emergency contact was not saved: ${x.error}`); }
+            // their checklists (0162) once their position is on, so the database reads the same position the screen did
+            { const x = await listSave(r.user_id, addRole, addLists); if ("error" in x) setAddErr(`Added — but the checklists were not saved: ${x.error}`); }
             setOtp(""); setOtpDone(false); setOtpErr(null);
             setMade({ title: `${r.full_name} · ${ROLE_LABEL[r.role as Role]}`, staff_code: r.staff_code, login_id: r.login_id, temp_password: r.temp_password,
                       verify: { userId: r.user_id, email: r.contact_email, mailed: r.mailed, mailError: r.mailError, echoed: r.echoed } });
@@ -567,6 +577,8 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             <Field label="Login ID" hint="Blank = from name">
               <div className="flex items-center gap-2"><input name="login_id" className="flex-1" placeholder="Optional" /><span className="text-sm text-steel shrink-0">@{loginDomain}</span></div>
             </Field>
+            {canLists && <div data-add-lists><div className="eyebrow mb-2">Checklists</div>
+              <StaffChecklists lists={lists} person={{ role: addRole, department: addPos.department || positionByKey(addPos.position)?.dept || null, position: addPos.position || null }} pick={addLists} onPick={setAddLists} /></div>}
             <div>
               <div className="eyebrow mb-2">Sections they can open</div>
               {controlRoomSwitch(addTicks, addRole, () => addToggle("dashboard"))}

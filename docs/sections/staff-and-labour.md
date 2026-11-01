@@ -346,3 +346,12 @@ year. See [my-day.md](my-day.md).
   this month, else one day at their rate; chips for 1 day, 1 week and the balance; the rate and skill beside them; still a field
   (`[data-pay-input]`, `[data-pay-pick]`). Adding a labourer: the skill fills its usual day's wage (`wageFor` — what this property
   pays that skill now, else a common rate) until the wage is typed.
+
+- **Checklists in Add staff and Access (2026-11-02, 0162).** `StaffChecklists.tsx` — for the owner and managers only
+  (`canLists`); `page.tsx` reads the active lists (with their audience and per-person changes) in the same `Promise.all`. Each list
+  is a 44px+ chip (`[data-staff-list]`, `data-on`, `data-differs`): shift icon, name (two lines at most), duties, a tick; an amber dot
+  when it differs from the position. The head: "n of m", "From position" (green) or "Changed" (amber), and **Reset**
+  (`[data-staff-lists-reset]`). Add staff starts from the chosen role and position (`[data-add-lists]`) and saves after the position
+  (`listSave` → `setStaffChecklists`); Access (`[data-acc-lists]`) starts from what is saved, follows a position change in the sheet,
+  and saves with Save. The sheet's pick: null = untouched (nothing sent), "position" = Reset (sends null), a list = by hand. An owner,
+  manager or supervisor reads "Sees every checklist" (`[data-staff-lists="every"]`); no lists → "No checklists yet · Make one".

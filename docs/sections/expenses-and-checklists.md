@@ -112,3 +112,27 @@ node batch2.mjs     # 40 checks on a throwaway demo — see testing-and-gates.md
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+## Each person's lists, set on Staff (0162, 2026-11-02 — the owner: "when the owner or a manager adds or updates a staff member, set the checklists that person handles — by default from their position, and the manager can change it")
+- A list's audience (teams, jobs, positions) is still the **default**. Each list also keeps `people uuid[]` (given it though
+  their team, job and position are not named) and `people_off uuid[]` (taken off it, an Everyone list too).
+  `_checklist_for_me(d, j, p, people, people_off)`: the owner, managers, supervisors → every list; taken off → no; given → yes;
+  else 0123's rule. RLS on `checklists` (so `checklist_runs`) and `checklist_tick` use it. `checklist_save` never touches the
+  two columns, so editing a list keeps the changes.
+- `staff_checklists_set(profile, lists)` (owner, manager): `lists` = the active lists ticked for the person; a list their
+  position already gives them stores nothing, a difference stores one entry; null = back to the position (both cleared).
+  Refuses an owner, manager or supervisor ("see every list") and another property's list. Inactive lists are left alone.
+- **lib/checklists.ts** `listByPosition` / `listFor` are the screen's copy of `_checklist_default` / `_checklist_for_me`
+  (tests: `lib/checklists.test.ts`). My day (`home/page.tsx`) filters with `listFor`.
+- **The Checklists cards** show a grey chip `[data-list-people]` with `+n` (added) and `−n` (taken off) to whoever writes the lists.
+- **Watch:** on manoooo (2026-11-02) all ten lists are *Everyone* — "Closing — kitchen" names no team — so every person's default
+  is every list until each list's *Who is this for* is set.
+
+## 2026-11-02 — Where it went and the rows (the owner: "design")
+- **Where it went** (`[data-where]`): the month as one split bar in each head's colour (`[data-where-split]`), then a row per head
+  (`[data-where-head]`) — its icon tile, the name with its share %, the amount, a slim bar in the same colour. A tap still filters the
+  list; the picked head is washed in its colour and the split dims the rest. It was a name, a figure and one long orange bar.
+- **The rows from `sm`** (`[data-expense-rows]`) match the phone's cards: a calendar tile (`[data-expense-date]`: month, the day
+  big, the weekday) — the date had been a 56px column of "Mon, 2 / Nov" wrapping — the head's icon, what and who to, the details as
+  chips (how paid, the bill, GST, by whom, the note, struck out), the amount with small paise, Strike out a round key. shots49:
+  4 rows inside the card at 1920/1440/1194/834, each with its tile.

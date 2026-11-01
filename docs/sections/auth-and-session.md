@@ -185,3 +185,17 @@ pnpm --filter @dineflow/web build
   PasswordClient go there with `window.location.replace` (the button stays "One moment…" / "Saving"); *Continue with
   temporary password* does the same instead of `router.push("/dashboard"); router.refresh()`. **Do not put a `redirect()` or
   a `router.push` from these screens into the app back.** Checked: `r159.mjs` (login, three paths), `live159b.mjs`.
+
+## 2026-11-02 — the wall's live board; Join's placeholders
+- **The owner's iPad: "the section under the clock is empty — ultra modern, 3D, animated; don't touch the flap clock."** On a touch
+  screen from 768px the frame is `align-items: flex-start` (globals.css, the no-bounce frame), so the wall was only as tall as its
+  words and `justify-between` spread nothing — the bottom half sat empty. The wall is now `lg:self-stretch` and a flex column: the
+  logo, then the clock + headline + line + **the live board** (`Showcase.tsx` / `Showcase.module.css`, `[data-auth-showcase]`)
+  taking what is left, then the tagline at the foot. The board: a glass panel tilted in perspective, four tiles (Kitchen, Front
+  desk, Pantry, Till) with one lifting toward the viewer every 2.8 s, a bar chart, a grid floor and a soft orb. Pure CSS motion,
+  still for reduced motion. Under 960px tall it drops the chart and the small labels and tilts less (at 834 its near corner
+  reached the tagline; at 1440×900 the full board made the wall 978px and the page scrolled); under 700px it is hidden. The
+  flap clock is untouched. shots49: at 1194×834 dark/royal, 1366×1024 paper, 1440×900, 1920×1080 the wall is the screen's
+  height, the tagline 48px from the foot, the board clear of it, no sideways scroll.
+- **Join's placeholders** read as what to type, not samples to copy (the owner: "placeholder not good"): *Your full name* (also on
+  Open a restaurant), *Code from your manager*, *Your email address* — were `Priya Kumar`, `dine-res-mano-00001`, `you@restaurant.in`.

@@ -16,7 +16,8 @@ export default async function TestingPage() {
   await requireAdmin();
   const s = await createClient();
   const [{ data: runs }, { data: props }, { data: bundle }, { data: crashes }] = await Promise.all([
-    s.from("selftest_runs").select("suite, status, ms, checks, ran_at").order("ran_at", { ascending: false }).limit(200),
+    // a flow test's run (suite "flow:…", Master control → Flow tests) is kept here too but is not one of these suites
+    s.from("selftest_runs").select("suite, status, ms, checks, ran_at").not("suite", "like", "flow:%").order("ran_at", { ascending: false }).limit(200),
     s.from("restaurants").select("id, name").is("demo_expires_at", null).order("name"),
     s.rpc("session_bundle"),
     // 0149: the crashes people saw this week, beside the suites (the master reads client_errors)

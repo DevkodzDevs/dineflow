@@ -144,3 +144,12 @@ export async function setPosition(userId: string, p: { position: string | null; 
   if (error) return { error: error.message };
   revalidatePath("/staff"); return { ok: true as const };
 }
+
+/** The checklists one person handles (0162; the owner or a manager): the active lists ticked for them, or null to put them
+ *  back on their position's lists. Revalidates the screens that show lists. */
+export async function setStaffChecklists(userId: string, lists: string[] | null) {
+  const s = await createClient();
+  const { error } = await s.rpc("staff_checklists_set", { p_profile: userId, p_on: lists });
+  if (error) return { error: error.message };
+  ["/staff", "/tasks", "/home"].forEach((p) => revalidatePath(p)); return { ok: true as const };
+}

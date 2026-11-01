@@ -79,7 +79,9 @@
 .rate { min-width: 0; white-space: nowrap; }
 .rate b { font-size: 17px; font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .rate small { font-size: 12px; color: var(--color-label-3); }
-.act { flex-shrink: 0; display: flex; align-items: center; }
+/* one height for every foot (2026-11-02, "zigzag"): Check in, Cancel, Table + Folio and Folio alone are 40–48px tall, and an
+   arrival and the in-house stay beside it ended at different heights */
+.act { flex-shrink: 0; display: flex; align-items: center; min-height: 48px; }
 .folio { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 4px 0 12px; font-size: 13.5px; font-weight: 650; color: var(--color-label-2); }
 
 @media (pointer: coarse) { .folio { min-height: 44px; } }
