@@ -4,11 +4,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Wrench, Check, Play, Plus, ClipboardList, ShieldCheck, ShieldX, AlertTriangle, Star, ChevronDown, ChevronsUpDown, ChevronsDownUp, Clock, Brush, RotateCcw } from "lucide-react";
 import { deptOf } from "@/components/shell/sections";
 import { useLive } from "@/lib/useLive";
-import { Button, Card, Field, Segmented, cn, Empty, useToast, FlapSpell } from "@/components/ui";
+import { Button, Card, Field, Segmented, askText, cn, Empty, useToast, FlapSpell } from "@/components/ui";
 import { fmtSince } from "@/lib/format";
 import { addTask, setCondition, inspectRoom, buildSheet } from "./actions";
 import { setRoomStatus } from "../rooms/actions";
 import { takeJob, finishJob, assignJob } from "../cleaning/actions";
+import { CLEAN_BOSSES } from "@/lib/notify";
 
 type Task = { id: string; kind: string; status: string; notes: string | null; created_at: string; rooms: { number: string; floor: number } | null;
   assigned_to?: string | null; assigned_by?: string | null; assigned_at?: string | null; taken_by?: string | null; taken_at?: string | null };   // 0111
@@ -47,8 +48,8 @@ const KIND: Record<string, string> = { clean: "Clean", stayover: "Stayover servi
  * word (dirty → clean → inspected), the supervisor's sign-off, the day's task sheet in one press,
  * and the discrepancy report that used to wait for the night audit.
  */
-export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspect, inspectRule, people = [], me = "" }:
-  { today: string; tasks: Task[]; rooms: Room[]; stays: Stay[]; done: Done[]; canInspect: boolean; inspectRule: boolean; people?: Person[]; me?: string }) {
+export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspect, canAssign = canInspect, inspectRule, people = [], me = "" }:
+  { today: string; tasks: Task[]; rooms: Room[]; stays: Stay[]; done: Done[]; canInspect: boolean; canAssign?: boolean; inspectRule: boolean; people?: Person[]; me?: string }) {
   // whose a task is (0111): the names on the card, and the people a supervisor gives tasks to — housekeeping first
   const nameOf = (id: string | null | undefined) => (id ? (id === me ? "You" : people.find((p) => p.id === id)?.full_name ?? "Someone") : null);
   /* Who a task can be given to is decided by the work (2026-10-21, the owner: "Give to shows the owner — show the job
@@ -58,7 +59,8 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
      and general staff. Whoever has the task now stays in the list, so the select can show them. */
   const crewFor = (t: Task) => {
     const team = t.kind === "maintenance" ? "engineering" : "housekeeping";
-    const ok = (p: Person) => p.role !== "owner" && p.role !== "manager";
+    // never the owner, a manager or a supervisor (2026-11-01 — lib/notify.ts CLEAN_BOSSES): they give jobs out, they do not take them
+    const ok = (p: Person) => !CLEAN_BOSSES.includes(p.role);
     let list = people.filter((p) => ok(p) && deptOf(p.role, p.department ?? null, p.position ?? null) === team);
     if (!list.length) list = people.filter((p) => ok(p) && (p.role === "housekeeping" || p.role === "employee"));
     const now = t.assigned_to && !list.some((p) => p.id === t.assigned_to) ? people.filter((p) => p.id === t.assigned_to) : [];
@@ -101,7 +103,12 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
       finally { if (key) setBusy((b) => { const n = { ...b }; delete n[key]; return n; }); }
     });
   };
-  const fail = (r: Room) => { const note = window.prompt(`Room ${r.number} — what failed?`); if (note === null) return; act(() => inspectRoom(r.id, false, note), r.id); };
+  /* the app's dialog, not the browser's box (2026-10-31, the owner: "design is not good"). min 0: the browser box let a
+     supervisor fail a room with no reason, and inspect_room (0112) takes an empty note ("Failed inspection" alone). */
+  const fail = async (r: Room) => {
+    const note = await askText({ title: `Room ${r.number} — what failed?`, placeholder: "What needs redoing", chips: ["Bathroom", "Linen", "Dust", "Smell", "Minibar"], ok: "Fail room", tone: "danger", icon: "alert", min: 0 });
+    if (note === null) return; act(() => inspectRoom(r.id, false, note), r.id);
+  };
   const sheet = () => start(async () => { const r = await buildSheet(); if (r.error) toast(r.error, "err"); else toast(r.added ? `${r.added} task${r.added === 1 ? "" : "s"} added` : "Sheet already complete"); });
 
   const cols = [{ key: "pending", title: "To do" }, { key: "in_progress", title: "In progress" }];
@@ -343,10 +350,13 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
                   {/* "Done", never "Done · room ready": the long label ran out of its half of a narrow
                       card. What Done does to the room is in its title instead. */}
                   {/* a task given to someone else, or someone else on it, is theirs: no buttons for anyone but them and a supervisor */}
-                  {!canInspect && ((t.status === "pending" && t.assigned_to && t.assigned_to !== me) || (t.status === "in_progress" && t.taken_by && t.taken_by !== me && t.assigned_to !== me))
+                  {!canAssign && ((t.status === "pending" && t.assigned_to && t.assigned_to !== me) || (t.status === "in_progress" && t.taken_by && t.taken_by !== me && t.assigned_to !== me))
                     ? <p className="mt-3 text-[12.5px] text-steel" data-task-theirs>{t.status === "in_progress" ? `${nameOf(t.taken_by)}'s task` : `${nameOf(t.assigned_to)}'s task`} — ask a supervisor</p>
-                    : <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={!!busy[t.id]} onClick={() => act(() => takeJob("room", t.id), t.id)}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", c.key !== "pending" && "col-span-2")} disabled={!!busy[t.id]} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Done — room goes on sale"} onClick={() => act(() => finishJob("room", t.id), t.id)}><Check size={14} /> Done</Button></div>}
-                  {canInspect && <select className="mt-2 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={!!busy[t.id]} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign data-clean-assign="select"
+                    /* Start is the team's (0158: clean_take refuses an owner, manager or supervisor) — a boss gives the task out
+                       below, and keeps Done to close it */
+                    : <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" && (!canAssign || t.assigned_to === me) ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={!!busy[t.id]} onClick={() => act(() => takeJob("room", t.id), t.id)}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", (c.key !== "pending" || (canInspect && t.assigned_to !== me)) && "col-span-2")} disabled={!!busy[t.id]} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Done — room goes on sale"} onClick={() => act(() => finishJob("room", t.id), t.id)}><Check size={14} /> Done</Button></div>}
+                  {/* Give to… is a supervisor's and above — not a 2nd-level supervisor, who inspects but works as the team (0159) */}
+                  {canAssign && <select className="mt-2 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={!!busy[t.id]} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign data-clean-assign="select"
                     onChange={(e) => act(() => assignJob("room", t.id, e.target.value || null), t.id)}>
                     <option value="">{t.assigned_to ? "Anyone can take" : "Give to…"}</option>
                     {crewFor(t).map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.position_title ? ` — ${p.position_title}` : ""}</option>)}</select>}
@@ -354,11 +364,12 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
           {tasks.length === 0 && <div className="sm:col-span-2"><Empty title="Nothing on the sheet" hint="Check-outs add cleans automatically." /></div>}
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 items-start min-w-0">
-          <Card><h3 className="text-lg mb-3">New task</h3><div className="space-y-3">
+          {/* New task is a supervisor's and above (2026-11-01, the owner: not for the housekeeping or cleaning worker) */}
+          {canAssign && <Card><h3 className="text-lg mb-3">New task</h3><div className="space-y-3">
             <Field label="Room"><select value={f.room} onChange={(e) => setF({ ...f, room: e.target.value })}><option value="">Choose</option>{rooms.map((r) => <option key={r.id} value={r.id}>{r.number} · {r.status === "maintenance" ? "out of order" : r.condition}</option>)}</select></Field>
             <Field label="Type"><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{Object.entries(KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
             <Field label="Notes"><input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="AC not cooling, extra towels…" /></Field>
-            <button type="button" className="svc-btn go w-full" disabled={pending || !f.room} data-add-task onClick={() => start(async () => { const r = await addTask(f.room, f.kind, f.notes); if ("error" in r) return void toast(r.error!, "err"); setF({ room: "", kind: "clean", notes: "" }); })}><Plus size={18} strokeWidth={2.4} aria-hidden /> {f.room ? "Add task" : "Choose a room first"}</button></div></Card>
+            <button type="button" className="svc-btn go w-full" disabled={pending || !f.room} data-add-task onClick={() => start(async () => { const r = await addTask(f.room, f.kind, f.notes); if ("error" in r) return void toast(r.error!, "err"); setF({ room: "", kind: "clean", notes: "" }); })}><Plus size={18} strokeWidth={2.4} aria-hidden /> {f.room ? "Add task" : "Choose a room first"}</button></div></Card>}
           {/* each finished task a row: the room on its key card, what and who, and how long it took (2026-10-21) */}
           <Card data-hk-done><div className="flex items-center gap-2.5 mb-3"><span className="h-9 w-9 rounded-[11px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]" aria-hidden><Check size={17} strokeWidth={2.6} /></span><h3 className="text-lg leading-none">Recently done</h3><span className="ml-auto num text-[12.5px] font-semibold text-steel">{done.length}</span></div>
             {done.length === 0 ? <p className="text-[13.5px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] px-3 py-4 text-center">None finished yet</p>

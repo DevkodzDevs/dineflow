@@ -468,3 +468,30 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
   on an iPad with its 44px keys (was 128).
 - **Assign (`.crew-*`):** a head with the table in cyan, who has it and since when, how many on duty; "They clean" then "Everyone
   else" as tiles (initials, a green dot on duty, the job, "Now" on whoever has it); a search past eight people.
+## The ticket panel's head, 2026-10-31 (the owner: "Table T10" broke onto two lines) — replaces the head and guest lines above
+- **Why it wrapped:** `globals.css` sets `h1, h2, h3 { text-wrap: balance }` unlayered, which beats Tailwind's layered `truncate`,
+  so Safari wrapped the heading. Each line of the head is now its own block span with `whitespace-nowrap`. (The dish column's
+  `h1[data-till-title]` has the same flaw — not touched.)
+- **Row 1** (`[data-cart-top]`): a small uppercase label ("Table", "Dine in", "Order") over the figure on one line — the table name
+  at 28px (`[data-ticket-table]`), or "No table" / the order type at 22px. Right, for dine-in: the guest key and Change share one fill
+  capsule (`[data-cart-keys]`, hairline between) — `[data-guest]` round, `[data-pick-table]` a pill; 40px with a mouse, 44 on touch.
+- **Ticket row** (`[data-ticket-head]`, a hairline above): "Ticket" + the count badge, then a matching capsule (`role=toolbar`) with
+  prices, preview, courses and clear — the bin is always there, dimmed on an empty ticket, so the capsule never changes width; under
+  17rem with dishes, the word "Ticket" hides and the badge stays.
+- **Guest panel** (`[data-guest-fields]`): opens with an animated height; "Guest · optional" and a collapse key (`[data-guest-close]`);
+  Name and Phone 44px at 16px (no iOS zoom), side by side from 19rem, stacked on the narrow 1194 rail; Phone `type=tel`
+  (`[data-guest-phone]`); Enter on Name → Phone, Enter or Escape on Phone closes. shots159: "T12" one line (30px) at 1194 and 1366.
+
+## 2026-11-01 — the ticket is kept; the ready dock; no order on a table being cleaned
+- **The till keeps its ticket** (the owner: "I add a dish, go to another page, come back — it is gone"). `PosClient` saves
+  the lines (dish, size, add-ons, request, course), the ticket's request and the guest to `localStorage`
+  `df-pos-draft:t:<table>` (or `:takeaway` / `:delivery` / `:room_service`) on every change, reads it after mount, drops a dish
+  no longer on the menu or sold out, forgets it after 12 h, and removes it when the order is sent (`dropDraft`) or cleared.
+  It is saved only once its own key has been read (`loadedKey`), so the empty first render never wipes it. Picking another
+  table with dishes on the ticket moves them (the old table's draft goes). Per device.
+- **Your orders ready** (`ReadyDock.tsx`): each ticket a card — the table on a tile in the dock's colour, kind and order
+  number, the dishes, *Ready n min* (red from 5), and one flat 48px Served key (`.ready-row`, `.ready-tile`, `.ready-go`).
+  The pale box round the old button was the Sheet's footer bar: `markSheetFoot` walked the last child down into the list and
+  pinned the last ticket's Served key as the dialog's footer, frosted band and all. It now stops at a list item (or
+  `[data-no-foot]`) — design-system.md. `.svc-btn.go:hover` is also mouse only now (a tap left it stuck on). Cancelled orders are filtered out of the query (and kitchen.md: their tickets close).
+- **A table being cleaned takes no order**: the floor tile's + is gone (cleaning.md). Assign's sheet lists only the cleaners.

@@ -124,6 +124,8 @@ export const WORDS = {
   assign: { en: "Give to", ta: "ஒப்படை", hi: "सौंपें" },
   waiting: { en: "Waiting", ta: "காத்திருக்கிறது", hi: "इंतज़ार" },
   on_it: { en: "On it", ta: "நடக்கிறது", hi: "चल रहा है" },
+  /* given to someone, not started yet (2026-11-01, the owner: "split what is already assigned from Waiting") */
+  assigned: { en: "Assigned", ta: "ஒப்படைக்கப்பட்டது", hi: "सौंपा गया" },
   done_today: { en: "Done today", ta: "இன்று முடிந்தவை", hi: "आज हुए" },
   to_inspect: { en: "To inspect", ta: "சரிபார்க்க", hi: "जाँचना है" },
   pass_it: { en: "Pass", ta: "சரி", hi: "पास" },

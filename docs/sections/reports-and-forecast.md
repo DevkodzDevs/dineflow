@@ -144,15 +144,15 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   is 30rem, then four across. "1 ticket", "1 recall". Probe: `speed.mjs`.
 
 - **Join by QR is its own screen, `/pulse/qr` (2026-10-20 — it was a card at the foot of Pulse).** `qr/page.tsx`
-  reads only the session (slug, Listed publicly, name) and the base address (`NEXT_PUBLIC_CLOUD_URL` or the request's
-  host, as Pulse did). Gated like Pulse — the app layout maps the first segment, `pulse`, to the pulse module — and a
+  reads the session (slug, Listed publicly, name), the base address (`NEXT_PUBLIC_CLOUD_URL` or the request's
+  host, as Pulse did) and, since 2026-10-31, the waiting list (`walkins`, `table_pulse`, today's table bookings). Gated like Pulse — the app layout maps the first segment, `pulse`, to the pulse module — and a
   menu row of its own after Pulse (`pulse-qr`, shell-and-nav.md). Left, `[data-joinqr]`: the property's name, the
   real code (`components/QR.tsx` drawn at 320px, shown up to 19rem wide on a white tile in every theme — a scanner
   wants dark on light, `[data-code]`), the link as a copy chip, **Print poster** (`printPoster`, the A4 door sign:
   the property, a 640px code, three steps, the link), Open, Share (`shareText`; copies where there is no share
-  sheet) and Copy link. Right: *How guests use it* (scan · add name and party · you tap Table ready) and *Where to
-  put it*. Not Listed publicly (or no slug) → `[data-joinqr-off]` "Join by QR is off" with Open Storefront
-  settings; Pulse then shows one line linking to it. Probe: `joinqr.mjs` (rebuild it for the new route).
+  sheet) and Copy link. Right (2026-10-31): the **Waiting list** (`[data-waitlist]`, the dated entry at the end of this note), then one compact
+  card `[data-joinqr-how]` — the three steps, *Where to put it*, Open Pulse. Not Listed publicly (or no slug) → `[data-joinqr-off]` "Join by QR is off" with Open Storefront
+  settings (the waiting list still shows under it); Pulse then shows one line linking to it. Probe: `joinqr.mjs` (rebuild it for the new route).
 
 - **A sealed period must not move.** If a report lets a closed day change, the proof record is a
   lie. `close_day` and `run_night_audit` are the seals.
@@ -250,3 +250,14 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+- **The waiting list on Join by QR (2026-10-31, the owner: "show the waiting list, and speak out the next person's name").**
+  `pulse/qr/WaitList.tsx`; `qr/page.tsx` now also reads `walkins` (waiting / called, oldest first), `table_pulse` and today's
+  table-holding `reservations`, in one `Promise.all`. Rows (`[data-wait-row="waiting|called"]`) in arrival order: the place in a round
+  badge, the name, a Waiting / Called chip, the party, a live wait (amber at the quoted minutes, red 10 later). **Call next**
+  (`[data-call-next]`) for the first one waiting, **Call** (`[data-call]`) on a row, then **Say again** (`[data-say-again]`), **Seat** (a
+  table that fits, or "Seated · no table") and **No-show** / **Remove** (asked first). All through `setWalkin` → `walkin_set` (called =
+  Pulse's Table ready, so the guest's /queue page alerts as before; seated; left) — offline it queues the same job. **Speech**
+  (Web Speech, started inside the tap — iPad Safari needs that; never on its own), by the `df-lang` cookie: en-IN "Ravi, party of 4,
+  your table is ready. Please come to the host stand."; ta-IN and hi-IN sentences (to be read by a native speaker); a device without
+  speech still calls and says so in a toast. Refresh: `useLive(["walkins","dining_tables","orders"], 20000)`. The QR off: the list still
+  shows under the off card. shots159: two guests joined by `queue_join`, Call next → Ravi `called` (headless WebKit has no voice).

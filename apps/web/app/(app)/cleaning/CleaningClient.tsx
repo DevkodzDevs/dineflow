@@ -6,12 +6,13 @@ import { Say } from "@/components/ui/Say";
 import { useLive } from "@/lib/useLive";
 import { saveCleanSettings } from "./actions";
 import { inspectRoom } from "../housekeeping/actions";
-import { JobCard, DoneRow, Column, Badge, ms, span, brief, ago, clock, avg, placeOf, PILL, type Job, type Person, type Act } from "./JobCard";
+import { JobCard, DoneRow, Column, Badge, COL_CARDS, ms, span, brief, ago, clock, avg, placeOf, PILL, type Job, type Person, type Act, type Me } from "./JobCard";
+import { saveAutoAssign } from "./actions";
 
-export type { Job, Person } from "./JobCard";
+export type { Job, Person, Me } from "./JobCard";
 /** A room cleaned and not yet signed off (only for whoever may sign off, where the property inspects). */
 export type Inspect = { room: string; place: string; zone: string; since: string; cleaned_name: string | null; cleaned_at: string | null; arrival: boolean };
-export type Board = { jobs: Job[]; people: Person[]; can_assign: boolean; tables_on: boolean; inspect_required?: boolean; inspect?: Inspect[] };
+export type Board = { jobs: Job[]; people: Person[]; can_assign: boolean; can_inspect?: boolean; tables_on: boolean; inspect_required?: boolean; inspect?: Inspect[] };
 type Filter = "all" | "table" | "room" | "mine";
 
 /**
@@ -21,7 +22,7 @@ type Filter = "all" | "table" | "room" | "mine";
  * bill is settled. Done today says who finished each one, how long it took and how long it waited. The card and the
  * done row are shared with the Work board (JobCard.tsx, 0113).
  */
-export function CleaningClient({ board, error, me, role, canSet, hasRooms, cleaner = false }: { board: Board; error: string | null; me: string; role: string; canSet: boolean; hasRooms: boolean; cleaner?: boolean }) {
+export function CleaningClient({ board, error, me, role, my, canSet, hasRooms, autoMinutes = 5 }: { board: Board; error: string | null; me: string; role: string; my: Me; canSet: boolean; hasRooms: boolean; autoMinutes?: number }) {
   const toast = useToast(); const [pending, start] = useTransition(); const [, tick] = useState(0);
   useLive(["table_cleanings", "housekeeping_tasks"], 30000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
@@ -34,7 +35,9 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms, clean
   // mine first, then a room with a guest arriving today, then the one waiting longest
   const mineFirst = (a: Job, b: Job) => Number([b.assigned_to, b.taken_by].includes(me)) - Number([a.assigned_to, a.taken_by].includes(me))
     || Number(!!b.arrival) - Number(!!a.arrival) || ms(b.created_at) - ms(a.created_at);
-  const waiting = jobs.filter((j) => j.status === "pending").sort(mineFirst);
+  // Waiting is nobody's yet; Assigned is given to someone who has not started (2026-11-01, the owner: "split it from Waiting")
+  const waiting = jobs.filter((j) => j.status === "pending" && !j.assigned_to).sort(mineFirst);
+  const assigned = jobs.filter((j) => j.status === "pending" && !!j.assigned_to).sort(mineFirst);
   const onIt = jobs.filter((j) => j.status === "in_progress").sort(mineFirst);
   const finished = jobs.filter((j) => j.status === "done" || j.status === "skipped").sort((a, b) => ms(a.done_at ?? a.created_at) - ms(b.done_at ?? b.created_at));
   const took = avg(finished.filter((j) => j.status === "done" && j.taken_at && j.done_at).map((j) => ms(j.taken_at!, j.done_at)));
@@ -52,7 +55,9 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms, clean
     });
   };
   // a room with a guest arriving today first, then the one cleaned longest ago
-  const inspect = boss && board.inspect_required ? [...(board.inspect ?? [])].sort((a, b) => Number(b.arrival) - Number(a.arrival) || (a.cleaned_at ?? a.since).localeCompare(b.cleaned_at ?? b.since)) : [];
+  // who signs rooms off is not who gives jobs out: a 2nd-level supervisor inspects but no longer assigns (0160)
+  const inspector = board.can_inspect ?? boss;
+  const inspect = inspector && board.inspect_required ? [...(board.inspect ?? [])].sort((a, b) => Number(b.arrival) - Number(a.arrival) || (a.cleaned_at ?? a.since).localeCompare(b.cleaned_at ?? b.since)) : [];
   const [failing, setFailing] = useState<string | null>(null); const [why, setWhy] = useState("");
   // the supervisor's view of the day: who finished how many, how fast, and who is on what now
   const byPerson = useMemo(() => {
@@ -65,7 +70,8 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms, clean
     return [...m.entries()].sort((a, b) => b[1].done - a[1].done || a[1].name.localeCompare(b[1].name));
   }, [board.jobs]);
 
-  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} boss={boss} pending={!!busy[j.id]} people={board.people} act={actOn(j.id)} cleaner={cleaner} />;
+  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} my={my} boss={boss} pending={!!busy[j.id]} people={board.people} act={actOn(j.id)} />;
+  const [auto, setAuto] = useState(autoMinutes);
   const row = (j: Job) => <DoneRow key={j.id} j={j} me={me} inspectRequired={board.inspect_required} />;
 
   /** A cleaned room the supervisor signs off: Pass puts it on sale, Fail (with what is wrong) sends it back to whoever cleaned it. */
@@ -101,16 +107,21 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms, clean
       {/* Every width (iPad and desktop 2026-10-24; the phone 2026-10-26, the owner: "the flaps are tiny — number flap design,
           perfectly sized", and Average clean was a dash): Work's tiles —
           each state its colour, the flap at .flip-stat's size, a caption beside it; the average a flap of minutes. */}
-      <CleanTiles waiting={waiting.length} onIt={onIt.length} done={finished.filter((j) => j.status === "done").length} took={took} />
+      <CleanTiles waiting={waiting.length + assigned.length} onIt={onIt.length} done={finished.filter((j) => j.status === "done").length} took={took} />
       <div className="flex flex-wrap items-center gap-3">
         <Segmented value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "table", label: "Tables" }, ...(hasRooms ? [{ value: "room" as Filter, label: "Rooms" }] : []), { value: "mine", label: "Mine" }]} />
         {waited != null && <span className="text-[13px] text-steel">Average wait: {span(waited)}</span>}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
-        <Column keyName="waiting" title="waiting" n={waiting.length} hint="Nothing waiting."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
-        <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody cleaning"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{onIt.map(card)}</div></Column>
-        {boss && board.inspect_required && <Column keyName="inspect" title="to_inspect" n={inspect.length} hint="None to check"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{inspect.map(inspectCard)}</div></Column>}
+      {/* the open work as three columns from lg (an iPad across and up), two on an iPad upright, one on a phone — a phone puts
+          two cards side by side from sm; then To inspect and Done today, side by side from lg (2026-11-01) */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-open-cols>
+        <Column keyName="waiting" title="waiting" n={waiting.length} hint="Nothing waiting."><div className={COL_CARDS}>{waiting.map(card)}</div></Column>
+        <Column keyName="assigned" title="assigned" n={assigned.length} hint="Nothing assigned"><div className={COL_CARDS}>{assigned.map(card)}</div></Column>
+        <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody cleaning"><div className={COL_CARDS}>{onIt.map(card)}</div></Column>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {inspector && board.inspect_required && <Column keyName="inspect" title="to_inspect" n={inspect.length} hint="None to check"><div className="grid gap-3 sm:grid-cols-2">{inspect.map(inspectCard)}</div></Column>}
         <Column keyName="done" title="done_today" n={finished.length} hint="None finished yet"><Card className="!py-1 !px-4"><ul className="divide-y divide-[var(--color-separator)]">{finished.map(row)}</ul></Card></Column>
       </div>
 
@@ -135,6 +146,13 @@ export function CleaningClient({ board, error, me, role, canSet, hasRooms, clean
               onChange={(e) => { const v = e.target.checked; setTablesOn(v); start(async () => { const r = await saveCleanSettings(v); if ("error" in r) { setTablesOn(!v); toast(r.error!, "err"); } else toast(v ? "Table cleaning on" : "Table cleaning off"); }); }} />
             <span><span className="block text-[15px] font-bold">Clean tables after payment</span>
               <span className="block text-[12.5px] text-steel">Off for counters</span></span>
+          </label>
+          {/* nobody took it in time → a free cleaner gets it (0158, the owner: "after 5 minutes, to a free cleaner at random") */}
+          <label className="mt-3 pt-3 border-t border-[var(--color-separator)] flex items-start gap-3 !min-h-11 cursor-pointer">
+            <input type="checkbox" className="h-5 w-5 mt-0.5" checked={auto > 0} disabled={pending} data-switch="auto"
+              onChange={(e) => { const v = e.target.checked ? 5 : 0; const was = auto; setAuto(v); start(async () => { const r = await saveAutoAssign(v); if ("error" in r) { setAuto(was); toast(r.error!, "err"); } else toast(v ? "Auto-assign on" : "Auto-assign off"); }); }} />
+            <span><span className="block text-[15px] font-bold">Auto-assign after {auto > 0 ? auto : 5} min</span>
+              <span className="block text-[12.5px] text-steel">To a free cleaner</span></span>
           </label>
         </Card>)}
     </div>

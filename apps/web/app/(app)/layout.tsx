@@ -22,6 +22,7 @@ import { SayProvider } from "@/components/ui/Say";
 import { readLang, LANG_COOKIE } from "@/lib/say";
 import { AssistLazy as Assist } from "@/components/assist/AssistLazy";
 import { ReadyDock } from "@/components/shell/ReadyDock";
+import { AutoAssign } from "@/components/shell/AutoAssign";
 
 /**
  * There is deliberately no loading.tsx beside this file, and putting one back will make every
@@ -124,6 +125,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} grants={s.profile.grants ?? null} />}
       {/* food at the pass, brought to whoever takes it out: parcels, and the orders this person took (ReadyDock.tsx) */}
       {mods.includes("orders") && (!lock || lock.mode === "work") && <ReadyDock me={s.profile.id} all={["owner", "manager", "supervisor", "supervisor_2"].includes(s.profile.role)} parcels={mods.includes("orders") || mods.includes("online-orders")} />}
+      {/* tables and rooms nobody took in time go to a free cleaner (0158 — AutoAssign.tsx asks once a minute) */}
+      <AutoAssign />
       {/* Assist only for whoever may use it (0138) */}
       {!lock && assistAllowed(s.profile) && <Assist />}
       {/* a locked device: the guard, the "Locked" pill and its unlock (DisplayLock.tsx); a lock no longer allowed is forgotten */}

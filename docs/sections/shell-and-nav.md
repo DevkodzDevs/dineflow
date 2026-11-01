@@ -883,3 +883,11 @@ every visit to the bare name is still a 308 to www first, ~0.3 s; confirm **Flui
 
 - **Room status (2026-10-30, 0157):** the Housekeeping row is *Room status*, the owner's, a manager's and a supervisor's
   (housekeeping.md). `NotifierProvider` takes `position` for the table-to-clean alert (cleaning.md).
+
+## 2026-11-01 — the rail's head; the installed app's drawer; AutoAssign
+- **The rail** (icon looks, closed): the group headings are hidden, so the 28px the menu kept under the property's tile read
+  as a hole (the owner: "check that gap"). It is 12px and the hairline that ends every group (`nav::before`).
+- **The open drawer in the installed iPad app** was only as tall as its head and foot (the property, one row, the profile),
+  the menu squeezed out between them: `html[data-app]` gives it `height: auto` between `top: var(--sat)` and `bottom: 0`, and
+  now `min-height: calc(100dvh - var(--sat))` so it can never collapse to its content.
+- `components/shell/AutoAssign.tsx` (mounted in the layout) asks `clean_auto_assign()` once a minute — cleaning.md.

@@ -820,3 +820,16 @@ so **no screen has to remember a spinner**.
 - **Cards, second pass (2026-10-30):** `.tcard` (Tables), `.tkt-line` (the till's ticket), `.fdt` (the front desk's table
   booking), `.crew-*` (Assign) — one family: the state's colour as `--hue` (always a token), worn as a bar or a stub, a soft glow,
   a pill; hover lifts 1–2px with a shadow in the hue; reduced motion stills it. Notes: orders-and-till.md, front-desk.md.
+- **`askText` (2026-10-31, `components/ui/Confirm.tsx`)** — the same card as `ask` with a box for a few words and optional quick chips
+  (`[data-ask-text]`, `[data-ask-chip]`): `const why = await askText({ title, placeholder, chips, min, max, ok, tone })` → the trimmed
+  words or null. OK stays off until `min` characters (1 by default); on a touch screen the box is not focused until tapped. Never
+  `prompt()`.
+- **`data-print-root`** marks the one thing a page prints (billing-and-invoices.md).
+
+## 2026-11-01 — a list's last row is not a dialog's footer; touch hover
+- `markSheetFoot` (components/ui/index.tsx) follows the body's last child down to find "the row of buttons the dialog ends
+  with" and pins it (`[data-sheet-foot]`: sticky, a frosted `::before` 14px above and out to the panel's sides). In *Your
+  orders ready* it reached the last ticket's Served key and drew that band round it — the owner's pale box. The walk now
+  stops at an `li` or `[data-no-foot]`. A sheet whose content ends in a list keeps no pinned foot.
+- `.svc-btn.go:hover`'s brightness is `@media (hover: hover) and (pointer: fine)` only (a tap left it on).
+- The ready dock's ticket: `.ready-row` / `.ready-tile` / `.ready-since[data-late]` / `.ready-go` (tokens, `--hue` per dock).

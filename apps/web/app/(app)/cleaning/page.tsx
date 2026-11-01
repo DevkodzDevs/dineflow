@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { seesFresh, deptOf } from "@/components/shell/sections";
-import { isCleaner } from "@/lib/notify";
 import { SvcHead } from "@/components/ui/Service";
 import { CleaningClient, type Board } from "./CleaningClient";
 
@@ -17,14 +16,18 @@ export default async function CleaningPage() {
   // (2026-10-20: not a chef, a guard or a gardener; sections.ts seesFresh, the link asks the same). Work is open to all.
   if (!seesFresh("cleaning", session.profile.role, deptOf(session.profile.role, session.profile.department ?? null, session.profile.position ?? null))) redirect("/work");
   const s = await createClient();
-  const { data, error } = await s.rpc("clean_board");
+  const [{ data, error }, { data: prop }] = await Promise.all([
+    s.rpc("clean_board"),
+    s.from("restaurants").select("clean_auto_minutes").eq("id", session.restaurant.id).maybeSingle(),
+  ]);
   const board = (data ?? { jobs: [], people: [], can_assign: false, tables_on: true }) as Board;
   return (
     <>
       <SvcHead icon="cleaning" title="Cleaning" sub="Tables and rooms" />
       <CleaningClient board={board} error={error?.message ?? null} me={session.profile.id} role={session.profile.role}
+        my={{ role: session.profile.role, dept: session.profile.department ?? null, position: session.profile.position ?? null }}
         canSet={["owner", "manager"].includes(session.profile.role)} hasRooms={session.restaurant.property_type !== "restaurant"}
-        cleaner={isCleaner(session.profile.role, session.profile.department ?? null, session.profile.position ?? null)} />
+        autoMinutes={(prop as { clean_auto_minutes?: number | null } | null)?.clean_auto_minutes ?? 5} />
     </>
   );
 }

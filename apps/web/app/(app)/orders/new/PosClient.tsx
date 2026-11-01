@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { dishMatch } from "@/lib/tillSearch";
 import { motion, AnimatePresence } from "framer-motion";
-import { Minus, Plus, Search, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils, Package, Trash2, IndianRupee, Maximize2, Eye } from "lucide-react";
+import { Minus, Plus, Search, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils, Package, Trash2, IndianRupee, Maximize2, Eye, ChevronUp } from "lucide-react";
 import { Button, Sheet, cn, useToast, FlapMini } from "@/components/ui";
 import { Say, CatIcon } from "@/components/ui/Say";
 import { SVC_ICON, stClass } from "@/components/ui/Service";
@@ -176,6 +176,46 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   /** The minus on a cart line for a dish that was tapped by voice takes one off its last line, whichever size. */
   const askFor = (l: Line) => setChooser({ item: l.item, replace: l.key, qty: l.qty, note: l.note });
 
+  /* The ticket survives leaving the page (2026-11-01, the owner: "I add a dish, go to another page and come back — the dishes
+     are gone"). Its dishes (size, add-ons, request, course), the ticket's request and the guest are kept on this device per
+     table — or per parcel, delivery or room — until the ticket is sent or cleared, for 12 hours. Read after mount, so the
+     server's render and the first client render agree; a dish no longer on the menu, or sold out, is dropped. The draft is
+     saved only once its own key has been read (`loadedKey`), so an empty first render never wipes it. */
+  type Draft = { at: number; note: string; customer: { name: string; phone: string }; lines: { item: string; variant: string | null; addons: string[]; qty: number; note: string; course: number }[] };
+  const draftKey = `df-pos-draft:${type === "dine_in" ? `t:${tableId ?? "none"}` : type}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const prevKey = useRef<string | null>(null); const sent = useRef(false);
+  const linesNow = useRef(lines); linesNow.current = lines;
+  useEffect(() => {
+    const was = prevKey.current; prevKey.current = draftKey;
+    // another table picked with dishes on the ticket: the dishes go with it, the old table's draft goes
+    if (was && was !== draftKey && linesNow.current.length) { try { localStorage.removeItem(was); } catch {} setLoadedKey(draftKey); return; }
+    let d: Draft | null = null;
+    if (new URLSearchParams(location.search).get("from") !== "phone") { try { d = JSON.parse(localStorage.getItem(draftKey) ?? "null"); } catch {} }
+    if (d && Date.now() - d.at < 12 * 3600e3) {
+      const back = (d.lines ?? []).flatMap((x): Line[] => {
+        const item = items.find((i) => i.id === x.item && i.is_available); if (!item || !(x.qty > 0)) return [];
+        const variant = item.variants?.find((v) => v.id === x.variant) ?? null;
+        const addons = (item.addon_groups ?? []).flatMap((g) => g.addons).filter((a) => x.addons.includes(a.id));
+        return [{ key: lineKey(item.id, variant?.id, addons.map((a) => a.id)), item, variant, addons, qty: x.qty, note: x.note ?? "", course: x.course || 1, ask: optionProblem(item, addons) !== null }];
+      });
+      if (back.length) setLines(back);
+      if (d.note) setTicketNote(d.note);
+      if (d.customer?.name || d.customer?.phone) setCustomer((c) => (c.name || c.phone ? c : d!.customer));
+    }
+    setLoadedKey(draftKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- read once per ticket (table / order type)
+  }, [draftKey]);
+  useEffect(() => {
+    if (loadedKey !== draftKey || sent.current) return;
+    try {
+      if (!lines.length && !ticketNote.trim()) localStorage.removeItem(draftKey);
+      else localStorage.setItem(draftKey, JSON.stringify({ at: Date.now(), note: ticketNote, customer,
+        lines: lines.map((l) => ({ item: l.item.id, variant: l.variant?.id ?? null, addons: l.addons.map((a) => a.id), qty: l.qty, note: l.note, course: l.course })) } satisfies Draft));
+    } catch { /* private mode or full: the ticket still works, it just is not kept */ }
+  }, [lines, ticketNote, customer, draftKey, loadedKey]);
+  const dropDraft = () => { sent.current = true; try { localStorage.removeItem(draftKey); } catch {} };
+
   /* Taking the order in words. The model turns "two biryani, one Jain, table four" into cart lines
      on this menu; everything lands in the same cart, notes and table the waiter would have tapped
      in, and the same Send button is still the only thing that reaches the kitchen. A dish sold in
@@ -298,12 +338,13 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       // Offline: keep the order on this device and send it the moment the connection returns.
       // the delivery address goes with it, and is written onto the order as soon as the order lands (0109)
       await enqueue("place_order", { ...payload, client_id: crypto.randomUUID(), placed_at: new Date().toISOString(), delivery_address: type === "delivery" ? address.trim() || null : null }, `Order · ${label} · ${count} items`);
-      setLines([]);
+      dropDraft(); setLines([]);
       router.push("/orders?queued=1");
       return;
     }
     const r = await placeOrder(payload);
     if ("error" in r) return setErr(r.error!);
+    dropDraft();
     if (type === "delivery" && address.trim()) { const d = await setDelivery(r.orderId!, address.trim()); if ("error" in d) toast(`Order sent — but the address was not saved: ${d.error}. Add it on the order.`, "err"); }
     router.push(`/orders/${r.orderId}`);
   });
@@ -403,25 +444,38 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   const CartPanel = (
     /* every block keeps its height; the ticket lines (flex-1 min-h-0) are the only thing that gives */
     <div className="flex flex-col h-full min-h-0 [&>*]:shrink-0" data-cart>
-      {/* where it is going, big — and the one button that changes it */}
-      <div className="flex items-center gap-2 min-w-0">
-        <h2 className="font-display text-[26px] leading-none truncate min-w-0 flex-1" data-cart-title>{title ?? <Say w={typeWord} start />}</h2>
-        {/* the guest (2026-10-30, the owner: "show it as an icon — tap to expand"): a round person beside Change, the
-            name and phone open under the head; once given, the round key wears their initial in the tint (the name is its
-            title) — a name on it pushed "Table T4" onto two lines */}
+      {/* The head (2026-10-31, the owner's iPad: "Table / T10" broke onto two lines beside the guest key and Change). A small
+          TABLE label over the table's name as the big figure, then the keys as one capsule on the right — the guest and Change,
+          40px under a mouse and 44 under a finger, the same height as the ticket row's capsule under it and on the same right
+          edge. Every line is its own block that never wraps: globals.css sets `text-wrap: balance` on h1/h2 unlayered, which
+          beat the layered `truncate` on the old h2 and wrapped it in Safari; a span's own nowrap is not overridden. */}
+      <div className="flex items-center gap-3 min-w-0" data-cart-top>
+        <h2 className="min-w-0 flex-1" data-cart-title>
+          <span className="block font-sans text-[11px] font-semibold uppercase tracking-[0.14em] leading-[1.2] text-steel whitespace-nowrap overflow-hidden text-ellipsis">
+            {type === "dine_in" ? (tableName ? "Table" : "Dine in") : "Order"}
+          </span>{" "}
+          {type === "dine_in" && tableName
+            ? <span className="mt-1 block text-[28px] leading-[1.08] whitespace-nowrap overflow-hidden text-ellipsis" data-ticket-table={tableName}>{tableName}</span>
+            : <span className="mt-1 block text-[22px] leading-[1.15] whitespace-nowrap overflow-hidden text-ellipsis">{type === "dine_in" ? "No table" : <Say w={typeWord} start />}</span>}
+        </h2>
         {type === "dine_in" && (
-          <button type="button" onClick={() => { setGuestOpen((v) => !v); setPickOpen(false); }} aria-expanded={guestOpen} data-guest
-            aria-label={customer.name || customer.phone ? `Guest: ${customer.name || customer.phone} — change` : "Add guest (optional)"} title={customer.name || customer.phone || "Add guest (optional)"}
-            className={cn("relative h-10 w-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 rounded-full grid place-items-center shrink-0 font-display text-[18px] transition-colors",
-              customer.name || customer.phone ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] text-[var(--color-label-2)]",
-              guestOpen && "ring-2 ring-offset-2 ring-offset-[var(--color-bg-2)] ring-[color-mix(in_srgb,var(--color-tint)_55%,transparent)]")}>
-            {customer.name ? <span aria-hidden data-guest-initial>{customer.name.trim().slice(0, 1).toUpperCase()}</span> : <UserRound size={17} aria-hidden />}
-          </button>
-        )}
-        {type === "dine_in" && (
-          <button type="button" onClick={() => { setPickOpen((v) => !v); setGuestOpen(false); }} aria-expanded={pickOpen} data-pick-table
-            className={cn("h-10 px-3.5 rounded-full text-[14px] font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors", tableName ? "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" : "bg-[var(--color-tint)] text-[var(--color-on-tint)]")}>
-            {tableName ? <Repeat size={15} aria-hidden /> : <Armchair size={15} aria-hidden />}<Say w={tableName ? "change" : "table"} /></button>
+          <div className="shrink-0 inline-flex items-center rounded-full bg-[var(--color-fill)]" data-cart-keys>
+            {/* the guest (2026-10-30, the owner: "show it as an icon — tap to expand"): a round person; the name and phone open
+                under the head; once given, the key wears their initial in the tint (the name is its title) */}
+            <button type="button" onClick={() => { setGuestOpen((v) => !v); setPickOpen(false); }} aria-expanded={guestOpen} data-guest
+              aria-label={customer.name || customer.phone ? `Guest: ${customer.name || customer.phone} — change` : "Add guest (optional)"} title={customer.name || customer.phone || "Add guest (optional)"}
+              className={cn(HEAD_BTN, "font-display text-[17px] leading-none",
+                customer.name || customer.phone
+                  ? cn("bg-[var(--color-tint)] text-[var(--color-on-tint)]", guestOpen && "shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-on-tint)_55%,transparent)]")
+                  : guestOpen ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}>
+              {customer.name ? <span aria-hidden data-guest-initial>{customer.name.trim().slice(0, 1).toUpperCase()}</span> : <UserRound size={17} aria-hidden />}
+            </button>
+            <span aria-hidden className="w-px h-5 mx-0.5 bg-[var(--color-separator)] shrink-0" />
+            <button type="button" onClick={() => { setPickOpen((v) => !v); setGuestOpen(false); }} aria-expanded={pickOpen} data-pick-table
+              className={cn(HEAD_H, "px-3.5 rounded-full text-[14px] font-bold inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap transition-colors",
+                !tableName ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]" : pickOpen ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "hover:bg-[var(--color-fill-2)]")}>
+              {tableName ? <Repeat size={15} aria-hidden className="shrink-0" /> : <Armchair size={15} aria-hidden className="shrink-0" />}<Say w={tableName ? "change" : "table"} /></button>
+          </div>
         )}
       </div>
       {/* the order type, only while nothing has settled it (2026-10-30, the owner: "when the order is taken from the order
@@ -471,12 +525,38 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             </div>
           )}
           {/* the guest, folded behind the head's person button: a phone number makes them a customer, and most tables never give one */}
-          {guestOpen && (
-            <div className="mt-3 grid grid-cols-2 gap-2" data-guest-fields>
-              <input autoFocus placeholder="Name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
-              <input placeholder="Phone" inputMode="tel" className="num" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") setGuestOpen(false); }} />
-            </div>
-          )}
+          {/* (2026-10-31) a panel that opens to its height: a GUEST label and a collapse key, then Name and Phone at 44px —
+              side by side where the panel is 19rem wide or more (the phone sheet, a portrait iPad, a wide rail), stacked on a
+              narrow rail, where two fields side by side were squeezed. Enter on the name goes to the phone, Enter on the phone
+              or Escape folds it. */}
+          <AnimatePresence initial={false}>
+            {guestOpen && (
+              <motion.div key="guest" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }} className="overflow-hidden" data-guest-fields>
+                <div className="pt-3">
+                  <div className="@container rounded-2xl bg-[var(--color-fill)] p-3"
+                    onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setGuestOpen(false); } }}>
+                    <div className="flex items-center gap-2 mb-2.5 min-w-0">
+                      <UserRound size={14} aria-hidden className="shrink-0 text-steel" />
+                      <span className="flex-1 min-w-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-steel whitespace-nowrap overflow-hidden text-ellipsis">Guest · optional</span>
+                      <button type="button" onClick={() => setGuestOpen(false)} aria-label="Close guest" title="Close" data-guest-close
+                        className={cn(KEY_BTN, "-my-1 -mr-1 text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]")}><ChevronUp size={17} aria-hidden /></button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 @[19rem]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                      <input autoFocus placeholder="Name" aria-label="Guest name" autoComplete="off" enterKeyHint="next" value={customer.name}
+                        className="!h-11 !min-h-11 !py-0 !px-3.5 !rounded-xl min-w-0"
+                        onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.parentElement?.querySelector<HTMLInputElement>("[data-guest-phone]")?.focus(); } }} />
+                      <input type="tel" placeholder="Phone" aria-label="Guest phone" inputMode="tel" autoComplete="off" enterKeyHint="done" value={customer.phone}
+                        className="num !h-11 !min-h-11 !py-0 !px-3.5 !rounded-xl min-w-0" data-guest-phone
+                        onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === "Enter") setGuestOpen(false); }} />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       ) : type === "room_service" ? (
         <select className="mt-3" value={room} onChange={(e) => { setRoom(e.target.value); const g = inHouse.find((x) => x.id === e.target.value); setCustomer({ name: g ? `Room ${g.rooms?.number} · ${g.guests?.full_name}` : "", phone: "" }); }}><option value="">Choose in-house guest</option>{inHouse.map((g) => <option key={g.id} value={g.id}>Room {g.rooms?.number} · {g.guests?.full_name}</option>)}</select>
@@ -509,19 +589,27 @@ export function PosClient({ categories, items, tables, initialTable, initialType
 
       {/* the ticket's head (2026-10-30, the owner: "only icons"): the word and the count, then four round icons — prices,
           preview, courses, clear — so the head is one short row and the lines get the room */}
-      <div className="mt-3 flex items-center gap-1 min-w-0" data-ticket-head>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel flex-1 min-w-0 flex items-center gap-1.5">
-          <span className="truncate">Ticket</span>
-          {count > 0 && <span className="num shrink-0 h-5 min-w-5 px-1.5 rounded-full bg-[var(--color-fill)] text-[11px] font-bold tracking-normal text-[var(--color-label)] grid place-items-center" data-ticket-count={count}>{count}</span>}
-        </span>
-        <button type="button" onClick={togglePrices} aria-pressed={showPrices} aria-label="Show prices" title={showPrices ? "Hide prices" : "Show prices"} data-pos-prices={showPrices ? "on" : "off"}
-          className={cn(HEAD_BTN, showPrices ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]")}><IndianRupee size={16} aria-hidden /></button>
-        <button type="button" onClick={() => setPreview(true)} disabled={lines.length === 0} aria-haspopup="dialog" aria-label="Preview ticket" title="Preview ticket" data-pos-preview
-          className={cn(HEAD_BTN, "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] disabled:opacity-40 disabled:pointer-events-none")}><Maximize2 size={16} aria-hidden /></button>
-        <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} aria-label="Courses" title="Courses — later courses wait to be fired" data-courses
-          className={cn(HEAD_BTN, coursing ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)]")}><ListOrdered size={16} aria-hidden /></button>
-        {lines.length > 0 && <button type="button" onClick={clearTicket} aria-label="Clear ticket" title="Clear ticket" data-clear-ticket
-          className={cn(HEAD_BTN, "-mr-1 text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)]")}><Trash2 size={16} aria-hidden /></button>}
+      {/* (2026-10-31) the same grid as the head above it: the label on the left in the head's TABLE style, the four keys as
+          one capsule on the right edge at the head keys' height. The bin is always there (dimmed while the ticket is empty,
+          like preview), so the capsule never changes width. Where the row is under 17rem (a narrow rail under a finger) the
+          word steps aside for the count badge rather than truncating to "Tic…". */}
+      <div className="@container mt-3 pt-3 border-t border-[var(--color-separator)] min-w-0" data-ticket-head>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="flex-1 min-w-0 flex items-center gap-1.5" title={count > 0 ? `${count} ${count === 1 ? "dish" : "dishes"}` : undefined}>
+            <span className={cn("min-w-0 text-[11px] font-semibold uppercase tracking-[0.14em] leading-none text-steel whitespace-nowrap overflow-hidden text-ellipsis", count > 0 && "@max-[17rem]:sr-only")}>Ticket</span>
+            {count > 0 && <span className="num shrink-0 h-6 min-w-6 px-1.5 rounded-full bg-[var(--color-fill)] text-[12px] font-bold leading-none text-[var(--color-label)] grid place-items-center" data-ticket-count={count}>{count}</span>}
+          </span>
+          <div className="shrink-0 inline-flex items-center rounded-full bg-[var(--color-fill)]" role="toolbar" aria-label="Ticket tools">
+            <button type="button" onClick={togglePrices} aria-pressed={showPrices} aria-label="Show prices" title={showPrices ? "Hide prices" : "Show prices"} data-pos-prices={showPrices ? "on" : "off"}
+              className={cn(HEAD_BTN, showPrices ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : TOOL_OFF)}><IndianRupee size={16} aria-hidden /></button>
+            <button type="button" onClick={() => setPreview(true)} disabled={lines.length === 0} aria-haspopup="dialog" aria-label="Preview ticket" title="Preview ticket" data-pos-preview
+              className={cn(HEAD_BTN, TOOL_OFF, "disabled:opacity-40 disabled:pointer-events-none")}><Maximize2 size={16} aria-hidden /></button>
+            <button type="button" onClick={() => setCoursing((v) => !v)} aria-pressed={coursing} aria-label="Courses" title="Courses — later courses wait to be fired" data-courses
+              className={cn(HEAD_BTN, coursing ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : TOOL_OFF)}><ListOrdered size={16} aria-hidden /></button>
+            <button type="button" onClick={clearTicket} disabled={lines.length === 0} aria-label="Clear ticket" title="Clear ticket" data-clear-ticket
+              className={cn(HEAD_BTN, "text-steel hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] disabled:opacity-40 disabled:pointer-events-none")}><Trash2 size={16} aria-hidden /></button>
+          </div>
+        </div>
       </div>
       <div className="mt-2 space-y-2 !shrink flex-1 min-h-0 overflow-y-auto overscroll-contain -mr-2 pr-2 [scrollbar-width:thin] lg:!shrink-0 lg:min-h-fit lg:overflow-visible lg:mr-0 lg:pr-0 lg:pb-1" data-ticket-lines>
         <AnimatePresence initial={false}>
@@ -942,11 +1030,15 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   );
 }
 
-/** A round icon button in the ticket's head and on a line: 36px under a mouse, 44px under a finger (the kit's :where() floor
- *  would lift it to 40 on a mouse, so the size is stated with ! here). */
-/** A key on a ticket card's foot: 32px round under a mouse, 44 under a finger. */
+/** A key on a ticket card's foot (and the guest panel's collapse key): 32px round under a mouse, 44 under a finger. */
 const KEY_BTN = "h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11 rounded-full grid place-items-center shrink-0 transition-colors";
-const HEAD_BTN = "h-9 w-9 !min-h-9 !min-w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11 rounded-full grid place-items-center shrink-0 transition-colors";
+/** The height of every key in the ticket panel's head — the guest, Change, and the ticket row's four: 40px under a mouse, 44
+ *  under a finger, stated with ! so the kit's :where() floor does not move it (2026-10-31: one height for both rows). */
+const HEAD_H = "h-10 !min-h-10 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:!min-h-11";
+/** A round key in the head's capsules. */
+const HEAD_BTN = `${HEAD_H} w-10 !min-w-10 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:!min-w-11 rounded-full grid place-items-center shrink-0 transition-colors`;
+/** A head key at rest, inside its fill capsule. */
+const TOOL_OFF = "text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill-2)]";
 /** A worded pill in the preview (Options, Note, Remove). */
 const PILL = "h-9 !min-h-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:!min-h-11 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold shrink-0 transition-colors";
 

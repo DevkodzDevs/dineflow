@@ -119,3 +119,11 @@ points) — the same dialog the card's name opens. The cards are untouched.
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+- **Guest book cards, 2026-10-31 (the owner: "design is not good — equal spacing").** Equal-height cards (`[data-guest-card]`) in
+  `minmax(0,1fr)` columns (1 / 2 from sm / 3 from xl / 4 from 1700px), the stat foot pinned to the bottom. Head: a 48px initial on a
+  soft wash picked from the name (VIP: amber with a ring, `[data-guest-vip]` pill with a star — champagne turns silver in dark), the
+  name, the phone as a `tel:` link (`[data-guest-call]`, 44px on touch; else the email, the ID or "No contact" at the same height). One
+  preference line, always there (`[data-guest-pref]`, "No preferences yet" faint). Foot (`[data-guest-stats]`): Stays · Last stay ·
+  Lifetime evenly; a guest with no stays gets one "New guest" chip (`[data-guest-new]`) and "Added <date>". The card opens through a
+  full-size button under its content (`[data-guest-open]`, `aria-label="Open <name>"`) — `role=button`/`tabIndex` moved there from the
+  card div, so the tel link is not nested in a button. Wide screens still open on the Table view; Cards is a tap away.

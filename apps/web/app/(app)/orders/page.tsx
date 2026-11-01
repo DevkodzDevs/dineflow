@@ -39,10 +39,14 @@ export default async function OrdersPage() {
     const { data: att } = await s.from("staff_attendance").select("profile_id").eq("work_date", todayIST()).not("in_at", "is", null).is("out_at", null);
     (att ?? []).forEach((a) => onDuty.add(a.profile_id as string));
   }
-  // the people a table can be given to: on duty first, then the ones who clean, then by name (JobCard's peopleFor)
-  const crew = boss ? staff.filter((p) => !CLEAN_BOSSES.includes(p.role) || p.id === session.profile.id)
+  // the people a table can be given to (2026-11-01, the owner: "only the cleaning people — never the owner, manager or
+  // supervisor"): the cleaners, on duty first, then by name. A property with no cleaner at all gets everyone below the
+  // bosses instead, so a table can still be given to someone (JobCard's peopleFor does the same).
+  const below = staff.filter((p) => !CLEAN_BOSSES.includes(p.role));
+  const cleaners = below.filter((p) => isCleaner(p.role, p.department, p.position));
+  const crew = boss ? (cleaners.length ? cleaners : below)
     .map((p) => ({ id: p.id, name: p.full_name, title: positionByKey(p.position)?.title ?? null, on_duty: onDuty.has(p.id), cleans: isCleaner(p.role, p.department, p.position) }))
-    .sort((a, b) => Number(b.on_duty) - Number(a.on_duty) || Number(b.cleans) - Number(a.cleans) || a.name.localeCompare(b.name)) : [];
+    .sort((a, b) => Number(b.on_duty) - Number(a.on_duty) || a.name.localeCompare(b.name)) : [];
   const cleaning =((cleans ?? []) as { id: string; table_id: string; status: "pending" | "in_progress"; created_at: string; assigned_to: string | null; taken_by: string | null; taken_at: string | null }[])
     .map((c) => ({ ...c, assigned_name: c.assigned_to ? nameOf.get(c.assigned_to) ?? "someone" : null, taken_name: c.taken_by ? nameOf.get(c.taken_by) ?? "someone" : null }));
   await held;

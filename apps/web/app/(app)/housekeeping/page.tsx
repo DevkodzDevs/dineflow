@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { CLEAN_BOSSES } from "@/lib/notify";
 import { requireSession } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { todayIST } from "@/lib/format";
@@ -20,11 +21,13 @@ export default async function HK() {
     s.from("profiles").select("id, full_name, role, position_title, department, position").eq("is_active", true).order("full_name"),
   ]);
   const canInspect = ["owner", "manager", "supervisor", "supervisor_2"].includes(session.profile.role);
+  // giving tasks out is narrower than signing rooms off: not a 2nd-level supervisor (0159 — lib/notify.ts CLEAN_BOSSES)
+  const canAssign = CLEAN_BOSSES.includes(session.profile.role);
   const inspectRule = !!session.restaurant.hk_inspect_required;
   return (
     <>
       <PageHeader eyebrow="Rooms division" title="Room" accent="status" sub={inspectRule ? "Inspected before sale" : "Clean, then on sale"} />
-      <HousekeepingClient today={today} tasks={(tasks ?? []) as never} rooms={(rooms ?? []) as never} stays={(stays ?? []) as never} done={(done ?? []) as never} canInspect={canInspect} inspectRule={inspectRule}
+      <HousekeepingClient today={today} tasks={(tasks ?? []) as never} rooms={(rooms ?? []) as never} stays={(stays ?? []) as never} done={(done ?? []) as never} canInspect={canInspect} canAssign={canAssign} inspectRule={inspectRule}
         people={(people ?? []) as never} me={session.profile.id} />
     </>
   );

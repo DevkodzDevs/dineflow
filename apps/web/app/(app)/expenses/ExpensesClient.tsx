@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, FileSpreadsheet, Plus, Ban, Banknote, Smartphone, CreditCard, Landmark, Carrot, ShoppingBasket, Fish, Milk, Flame, Zap, Droplets, Building2, Users, UtensilsCrossed, Wrench, SprayCan, Package, Megaphone, Truck, Ellipsis, type LucideIcon } from "lucide-react";
-import { Card, Empty, cn, useToast } from "@/components/ui";
+import { Card, Empty, askText, cn, useToast } from "@/components/ui";
 import { formatINR, todayIST } from "@/lib/format";
 import { addExpense, voidExpense } from "./actions";
 import { Say } from "@/components/ui/Say";
@@ -55,8 +55,10 @@ export function ExpensesClient({ month, today, rows, names, canVoid, property }:
     toast(`${f.category} · ${inr(amount)} saved${f.method === "cash" && f.spent_on === today ? " · from drawer" : ""}`);
     setF((x) => ({ ...x, payee: "", amount: "", gst: "", ref: "", note: "" }));
   });
-  const strike = (e: Expense) => {
-    const reason = prompt(`Strike out ${e.category} · ${inr(e.amount)}? Say why:`); if (!reason) return;
+  const strike = async (e: Expense) => {
+    /* the app's dialog, not the browser's box (2026-10-31); expense_void wants at least 3 characters and keeps 200 */
+    const reason = await askText({ title: `Strike out ${inr(e.amount)}?`, body: `${e.category}${e.payee ? ` · ${e.payee}` : ""}`, placeholder: "Say why", chips: ["Entered twice", "Wrong amount", "Wrong category", "Wrong day"], ok: "Strike out", tone: "danger", icon: "alert", min: 3, max: 200 });
+    if (!reason) return;
     start(async () => { const r = await voidExpense(e.id, reason); if ("error" in r) toast(r.error!, "err"); else toast(fromDrawer(e) ? "Struck out, cash returned" : "Struck out"); });
   };
   const excel = async () => {

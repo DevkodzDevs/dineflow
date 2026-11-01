@@ -63,8 +63,10 @@ export function deptSees(role: string, dept: string | null, kind: "table" | "roo
   return !jobDept || d === jobDept;
 }
 
-/** The ones who give cleaning jobs out — the database's _clean_may_assign (0111). */
-export const CLEAN_BOSSES = ["owner", "manager", "supervisor", "supervisor_2"];
+/** The ones who give cleaning and work jobs out — the database's _clean_may_assign and _clean_boss (0159). Not a 2nd-level
+ *  supervisor (2026-11-01, the owner: "the assign options are only for the supervisor and above"): they work as their team
+ *  does — take, finish, give back their own — and still sign rooms off (inspect_room, 0160's can_inspect). */
+export const CLEAN_BOSSES = ["owner", "manager", "supervisor"];
 /** Jobs that clean tables though their team is Service. */
 const TABLE_CLEANERS = ["busser"];
 /**
@@ -77,6 +79,20 @@ const TABLE_CLEANERS = ["busser"];
 export function isCleaner(role: string, dept: string | null, position?: string | null): boolean {
   if (CLEAN_BOSSES.includes(role)) return false;
   return (dept || positionByKey(position)?.dept || ROLE_DEPT[role] || null) === "housekeeping" || TABLE_CLEANERS.includes(position ?? "");
+}
+/**
+ * Is this job this person's work (2026-11-01, the owner: "I'll take it only for the people whose work it is — owner, manager,
+ * supervisor and everyone else get Assign; and Assign lists only those people, never the top three")? A table: a cleaner
+ * (isCleaner). A room: the Housekeeping team. Any other job: its department's people, or anyone when it has none. Never a
+ * boss. A room under repair is Engineering's job — the caller passes ("job", "engineering"). The database's own copy is
+ * `_clean_fits` (0158), which `clean_take` and the automatic hand-out use.
+ */
+export function doesWork(kind: "table" | "room" | "job", jobDept: string | null, role: string, dept: string | null, position?: string | null): boolean {
+  if (CLEAN_BOSSES.includes(role)) return false;
+  if (kind === "table") return isCleaner(role, dept, position);
+  const d = dept || positionByKey(position)?.dept || ROLE_DEPT[role] || null;
+  if (kind === "room") return d === "housekeeping";
+  return !jobDept || d === jobDept;
 }
 
 /* 2026-10-30 (the owner: "the work shows to the right staff, but they are not notified"). The cleaning alerts follow the

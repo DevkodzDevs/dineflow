@@ -1,5 +1,4 @@
 "use server";
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
@@ -41,8 +40,13 @@ export async function login(_: unknown, fd: FormData) {
   // the master's credentials open Master control and nothing else; owners open their own property
   // where they land is worked out beside "is this the master?" rather than after it — one trip fewer (2026-10-29)
   const [{ data: master }, start] = await Promise.all([supabase.rpc("is_master"), startScreen(supabase, signed.user?.id ?? null)]);
-  if (master) redirect("/admin");
-  redirect(start);
+  /* Into the app by a full page load, not a client-side move (2026-11-01, the owner's iPad: "after signing in — with the
+     temporary password, either way — Application error; closed and opened again it is fine"). A move that starts outside
+     the app's layout and meets the layout's own redirect (/dashboard → /home for staff, → /account/password for a temporary
+     password) left the router re-applying the redirected page every frame until Safari stopped it ("history.replaceState()
+     more than 100 times per 10 seconds"). A full load takes the same redirects as plain HTTP ones — what reopening did.
+     AuthForm goes to `go` with location.replace. */
+  return { go: master ? "/admin" : start };
 }
 
 /**
@@ -78,7 +82,7 @@ export async function signup(_: unknown, fd: FormData) {
   if (!data.session) return { error: "Confirm the email we sent you, then sign in." };
   const { error: e2 } = await supabase.rpc("create_restaurant", { p_name: restaurant, p_slug: slugify(restaurant), p_full_name: fullName, p_type: type });
   if (e2) return { error: e2.message };
-  redirect("/dashboard");
+  return { go: "/dashboard" };   // a full page load into the app (see login)
 }
 
 export async function join(_: unknown, fd: FormData) {
@@ -98,5 +102,5 @@ export async function join(_: unknown, fd: FormData) {
   // A DineFlow code gets you in the door but switched off, so there is nothing to show on the
   // dashboard yet. An invite code carries its role and goes straight through.
   const joined = data as { pending?: boolean } | null;
-  redirect(joined?.pending ? "/join?pending=1" : "/dashboard");
+  return { go: joined?.pending ? "/join?pending=1" : "/dashboard" };   // a full page load into the app (see login)
 }

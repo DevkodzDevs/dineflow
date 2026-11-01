@@ -88,7 +88,7 @@ export function FolioClient({ booking: b, charges, totals: t, openOrders, restau
       {/* the folio, coming out of the machine like the bill does — the printer's sides narrow to fit the
           344px column on an iPad held upright (`fit`); 372px from lg holds it whole */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="w-full justify-self-center md:sticky md:top-24">
-        <div className="flex justify-center" data-folio><PrinterOutput label="Front desk" fit data={{ restaurant, title: "Guest folio", no: `FOLIO-${String(b.booking_no).padStart(4, "0")}`,
+        <div className="flex justify-center" data-folio data-print-root><PrinterOutput label="Front desk" fit data={{ restaurant, title: "Guest folio", no: `FOLIO-${String(b.booking_no).padStart(4, "0")}`,
           when: `${b.check_in} → ${b.check_out}`, where: `Room ${b.rooms?.number ?? ""}`, cashier: b.guests?.full_name,
           lines: [{ name: `Room · ${t?.nights ?? 1} night${(t?.nights ?? 1) > 1 ? "s" : ""}`, qty: t?.nights ?? 1, price: Number(b.rate) },
             ...charges.filter((c) => !(c.kind === "discount")).map((c) => ({ name: c.description, qty: 1, price: Number(c.amount) }))],

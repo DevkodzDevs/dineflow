@@ -54,7 +54,7 @@ ticks what they did, with their name and the time, and a missed day shows.
   says so. If this ever matters, key duties by a stable id. Since 0108 a run counts only ticks that are still duties
   (`_checklist_ticked`), and saving a shorter list trims today's ticks beyond its end.
 - A public page has no `ToastProvider`, but these pages do — `useToast` works here.
-- `window.prompt` asks for the strike-out reason (as `confirm` does elsewhere); the probe stubs it.
+- The strike-out reason is asked in the app's dialog (`askText`, 2026-10-31: chips Entered twice · Wrong amount · Wrong category · Wrong day; OK from 3 characters, as `expense_void` (0105) requires, 200 at most); a probe fills `[data-ask-text]` and taps `[data-ask-yes]`.
 
 ## Verify
 

@@ -34,7 +34,8 @@ export function InvoiceView({ inv, restaurant, cashier }: { inv: Inv; restaurant
         <Pill tone={inv.status === "paid" ? "ready" : "alert"}>{inv.status}</Pill>
         <div className="ml-auto page-actions"><Button variant="outline" onClick={() => setEdit(true)}><Pencil size={15} /> Guest / GSTIN</Button><Button variant="outline" onClick={share}><Share2 size={15} /> Share</Button><Button onClick={() => window.print()}><Printer size={15} /> Print</Button></div>
       </div>
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="feather p-8 print:border-0 print:shadow-none">
+      {/* the paper that prints — alone (data-print-root, globals.css) */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="feather p-8 print:border-0 print:shadow-none" data-print-root>
         <div className="flex justify-between gap-6 flex-wrap">
           <div><div className="font-display text-2xl">{restaurant.name}</div>{restaurant.address && <div className="text-sm text-steel">{restaurant.address}</div>}{restaurant.phone && <div className="text-sm text-steel">{restaurant.phone}</div>}{restaurant.legal_name && restaurant.legal_name !== restaurant.name && <div className="text-sm text-steel">{restaurant.legal_name}</div>}{restaurant.gstin && <div className="text-sm num mt-1">GSTIN {restaurant.gstin}</div>}{restaurant.fssai_no && <div className="text-xs num text-steel">FSSAI {restaurant.fssai_no}</div>}</div>
           <div className="text-right"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{title}</div><div className="font-display text-3xl num">{no}</div><div className="text-sm num text-steel">{new Date(inv.issued_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div></div>

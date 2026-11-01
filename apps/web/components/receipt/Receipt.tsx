@@ -68,7 +68,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
   return (
     <div ref={ref} className={`relative ${className}`} style={{ width: PAPER_PX[w] }}>
       {!noTopEdge && <div className="tear-strip tear-top" aria-hidden />}
-      <div className="paper thermal" style={{ padding: small ? "14px 12px 12px" : "16px 16px 14px", fontSize: small ? "10.5px" : "12.5px", lineHeight: 1.5 }}>
+      <div className="paper thermal" style={{ padding: noTopEdge ? (small ? "22px 12px 12px" : "26px 16px 14px") : (small ? "14px 12px 12px" : "16px 16px 14px"), fontSize: small ? "10.5px" : "12.5px", lineHeight: 1.5 }}>
         {/* ── head ── */}
         <div className="text-center">
           <div className="font-display font-bold leading-tight tracking-tight" style={{ fontSize: small ? 16 : 19 }}>{d.restaurant.name}</div>

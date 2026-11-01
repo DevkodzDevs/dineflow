@@ -9,11 +9,11 @@ import { Rail } from "@/components/ui/Rail";
 import { useLive } from "@/lib/useLive";
 import { addJob, type NewJob } from "./actions";
 import type { Board } from "../cleaning/CleaningClient";
-import { JobCard, DoneRow, Column, Badge, CATEGORY, PRIORITY, deptLabel, deptOf, isLate, isUpcoming, isOpen, titleOf, ms, brief, avg, PILL, type Job, type Labourer, type Act } from "../cleaning/JobCard";
+import { CLEAN_BOSSES, doesWork } from "@/lib/notify";
+import { JobCard, DoneRow, Column, Badge, COL_CARDS, CATEGORY, PRIORITY, deptLabel, deptOf, isLate, isUpcoming, isOpen, titleOf, ms, brief, avg, PILL, type Job, type Labourer, type Act } from "../cleaning/JobCard";
 
 export type WorkBoard = Board & { work: Job[]; me_dept: string | null; labourers: Labourer[]; cooks: { id: string; name: string; cooked: number; ready: number }[]; rooms: { id: string; number: string }[]; tables: { id: string; name: string }[] };
 const DEPT_ORDER = DEPARTMENTS.map((d) => d.key);
-const BOSS = ["owner", "manager", "supervisor", "supervisor_2"];
 const blank: NewJob = { title: "", details: "", category: "repair", department: "engineering", place: "", room: null, table: null, priority: 3, guest: false, due: null, assigned: null, labourer: null, repeat: 0 };
 
 /**
@@ -23,11 +23,11 @@ const blank: NewJob = { title: "", details: "", category: "repair", department: 
  * people or day labourers, and reads Today by person — jobs finished, and the kitchen's tickets cooked. Late is by the
  * job's due time (its priority's response target unless one was given).
  */
-export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: WorkBoard; error: string | null; me: string; role: string; dept: string | null; hasRooms: boolean }) {
+export function WorkClient({ board, error, me, role, dept, position = null, hasRooms }: { board: WorkBoard; error: string | null; me: string; role: string; dept: string | null; position?: string | null; hasRooms: boolean }) {
   const toast = useToast(); const [pending, start] = useTransition(); const [, tick] = useState(0);
   useLive(["jobs", "table_cleanings", "housekeeping_tasks"], 30000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
-  const boss = board.can_assign; const isBoss = BOSS.includes(role);
+  const boss = board.can_assign; const isBoss = CLEAN_BOSSES.includes(role);
   // the cleaning jobs are Housekeeping's (rooms) and Service's (tables); a room repair is Engineering's already
   const all = useMemo<Job[]>(() => [...board.work, ...board.jobs.map((j) => ({ ...j, department: deptOf(j) }))], [board.work, board.jobs]);
   const [filter, setFilter] = useState<string>(() => (dept && !isBoss ? dept : "all"));
@@ -39,7 +39,10 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
   // late first, then mine, then the most urgent, then the oldest
   const order = (a: Job, b: Job) => Number(isLate(b)) - Number(isLate(a)) || Number([b.assigned_to, b.taken_by].includes(me)) - Number([a.assigned_to, a.taken_by].includes(me))
     || (a.priority ?? 3) - (b.priority ?? 3) || ms(b.created_at) - ms(a.created_at);
-  const waiting = jobs.filter((j) => j.status === "pending" && !isUpcoming(j)).sort(order);
+  // Waiting is nobody's yet; Assigned is given to a person or a labourer and not started (2026-11-01, the owner)
+  const given = (j: Job) => !!j.assigned_to || !!j.labourer_id;
+  const waiting = jobs.filter((j) => j.status === "pending" && !isUpcoming(j) && !given(j)).sort(order);
+  const assigned = jobs.filter((j) => j.status === "pending" && !isUpcoming(j) && given(j)).sort(order);
   const upcoming = jobs.filter(isUpcoming).sort((a, b) => (a.due_at ?? "").localeCompare(b.due_at ?? ""));
   const onIt = jobs.filter((j) => j.status === "in_progress").sort(order);
   const finished = jobs.filter((j) => j.status === "done" || j.status === "skipped").sort((a, b) => ms(a.done_at ?? a.created_at) - ms(b.done_at ?? b.created_at));
@@ -55,7 +58,7 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
       finally { setBusy((b) => { const n = { ...b }; delete n[id]; return n; }); }
     });
   };
-  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} boss={boss} pending={!!busy[j.id]} people={board.people} labourers={board.labourers} act={actOn(j.id)} showDept={filter === "all" || filter === "mine" || filter === "late"} />;
+  const card = (j: Job) => <JobCard key={j.id} j={j} me={me} my={{ role, dept, position }} boss={boss} pending={!!busy[j.id]} people={board.people} labourers={board.labourers} act={actOn(j.id)} showDept={filter === "all" || filter === "mine" || filter === "late"} />;
 
   // who did what today, across every department — and the kitchen's cooks
   const byPerson = useMemo(() => {
@@ -72,6 +75,13 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
   // raising a job
   const [open, setOpen] = useState(false); const [f, setF] = useState<NewJob>(blank);
   const set = <K extends keyof NewJob>(k: K, v: NewJob[K]) => setF((x) => ({ ...x, [k]: v }));
+  // who a new job can be given to (2026-11-01): the department it is for, never the owner, a manager or a supervisor —
+  // everyone below them when the department has nobody (JobCard's peopleFor, for a job already raised)
+  const giveList = useMemo(() => {
+    const below = board.people.filter((p) => !CLEAN_BOSSES.includes(p.role));
+    const fit = below.filter((p) => doesWork("job", f.department ?? null, p.role, p.dept, p.position ?? null));
+    return (fit.length ? fit : below).sort((a, b) => Number(b.on_duty) - Number(a.on_duty) || a.name.localeCompare(b.name));
+  }, [board.people, f.department]);
   const placeKey = f.room ? `room:${f.room}` : f.table ? `table:${f.table}` : f.place ? "text" : "";
   const pickPlace = (v: string) => { if (v.startsWith("room:")) setF((x) => ({ ...x, room: v.slice(5), table: null, place: "" })); else if (v.startsWith("table:")) setF((x) => ({ ...x, table: v.slice(6), room: null, place: "" })); else setF((x) => ({ ...x, room: null, table: null, place: v === "text" ? x.place || " " : "" })); };
   const raise = () => start(async () => {
@@ -128,12 +138,18 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
           {depts.map((k) => chip(k, deptLabel(k), count(k), lateCount(k)))}
         </Rail>
         {["owner", "manager"].includes(role) && <Link href="/work-records" className="svc-btn quiet sm !px-4 shrink-0 max-sm:w-full" data-records-link><ClipboardCheck size={17} aria-hidden /> Records</Link>}
-        <button type="button" className="svc-btn go sm !px-4 shrink-0 max-sm:w-full" onClick={() => { setF({ ...blank, room: null }); setOpen(true); }} data-new-job><Plus size={18} aria-hidden /><Say w="new_job" /></button>
+        {/* New job is a supervisor's and above (2026-11-01, the owner: "not for the housekeeping or cleaning worker") */}
+        {boss && <button type="button" className="svc-btn go sm !px-4 shrink-0 max-sm:w-full" onClick={() => { setF({ ...blank, room: null }); setOpen(true); }} data-new-job><Plus size={18} aria-hidden /><Say w="new_job" /></button>}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
-        <Column keyName="waiting" title="waiting" n={waiting.length} hint={filter === "mine" ? "Nothing for you" : "Nothing waiting"}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{waiting.map(card)}</div></Column>
-        <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody on a job"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{onIt.map(card)}</div></Column>
+      {/* Waiting · Assigned · On it — three across from lg, two on an iPad upright, one on a phone (2026-11-01); then
+          Coming up and Done today side by side from lg */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-open-cols>
+        <Column keyName="waiting" title="waiting" n={waiting.length} hint={filter === "mine" ? "Nothing for you" : "Nothing waiting"}><div className={COL_CARDS}>{waiting.map(card)}</div></Column>
+        <Column keyName="assigned" title="assigned" n={assigned.length} hint="Nothing assigned"><div className={COL_CARDS}>{assigned.map(card)}</div></Column>
+        <Column keyName="on-it" title="on_it" n={onIt.length} hint="Nobody on a job"><div className={COL_CARDS}>{onIt.map(card)}</div></Column>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
         {upcoming.length > 0 && <Column keyName="upcoming" title="coming_up" n={upcoming.length} hint=""><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">{upcoming.map(card)}</div></Column>}
         <Column keyName="done" title="done_today" n={finished.length} hint="None finished yet"><Card className="!py-1 !px-4"><ul className="divide-y divide-[var(--color-separator)]">{finished.map((j) => <DoneRow key={j.id} j={j} me={me} inspectRequired={board.inspect_required} showDept={filter === "all" || filter === "mine"} />)}</ul></Card></Column>
       </div>
@@ -204,7 +220,7 @@ export function WorkClient({ board, error, me, role, dept, hasRooms }: { board: 
               <select className="mt-1" value={f.assigned ?? (f.labourer ? `lab:${f.labourer}` : "")} data-job-give data-clean-assign="new"
                 onChange={(e) => { const v = e.target.value; setF((x) => ({ ...x, assigned: v && !v.startsWith("lab:") ? v : null, labourer: v.startsWith("lab:") ? v.slice(4) : null })); }}>
                 <option value="">Anyone in {deptLabel(f.department)}</option>
-                {[...board.people].sort((a, b) => Number(b.on_duty) - Number(a.on_duty) || Number(b.dept === f.department) - Number(a.dept === f.department) || a.name.localeCompare(b.name)).map((p) => <option key={p.id} value={p.id}>{p.name}{p.title ? ` — ${p.title}` : ""}{p.on_duty ? " · on duty" : ""}</option>)}
+                {giveList.map((p) => <option key={p.id} value={p.id}>{p.name}{p.title ? ` — ${p.title}` : ""}{p.on_duty ? " · on duty" : ""}</option>)}
                 {board.labourers.length > 0 && <optgroup label="Day labourers (no sign-in)">{board.labourers.map((l) => <option key={l.id} value={`lab:${l.id}`}>{l.name}{l.skill ? ` — ${l.skill}` : ""}{l.on_duty ? " · on duty" : ""}</option>)}</optgroup>}
               </select></label>)}
           <button type="button" disabled={pending || f.title.trim().length < 2} className="svc-btn go w-full" onClick={raise} data-raise-job><Plus size={18} aria-hidden /><Say w="raise_it" /></button>

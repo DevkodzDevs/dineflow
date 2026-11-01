@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Star, Phone, Mail, MapPin, MessageCircle, BedDouble, CalendarDays, Wallet, ChevronRight, LayoutGrid, Rows3 } from "lucide-react";
+import { Star, Phone, Mail, MapPin, MessageCircle, BedDouble, CalendarDays, Wallet, ChevronRight, LayoutGrid, Rows3, Heart, Sparkles } from "lucide-react";
 import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { Field, Sheet, Pill, cn, useToast } from "@/components/ui";
 import { formatINR, fmtDate } from "@/lib/format";
@@ -24,6 +24,13 @@ const byNewest = (a: Booking, b: Booking) => b.check_in.localeCompare(a.check_in
 const lastStay = (g: Guest) => [...live(g)].sort(byNewest)[0] ?? null;
 /** wa.me wants the country on the number; ten digits on their own is an Indian one. */
 const waLink = (phone: string) => { const d = phone.replace(/\D/g, ""); return `https://wa.me/${d.length === 10 ? "91" + d : d}`; };
+/** a guest's initial sits on a soft wash of one of the board's hues, picked by the name so it never changes (orange is the VIP's) */
+const HUES = ["--color-green", "--color-blue", "--color-violet", "--color-cyan"];
+const hueOf = (name: string) => HUES[[...name].reduce((t, c) => t + c.charCodeAt(0), 0) % HUES.length];
+const initial = (name: string) => (name.trim().slice(0, 1) || "#").toUpperCase();
+const thisYear = String(new Date().getFullYear());
+/** when the guest was first written down, as the business day in IST: "31 Oct 2026" */
+const addedOn = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 const tone = (s: string) => (s === "checked_in" ? "ready" : s === "reserved" ? "pending" : s === "checked_out" ? "served" : "alert") as "ready" | "pending" | "served" | "alert";
 
 export function GuestsClient({ guests }: { guests: Guest[] }) {
@@ -35,7 +42,6 @@ export function GuestsClient({ guests }: { guests: Guest[] }) {
      the pin keeps it on this device (df-view:guests). */
   const lay = useViewPref("guests", ["cards", "table"] as const); const toast = useToast();
   const shownAs = lay.chosen ?? (lay.wide === null ? null : lay.wide ? "table" : "cards");
-  const openKey = (g: Guest) => (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(g); } };
 
   return (
     <>
@@ -46,24 +52,50 @@ export function GuestsClient({ guests }: { guests: Guest[] }) {
           options={[{ v: "cards", label: "Cards", icon: LayoutGrid, word: "Cards" }, { v: "table", label: "Table", icon: Rows3, word: "Table" }]} /></div>
       </div>
 
-      {/* the cards: who, how to reach them, what they like, and what they have been worth */}
-      <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4", lay.chosen === "table" ? "hidden" : lay.chosen === "cards" ? "" : "md:hidden")} data-guest-cards>
-        {guests.map((g) => { const bs = live(g); const last = lastStay(g); return (
-          <div key={g.id} role="button" tabIndex={0} onClick={() => setOpen(g)} onKeyDown={openKey(g)} aria-label={`Open ${g.full_name}`} data-guest-card={g.id}
-            className="feather !rounded-[20px] p-4 min-w-0 flex flex-col gap-3 cursor-pointer transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-tint)]">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="h-11 w-11 rounded-full bg-ink text-on-label grid place-items-center font-display text-[18px] shrink-0">{g.full_name.slice(0, 1)}</span>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5 min-w-0"><span className="font-bold text-[15.5px] truncate">{g.full_name}</span>{g.vip && <Star size={14} className="fill-champagne text-champagne shrink-0" aria-label="VIP" />}</span>
-                <span className="block text-[12.5px] text-steel truncate">{g.phone ?? g.email ?? (g.id_type ? `${g.id_type} ••••${g.id_last4}` : "No contact")}</span>
+      {/* the cards (2026-10-31, the owner: "design is not good — proper equal spacing and placing"). Every card is the same
+          height in its row: a head (a soft initial in a hue picked from the name, gold for a VIP; the name and a VIP pill; the
+          phone as a tel link), one reserved line for what they like, and a footer of the same height pinned to the bottom —
+          Stays · Last stay · Lifetime, or a single "New guest" chip when there is nothing to count. The card is one big button
+          laid under its content (`data-guest-open`); only the phone link sits above it. */}
+      <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4", lay.chosen === "table" ? "hidden" : lay.chosen === "cards" ? "" : "md:hidden")} data-guest-cards>
+        {guests.map((g) => { const bs = live(g); const last = lastStay(g); const hue = g.vip ? "--color-orange" : hueOf(g.full_name); return (
+          <div key={g.id} data-guest-card={g.id}
+            className="feather feather-lift !rounded-[20px] relative min-w-0 h-full flex flex-col gap-3 p-4">
+            <button type="button" onClick={() => setOpen(g)} aria-label={`Open ${g.full_name}`} data-guest-open
+              className="absolute inset-0 z-0 rounded-[20px] cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-tint)]" />
+            <div className="relative pointer-events-none grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+              <span aria-hidden className="h-12 w-12 rounded-full grid place-items-center font-display text-[20px] leading-none"
+                style={{ background: `var(${hue}-2)`, color: `var(${hue})`, boxShadow: g.vip ? `inset 0 0 0 1.5px var(${hue})` : undefined }}>{initial(g.full_name)}</span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="font-bold text-[15.5px] leading-tight truncate">{g.full_name}</span>
+                  {g.vip && <span className="shrink-0 inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10.5px] font-bold uppercase tracking-[.08em] bg-[var(--color-orange-2)] text-[var(--color-orange)]" data-guest-vip><Star size={10} className="fill-current" aria-hidden />VIP</span>}
+                </span>
+                {g.phone
+                  ? <a href={`tel:${g.phone}`} aria-label={`Call ${g.full_name}, ${g.phone}`} data-guest-call
+                      className="pointer-events-auto relative z-10 mt-0.5 -mx-2 px-2 h-8 [@media(pointer:coarse)]:h-11 max-w-[calc(100%+1rem)] inline-flex items-center gap-1.5 rounded-full text-[13px] text-[var(--color-label-2)] num hover:bg-[var(--color-fill)] hover:text-[var(--color-tint)] active:scale-[.97] transition">
+                      <Phone size={13} className="shrink-0" aria-hidden /><span className="truncate">{g.phone}</span></a>
+                  : <span className="mt-0.5 h-8 [@media(pointer:coarse)]:h-11 flex items-center gap-1.5 text-[13px] text-steel min-w-0">
+                      {g.email ? <Mail size={13} className="shrink-0" aria-hidden /> : null}<span className="truncate">{g.email ?? (g.id_type ? `${g.id_type} ••••${g.id_last4}` : "No contact")}</span></span>}
               </span>
-              <ChevronRight size={17} className="text-steel shrink-0" aria-hidden />
             </div>
-            {g.preferences && <p className="text-[13px] text-[var(--color-label-2)] line-clamp-2">{g.preferences}</p>}
-            <div className="grid grid-cols-3 gap-2 rounded-[14px] bg-[var(--color-fill)] p-2.5 text-center">
-              <span className="min-w-0"><span className="block font-display num text-[18px] leading-none">{bs.length}</span><span className="block text-[11px] text-steel mt-1">{bs.length === 1 ? "stay" : "stays"}</span></span>
-              <span className="min-w-0"><span className="block num text-[13px] font-bold leading-none mt-1 truncate">{last ? fmtDate(last.check_in) : "—"}</span><span className="block text-[11px] text-steel mt-1">last stay</span></span>
-              <span className="min-w-0"><span className="block num text-[13px] font-bold leading-none mt-1 truncate">{formatINR(revenueOf(g), { whole: true })}</span><span className="block text-[11px] text-steel mt-1">lifetime</span></span>
+            <p className={cn("relative pointer-events-none flex items-center gap-2 min-w-0 h-5 text-[13px]", g.preferences ? "text-[var(--color-label-2)]" : "text-[var(--color-label-3)]")} data-guest-pref>
+              <Heart size={13} className={cn("shrink-0", g.preferences ? "text-[var(--color-red)]" : "")} aria-hidden />
+              <span className="truncate">{g.preferences || "No preferences yet"}</span>
+            </p>
+            <div className="relative pointer-events-none mt-auto h-14 rounded-[14px] bg-[var(--color-fill)]">
+              {bs.length === 0
+                ? <span className="h-full px-3 flex items-center justify-between gap-2 min-w-0">
+                    <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[12.5px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)] shrink-0" data-guest-new><Sparkles size={13} aria-hidden />New guest</span>
+                    <span className="text-[12px] text-steel truncate">Added {addedOn(g.created_at)}</span>
+                  </span>
+                : <span className="h-full grid grid-cols-3 divide-x divide-[var(--color-separator)]" data-guest-stats>
+                    {([["Stays", String(bs.length)], ["Last stay", last ? stayDay(last.check_in, last.check_in.slice(0, 4) !== thisYear) : "—"], ["Lifetime", formatINR(revenueOf(g), { whole: true })]] as const).map(([k, v]) => (
+                      <span key={k} className="min-w-0 px-2 flex flex-col items-center justify-center text-center">
+                        <span className="block max-w-full num font-extrabold text-[15px] leading-none truncate">{v}</span>
+                        <span className="block mt-1.5 text-[10.5px] font-bold uppercase tracking-[.08em] text-steel truncate">{k}</span>
+                      </span>))}
+                  </span>}
             </div>
           </div>); })}
       </div>

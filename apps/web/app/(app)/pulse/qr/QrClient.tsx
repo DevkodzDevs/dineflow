@@ -5,6 +5,7 @@ import { QR, qrDataUrl } from "@/components/QR";
 import { Card, useToast } from "@/components/ui";
 import { SvcHead } from "@/components/ui/Service";
 import { copyText, shareText } from "@/lib/clipboard";
+import { WaitList, type W, type T, type R } from "./WaitList";
 
 /** A door sign for the queue: the property, the code, how to use it — printed from a window of its own. */
 async function printPoster(url: string, name: string) {
@@ -32,7 +33,7 @@ const STEPS = [
  * scanner wants dark on light); Print poster opens an A4 door sign. A property that is not Listed publicly has no
  * public queue page, so it gets the way to turn that on instead.
  */
-export function QrClient({ slug, base, listed, restaurant }: { slug: string; base: string; listed: boolean; restaurant: string }) {
+export function QrClient({ slug, base, listed, restaurant, queue = [], tables = [], booked = [] }: { slug: string; base: string; listed: boolean; restaurant: string; queue?: W[]; tables?: T[]; booked?: R[] }) {
   const toast = useToast();
   const joinUrl = `${base}/queue/${slug}`;
   const copy = async () => { if (await copyText(joinUrl)) toast("Link copied"); else toast("Could not copy — hold the link to copy it", "err"); };
@@ -50,6 +51,8 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
         <p className="mt-2 text-[14px] text-steel leading-relaxed">Turn on <b>Listed publicly</b></p>
         <Link href="/settings/storefront" className="svc-btn go sm mt-5 inline-flex"><Settings size={18} aria-hidden /><span>Open Storefront</span></Link>
       </Card>
+      {/* guests the host added on Pulse still wait here, so the list stays even with the QR off */}
+      <div className="max-w-2xl mx-auto mt-5"><WaitList queue={queue} tables={tables} booked={booked} listed={false} onShare={() => {}} /></div>
     </div>
   );
 
@@ -77,31 +80,34 @@ export function QrClient({ slug, base, listed, restaurant }: { slug: string; bas
           </div>
         </Card>
 
+        {/* Right (below the code under lg): the waiting list first — who is here and Call next — then how guests use
+            the code and where to put it, in one compact card. */}
         <div className="space-y-5 min-w-0">
-          <Card className="!rounded-[24px]">
-            <h2 className="text-[18px] font-extrabold">How guests use it</h2>
-            <p className="text-[13px] text-steel mt-0.5">Three taps. No app.</p>
-            <ol className="mt-4 space-y-3">
+          <WaitList queue={queue} tables={tables} booked={booked} listed onShare={() => void share()} />
+          <Card className="!rounded-[24px] !p-4 sm:!p-5 @container" data-joinqr-how>
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-[16px] font-extrabold leading-tight">How guests use it</h2>
+              <span className="text-[12.5px] text-steel shrink-0">Three taps. No app.</span>
+            </div>
+            <ol className="mt-3 grid grid-cols-1 @[30rem]:grid-cols-3 gap-2">
               {STEPS.map(({ Icon, title, text }, i) => (
-                <li key={title} className="flex gap-3.5 items-start rounded-[18px] bg-[var(--color-fill)] p-3.5">
-                  <span className="relative h-12 w-12 shrink-0 rounded-[14px] grid place-items-center bg-[var(--color-bg-2)] text-[var(--color-tint)]">
-                    <Icon size={22} aria-hidden />
-                    <span className="absolute -top-1.5 -left-1.5 h-6 w-6 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center text-[12px] font-bold num">{i + 1}</span>
+                <li key={title} className="min-w-0 flex @[30rem]:flex-col gap-3 @[30rem]:gap-2.5 items-center @[30rem]:items-start rounded-[16px] bg-[var(--color-fill)] p-3">
+                  <span className="relative h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-bg-2)] text-[var(--color-tint)]">
+                    <Icon size={19} aria-hidden />
+                    <span className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center text-[11px] font-bold num">{i + 1}</span>
                   </span>
-                  <div className="min-w-0"><div className="text-[15px] font-bold leading-tight">{title}</div><p className="text-[13px] text-steel mt-1 leading-snug">{text}</p></div>
+                  <div className="min-w-0"><div className="text-[14px] font-bold leading-tight">{title}</div><p className="text-[12.5px] text-steel mt-0.5 leading-snug">{text}</p></div>
                 </li>
               ))}
             </ol>
-          </Card>
-          <Card className="!rounded-[24px]">
-            <div className="flex gap-3.5 items-start">
-              <span className="h-12 w-12 shrink-0 rounded-[14px] grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><DoorOpen size={22} aria-hidden /></span>
-              <div className="min-w-0">
-                <h2 className="text-[16px] font-extrabold leading-tight">Where to put it</h2>
-                <p className="text-[13px] text-steel mt-1 leading-snug">Door, host stand, waiting bench.</p>
+            <div className="mt-3 pt-3 border-t border-[var(--color-separator)] flex items-center gap-3 min-w-0">
+              <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><DoorOpen size={19} aria-hidden /></span>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[14px] font-bold leading-tight">Where to put it</h3>
+                <p className="text-[12.5px] text-steel mt-0.5 leading-snug">Door, host stand, waiting bench.</p>
               </div>
+              <Link href="/pulse" className="svc-btn quiet sm shrink-0"><Activity size={18} aria-hidden /><span>Open Pulse</span></Link>
             </div>
-            <Link href="/pulse" className="mt-4 svc-btn quiet sm w-full"><Activity size={18} aria-hidden /><span>Open Pulse</span></Link>
           </Card>
         </div>
       </div>

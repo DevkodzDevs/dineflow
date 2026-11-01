@@ -227,3 +227,8 @@ from the screens (`fence150.mjs`): the kitchen's Start cooking → Ready → Ser
   guest and points. A closed toggle shows what it holds (`[data-bill-toggle-value]`: "10% · ₹50.00 · DIWALI", a name); Guest opens
   by itself when the order already has a customer. Money logic and `generateBill` are unchanged; the rest of the panel (online
   offer, service charge, 9(5), promise, Generate bill, Or charge to a room) always shows.
+- **Print only the document (2026-10-31, the owner: "print only the bill, not the app").** A page marks its paper `data-print-root`
+  — the invoice card (`InvoiceView`) and the folio slip — and `@media print` in globals.css removes everything that is neither the
+  paper, inside it, nor one of its parents (`display:none`, so no blank second page), strips the parents' frames and transforms, and
+  gives the paper the light theme's ink on white (the html, body and paper backgrounds white) whatever the screen's theme. Pages
+  without the mark print as before. shots159 (print media): 0 other boxes, sidebar gone, for the invoice and the folio.

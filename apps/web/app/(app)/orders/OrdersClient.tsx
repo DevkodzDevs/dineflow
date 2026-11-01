@@ -128,8 +128,8 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
     const o = byTable.get(t.id); const s = tableState(t); const late = lateOf(o); const I = SVC_ICON[s];
     const seats = <span className="ml-auto flex items-center gap-1 text-[14px] font-bold text-[var(--color-label-2)] shrink-0"><Users size={16} aria-hidden />{t.capacity}</span>;
     const motionProps = { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { delay: Math.min(i, 12) * 0.012 } };
-    /* Paid and left (0111): cyan and dashed — who has it and since when, the one move this person can make (take it,
-       or Done), and + to seat the next party anyway (which closes the job as "seated again before it was cleaned"). */
+    /* Paid and left (0111): cyan and dashed — who has it and since when, and the one move this person can make (take it,
+       Done, Assign). No order until it is clean (2026-11-01). */
     const c = !o && s === "clean" ? cleanOf.get(t.id) : undefined;
     const al = alertsOf(t, !!o || (s !== "free" && s !== "hold" && s !== "clean"));
     if (c) {
@@ -164,7 +164,8 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
                 : canDone ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold whitespace-nowrap overflow-hidden bg-[var(--color-green)] text-[var(--color-on-tint)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-done onClick={() => start(async () => { const r = await finishJob("table", c.id); if ("error" in r) toast(r.error!, "err"); else toast(`${t.name} is clean`); })}><Check size={16} aria-hidden className="shrink-0 max-[399.98px]:hidden" /><span className="min-w-0 truncate"><Say w="clean_done" /></span></button>
                 : canGive ? <button type="button" disabled={pending} className="relative flex-1 min-w-0 justify-center h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold whitespace-nowrap overflow-hidden bg-[var(--st)] text-[var(--color-bezel)] active:scale-[.97] transition before:absolute before:-inset-1 before:content-['']" data-clean-give onClick={() => setGiving({ table: t, job: c })}><UserPlus size={15} aria-hidden className="shrink-0 max-[399.98px]:hidden" /><span className="min-w-0 truncate">{c.assigned_to || c.status === "in_progress" ? "Reassign" : "Assign"}</span></button>
                 : <span className="flex-1 min-w-0 h-9 px-3 rounded-full inline-flex items-center justify-center text-[12.5px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] truncate" data-clean-wait>{c.status === "in_progress" ? "Being cleaned" : "Waiting to clean"}</span>}
-              <Link href={`/orders/new?table=${t.id}`} className="relative h-9 w-9 shrink-0 rounded-full grid place-items-center bg-[var(--color-fill-2)] hover:bg-[var(--color-fill)] before:absolute before:-inset-1 before:content-['']" aria-label={`Take order at ${t.name} anyway`} title="Seat the next party now"><Plus size={17} aria-hidden /></Link>
+              {/* no order on a table that is being cleaned (2026-11-01, the owner: "a table given for cleaning must not take
+                  orders") — the + that seated the next party anyway is gone; the table takes orders once it is Done */}
             </span>
           </div>
         </motion.div>
@@ -321,14 +322,18 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
         </section>
       )}
       {/* Assign (2026-10-30; redrawn the same day — the owner: "ultra-modern, unique, user friendly"): the table and how long it has
-          waited at the top; the people as tiles — the ones who clean first, then everyone else — each with their initials (a
+          waited at the top; the people as tiles — only the ones who clean (2026-11-01), on duty first — each with their initials (a
           green dot when they are on duty today), their job, and "Now" on whoever has it; a search once there are more than
           eight; "Anyone who cleans" puts it back in the queue. clean_assign checks the boss again. */}
       <Sheet open={!!giving} onClose={() => { setGiving(null); setFind(""); }} title={giving ? `Who cleans ${giving.table.name}?` : "Assign"}>
         {giving && (() => {
           const give = (id: string | null, who: string) => { const { table, job } = giving; setGiving(null); setFind(""); start(async () => { const r = await assignJob("table", job.id, id); if ("error" in r) toast(r.error!, "err"); else toast(id ? `${table.name} given to ${who}` : `${table.name}: anyone who cleans can take it`); }); };
           const q = find.trim().toLowerCase(); const list = crew.filter((p) => !q || `${p.name} ${p.title ?? ""}`.toLowerCase().includes(q));
-          const groups = [{ k: "cleans", label: "They clean", people: list.filter((p) => p.cleans) }, { k: "rest", label: "Everyone else", people: list.filter((p) => !p.cleans) }].filter((g) => g.people.length);
+          // only the people who clean (2026-11-01 — page.tsx); split by who is in today when anyone has clocked in
+          const word = crew.some((p) => p.cleans) ? "Cleaners" : "Staff";
+          const groups = (crew.some((p) => p.on_duty)
+            ? [{ k: "cleans", label: `${word} on duty`, people: list.filter((p) => p.on_duty) }, { k: "off", label: "Not clocked in", people: list.filter((p) => !p.on_duty) }]
+            : [{ k: "cleans", label: word, people: list }]).filter((g) => g.people.length);
           const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
           return (
             <div className="space-y-4" data-clean-give-sheet>
@@ -339,7 +344,8 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
               </div>
               {crew.length > 8 && <label className="relative block"><Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none" aria-hidden />
                 <input className="!h-11 !min-h-11 !pl-10" value={find} onChange={(e) => setFind(e.target.value)} placeholder="Find someone" aria-label="Find someone" data-clean-give-find /></label>}
-              {crew.length === 0 && <p className="text-[14px] text-steel py-2">No staff to give it to.</p>}
+              {crew.length === 0 && <p className="text-[14px] text-steel py-2">No cleaner on staff yet — add one in Staff.</p>}
+              {crew.length > 0 && !crew.some((p) => p.cleans) && <p className="text-[12.5px] text-steel -mt-1" data-crew-fallback>No cleaner on staff — showing everyone below supervisor.</p>}
               {groups.map((g) => (
                 <section key={g.k} className="space-y-2" data-crew-group={g.k}>
                   <div className="text-[11.5px] font-extrabold uppercase tracking-[.12em] text-steel">{g.label} <span className="num">· {g.people.length}</span></div>

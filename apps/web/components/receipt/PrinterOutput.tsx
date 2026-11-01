@@ -32,7 +32,13 @@ export function PrinterOutput({ data, printing, onTear, label = "Counter printer
   const paperRef = useRef<HTMLDivElement>(null);
   const [h, setH] = useState(0);
 
-  useLayoutEffect(() => { if (paperRef.current) setH(paperRef.current.offsetHeight); }, [data]);
+  /* the sheet's height follows the sheet (2026-10-31): measured once, it was taken before the receipt font arrived on an iPad,
+     so the column was cut short; a ResizeObserver keeps it right as fonts load or lines change */
+  useLayoutEffect(() => {
+    const el = paperRef.current; if (!el) return;
+    setH(el.offsetHeight);
+    const ro = new ResizeObserver(() => setH(el.offsetHeight)); ro.observe(el); return () => ro.disconnect();
+  }, [data]);
   useEffect(() => {
     if (!printing) return;
     setPhase("feeding");
@@ -44,7 +50,8 @@ export function PrinterOutput({ data, printing, onTear, label = "Counter printer
   const visible = phase === "torn" ? 0 : h;
 
   return (
-    <div ref={root} className="printer flex flex-col items-center" style={{ width: bodyW }} data-printer>
+    // its own layer (isolation): Safari smeared the slot's shadow across the sheet's top while the sticky column scrolled
+    <div ref={root} className="printer flex flex-col items-center" style={{ width: bodyW, isolation: "isolate" }} data-printer>
       {/* ── machine — on screen only: a printed page is the paper ─── */}
       <div className="printer-body no-print" style={{ width: bodyW }}>
         <span className="printer-led" aria-hidden />
@@ -70,8 +77,9 @@ export function PrinterOutput({ data, printing, onTear, label = "Counter printer
           style={{ width: paperW, transformOrigin: "top center" }}
         >
           <div className={`relative ${feeding && !reduce ? "feeding-shake" : ""}`} style={{ width: paperW }}>
-            {/* shadow cast by the bezel onto the sheet, only across the paper */}
-            <div className="no-print absolute inset-x-0 top-0 h-6 z-10 pointer-events-none" style={{ background: "linear-gradient(180deg, rgb(13 28 23 / .38), rgb(13 28 23 / .06) 55%, transparent)" }} />
+            {/* the bezel's shadow on the sheet — only while it feeds (2026-10-31, the owner: the bill "looks collapsed"): at rest the
+                sheet's top is clean paper, the name clear of the slot */}
+            {feeding && <div className="no-print absolute inset-x-0 top-0 h-6 z-10 pointer-events-none" style={{ background: "linear-gradient(180deg, rgb(13 28 23 / .3), rgb(13 28 23 / .05) 55%, transparent)" }} />}
             <Receipt ref={paperRef} data={data} noTopEdge />
           </div>
         </motion.div>

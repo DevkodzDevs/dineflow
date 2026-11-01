@@ -29,7 +29,7 @@ the raiser told when it is done, recurring rounds.
   `labourer_id` for a day labourer (no sign-in: whoever finishes it does so *for* them). `_job_who` stamps who and when on
   every path. Trigger `_job_repeat` opens the next round.
 - **Who may do what**: anyone signed in raises a job (`job_add`) and takes one not given to someone else; giving a job to a
-  person or a labourer is for owner / manager / supervisor / supervisor 2 (`_clean_may_assign`), so is `job_assign_labour`;
+  person or a labourer is for owner / manager / supervisor (`_clean_may_assign`; supervisor 2 too until 0159), so is `job_assign_labour`;
   *Drop* (`job_cancel`) is for whoever raised it, is on it, or a supervisor — the check coalesces nulls, because
   `null = me` would otherwise slip through `not (…)`. Done with a note: `clean_done(p_kind, p_id, p_note default null)` —
   the two-argument signature was dropped and replaced (one function, a default), so the old calls still work.
@@ -145,3 +145,23 @@ node cleaning.mjs    # 43  ·  node cleaner.mjs  # 43 — the Cleaning board sti
   instead of a third dropdown. The text was cut in half on an iPad — design-system.md, *Dropdowns*.
 - `JobCard` takes `cleaner` (cleaning.md, 2026-10-30): on the Cleaning board a table or room follows I'll take it / Assign;
   without it (Work) nothing changes.
+
+## 2026-11-01 — I'll take it only for the job's department; Assigned (0158)
+- `JobCard` takes `my` (role, dept, position) instead of `cleaner`: `worksOn(j, my)` → `doesWork` decides I'll take it on
+  every board — a job is its department's people's; owner, manager and supervisors get **Assign** (the wide button) and never
+  I'll take it; anyone else sees who has it. `clean_take` refuses the same (`_clean_fits`, cleaning.md).
+- Give to… (the card and New job's *Give it to*) lists only that department's people, never a boss; everyone below the
+  bosses when the department has nobody.
+- **Assigned** column between Waiting and On it (given to a person or a labourer, not started). Waiting counts both on the
+  tiles.
+
+## 2026-11-01 — New job and Give to… are a supervisor's and above (0159)
+- the owner, looking at Selvi's phone (a Floor Supervisor, role `supervisor_2`): "the assign options are not for
+housekeeping and cleaning workers — only the supervisor and above". **Who gives jobs out is now owner, manager, supervisor**
+— `_clean_may_assign` and `_clean_boss` (0159), `lib/notify.ts` `CLEAN_BOSSES`. A `supervisor_2` works as their team does:
+takes, finishes and gives back their own jobs, can be given jobs (Assign lists and `clean_auto_assign` now include a
+Housekeeping `supervisor_2` — `_clean_fits`), and **still signs rooms off** (`inspect_room` is unchanged; 0160 makes
+`clean_board` list the rooms to inspect for whoever may sign off and return `can_inspect`).
+- `WorkClient`: **New job** (`[data-new-job]`) shows only for `boss` (`can_assign`); the local `BOSS` list is gone — `isBoss`
+  (the department filter's default and Today by person) reads `CLEAN_BOSSES`. A worker opens on their department's chip with
+  I'll take it only. `job_add` itself still lets anyone raise a job (no screen offers it to a worker now).

@@ -185,3 +185,8 @@ pnpm --filter @dineflow/web typecheck
   late, green at the table), a torn edge with notches like the stay cards, the name and its status pill, then the party, the table
   and the room as small pills, and a round arrow. "Late" is worked out after the page mounts, so the server's HTML and the first
   paint agree.
+- **The folio slip reads cleanly (2026-10-31, the owner: "the bill looks collapsed").** The slot's shadow on the paper shows only while
+  it feeds; at rest the sheet's top is clean paper, the receipt's top padding is 26px under the slot (`Receipt noTopEdge`), the machine
+  is its own layer (`isolation: isolate` — Safari smeared the shadow across the sheet while the sticky column scrolled), and the
+  sheet's height follows a ResizeObserver (measured once, it was taken before the receipt font loaded). shots159: the name 22px clear.
+- **Printing the folio prints the slip alone** (`[data-folio]` is `data-print-root` — billing-and-invoices.md).

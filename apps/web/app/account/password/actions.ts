@@ -95,7 +95,8 @@ export async function changePassword(_: unknown, fd: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  // into the app by a full page load (PasswordClient — a client-side move from here looped on the layout's redirect, 2026-11-01)
+  return { go: "/dashboard" };
 }
 
 /** Defer the password change and grant 3-day temporary access. */

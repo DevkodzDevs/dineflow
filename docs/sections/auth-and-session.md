@@ -173,3 +173,15 @@ pnpm --filter @dineflow/web build
   code:" line ignored) and splits only when the first part looks like a login (no spaces, 3+ characters, at most one @). Pasted into
   **Password**: the ID goes to Login ID only if that is empty or the same login; pasted into **Login ID**: the password moves to
   Password if that is empty. On the device, at paste time — sign-in, the throttle and the log are unchanged. shots157 checks it.
+
+## 2026-11-01 — into the app by a full page load
+- **The owner's iPad: "after signing in — with a temporary password, Continue or Save — *Application error*; closed and
+  reopened it is fine."** Reproduced on the live site and on a local build in WebKit: the page reached /home, then Next's
+  router re-committed `/home` every 30–50 ms with no request (186 `history.replaceState` calls) until Safari threw
+  `SecurityError: … replaceState() more than 100 times per 10 seconds`. A client-side move that starts outside the app's
+  layout (/login, /account/password) and meets the layout's own `redirect()` (/dashboard → /home for staff) loops; a full
+  load takes the same redirects as HTTP ones.
+- So `login`, `signup`, `join` and `changePassword` **return `{ go }`** instead of calling `redirect()`, and AuthForm /
+  PasswordClient go there with `window.location.replace` (the button stays "One moment…" / "Saving"); *Continue with
+  temporary password* does the same instead of `router.push("/dashboard"); router.refresh()`. **Do not put a `redirect()` or
+  a `router.push` from these screens into the app back.** Checked: `r159.mjs` (login, three paths), `live159b.mjs`.

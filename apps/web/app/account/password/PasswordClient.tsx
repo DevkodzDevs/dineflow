@@ -1,8 +1,7 @@
 "use client";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { KeyRound, Mail, ShieldCheck } from "lucide-react";
 import { Button, Field, PasswordInput } from "@/components/ui";
-import { useRouter } from "next/navigation";
 import { changePassword, requestCode, verifyCode, deferPasswordChange } from "./actions";
 import { Clock } from "lucide-react";
 
@@ -15,14 +14,17 @@ export function PasswordClient({ email, contactEmail, forced }:
   // signing in with the temporary password.
   const skipOtp = forced && !contactEmail;
 
-  const router = useRouter();
   const [step, setStep] = useState<Step>(skipOtp ? "password" : "send");
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [echoed, setEchoed] = useState<string | null>(null);
   const [sendErr, setSendErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [vState, vAct, vPending] = useActionState(verifyCode as never, null as { error?: string; ok?: boolean } | null);
-  const [pState, pAct, pPending] = useActionState(changePassword as never, null as { error?: string } | null);
+  const [pState, pAct, pPending] = useActionState(changePassword as never, null as { error?: string; go?: string } | null);
+  /* Into the app by a full page load, both ways (2026-11-01, the owner's iPad: "Application error" after Save and after
+     Continue with temporary password; reopening was fine). A client-side move from this page into the app met the layout's
+     redirect (/dashboard → /home) and Safari stopped the router re-applying it ("replaceState() more than 100 times"). */
+  useEffect(() => { if (pState?.go) window.location.replace(pState.go); }, [pState]);
 
   // derived: once the code is verified, jump to password step
   const active: Step = vState?.ok ? "password" : step;
@@ -101,14 +103,14 @@ export function PasswordClient({ email, contactEmail, forced }:
               <PasswordInput name="confirm" required minLength={8} autoComplete="new-password" />
             </Field>
             {pState?.error && <p className="text-sm text-[var(--color-red)] bg-[var(--color-red-2)] rounded-xl px-3 py-2">{pState.error}</p>}
-            <Button size="lg" className="w-full" disabled={pPending}>{pPending ? "Saving" : "Save and continue"}</Button>
+            <Button size="lg" className="w-full" disabled={pPending || !!pState?.go}>{pPending || pState?.go ? "Saving" : "Save and continue"}</Button>
           </form>
         )}
 
         {/* temporary access: skip the password change for 3 days */}
         {forced && active !== "password" && (
           <button type="button" disabled={pending}
-            onClick={() => start(async () => { const r = await deferPasswordChange(); if (!("error" in r)) { router.push("/dashboard"); router.refresh(); } })}
+            onClick={() => start(async () => { const r = await deferPasswordChange(); if (!("error" in r)) window.location.replace("/dashboard"); })}
             className="mt-5 w-full flex items-center justify-center gap-2 h-12 rounded-2xl border border-[var(--color-separator)] text-sm font-semibold text-steel hover:text-[var(--color-label)] hover:bg-[var(--color-fill)] transition-colors disabled:opacity-50">
             <Clock size={15} /> Continue with temporary password
             <span className="text-xs font-normal text-[var(--color-label-3)]">3 days</span>

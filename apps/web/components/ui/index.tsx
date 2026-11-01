@@ -15,7 +15,7 @@ import { FlapShuffle } from "./Flap";
 /** The bar along the top while the next page is on its way, and a ring on any tap that has to wait (Busy.tsx). */
 export { NavProgress } from "./Busy";
 /** The app's own yes/no dialog — `await ask({ title, body, ok, tone })` instead of the browser's confirm() (Confirm.tsx). */
-export { ask, ConfirmHost, type AskOpts } from "./Confirm";
+export { ask, askText, ConfirmHost, type AskOpts, type AskTextOpts } from "./Confirm";
 
 /** kept as the old names so existing screens keep working; both now point at the shared springs */
 export const spring = snap;
@@ -205,6 +205,9 @@ function markSheetFoot(body: HTMLElement) {
   const isAct = (e: Element) => e.matches("button, a.btn, a.svc-btn, a[role=button]");
   let foot: Element | null = null;
   for (let e: Element | null = body.lastElementChild, i = 0; e && i < 7 && !foot; e = e.lastElementChild, i++) {
+    /* a list's last row is not the dialog's footer (2026-11-01, the owner's "Your orders ready": the last ticket's Served key
+       was pinned as the foot, and the frosted bar behind it drew a pale box round the button, past the card's edge) */
+    if (e.matches("li, [data-no-foot]")) break;
     if (isAct(e) || (e.children.length > 0 && [...e.children].every(isAct))) foot = e;
   }
   const big = foot?.parentElement && foot.parentElement.getBoundingClientRect().height >= body.scrollHeight * 0.5 - 40;

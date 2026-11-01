@@ -645,3 +645,25 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   employee, frontdesk and housekeeping ceilings and defaults lose `housekeeping` (the screen is now *Room status*, the bosses');
   `effective_modules` trims ticks to the ceiling, no profile rewritten; no `has_module('housekeeping')` exists. `reservations.booking_id`
   → `bookings(id)` on delete set null, indexed; `zz_same_property` rebuilt for reservations with it (another property's stay refused).
+
+## 0158 — ready tickets and whose job (2026-11-01)
+- `sync_kot_status`: a ticket whose dishes are all cancelled is `served` with no `served_at`; 30 open ones closed (kitchen.md).
+- `_clean_boss(role)`, `_clean_fits(kind, dept, profile)` (execute: authenticated); `clean_take` refuses a job that is not the
+  caller's work unless given to them; `clean_board.people[].position`.
+- `restaurants.clean_auto_minutes` (int, default 5, 0–240), `clean_auto_save(minutes)` (owner, manager), `clean_auto_assign()`
+  (any signed-in member; hands out waiting tables / rooms — cleaning.md). `_hk_assign_guard` and `_hk_who` honour the
+  transaction-local `dineflow.auto_assign` flag (not reachable through the API).
+- Applied alone (`scratchpad/apply158.mjs`: the file, then its `_dineflow_migrations` row, in one transaction) because
+  `scripts/migrate.mjs` would also have run another session's unapplied 0159. Dry-run: `dry158.mjs` 21/21, rolled back.
+
+## 0159 — only a supervisor and above gives jobs out (2026-11-01)
+- `_clean_may_assign()` → owner / manager / supervisor (was + supervisor_2): `clean_assign`, `job_add` with an assignee,
+  `job_assign_labour`, the 0156 guard, `can_assign`, and acting on someone else's job (`clean_take/done/release/skip`, `job_cancel`).
+  `_clean_boss(p_role)` (0158) → the same three, so `_clean_fits` / `clean_take` / `clean_auto_assign` treat a supervisor_2 as their
+  team. `inspect_room` unchanged. Dry run `dry159.sql` (rolled back): Selvi (supervisor_2) may=false, boss=false, fits table/room;
+  Kannan false; manager, owner true. Applied live with `--live`.
+
+## 0160 — the rooms to inspect follow who may sign off (2026-11-01)
+- 0158's `clean_board` with one change: `'inspect'` is built when the caller is owner / manager / supervisor / supervisor_2 (as
+  `inspect_room`) instead of when `_clean_may_assign()`, and the board returns `'can_inspect'`. Dry run `dry160b.sql` (inspection
+  switched on inside the rolled-back transaction): Selvi can_assign=false, can_inspect=true, 23 rooms; Kannan none. Applied live.

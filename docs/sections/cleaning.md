@@ -127,13 +127,12 @@ node cleaner.mjs     # 42 checks: a restaurant Cleaner's phone and a resort's at
 - **Not reached:** a locked phone or a closed app (no Web Push); on iPhone, the Home Screen app with *Background alerts → Allow*;
   sound after the first tap; a device that saved *Front desk* / *Kitchen* keeps tables off. Waiters (the Service team) still hear
   tables because they may take them — change `deptSees` and the database rule together to stop that.
-- **Give to… / the person-plus button** were already owner / manager / supervisor / supervisor 2 on screen and in `clean_assign`,
+- **Give to… / the person-plus button** were already owner / manager / supervisor / supervisor 2 (owner / manager / supervisor since 0159) on screen and in `clean_assign`,
   `job_add`, `job_assign_labour` (`_clean_may_assign`). The gap was `housekeeping_tasks`' old `tenant_all` policy: any login could
   `update … set assigned_to` through the API. **0156** `trg_hk_assign_guard` refuses a change of `assigned_to` (or a task born given
   to someone) unless the caller may assign; no signed-in person (service role, cron) passes. `[data-clean-assign="open|select|new"]`.
-- **Selvi Murugan (manoooo)** is role `supervisor_2` ("Supervisor (2nd level)"), Floor Supervisor, Housekeeping — so she rightly sees
-  Give to…; a Room Attendant does not. Only first-level supervisors would mean taking `supervisor_2` out of `_clean_may_assign` (it
-  also governs Work, labourers, sign-off and inspection).
+- **Selvi Murugan (manoooo)** is role `supervisor_2` ("Supervisor (2nd level)"), Floor Supervisor, Housekeeping. Since **0159**
+  (2026-11-01, the owner) she does not see Give to… / Assign / New job: she works as the team and still inspects rooms (0160).
 - The browser checks `cleaner.mjs` / `cleaning.mjs` expected "*T1 to clean*"; it now reads "*T1 needs cleaning*".
 
 ## 2026-10-30 — I'll take it is the cleaners'; the bosses assign
@@ -150,3 +149,39 @@ node cleaner.mjs     # 42 checks: a restaurant Cleaner's phone and a resort's at
 - **The database is unchanged:** `clean_take` still lets anyone at the property take a job (only the button and the alert moved).
   Make it refuse too only together with `isCleaner`.
 - Checked: `r157.mjs` (scratchpad) — owner, waiter, busser and cleaner logins made through `staff_create_login` on a demo.
+
+## 2026-11-01 — whose job, Assigned, the automatic hand-out (0158) — replaces "The database is unchanged" above
+- **I'll take it is the job's own people's, in the database too.** `_clean_boss(role)` (owner, manager, supervisor,
+  supervisor 2) and `_clean_fits(kind, dept, profile)` are the SQL copies of `lib/notify.ts` `CLEAN_BOSSES` / `doesWork`:
+  a table — the Housekeeping team or a Busser; a room — Housekeeping; a job — its department (anyone when it has none); a
+  room under repair — Engineering; never a boss. `clean_take` refuses anyone else ("Tables are the cleaners' — ask a
+  supervisor…") and tells a boss to Assign, unless the job was given to them. **Change both lists together.**
+- **Assign lists only those people** — the Orders sheet (`orders/page.tsx` crew: the cleaners, on duty first; grouped
+  "Cleaners on duty" / "Not clocked in"), `JobCard` `peopleFor`, Work's New job, Room status's Give to… Never a boss. A
+  property with nobody in that team gets everyone below the bosses (`[data-crew-fallback]`).
+- **Assigned** is a column of its own between Waiting and On it (pending and given to someone; on Work, a labourer too):
+  `[data-col="assigned"]`, `Say w="assigned"`. The open columns are three across from lg, two from md, one on a phone
+  (`[data-open-cols]`, `COL_CARDS`); To inspect / Coming up and Done today sit under them, side by side from lg.
+- **No order on a table being cleaned**: the floor tile's **+** ("seat the next party anyway") is gone.
+- **Nobody took it → a free cleaner gets it.** `restaurants.clean_auto_minutes` (5; 0 = off — the second switch at the foot
+  of the board, owner or manager, `clean_auto_save`). There is no pg_cron, so `components/shell/AutoAssign.tsx` (every
+  signed-in screen) calls `clean_auto_assign()` once a minute while in view: each table / room pending, given to nobody,
+  older than that (tables under 12 h, rooms under 24 h) is locked (`for update skip locked` — two devices never hand one out
+  twice) and given to a random person it fits, **free** (nothing open given to or taken by them) and **on duty** when anyone
+  at the property has clocked in today. No assigned_by — the card says *Given to … automatically* (`[data-auto-assigned]`).
+  A transaction-local `dineflow.auto_assign` flag lets it past the 0156 guard and keeps `_hk_who` from naming the caller.
+  Nobody free → it waits for the next minute. The person hears *Given to you*.
+- `clean_board`'s people carry `position` (a Busser's team is Service). Checked: `dry158.mjs` (21, rolled back), `r159.mjs`.
+
+## 2026-11-01 — assign is a supervisor's and above (0159, 0160) — replaces "supervisor 2" in the Give to… lines above
+- the owner, looking at Selvi's phone (a Floor Supervisor, role `supervisor_2`): "the assign options are not for
+housekeeping and cleaning workers — only the supervisor and above". **Who gives jobs out is now owner, manager, supervisor**
+— `_clean_may_assign` and `_clean_boss` (0159), `lib/notify.ts` `CLEAN_BOSSES`. A `supervisor_2` works as their team does:
+takes, finishes and gives back their own jobs, can be given jobs (Assign lists and `clean_auto_assign` now include a
+Housekeeping `supervisor_2` — `_clean_fits`), and **still signs rooms off** (`inspect_room` is unchanged; 0160 makes
+`clean_board` list the rooms to inspect for whoever may sign off and return `can_inspect`).
+- **JobCard:** Give to… / the person-plus / the wide Assign follow `boss` (= `can_assign`), so they are gone for a supervisor_2 with
+  no code change; **Not needed** (the ⋯ on a table) is now a boss's or the cleaner's whose table it was given to — a worker's card
+  for a job that is not theirs has no ⋯. **CleaningClient:** the To inspect column follows `board.can_inspect ?? can_assign`.
+- shots160 (12/12): a Floor Supervisor sees no Give to… / Assign, takes a room, sees To inspect; a Room Attendant takes, no
+  To inspect; an Executive Housekeeper (supervisor) and the owner keep Assign; the API refuses the Floor Supervisor's `clean_assign`.

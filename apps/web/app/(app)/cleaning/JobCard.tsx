@@ -7,6 +7,8 @@ import { EmptyState, type EmptyHue } from "@/components/ui/EmptyState";
 import { Hourglass, Timer, CalendarClock } from "lucide-react";
 import { Say } from "@/components/ui/Say";
 import { takeJob, finishJob, giveBack, assignJob, skipJob, cancelJob, assignLabour, type JobKind } from "./actions";
+import { CLEAN_BOSSES, doesWork } from "@/lib/notify";
+import { UserCheck } from "lucide-react";
 
 /** One job, whatever it is: a table paid and left, a room checked out, or anything raised on Work (0113). */
 export type Job = {
@@ -20,7 +22,9 @@ export type Job = {
   due_at?: string | null; repeat_days?: number | null; source?: string | null; created_by?: string | null; created_name?: string | null;
   labourer_id?: string | null; labourer_name?: string | null;
 };
-export type Person = { id: string; name: string; role: string; title: string | null; dept: string | null; on_duty: boolean };
+export type Person = { id: string; name: string; role: string; title: string | null; dept: string | null; position?: string | null; on_duty: boolean };
+/** Who is looking at the board — for whose work a job is (lib/notify.ts doesWork). */
+export type Me = { role: string; dept: string | null; position: string | null };
 export type Labourer = { id: string; name: string; skill: string | null; on_duty: boolean };
 export type Act = (p: Promise<object>, said: string) => void;
 
@@ -69,11 +73,18 @@ export function Badge({ name, you }: { name: string | null; you?: boolean }) {
   return <span className={cn("h-7 w-7 shrink-0 rounded-full grid place-items-center text-[11px] font-extrabold", you ? "bg-[var(--color-cyan)] text-[var(--color-bezel)]" : "bg-[var(--color-fill-2)] text-[var(--color-label)]")} aria-hidden>{initials(name)}</span>;
 }
 
-/** The people a job can be given to: on duty first, then the ones whose work it is. */
+/** What kind of work a job is for doesWork: a room under repair is Engineering's job, a job its own department's. */
+const scopeOf = (j: Job): ["table" | "room" | "job", string | null] => (j.kind === "room" && j.what === "maintenance" ? ["job", "engineering"] : [j.kind, j.kind === "job" ? j.department ?? null : null]);
+/** Is this job this person's to take (lib/notify.ts doesWork — the database's `_clean_fits`, 0158)? */
+export const worksOn = (j: Job, p: { role: string; dept: string | null; position?: string | null }) => doesWork(...scopeOf(j), p.role, p.dept, p.position ?? null);
+
+/** The people a job can be given to (2026-11-01, the owner: "only the people whose work it is — never the owner, manager or
+ *  supervisor"): those it is the work of, on duty first. A property with nobody in that team gets everyone below the bosses,
+ *  so the job can still be given out. */
 export function peopleFor(people: Person[], j: Job) {
-  const dept = deptOf(j);
-  const fit = (p: Person) => (dept ? p.dept === dept : false) || (j.kind === "room" ? p.role === "housekeeping" : j.kind === "table" ? ["waiter", "employee"].includes(p.role) : false);
-  return [...people].sort((a, b) => Number(b.on_duty) - Number(a.on_duty) || Number(fit(b)) - Number(fit(a)) || a.name.localeCompare(b.name));
+  const below = people.filter((p) => !CLEAN_BOSSES.includes(p.role));
+  const fit = below.filter((p) => worksOn(j, p));
+  return [...(fit.length ? fit : below)].sort((a, b) => Number(b.on_duty) - Number(a.on_duty) || a.name.localeCompare(b.name));
 }
 
 /**
@@ -81,19 +92,23 @@ export function peopleFor(people: Person[], j: Job) {
  * when; then the one move this person can make — take it, finish it (with a note, for work), give it back, drop it —
  * and, for a supervisor, who to give it to (a person, or a day labourer who has no sign-in).
  */
-export function JobCard({ j, me, boss, pending, people, labourers = [], act, showDept, cleaner }: { j: Job; me: string; boss: boolean; pending: boolean; people: Person[]; labourers?: Labourer[]; act: Act; showDept?: boolean; cleaner?: boolean }) {
+export function JobCard({ j, me, my, boss, pending, people, labourers = [], act, showDept }: { j: Job; me: string; my: Me; boss: boolean; pending: boolean; people: Person[]; labourers?: Labourer[]; act: Act; showDept?: boolean }) {
   const [noting, setNoting] = useState(false); const [note, setNote] = useState("");
   const [panel, setPanel] = useState<"more" | "give" | null>(null);
   const theirs = !!j.assigned_to && j.assigned_to !== me;
-  /* a table or a room on the Cleaning board (`cleaner` given, 2026-10-30 — the owner: "I'll take it only for the cleaning
-     people; a manager or supervisor gets assign"): a cleaner takes one nobody else was given, anyone takes the one given
-     to them, a boss gives it out and finishes only what they took. Work's jobs keep their rule. */
-  const cleanRule = cleaner !== undefined && j.kind !== "job";
-  const canTake = j.status === "pending" && (cleanRule ? j.assigned_to === me || (!!cleaner && !theirs) : !theirs || boss);
-  const canFinish = j.status === "in_progress" && (cleanRule ? j.taken_by === me || j.assigned_to === me || (!!cleaner && !j.taken_by) : j.taken_by === me || j.assigned_to === me || boss || !j.taken_by);
+  /* who gets which move (2026-10-30 for tables and rooms; 2026-11-01 every job — the owner: "I'll take it only for the
+     people whose work it is; owner, manager, supervisor and anyone else get Assign"): the job's own people (worksOn — a
+     cleaner for a table, Housekeeping for a room, the department for a job) take one nobody else was given; anyone takes
+     the one given to them; a boss gives it out and finishes only what they took or were given; the rest see who has it.
+     clean_take refuses the same (0158). */
+  const works = worksOn(j, my);
+  const canTake = j.status === "pending" && (j.assigned_to === me || (works && !theirs));
+  const canFinish = j.status === "in_progress" && (j.taken_by === me || j.assigned_to === me || (works && !j.taken_by));
   const canBack = j.status === "in_progress" && (j.taken_by === me || boss);
   const canDrop = j.kind === "job" && isOpen(j) && (boss || j.created_by === me || j.taken_by === me || j.assigned_to === me);
-  const canSkip = j.kind === "table" && j.status === "pending" && (!theirs || boss);
+  // Not needed: a boss's, or the cleaner's whose table it was given to — the ⋯ is not on a worker's card for a job that is
+  // not theirs (2026-11-01, the owner: the assign and ⋯ options are the supervisor's and above)
+  const canSkip = j.kind === "table" && j.status === "pending" && (boss || j.assigned_to === me);
   const hasMore = (canFinish && j.kind === "job") || canBack || canSkip || canDrop;
   const Icon = iconOf(j); const name = titleOf(j); const mine = [j.assigned_to, j.taken_by].includes(me);
   const late = isLate(j);
@@ -132,7 +147,7 @@ export function JobCard({ j, me, boss, pending, people, labourers = [], act, sho
       </div>
       <div className="px-4 space-y-2 text-[13.5px]">
         {j.assigned_to && <div className="flex items-center gap-2 min-w-0" data-assigned><Badge name={j.assigned_name} you={j.assigned_to === me} />
-          <span className="min-w-0">Given to <b>{j.assigned_to === me ? "you" : j.assigned_name}</b>{j.assigned_by_name && <> by {j.assigned_by_name}</>}{j.assigned_at && <span className="text-steel"> · {clock(j.assigned_at)}</span>}</span></div>}
+          <span className="min-w-0">Given to <b>{j.assigned_to === me ? "you" : j.assigned_name}</b>{j.assigned_by_name ? <> by {j.assigned_by_name}</> : <span className="text-steel" data-auto-assigned> automatically</span>}{j.assigned_at && <span className="text-steel"> · {clock(j.assigned_at)}</span>}</span></div>}
         {j.labourer_id && <div className="flex items-center gap-2 min-w-0" data-assigned-labour><Badge name={j.labourer_name ?? null} />
           <span className="min-w-0">Given to <b>{j.labourer_name}</b> <span className="text-steel">(labourer)</span>{j.assigned_by_name && <> by {j.assigned_by_name}</>}{j.assigned_at && <span className="text-steel"> · {clock(j.assigned_at)}</span>}</span></div>}
         {j.status === "in_progress" && <div className="flex items-center gap-2 min-w-0 font-semibold" data-taken><Badge name={j.taken_name} you={j.taken_by === me} />
@@ -145,14 +160,14 @@ export function JobCard({ j, me, boss, pending, people, labourers = [], act, sho
           {j.status === "pending" && canTake
             ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-take onClick={() => act(takeJob(j.kind, j.id), `${name} is yours`)}><Hand size={18} aria-hidden /><Say w="take_it" /></button>
             : canFinish && !noting ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-finish onClick={() => act(finishJob(j.kind, j.id), `${name} done`)}><Check size={18} aria-hidden /><Say w="clean_done" /></button>
-            : cleanRule && boss && !noting ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-give-wide data-clean-assign="wide" onClick={() => setPanel((x) => (x === "give" ? null : "give"))}><UserPlus size={18} aria-hidden />{j.assigned_to || j.status === "in_progress" ? "Reassign" : "Assign"}</button>
+            : boss && !noting ? <button type="button" disabled={pending} className="svc-btn go sm flex-1 min-w-0" data-give-wide data-clean-assign="wide" onClick={() => setPanel((x) => (x === "give" ? null : "give"))}><UserPlus size={18} aria-hidden />{j.assigned_to || j.status === "in_progress" ? "Reassign" : "Assign"}</button>
             : <p className="flex-1 min-w-0 text-[13px] text-steel truncate">{j.status === "pending" ? `Waiting for ${j.assigned_name ?? "someone"}` : noting ? "Say what was done" : `${j.taken_name ?? "Someone"} is on it`}</p>}
           {hasMore && <button type="button" onClick={() => setPanel((x) => (x === "more" ? null : "more"))} aria-expanded={panel === "more"} aria-label={`More for ${name}`} title="More"
             className={cn("h-11 w-11 shrink-0 rounded-xl grid place-items-center transition-colors", panel === "more" ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-more><MoreHorizontal size={19} aria-hidden /></button>}
           {/* Give to… is the owner's, a manager's or a supervisor's (`boss` = clean_board.can_assign = _clean_may_assign:
-              owner, manager, supervisor, supervisor 2); clean_assign refuses anyone else, and since 0156 so does a direct
+              owner, manager, supervisor — not a 2nd-level supervisor since 0159); clean_assign refuses anyone else, and since 0156 so does a direct
               write of a room's assigned_to. Everyone else keeps I'll take it / Done. */}
-          {boss && !(cleanRule && !noting && !(j.status === "pending" && canTake) && !canFinish) && <button type="button" onClick={() => setPanel((x) => (x === "give" ? null : "give"))} aria-expanded={panel === "give"} aria-label={`Give ${name} to`} title="Give to…"
+          {boss && (noting || (j.status === "pending" && canTake) || canFinish) && <button type="button" onClick={() => setPanel((x) => (x === "give" ? null : "give"))} aria-expanded={panel === "give"} aria-label={`Give ${name} to`} title="Give to…"
             className={cn("h-11 w-11 shrink-0 rounded-xl grid place-items-center transition-colors", panel === "give" ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : (j.assigned_to || j.labourer_id) ? "bg-[var(--color-cyan-2)] text-[var(--color-cyan)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-give-open data-clean-assign="open"><UserPlus size={18} aria-hidden /></button>}
         </div>
         <div className={cn("mt-2 grid grid-cols-2 gap-2", panel !== "more" && "!hidden")} data-more-panel>
@@ -205,8 +220,12 @@ export function DoneRow({ j, me, inspectRequired, showDept }: { j: Job; me: stri
   );
 }
 
-const COL_LOOK: Record<"waiting" | "on_it" | "done_today" | "to_inspect" | "coming_up", [LucideIcon, EmptyHue, string]> = {
+/** A column's cards: one under another beside the other columns; two side by side on a phone held wide (sm, under md). */
+export const COL_CARDS = "grid gap-3 sm:max-md:grid-cols-2";
+type ColWord ="waiting" | "assigned" | "on_it" | "done_today" | "to_inspect" | "coming_up";
+const COL_LOOK: Record<ColWord, [LucideIcon, EmptyHue, string]> = {
   waiting: [Hourglass, "orange", ""],
+  assigned: [UserCheck, "violet", ""],
   on_it: [Timer, "blue", ""],
   to_inspect: [ShieldCheck, "violet", ""],
   done_today: [CircleCheck, "tint", ""],
@@ -214,7 +233,7 @@ const COL_LOOK: Record<"waiting" | "on_it" | "done_today" | "to_inspect" | "comi
 };
 
 /** A column of the board: its word, a count, and its cards or a quiet line. */
-export function Column({ keyName, title, n, hint, children }: { keyName: string; title: "waiting" | "on_it" | "done_today" | "to_inspect" | "coming_up"; n: number; hint: string; children: ReactNode }) {
+export function Column({ keyName, title, n, hint, children }: { keyName: string; title: ColWord; n: number; hint: string; children: ReactNode }) {
   return (
     <section className="min-w-0 space-y-3" data-col={keyName}>
       <div className="flex items-center gap-2 px-1"><span className="text-[17px] font-extrabold"><Say w={title} start /></span><span className="num rounded-full bg-[var(--color-fill)] px-2.5 py-0.5 text-[13px] font-extrabold">{n}</span></div>

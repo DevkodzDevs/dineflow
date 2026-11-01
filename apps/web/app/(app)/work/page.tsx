@@ -18,7 +18,7 @@ export default async function WorkPage() {
   return (
     <>
       <SvcHead icon="work" title="Work" sub="Jobs to do" />
-      <WorkClient board={board} error={error?.message ?? null} me={session.profile.id} role={session.profile.role} dept={dept} hasRooms={session.restaurant.property_type !== "restaurant"} />
+      <WorkClient board={board} error={error?.message ?? null} me={session.profile.id} role={session.profile.role} dept={dept} position={session.profile.position ?? null} hasRooms={session.restaurant.property_type !== "restaurant"} />
     </>
   );
 }

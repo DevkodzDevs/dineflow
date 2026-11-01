@@ -31,3 +31,8 @@ export async function saveCleanSettings(tables: boolean) {
   const s = await createClient(); const { error } = await s.rpc("clean_settings_save", { p_tables: tables });
   if (error) return { error: error.message }; revalidatePath("/cleaning"); return { ok: true as const };
 }
+/** Owner or manager (0158): give a table or room nobody has taken to a free cleaner after this many minutes; 0 = never. */
+export async function saveAutoAssign(minutes: number) {
+  const s = await createClient(); const { error } = await s.rpc("clean_auto_save", { p_minutes: minutes });
+  if (error) return { error: error.message }; revalidatePath("/cleaning"); return { ok: true as const };
+}

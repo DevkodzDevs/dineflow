@@ -512,3 +512,23 @@ of a second." Measured first, on the live site and on a local production build (
   editable. Hotel: Room status in the menu and head, an attendant sent away; New booking's Room fills the name, saves booking_id,
   the card and the front desk show the room; the in-house Table key opens New booking with it. `next dev` ran out of memory under
   it twice — run it against a production build (`NEXT_DIST_DIR=… next build`, then `next start`).
+- **`pw/shots159.mjs` (9)** — the owner's 7 points of 2026-10-31 in WebKit: the folio slip's name ≥18px below the slot with no shade;
+  print media on the folio and an invoice (0 boxes outside `[data-print-root]`, no sidebar); Room status Fail → `[data-ask-text]` with
+  reasons; Guest book cards equal height per row (**switch to Cards first — wide screens open on Table, the cards measure 0**); the POS
+  head's table on one line at 1194 and 1366 with the guest fields open; the waiting list after two `queue_join`s and Call next → `called`.
+  Earlier runs check the resort demo's guests out — the probe checks a reserved one in first (demo rows only).
+
+## 2026-11-01 — the owner's round (0158), scratchpad
+| Suite | Checks | What |
+| --- | --- | --- |
+| `dry158.mjs` | 21 | 0158 rolled back on manoooo: the stuck tickets closed, a running ticket cancelled whole closes; `_clean_fits` for a Room Attendant, a housekeeping role, a Steward, the bosses, an Electrician; `clean_take` refusals and the given-to-you case; `clean_auto_assign` from a waiter's device for a table and a room (cleaners freed first — it skips the busy), the guard still refusing the waiter's own write, the switch off, `clean_auto_save` owner-only; `clean_board.people[].position`. |
+| `r159.mjs` | 26 per theme (dark, paper) | WebKit, production build, two demos and five staff made through `staff_create_login`: sign-in with a temporary password → Continue / Save (installed app and tab) lands with ≤ 1 `replaceState` and no error (**wait 10 s** — the loop began ~1 s after arriving, a 3.5 s wait missed it); the till keeps its ticket across Orders and back, another table starts empty, sending clears it; a ready order cancelled whole leaves no Ready ticket; the ready dock's card and a Served that stays; no order button on a cleaning table; Who cleans lists only the cleaner and the busser; Assigned column; owner Assign / cleaner I'll take it / waiter nothing; the 5-minute hand-out from a waiter's open device; Work: electrician takes, supervisor 2 does not, Give to… only Engineering, 1194/834/412 columns; the rail's head gap and the installed app's drawer height. `ONLY=login,pos,ready,clean,work,rail`. The hotel demo for `rail` can hit the Micro database's statement timeout — run `ONLY=rail` again. |
+| `live159b.mjs` | — | the sign-in flow against a base URL (`LIVE=`), counting `history.replaceState` calls and their callers — 186 on the live site before the fix, 1 after. |
+- A server left over on the port answers from a deleted build (chunks 404, the action 500): kill every node on the port before restarting.
+
+- **`pw/shots160.mjs` (12)** — assign is a supervisor's and above (0159/0160), on a phone in WebKit. The resort demo's owner makes
+  three sign-ins through `staff_create_login` (Executive Housekeeper = supervisor, Floor Supervisor = supervisor_2, Room Attendant =
+  housekeeping; position set in SQL, `must_change_password` off), then rooms to clean (one given to the attendant), a room to inspect
+  (`hk_inspect_required` on) and two Work jobs. Per person: Give to… / Assign / New job / New task / I'll take it / Start / To inspect on
+  Cleaning, Work and Room status (**tap the Tasks segment first on a phone**; a Room Attendant has no Room status — /home), then the API
+  refuses the Floor Supervisor's `clean_assign` and allows the supervisor's. dropdemos removes the demo and its sign-ins.

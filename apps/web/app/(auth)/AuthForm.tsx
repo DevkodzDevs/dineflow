@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useRef, type ClipboardEvent } from "react";
+import { useActionState, useEffect, useRef, type ClipboardEvent } from "react";
 import Link from "next/link";
 import { useState } from "react";
 import { sameLogin, splitPastedLogin } from "./pasteLogin";
@@ -8,11 +8,15 @@ import { UtensilsCrossed, Building2, Palmtree, Sparkles } from "lucide-react";
 import { DemoDialog } from "./demo/DemoDialog";
 import { InstallRow } from "@/components/shell/InstallRow";
 
-type Action = (s: unknown, fd: FormData) => Promise<{ error?: string } | void>;
+type Action = (s: unknown, fd: FormData) => Promise<{ error?: string; go?: string } | void>;
 
 export function AuthForm({ mode, action, pendingApproval }:
   { mode: "login" | "signup" | "join"; action: Action; pendingApproval?: boolean }) {
-  const [state, act, pending] = useActionState(action as never, null as { error?: string } | null);
+  const [state, act, pending] = useActionState(action as never, null as { error?: string; go?: string } | null);
+  /* signed in: into the app by a full page load (actions.ts login — a client-side move from here looped on the layout's
+     redirect in Safari); the button keeps saying "One moment…" until the new page is up */
+  useEffect(() => { if (state?.go) window.location.replace(state.go); }, [state]);
+  const leaving = !!state?.go;
   const [ptype, setPtype] = useState("restaurant");
   const [showDemo, setShowDemo] = useState(false);
   const idRef = useRef<HTMLInputElement>(null);
@@ -100,7 +104,7 @@ export function AuthForm({ mode, action, pendingApproval }:
           </div>
         )}
         {state?.error && <p className="text-sm text-chili bg-chili-2 rounded-xl px-3 py-2">{state.error}</p>}
-        <Button size="lg" className="w-full" disabled={pending}>{pending ? "One moment…" : copy.cta}</Button>
+        <Button size="lg" className="w-full" disabled={pending || leaving}>{pending || leaving ? "One moment…" : copy.cta}</Button>
       </form>
       {mode === "login" && (
         <button type="button" onClick={() => setShowDemo(true)}

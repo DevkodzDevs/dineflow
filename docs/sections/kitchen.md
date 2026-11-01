@@ -122,3 +122,10 @@ Then open `/kitchen/board` at 1920 and stand back from it.
   `KT_CHIP`): *KOT 3* · *# 3* · the keyboard key · the cook (2026-10-30, the owner: "ultra modern, compact"). shots158 checks both.
   **Reprint** sends it as `** NOTE **` like the till, and the browser-print KOT (`kotHtml`) prints it in bold. The guest
   board (`kitchen/board`) lists no dishes, so it is left alone.
+
+## 2026-11-01 — a ticket of cancelled dishes closes (0158)
+- `sync_kot_status` read "every dish ready or cancelled" as **Ready**, so cancelling a whole order (or every dish) put its
+  ticket at the pass for good: Served moves only dishes that are not cancelled, found none, said nothing, and the ticket came
+  back on the next read — on the board's Ready column and the ready dock (the owner: "I press Served and it comes back again
+  and again"; 30 were open). All cancelled → `served` with no `served_at` (closed, never served) and no started/ready stamps.
+  The open ones were closed by the migration. The ready dock also drops any ticket with no live dish.

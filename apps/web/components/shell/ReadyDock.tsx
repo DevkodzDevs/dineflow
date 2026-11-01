@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
 import { Package, BellRing, Check } from "lucide-react";
-import { Sheet, cn, useToast } from "@/components/ui";
+import { Sheet, useToast } from "@/components/ui";
 import { getClient } from "@/lib/supabase/lazy";
 import { whenSettled } from "@/lib/idle";
 import { setKotStatus } from "@/app/(app)/orders/actions";
@@ -37,8 +37,10 @@ export function ReadyDock({ me, all, parcels }: { me: string; all: boolean; parc
     try {
       const c = await getClient();
       const { data } = await c.from("kots").select("id, kot_no, ready_at, orders!inner(order_no, type, token_no, customer_name, created_by, channel_id, dining_tables(name)), order_items(qty, name_snapshot, status)")
-        .eq("status", "ready").gte("created_at", new Date(Date.now() - 36 * 3600e3).toISOString()).order("ready_at", { ascending: true }).limit(40);
-      if (alive.current) setRows((data ?? []) as unknown as Row[]);
+        .eq("status", "ready").neq("orders.status", "cancelled").gte("created_at", new Date(Date.now() - 36 * 3600e3).toISOString()).order("ready_at", { ascending: true }).limit(40);
+      // a ticket with no dish left to carry out is not food at the pass (2026-11-01: a cancelled order's ticket sat here for
+      // good — Served found nothing to move; 0158 now closes those, this keeps an older one off the list too)
+      if (alive.current) setRows(((data ?? []) as unknown as Row[]).filter((r) => r.order_items.some((i) => i.status !== "cancelled")));
     } catch { /* offline: keep what we had */ }
   }, []);
   useEffect(() => {
@@ -81,20 +83,26 @@ export function ReadyDock({ me, all, parcels }: { me: string; all: boolean; parc
         ))}
       </div>
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open === "parcel" ? "Parcels ready" : "Your orders ready"}>
+        {/* each ticket a card (2026-11-01, the owner marked the rows and the button): the table or token on a tile in the
+            dock's colour, what it is, the dishes, how long it has stood at the pass, and one flat Served key. The pale box the owner
+            saw round the old button was the Sheet pinning the last row's button as the dialog's footer (markSheetFoot, now never
+            inside a list item) */}
         <ul className="space-y-2.5" data-ready-list={open ?? ""}>
           {list.map((r) => {
             const dishes = r.order_items.filter((i) => i.status !== "cancelled");
+            const mins = r.ready_at ? Math.round((Date.now() - new Date(r.ready_at).getTime()) / 60000) : 0;
             return (
-              <li key={r.id} className="flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] bg-[var(--color-bg-2)] p-3 min-w-0" data-ready-row>
-                <span className={cn("h-12 w-12 shrink-0 rounded-[14px] grid place-items-center text-white", open === "parcel" ? "bg-[var(--color-orange)]" : "bg-[var(--color-green)]")} aria-hidden>
-                  {open === "parcel" ? <Package size={22} /> : <BellRing size={22} />}
+              <li key={r.id} className="ready-row" style={{ ["--hue" as string]: open === "parcel" ? "var(--color-orange)" : "var(--color-green)" }} data-ready-row>
+                <span className="ready-tile" aria-hidden>
+                  {open === "parcel" ? <Package size={18} /> : <BellRing size={18} />}
+                  <b className="font-display">{label(r).replace(/^Token /, "#")}</b>
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-baseline gap-2 min-w-0"><span className="font-display text-[20px] leading-none truncate">{label(r)}</span><span className="text-[11.5px] font-semibold text-steel shrink-0">{kind(r)} · #{r.orders?.order_no}</span></span>
-                  <span className="block mt-1 text-[13px] text-[var(--color-label-2)] truncate">{dishes.map((i) => `${i.qty} ${i.name_snapshot}`).join(", ")}</span>
-                  <span className="block mt-0.5 text-[12px] font-semibold text-[var(--color-orange)] num">Ready {ago(r.ready_at)}</span>
+                  <span className="block text-[12px] font-bold text-steel truncate">{kind(r)} · #{r.orders?.order_no}</span>
+                  <span className="block mt-0.5 text-[14.5px] font-semibold text-[var(--color-label)] line-clamp-2">{dishes.map((i) => `${i.qty} × ${i.name_snapshot}`).join(", ")}</span>
+                  <span className="ready-since num" data-late={mins >= 5 || undefined}>Ready {ago(r.ready_at)}</span>
                 </span>
-                <button type="button" disabled={pending} onClick={() => served(r)} className="svc-btn go sm !px-4 shrink-0" data-ready-served><Check size={16} aria-hidden />{open === "parcel" ? "Handed over" : "Served"}</button>
+                <button type="button" disabled={pending} onClick={() => served(r)} className="ready-go" aria-label={`${open === "parcel" ? "Handed over" : "Served"} · ${label(r)}`} data-ready-served><Check size={17} strokeWidth={2.6} aria-hidden /><span>{open === "parcel" ? "Handed over" : "Served"}</span></button>
               </li>
             );
           })}

@@ -161,3 +161,13 @@ are the whole point and they are theme-dependent.
   it (constants.ts, 0157 — `effective_modules` keeps a module only inside the ceiling, so ticks naming it simply stop working), and
   so did every staff-level position list (attendants, trainee, laundry, night auditor, the trades). Attendants work from the
   Cleaning board; their room alerts follow their team, not this module (`kindsFor`). The Laundry Attendant now starts on Cleaning.
+- **Fail asks in the app's dialog (2026-10-31)** — `askText` with the reasons Bathroom · Linen · Dust · Smell · Minibar, "Fail room",
+  red; `min: 0` because `inspect_room` (0112) takes an empty reason as "Failed inspection" — as the browser's prompt allowed.
+- **2026-11-01:** Start is the team's (0158 `clean_take` refuses an owner, manager or supervisor): a boss's task card shows
+  Done across the row and gives the task out with Give to…, whose list never holds a boss (`CLEAN_BOSSES`).
+
+- **2026-11-01 — giving tasks out is narrower than signing rooms off (0159).** `page.tsx` passes `canAssign` (`CLEAN_BOSSES`:
+  owner, manager, supervisor) beside `canInspect` (still with `supervisor_2`). `canAssign` decides the Give to… select
+  (`[data-task-assign]`), the **New task** card, Start (a boss starts only what was given to them) and "X's task — ask a supervisor";
+  `canInspect` keeps Pass / Fail / "Supervisor signs off rooms". A Floor Supervisor: Pass / Fail and Start, no Give to…, no New task.
+  On a phone the tasks are behind the **Tasks** segment (a probe taps it before counting Start).
