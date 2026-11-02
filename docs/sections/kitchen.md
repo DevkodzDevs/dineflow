@@ -129,3 +129,12 @@ Then open `/kitchen/board` at 1920 and stand back from it.
   back on the next read — on the board's Ready column and the ready dock (the owner: "I press Served and it comes back again
   and again"; 30 were open). All cancelled → `served` with no `served_at` (closed, never served) and no started/ready stamps.
   The open ones were closed by the migration. The ready dock also drops any ticket with no live dish.
+
+## 2026-11-02 — column heads and empty columns (the owner's iPad: "Ready — take it out" on two lines; "not looking good")
+- **The head:** the state's icon on a tinted tile (`.kcol-icon`), the word on one line (`.kcol-title`, nowrap — *New*, *Cooking*,
+  *Ready*; the Say word `ready`, not `ready_take`) and what to do with it under it (`.kcol-sub`: To start · On the fire · Take it
+  out), the flap count on the right; 56px tall. `[data-kcol-head]`.
+- **An empty column** (`.kcol-empty`, `[data-kcol-empty]`): the icon on a tile inside a slowly turning dashed ring (`kcol-orbit`,
+  still for reduced motion), a soft glow of the state's colour, the line (No new tickets · Nothing cooking · Nothing ready) and a hint
+  (Orders land here · Start a ticket · Done dishes wait here). It fills the column's free height up to 420px, so beside a long column
+  of tickets it stays near the head. shots163 at 1194/1440/834/412 in dark, paper and colourful dark: one-line titles, empties 420px.

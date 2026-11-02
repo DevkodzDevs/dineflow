@@ -136,7 +136,12 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
   }, [board, view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* one colour per column, the floor's: New is blue, Cooking amber, Ready green */
-  const cols: { key: Kot["status"]; w: Word; cls: string; Icon: typeof Flame }[] = [{ key: "pending", w: "new", cls: "st-new", Icon: Bell }, { key: "preparing", w: "cooking", cls: "st-cook", Icon: Flame }, { key: "ready", w: "ready_take", cls: "st-ready", Icon: BellRing }];
+  /* a column's word stays one word on one line (2026-11-02, the owner's iPad: "Ready — take it out" broke onto two lines);
+     what to do with it is the small line under it, and the empty column says it with its icon */
+  const cols: { key: Kot["status"]; w: Word; sub: string; empty: string; hint: string; cls: string; Icon: typeof Flame }[] = [
+    { key: "pending", w: "new", sub: "To start", empty: "No new tickets", hint: "Orders land here", cls: "st-new", Icon: Bell },
+    { key: "preparing", w: "cooking", sub: "On the fire", empty: "Nothing cooking", hint: "Start a ticket", cls: "st-cook", Icon: Flame },
+    { key: "ready", w: "ready", sub: "Take it out", empty: "Nothing ready", hint: "Done dishes wait here", cls: "st-ready", Icon: BellRing }];
   // the bump-bar order: keys 1–9 read the board left to right, top to bottom
   const ordered = cols.flatMap((c) => board.filter((k) => k.status === c.key));
   const keyOf = (id: string) => { const i = ordered.findIndex((x) => x.id === id); return i >= 0 && i < 9 ? i + 1 : null; };
@@ -215,12 +220,14 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
 
       {/* three columns, one colour each: New (blue), Cooking (amber), Ready (green) */}
       <div className="grid gap-4 md:grid-cols-3">
-        {cols.map(({ key, w, cls, Icon }) => {
+        {cols.map(({ key, w, sub, empty, hint, cls, Icon }) => {
           const list = board.filter((k) => k.status === key);
           return (
-            <section key={key} className={cn("kcol md:min-h-[60dvh]", cls)} data-col={key}>
-              <div className="kcol-head"><Icon size={20} aria-hidden /><Say w={w} start /><b className="num sr-only">{list.length}</b><span className="ml-auto" data-kcol-count><FlapShuffle value={list.length} pad={0} size="xs" tile="40px" bare say={`${list.length}`} /></span></div>
-              <motion.div className="space-y-3" variants={listV} initial="hidden" animate="show">
+            <section key={key} className={cn("kcol md:min-h-[60dvh] flex flex-col", cls)} data-col={key}>
+              <div className="kcol-head" data-kcol-head><span className="kcol-icon" aria-hidden><Icon size={19} /></span>
+                <span className="min-w-0 flex-1 leading-none"><span className="kcol-title"><Say w={w} start /></span><span className="kcol-sub">{sub}</span></span>
+                <b className="num sr-only">{list.length}</b><span className="shrink-0" data-kcol-count><FlapShuffle value={list.length} pad={0} size="xs" tile="40px" bare say={`${list.length}`} /></span></div>
+              <motion.div className="space-y-3 flex-1 flex flex-col" variants={listV} initial="hidden" animate="show">
                 <AnimatePresence mode="popLayout">
                   {list.map((k) => {
                     /* Two clocks, both the owner's: past "hurry" the ticket goes amber, past "late" it goes
@@ -297,7 +304,9 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                     );
                   })}
                 </AnimatePresence>
-                {list.length === 0 && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[14px] text-steel px-2 py-6 text-center">{key === "pending" ? "No new tickets" : key === "preparing" ? "Nothing cooking" : "Nothing ready"}</motion.p>}
+                {list.length === 0 && <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="kcol-empty" role="status" data-kcol-empty={key}>
+                  <span className="kcol-empty-ring" aria-hidden><span className="kcol-empty-tile"><Icon size={24} strokeWidth={2.1} /></span></span>
+                  <b className="kcol-empty-title">{empty}</b><span className="kcol-empty-hint">{hint}</span></motion.div>}
                 {/* the recall strip: what was just picked up, one press from coming back */}
                 {key === "ready" && bumpedLive.length > 0 && (
                   <div className="pt-3 border-t border-dashed border-[var(--color-line)]" data-recall>

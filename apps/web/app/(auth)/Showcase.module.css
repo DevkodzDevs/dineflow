@@ -1,8 +1,11 @@
 /* The sign-in wall's live board (Showcase.tsx). The wall is always dark (globals.css .wall), so the glass is white at low
    alpha and each tile's hue is lifted toward white — the paper theme's darker greens still read on the navy. */
 
+/* the stage measures the room it was given (a size container): the board steps down by the height left under the clock and
+   the headline, not by the screen's — the screen's height alone let it spill onto the tagline on an iPad on its side with
+   Safari's bars, and off the bottom of the installed app (2026-11-02, the owner: "screen design breaking") */
 .stage {
-  position: relative; width: 100%; max-width: 560px; height: 100%; min-height: 0;
+  position: relative; width: 100%; max-width: 560px; height: 100%; min-height: 0; container: board / size;
   display: grid; place-items: center; perspective: 1400px; perspective-origin: 50% 20%;
   pointer-events: none; user-select: none;
 }
@@ -94,21 +97,25 @@
 @keyframes grow { from { transform: scaleY(0); } }
 @keyframes sway { 50% { transform: scaleY(.86); } }
 
-/* a short wall (an iPad on its side is 834 tall, a 1440×900 laptop 900) keeps the board but drops the chart and the small labels, and tilts it less —
-   tilted, its near corner reached down onto the tagline; shorter still, the board goes */
-@media (max-height: 960px) {
+/* the steps, by the stage's own height (the board is ~320px tall in full, ~211 compact as drawn, ~130 one row; tilted it reaches
+   ~12% further, so each step keeps that much spare): full · compact (no chart, no small labels, less tilt) · one row of two
+   tiles · none */
+@container board (max-height: 400px) {
   .chart, .label { display: none; }
   .panel { padding: 12px 14px 14px; }
   .head { margin-bottom: 10px; }
   .grid { gap: 8px; }
   .tile { padding: 10px; gap: 6px 10px; border-radius: 14px; }
   .icon { width: 32px; height: 32px; }
-  @keyframes drift {
-    0%, 100% { transform: rotateX(12deg) rotateY(-14deg) rotateZ(1.5deg) translateY(0); }
-    50% { transform: rotateX(9deg) rotateY(-8deg) rotateZ(1deg) translateY(-6px); }
-  }
+  .panel { transform: rotateX(12deg) rotateY(-14deg) rotateZ(1.5deg); animation-name: driftLow; }
 }
-@media (max-height: 700px) { .stage { display: none; } }
+/* the compact board's drift: tilted less (a keyframes rule nested in a container query is not one Safari honours) */
+@keyframes driftLow {
+  0%, 100% { transform: rotateX(12deg) rotateY(-14deg) rotateZ(1.5deg) translateY(0); }
+  50% { transform: rotateX(9deg) rotateY(-8deg) rotateZ(1deg) translateY(-6px); }
+}
+@container board (max-height: 218px) { .tile:nth-child(n+3) { display: none; } }
+@container board (max-height: 180px) { .panel, .floor { display: none; } .orb { opacity: .35; } }
 
 @media (prefers-reduced-motion: reduce) {
   .orb, .floor, .panel, .tile, .bar, .liveDot, .tile[data-on="true"] .pillDot { animation: none; }

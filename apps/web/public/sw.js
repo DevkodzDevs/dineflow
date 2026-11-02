@@ -6,7 +6,7 @@
  *   everything else GET → stale-while-revalidate
  * Writes are never touched here; they go through the IndexedDB outbox so they survive a reload.
  */
-const V = "dineflow-v20";   // v17 dropped redirected copies; v18 kept /login and the reconnect page; v19 adds the launch loader (boot); v20 serves a kept page only with its build (whole) and drops every older copy
+const V = "dineflow-v21";   // v21 (2026-11-02) the launch loader's sky reaches the foot of an installed iPad (no band); v17 dropped redirected copies; v18 kept /login and the reconnect page; v19 adds the launch loader (boot); v20 serves a kept page only with its build (whole) and drops every older copy
 const SHELL = ["/", "/icon-192.png", "/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/scan", "/tomorrow", "/inventory", "/menu", "/login", "/offline"];
 
 /* Install and activate never fail on storage. When the browser cannot open its cache (low space,
@@ -113,7 +113,7 @@ const BOOT_AFTER = 900;
 const boot = () => new Response(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b4a35"><meta name="robots" content="noindex"><title>DineFlow</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#0b4a35;color:#f2fbf6;font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-.sky{position:fixed;inset:0;background:linear-gradient(165deg,#13805a 0%,#0b4a35 48%,#052a1e 100%)}
+.sky{position:fixed;inset:0 0 -72px 0;background:linear-gradient(165deg,#13805a 0%,#0b4a35 48%,#052a1e 100%)}
 .blob{position:fixed;width:80vmax;height:80vmax;border-radius:50%;opacity:.5;will-change:transform}
 .b1{left:-30vmax;top:-34vmax;background:radial-gradient(closest-side,rgba(64,238,170,.55),rgba(64,238,170,0));animation:drift1 9s ease-in-out infinite alternate}
 .b2{right:-34vmax;bottom:-36vmax;background:radial-gradient(closest-side,rgba(56,189,248,.42),rgba(56,189,248,0));animation:drift2 11s ease-in-out infinite alternate}

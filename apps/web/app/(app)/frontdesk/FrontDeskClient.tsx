@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode, type ComponentType, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, LogIn, CalendarDays, Moon, Star, ClipboardCheck, List, Check, CheckCircle2, ArrowRightLeft, Sparkles, ChevronRight, Armchair, BedDouble, Users } from "lucide-react";
@@ -9,7 +9,7 @@ import { Button, Sheet, Field, StatTile, cn, useToast, ask } from "@/components/
 import { formatINR, fmtDate } from "@/lib/format";
 import { createBooking, checkIn, cancelBooking, moveRoom } from "./actions";
 import sc from "./StayCard.module.css";
-import { EmptyState } from "@/components/ui/EmptyState";
+import bd from "./Board.module.css";
 
 type Room = { id: string; number: string; floor: number; status: string; condition?: string | null; room_type_id: string | null; room_types: { name: string; base_rate: number; capacity: number } | null };
 type Booking = { id: string; room_id: string | null; precheckin_at?: string | null; precheckin?: { arrival_time?: string | null } | null; booking_no: number; check_in: string; check_out: string; status: string; rate: number; adults: number; children: number; guests: { full_name: string; phone: string | null; vip?: boolean; preferences?: string | null } | null; rooms: { number: string; condition?: string | null; room_types: { name: string } | null } | null };
@@ -122,24 +122,25 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
       {/* Four sections in one grid (2026-11-02, the owner: "cards alignment looks zigzag"). Two independent columns let
           Upcoming and Table bookings start at whatever height the column above them ended; as rows, Arrivals | In house and
           Upcoming | Table bookings start level. One column below lg, in the order it always had (order-*). */}
-      <div className="grid gap-x-6 gap-y-7 lg:grid-cols-2 items-start" data-fd-grid>
-        <section className="min-w-0 max-lg:order-1"><Head icon={<LogIn size={16} />} tone="green" label="Arrivals" n={arrivals.length} />
-          <div className="space-y-3">{arrivals.map((b) => <Row key={b.id} b={b} kind="arrival" action={<Button size="sm" variant="ink" disabled={pending} data-check-in onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}><LogIn size={15} /> Check in</Button>} />)}{arrivals.length === 0 && <EmptyState size="sm" icon={LogIn} hue="tint" title="No arrivals waiting" data-fd-empty="arrivals" actions={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div></section>
-        <section className="min-w-0 max-lg:order-2 lg:order-3"><Head icon={<CalendarDays size={16} />} tone="blue" label="Upcoming" n={upcoming.length} />
-          <div className="space-y-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} kind="upcoming" action={<button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full text-[13px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors" onClick={async (e) => { e.preventDefault(); if (await ask({ title: "Cancel booking?", body: "The guest's booking is cancelled.", ok: "Cancel booking", cancel: "Keep it", tone: "danger", icon: "alert" })) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); }}>Cancel</button>} />)}{upcoming.length === 0 && <EmptyState size="sm" icon={CalendarDays} hue="blue" title="Nothing coming up" data-fd-empty="upcoming" />}</div></section>
-        <section className="min-w-0 order-3 lg:order-2"><Head icon={<Moon size={16} />} tone="orange" label="In house" n={inHouse.length} />
-          <div className="space-y-3">{inHouse.map((b) => <Row key={b.id} b={b} kind="inhouse" action={canBook ? <span className="inline-flex items-center gap-2">
+      {/* rows stretch (2026-11-02): an empty board takes its row-mate's height (Board.module.css), so both cells of a row end level */}
+      <div className="grid gap-x-6 gap-y-7 lg:grid-cols-2" data-fd-grid>
+        <section className="min-w-0 flex flex-col max-lg:order-1"><Head icon={<LogIn size={16} />} tone="green" label="Arrivals" n={arrivals.length} />
+          <div className="flex-1 flex flex-col gap-3">{arrivals.map((b) => <Row key={b.id} b={b} kind="arrival" action={<Button size="sm" variant="ink" disabled={pending} data-check-in onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}><LogIn size={15} /> Check in</Button>} />)}{arrivals.length === 0 && <BoardEmpty icon={LogIn} tone="green" title="No arrivals waiting" hint="Today's check-ins" kind="arrivals" action={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div></section>
+        <section className="min-w-0 flex flex-col max-lg:order-2 lg:order-3"><Head icon={<CalendarDays size={16} />} tone="blue" label="Upcoming" n={upcoming.length} />
+          <div className="flex-1 flex flex-col gap-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} kind="upcoming" action={<button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full text-[13px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors" onClick={async (e) => { e.preventDefault(); if (await ask({ title: "Cancel booking?", body: "The guest's booking is cancelled.", ok: "Cancel booking", cancel: "Keep it", tone: "danger", icon: "alert" })) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); }}>Cancel</button>} />)}{upcoming.length === 0 && <BoardEmpty icon={CalendarDays} tone="blue" title="Nothing coming up" hint="Future bookings" kind="upcoming" />}</div></section>
+        <section className="min-w-0 flex flex-col order-3 lg:order-2"><Head icon={<Moon size={16} />} tone="orange" label="In house" n={inHouse.length} />
+          <div className="flex-1 flex flex-col gap-3">{inHouse.map((b) => <Row key={b.id} b={b} kind="inhouse" action={canBook ? <span className="inline-flex items-center gap-2">
               {/* a table for this guest: New booking opens with their room chosen (0157) */}
               <button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors" data-book-table={b.rooms?.number ?? ""}
                 onClick={(e) => { e.preventDefault(); router.push(`/reservations?new=1&stay=${b.id}`); }}><Armchair size={14} aria-hidden /> Table</button>
-              <span className={sc.folio}>Folio <ChevronRight size={16} aria-hidden /></span></span> : undefined} />)}{inHouse.length === 0 && <EmptyState icon={Moon} hue="orange" title="No guests in house" data-fd-empty="inhouse" actions={<Button onClick={() => setOpen(true)}><Plus size={16} /> New booking</Button>} />}</div></section>
+              <span className={sc.folio}>Folio <ChevronRight size={16} aria-hidden /></span></span> : undefined} />)}{inHouse.length === 0 && <BoardEmpty icon={Moon} tone="orange" title="No guests in house" hint="Checked-in stays" kind="inhouse" action={<Button size="sm" onClick={() => setOpen(true)}><Plus size={15} /> New booking</Button>} />}</div></section>
         {/* today's table bookings (2026-10-30, the owner: "show the table reservations here too"): when, who, how many, the
             table and — a guest staying here — their room; tap one for Reservations, + for a new one */}
-        <section className="min-w-0 order-4"><div><Head icon={<Armchair size={16} />} tone="violet" label="Table bookings" n={tableBookings.length}
+        <section className="min-w-0 flex flex-col order-4"><div><Head icon={<Armchair size={16} />} tone="violet" label="Table bookings" n={tableBookings.length}
             action={canBook ? <Link href="/reservations?new=1" className="h-10 [@media(pointer:coarse)]:h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" data-fd-book-table><Plus size={15} aria-hidden /> Book a table</Link> : undefined} /></div>
-          <div className="grid gap-2" data-fd-tables>
+          <div className="flex-1 flex flex-col gap-2" data-fd-tables>
             {tableBookings.map((r) => <TableRow key={r.id} r={r} today={today} link={canBook} />)}
-            {tableBookings.length === 0 && <EmptyState size="sm" icon={Armchair} hue="violet" title="No tables booked today" data-fd-empty="tables" />}
+            {tableBookings.length === 0 && <BoardEmpty icon={Armchair} tone="violet" title="No tables booked today" hint="Today's table bookings" kind="tables" />}
           </div></section>
       </div>
 
@@ -198,10 +199,29 @@ function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: R
 }
 
 /** A section head that reads as one: its icon in a tinted tile, the name in bold, the count as a badge. */
-function Head({ icon, label, n, tone, action }: { icon: ReactNode; label: string; n: number; tone: "green" | "blue" | "orange" | "violet"; action?: ReactNode }) {
-  const c = tone === "green" ? "var(--color-green)" : tone === "blue" ? "var(--color-blue)" : tone === "violet" ? "var(--color-violet)" : "var(--color-orange)";
+const TONE = { green: ["var(--color-green)", "var(--color-green-2)"], blue: ["var(--color-blue)", "var(--color-blue-2)"], orange: ["var(--color-orange)", "var(--color-orange-2)"], violet: ["var(--color-violet)", "var(--color-violet-2)"] } as const;
+type Tone = keyof typeof TONE;
+
+/** An empty board (Board.module.css): the hue, the icon twice — on a glowing tile and faint in the corner — the words and the
+ *  action. Stretches to its row-mate's height from lg and stacks when it is tall. */
+function BoardEmpty({ icon: Icon, tone, title, hint, action, kind }: { icon: ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean }>; tone: Tone; title: string; hint: string; action?: ReactNode; kind: string }) {
   return (
-    <div className="mb-3 flex items-center gap-2.5">
+    <div role="status" className={bd.empty} style={{ "--hue": TONE[tone][0], "--hue-2": TONE[tone][1] } as CSSProperties} data-fd-empty={kind}>
+      <span className={bd.mark} aria-hidden><Icon strokeWidth={1.4} aria-hidden /></span>
+      <div className={bd.inner}>
+        <span className={bd.icon} aria-hidden><Icon size={21} strokeWidth={2.1} aria-hidden /></span>
+        <span className={bd.words}><b className={bd.title}>{title}</b><span className={bd.hint}>{hint}</span></span>
+        {action && <span className={bd.act}>{action}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** A board's head — one height (44px) with or without its button, so the two heads of a row stand level (2026-11-02). */
+function Head({ icon, label, n, tone, action }: { icon: ReactNode; label: string; n: number; tone: Tone; action?: ReactNode }) {
+  const c = TONE[tone][0];
+  return (
+    <div className="mb-3 min-h-11 flex items-center gap-2.5">
       <span className="h-8 w-8 rounded-[10px] grid place-items-center shrink-0" style={{ color: c, background: `color-mix(in srgb, ${c} 15%, transparent)` }}>{icon}</span>
       <h2 className="text-[17px] !font-bold tracking-[-0.01em] text-[var(--color-label)]">{label}</h2>
       <span className="num h-6 min-w-6 px-2 rounded-full grid place-items-center text-[12px] font-bold" style={{ color: n ? c : "var(--color-label-2)", background: n ? `color-mix(in srgb, ${c} 15%, transparent)` : "var(--color-fill)" }}>{n}</span>

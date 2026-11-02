@@ -199,3 +199,11 @@ pnpm --filter @dineflow/web build
   height, the tagline 48px from the foot, the board clear of it, no sideways scroll.
 - **Join's placeholders** read as what to type, not samples to copy (the owner: "placeholder not good"): *Your full name* (also on
   Open a restaurant), *Code from your manager*, *Your email address* — were `Priya Kumar`, `dine-res-mano-00001`, `you@restaurant.in`.
+
+- **The wall's board fits the room it is given (2026-11-02, the owner's iPad: "screen design breaking" — the board ran onto the
+  tagline and, in Safari with its bars, off the screen).** The 960/700px *screen*-height steps could not see what the clock, the
+  headline and the line had left. `.stage` is now a size container (`container: board / size`) filling the slot (the slot's `pt-4`,
+  stretch, not centred), and the board steps by **its own** height: full (> 400) · compact, no chart or small labels, less tilt
+  (`driftLow` — keyframes nested in a container query are not honoured by Safari) · one row of two tiles (≤ 218) · none (≤ 180).
+  shots163: 1194×834 four compact tiles 515–725 with the tagline at 769; 1180×820 one row; 1194×744, 1024×768, 1280×720 none;
+  1366×1024, 1440×900, 1920×1080 clear of the tagline; 834 and 412 have no wall. Never under the tagline, never past the foot.

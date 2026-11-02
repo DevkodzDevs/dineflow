@@ -449,17 +449,20 @@ body:has(.deck-card) { background: #0a0a0d; }
      A browser tab has no data-app and no status bar over it, and a phone (under 768) keeps its own handling. --sat is the
      one place the inset is read, so a probe can stand a status bar in for it. */
   html[data-app] { --sat: env(safe-area-inset-top, 0px); }
-  html[data-app] body .deck { position: fixed; inset: var(--sat) 0 0 0; height: auto; min-height: 0; }
+  /* --sab-gap (lib/splash.ts, 2026-11-02): the installed iPad lays a fixed box out a status bar short of the screen's foot —
+     the frame reaches down by the measured gap, so no band of the page's base colour shows under it (0 everywhere else) */
+  html[data-app] { --sab: calc(-1 * var(--sab-gap, 0px)); }
+  html[data-app] body .deck { position: fixed; inset: var(--sat) 0 var(--sab) 0; height: auto; min-height: 0; }
   html[data-app] body .deck > .deck-card { min-height: calc(100% - 23px); }
   html[data-app] body .deck > aside.ink-panel:not([data-open]) { height: 100% !important; }
   html[data-app]:is([data-sidebar="floating"], [data-sidebar="float-rail"]) body .deck > aside.ink-panel:not([data-open]) { height: calc(100% - 24px) !important; }
-  html[data-app]:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel[data-open] { top: var(--sat) !important; bottom: 0; height: auto !important;
+  html[data-app]:is([data-sidebar="rail"], [data-sidebar="dock"], [data-sidebar="float-rail"]) aside.ink-panel[data-open] { top: var(--sat) !important; bottom: var(--sab); height: auto !important;
     /* never shorter than the screen under the status bar (2026-11-01, the owner's installed iPad: the open drawer was only as
        tall as its head and foot — the property, one row, the profile — with the menu squeezed out between them) */
-    min-height: calc(100dvh - var(--sat)); }
+    min-height: calc(100dvh - var(--sat) + var(--sab-gap, 0px)); }
   html[data-app] .topbar, html[data-app] .topbar[data-stuck] { top: 0 !important; }
   html[data-app] .topbar[data-stuck]::before { display: none; }
-  html[data-app] .admin-frame { position: fixed; inset: var(--sat) 0 0 0; height: auto; }
+  html[data-app] .admin-frame { position: fixed; inset: var(--sat) 0 var(--sab) 0; height: auto; }
 }
 /* the wall is always graphite, whatever the theme — so is everything written on it */
 .wall { color: #f4f4f1; } .wall h1, .wall .flip-label, .wall .font-display { color: #f4f4f1; } .wall .flip-label { color: #9a9aa6; }
@@ -1616,7 +1619,24 @@ a.svc-table:hover .svc-take, .svc-take:hover { background: var(--color-fill-2); 
 .kt-note { display: flex; align-items: center; gap: 4px; margin-top: 2px; color: color-mix(in srgb, var(--color-red) 82%, var(--color-paper-ink)); font-weight: 800; font-size: 14px; }
 .kt-sub { color: color-mix(in srgb, var(--color-paper-ink) 62%, transparent); font-size: 13px; font-weight: 600; }
 .kcol { border-radius: 24px; background: var(--st-2); padding: 12px; min-width: 0; }
-.kcol-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 12px; color: var(--st-ink); font-weight: 900; font-size: 18px; }
+.kcol-head { display: flex; align-items: center; gap: 10px; padding: 4px 4px 12px; min-height: 56px; color: var(--st-ink); font-weight: 900; font-size: 18px; }
+/* the head (2026-11-02): the state's icon on a tile, the word on one line, what to do with it under it, the count */
+.kcol-icon { width: 40px; height: 40px; flex: none; border-radius: 13px; display: grid; place-items: center; color: var(--st); background: color-mix(in srgb, var(--st) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--st) 22%, transparent); }
+.kcol-title { display: block; font-size: 18px; font-weight: 900; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kcol-sub { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: color-mix(in srgb, var(--st-ink) 62%, var(--color-label-2)); }
+/* an empty column: the state's icon in a slowly turning dotted ring, centred in what is left of the column — at most 420px of
+   it, so beside a long column of tickets it stays near the head instead of far down the screen */
+.kcol-empty { flex: 1 1 auto; min-height: 180px; max-height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 24px 12px; text-align: center; border-radius: 18px;
+  background: radial-gradient(60% 50% at 50% 42%, color-mix(in srgb, var(--st) 12%, transparent), transparent 70%); }
+.kcol-empty-ring { position: relative; width: 92px; height: 92px; margin-bottom: 8px; display: grid; place-items: center; border-radius: 50%; }
+.kcol-empty-ring::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--st) 38%, transparent); animation: kcol-orbit 28s linear infinite; }
+@keyframes kcol-orbit { to { transform: rotate(360deg); } }
+.kcol-empty-ring::after { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: color-mix(in srgb, var(--st) 10%, transparent); }
+.kcol-empty-tile { position: relative; z-index: 1; width: 52px; height: 52px; border-radius: 17px; display: grid; place-items: center; color: var(--st); background: var(--color-bg-2);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--st) 22%, transparent), 0 14px 28px -14px var(--st); }
+.kcol-empty-title { font-size: 15.5px; font-weight: 800; color: var(--color-label); }
+.kcol-empty-hint { font-size: 13px; font-weight: 500; color: var(--color-label-2); }
+@media (prefers-reduced-motion: reduce) { .kcol-empty-ring::before { animation: none; } }
 .kcol-head > b { margin-left: auto; min-width: 32px; height: 32px; padding: 0 8px; border-radius: 999px; background: var(--st); color: var(--st-on); display: grid; place-items: center; font-size: 15px; }
 
 
@@ -2009,7 +2029,7 @@ html[data-palette="royal"] nav.tabbar { border-color: rgb(184 145 58 / .35); }
      body::before  a glowing ring that spins around the logo (a masked conic gradient, rotated)
      body::after   "DineFlow", rising in under the logo
    Only transform and opacity move (the compositor rule, design-system.md). "out" fades the lot in 0.35 s. */
-html[data-splash]::before { content: ""; position: fixed; inset: 0; z-index: 2147483000; background: radial-gradient(70vmax 70vmax at 20% 10%, rgb(64 238 170 / .35), transparent 60%), radial-gradient(70vmax 70vmax at 90% 95%, rgb(56 189 248 / .25), transparent 60%), linear-gradient(165deg, #13805a 0%, #0b4a35 48%, #052a1e 100%); pointer-events: all; transition: opacity .35s ease; }
+html[data-splash]::before { content: ""; position: fixed; inset: 0 0 calc(-1 * var(--sab-gap, 0px) - 2px) 0; z-index: 2147483000; background: radial-gradient(70vmax 70vmax at 20% 10%, rgb(64 238 170 / .35), transparent 60%), radial-gradient(70vmax 70vmax at 90% 95%, rgb(56 189 248 / .25), transparent 60%), linear-gradient(165deg, #13805a 0%, #0b4a35 48%, #052a1e 100%); pointer-events: all; transition: opacity .35s ease; }
 html[data-splash]::after { content: ""; position: fixed; left: 50%; top: 44%; width: 104px; height: 104px; margin: -52px 0 0 -52px; z-index: 2147483002;
   background: url(/icon-192.png) center / cover no-repeat; border-radius: 28px; box-shadow: 0 22px 50px -14px rgb(0 0 0 / .55);
   animation: splash-logo .7s cubic-bezier(.16, 1, .3, 1) both, splash-float 3.2s ease-in-out .7s infinite; transition: opacity .3s ease; }

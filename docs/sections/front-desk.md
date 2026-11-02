@@ -200,3 +200,15 @@ pnpm --filter @dineflow/web typecheck
   (`.act { min-height: 48px }`) whether it holds Check in, Cancel, Table + Folio or Folio.
 - shots49 on a demo resort at 1194/1440/1920: the heads level (556/556, 1006/1006 at 1194), the first arrival and in-house cards
   start level and are one height (378/378); 834 and 412 one column, Arrivals → Upcoming → In house → Table bookings.
+
+## 2026-11-02 — level heads, empty boards that fill their row (the owner: "alignment — not looking good, ultra modern")
+- **Heads are one height** (`Head`: `min-h-11`): Table bookings' Book a table made its head taller, so its title sat ~10px below
+  Upcoming's. shots163: 1040 / 1040 at 1194.
+- **The grid's rows stretch** (no `items-start`); each section is a column and its list `flex-1`, so an empty board takes its
+  row-mate's height. **`BoardEmpty` + `Board.module.css`** replace the shared `EmptyState` here (the shared one is unchanged):
+  a glass panel washed in the board's hue from its corner, a dot field fading in from the right, the icon on a glowing tile and faint
+  and large in the corner, the title, a 2–3 word hint (Today's check-ins · Checked-in stays · Future bookings · Today's table bookings)
+  and the action. From lg it is a size container (`fde`): ≥ 176px tall it stacks and centres, shorter it is one 76px row; at most
+  392px (one stay card), so a long list beside it does not stretch it further. Below lg it is the row. `[data-fd-empty]` kept.
+- shots163 at 1194/1440/1920: the empty In house ends level with the arrival (378px, 990/990), the empty Arrivals beside a guest in
+  house the same; Upcoming and Table bookings empties 76/76 and level; 834/412 one column, compact.

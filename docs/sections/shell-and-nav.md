@@ -891,3 +891,19 @@ every visit to the bare name is still a 308 to www first, ~0.3 s; confirm **Flui
   the menu squeezed out between them: `html[data-app]` gives it `height: auto` between `top: var(--sat)` and `bottom: 0`, and
   now `min-height: calc(100dvh - var(--sat))` so it can never collapse to its content.
 - `components/shell/AutoAssign.tsx` (mounted in the layout) asks `clean_auto_assign()` once a minute — cleaning.md.
+
+## 2026-11-02 — the installed iPad's foot band (launch loader, sign-in, app frame)
+- **The owner's screenshots: a flat band, one status bar tall, at the foot of the launch loader and of the sign-in page.**
+  Measured from them: the band is the page's base colour (#0e4a34 under the loader's gradient, the wall's navy under sign-in), 29pt
+  tall. Installed with `black-translucent`, iOS lays the page out a status bar short: `innerHeight` and a fixed box's `bottom: 0`
+  stop that far above the screen's foot. The 2026-10-25 frame (`inset: var(--sat) 0 0 0`) moved the top down but assumed
+  `bottom: 0` was the foot.
+- **lib/splash.ts** now measures it when `data-app` is set: the gap = the screen's height for the orientation − `innerHeight`, used
+  only when it equals `env(safe-area-inset-top)` (±4px) — a browser tab, Split View or Stage Manager get 0 — written as
+  `html{--sab-gap:Npx}` into `<style id="df-gap">` (not an inline style on <html>: React and the scroll lock own that), on launch,
+  DOMContentLoaded, resize and turning. **globals.css** (the iPad frame block): `--sab = -gap`; the frame, the open drawer and
+  `.admin-frame` reach down by it (`inset: var(--sat) 0 var(--sab) 0`); the in-app splash's backdrop too.
+- **The service worker's launch loader** (`sw.js` boot page, v21): its `.sky` reaches 72px past the window's foot — pure
+  decoration, harmless where there is no gap.
+- **Not provable headless:** WebKit never matches `(any-pointer: coarse)` and has no status bar; shots163 lifts the shipped rules out
+  of that media query, stands in a 24px bar and gap, and checks the frame runs 24 → 858 in an 834 window. Check on the iPad itself.

@@ -559,3 +559,11 @@ of a second." Measured first, on the live site and on a local production build (
   Checklists and My day, and the API refuses her tick on the list she was taken off and her own `staff_checklists_set`; the owner's
   Access on a phone (chips ≥44px) → Reset → Save clears both; 834 paper; a supervisor reads "Sees every checklist". **At 834 the
   Staff screen opens on Table — tap `[data-view-pick="cards"]` before "Access for …".** Add staff's slip regexes as `cleaner.mjs`.
+
+- **`pw/shots163.mjs` (29)** — the owner's iPad round of 2026-11-02. Sign-in at 11 sizes and 3 themes: the board's drawn
+  rect (transforms included) between the line and the tagline − 8, inside the window, or hidden; the installed-iPad stand-in (lift the
+  `data-app` rules out of `(any-pointer: coarse)` — headless WebKit never matches it — set `--sat`/`--sab-gap` 24px and measure
+  **`body .deck`**: `<body>` itself carries `.deck`, so `.deck` alone measures the body); the loader's sw.js v21; Front desk on a
+  demo resort with one arrival (then the guest checked in): heads level, empties filling their row; Kitchen heads one line, empties.
+  **After a rebuild, stop the old `next start` by its PID before starting another** — a second one fails on the port and the old one
+  serves the new HTML with the old CSS names (every layout check fails at once).

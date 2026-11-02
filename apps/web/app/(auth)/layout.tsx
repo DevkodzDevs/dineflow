@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <FlipClock className="mb-10" />
           <h1 className="text-5xl xl:text-6xl max-w-[16ch]">Orders, rooms and stock on one board.</h1>
           <p className="mt-6 text-[#9a9aa6] max-w-md text-[16px] leading-relaxed">Phone orders reach the kitchen at once, and stock updates by itself.</p>
-          <div className="flex-1 min-h-0 flex items-center pt-8"><Showcase /></div>
+          <div className="flex-1 min-h-0 flex pt-4"><Showcase /></div>
         </div>
         <div className="flip-label !text-left !mt-0 shrink-0">Restaurant · Hotel · Resort · GST ready · Any device</div>
       </section>
