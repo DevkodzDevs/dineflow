@@ -387,3 +387,23 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   one whose open orders all have their bill out — "The bill for this table is already out — please ask the staff to add anything
   more." A round at a table with an open order and no bill still joins it (0145). The page shows the refusal as it is (`nice()`).
   Not done: a notice on landing before the basket (dine_storefront would have to say the table is being cleaned).
+
+## 2026-11-03 — order from the room (0170; the owner: "guests in rooms scan the room's QR, order, and the bill goes to the room")
+- **`/dine/[slug]?r=<rooms.qr_token>`** — the room's code (Settings → Rooms & stays → **Print room codes**, `/settings/room-qr`,
+  a card per room like the table codes). `dine_storefront(p_slug, p_table, p_room)` returns `room: { number, in_house }` — never
+  who is staying — and opens an unlisted property for a room code as it does for a table code.
+- **The page (`atRoom`, `inPlace = atTable || atRoom`)**: no booking tabs, no back link, never paused; priced like the table
+  (the in-house menu, no packing, the dining offers). `[data-room-banner]` "Ordering to Room 102 · brought to your room · added
+  to your room bill"; a room nobody is checked in to says so (`[data-room-closed]`) and Place order stays off. The sheet shows
+  the room (`[data-sheet-room]`), **no name or phone**, and asks **the last 4 digits of the phone on the booking**
+  (`[data-room-digits]`) — once: the answer carries the stay's pass (`bookings.room_pass`), kept as
+  `localStorage df-room-pass:<slug>:<code>`, and the next order shows "Confirmed for this stay" (`[data-room-verified]`, *Not you?*
+  forgets it). A pass the server no longer takes (a new stay) is forgotten and the digits asked again. The bill panel and the
+  confirmation say **On your room bill**; the confirmation has **Order more** (back to the menu) instead of a tracking link.
+- **`dine_order(…, p_room, p_pass)`, mode `room`**: the room's checked-in stay; the guest's name and phone come from the booking.
+  A wrong try is *answered* (`{ ok: false, verify: true, error }`) so the try is counted — a raise would roll the count back — and
+  five in half an hour (`rate_hits` bucket `roompass:<booking>`) send the room to reception. `placeOrder` (app/dine/actions.ts)
+  returns `{ error, verify }` for it. With the website channel on auto-accept the kitchen has it at once; otherwise it waits in
+  Online orders like a table order.
+- Seen, not solved: React #418 (a hydration mismatch, recovered by React) twice in five full probe runs, on the second room page
+  opened in the same tab at 834; not seen in 18 targeted loads (fresh demo, both timezones, plain/table/room). Every check passed.

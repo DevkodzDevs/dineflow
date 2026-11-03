@@ -152,3 +152,20 @@ Then open `/kitchen/board` at 1920 and stand back from it.
   till's request only.
 - shots164 (15): Swiggy and QR orders accepted as the owner through `accept_online_order`, a till order with "Jain" — at 1194 dark,
   1440 colourful dark, 412 paper: the chips, no amber pill on the channel tickets, "Jain" kept, chips 24px inside the ticket.
+
+- **A room's QR order (0170)** carries the chip **Room · 60e9** (`channelSource(kind, label, atTable, atRoom)` — `online_orders.room_id`
+  in the kitchen's select); its heading is the room alone, "Room 102" (`roomLabel`, below).
+- **A room-service ticket is headed with the room alone (2026-11-03):** `roomLabel` (lib/channelRef.ts, tested) — the order's name is "Room 102 · name" (the till and the room QR both write it so) and the heading read "Room · Room 102 · name", cut to "Room · Room 1…" with the number lost. Now "Room 102"; the guest's name stays off the pass. `pw/kshot170.mjs` shoots it at 1194/834/1440, dark and paper.
+
+## 2026-11-03 — a ticket fits every column width (the owner's iPad upright: "Roo…", "Start cooking" out of its button, "Basm…")
+- Three columns on an 834px iPad leave a ticket **193px** wide (1024: 256, 1194: 313, 1440: 335, 1920: 484, a 412 phone: 356). `.kt` is now
+  a container (`container: kt / inline-size`, globals.css after `.kt-sub`) and the ticket lays itself out by its own width:
+  - **under 300px**: the heading may take two lines (`line-clamp: 2`) at 22px and the flip clock steps down (`zoom: .76`); the chips
+    tighten and the keyboard-key chip (`[data-kt-key]`) goes; the dish disc 32px, the name 16px; the foot's button may wrap its
+    words inside it and Reprint is 44×56.
+  - **under 360px**: the pantry list (`[data-kt-needs]`) is one column — two cut "Amul butter 500 g" at 313px.
+  - **under 220px**: the button's icon steps aside so "Start cooking" stays on one line (14.5px).
+  Hooks: `[data-kt-body]`, `[data-kt-needs]`, `[data-kt-foot]`, `[data-kt-reprint]`.
+- `pw/kfit170.mjs` (38): 1920/1440/1194/1024/834/412 dark and 834 paper, colourful dark, colourful light (`bright`), royal — every
+  heading whole (the text measured with a Range: the display font's ascent made scrollHeight 1–2px over and read as cut), the
+  button's words inside it on one line, no pantry name cut, no sideways overflow, 44px targets on touch widths.

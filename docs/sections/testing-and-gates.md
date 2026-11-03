@@ -611,3 +611,10 @@ of a second." Measured first, on the live site and on a local production build (
   (one open order, outbox 0); offline the kitchen and the till (`?table=…&add=…`) open from the device. `tap168.mjs` times taps from
   inside the page (live: `BASE` default; `W`, `PATHS`).
 - **`lib/offline/sendOrQueue.test.ts` (6)** — isNetworkError, the narrowed "already", sendOrQueue's three paths. Unit tests 236.
+
+- **`pw/room170.mjs` (19)** — order from the room, Edge, :3143, a fresh demo resort (`create_demo_sandbox`, its id in
+  demo_ids.txt — run dropdemos after; the demo's login is `login_email`). Guest at 412: banner, no tabs, the sheet asks 4 digits,
+  "On your room bill", a wrong try refused, the right one placed (auto-accept on) → "The kitchen has it as order #n", Order more →
+  "Confirmed for this stay" with no digits; DB one room-service order, two tickets; an empty room says so at 834. Staff at 1440:
+  the kitchen chip "Room", served → the folio's "Room service #n" + GST, the room QR sheet a card per room, Settings' link.
+  Page errors are tagged by step (React #418 seen at the 834 step in 2 of 5 runs — open). `hyd170`, `guest170`, `fresh170` hunt it.

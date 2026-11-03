@@ -14,7 +14,7 @@ import { listV } from "@/components/ui";
 import { setKotStatus, setItemStatus, setItemsStatus, recallKot, fireKot } from "../orders/actions";
 import { enqueue, sendOrQueue } from "@/lib/offline/sync";
 import { usePrinters } from "@/lib/print/usePrinter";
-import { channelChip, type ChannelOrder, type ChannelChip } from "@/lib/channelRef";
+import { channelChip, roomLabel, type ChannelOrder, type ChannelChip } from "@/lib/channelRef";
 
 type Line = { id: string; name_snapshot: string; qty: number; status: string; notes: string | null; course?: number; addons?: { name: string }[] | null; components?: { name: string; qty: number }[] | null; menu_items?: { station: string | null; categories: { station: string | null } | null } | null };
 type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string; held?: boolean; cook?: string | null;
@@ -46,7 +46,7 @@ function RefChip({ c }: { c: ChannelChip | null }) {
 }
 /** a parcel's daily token (0103) rides with it — the number the counter calls and the TV shows */
 const where = (k: { orders: { type: string; customer_name: string | null; token_no?: number | null; dining_tables: { name: string } | null } | null }) =>
-  k.orders?.dining_tables?.name ?? (k.orders?.type === "room_service" ? `Room · ${k.orders?.customer_name ?? ""}` : `${k.orders?.type === "takeaway" ? "Takeaway" : "Delivery"}${k.orders?.token_no ? ` · Token ${k.orders.token_no}` : ""}`);
+  k.orders?.dining_tables?.name ?? (k.orders?.type === "room_service" ? roomLabel(k.orders?.customer_name) : `${k.orders?.type === "takeaway" ? "Takeaway" : "Delivery"}${k.orders?.token_no ? ` · Token ${k.orders.token_no}` : ""}`);
 
 /** the reprint's "where" line, with the channel order's reference (0163): "T3 · QR 2fee" */
 const refLine = (k: Kot) => { const c = channelChip(k.online_orders); return c ? `${where(k)} · ${c.source} ${c.ref}` : where(k); };
@@ -62,7 +62,7 @@ function NeedsPanel({ n, col }: { n?: Needs[string]; col: Kot["status"] }) {
   if (!n.needs.length && !n.unmapped.length) return null;
   const short = n.needs.filter((x) => x.short); const shown = n.needs.slice(0, 6); const more = n.needs.length - shown.length;
   return (
-    <div className="mt-2 pt-2 border-t border-dashed border-[var(--color-line)]">
+    <div className="mt-2 pt-2 border-t border-dashed border-[var(--color-line)]" data-kt-needs>
       <div className="text-[10.5px] uppercase tracking-[0.14em] text-steel mb-1 flex items-center gap-1.5"><Boxes size={12} /> From the pantry
         {short.length > 0 && <span className="ml-auto normal-case tracking-normal font-semibold text-chili">short on {short.length}</span>}</div>
       <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[12px]">
@@ -272,10 +272,10 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                           <span className={KT_CHIP} title="Order"><span className="opacity-60 font-semibold">#</span>{k.orders?.order_no}</span>
                           {/* 0163: the channel order's source and reference — a plain chip like the numbers beside it, not a warning */}
                           <RefChip c={channelChip(k.online_orders)} />
-                          {hotkey && <span className={KT_CHIP} title={`Press ${hotkey} to move it on`}><Keyboard size={12} aria-hidden className="opacity-60" />{hotkey}</span>}
+                          {hotkey && <span className={KT_CHIP} title={`Press ${hotkey} to move it on`} data-kt-key><Keyboard size={12} aria-hidden className="opacity-60" />{hotkey}</span>}
                           {k.cook && <span className={cn(KT_CHIP, "font-sans max-w-full")} data-cook><ChefHat size={12} aria-hidden className="opacity-60 shrink-0" /><span className="truncate">{k.cook}</span></span>}
                         </div>
-                        <div className="px-3.5">
+                        <div className="px-3.5" data-kt-body>
                           {/* the whole order's cooking request (the till's "Cooking request" — Jain, no onion…) sits on the order,
                               not on a dish, so it is read from orders.notes and put above every line it governs — a compact amber
                               pill as wide as its words, a soft ring so it still catches a cook's eye */}
@@ -309,11 +309,11 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                           <NeedsPanel n={needs[k.id]} col={key} />
                         </div>
                         {/* one big button, always in the same place: start → ready → served */}
-                        <div className="p-3.5 pt-3 flex gap-2">
+                        <div className="p-3.5 pt-3 flex gap-2" data-kt-foot>
                           {key === "pending" ? <button type="button" className="svc-btn st st-cook flex-1" disabled={view !== "all" && pending} onClick={() => advance(k)} data-kot-go><Flame size={21} aria-hidden />{view === "all" ? <Say w="start_cooking" /> : `Start ${view}`}</button>
                             : key === "preparing" ? <button type="button" className="svc-btn go flex-1" disabled={(view !== "all" && pending) || stationDone} onClick={() => advance(k)} data-kot-go><BellRing size={21} aria-hidden />{view === "all" ? <Say w="food_ready" /> : stationDone ? `${view} done` : `${view} ready`}</button>
                             : <button type="button" className="svc-btn flex-1 bg-[var(--color-paper-ink)] text-[var(--color-paper)]" onClick={() => move(k.id, "served")} data-kot-go><CheckCheck size={21} aria-hidden /><Say w="served" /></button>}
-                          <button type="button" title="Reprint this ticket" aria-label="Reprint this ticket" className="h-14 w-14 shrink-0 rounded-[18px] grid place-items-center bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"
+                          <button type="button" title="Reprint this ticket" aria-label="Reprint this ticket" data-kt-reprint className="h-14 w-14 shrink-0 rounded-[18px] grid place-items-center bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"
                             onClick={() => { void printKot({ kotNo: `KOT ${k.kot_no}`, when: new Date(k.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: refLine(k), reprint: true, heading: k.orders?.notes?.trim() ? `** ${k.orders.notes.trim().toUpperCase()} **` : undefined, items: k.order_items.filter(live).map((i) => ({ name: i.name_snapshot, qty: i.qty, note: i.notes, extras: lineExtras(i), station: stationOf(i) })) }); }}><Printer size={19} /></button>
                         </div>
                       </motion.article>

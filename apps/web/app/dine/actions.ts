@@ -14,10 +14,15 @@ export async function reserve(slug: string, guest: { full_name: string; phone: s
   const { data, error } = await anon().rpc("dine_reserve", { p_slug: slug, p_guest: guest, p_date: date, p_time: time, p_party: party, p_occasion: occasion || null, p_note: note || null, p_offer: offer });
   if (error) return { error: error.message }; return { ok: true, booking: data as never };
 }
-/** `table` is the code scanned on a table: the order is dine-in, on that table, with no fee. */
-export async function placeOrder(slug: string, guest: { full_name: string; phone: string; address?: string }, items: { id: string; qty: number; note?: string; variant_id?: string | null; addon_ids?: string[] }[], mode: string, note: string, offer: string | null, table: string | null = null) {
-  const { data, error } = await anon().rpc("dine_order", { p_slug: slug, p_guest: guest, p_items: items, p_mode: mode, p_note: note || null, p_offer: offer, p_table: table });
-  if (error) return { error: error.message }; return { ok: true, order: data as never };
+/** `table` is the code scanned on a table: the order is dine-in, on that table, with no fee. `room` is the code in a room
+ *  (0170): room service on the guest's stay — `pass` is the stay's pass this phone was given, or the last four digits of
+ *  the phone on the booking. A wrong try comes back as `{ error, verify: true }` (answered, not raised, so it is counted). */
+export async function placeOrder(slug: string, guest: { full_name: string; phone: string; address?: string }, items: { id: string; qty: number; note?: string; variant_id?: string | null; addon_ids?: string[] }[], mode: string, note: string, offer: string | null, table: string | null = null, room: { token: string; pass: string } | null = null) {
+  const { data, error } = await anon().rpc("dine_order", { p_slug: slug, p_guest: guest, p_items: items, p_mode: mode, p_note: note || null, p_offer: offer, p_table: table, p_room: room?.token ?? null, p_pass: room?.pass ?? null });
+  if (error) return { error: error.message };
+  const d = data as { ok?: boolean; error?: string; verify?: boolean } | null;
+  if (d && d.ok === false) return { error: d.error ?? "could not place the order", verify: !!d.verify };
+  return { ok: true, order: data as never };
 }
 /** the tracking token for an order just placed here (0140 dine_track_token): the phone that ordered gets its own link */
 export async function trackToken(id: string, phone: string) {

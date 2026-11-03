@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { shortRef, channelSource, channelChip } from "./channelRef";
+import { shortRef, channelSource, channelChip, roomLabel } from "./channelRef";
+
+describe("roomLabel", () => {
+  it("heads a room-service ticket with the room alone (it read 'Room · Room 1…')", () => {
+    expect(roomLabel("Room 102 · Priya Raman")).toBe("Room 102");
+    expect(roomLabel("Room 2B")).toBe("Room 2B");
+    expect(roomLabel("Mr Rao")).toBe("Room · Mr Rao");
+    expect(roomLabel(null)).toBe("Room service");
+  });
+});
 
 // 0163: a channel order's reference on its kitchen ticket
 describe("shortRef", () => {
@@ -19,6 +28,10 @@ describe("channelSource", () => {
   it("names a table's website order QR and a parcel's Web", () => {
     expect(channelSource("website", "My website", true).source).toBe("QR");
     expect(channelSource("website", "My website", false).source).toBe("Web");
+  });
+  it("names a room's QR order Room (0170)", () => {
+    expect(channelSource("website", "My website", false, true)).toEqual({ source: "Room", kind: "qr" });
+    expect(channelChip({ display_id: "8-60e9", external_id: "RM-261103104428-60e9", room_id: "r1", order_channels: { kind: "website", label: "My website" } })).toMatchObject({ source: "Room", ref: "60e9" });
   });
   it("names the apps, and any other channel by its label", () => {
     expect(channelSource("swiggy", "Swiggy — manoooo", false).source).toBe("Swiggy");

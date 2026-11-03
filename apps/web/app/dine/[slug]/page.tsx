@@ -8,20 +8,20 @@ export const dynamic = "force-dynamic";
 const anon = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
 
 /** Shared with the page below, so a visit costs one storefront lookup rather than two. */
-/** `table` is the code on a table: it opens the menu for that table, listed or not. */
-const storefront = cache(async (slug: string, table: string | null = null) => (await anon().rpc("dine_storefront", { p_slug: slug, p_table: table })).data);
+/** `table` is the code on a table, `room` the code in a room (0170): either opens the menu for it, listed or not. */
+const storefront = cache(async (slug: string, table: string | null = null, room: string | null = null) => (await anon().rpc("dine_storefront", { p_slug: slug, p_table: table, p_room: room })).data);
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params; const data = await storefront(slug);
   const d = data as { name?: string; cuisines?: string[] } | null;
   return d ? { title: `${d.name} · book a table or order in`, description: (d.cuisines ?? []).join(", ") } : { title: "Not found" };
 }
-export default async function Storefront({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string; t?: string }> }) {
-  const { slug } = await params; const { tab, t } = await searchParams;
+export default async function Storefront({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string; t?: string; r?: string }> }) {
+  const { slug } = await params; const { tab, t, r } = await searchParams;
   /* the kitchen's pace right now (0079): a pause or extra minutes, said before anyone fills a basket — read beside the
      menu and the slots, not after them (2026-10-29: one database trip fewer before the guest sees anything) */
   const [data, { data: slots }, { data: busy }] = await Promise.all([
-    storefront(slug, t ?? null),
+    storefront(slug, t ?? null, r ?? null),
     anon().rpc("dine_slots", { p_slug: slug, p_date: new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10), p_party: 2 }),
     anon().rpc("dine_busy", { p_slug: slug }),
   ]);
@@ -31,7 +31,7 @@ export default async function Storefront({ params, searchParams }: { params: Pro
   const h = await headers();
   const base = process.env.NEXT_PUBLIC_CLOUD_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
   return (<>
-    {!t && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(restaurantLd(data as StoreFacts, `${base}/dine/${slug}`)) }} />}
-    <StorefrontClient slug={slug} d={data as never} initialSlots={(slots ?? []) as never} tab={(tab as never) ?? "book"} tableToken={t ?? null} busy={(busy ?? null) as never} />
+    {!t && !r && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(restaurantLd(data as StoreFacts, `${base}/dine/${slug}`)) }} />}
+    <StorefrontClient slug={slug} d={data as never} initialSlots={(slots ?? []) as never} tab={(tab as never) ?? "book"} tableToken={t ?? null} roomToken={r ?? null} busy={(busy ?? null) as never} />
   </>);
 }

@@ -1618,6 +1618,36 @@ a.svc-table:hover .svc-take, .svc-take:hover { background: var(--color-fill-2); 
 .kt-name { font-weight: 800; font-size: 18px; line-height: 1.25; }
 .kt-note { display: flex; align-items: center; gap: 4px; margin-top: 2px; color: color-mix(in srgb, var(--color-red) 82%, var(--color-paper-ink)); font-weight: 800; font-size: 14px; }
 .kt-sub { color: color-mix(in srgb, var(--color-paper-ink) 62%, transparent); font-size: 13px; font-weight: 600; }
+/* A narrow ticket (2026-11-03, the owner's iPad held upright: three columns leave a ticket ~190px wide — the head read "Roo…",
+   the chips took two rows, "Start cooking" ran out of its button, the pantry cut "Basm…"). The ticket measures itself, so every
+   column width gets the right layout: under 300px the head's title may take two lines and the clock steps down, the chips and
+   the dishes tighten, the key chip (a keyboard's) goes, the pantry is one column, and the button's words may wrap inside it. */
+.kt { container: kt / inline-size; }
+@container kt (max-width: 18.75rem) {
+  .kt-head { gap: 6px; padding: 9px 8px 9px 12px; }
+  .kt-head .where { font-size: 22px; line-height: 1.05; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+  .kt-head [data-kt-age] { zoom: .76; flex: none; }
+  .kt [data-kt-meta] { padding-left: 10px; padding-right: 10px; gap: 4px; }
+  .kt [data-kt-meta] > * { height: 22px; padding: 0 7px; font-size: 11.5px; }
+  .kt [data-kt-key] { display: none; }
+  .kt [data-kt-body] { padding-left: 10px; padding-right: 10px; }
+  .kt-line { gap: 8px; padding: 8px 0; }
+  .kt-q { width: 32px; height: 32px; font-size: 16px; }
+  .kt-name { font-size: 16px; line-height: 1.2; overflow-wrap: anywhere; }
+  .kt-note { font-size: 13px; align-items: flex-start; }
+  .kt [data-kt-foot] { padding: 10px; gap: 6px; }
+  .kt [data-kt-foot] .svc-btn { min-width: 0; padding: 6px 10px; gap: 6px; font-size: 15px; border-radius: 15px; }
+  .kt [data-kt-foot] .svc-btn svg { width: 18px; height: 18px; flex: none; }
+  .kt [data-kt-foot] .svc-btn > span, .kt [data-kt-foot] .svc-btn .say > span { white-space: normal; text-align: left; }
+  .kt [data-kt-reprint] { width: 44px; height: 56px; border-radius: 15px; }
+}
+/* the pantry's two columns cut a name like "Amul butter 500 g" on a 313px ticket (an iPad on its side): one column under 360px */
+@container kt (max-width: 22.5rem) { .kt [data-kt-needs] ul { grid-template-columns: minmax(0, 1fr); } }
+/* the narrowest (an iPad upright, ~190px): the button's icon steps aside so "Start cooking" stays on one line */
+@container kt (max-width: 13.75rem) {
+  .kt [data-kt-foot] .svc-btn { font-size: 14.5px; padding: 6px 8px; }
+  .kt [data-kt-foot] .svc-btn svg { display: none; }
+}
 .kcol { border-radius: 24px; background: var(--st-2); padding: 12px; min-width: 0; }
 .kcol-head { display: flex; align-items: center; gap: 10px; padding: 4px 4px 12px; min-height: 56px; color: var(--st-ink); font-weight: 900; font-size: 18px; }
 /* the head (2026-11-02): the state's icon on a tile, the word on one line, what to do with it under it, the count */

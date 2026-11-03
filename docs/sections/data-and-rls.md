@@ -759,3 +759,17 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   the caller's property, granted to authenticated, revoked from public/anon). Dry run `dry169.sql` (rolled back, as the manoooo owner):
   counted 100 an hour ago with −5 since → the shelf 95; the replay counted 0; a plain call still sets the figure; anon refused. Live with `--live`.
 - (0168, dineflow-55: `walkin_add(…, p_client_id)` — a replayed walk-in returns the same row; sync.ts sends `a.client_id ?? null`.)
+
+## 0170 — order from the room (2026-11-03)
+- `rooms.qr_token` (random, unique, backfilled), `bookings.room_pass` (per stay, set on the first right digits),
+  `online_orders.room_id` / `booking_id` (same-property trigger rebuilt with both). No new table; the existing policies cover the
+  columns. `room_pass` is in Assist's never-read list (assist.test.ts).
+- `dine_storefront` and `dine_order` dropped and recreated with `p_room` (and `p_pass`) defaulted — built from the **live**
+  bodies (0147, 0166: the cleaning and bill-out refusals stay); granted to anon, authenticated; revoked from public.
+  `accept_online_order_for` (live 0163 body) makes a room order `room_service` on the booking and joins an open one.
+  `check_out` refuses with room service open. New `_post_room_order` and the `zz_room_order_served` trigger (after update of
+  status on order_items) — both revoked from clients.
+- Dry run `dry170.sql` (rolled back, Tan Resort): wrong digits answered and counted; right digits → pass; the pass orders again;
+  two rounds → one order, two tickets; served → ₹1,860 + ₹334.80 GST on the folio; check-out refused while a third cooks; 1+5 wrong
+  → "too many tries" (the pass still works); after check-out the old pass is refused; the table path unchanged; anon cannot call
+  `_post_room_order`. Live with `--live`.

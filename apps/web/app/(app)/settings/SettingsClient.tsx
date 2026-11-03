@@ -212,6 +212,11 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                     <input type="checkbox" name="hk_inspect_required" className="mt-0.5" defaultChecked={restaurant.hk_inspect_required ?? false} />
                     <span>Inspect rooms before sale<span className="block text-xs text-steel mt-0.5">Supervisor approves each clean</span></span>
                   </label>
+                  {/* 0170: a code in each room — the guest orders food and it goes on the room bill */}
+                  <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:items-center" data-room-qr-link>
+                    <Link href="/settings/room-qr" className="btn btn-filled"><QrCode size={16} /> Print room codes</Link>
+                    {!restaurant.booking_slug && <span className="text-xs text-steel">Set web name first</span>}
+                  </div>
                 </Section>
               </Card>
             )}

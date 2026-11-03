@@ -13,7 +13,7 @@ export default async function FolioPage({ params }: { params: Promise<{ id: stri
     requireSession(),
     s.from("booking_charges").select("*").eq("booking_id", id).order("created_at"),
     s.rpc("folio_totals", { p_booking_id: id }),
-    s.from("orders").select("id, order_no, order_items(qty, price_snapshot, status)").eq("status", "open"),
+    s.from("orders").select("id, order_no, booking_id, order_items(qty, price_snapshot, status)").eq("status", "open"),
   ]);
   // the check-in link goes to a guest, so it needs a whole address — same source as Pulse's queue link
   const h = await headers();

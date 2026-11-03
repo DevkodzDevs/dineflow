@@ -10,7 +10,7 @@ import { todayIST } from "@/lib/format";
 import type { Session } from "@/lib/auth";
 
 /** Columns Assist must never read: a secret, a link that works as a key, or an identity number. */
-const SECRET = /api_key|key_secret|key_id|webhook_secret|webhook_token|export_token|import_url|pay_token|pay_claim|qr_token|punch_token|checkin_token|precheckin|password|otp|id_last4|id_type|\bemail\b|contact_email|\braw\b/;
+const SECRET = /api_key|key_secret|key_id|webhook_secret|webhook_token|export_token|import_url|pay_token|pay_claim|qr_token|room_pass|punch_token|checkin_token|precheckin|password|otp|id_last4|id_type|\bemail\b|contact_email|\braw\b/;
 const selects = (file: string) => [...readFileSync(resolve(__dirname, file), "utf8").matchAll(/\.select\("([^"]*)"/g)].map((m) => m[1]);
 
 describe("Assist never reads a secret (2026-10-21)", () => {

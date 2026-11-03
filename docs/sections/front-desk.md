@@ -223,3 +223,12 @@ pnpm --filter @dineflow/web typecheck
 - The database agrees (data-and-rls.md, 0166): `create_booking` refuses an out-of-order room for any dates and a not-ready room for a
   stay from today (and marks it Arriving by IST, not UTC); **`check_in` refuses a room that is not ready** — before, it checked only
   the inspection, and only where the property inspects. *Move to N · ready now* (0081) is the way round it for an arrival.
+
+## 2026-11-03 — room service from the room's QR (0170)
+- A room's QR order is a **room-service order on the stay** (`orders.booking_id`, customer "Room 102 · name"); a later order from
+  the room joins it while no bill is printed on it. **When the kitchen marks its last dish served it goes on the folio by itself**
+  (`_room_order_served` trigger → `_post_room_order`: "Room service #n" and "GST on room service #n", each dish at its own rate as
+  0155) — nobody has to press Post. Until then the folio's *Charge a restaurant order* lists it first, "From this room · goes on the
+  bill when served" (`[data-folio-order="room"]`); **Post to room** still works on it (it serves it at once).
+- **Check-out refuses while room service is open on the stay**: "room service order #n is still open — post it to the room or bill
+  it before check-out" — before, food still cooking at check-out was never charged.

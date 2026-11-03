@@ -24,7 +24,7 @@ type Item = Omit<RawItem, "addon_group_ids"> & { addon_groups?: AddonGroup[] };
 type CartLine = { key: string; item: Item; variant: Variant | null; addons: Addon[]; qty: number };
 type Cat = { id: string; name: string; items: RawItem[] };
 type Offer = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; code: string | null; from_time?: string | null; to_time?: string | null; days?: number[] | null };
-type D = { table?: { id: string; name: string; zone: string } | null; slug: string; name: string; type: string; tagline: string | null; addon_groups?: AddonGroup[]; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; gst_collect?: boolean; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; online_paused?: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
+type D = { table?: { id: string; name: string; zone: string } | null; room?: { number: string; in_house: boolean } | null; slug: string; name: string; type: string; tagline: string | null; addon_groups?: AddonGroup[]; cuisines: string[]; price_for_two: number | null; rating: number | null; rating_count: number; address: string | null; phone: string | null; photos: string[]; opens_at: string; closes_at: string; gst_rate: number; gst_collect?: boolean; dining: boolean; delivery: boolean; takeaway: boolean; rooms: boolean; min_order: number; delivery_fee: number; packing_charge: number; open_now: boolean; online_paused?: boolean; menu: Cat[]; offers: Offer[]; reviews: { guest: string; rating: number; body: string; reply: string | null; at: string }[] };
 type Slot = { time: string; left: number; full: boolean; offer_id: string | null; offer: string | null; offer_pct: number | null };
 
 const KIND_WORD = { restaurant: "Restaurant", hotel: "Hotel", resort: "Resort" } as const;
@@ -37,13 +37,23 @@ const nice = (m: string) => /operator|function|relation|column|syntax|violates|n
 /* the kitchen notes a guest reaches for most — one tap puts it in, a second takes it out */
 const QUICK_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain"];
 
-export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null, busy = null }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order"; tableToken?: string | null; busy?: { paused_until: string | null; extra_min: number } | null }) {
+export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null, roomToken = null, busy = null }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order"; tableToken?: string | null; roomToken?: string | null; busy?: { paused_until: string | null; extra_min: number } | null }) {
   /* Reached from the code on a table: the menu is for ordering at that table and nothing else — no booking tab, no delivery, no address. */
   const atTable = !!(tableToken && d.table);
+  /* 0170: reached from the code in a room — room service, on the guest's room bill. Priced like the table (the in-house menu,
+     no packing, the dining offers); the guest proves the stay once with the last four digits of their booking's phone, and
+     the phone keeps the stay's pass (`df-room-pass:<slug>:<code>`) so the next order asks nothing. */
+  const atRoom = !atTable && !!(roomToken && d.room);
+  const inPlace = atTable || atRoom;
+  const passKey = `df-room-pass:${slug}:${roomToken ?? ""}`;
+  const [pass, setPass] = useState<string | null>(null);
+  useEffect(() => { if (!atRoom) return; try { setPass(localStorage.getItem(passKey)); } catch { /* private window */ } }, [atRoom, passKey]);
+  const [digits, setDigits] = useState("");
+  const forget = () => { try { localStorage.removeItem(passKey); } catch { /* nothing kept */ } setPass(null); };
   const kind = coverKind(d.type, d.rooms); const KindIcon = KIND_ICON[kind];
   /* what the server refused, said on the page — public pages have no ToastProvider, so a toast here was silence */
   const [err, setErr] = useState<string | null>(null);
-  const [mode, setMode] = useState<"book" | "order">(tableToken && d.table ? "order" : d.dining ? tab : "order");
+  const [mode, setMode] = useState<"book" | "order">(inPlace ? "order" : d.dining ? tab : "order");
   const [pending, start] = useTransition();
   const [done, setDone] = useState<{ kind: "book" | "order"; data: Record<string, unknown> } | null>(null);
 
@@ -57,7 +67,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
   /* ── ordering ── */
   const [cart, setCart] = useState<CartLine[]>([]);
   const [chooser, setChooser] = useState<Item | null>(null);
-  const [omode, setOmode] = useState<"delivery" | "takeaway" | "dine_in">(tableToken && d.table ? "dine_in" : d.delivery ? "delivery" : "takeaway");
+  const [omode, setOmode] = useState<"delivery" | "takeaway" | "dine_in">(inPlace ? "dine_in" : d.delivery ? "delivery" : "takeaway");
   const [addr, setAddr] = useState(""); const [cartOpen, setCartOpen] = useState(false);
   /* The groups arrive once; a dish names the ones it offers. Rebuilt here, so everything below —
      the tiles, the chooser, the pricing — sees a dish with its add-ons on it, as it always did. */
@@ -106,7 +116,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
 
   /* The basket survives a trip away and back (2026-10-27: the privacy link, the browser's Back, a reload): this tab only,
      per place and table — the lines by id, the name, phone and note, and whether the sheet was open. */
-  const bk = `df-basket:${slug}:${tableToken ?? ""}`;
+  const bk = `df-basket:${slug}:${tableToken ?? (roomToken ? `r:${roomToken}` : "")}`;
   const restored = useRef(false);
   useEffect(() => {
     try {
@@ -136,14 +146,34 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
      anywhere else the confirmation page, with its tracking link */
   const placeNow = () => start(async () => {
     setErr(null);
-    const r = await reach(() => placeOrder(slug, { ...guest, address: addr }, lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) })), omode, note, bestOffer?.id ?? null, atTable ? tableToken : null));
-    if ("error" in r) { setErr(nice(r.error!)); return; }
+    const items = lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) }));
+    const usedPass = atRoom ? (pass ?? null) : null;
+    const r = await reach(() => atRoom
+      ? placeOrder(slug, { full_name: "", phone: "" }, items, "room", note, bestOffer?.id ?? null, null, { token: roomToken!, pass: usedPass ?? digits })
+      : placeOrder(slug, { ...guest, address: addr }, items, omode, note, bestOffer?.id ?? null, atTable ? tableToken : null));
+    if ("error" in r) {
+      // a pass from an earlier stay (or this stay's, after a reset) is forgotten and the digits asked for instead
+      if ("verify" in r && r.verify && usedPass) { forget(); setErr("Please confirm the last 4 digits of the phone number on your booking."); return; }
+      setErr(nice(r.error!)); return;
+    }
     const o = r.order as Record<string, unknown>;
+    if (atRoom && typeof o.pass === "string") { try { localStorage.setItem(passKey, o.pass); } catch { /* private window */ } setPass(o.pass); setDigits(""); }
     if (atTable) { keepTableOrder(slug, tableToken!, String(o.id)); setCart([]); setNote(""); setCartOpen(false); }
-    else { setCartOpen(false); setDone({ kind: "order", data: o }); }
+    else { if (atRoom) { setCart([]); setNote(""); } setCartOpen(false); setDone({ kind: "order", data: o }); }
   });
 
-  if (done) return <Confirmation kind={done.kind} data={done.data} name={d.name} slug={slug} />;
+  if (done) return <Confirmation kind={done.kind} data={done.data} name={d.name} slug={slug} back={atRoom ? `/dine/${slug}?r=${roomToken}` : undefined} onBack={atRoom ? () => setDone(null) : undefined} />;
+  const roomBanner = atRoom && (d.room!.in_house ? (
+    <div className="mb-5 rounded-2xl border border-[var(--color-tint)] bg-[var(--color-green-2)] px-4 py-3 flex items-center gap-3" data-room-banner>
+      <BedDouble size={18} className="text-[var(--color-tint)] shrink-0" />
+      <div className="min-w-0"><div className="font-semibold">Ordering to Room {d.room!.number}</div><div className="text-xs text-[var(--color-label-2)]">Brought to your room · added to your room bill, paid at check-out.</div></div>
+    </div>
+  ) : (
+    <div className="mb-5 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 flex items-center gap-3 text-sm" data-room-closed>
+      <BedDouble size={18} className="shrink-0" />
+      <div className="min-w-0"><b>Room {d.room!.number} has no guest checked in.</b> The menu is here to look at — to order, please call reception.</div>
+    </div>
+  ));
   const tableBanner = atTable && (
     <div className="mb-5 rounded-2xl border border-[var(--color-tint)] bg-[var(--color-green-2)] px-4 py-3 flex items-center gap-3" data-table-banner>
       <UtensilsCrossed size={18} className="text-[var(--color-tint)] shrink-0" />
@@ -159,7 +189,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
         <StoreCover kind={kind} photo={d.photos?.[0]} />
         <div className="absolute inset-0 store-cover-shade" />
         <div className="absolute top-0 inset-x-0 max-w-4xl mx-auto px-4 pt-4 flex items-center justify-between gap-3">
-          {atTable ? <span /> : <Link href="/dine" aria-label="Back" className="h-11 w-11 rounded-full cover-glass grid place-items-center text-white active:scale-95 transition"><ChevronLeft size={20} /></Link>}
+          {inPlace ? <span /> : <Link href="/dine" aria-label="Back" className="h-11 w-11 rounded-full cover-glass grid place-items-center text-white active:scale-95 transition"><ChevronLeft size={20} /></Link>}
           <span className="cover-glass h-9 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[12.5px] font-semibold" data-store-kind><KindIcon size={14} aria-hidden /> {KIND_WORD[kind]}</span>
         </div>
         <div className="absolute bottom-0 inset-x-0 max-w-4xl mx-auto px-5 pb-10 sm:pb-6">
@@ -181,7 +211,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
       <main className="relative max-w-4xl mx-auto px-5 py-5 -mt-5 sm:mt-0 rounded-t-[26px] sm:rounded-none bg-[var(--color-bg)] [&:has([data-table-orders])_[data-table-banner]]:hidden">
         {/* the property has switched online orders off, or paused them (0133): said before anyone fills a basket; a guest at
             a table (the QR) still orders */}
-        {d.online_paused && !d.table && <div className="mb-4 rounded-2xl border border-[color-mix(in_srgb,var(--color-orange)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-orange)_10%,var(--color-bg-2))] px-4 py-3 flex items-center gap-3 text-[14px] font-semibold" data-online-paused>
+        {d.online_paused && !d.table && !atRoom && <div className="mb-4 rounded-2xl border border-[color-mix(in_srgb,var(--color-orange)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-orange)_10%,var(--color-bg-2))] px-4 py-3 flex items-center gap-3 text-[14px] font-semibold" data-online-paused>
           <Clock size={18} className="shrink-0 text-[var(--color-orange)]" aria-hidden />Not taking online orders right now. Please check back soon.</div>}
         {/* Phone: address and phone as one contact card, each a full-width row with its own action
             (directions, call). Side by side they both wrapped mid-line. Wider screens keep the line. */}
@@ -215,7 +245,8 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
         )}
 
         {tableBanner}
-        {!atTable && <div className="flex items-center gap-2 mb-5 flex-wrap">
+        {roomBanner}
+        {!inPlace && <div className="flex items-center gap-2 mb-5 flex-wrap">
           <Segmented value={mode} onChange={setMode} options={[
             ...(d.dining ? [{ value: "book" as const, label: <span className="flex items-center gap-1.5"><UtensilsCrossed size={13} /> Book a table</span> }] : []),
             ...(d.delivery || d.takeaway ? [{ value: "order" as const, label: <span className="flex items-center gap-1.5"><Bike size={13} /> Order online</span> }] : []),
@@ -280,8 +311,8 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
             {/* at a table: call a waiter, ask for the bill or water, rate the meal (0103) */}
             {atTable && <TableOrders slug={slug} token={tableToken!} />}
             {atTable && <TableCalls slug={slug} token={tableToken!} table={d.table!.name} />}
-            {!tableToken && busy?.paused_until && <div className="mb-5 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 text-sm"><b>Not taking online orders right now.</b> Back at {new Date(busy.paused_until).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })} — the menu is here to look at.</div>}
-            {!tableToken && !busy?.paused_until && (busy?.extra_min ?? 0) > 0 && <div className="mb-5 rounded-2xl bg-[rgb(255_179_64/.14)] text-[var(--color-orange)] px-4 py-3 text-sm"><b>The kitchen is busy.</b> Orders are taking about {busy!.extra_min} minutes longer than usual.</div>}
+            {!inPlace && busy?.paused_until && <div className="mb-5 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 text-sm"><b>Not taking online orders right now.</b> Back at {new Date(busy.paused_until).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })} — the menu is here to look at.</div>}
+            {!inPlace && !busy?.paused_until && (busy?.extra_min ?? 0) > 0 && <div className="mb-5 rounded-2xl bg-[rgb(255_179_64/.14)] text-[var(--color-orange)] px-4 py-3 text-sm"><b>The kitchen is busy.</b> Orders are taking about {busy!.extra_min} minutes longer than usual.</div>}
             {menu.map((c) => c.items.length > 0 && (
               <section key={c.id} className="mb-7">
                 <div className="flex items-baseline gap-2 mb-3"><h2 className="text-xl">{c.name}</h2><span className="text-[12.5px] font-semibold text-[var(--color-label-3)] num">{c.items.length} {c.items.length === 1 ? "dish" : "dishes"}</span></div>
@@ -338,6 +369,11 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
               <span className="h-11 w-11 rounded-[15px] grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] shrink-0" aria-hidden><UtensilsCrossed size={19} /></span>
               <span className="min-w-0"><span className="block text-[15.5px] font-bold leading-tight">Table {d.table!.name}</span><span className="block text-[12.5px] text-[var(--color-label-2)] mt-0.5">Dine-in · brought to your table</span></span>
             </div>
+          ) : atRoom ? (
+            <div className="flex items-center gap-3 rounded-[18px] bg-[var(--color-green-2)] px-3.5 py-3" data-sheet-room>
+              <span className="h-11 w-11 rounded-[15px] grid place-items-center bg-[var(--color-tint)] text-[var(--color-on-tint)] shrink-0" aria-hidden><BedDouble size={19} /></span>
+              <span className="min-w-0"><span className="block text-[15.5px] font-bold leading-tight">Room {d.room!.number}</span><span className="block text-[12.5px] text-[var(--color-label-2)] mt-0.5">Room service · brought to your room</span></span>
+            </div>
           ) : (d.delivery && d.takeaway) && <Segmented value={omode as "delivery" | "takeaway"} onChange={setOmode} className="w-full" options={[{ value: "delivery", label: "Delivery" }, { value: "takeaway", label: "Takeaway" }]} />}
 
           <section>
@@ -373,20 +409,31 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
             </div>
             <div className="mt-3 pt-3 border-t border-dashed border-[var(--color-line-2)] flex items-end justify-between gap-3">
               <span className="min-w-0">
-                <span className="block text-[12px] font-extrabold uppercase tracking-[.1em] text-[var(--color-label-2)]">To pay</span>
+                <span className="block text-[12px] font-extrabold uppercase tracking-[.1em] text-[var(--color-label-2)]">{atRoom ? "On your room bill" : "To pay"}</span>
                 {disc > 0 && <span className="mt-1 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11.5px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)] num"><Check size={12} strokeWidth={3} aria-hidden />You save {formatINR(disc)}</span>}
               </span>
               <span className="font-display num text-[30px] leading-none" data-sheet-total>{formatINR(total)}</span>
             </div>
           </section>
-          {!atTable && sub < Number(d.min_order) && <p className="text-sm text-[var(--color-red)]">Add {formatINR(Number(d.min_order) - sub)} more — the minimum order here is {formatINR(d.min_order)}.</p>}
+          {!inPlace && sub < Number(d.min_order) && <p className="text-sm text-[var(--color-red)]">Add {formatINR(Number(d.min_order) - sub)} more — the minimum order here is {formatINR(d.min_order)}.</p>}
 
           <section className="space-y-3" data-sheet-details>
-            <span className="block text-[11.5px] font-extrabold uppercase tracking-[.12em] text-[var(--color-label-2)]">Your details</span>
-            <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+            <span className="block text-[11.5px] font-extrabold uppercase tracking-[.12em] text-[var(--color-label-2)]">{atRoom ? "Your stay" : "Your details"}</span>
+            {atRoom ? (pass ? (
+              <div className="flex items-center gap-3 rounded-[16px] bg-[var(--color-green-2)] px-3.5 py-3 text-[13.5px]" data-room-verified>
+                <Check size={17} strokeWidth={3} className="shrink-0 text-[var(--color-green)]" aria-hidden />
+                <span className="flex-1 min-w-0 font-semibold">Confirmed for this stay</span>
+                <button type="button" onClick={forget} className="-my-2 h-11 px-3 rounded-full text-[13px] font-semibold text-[var(--color-label-2)] hover:bg-[var(--color-fill)]">Not you?</button>
+              </div>
+            ) : (
+              <Field label="Last 4 digits of the phone number on your booking">
+                <div className="relative"><Phone size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-label-3)] pointer-events-none" aria-hidden />
+                  <input aria-label="Last 4 digits of your phone number" inputMode="numeric" autoComplete="off" maxLength={4} value={digits} onChange={(e) => setDigits(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="••••" className="num !pl-11 tracking-[.3em]" data-room-digits /></div>
+              </Field>
+            )) : <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
               <Field label="Name"><div className="relative"><User size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-label-3)] pointer-events-none" aria-hidden /><input aria-label="Name" autoComplete="name" value={guest.full_name} onChange={(e) => setGuest({ ...guest, full_name: e.target.value })} placeholder="Your name" className="!pl-11" /></div></Field>
               <Field label="Phone"><div className="relative"><Phone size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-label-3)] pointer-events-none" aria-hidden /><input aria-label="Phone" type="tel" inputMode="tel" autoComplete="tel" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} placeholder="10-digit mobile" className="num !pl-11" /></div></Field>
-            </div>
+            </div>}
             {omode === "delivery" && <Field label="Delivery address"><textarea rows={2} value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Door number, street, landmark" /></Field>}
             <Field label="Note for the kitchen"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Less spicy, no onion…" /></Field>
             <div className="flex gap-2 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap [scrollbar-width:none]" data-quick-notes>
@@ -398,13 +445,16 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
 
           <div className="flex items-center gap-3 rounded-[16px] bg-[var(--color-fill)] px-3.5 py-3 text-[13px] text-[var(--color-label-2)]" data-pay-note>
             <Wallet size={18} className="shrink-0 text-[var(--color-label)]" aria-hidden />
-            <span>{atTable ? "Pay at the table when you're done — cash, UPI or card." : `Pay on ${omode === "delivery" ? "delivery" : "pickup"} — cash, UPI or card. The restaurant confirms within a few minutes.`}</span>
+            <span>{atRoom ? "Added to your room bill — pay at check-out." : atTable ? "Pay at the table when you're done — cash, UPI or card." : `Pay on ${omode === "delivery" ? "delivery" : "pickup"} — cash, UPI or card. The restaurant confirms within a few minutes.`}</span>
           </div>
           {err && <div role="alert" className="flex gap-2.5 rounded-[16px] bg-[var(--color-red-2)] text-[var(--color-red)] px-3.5 py-3 text-[13.5px] font-semibold" data-order-error><AlertCircle size={18} className="shrink-0 mt-px" aria-hidden />{err}</div>}
-          {(!guest.full_name || !guest.phone) && <p className="text-center text-[12.5px] text-[var(--color-label-3)]" data-order-needs>Add your name and phone to place the order</p>}
+          {atRoom
+            ? (!d.room!.in_house ? <p className="text-center text-[12.5px] text-[var(--color-red)]" data-order-needs>No guest is checked in to this room — please call reception</p>
+               : !pass && digits.length !== 4 && <p className="text-center text-[12.5px] text-[var(--color-label-3)]" data-order-needs>Enter the last 4 digits of your phone number to order</p>)
+            : (!guest.full_name || !guest.phone) && <p className="text-center text-[12.5px] text-[var(--color-label-3)]" data-order-needs>Add your name and phone to place the order</p>}
           <GuestNotice property={d.name} use="for this order" />
           <div>
-            <button type="button" onClick={placeNow} disabled={pending || !guest.full_name || !guest.phone || (!atTable && sub < Number(d.min_order)) || (omode === "delivery" && !addr)}
+            <button type="button" onClick={placeNow} disabled={pending || (atRoom ? !d.room!.in_house || (!pass && digits.length !== 4) : !guest.full_name || !guest.phone) || (!inPlace && sub < Number(d.min_order)) || (omode === "delivery" && !addr)}
               className="w-full h-14 rounded-[18px] pl-5 pr-2 flex items-center gap-3 bg-[var(--color-tint)] text-[var(--color-on-tint)] text-[16px] font-bold shadow-[0_16px_30px_-16px_color-mix(in_srgb,var(--color-tint)_90%,transparent)] disabled:opacity-45 active:scale-[.985] transition" data-place-order>
               {pending ? <LoaderCircle size={20} className="animate-spin shrink-0" aria-hidden /> : <Send size={18} className="shrink-0" aria-hidden />}
               <span className="flex-1 text-left">{pending ? "Placing…" : "Place order"}</span>
@@ -488,8 +538,9 @@ function DishCard({ i, cat, sells, qty, onAdd, onLess }: { i: Item; cat: string;
 
 const Row = ({ k, v, good }: { k: string; v: number; good?: boolean }) => <div className="flex justify-between gap-3"><span className="min-w-0 truncate text-[var(--color-label-2)]">{k}</span><span className={cn("num shrink-0 font-semibold", good && "text-[var(--color-green)]")}>{v < 0 ? `− ${formatINR(-v)}` : formatINR(v)}</span></div>;
 
-function Confirmation({ kind, data, name, slug }: { kind: "book" | "order"; data: Record<string, unknown>; name: string; slug: string }) {
-  const d = data as never as { no?: number; ref?: string; date?: string; time?: string; party?: number; offer?: string; discount_pct?: number; total?: number; eta?: number; mode?: string; table?: string; accepted?: boolean; order_no?: number; phone?: string; address?: string; id?: string };
+function Confirmation({ kind, data, name, slug, back, onBack }: { kind: "book" | "order"; data: Record<string, unknown>; name: string; slug: string; back?: string; onBack?: () => void }) {
+  const d = data as never as { no?: number; ref?: string; date?: string; time?: string; party?: number; offer?: string; discount_pct?: number; total?: number; eta?: number; mode?: string; table?: string; room?: string; accepted?: boolean; order_no?: number; phone?: string; address?: string; id?: string };
+  const room = d.mode === "room";
   return (
     <div className="min-h-dvh grid place-items-center p-6 aurora">
       <motion.div initial={{ opacity: 0, y: 14, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 26 }} className="material-thick p-8 max-w-md w-full text-center rounded-[28px]">
@@ -505,14 +556,17 @@ function Confirmation({ kind, data, name, slug }: { kind: "book" | "order"; data
           </>) : (<>
             <div className="flex justify-between"><span className="text-[var(--color-label-2)]">Reference</span><span className="num font-bold">{d.ref}</span></div>
             <div className="flex justify-between"><span className="text-[var(--color-label-2)]">{d.mode === "delivery" ? "Arriving in" : "Ready in"}</span><span className="num">~{d.eta} min</span></div>
-            <div className="flex justify-between text-base font-bold pt-1.5 border-t border-[var(--color-separator)]"><span>To pay</span><span className="num">{formatINR(Number(d.total ?? 0))}</span></div>
+            <div className="flex justify-between text-base font-bold pt-1.5 border-t border-[var(--color-separator)]" data-confirm-total><span>{room ? "On your room bill" : "To pay"}</span><span className="num">{formatINR(Number(d.total ?? 0))}</span></div>
           </>)}
         </div>
-        <p className="text-sm text-[var(--color-label-2)] mt-4">{kind === "book" ? "Show this number at the door — they already have your booking." : d.mode === "dine_in" ? (d.accepted ? `The kitchen has it${d.order_no ? ` as order #${d.order_no}` : ""}. It comes to Table ${d.table ?? ""}. Pay at the table when you are done.` : `The counter will confirm it in a moment and send it to the kitchen. It comes to Table ${d.table ?? ""}.`) : "The kitchen has it. Pay on delivery — cash, UPI or card."}</p>
+        <p className="text-sm text-[var(--color-label-2)] mt-4" data-confirm-note>{kind === "book" ? "Show this number at the door — they already have your booking." : room
+          ? (d.accepted ? `The kitchen has it${d.order_no ? ` as order #${d.order_no}` : ""}. It comes to Room ${d.room ?? ""} and goes on your room bill — pay at check-out.` : `Reception will confirm it in a moment and send it to the kitchen. It comes to Room ${d.room ?? ""} and goes on your room bill.`)
+          : d.mode === "dine_in" ? (d.accepted ? `The kitchen has it${d.order_no ? ` as order #${d.order_no}` : ""}. It comes to Table ${d.table ?? ""}. Pay at the table when you are done.` : `The counter will confirm it in a moment and send it to the kitchen. It comes to Table ${d.table ?? ""}.`) : "The kitchen has it. Pay on delivery — cash, UPI or card."}</p>
         <div className="flex gap-2 mt-5">
           {d.phone && <a href={`tel:${d.phone}`} className="flex-1"><Button variant="gray" className="w-full"><Phone size={15} /> Call</Button></a>}
-          {kind === "order" && d.mode !== "dine_in" && <TrackLink id={d.id} phone={d.phone} />}
-          <Link href={`/dine/${slug}`} className="flex-1"><Button className="w-full">Done</Button></Link>
+          {kind === "order" && d.mode !== "dine_in" && !room && <TrackLink id={d.id} phone={d.phone} />}
+          {onBack ? <Button className="flex-1" onClick={onBack} data-confirm-more>Order more</Button>
+            : <Link href={back ?? `/dine/${slug}`} className="flex-1"><Button className="w-full">Done</Button></Link>}
         </div>
       </motion.div>
     </div>
