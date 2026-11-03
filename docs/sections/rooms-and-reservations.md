@@ -186,3 +186,7 @@ already chosen, or one that fits the party."
   (0157; another property's stay is refused by `zz_same_property`). The card shows *Room 101* (`[data-res-room]`); page.tsx reads
   `stay:booking_id(id, rooms(number), guests(full_name))` and the in-house stays in its one round trip.
 - `/reservations?new=1&stay=<booking id>` opens New booking with that stay chosen (the front desk's *Table* key).
+
+## 2026-11-03 — Seat now offers only a free table (0166)
+- `page.tsx` reads the open cleaning jobs and open orders; *Seat now*'s sheet disables a table being cleaned (*Being cleaned*) or with an
+  order on it (*In use*) — `[data-seat-table]`, `[data-busy="cleaning|order"]`. `reservation_set` refuses both (data-and-rls.md, 0166).

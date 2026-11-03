@@ -24,6 +24,22 @@ export async function placeOrder(input: unknown) {
   bump();
   return { ok: true, orderId: data as string };
 }
+/** *Add items* on an open order (0165): a new kitchen ticket on the same order, so its running total and its bill include
+ *  it — it used to be a second order on the table until somebody merged. Refused once the bill is printed. */
+export async function addItems(input: unknown) {
+  const parsed = newOrderSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const raw = input as { add_to?: string; client_id?: string };
+  if (!raw.add_to || !/^[0-9a-f-]{36}$/i.test(raw.add_to)) return { error: "No order to add to" };
+  const s = await createClient();
+  const d = parsed.data;
+  // client_id: the round's id from the till — a retry after a lost answer adds nothing twice (0165's kots.client_id)
+  const cid = raw.client_id && /^[0-9a-f-]{36}$/i.test(raw.client_id) ? raw.client_id : null;
+  const { data, error } = await s.rpc("order_add_items", { p_order_id: raw.add_to, p_items: d.items, p_note: d.note || null, p_client_id: cid });
+  if (error) return { error: error.message };
+  bump();
+  return { ok: true, orderId: data as string };
+}
 export async function setItemStatus(id: string, status: string) {
   const s = await createClient(); const { error } = await s.from("order_items").update({ status }).eq("id", id);
   if (error) return { error: error.message }; bump(); return { ok: true };

@@ -138,7 +138,11 @@ export function OrderDetail({ order, tables = [], open = [] }: { order: Order; t
             {mode === "move" && (
               <div className="mt-3 space-y-2">
                 <div className="flex gap-2">
-                  <select value={toTable} onChange={(e) => setToTable(e.target.value)} className="flex-1"><option value="">Choose a table</option>{tables.filter((t) => t.id !== order.table_id).map((t) => <option key={t.id} value={t.id}>{t.name}{t.status !== "free" ? ` · ${t.status}` : ""}</option>)}</select>
+                  <select value={toTable} onChange={(e) => setToTable(e.target.value)} className="flex-1"><option value="">Choose a table</option>{tables.filter((t) => t.id !== order.table_id).map((t) => {
+                    /* 0166: not onto a table being cleaned, nor one with its own order (that is Merge) — move_order refuses both */
+                    const why = t.status === "cleaning" ? "being cleaned" : open.some((o) => o.table_id === t.id) ? "has an order — use Merge" : null;
+                    return <option key={t.id} value={t.id} disabled={!!why}>{t.name}{why ? ` · ${why}` : t.status !== "free" ? ` · ${t.status}` : ""}</option>;
+                  })}</select>
                   <Button disabled={pending || !toTable} onClick={() => start(async () => { const r = await moveOrder(order.id, toTable); if ("error" in r) fail(r.error!); else { toast("Moved"); setMode(null); } })}>Move</Button>
                 </div>
               </div>

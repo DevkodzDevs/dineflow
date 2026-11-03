@@ -212,3 +212,14 @@ pnpm --filter @dineflow/web typecheck
   392px (one stay card), so a long list beside it does not stretch it further. Below lg it is the row. `[data-fd-empty]` kept.
 - shots163 at 1194/1440/1920: the empty In house ends level with the arrival (378px, 990/990), the empty Arrivals beside a guest in
   house the same; Upcoming and Table bookings empties 76/76 and level; 834/412 one column, compact.
+
+## 2026-11-03 — a room comes to booking by what Room status says (0166)
+- The owner: "Room status decides whether a room is free for a booking." **New booking**'s room picker (`BookingForm`, `whyNot`)
+  for the dates chosen: a room booked for any of those nights reads *Booked*; for a stay **from today** also *Guest in* (occupied, or
+  a stay still checked in), *Being cleaned* (dirty, or status cleaning), *Touch-up* (pickup), *Not inspected* (where
+  `hk_inspect_required`). Those tiles are disabled (`[data-room-pick]`, `[data-why]`), sorted after the free ones, the why in red where
+  the type was; a line under the grid counts them (`[data-rooms-open]`: "3 free and ready now" / "… for these dates"). Out of order is
+  still left out. A dirty room can be booked for a later date. Confirm needs a room that is free (`roomOk`).
+- The database agrees (data-and-rls.md, 0166): `create_booking` refuses an out-of-order room for any dates and a not-ready room for a
+  stay from today (and marks it Arriving by IST, not UTC); **`check_in` refuses a room that is not ready** — before, it checked only
+  the inspection, and only where the property inspects. *Move to N · ready now* (0081) is the way round it for an arrival.

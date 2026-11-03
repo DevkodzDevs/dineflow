@@ -6,8 +6,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { Button, Card, Flip, Sheet, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { stockCount } from "../actions";
-import { enqueue } from "@/lib/offline/sync";
-import { useOffline } from "@/lib/offline/OfflineProvider";
+import { enqueue, sendOrQueue } from "@/lib/offline/sync";
 
 type Item = { name: string; unit: string; bought: number; used: number; wasted: number; gap_qty: number; gap_value: number; gap_pct: number | null; counted: boolean; since: string };
 type Report = { since_days: number; items: Item[]; lost_value: number; found_value: number; worst: string | null; uncounted: number; logged_wastage_value: number };
@@ -18,7 +17,7 @@ type Ing = { id: string; name: string; unit: string; current_stock: number };
  * A count is the only way to know — so the screen makes counting a two-minute job.
  */
 export function LeaksClient({ report, ingredients }: { report: Report; ingredients: Ing[] }) {
-  const [counting, setCounting] = useState(false); const [vals, setVals] = useState<Record<string, string>>({}); const [pending, start] = useTransition(); const toast = useToast(); const { online } = useOffline();
+  const [counting, setCounting] = useState(false); const [vals, setVals] = useState<Record<string, string>>({}); const [pending, start] = useTransition(); const toast = useToast();
   const leaks = report.items.filter((i) => i.gap_value < 0); const found = report.items.filter((i) => i.gap_value > 0);
   return (
     <div>
@@ -68,8 +67,11 @@ export function LeaksClient({ report, ingredients }: { report: Report; ingredien
         <div className="sticky bottom-0 -mx-5 mt-4 px-5 pt-3 pb-1 bg-[var(--color-bg-2)] border-t border-[var(--color-separator)]">
         <Button className="w-full !h-[52px] !text-base" disabled={pending || Object.values(vals).every((v) => v === "")} onClick={() => start(async () => {
           const counts = Object.entries(vals).filter(([, v]) => v !== "").map(([ingredient_id, v]) => ({ ingredient_id, counted: Number(v) }));
-          if (!online) { await enqueue("stock_count", { counts }, `Stock count · ${counts.length} items`); toast(`${counts.length} counted · sends when online`); setCounting(false); setVals({}); return; }
-          const r = await stockCount(counts); if ("error" in r) toast(r.error ?? "Could not save the count", "err"); else { toast(`${r.counted} items counted · ${formatINR(r.gap_value)} moved`); setCounting(false); setVals({}); }
+          // offline, or no answer at all: kept with the time it was counted, so a late sync keeps the sales since (0169)
+          const countedAt = new Date().toISOString();
+          const r = await sendOrQueue(() => stockCount(counts), () => enqueue("stock_count", { counts, counted_at: countedAt }, `Stock count · ${counts.length} items`));
+          if (!r) { toast(`${counts.length} counted · sends when online`); setCounting(false); setVals({}); return; }
+          if ("error" in r) toast(r.error ?? "Could not save the count", "err"); else { toast(`${r.counted} items counted · ${formatINR(r.gap_value)} moved`); setCounting(false); setVals({}); }
         })}><ClipboardCheck size={16} /> Save count</Button>
         </div>
       </Sheet>

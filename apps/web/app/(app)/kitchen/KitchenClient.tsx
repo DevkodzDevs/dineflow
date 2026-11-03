@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, Check, Bell, BellRing, CheckCheck, Clock, AlertTriangle, Printer, Boxes, Timer, Tv, RotateCcw, PauseCircle, Keyboard, ChefHat } from "lucide-react";
+import { Flame, Check, Bell, BellRing, CheckCheck, Clock, AlertTriangle, Printer, Boxes, Timer, Tv, RotateCcw, PauseCircle, Keyboard, ChefHat, QrCode, Globe, Bike } from "lucide-react";
 import { useLive } from "@/lib/useLive";
 import { cn, useToast, FlapShuffle, FlapClock } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
@@ -12,12 +12,14 @@ import { minsSince, fmtAge, fmtQty, fmtSince } from "@/lib/format";
 import { lineExtras } from "@dineflow/shared";
 import { listV } from "@/components/ui";
 import { setKotStatus, setItemStatus, setItemsStatus, recallKot, fireKot } from "../orders/actions";
-import { enqueue } from "@/lib/offline/sync";
-import { useOffline } from "@/lib/offline/OfflineProvider";
+import { enqueue, sendOrQueue } from "@/lib/offline/sync";
 import { usePrinters } from "@/lib/print/usePrinter";
+import { channelChip, type ChannelOrder, type ChannelChip } from "@/lib/channelRef";
 
 type Line = { id: string; name_snapshot: string; qty: number; status: string; notes: string | null; course?: number; addons?: { name: string }[] | null; components?: { name: string; qty: number }[] | null; menu_items?: { station: string | null; categories: { station: string | null } | null } | null };
 type Kot = { id: string; kot_no: number; status: "pending" | "preparing" | "ready"; created_at: string; held?: boolean; cook?: string | null;
+  /** the channel order this ticket came from (0163): "QR · 2fee", "Swiggy · 040011" — never in `orders.notes` */
+  online_orders?: ChannelOrder;
   /** `notes` is the whole order's cooking request ("Jain") — the till's "Cooking request", saved on the order, not on a dish */
   orders: { order_no: number; type: string; customer_name: string | null; token_no?: number | null; promised_at: string | null; notes?: string | null; dining_tables: { name: string } | null } | null;
   order_items: Line[] };
@@ -30,9 +32,24 @@ const stationOf = (i: Line) => i.menu_items?.station || i.menu_items?.categories
 const live = (i: Line) => i.status !== "cancelled";
 /** a number on the ticket's meta row — paper-toned so it reads on the white ticket in every theme */
 const KT_CHIP = "inline-flex items-center gap-1 h-6 px-2 rounded-full text-[12px] font-bold leading-none bg-[color-mix(in_srgb,var(--color-paper-ink)_7%,var(--color-paper))] text-[color-mix(in_srgb,var(--color-paper-ink)_78%,transparent)]";
+const REF_ICON = { qr: QrCode, web: Globe, app: Bike } as const;
+/** a channel order's source and reference (0163) — "QR · 2fee", "Swiggy · 040011"; the whole reference in the title */
+function RefChip({ c }: { c: ChannelChip | null }) {
+  if (!c) return null;
+  const I = REF_ICON[c.kind];
+  return (
+    <span className={cn(KT_CHIP, "font-sans max-w-full")} title={`${c.source} · ${c.full}`} data-kt-ref={c.kind}>
+      <I size={12} aria-hidden className="opacity-60 shrink-0" />
+      <span className="truncate">{c.source}<span aria-hidden className="opacity-50 mx-0.5">·</span><span className="num">{c.ref}</span></span>
+    </span>
+  );
+}
 /** a parcel's daily token (0103) rides with it — the number the counter calls and the TV shows */
 const where = (k: { orders: { type: string; customer_name: string | null; token_no?: number | null; dining_tables: { name: string } | null } | null }) =>
   k.orders?.dining_tables?.name ?? (k.orders?.type === "room_service" ? `Room · ${k.orders?.customer_name ?? ""}` : `${k.orders?.type === "takeaway" ? "Takeaway" : "Delivery"}${k.orders?.token_no ? ` · Token ${k.orders.token_no}` : ""}`);
+
+/** the reprint's "where" line, with the channel order's reference (0163): "T3 · QR 2fee" */
+const refLine = (k: Kot) => { const c = channelChip(k.online_orders); return c ? `${where(k)} · ${c.source} ${c.ref}` : where(k); };
 
 /** The pantry lines under a ticket. Before the fire: what starting it will draw, with anything the shelf
  *  cannot cover in red. After: a note that the pantry has moved. Dishes with no recipe are named, so the
@@ -77,7 +94,6 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
   const [optimistic, setOptimistic] = useState<Record<string, Kot["status"] | "served">>({});
   const [recalled, setRecalled] = useState<Record<string, true>>({});
   const toast = useToast();
-  const { online } = useOffline();
 
   /* The station is remembered on the device: the grill's tablet stays the grill's tablet across
      reloads, and the expo screen stays on everything. */
@@ -92,22 +108,20 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
    *  line, still holds its own two buttons. */
   const move = (id: string, status: "preparing" | "ready" | "served") => {
     setOptimistic((o) => ({ ...o, [id]: status }));
-    if (!online) { void enqueue("kot_status", { id, status }, `Kitchen · ticket ${status}`); return; }
-    start(async () => { const r = await setKotStatus(id, status); if ("error" in r) { toast(r.error!, "err"); setOptimistic((o) => { const n = { ...o }; delete n[id]; return n; }); } });
+    // sendOrQueue: offline, or no answer at all (Wi-Fi with no internet), keeps it on the device and sends it later
+    start(async () => { const r = await sendOrQueue(() => setKotStatus(id, status), () => enqueue("kot_status", { id, status }, `Kitchen · ticket ${status}`)); if (r && "error" in r) { toast(r.error!, "err"); setOptimistic((o) => { const n = { ...o }; delete n[id]; return n; }); } });
   };
   /** Station view: only this station's lines move; the ticket as a whole follows when every station is done. */
   const moveLines = (ids: string[], status: "preparing" | "ready") => {
     if (!ids.length) return;
-    if (!online) { void enqueue("item_status", { ids, status }, `Kitchen · ${station} · ${status}`); return; }
-    start(async () => { const r = await setItemsStatus(ids, status); if ("error" in r) toast(r.error!, "err"); });
+    start(async () => { const r = await sendOrQueue(() => setItemsStatus(ids, status), () => enqueue("item_status", { ids, status }, `Kitchen · ${station} · ${status}`)); if (r && "error" in r) toast(r.error!, "err"); });
   };
   /* A held course fired from here leaves the strip at once; the server restarts its clock and prints it. */
   const [fired, setFired] = useState<Record<string, true>>({});
   const fire = (id: string) => {
     setFired((f) => ({ ...f, [id]: true }));
-    if (!online) { void enqueue("kot_fire", { id }, "Kitchen · fire course"); return; }
     // a course that did not fire comes back to the strip: hidden for good, the kitchen would never get it
-    start(async () => { const r = await fireKot(id); if ("error" in r) { toast(r.error!, "err"); setFired((f) => { const n = { ...f }; delete n[id]; return n; }); } });
+    start(async () => { const r = await sendOrQueue(() => fireKot(id), () => enqueue("kot_fire", { id }, "Kitchen · fire course")); if (r && "error" in r) { toast(r.error!, "err"); setFired((f) => { const n = { ...f }; delete n[id]; return n; }); } });
   };
   const heldList = raw.filter((k) => k.held && !fired[k.id]);
   const courseOf = (k: Kot) => Math.max(1, ...k.order_items.map((i) => i.course ?? 1));
@@ -256,6 +270,8 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                         <div className="px-3.5 pt-2.5 flex flex-wrap items-center gap-1.5 num" data-kt-meta>
                           <span className={KT_CHIP} title="Kitchen ticket"><span className="opacity-60 font-semibold">KOT</span>{k.kot_no}</span>
                           <span className={KT_CHIP} title="Order"><span className="opacity-60 font-semibold">#</span>{k.orders?.order_no}</span>
+                          {/* 0163: the channel order's source and reference — a plain chip like the numbers beside it, not a warning */}
+                          <RefChip c={channelChip(k.online_orders)} />
                           {hotkey && <span className={KT_CHIP} title={`Press ${hotkey} to move it on`}><Keyboard size={12} aria-hidden className="opacity-60" />{hotkey}</span>}
                           {k.cook && <span className={cn(KT_CHIP, "font-sans max-w-full")} data-cook><ChefHat size={12} aria-hidden className="opacity-60 shrink-0" /><span className="truncate">{k.cook}</span></span>}
                         </div>
@@ -278,7 +294,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                           {(late || warn) && !due && <div className={cn("mt-2 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[13px] font-bold", late ? "bg-[var(--color-red-2)] text-chili" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")}><Timer size={14} />{late ? `Over ${lateAt} min` : `${lateAt - age} min left`}</div>}
                           {lines.map((i) => (
                             <button key={i.id} type="button" disabled={pending || key === "ready"} title={key === "ready" ? undefined : i.status === "ready" ? "Tap: not ready after all" : "Tap: this dish is ready"}
-                              onClick={() => { const next = i.status === "ready" ? "preparing" : "ready"; if (!online) { void enqueue("item_status", { ids: [i.id], status: next }, `Kitchen · ${i.name_snapshot}`); return; } start(() => { setItemStatus(i.id, next); }); }}
+                              onClick={() => { const next = i.status === "ready" ? "preparing" : "ready"; start(async () => { await sendOrQueue(() => setItemStatus(i.id, next), () => enqueue("item_status", { ids: [i.id], status: next }, `Kitchen · ${i.name_snapshot}`)); }); }}
                               className={cn("kt-line !min-h-0 disabled:opacity-100", key !== "ready" && "hover:bg-[var(--color-fill)] rounded-lg")}>
                               <span className={cn("kt-q", i.status === "ready" && key !== "ready" && "!bg-[var(--color-mint)]")}>{i.status === "ready" && key !== "ready" ? <Check size={18} /> : i.qty}</span>
                               <span className="flex-1 min-w-0">
@@ -298,7 +314,7 @@ export function KitchenClient({ initial: raw, needs, stale = 0, bumped = [], sta
                             : key === "preparing" ? <button type="button" className="svc-btn go flex-1" disabled={(view !== "all" && pending) || stationDone} onClick={() => advance(k)} data-kot-go><BellRing size={21} aria-hidden />{view === "all" ? <Say w="food_ready" /> : stationDone ? `${view} done` : `${view} ready`}</button>
                             : <button type="button" className="svc-btn flex-1 bg-[var(--color-paper-ink)] text-[var(--color-paper)]" onClick={() => move(k.id, "served")} data-kot-go><CheckCheck size={21} aria-hidden /><Say w="served" /></button>}
                           <button type="button" title="Reprint this ticket" aria-label="Reprint this ticket" className="h-14 w-14 shrink-0 rounded-[18px] grid place-items-center bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]"
-                            onClick={() => { void printKot({ kotNo: `KOT ${k.kot_no}`, when: new Date(k.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: where(k), reprint: true, heading: k.orders?.notes?.trim() ? `** ${k.orders.notes.trim().toUpperCase()} **` : undefined, items: k.order_items.filter(live).map((i) => ({ name: i.name_snapshot, qty: i.qty, note: i.notes, extras: lineExtras(i), station: stationOf(i) })) }); }}><Printer size={19} /></button>
+                            onClick={() => { void printKot({ kotNo: `KOT ${k.kot_no}`, when: new Date(k.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }), tableOrType: refLine(k), reprint: true, heading: k.orders?.notes?.trim() ? `** ${k.orders.notes.trim().toUpperCase()} **` : undefined, items: k.order_items.filter(live).map((i) => ({ name: i.name_snapshot, qty: i.qty, note: i.notes, extras: lineExtras(i), station: stationOf(i) })) }); }}><Printer size={19} /></button>
                         </div>
                       </motion.article>
                     );

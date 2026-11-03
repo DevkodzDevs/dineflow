@@ -9,11 +9,11 @@ import { PosClient } from "./PosClient";
 
 export const metadata = { title: "New order" };
 
-export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ table?: string; type?: string }> }) {
-  const { table, type } = await searchParams;
+export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ table?: string; type?: string; add?: string }> }) {
+  const { table, type, add } = await searchParams;
   const s = await createClient(); const held = holdDue(s);   // a booking due now holds its table or room (0154)
   // the session travels with the page's own rows, not in front of them: one trip, not two
-  const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, v0, g0, l0, c0, { data: pairings }, { data: sold }, { data: booked }, { data: cleans }] = await Promise.all([
+  const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, v0, g0, l0, c0, { data: pairings }, { data: sold }, { data: booked }, { data: cleans }, { data: addRow }] = await Promise.all([
     requireSession(),
     s.from("categories").select("id, name").order("sort_order"),
     s.from("menu_items").select("id, name, price, is_veg, category_id, is_available, is_combo, image_url, station, prep_minutes, categories(station)").order("name"),
@@ -34,7 +34,13 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
     // today's bookings that hold a table, and the tables still being cleaned: with the open orders, what is not free
     s.from("reservations").select("table_id, at_time").eq("on_date", todayIST()).in("status", ["requested", "confirmed"]).not("table_id", "is", null),
     s.from("table_cleanings").select("table_id").in("status", ["pending", "in_progress"]),
+    // *Add items* on an open order (0165): the order the new dishes join, as a new kitchen ticket on it
+    add && /^[0-9a-f-]{36}$/i.test(add) ? s.from("orders").select("id, order_no, table_id, type, status, bills(status)").eq("id", add).maybeSingle() : Promise.resolve({ data: null }),
   ]);
+  // it joins while it is open and no bill is printed on it (0145's rule for QR rounds); otherwise the till sends a separate order
+  const ar = addRow as { id: string; order_no: number; table_id: string | null; type: string; status: string; bills: { status: string }[] | null } | null;
+  const addTo = ar && ar.status === "open" && !(ar.bills ?? []).some((b) => b.status === "unpaid" || b.status === "paid")
+    ? { id: ar.id, order_no: ar.order_no, table_id: ar.table_id, type: ar.type as "dine_in" | "takeaway" | "delivery" | "room_service" } : null;
   // the master reads every property's options (lib/scoped.ts): only for it, ask again for this property
   const [{ data: variants }, { data: groups }, { data: links }, { data: combos }] = await optionsFor(s, session, [v0, g0, l0, c0] as const);
   // A new order picks from the free tables only (2026-10-20, the owner): not one with an open order or marked occupied,
@@ -52,8 +58,15 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const pairs: Record<string, { id: string; n: number }[]> = {};
   for (const p of (pairings ?? []) as { item: string; pair: string; together: number }[]) (pairs[p.item] ??= []).push({ id: p.pair, n: p.together });
   const menu = withOptions(items ?? [], (variants ?? []) as never, (groups ?? []) as never, links ?? [], combos ?? []);
+  // 0166 (the owner): a table takes one open order and none while it is being cleaned. Opened on a table whose order is
+  // still open with no bill, the till adds to that order; opened on a table being cleaned, it starts with no table chosen.
+  type Run = { id: string; order_no: number; table_id: string | null; type: string; bills: { status: string }[] | null };
+  const busyOn = !addTo && table ? ((running ?? []) as Run[]).find((o) => o.table_id === table) : undefined;
+  const into = addTo ?? (busyOn && !(busyOn.bills ?? []).some((b) => b.status === "unpaid" || b.status === "paid")
+    ? { id: busyOn.id, order_no: busyOn.order_no, table_id: busyOn.table_id, type: busyOn.type as "dine_in" | "takeaway" | "delivery" | "room_service" } : null);
+  const first = table && notFree[table] === "cleaning" ? null : table || into?.table_id || null;
   await held;
-  return <PosClient stockBlock={(session.restaurant as { stock_block?: boolean }).stock_block !== false} categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={table ?? null} initialType={type === "takeaway" || type === "delivery" ? type : null}
+  return <PosClient stockBlock={(session.restaurant as { stock_block?: boolean }).stock_block !== false} categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={first} addTo={into} initialType={type === "takeaway" || type === "delivery" ? type : null}
     inHouse={(inHouse ?? []) as never} stock={(stock ?? {}) as never} running={(running ?? []) as never} ai={aiEnabled()}
     promise={session.restaurant.promise_enabled ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} pairs={pairs} popular={popular} notFree={notFree} />;
 }

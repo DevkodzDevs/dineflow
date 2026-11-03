@@ -183,7 +183,11 @@ const STEPS: Record<string, Run> = {
   /* Order */
   "order:place": async (e) => {
     const w = e.as(staffOf(e, "r", "waiter"));
-    const { data: tables } = await w.from("dining_tables").select("id, name").eq("status", "free").order("sort_order").limit(6);
+    // 0166: a free table being cleaned takes no order — the run starts on tables nobody is cleaning
+    const [{ data: free }, { data: cleans }] = await Promise.all([w.from("dining_tables").select("id, name").eq("status", "free").order("sort_order").limit(30),
+      w.from("table_cleanings").select("table_id").in("status", ["pending", "in_progress"])]);
+    const dirty = new Set(((cleans ?? []) as { table_id: string }[]).map((c) => c.table_id));
+    const tables = ((free ?? []) as { id: string; name: string }[]).filter((t) => !dirty.has(t.id)).slice(0, 6);
     const { data: linked } = await w.from("menu_item_addon_groups").select("menu_item_id");
     const skip = new Set(((linked ?? []) as { menu_item_id: string }[]).map((x) => x.menu_item_id));
     const { data: menu } = await w.from("menu_items").select("id, name, price").eq("is_available", true).order("name").limit(60);
@@ -229,11 +233,19 @@ const STEPS: Record<string, Run> = {
   },
   "order:more": async (e) => {
     const w = e.as(staffOf(e, "r", "waiter")); const v = e.ctx.vars;
-    const { data: oid, error } = await w.rpc("place_order", { p_table_id: v.table, p_type: "dine_in", p_items: [{ menu_item_id: v.dish2, qty: 1 }], p_customer: { name: null, phone: null }, p_note: null, p_client_id: null, p_placed_at: null, p_promise: false });
+    // 0166: a table with an order open takes no second one — the next round joins the order (Add items, 0165), and a part of
+    // it billed on its own is a Split bill (two orders on one table, on purpose)
+    const { error: refused } = await w.rpc("place_order", { p_table_id: v.table, p_type: "dine_in", p_items: [{ menu_item_id: v.dish2, qty: 1 }], p_customer: { name: null, phone: null }, p_note: null, p_client_id: null, p_placed_at: null, p_promise: false });
+    const { error } = await w.rpc("order_add_items", { p_order_id: v.order, p_items: [{ menu_item_id: v.dish2, qty: 1 }], p_note: null });
     if (error) return [fail("A second round on the same table", error.message)];
+    const { data: added } = await w.from("order_items").select("id, kot_id").eq("order_id", v.order).eq("menu_item_id", v.dish2).order("created_at", { ascending: false }).limit(1);
+    const line = ((added ?? []) as { id: string }[])[0];
+    const { data: oid, error: se } = await w.rpc("split_order", { p_order_id: v.order, p_lines: [{ id: line?.id }] });
+    if (se) return [fail("A second round on the same table", `split: ${se.message}`)];
     e.ctx.vars.order2 = oid as string;
     const { data } = await w.from("orders").select("id").eq("table_id", v.table).eq("status", "open");
-    return [(data ?? []).length >= 2 ? pass("A second round on the same table", `${(data ?? []).length} open tickets on ${v.tableName}`) : fail("A second round on the same table", `${(data ?? []).length} open`)];
+    return [refused && /already has #/.test(refused.message) ? pass("A busy table takes no second order", refused.message) : fail("A busy table takes no second order", refused?.message ?? "a second order was opened", "0166's place_order refuses a table with an order open."),
+      (data ?? []).length >= 2 ? pass("A second round on the same table", `added, then split off: ${(data ?? []).length} open tickets on ${v.tableName}`) : fail("A second round on the same table", `${(data ?? []).length} open`)];
   },
   "order:cancel": async (e) => {
     const P = e.p("r"); const w = e.as(staffOf(e, "r", "waiter")); const v = e.ctx.vars;
@@ -377,9 +389,10 @@ const STEPS: Record<string, Run> = {
   },
   "booking:charge": async (e) => {
     const P = e.p("h"); const oc = e.as(P.owner); const bid = must(e.ctx.vars.booking as string, "The stay", "run Room booking from its first step");
-    const { data: t } = await oc.from("dining_tables").select("id").eq("status", "free").limit(1);
+    const [{ data: t }, { data: tc }] = await Promise.all([oc.from("dining_tables").select("id").eq("status", "free").limit(30), oc.from("table_cleanings").select("table_id").in("status", ["pending", "in_progress"])]);
     const { data: m } = await oc.from("menu_items").select("id").eq("is_available", true).limit(1);
-    const table = ((t ?? []) as { id: string }[])[0]?.id ?? null; const dish = must(((m ?? []) as { id: string }[])[0]?.id, "A dish on the hotel's menu", "the hotel has no menu");
+    const dirty = new Set(((tc ?? []) as { table_id: string }[]).map((c) => c.table_id));   // 0166: not a table being cleaned
+    const table = ((t ?? []) as { id: string }[]).find((x) => !dirty.has(x.id))?.id ?? null; const dish = must(((m ?? []) as { id: string }[])[0]?.id, "A dish on the hotel's menu", "the hotel has no menu");
     const { data: oid, error } = await oc.rpc("place_order", { p_table_id: table, p_type: table ? "dine_in" : "takeaway", p_items: [{ menu_item_id: dish, qty: 1 }], p_customer: { name: null, phone: null }, p_note: null, p_client_id: null, p_placed_at: null, p_promise: false });
     if (error) return [fail("A meal for the guest", error.message)];
     const { error: pe } = await oc.rpc("post_order_to_room", { p_order_id: oid, p_booking_id: bid });

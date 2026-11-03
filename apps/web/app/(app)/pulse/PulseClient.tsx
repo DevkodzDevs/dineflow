@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 import { listV, itemV } from "@/lib/motion";
 import { useLive } from "@/lib/useLive";
 import { fmtSince } from "@/lib/format";
-import { addWalkin, setWalkin, quote } from "./actions";
+import { addWalkin, setWalkin, holdWalkin, quote } from "./actions";
 import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 
@@ -63,14 +63,30 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
   useLive(["orders", "order_items", "bills", "dining_tables", "walkins"]);
   const toast = useToast(); const [pending, start] = useTransition(); const { online } = useOffline();
   const [party, setParty] = useState(2); const [q, setQ] = useState<number | null | undefined>(undefined);
-  const [form, setForm] = useState({ name: "", phone: "" }); const [seat, setSeat] = useState<W | null>(null);
+  const [form, setForm] = useState({ name: "", phone: "" });
+  /* the table picker under a guest: "hold" sets the table they will get (0164, kept in walkins.table_id — a refresh no
+     longer loses it); "seat" seats a called guest who has none */
+  const [seat, setSeat] = useState<{ id: string; mode: "hold" | "seat" } | null>(null);
+  const pick = (w: W, mode: "hold" | "seat") => setSeat(seat?.id === w.id && seat.mode === mode ? null : { id: w.id, mode });
   /* What the host just did shows at once (2026-10-21, the owner: "Seat now, Table ready — nothing shows until I refresh"):
      the card leaves on Seat or Left, turns Called on Table ready, and the table reads "just seated" — before the
      write comes back through useLive. A write that fails puts it back. */
-  const [mine, setMine] = useState<{ gone: Record<string, true>; called: Record<string, true>; sat: Record<string, true> }>({ gone: {}, called: {}, sat: {} });
+  const [mine, setMine] = useState<{ gone: Record<string, true>; called: Record<string, true>; sat: Record<string, true>; held: Record<string, string> }>({ gone: {}, called: {}, sat: {}, held: {} });
   const mark = (k: "gone" | "called" | "sat", id: string, on = true) => setMine((m) => { const x = { ...m[k] }; if (on) x[id] = true; else delete x[id]; return { ...m, [k]: x }; });
+  const markHeld = (id: string, table: string | null) => setMine((m) => { const x = { ...m.held }; if (table) x[id] = table; else delete x[id]; return { ...m, held: x }; });
   const tables: T[] = pulse.tables.map((t) => mine.sat[t.id] && t.stage === "free" ? { ...t, stage: "seated", age: 0, mins_left: Math.max(15, pulse.avg_dwell) } : t);
-  const live: W[] = queue.filter((w) => !mine.gone[w.id]).map((w) => mine.called[w.id] && w.status === "waiting" ? { ...w, status: "called" } : w);
+  const live: W[] = queue.filter((w) => !mine.gone[w.id]).map((w) => ({ ...w, status: mine.called[w.id] && w.status === "waiting" ? "called" : w.status, table_id: mine.held[w.id] ?? w.table_id }));
+  /* A table held for a waiting guest (0164: given by itself when a table that fits is free, or set by hand). It is not
+     Free — it shows under Reserved as "Held · name" and is never offered to another party. */
+  const heldBy = new Map(live.filter((w) => w.table_id).map((w) => [w.table_id as string, w]));
+  const hold = (w: W, t: T) => {
+    const was = w.table_id; markHeld(w.id, t.id); setSeat(null);
+    if (!online) { void enqueue("walkin_hold", { id: w.id, table: t.id }, `Queue · ${w.name} ${t.name}`); toast(`${t.name} set for ${w.name}`); return; }
+    start(async () => {
+      const r = await holdWalkin(w.id, t.id);
+      if ("error" in r && r.error) { toast(r.error, "err"); markHeld(w.id, was); } else toast(`${t.name} set for ${w.name}`);
+    });
+  };
   const act = (w: W, status: "called" | "seated" | "left", table?: T) => {
     if (status === "called") mark("called", w.id); else mark("gone", w.id);
     if (table) mark("sat", table.id);
@@ -89,7 +105,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
   const nowMin = minsOf(new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(11, 16));
   // a booking still counts for half an hour after its time — the party may be running late
   const nextBooking = (id: string) => booked.find((r) => r.table_id === id && minsOf(r.at_time) >= nowMin - 30);
-  const kindOf = (t: T): Exclude<Tab, "all"> => t.stage !== "free" ? "busy" : nextBooking(t.id) ? "reserved" : "free";
+  const kindOf = (t: T): Exclude<Tab, "all"> => t.stage !== "free" ? "busy" : nextBooking(t.id) || heldBy.has(t.id) ? "reserved" : "free";
   const counts = { all: tables.length, free: 0, reserved: 0, busy: 0 } as Record<Tab, number>;
   tables.forEach((t) => { counts[kindOf(t)]++; });
   const [tab, setTab] = useState<Tab>("all");
@@ -106,7 +122,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
     : q === 0 ? { tone: "st-ready", big: "Seat now", small: fit ? `${fit.name} free · seats ${fit.capacity}` : "A table is free" }
       : q === null ? { tone: "st-cook", big: bigEnough ? "Long wait" : "No table fits", small: bigEnough ? "Many parties this size" : "Join two tables" }
         : { tone: "st-new", big: `About ${dur(q)}`, small: `for a table of ${party}` };
-  const add = () => { if (!online) { void enqueue("walkin_add", { name: form.name, phone: form.phone, party }, `Queue · ${form.name}`); toast(`${form.name} added · syncs later`); setForm({ name: "", phone: "" }); return; } start(async () => { const r = await addWalkin(form.name, form.phone, party); if ("error" in r) toast(r.error ?? "Could not add", "err"); else { toast(`${form.name} added · ~${r.quoted_min ?? "?"} min`); setForm({ name: "", phone: "" }); } }); };
+  const add = () => { if (!online) { void enqueue("walkin_add", { name: form.name, phone: form.phone, party, client_id: crypto.randomUUID() }, `Queue · ${form.name}`); toast(`${form.name} added · syncs later`); setForm({ name: "", phone: "" }); return; } start(async () => { const r = await addWalkin(form.name, form.phone, party); if ("error" in r) toast(r.error ?? "Could not add", "err"); else { toast(r.table ? `${form.name} added · ${r.table} held` : `${form.name} added · ~${r.quoted_min ?? "?"} min`); setForm({ name: "", phone: "" }); } }); };
   const callNow = (w: W) => act(w, "called");
   const glance = [
     { k: "free", Icon: Armchair, n: String(counts.free), of: `of ${tables.length}`, label: "Tables free to seat", tone: "var(--color-green)" },
@@ -212,8 +228,11 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
           <div className="space-y-2.5">
             {live.map((w, i) => {
               const wa = waHref(w.phone, `Hi ${firstName(w.name)}, your table at ${restaurant} is ready. Please come to the host stand.${slug ? ` ${base}/queue/${slug}?t=${w.token}` : ""}`);
-              const fits = tables.filter((t) => t.stage === "free" && t.capacity >= w.party).sort((a, b) => a.capacity - b.capacity);
+              // the tables this guest could have: free, big enough, not held for anyone else (theirs first)
+              const fits = tables.filter((t) => t.stage === "free" && t.capacity >= w.party && (!heldBy.has(t.id) || heldBy.get(t.id)!.id === w.id)).sort((a, b) => a.capacity - b.capacity);
+              const mineT = w.table_id ? tables.find((t) => t.id === w.table_id) ?? null : null;
               const called = w.status === "called";
+              const open = seat?.id === w.id ? seat.mode : null;
               /* one guest (2026-10-21, the owner: "messy"): their place and name with the state on the right; the party,
                  the wait so far and what they were told as chips; then one row — the next move, Call, WhatsApp, Left —
                  every button the same height. Called turns the card green. */
@@ -228,14 +247,21 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                   </div>
                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold text-[var(--color-label-2)]">
                     <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-fill)]"><Users size={14} aria-hidden /><span className="num">{w.party}</span> {w.party === 1 ? "guest" : "guests"}</span>
-                    <span className="inline-flex items-center gap-1.5 h-8 pl-2.5 pr-1 rounded-full bg-[var(--color-fill)] num"><Clock size={14} aria-hidden /><span className="sr-only">waiting {fmtSince(w.joined_at)}</span><FlapClock since={w.joined_at} hurry={w.quoted_min} late={w.quoted_min != null ? w.quoted_min + 10 : null} size="xs" tile="24px" bare /></span>
-                    {w.quoted_min != null && w.quoted_min > 0 && <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-fill)]"><Timer size={14} aria-hidden />told <span className="num">{w.quoted_min}</span> min</span>}
+                    <span className="inline-flex items-center gap-1.5 h-8 pl-2.5 pr-1 rounded-full bg-[var(--color-fill)] num"><Clock size={14} aria-hidden /><span className="sr-only" suppressHydrationWarning>waiting {fmtSince(w.joined_at)}</span><FlapClock since={w.joined_at} hurry={w.quoted_min} late={w.quoted_min != null ? w.quoted_min + 10 : null} size="xs" tile="24px" bare /></span>
+                    {w.quoted_min != null && w.quoted_min > 0 && !mineT && <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-fill)]"><Timer size={14} aria-hidden />told <span className="num">{w.quoted_min}</span> min</span>}
+                    {/* their table: held for them (green), or none free that fits yet */}
+                    {mineT
+                      ? <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-green-2)] text-[var(--color-green)] font-bold" data-walkin-table={mineT.name}><Armchair size={14} aria-hidden />Table <span className="font-display text-[15px] leading-none">{mineT.name}</span></span>
+                      : <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-fill)] text-steel" data-walkin-table=""><Hourglass size={14} aria-hidden />No table yet</span>}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
-                    {called
-                      ? <button type="button" className="svc-btn go sm flex-1 !px-3 !min-h-11" onClick={() => setSeat(seat?.id === w.id ? null : w)} aria-expanded={seat?.id === w.id} data-seat-walkin><Armchair size={18} aria-hidden /><Say w="seat_now" /></button>
-                      : <button type="button" className="svc-btn go sm flex-1 !px-3 !min-h-11" onClick={() => callNow(w)} data-table-ready><Bell size={18} aria-hidden /><Say w="table_ready" /></button>}
-                    {!called && <button type="button" onClick={() => setSeat(seat?.id === w.id ? null : w)} aria-label={`Seat ${w.name}`} aria-expanded={seat?.id === w.id} title="Seat at a table" className={cn(ACT, "max-sm:hidden")}><Armchair size={18} aria-hidden /><span className="hidden @[36rem]:inline">Seat</span></button>}
+                    {/* called with a table: one tap seats them there; called with none: pick one and seat */}
+                    {called && mineT
+                      ? <button type="button" className="svc-btn go sm flex-1 min-w-0 !px-3 !min-h-11" onClick={() => { setSeat(null); act(w, "seated", mineT); toast(`${w.name} seated at ${mineT.name}`); }} data-seat-walkin={mineT.name}><Armchair size={18} aria-hidden className="shrink-0" /><span className="truncate">Seat at {mineT.name}</span></button>
+                      : called
+                        ? <button type="button" className="svc-btn go sm flex-1 !px-3 !min-h-11" onClick={() => pick(w, "seat")} aria-expanded={open === "seat"} data-seat-walkin=""><Armchair size={18} aria-hidden /><Say w="seat_now" /></button>
+                        : <button type="button" className="svc-btn go sm flex-1 !px-3 !min-h-11" onClick={() => callNow(w)} data-table-ready><Bell size={18} aria-hidden /><Say w="table_ready" /></button>}
+                    <button type="button" onClick={() => pick(w, "hold")} aria-label={mineT ? `Change ${w.name}'s table` : `Set a table for ${w.name}`} aria-expanded={open === "hold"} title={mineT ? "Change table" : "Set a table"} className={ACT} data-set-table><Armchair size={18} aria-hidden /><span className="hidden @[36rem]:inline">{mineT ? "Change" : "Table"}</span></button>
                     {w.phone && <a href={`tel:${w.phone}`} aria-label={`Call ${w.name}`} title="Call" className={ACT}><Phone size={18} aria-hidden /><span className="hidden @[36rem]:inline">Call</span></a>}
                     {/* "Your table is ready" on WhatsApp, with their place-in-line link. Sending it is calling them. */}
                     {wa && <a href={wa} target="_blank" rel="noreferrer" aria-label={`Tell ${w.name} on WhatsApp their table is ready`} title="Table ready — WhatsApp" onClick={() => { if (!called) act(w, "called"); }}
@@ -243,14 +269,14 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                     <button type="button" aria-label={`${w.name} left`} title="Left — take them off the list" className={cn(ACT, "text-steel hover:!bg-[var(--color-red-2)] hover:text-[var(--color-red)]")}
                       onClick={() => act(w, "left")}><X size={18} aria-hidden /><span className="hidden @[36rem]:inline">Left</span></button>
                   </div>
-                  {seat?.id === w.id && <div className="mt-3 pt-3 border-t border-[var(--color-separator)]" data-seat-picker>
-                    <div className="text-[13px] font-semibold text-steel mb-2">Pick a table for {w.party}</div>
+                  {open && <div className="mt-3 pt-3 border-t border-[var(--color-separator)]" data-seat-picker={open}>
+                    <div className="text-[13px] font-semibold text-steel mb-2">{open === "seat" ? `Seat ${w.party} at` : `Table for ${w.party}`}</div>
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-2">
                       {fits.map((t) => {
                         const r = nextBooking(t.id);
                         return (
-                          <button key={t.id} type="button" className={cn("min-h-14 px-2 py-1.5 rounded-[14px] flex flex-col items-center justify-center leading-tight transition-colors", r ? "bg-[var(--color-orange-2)] hover:brightness-105" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-seat-table={t.name}
-                            onClick={() => { setSeat(null); act(w, "seated", t); toast(`${w.name} seated at ${t.name}`); }}>
+                          <button key={t.id} type="button" aria-pressed={t.id === w.table_id} className={cn("min-h-14 px-2 py-1.5 rounded-[14px] flex flex-col items-center justify-center leading-tight transition-colors", t.id === w.table_id ? "bg-[var(--color-green-2)] text-[var(--color-green)] ring-2 ring-[var(--color-green)]" : r ? "bg-[var(--color-orange-2)] hover:brightness-105" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-seat-table={t.name}
+                            onClick={() => { if (open === "seat") { setSeat(null); act(w, "seated", t); toast(`${w.name} seated at ${t.name}`); } else if (t.id !== w.table_id) hold(w, t); else setSeat(null); }}>
                             <span className="font-display text-[20px]">{t.name}</span>
                             <span className={cn("text-[11.5px] font-semibold", r ? "text-[var(--color-orange)]" : "text-steel")}>{r ? `booked ${clock(r.at_time)}` : `seats ${t.capacity}`}</span>
                           </button>
@@ -319,6 +345,10 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                 {kind === "free" && <>
                   <span className="self-start inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11.5px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)]"><Check size={12} strokeWidth={3} aria-hidden />Free</span>
                   <span className="text-[13px] text-[var(--color-label-2)]">Ready to seat</span>
+                </>}
+                {kind === "reserved" && !r && heldBy.get(t.id) && <>
+                  <span className="self-start inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11.5px] font-bold bg-[var(--color-bg-2)] text-[var(--color-orange)]" data-held><Hourglass size={12} aria-hidden />Held</span>
+                  <span className="text-[13px] min-w-0"><span className="font-semibold truncate block">{heldBy.get(t.id)!.name}</span><span className="text-[var(--color-label-2)]">party of {heldBy.get(t.id)!.party}</span></span>
                 </>}
                 {kind === "reserved" && r && <>
                   <span className="self-start inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11.5px] font-bold bg-[var(--color-bg-2)] text-[var(--color-orange)]"><CalendarClock size={12} aria-hidden />Reserved · {clock(r.at_time)}</span>

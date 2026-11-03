@@ -533,6 +533,17 @@ of a second." Measured first, on the live site and on a local production build (
   Cleaning, Work and Room status (**tap the Tasks segment first on a phone**; a Room Attendant has no Room status — /home), then the API
   refuses the Floor Supervisor's `clean_assign` and allows the supervisor's. dropdemos removes the demo and its sign-ins.
 
+## 2026-11-03 — Pulse: a waiting guest holds a table (0164)
+- `dry164.mjs` (17, rolled back — data-and-rls.md, *0164*).
+- `pulse164.mjs` (WebKit, production build on :3164, a fresh demo restaurant as its owner, deleted after; `THEME`, `WIDTHS`): Add from
+  the screen (type until Add is live — a name typed before hydration is lost) → the smallest free table that fits, in the database and
+  on the card; Table → another table → refresh → still hers; Reserved shows *Held · Asha*, Free does not; every free table held → the
+  next guest *No table yet*, none held twice; Table ready → *Seat at T10* → refresh → In use · *just seated* (the reported bug); a guest
+  leaves → the tableless guest gets theirs; an order cancelled → the next tableless guest gets that table; Join by QR — How guests use it
+  above the code and the list, no picker, no No-show, Call next → the first guest holding a table; every width without sideways scroll,
+  every card button 44px on touch, no page errors (WebKit's "access control checks" / "Load failed" for a fetch cut off by a reload are
+  not counted).
+
 ## 2026-11-02 — Master control → Flow tests
 - The app now runs the testing flow by itself (admin-and-membership.md, *Flow tests*): the owner presses *Start full test* or
   picks a section, a flow or a page. It is a monitor, like Testing — not a substitute for the gates or the browser suites.
@@ -567,3 +578,36 @@ of a second." Measured first, on the live site and on a local production build (
   demo resort with one arrival (then the guest checked in): heads level, empties filling their row; Kitchen heads one line, empties.
   **After a rebuild, stop the old `next start` by its PID before starting another** — a second one fails on the port and the old one
   serves the new HTML with the old CSS names (every layout check fails at once).
+
+- **`pw/shots164.mjs` (15)** — a channel order's reference on its kitchen ticket (0163). Resort demo: a Swiggy and a table-QR
+  online order inserted, then accepted through `accept_online_order` with the owner's own token (signed out after), and a till order
+  with notes "Jain". DB: no note, tickets linked. Kitchen at 1194 dark / 1440 colourful dark / 412 paper: `[data-kt-ref]` "Swiggy·123456"
+  (title "Swiggy · TEST-123456") and "QR·2fee", no `[data-kot-note]` on them, "Jain" kept, chips 24px. **Wait ~2.5 s after sign-in before
+  going to /kitchen** — on a phone the post-sign-in redirect interrupts the navigation.
+
+- **`pw/shots165.mjs` (10)** — *Add items* joins the open order (0165). Resort demo, `stock_block` off; the first order through
+  `place_order` with the owner's token (signed out after). Order page `[data-add-items]` → till `[data-adding]` (on 834 open the ticket
+  with "See the ticket") → **tap the dish card by its name** (`main` getByText — the old `[data-tile] button.more` no longer matches the
+  cards) → `[data-send]` / `[data-bar-send]` → back on the order; DB: one open order on the table, 2 tickets, total grew by the dish.
+  `[data-adding-off]` → a separate order is still a new one.
+
+- **`pw/shots165.mjs` now 11** (2026-11-03, after 0166): step 2 checks a table's strip has no `[data-adding-off]`, then a takeaway
+  (placed with the owner's token) opened with `?add=` — *Separate order* lets go and Send makes a new order, the first parcel unchanged.
+- **shots166.mjs + dry166.cjs (2026-11-03, dineflow-31 — 0166, a table or room only once it is free).** `dry166.cjs` (41, rolled
+  back): see data-and-rls.md 0166. `shots166.mjs` (64) makes a Try-Demo resort (id in `demo_ids.txt`, `drop49.cjs` deletes it),
+  switches on Reservations and Housekeeping for it, gives table A an order through `place_order`, opens a cleaning job on table B, makes
+  room 1 dirty, room 2 out of order, room 3 ready, and adds one table booking; checks through the API that a second order on A, an order
+  on B and B's QR are refused; then at 1440 dark · 1194 paper · 834 bright · 412 royal · 1920 colour: the till on A adds to its order
+  (`[data-adding]`, no `[data-adding-off]`), the till on B chooses no table and its picker leaves B out, Tables' B sheet has
+  `[data-take-blocked]`, Seat now disables A and B (`[data-busy]`, keys ≥ 44px on touch), the order's Move has B disabled, New booking
+  today has room 1 disabled "Being cleaned", room 2 absent, room 3 pickable, and in three days room 1 pickable; no sideways scroll. Puts
+  back the booking and the cleaning job; the demo goes with drop49.
+
+- **`pw/offline168.mjs` (8)** — offline Step 1. **Runs in Microsoft Edge** (`chromium.launch({ channel: "msedge" })`): in Playwright's
+  WebKit every navigation through the service worker while `setOffline(true)` fails with "WebKit encountered an internal error", and
+  `page.route` does not see requests the worker sends — use Edge for anything with the service worker. "No internet" is stood in inside
+  the page (an init script makes POSTs and `/api/health` reject with `TypeError("Load failed")` while `window.__cut`). Checks: the
+  warm-up keeps pages and build files (v22); Send with no internet → "Saved on this device", the pill and its list; line back → sent once
+  (one open order, outbox 0); offline the kitchen and the till (`?table=…&add=…`) open from the device. `tap168.mjs` times taps from
+  inside the page (live: `BASE` default; `W`, `PATHS`).
+- **`lib/offline/sendOrQueue.test.ts` (6)** — isNetworkError, the narrowed "already", sendOrQueue's three paths. Unit tests 236.

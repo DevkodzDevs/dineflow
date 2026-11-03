@@ -272,3 +272,9 @@ who rides (`rider_id`, a staff member, or `rider_name` / `rider_phone`), where t
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+- **Accepting no longer writes the reference into the order's note (0163, 2026-11-03).** `accept_online_order_for` inserted
+  `coalesce(display_id, external_id)` as `orders.notes` (since 0004); the Kitchen reads that field as the whole order's cooking
+  request, so "TEST-040011" (Channels → Send test order) and a QR round's "0-2fee" showed as an amber warning. The new order's
+  `notes` is null and the ticket carries `kots.online_order_id`; the Kitchen shows it as a grey chip (kitchen.md). The guest's own
+  note still rides on every dish (0145). Open orders had the reference cleared from their note; billed ones were left.

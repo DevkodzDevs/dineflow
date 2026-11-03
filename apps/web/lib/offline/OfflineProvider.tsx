@@ -74,13 +74,26 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
 
     const WARMED = "df-warmed", EVERY = 30 * 60 * 1000;
     const due = () => { try { return Date.now() - Number(localStorage.getItem(WARMED) || 0) > EVERY; } catch { return true; } };
+    /* A screen's copy opens offline only with its build files (sw.js `whole`). The warm-up's fetch saved the HTML alone, so a
+       screen never opened on this device had none of its scripts and showed the reconnect page offline (2026-11-03). Now
+       the files the page names are fetched too — the worker keeps them, cache first. And a worker update empties the cache,
+       so "warmed in the last half hour" is only believed while the first screen's copy is really there. */
+    const files = (html: string) => [...new Set([
+      ...(html.match(/\/_next\/static\/[^"'\s<>()\\]+\.(?:js|css)/g) ?? []),
+      ...(html.match(/static\/chunks\/[^"'\s<>()\\]+\.js/g) ?? []).map((f) => `/_next/${f}`),
+    ])];
+    const kept = async (u: string) => { try { return typeof caches !== "undefined" && !!(await caches.match(u)); } catch { return false; } };
     const warm = async () => {
-      if (cancelled || !list.length || !navigator.onLine || tooSlow() || !due()) return;   // a role with no offline screen warms nothing
+      if (cancelled || !list.length || !navigator.onLine || tooSlow()) return;   // a role with no offline screen warms nothing
+      if (!due() && (await kept(list[0]))) return;
       try { localStorage.setItem(WARMED, String(Date.now())); } catch { /* private window: warm anyway */ }
-      // the screens, one at a time, into the service worker's cache
+      // the screens, one at a time, into the service worker's cache — each with its scripts and styles
       for (const u of list) {
         if (cancelled || !navigator.onLine || document.visibilityState !== "visible") return;
-        try { await fetch(u, { credentials: "include" }); } catch { return; }
+        try {
+          const r = await fetch(u, { credentials: "include" });
+          if (r.ok && !r.redirected) for (const f of files(await r.text())) { if (cancelled) return; if (!(await kept(f))) await fetch(f).catch(() => {}); }
+        } catch { return; }
         await pause(800);
       }
     };
@@ -95,6 +108,8 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
      moment two of them straddle a digit boundary. */
   const [retryIn, setRetryIn] = useState<number | null>(null);
   const [heldJobs, setHeldJobs] = useState<Job[]>([]);
+  /* everything still on this device, not only what is stuck (2026-11-03: an order taken offline was invisible until it sent) */
+  const [waiting, setWaiting] = useState<Job[]>([]);
   const [showHeld, setShowHeld] = useState(false);
   useEffect(() => {
     let soonest = 0;
@@ -102,6 +117,7 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
     const un = onQueue((jobs) => {
       soonest = jobs.filter((j) => !j.held).map((j) => j.nextTry ?? 0).filter(Boolean).sort((a, b) => a - b)[0] ?? 0; tick();
       setHeldJobs(jobs.filter((j) => j.held).sort((a, b) => (b.heldAt ?? 0) - (a.heldAt ?? 0)));
+      setWaiting(jobs.filter((j) => !j.held).sort((a, b) => a.at - b.at));
     });
     const i = setInterval(tick, 1000);
     return () => { un(); clearInterval(i); };
@@ -116,12 +132,25 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
             {/* Writes the outbox has stopped retrying. They are kept, not dropped, so the person who
                 took the order decides what happens to it — send it again, or throw it away knowing. */}
             <AnimatePresence>
-              {showHeld && heldJobs.length > 0 && (
+              {showHeld && heldJobs.length + waiting.length > 0 && (
                 <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 12, opacity: 0 }}
                   className="glass mb-2 p-3 max-h-[50dvh] overflow-y-auto">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-chili mb-2 flex items-center gap-1.5">
+                  {waiting.length > 0 && (
+                    <div data-offline-waiting>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2 flex items-center gap-1.5"><CloudOff size={13} /> On this device · {waiting.length}</div>
+                      <ul className="space-y-1.5 mb-3">
+                        {waiting.map((j) => (
+                          <li key={j.id} className="flex items-center gap-2 rounded-xl bg-[var(--color-fill)] px-2.5 py-2 text-sm" data-offline-job>
+                            <span className="flex-1 min-w-0 truncate font-semibold">{j.label}</span>
+                            <span className="num text-[11px] text-steel shrink-0">{new Date(j.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {heldJobs.length > 0 && <div className="text-xs font-semibold uppercase tracking-wide text-chili mb-2 flex items-center gap-1.5">
                     <AlertTriangle size={13} /> Waiting on you · {heldJobs.length}
-                  </div>
+                  </div>}
                   <ul className="space-y-2">
                     {heldJobs.map((j) => (
                       <li key={j.id} className="rounded-xl border border-[var(--color-separator)] p-2.5">
@@ -141,7 +170,7 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className={`glass flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold ${s.online ? "" : "!bg-ink/90 text-white !border-ink"}`}>
+            <div className={`glass flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold ${s.online ? "" : "!bg-[var(--color-label)] !text-[var(--color-on-label)] !border-transparent"}`}>
               {s.held > 0 && (
                 <button onClick={() => setShowHeld((v) => !v)} className="flex items-center gap-1.5 text-chili">
                   <AlertTriangle size={14} /> {s.held} waiting on you
@@ -149,9 +178,9 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
                 </button>
               )}
               {s.justSynced > 0 && s.online && s.pending === 0 ? <><Check size={16} className="text-mint" /> Back online · {s.justSynced} sent</>
-                : !s.online ? <><CloudOff size={16} /> Working offline{s.pending > 0 && <span className="num font-normal opacity-80">· {s.pending} waiting</span>}</>
+                : !s.online ? <><CloudOff size={16} /> Working offline{s.pending > 0 && <button type="button" onClick={() => setShowHeld((v) => !v)} className="num font-normal opacity-80 underline underline-offset-2 min-h-11 -my-2.5" data-offline-list>· {s.pending} saved here</button>}</>
                 : s.syncing ? <><motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><RefreshCw size={15} /></motion.span> Syncing {s.pending}…</>
-                : s.pending > 0 ? <><RefreshCw size={15} /> {s.pending} to send{retryIn ? <span className="num font-normal opacity-80"> · retry in {retryIn}s</span> : null} <button onClick={() => flush()} className="underline">retry</button></>
+                : s.pending > 0 ? <><RefreshCw size={15} /> <button type="button" onClick={() => setShowHeld((v) => !v)} className="underline-offset-2 hover:underline" data-offline-list>{s.pending} to send</button>{retryIn ? <span className="num font-normal opacity-80"> · retry in {retryIn}s</span> : null} <button onClick={() => flush()} className="underline">retry</button></>
                 /* nothing queued, but something is parked: saying "all synced" beside it would be a lie */
                 : s.held > 0 ? null
                 : <><Check size={15} className="text-mint" /> All synced</>}

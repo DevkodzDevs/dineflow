@@ -203,7 +203,7 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
     **seated**: no open order, a walk-in seated there in the last 3 hours, and no order started on that table since (an
     order takes over; once it is paid the table is free again). `free_now` / `seats_free_now` count stage free only.
     `dining_tables.status` is not used — orders closed without a bill leave it 'occupied'. `dry131.cjs`: 6 of 6,
-    rolled back. **0131 is written, not applied: apply it only after this code is live** — the screen before this
+    rolled back. **0131 was written, not applied — and stayed so until 0164 (2026-11-03) carried it** — the screen before this
     round read `STAGE[t.stage][0]` and throws on a stage it does not know. Now every lookup falls back to "in use".
   - **What the host does shows at once.** Table ready turns the card Called, Seat now and Left take it off, and the
     seated table reads *just seated* — local state (`mine`) ahead of the write; a failed write puts it back.
@@ -252,7 +252,7 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
 - **The waiting list on Join by QR (2026-10-31, the owner: "show the waiting list, and speak out the next person's name").**
   `pulse/qr/WaitList.tsx`; `qr/page.tsx` now also reads `walkins` (waiting / called, oldest first), `table_pulse` and today's
-  table-holding `reservations`, in one `Promise.all`. Rows (`[data-wait-row="waiting|called"]`) in arrival order: the place in a round
+  table-holding `reservations`, in one `Promise.all` (since 2026-11-03 only `walkins`, and `walkin_fill`). Rows (`[data-wait-row="waiting|called"]`) in arrival order: the place in a round
   badge, the name, a Waiting / Called chip, the party, a live wait (amber at the quoted minutes, red 10 later). **Call next**
   (`[data-call-next]`) for the first one waiting, **Call** (`[data-call]`) on a row, then **Say again** (`[data-say-again]`), **Seat** (a
   table that fits, or "Seated · no table") and **No-show** / **Remove** (asked first). All through `setWalkin` → `walkin_set` (called =
@@ -261,3 +261,27 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
   your table is ready. Please come to the host stand."; ta-IN and hi-IN sentences (to be read by a native speaker); a device without
   speech still calls and says so in a toast. Refresh: `useLive(["walkins","dining_tables","orders"], 20000)`. The QR off: the list still
   shows under the off card. shots159: two guests joined by `queue_join`, Call next → Ravi `called` (headless WebKit has no voice).
+
+- **Pulse: a waiting guest holds a table (0164, 2026-11-03 — the owner: "when I add a guest, a table for their party, only if one
+  is free, else they wait till one frees; the list gets a table by itself, or I set one; and when I set a table and refresh, it is
+  erased").**
+  - **The erased table was 0131 never applied** (data-and-rls.md, *0164*): Seat wrote the walk-in as seated, but `table_pulse` saw no
+    order and said Free, so after a refresh the table was Free again and the screen's `mine.sat` was gone. Now it stays *just seated*.
+  - **Add** gives the guest the smallest free table that seats them, if there is one (not in use, not held, not being cleaned, not
+    booked later today); the toast says "Asha added · T1 held". None free → "No table yet" on the card, and the database gives them one
+    the moment one frees (an order paid or cancelled, a table cleaned, a booking cancelled, a guest seated elsewhere or gone), first
+    come first served. The Pulse and Join by QR pages also call `walkin_fill()` on every load, for what frees by time alone.
+  - **The card** shows the table as a green chip (`[data-walkin-table="T1"]`; `""` = No table yet; "told N min" hides once they
+    have one). **Table** (`[data-set-table]`, 44px, every width — it was hidden on a phone; *Change* once set) opens the picker
+    (`[data-seat-picker="hold"]`, "Table for N": free tables that fit and are not held for anyone else, theirs ringed green) — a tap
+    sets the table through `walkin_hold` (offline: the `walkin_hold` job). Called with a table, the big move is **Seat at T1**
+    (`[data-seat-walkin="T1"]`, one tap); called with none, **Seat now** opens the picker in seat mode (`[data-seat-picker="seat"]`).
+  - **Every table**: a held table is not Free — it is under Reserved, `Held` with the guest's name and party (`[data-held]`), and the
+    Add quote never offers it.
+  - **Join by QR** (the owner: "the waiting list there doesn't need the table option and the no-show"): no Seat, no picker, no
+    No-show — Call / Again and **Remove** (asked first). Call next calls the first guest whose table is held, else the first in line.
+    The page no longer reads the floor (`table_pulse`, bookings); `useLive(["walkins"])`. **How guests use it** moved to the top, full
+    width, above the code and the list (the owner's second picture).
+  - The screen-reader "waiting N min" on a card is `suppressHydrationWarning`: rendered on the server, it differed from the browser's
+    whenever a minute ticked over before hydration (React #418, seen once in five loads at 834px).
+  - Probe `pulse164.mjs` (testing-and-gates.md).

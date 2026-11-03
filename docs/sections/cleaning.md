@@ -185,3 +185,9 @@ Housekeeping `supervisor_2` — `_clean_fits`), and **still signs rooms off** (`
   for a job that is not theirs has no ⋯. **CleaningClient:** the To inspect column follows `board.can_inspect ?? can_assign`.
 - shots160 (12/12): a Floor Supervisor sees no Give to… / Assign, takes a room, sees To inspect; a Room Attendant takes, no
   To inspect; an Executive Housekeeper (supervisor) and the owner keep Assign; the API refuses the Floor Supervisor's `clean_assign`.
+
+## 2026-11-03 — a table or room being cleaned is not used until it is clean (0166)
+- 0158 took the floor tile's **+** away; 0166 makes the database refuse it too, on every path: `place_order`, the table's QR
+  (`dine_order`), Move, seating a booking or a walk-in. So "*Seated again before it was marked clean*" now comes only from a path that
+  reopens the table's own order (a voided bill). Rooms: `check_in` refuses a dirty / being-cleaned / touch-up / not-inspected room,
+  and `create_booking` a stay from today on one. [orders-and-till.md](orders-and-till.md) · [front-desk.md](front-desk.md)

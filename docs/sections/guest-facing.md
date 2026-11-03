@@ -242,6 +242,10 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   the code or opening `/queue/<slug>` again shows the place, not an empty form; a seated or left place is forgotten.
   Under Leave the queue, `[data-queue-kept]` says so in one muted line. Leave the queue still calls `queue_leave`.
 
+- **A guest holding a table reads "Any minute now" (0164, 2026-11-03).** Pulse now gives a waiting guest a free table that fits
+  by itself (reports-and-forecast.md); `queue_status` then answers `minutes` 0 for them — the page's *Any minute now — stay close*
+  (`[data-queue-soon]`). `table` already names it, but the page still shows a table only once they are seated.
+
 - **The queue page keeps up and says it plainly (2026-10-21, the owner: "Table ready / Seat now show nothing until I
   refresh").** It asked `queue_status` every 20 s; now every 4 s while on screen and at once when the guest comes back
   to it (focus / visibility), never while hidden. A change to called or seated buzzes the phone once. Each state is one
@@ -377,3 +381,9 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   `Promise.all` — `dine_busy` used to wait for the other two (shell-and-nav.md, speed pass 2026-10-29).
 - **The service worker (v20, 2026-10-30):** a page load with no line gets its last copy only if every script and stylesheet that copy
   names is cached too; otherwise the reconnect page (shell-and-nav.md, the boot guard).
+
+## 2026-11-03 — the table QR orders only at a free table (0166)
+- `dine_order` (dine-in) refuses a table being cleaned — "This table is still being cleaned — please order once it is ready." — and
+  one whose open orders all have their bill out — "The bill for this table is already out — please ask the staff to add anything
+  more." A round at a table with an open order and no bill still joins it (0145). The page shows the refusal as it is (`nice()`).
+  Not done: a notice on landing before the basket (dine_storefront would have to say the table is being cleaned).

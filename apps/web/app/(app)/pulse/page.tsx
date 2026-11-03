@@ -9,8 +9,12 @@ export const dynamic = "force-dynamic";
 export default async function Pulse() {
   const s = await createClient();
   // the session travels with the page's own rows, not in front of them: one trip, not two
-  const [session, { data: pulse }, { data: queue }, { data: booked }] = await Promise.all([
+  const [session, , { data: pulse }, { data: queue }, { data: booked }] = await Promise.all([
     requireSession(),
+    /* 0164: hand out any table that freed since (a booking's time passed, a seating's 3 hours ran out — the triggers
+       cover an order paid, a table cleaned, a booking cancelled). Alongside the reads, not before them: a guest it
+       gives a table to is a walkins change, and useLive refreshes the page with it. */
+    s.rpc("walkin_fill").then(() => null, () => null),
     s.rpc("table_pulse"),
     s.from("walkins").select("id, token, name, phone, party, quoted_min, status, joined_at, called_at, table_id").in("status", ["waiting", "called"]).order("joined_at"),
     // today's table bookings that hold a table — the Reserved tab

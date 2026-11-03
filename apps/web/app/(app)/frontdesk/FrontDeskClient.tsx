@@ -145,19 +145,37 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
       </div>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="New booking" wide>
-        <BookingForm today={today} rooms={rooms} types={types} guests={guests} onDone={(id) => { setOpen(false); router.push(`/frontdesk/${id}`); }} />
+        <BookingForm today={today} rooms={rooms} types={types} guests={guests} bookings={bookings} inspectRule={inspectRule} onDone={(id) => { setOpen(false); router.push(`/frontdesk/${id}`); }} />
       </Sheet>
     </div>
   );
 }
 
-function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: Room[]; types: RT[]; guests: G[]; onDone: (id: string) => void }) {
+function BookingForm({ today, rooms, guests, bookings = [], inspectRule = false, onDone }: { today: string; rooms: Room[]; types: RT[]; guests: G[]; bookings?: Booking[]; inspectRule?: boolean; onDone: (id: string) => void }) {
   const tomorrow = new Date(Date.now() + 86400000 + 5.5 * 3600e3).toISOString().slice(0, 10);
   const [f, setF] = useState({ check_in: today, check_out: tomorrow, room_id: "", adults: 2, children: 0, rate: 0, advance: 0, source: "walk_in", notes: "" });
   const [g, setG] = useState({ id: "", full_name: "", phone: "", email: "", id_type: "Aadhaar", id_last4: "", address: "" });
   const [err, setErr] = useState<string | null>(null); const [pending, start] = useTransition();
   const nights = Math.max(1, Math.round((new Date(f.check_out).getTime() - new Date(f.check_in).getTime()) / 86400000));
   const free = rooms.filter((r) => r.status !== "maintenance");
+  /* 0166 (the owner: "a room comes to booking free or not by what Room status says"). Any stay: not booked for any of those
+     nights. A stay from today: also ready now — no guest still in it, not dirty or being cleaned, no touch-up owed, inspected
+     where the property inspects. The same order as the database's _room_not_ready, which create_booking checks. */
+  const fromToday = f.check_in <= today;
+  const whyNot = (r: Room): string | null => {
+    if (bookings.some((b) => b.room_id === r.id && b.check_in < f.check_out && b.check_out > f.check_in)) return "Booked";
+    if (!fromToday) return null;
+    if (r.status === "occupied" || bookings.some((b) => b.room_id === r.id && b.status === "checked_in")) return "Guest in";
+    if (r.condition === "dirty") return "Being cleaned";
+    if (r.condition === "pickup") return "Touch-up";
+    if (inspectRule && r.condition !== "inspected") return "Not inspected";
+    if (r.status === "cleaning") return "Being cleaned";
+    return null;
+  };
+  const ranked = [...free].sort((a, b) => Number(!!whyNot(a)) - Number(!!whyNot(b)));
+  const open = ranked.filter((r) => !whyNot(r)).length;
+  const picked = rooms.find((r) => r.id === f.room_id);
+  const roomOk = !!picked && !whyNot(picked);
   const pickRoom = (r: Room) => setF({ ...f, room_id: r.id, rate: Number(r.room_types?.base_rate ?? 0) });
   /* read once when the form opens (it only ever renders in the browser, inside the sheet) and saved
      only when someone picks — an effect that saved on mount wrote "4" over the saved choice */
@@ -183,7 +201,8 @@ function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: R
             ))}
           </div>
         </div>
-        <div className={cn("grid gap-2 sm:grid-cols-6", view === "2" ? "grid-cols-2" : view === "3" ? "grid-cols-3" : view === "list" ? "grid-cols-1" : "grid-cols-4")}>{free.map((r) => <RoomPick key={r.id} r={r} on={f.room_id === r.id} view={view} onPick={() => pickRoom(r)} />)}</div>
+        <div className={cn("grid gap-2 sm:grid-cols-6", view === "2" ? "grid-cols-2" : view === "3" ? "grid-cols-3" : view === "list" ? "grid-cols-1" : "grid-cols-4")}>{ranked.map((r) => <RoomPick key={r.id} r={r} on={f.room_id === r.id} view={view} why={whyNot(r)} onPick={() => pickRoom(r)} />)}</div>
+        <p className="mt-2 text-[12px] text-[var(--color-label-2)]" data-rooms-open={open}>{open ? `${open} free ${fromToday ? "and ready now" : "for these dates"}` : fromToday ? "No room is ready now" : "No room is free for these dates"}</p>
       </Field>
       <div className="grid grid-cols-3 gap-3"><Field label="Rate / night"><input type="number" className="num" value={f.rate || ""} onChange={(e) => setF({ ...f, rate: Number(e.target.value) })} /></Field><Field label="Adults"><input type="number" min={1} className="num" value={f.adults} onChange={(e) => setF({ ...f, adults: Number(e.target.value) })} /></Field><Field label="Children"><input type="number" min={0} className="num" value={f.children} onChange={(e) => setF({ ...f, children: Number(e.target.value) })} /></Field></div>
       <div className="hairline-gold" />
@@ -193,7 +212,7 @@ function BookingForm({ today, rooms, guests, onDone }: { today: string; rooms: R
       <div className="grid grid-cols-2 gap-3"><Field label="Advance received"><input type="number" className="num" value={f.advance || ""} onChange={(e) => setF({ ...f, advance: Number(e.target.value) })} /></Field><Field label="Source"><select value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })}><option value="walk_in">Walk-in</option><option value="phone">Phone</option><option value="ota">OTA (MMT / Booking.com)</option><option value="agent">Agent</option></select></Field></div>
       <div className="flex justify-between items-baseline border-t border-dashed border-line pt-3"><span className="text-sm text-steel">{nights} × {formatINR(f.rate)} + room GST</span><span className="num text-2xl font-semibold">{formatINR(nights * f.rate)}</span></div>
       {err && <p className="text-sm text-chili">{err}</p>}
-      <Button size="lg" className="w-full" disabled={pending || !f.room_id || !g.full_name} onClick={() => start(async () => { const r = await createBooking({ ...f, guest: g }); if ("error" in r) setErr(r.error!); else onDone(r.id!); })}>{pending ? "Saving…" : "Confirm booking"}</Button>
+      <Button size="lg" className="w-full" disabled={pending || !roomOk || !g.full_name} onClick={() => start(async () => { const r = await createBooking({ ...f, guest: g }); if ("error" in r) setErr(r.error!); else onDone(r.id!); })}>{pending ? "Saving…" : "Confirm booking"}</Button>
     </div>
   );
 }
@@ -242,14 +261,15 @@ const COND_TONE: Record<string, { label: string; c: string }> = {
  * (the dot used to float in the corner, jammed against the edge), the type underneath, and where the
  * tile is wide enough the state in words. Picked is a green ring with a tick, not a black slab.
  */
-function RoomPick({ r, on, view, onPick }: { r: Room; on: boolean; view: "2" | "3" | "4" | "list"; onPick: () => void }) {
+function RoomPick({ r, on, view, why = null, onPick }: { r: Room; on: boolean; view: "2" | "3" | "4" | "list"; why?: string | null; onPick: () => void }) {
   const t = r.condition ? COND_TONE[r.condition] : null;
-  const note = r.status === "cleaning" ? { label: "Cleaning", c: "var(--color-blue)" } : r.status === "reserved" ? { label: "Reserved", c: "var(--color-orange)" } : null;
+  /* 0166: a room that cannot take these dates says why and cannot be picked (create_booking refuses it too) */
+  const note = why ? { label: why, c: "var(--color-red)" } : r.status === "cleaning" ? { label: "Cleaning", c: "var(--color-blue)" } : r.status === "reserved" ? { label: "Reserved", c: "var(--color-orange)" } : null;
   const wide = view === "2" || view === "list";
   const dot = t && <span aria-hidden className="h-2 w-2 rounded-full shrink-0" style={{ background: t.c, boxShadow: `0 0 0 3px color-mix(in srgb, ${t.c} 22%, transparent)` }} />;
   return (
-    <button type="button" onClick={onPick} aria-pressed={on} title={[t?.label, note?.label].filter(Boolean).join(" · ") || undefined}
-      className={cn("room-pick relative min-w-0 rounded-2xl border text-left transition-all",
+    <button type="button" onClick={onPick} aria-pressed={on} disabled={!!why} data-room-pick={r.number} data-why={why ?? undefined} title={[t?.label, note?.label].filter(Boolean).join(" · ") || undefined}
+      className={cn("room-pick relative min-w-0 rounded-2xl border text-left transition-all disabled:opacity-45 disabled:cursor-not-allowed",
         on ? "border-[var(--color-tint)] bg-[var(--color-green-2)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-tint)_18%,transparent)]" : "border-[var(--color-separator)] bg-[var(--color-bg-2)] hover:border-[var(--color-label-3)]",
         view === "list" ? "max-sm:flex max-sm:items-center max-sm:gap-3 max-sm:h-14 max-sm:px-4" : "", wide ? "max-sm:px-3.5 max-sm:py-3" : "", "px-2 py-2.5 sm:px-2 sm:py-2.5")}>
       {view === "list" ? (<>
@@ -262,7 +282,12 @@ function RoomPick({ r, on, view, onPick }: { r: Room; on: boolean; view: "2" | "
       </>) : null}
       <span className={cn("flex flex-col", view === "list" && "max-sm:hidden", !wide && "items-center text-center", wide && "max-sm:items-start sm:items-center sm:text-center")}>
         <span className="flex items-center gap-1.5"><span className="font-display text-[19px] leading-none">{r.number}</span>{view === "2" ? <span className="max-sm:hidden contents">{dot}</span> : dot}</span>
-        <span className={cn("mt-1 text-[11px] text-[var(--color-label-2)] truncate max-w-full", !wide && "sm:max-w-full")}>{wide ? r.room_types?.name : r.room_types?.name?.split(" ")[0]}</span>
+        {/* the why, where the type was — on a wide phone tile the type stays and the why is the pill below */}
+        <span className={cn("mt-1 text-[11px] text-[var(--color-label-2)] truncate max-w-full", !wide && "sm:max-w-full")}>
+          {!why ? (wide ? r.room_types?.name : r.room_types?.name?.split(" ")[0])
+            : wide ? <><span className="sm:hidden">{r.room_types?.name}</span><b className="max-sm:hidden text-[var(--color-red)]">{why}</b></>
+            : <b className="text-[var(--color-red)]">{why}</b>}
+        </span>
         {wide && (t || note) && <span className="sm:hidden mt-1.5 flex flex-wrap gap-1">
           {t && <span className="h-5 px-2 rounded-full text-[10.5px] font-semibold inline-flex items-center" style={{ color: t.c, background: `color-mix(in srgb, ${t.c} 14%, transparent)` }}>{t.label}</span>}
           {note && <span className="h-5 px-2 rounded-full text-[10.5px] font-semibold inline-flex items-center" style={{ color: note.c, background: `color-mix(in srgb, ${note.c} 14%, transparent)` }}>{note.label}</span>}

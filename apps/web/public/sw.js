@@ -1,12 +1,12 @@
 /*
  * DineFlow service worker.
  * Three strategies, chosen by what the thing is:
- *   pages      → network first, fall back to the last copy, then to /offline
+ *   pages      → network first, fall back to the last copy (whole, with its build files), else the reconnect page
  *   build files→ cache first (they are content-hashed, so they never go stale)
  *   everything else GET → stale-while-revalidate
  * Writes are never touched here; they go through the IndexedDB outbox so they survive a reload.
  */
-const V = "dineflow-v21";   // v21 (2026-11-02) the launch loader's sky reaches the foot of an installed iPad (no band); v17 dropped redirected copies; v18 kept /login and the reconnect page; v19 adds the launch loader (boot); v20 serves a kept page only with its build (whole) and drops every older copy
+const V = "dineflow-v22";   // v22 (2026-11-03) an offline page with a query falls back to its page without one (copy); v21 (2026-11-02) the launch loader's sky reaches the foot of an installed iPad (no band); v17 dropped redirected copies; v18 kept /login and the reconnect page; v19 adds the launch loader (boot); v20 serves a kept page only with its build (whole) and drops every older copy
 const SHELL = ["/", "/icon-192.png", "/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/scan", "/tomorrow", "/inventory", "/menu", "/login", "/offline"];
 
 /* Install and activate never fail on storage. When the browser cannot open its cache (low space,
@@ -39,7 +39,16 @@ const put = async (req, res) => {
 };
 /* a navigation must never be answered with a redirected response (WebKit fails the whole load): rebuild it as a plain one */
 const plain = async (res) => (res && res.redirected ? new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers: res.headers }) : res);
-const copy = async (req) => { const m = await caches.match(req).catch(() => undefined); return m && !m.redirected ? m : undefined; };
+/* v22 (2026-11-03): with no copy of this exact address, the copy of the same page without its query — the till opened as
+   /orders/new?table=…&add=… offline gets the till, not the reconnect page (the waiter picks the table again). */
+/* ignoreVary: Next sends `Vary: RSC, Next-Router-State-Tree, …` on pages; a copy saved by the warm-up's fetch was then never
+   matched for a navigation, whose request headers differ — the screen showed the reconnect page offline though its copy was
+   whole (2026-11-03, the kitchen). A page copy is one per address, so the address alone decides. */
+const copy = async (req) => {
+  const o = { ignoreVary: true };
+  const m = (await caches.match(req, o).catch(() => undefined)) || (await caches.match(new URL(req.url).pathname, o).catch(() => undefined));
+  return m && !m.redirected ? m : undefined;
+};
 /* A kept page is only as good as its build (v20, 2026-10-30 — the owner's iPhone showed Next's bare "Application error").
    Its scripts are named by the build that drew it; a deploy since then removes them from the server. A copy whose build
    files are not all in this cache would load scripts that answer 404 — no error boundary of the app's can run then. So the

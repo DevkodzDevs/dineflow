@@ -40,6 +40,27 @@ export async function enqueue(kind: JobKind, args: Record<string, unknown>, labe
   return job.id;
 }
 
+/** A write that never reached the server — no answer at all (Wi-Fi with no internet, the line dropped mid-tap) — as opposed
+ *  to the server answering "no". Chrome says "Failed to fetch", Safari "Load failed", Firefox "NetworkError…". */
+export const isNetworkError = (e: unknown) => {
+  const m = String((e as { message?: string } | null)?.message ?? e ?? "");
+  return (e instanceof TypeError && !/is not a function|cannot read|undefined|null/i.test(m)) ||
+    /failed to fetch|load failed|networkerror|network request failed|fetch failed|internet connection appears to be offline|err_internet_disconnected|err_network/i.test(m);
+};
+/** The browser can say "online" while nothing gets through (2026-11-03, the owner: "work perfectly when the internet is
+ *  disconnected"). A send that got no answer marks the app offline; the 15 s probe of /api/health brings it back. */
+export const markUnreachable = () => { if (state.online) set({ online: false }); };
+/**
+ * Send now, or keep it on the device. `send` is the screen's own online call; when the app is offline, or the send gets no
+ * answer at all, the write goes to the outbox instead (`queue`) and null comes back — the screen carries on as if it had
+ * gone. A refusal from the server (an error answer) is the screen's to show, as before.
+ */
+export async function sendOrQueue<T>(send: () => Promise<T>, queue: () => Promise<unknown>): Promise<T | null> {
+  if (!state.online || (typeof navigator !== "undefined" && !navigator.onLine)) { await queue(); return null; }
+  try { return await send(); }
+  catch (e) { if (!isNetworkError(e)) throw e; markUnreachable(); await queue(); return null; }
+}
+
 async function run(job: Job) {
   // only reached when there is a queued write to send, which is long after the screen has painted
   const s = await getClient();
@@ -48,6 +69,8 @@ async function run(job: Job) {
     case "place_order": {
       // the till queues the order as it would send it online: customer_name / customer_phone, and a delivery address
       const a = job.args as Record<string, never>;
+      // 0165: Add items on an open order — a new kitchen ticket on it; client_id makes a replay a no-op
+      if (a.add_to) { fail((await s.rpc("order_add_items", { p_order_id: a.add_to, p_items: a.items, p_note: a.note, p_client_id: a.client_id, p_placed_at: a.placed_at })).error); break; }
       const { data: id, error } = await s.rpc("place_order", { p_table_id: a.table_id, p_type: a.type, p_items: a.items, p_customer: a.customer ?? { name: a.customer_name ?? null, phone: a.customer_phone ?? null }, p_note: a.note, p_client_id: a.client_id, p_placed_at: a.placed_at, p_promise: a.promise ?? false });
       fail(error);
       // the order is in; an address that does not save must not send the order a second time (client_id would refuse it anyway)
@@ -64,9 +87,11 @@ async function run(job: Job) {
     case "kot_fire": { const a = job.args as { id: string }; fail((await s.rpc("fire_kot", { p_kot_id: a.id })).error); break; }
     case "table_status": { const a = job.args as { id: string; status: string }; fail((await s.from("dining_tables").update({ status: a.status }).eq("id", a.id)).error); break; }
     case "hk_status": { const a = job.args as { id: string; status: string }; fail((await s.from("housekeeping_tasks").update({ status: a.status }).eq("id", a.id)).error); break; }
-    case "walkin_add": { const a = job.args as Record<string, never>; fail((await s.rpc("walkin_add", { p_name: a.name, p_phone: a.phone, p_party: a.party })).error); break; }
+    case "walkin_add": { const a = job.args as Record<string, never>; fail((await s.rpc("walkin_add", { p_name: a.name, p_phone: a.phone, p_party: a.party, p_client_id: a.client_id ?? null })).error); break; }   // 0168: a replay returns the same walk-in
     case "walkin_set": { const a = job.args as Record<string, never>; fail((await s.rpc("walkin_set", { p_id: a.id, p_status: a.status, p_table: a.table ?? null })).error); break; }
-    case "stock_count": { const a = job.args as { counts: unknown }; fail((await s.rpc("stock_count", { p_counts: a.counts })).error); break; }
+    case "walkin_hold": { const a = job.args as { id: string; table: string }; fail((await s.rpc("walkin_hold", { p_id: a.id, p_table: a.table })).error); break; }
+    // 0169: sent with when it was counted, so the sales since are kept (a job queued before has none: 0017's rule)
+    case "stock_count": { const a = job.args as { counts: unknown; counted_at?: string }; fail((await s.rpc("stock_count", { p_counts: a.counts, p_counted_at: a.counted_at ?? null })).error); break; }
     case "stock": { fail((await s.from("stock_ledger").insert(job.args)).error); break; }
     case "punch": { const a = job.args as { code: string }; fail((await s.rpc("labour_punch", { p_code: a.code })).error); break; }
   }
@@ -77,13 +102,15 @@ async function run(job: Job) {
  * a client id for exactly this, so the second attempt is refused as a duplicate. Nothing is lost by
  * forgetting it, and keeping it would show the person a failure that never happened.
  */
-const alreadyDone = (msg: string) => /duplicate|already exists|already/i.test(msg);
+/* Narrowed 2026-11-03: a bare /already/ also matched refusals that mean "not done" ("the bill for this table is already out"),
+   and those jobs were deleted as if they had landed. */
+const alreadyDone = (msg: string) => /duplicate key|already exists|already paid|already settled|already accepted|already recorded/i.test(msg);
 /** A rejection that will never succeed however many times we try — bad data, not a bad connection. */
 const permanent = (msg: string) => /violates|not found|permission|invalid input|malformed|syntax/i.test(msg);
 
 let running = false;
 export async function flush(): Promise<number> {
-  if (running || typeof navigator === "undefined" || !navigator.onLine) return 0;
+  if (running || typeof navigator === "undefined" || !navigator.onLine || !state.online) return 0;
   running = true; set({ syncing: true });
   let sent = 0;
   try {
@@ -97,6 +124,8 @@ export async function flush(): Promise<number> {
       try { await run(j); await delJob(j.id); sent++; set({ lastError: null }); await pushQueue(); }
       catch (e) {
         const msg = (e as { message?: string }).message ?? "failed";
+        // no answer at all: the line is down, not the job — stop here, keep its place, and wait for the probe
+        if (isNetworkError(e)) { markUnreachable(); set({ lastError: null }); break; }
         if (alreadyDone(msg)) { await delJob(j.id); await pushQueue(); }
         else if (permanent(msg) || j.tries >= 6) {
           /* Held, not dropped. This used to delete the job outright, so an order taken from a guest

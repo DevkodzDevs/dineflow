@@ -549,7 +549,7 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
 - **0132 `online_availability` — applied 2026-10-22** (dry run 12/12 first): `menu_items.online_available`, `set_online_available`
   (owner, manager, chef, or a supervisor holding Online orders; a direct table write still needs Menu — guard_menu_item_write),
   `dine_storefront` + `online`, `dine_order` sells an off-online dish only `dine_in`. Additive; the old app ignores it.
-- **0131 moved to `supabase/pending/` (2026-10-22)** — it was in `migrations/`, so the next `migrate.mjs` (run for 0132) would
+- **0131 moved to `supabase/pending/` (2026-10-22)** (applied at last inside **0164**, 2026-11-03; the file is gone) — it was in `migrations/`, so the next `migrate.mjs` (run for 0132) would
   have applied it before its client; apply it by hand after the deploy, as 0120/0121 were.
 - **0131 `pulse_seated_walkins` — written and dry-run (6 of 6, rolled back), NOT applied (2026-10-21).** Replaces
   `table_pulse` and `table_pulse_for` (stage *seated*; see reports-and-forecast.md). Apply after the code that knows
@@ -679,3 +679,83 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   (owner, manager; not for an owner / manager / supervisor; active lists only). Dry runs `dry162b.sql` / `dry162c.sql` (rolled back, as
   `authenticated` — the plain connection skips RLS): Selvi taken off all → sees none, her tick refused; Kannan given a Kitchen list → 9 → 10,
   one entry; Reset → 9; Selvi cannot set lists; an owner target refused. Applied live with `--live`.
+
+## 0163 — a channel order's reference on its ticket (2026-11-03)
+- `kots.online_order_id` → online_orders(id), on delete set null (+ partial index). kots' `tenant_all` covers it; written only by
+  `accept_online_order_for` (security definer; still revoked from public, anon, authenticated, as 0146). 0098's `zz_same_property`
+  rebuilt for kots (0157's pattern): now `online_order_id, order_id`. `accept_online_order_for` = 0146's live body with `notes` null on
+  a new order and the ticket linked. Backfill: each accepted online order → the first unlinked ticket of its order made after it was
+  placed and holding one of its dishes (6 of 6 on the live data); open orders whose note equals one of their references → null
+  (manoooo #1422, 1423, 1425, 1427); billed ones kept. Dry run `dry163.sql` (rolled back): those numbers, a fresh accept writes no note
+  and links its ticket, another property's online order on a ticket refused. Applied live with `--live`.
+
+## 0164 — a waiting guest holds a table; 0131 at last (2026-11-03)
+- **0131 never reached the database.** It sat in `supabase/pending/` from 2026-10-21 (see below), so `table_pulse` still read a
+  table's stage from its open order alone: a party seated through Pulse read *just seated* only until a refresh put the table back
+  to Free (the owner: "I set the table and refresh — it is erased"). 0164 carries 0131's `table_pulse` / `table_pulse_for`
+  unchanged (the live ones were still the ones it was written against) and `supabase/pending/0131…` is deleted.
+- `walkins.held_at`; `walkins.table_id` on a waiting / called guest is now the table **held** for them. `_walkin_free_tables(rid)`
+  (no open order; no walk-in or booked party seated there in the last 3 h with nothing ordered since; not held for another guest; no
+  cleaning job pending / in progress; no booking today still to come from 30 min before its time; no booking holding it — 0154) and
+  `_walkin_fill(rid)` (an advisory lock per property; lapses a hold someone else sat at — an order opened, a walk-in or a booked party
+  seated there after it was held; then first come, first served, the smallest free table that seats the party). Both revoked from
+  every API role. `walkin_fill()` (authenticated, own property) — the Pulse and Join by QR pages call it on every load.
+  `walkin_hold(id, table)` (authenticated): own property, guest waiting or called, the table not in use and not held for someone else.
+- Rebuilt from `pg_get_functiondef` with the fill added: `walkin_add` (also returns `table`, `table_id`), `queue_join`, `walkin_set`
+  (seated / left hand the hold on; seated with no table named → the held one is marked occupied), `queue_status` (`minutes` 0 for a
+  guest holding a table). Triggers (`_walkin_fill_trg`, wrapped — an error never fails the write): `orders` leaving `open`,
+  `table_cleanings` done / skipped, `reservations` cancelled / no-show / completed / moved.
+- Dry run `dry164.mjs` (17, rolled back, on a fresh demo as its owner): add → T1, the smallest that fits; the guest page reads 0 min;
+  every free table held, none twice, none in use; the next guest has none and is quoted a wait; holding another's / an in-use table
+  refused; a guest leaves → the waiting guest gets their table; set by hand and read again — kept; seated with no table → occupied and
+  `table_pulse` says *seated*; an order paid hands its table on; an order opened at a held table, or a walk-in seated there, lapses the
+  hold; grants. Applied live with `--live`.
+
+## 0165 — Add items joins the open order (2026-11-03)
+- `order_add_items(p_order_id, p_items, p_note, p_client_id, p_placed_at)` → the order id. Security definer, search_path pinned;
+  `auth_restaurant_id()` must own the order (else "order not found"); refused when not open or a bill is unpaid/paid; place_order's
+  `_stock_short` check unless offline; courses as place_order. Granted to authenticated, revoked from public/anon. `kots.client_id`
+  (+ index) for offline replays; kots' `tenant_all` covers it. Dry run `dry165.sql` (rolled back, `set local role authenticated` with
+  the manoooo owner's claims): an open order 3 → 4 tickets, ₹420 → ₹740, notes "Less oil · No onion", the replay added nothing, no new
+  order; a billed order, another property's order and anon refused. Applied live with `--live`.
+
+## 0166 — a table or room is used only once it is free (2026-11-03)
+- The owner: "a table or a room that is being cleaned takes no order and no booking until the cleaning is done; a table QR too; a
+  table that already has an order takes no new one. A room comes to booking free or not by what Room status says."
+- Two internal helpers (security definer, search_path pinned, **no grant** — revoked from public, anon, authenticated; read inside the
+  calls below): `_table_busy(table)` → null, or why (an open `table_cleanings` job; an open order on it — "T4 already has #12 open — add
+  to that order"); `_room_not_ready(room, booking)` → null, or why, in this order: out of order (`status = 'maintenance'`), a guest
+  still in it (`occupied`, or another booking `checked_in`), `condition = 'dirty'`, `pickup`, not `inspected` where
+  `hk_inspect_required`, `status = 'cleaning'`.
+- Redefined from their **live** bodies (pg_get_functiondef), each with only its check added: `place_order` (locks the table row
+  first; an order synced from offline — `p_placed_at` set — is never refused), `dine_order` (dine-in: a table being cleaned, or one
+  whose open orders all have a bill out), `move_order` (not onto a table being cleaned or with its own open order — Merge),
+  `reservation_set` / `walkin_set` (seating), `check_in` (`_room_not_ready`; it was only the inspection), `create_booking` (an
+  out-of-order room never; for a stay from today the room must be ready now; its "today" is IST — it was `current_date`, UTC).
+- Unchanged on purpose: `split_order` (two orders on one table is a split bill), `merge_orders`, `order_add_items`,
+  `accept_online_order_for` (a QR round still pending when the bill prints can still open a second order — left to the owner),
+  `hold_due` (holding a table being cleaned is fine; seating it is not). No new table, so no new policy.
+- Dry run `dry166.cjs` (scratchpad; rolled back): 41/41 — a restaurant's five tables as its owner (second order refused, offline sync,
+  Add items, Split, cleaning → refused, Move both ways, seat booking / walk-in, cleaned → takes an order, the QR as anon: cleaning
+  refused, open order joined, bill out refused) and a hotel's four rooms (dirty, out of order, ready, guest still in, inspection
+  on / off), and both helpers refused for authenticated and anon. Applied live with `--live`.
+
+## 0167 — order_add_items' printed-bill wording (2026-11-03)
+- 0165's body; the printed-bill refusal says "void it to add more" when the order is on a table (0166 refuses a second open order there),
+  "start a separate order" otherwise. Checked first that the live body was still 0165's; dry run `dry167.sql` (rolled back, as the owner):
+  manoooo #1422 (bill out) → "The bill for #1422 is printed — void it to add more". Applied live with `--live`.
+
+## 0168 — a walk-in added offline is added once (2026-11-03)
+- An offline Add on Pulse queues `walkin_add`. The outbox retries a job whose reply never came back, so a send that reached the
+  database but lost its answer added the guest twice (found by the offline overhaul). As 0165: `walkins.client_id uuid` (unique per
+  property where set); `walkin_add(name, phone, party, client_id default null)` replaces the three-argument one (dropped, so a
+  three-named-argument call is not ambiguous) and returns the same answer for an add already in. PulseClient sends
+  `client_id: crypto.randomUUID()` in the job; `lib/offline/sync.ts` passes it on. Grants unchanged (authenticated, service_role).
+- Dry run `dry168.mjs` (10, rolled back): replay → same id, table and quote, one row; three named arguments still work; no
+  client_id → each call adds; anon denied; one `walkin_add` left. Applied live with `--live`; the REST call resolves.
+
+## 0169 — stock_count with counted_at (2026-11-03)
+- The one-argument `stock_count(jsonb)` dropped; `stock_count(jsonb, timestamptz default null)` (security definer, search_path pinned,
+  the caller's property, granted to authenticated, revoked from public/anon). Dry run `dry169.sql` (rolled back, as the manoooo owner):
+  counted 100 an hour ago with −5 since → the shelf 95; the replay counted 0; a plain call still sets the figure; anon refused. Live with `--live`.
+- (0168, dineflow-55: `walkin_add(…, p_client_id)` — a replayed walk-in returns the same row; sync.ts sends `a.client_id ?? null`.)

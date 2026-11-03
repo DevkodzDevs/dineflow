@@ -221,7 +221,10 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
 
       {/* the moves — the dialog's pinned footer */}
       <div className="flex gap-2">
-        <Link href={`/orders/new?table=${t.id}`} className="svc-btn go flex-1"><Plus size={18} aria-hidden />{o ? "Add items" : "Take order"}</Link>
+        {/* 0166 (the owner): a table being cleaned takes no order until it is marked clean — place_order refuses it too */}
+        {!o && clean
+          ? <span className="svc-btn quiet flex-1 cursor-default" aria-disabled="true" data-take-blocked><SprayCan size={17} aria-hidden />Being cleaned</span>
+          : <Link href={o ? `/orders/new?table=${t.id}&add=${o.id}` : `/orders/new?table=${t.id}`} className="svc-btn go flex-1"><Plus size={18} aria-hidden />{o ? "Add items" : "Take order"}</Link>}
         {o && <Link href={`/billing/${o.id}`} className="svc-btn quiet flex-1"><Receipt size={17} aria-hidden />Bill</Link>}
       </div>
     </div>

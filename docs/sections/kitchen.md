@@ -2,7 +2,7 @@
 
 **Routes** `/kitchen` (the pass) · `/kitchen/board` (the KDS screen)
 **Files** `app/(app)/kitchen/page.tsx` · `KitchenClient.tsx` · `board/BoardClient.tsx`
-**Reads** `kots`
+**Reads** `kots` (with `orders`, `order_items`, and since 0163 `online_orders` → `order_channels` for the channel chip)
 **Writes** `kots_needs_live`, `stale_kot_count` (both read-side RPCs); status changes go through the
 order actions
 
@@ -138,3 +138,17 @@ Then open `/kitchen/board` at 1920 and stand back from it.
   still for reduced motion), a soft glow of the state's colour, the line (No new tickets · Nothing cooking · Nothing ready) and a hint
   (Orders land here · Start a ticket · Done dishes wait here). It fills the column's free height up to 420px, so beside a long column
   of tickets it stays near the head. shots163 at 1194/1440/834/412 in dark, paper and colourful dark: one-line titles, empties 420px.
+
+## 2026-11-03 — a channel order's reference is a grey chip, not the amber request (0163; the owner's iPad: "TEST-040011", "5-eeea", "0-2fee" in the amber pill — "what is this?")
+- Since 0004, accepting an online order wrote its reference into `orders.notes`, which this screen shows as the whole order's
+  cooking request (the amber `[data-kot-note]` pill, 2026-10-30) — so a Swiggy id or a guest's QR code looked like an instruction.
+  Now the reference lives on the **ticket**: `kots.online_order_id` (one order can hold several QR rounds, so each round shows
+  its own). `page.tsx` reads `online_orders(display_id, external_id, table_id, order_channels(kind, label))`.
+- **The chip** (`RefChip`, `[data-kt-ref="qr" | "web" | "app"]`) sits after KOT and #, the same grey `KT_CHIP`: an icon (QR code, globe,
+  bike), the source and the short reference — *QR · 2fee*, *Web · …*, *Swiggy · 040011*; the whole reference in its title.
+  The words come from `lib/channelRef.ts` (`channelChip`, `shortRef`, `channelSource`; 5 tests): a website order at a table is QR,
+  without one Web, the apps by name, any other channel by its label's first part; the reference keeps what follows its last dash, a
+  long number its last six. **Reprint** puts it on the where line ("T3 · QR 2fee"); the amber pill and `** NOTE **` are the
+  till's request only.
+- shots164 (15): Swiggy and QR orders accepted as the owner through `accept_online_order`, a till order with "Jain" — at 1194 dark,
+  1440 colourful dark, 412 paper: the chips, no amber pill on the channel tickets, "Jain" kept, chips 24px inside the ticket.

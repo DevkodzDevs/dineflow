@@ -9,7 +9,7 @@ import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod, type TaxLine } from "@dineflow/shared";
 import { RefundSheet } from "./RefundSheet";
 import { generateBill, settleBill, voidBill, lookupCustomer, checkCoupon, type Customer, type Coupon } from "../actions";
-import { enqueue } from "@/lib/offline/sync";
+import { enqueue, sendOrQueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 import { usePrinters } from "@/lib/print/usePrinter";
 import { PrinterOutput } from "@/components/receipt/PrinterOutput";
@@ -349,8 +349,10 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
               try { await printBill(billData()); } catch { /* printer trouble must not stop the payment */ }
               // cash changes hands: the drawer pops on any bill printer set up to kick it (0087 — the setting was saved but never fired)
               if (settled.some((p) => p.method === "cash" && p.amount > 0)) { try { await openDrawer(); } catch { /* a drawer that will not open is not a payment problem */ } }
-              if (!online) { await enqueue("settle_bill", { bill_id: bill.id, payments: settled, client_id: crypto.randomUUID() }, `Payment · ${bill.bill_no}`); router.push("/billing?queued=1"); return; }
-              const r = await settleBill(bill.id, settled); if ("error" in r) setErr(r.error!);   // the action's answer is the re-rendered bill — no second render
+              // offline, or no answer at all: kept on the device and sent later (settle_bill returns at once for a bill already paid)
+              const r = await sendOrQueue(() => settleBill(bill.id, settled), () => enqueue("settle_bill", { bill_id: bill.id, payments: settled, client_id: crypto.randomUUID() }, `Payment · ${bill.bill_no}`));
+              if (!r) { router.push("/billing?queued=1"); return; }
+              if ("error" in r) setErr(r.error!);   // the action's answer is the re-rendered bill — no second render
             })}>Mark paid{!online && " (offline)"}</Button>
             <button type="button" className="mt-3 text-xs text-steel hover:text-chili w-full" disabled={pending} onClick={() => setVoiding(true)} data-void-bill>Void &amp; edit</button>
             <ReasonDialog open={voiding} onClose={() => setVoiding(false)} title={`Void bill ${bill.bill_no}?`} hint="Reopens order; reason logged"

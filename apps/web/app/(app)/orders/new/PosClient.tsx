@@ -12,9 +12,9 @@ import { orderState, SVC_WORD } from "@/lib/service";
 import { formatINR, fmtSince } from "@/lib/format";
 import { DishImage } from "@/components/menu/DishImage";
 import { Rail } from "@/components/ui/Rail";
-import { placeOrder, parseOrder, phoneCard, setDelivery } from "../actions";
+import { placeOrder, addItems, parseOrder, phoneCard, setDelivery } from "../actions";
 import { lookupCustomer } from "../../billing/actions";
-import { enqueue } from "@/lib/offline/sync";
+import { enqueue, sendOrQueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 import { usePrinters } from "@/lib/print/usePrinter";
 import { OptionChooser } from "@/components/OptionChooser";
@@ -28,6 +28,8 @@ type Guest = { id: string; booking_no: number; rooms: { number: string } | null;
 /** What the pantry can still cover, keyed by dish. A dish that is absent has no recipe: it moves no
  *  stock, so there is nothing true to say about it, and it is always sellable. */
 type Cover = { portions: number; short: { name: string; unit: string; per: number; stock: number }[] };
+/** the open order *Add items* came from (0165): what is sent joins it as a new kitchen ticket, not a second order */
+type AddTo = { id: string; order_no: number; table_id: string | null; type: "dine_in" | "takeaway" | "delivery" | "room_service" };
 type Running = { id: string; order_no: number; table_id: string | null; type?: string; token_no?: number | null; customer_name?: string | null; created_at: string; order_items: { qty: number; status: string }[]; dining_tables: { name: string } | null; bills?: { status: string }[] | null };
 
 /** One line of the ticket: a dish with the size and extras it was chosen with. The same dish as
@@ -40,10 +42,13 @@ type Line = { key: string; item: Item; variant: Variant | null; addons: Addon[];
 const LINE_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain", "Parcel", "Well done", "No ice"];
 const QUICK_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain", "Kids portion", "Serve together", "Pack separately"];
 
-export function PosClient({ categories, items, tables, initialTable, initialType = null, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {}, popular = {}, notFree = {}, stockBlock = true }: { categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; initialType?: "takeaway" | "delivery" | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]>; popular?: Record<string, number>; notFree?: Record<string, "occupied" | "reserved" | "cleaning">; stockBlock?: boolean }) {
+export function PosClient({ categories, items, tables, initialTable, initialType = null, inHouse = [], stock = {}, running = [], ai = false, promise = null, pairs = {}, popular = {}, notFree = {}, stockBlock = true, addTo = null }: { addTo?: AddTo | null; categories: Cat[]; items: Item[]; tables: Table[]; initialTable: string | null; initialType?: "takeaway" | "delivery" | null; inHouse?: Guest[]; stock?: Record<string, Cover>; running?: Running[]; ai?: boolean; promise?: { minutes: number; pct: number } | null; pairs?: Record<string, { id: string; n: number }[]>; popular?: Record<string, number>; notFree?: Record<string, "occupied" | "reserved" | "cleaning">; stockBlock?: boolean }) {
   const router = useRouter();
   // a parcel or a delivery starts from Orders' header button (?type=), a table from the floor (?table=)
-  const [type, setType] = useState<"dine_in" | "takeaway" | "delivery" | "room_service">(initialType ?? "dine_in");
+  const [type, setType] = useState<"dine_in" | "takeaway" | "delivery" | "room_service">(addTo?.type ?? initialType ?? "dine_in");
+  /* Adding to an open order (0165) — from its Add items, or "Add to #n" on a busy table. Its type and table are the order's;
+     picking another table, or "Separate order", lets go and the ticket becomes a new order as before. */
+  const [adding, setAdding] = useState<AddTo | null>(addTo);
   const [room, setRoom] = useState("");
   const [tableId, setTableId] = useState<string | null>(initialTable);
   const [cat, setCat] = useState("all"); const [q, setQ] = useState("");
@@ -297,8 +302,9 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   })();
   const pickTable = (t: Table) => {
     setTableId(t.id);
+    if (adding && adding.table_id !== t.id) setAdding(null);
     const open = running.find((o) => o.table_id === t.id);
-    setBusy(t.id === initialTable ? null : open ?? null);
+    setBusy(t.id === initialTable || adding?.table_id === t.id ? null : open ?? null);
   };
 
   const submit = () => start(async () => {
@@ -311,7 +317,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
     // the shelf is the authority here, not the count.
     if (shortfalls.length > 0 && stockBlock) { setWarned(true); return setErr("Not enough in the pantry — reduce or remove the marked dishes"); }
     if (shortfalls.length > 0 && !warned) return setWarned(true);
-    if (type === "room_service" && !room) return setErr("Pick the guest room");
+    if (type === "room_service" && !room && !adding) return setErr("Pick the guest room");
     const label = type === "dine_in" ? (tables.find((t) => t.id === tableId)?.name ?? "Table") : type === "room_service" ? customer.name : type.replace("_", " ");
     const payload = { type, promise: promised, table_id: type === "dine_in" ? tableId : null, customer_name: customer.name || null, customer_phone: customer.phone || null, note: ([ticketNote.trim(), ...parcelNote()].filter(Boolean).join(" · ")) || null,
       items: lines.map((l) => ({ menu_item_id: l.item.id, qty: l.qty, notes: l.note || undefined, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id), course: coursing ? l.course : 1 })) };
@@ -334,15 +340,26 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       toast("Order saved, but the ticket didn't print. Check the printer and reprint.", "err");
     }
 
-    if (!online) {
-      // Offline: keep the order on this device and send it the moment the connection returns.
-      // the delivery address goes with it, and is written onto the order as soon as the order lands (0109)
-      await enqueue("place_order", { ...payload, client_id: crypto.randomUUID(), placed_at: new Date().toISOString(), delivery_address: type === "delivery" ? address.trim() || null : null }, `Order · ${label} · ${count} items`);
-      dropDraft(); setLines([]);
-      router.push("/orders?queued=1");
+    // 0165: Add items — a new kitchen ticket on the open order, so its running total and its bill include these dishes
+    /* One id for this ticket, made before anything is sent (2026-11-03): sent with the live call and kept with the queued copy,
+       so a send whose answer was lost and then queued lands once, never twice. Offline — or Wi-Fi with no internet —
+       sendOrQueue keeps it on the device; the till stays where it is (another screen may not be on the device), clears the
+       ticket and says so. */
+    const clientId = crypto.randomUUID();
+    const savedHere = () => { dropDraft(); clearTicket(); toast("Saved on this device · sends when online"); };
+    if (adding) {
+      const r = await sendOrQueue(() => addItems({ ...payload, add_to: adding.id, client_id: clientId }),
+        () => enqueue("place_order", { ...payload, add_to: adding.id, client_id: clientId, placed_at: new Date().toISOString() }, `Add to #${adding.order_no} · ${count} items`));
+      if (!r) return savedHere();
+      if ("error" in r) return setErr(r.error!);
+      dropDraft();
+      router.push(`/orders/${adding.id}`);
       return;
     }
-    const r = await placeOrder(payload);
+    // the delivery address goes with a queued order, and is written onto it as soon as it lands (0109)
+    const r = await sendOrQueue(() => placeOrder({ ...payload, client_id: clientId }),
+      () => enqueue("place_order", { ...payload, client_id: clientId, placed_at: new Date().toISOString(), delivery_address: type === "delivery" ? address.trim() || null : null }, `Order · ${label} · ${count} items`));
+    if (!r) return savedHere();
     if ("error" in r) return setErr(r.error!);
     dropDraft();
     if (type === "delivery" && address.trim()) { const d = await setDelivery(r.orderId!, address.trim()); if ("error" in d) toast(`Order sent — but the address was not saved: ${d.error}. Add it on the order.`, "err"); }
@@ -385,13 +402,13 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   const openPicker = () => { setPickOpen(true); setGuestOpen(false); setCartOpen(true); };
   /** The bar's Send: straight to the kitchen when nothing is missing; otherwise the ticket opens with the reason on it. */
   const sendFromBar = () => {
-    if ((type === "dine_in" && !tableId) || lines.some((l) => l.ask) || (shortfalls.length > 0 && !warned) || (type === "room_service" && !room)) setCartOpen(true);
+    if ((type === "dine_in" && !tableId) || lines.some((l) => l.ask) || (shortfalls.length > 0 && !warned) || (type === "room_service" && !room && !adding)) setCartOpen(true);
     if (type === "dine_in" && !tableId) setPickOpen(true);
     submit();
   };
   /** The preview's Send: the same submit; when the table or the room is still missing the preview steps aside for the ticket that asks for it. */
   const sendFromPreview = () => {
-    if ((type === "dine_in" && !tableId) || (type === "room_service" && !room)) { setPreview(false); return sendFromBar(); }
+    if ((type === "dine_in" && !tableId) || (type === "room_service" && !room && !adding)) { setPreview(false); return sendFromBar(); }
     submit();
   };
   /** where the ticket is going, in words, for the preview's title */
@@ -481,7 +498,19 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       {/* the order type, only while nothing has settled it (2026-10-30, the owner: "when the order is taken from the order
           page, don't show the four buttons — the customer is already dining in"): a ticket for a table is dine-in, so the
           tiles go once a table is on it; counter, parcel, delivery and room still choose here. Change still switches table. */}
-      {!(type === "dine_in" && tableId) && (
+      {/* 0165: adding to an open order — one compact strip in place of the type tiles: what it joins, and the way out */}
+      {adding && (
+        <div className="mt-3 flex items-center gap-2.5 rounded-[14px] pl-3 pr-1.5 py-1.5 bg-[color-mix(in_srgb,var(--color-tint)_12%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-tint)_30%,transparent)]" data-adding={adding.order_no}>
+          <span aria-hidden className="grid place-items-center h-8 w-8 shrink-0 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)]"><Plus size={16} strokeWidth={2.6} /></span>
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block text-[14px] font-extrabold truncate">Adding to #{adding.order_no}</span>
+            <span className="block text-[12px] text-[var(--color-label-2)] truncate">Same bill</span>
+          </span>
+          {/* 0166: a table takes one open order — at a table there is no separate order to fall back to */}
+          {!(adding.type === "dine_in" && adding.table_id) && <button type="button" onClick={() => setAdding(null)} className="shrink-0 min-h-11 px-3 rounded-full text-[12.5px] font-bold text-[var(--color-label-2)] hover:bg-[var(--color-fill-2)]" data-adding-off>Separate order</button>}
+        </div>
+      )}
+      {!adding && !(type === "dine_in" && tableId) && (
       <div className={cn("mt-3 grid gap-1.5", typeTiles.length > 3 ? "grid-cols-4" : "grid-cols-3")} role="radiogroup" aria-label="Order type" data-order-type>
         {typeTiles.map((t) => (
           <button key={t.value} type="button" role="radio" aria-checked={type === t.value} onClick={() => setType(t.value)}
@@ -519,8 +548,13 @@ export function PosClient({ categories, items, tables, initialTable, initialType
             <div className="mt-2 rounded-xl border border-line bg-[var(--color-fill)] p-2.5 text-xs">
               <div className="font-semibold">{tables.find((t) => t.id === busy.table_id)?.name ?? "That table"} has #{busy.order_no} open</div>
               <div className="mt-2 flex gap-2">
-                <Link href={`/orders/${busy.id}`} className="btn btn-gray !h-10 !text-xs flex-1 justify-center">Open #{busy.order_no}</Link>
-                <button onClick={() => setBusy(null)} className="btn btn-outline !h-10 !text-xs flex-1">Start a separate one</button>
+                {/* 0165: the usual answer — the new dishes join the table's open order (not once its bill is printed) */}
+                {!(busy.bills ?? []).some((b) => b.status === "unpaid" || b.status === "paid")
+                  ? <button type="button" onClick={() => { setAdding({ id: busy.id, order_no: busy.order_no, table_id: busy.table_id, type: (busy.type as AddTo["type"]) ?? "dine_in" }); setBusy(null); }} className="btn btn-gray !h-10 !text-xs flex-1 justify-center" data-add-to-busy>Add to #{busy.order_no}</button>
+                  : <Link href={`/orders/${busy.id}`} className="btn btn-gray !h-10 !text-xs flex-1 justify-center">Open #{busy.order_no}</Link>}
+                {/* 0166 (the owner): a table with an order open takes no second one — place_order refuses it — so the other
+                    answer is another table, not "Start a separate one" */}
+                <button type="button" onClick={() => { setBusy(null); setTableId(null); setPickOpen(true); }} className="btn btn-outline !h-10 !text-xs flex-1" data-busy-other>Another table</button>
               </div>
             </div>
           )}

@@ -5,7 +5,7 @@ import { QR, qrDataUrl } from "@/components/QR";
 import { Card, useToast } from "@/components/ui";
 import { SvcHead } from "@/components/ui/Service";
 import { copyText, shareText } from "@/lib/clipboard";
-import { WaitList, type W, type T, type R } from "./WaitList";
+import { WaitList, type W } from "./WaitList";
 
 /** A door sign for the queue: the property, the code, how to use it — printed from a window of its own. */
 async function printPoster(url: string, name: string) {
@@ -33,7 +33,7 @@ const STEPS = [
  * scanner wants dark on light); Print poster opens an A4 door sign. A property that is not Listed publicly has no
  * public queue page, so it gets the way to turn that on instead.
  */
-export function QrClient({ slug, base, listed, restaurant, queue = [], tables = [], booked = [] }: { slug: string; base: string; listed: boolean; restaurant: string; queue?: W[]; tables?: T[]; booked?: R[] }) {
+export function QrClient({ slug, base, listed, restaurant, queue = [] }: { slug: string; base: string; listed: boolean; restaurant: string; queue?: W[] }) {
   const toast = useToast();
   const joinUrl = `${base}/queue/${slug}`;
   const copy = async () => { if (await copyText(joinUrl)) toast("Link copied"); else toast("Could not copy — hold the link to copy it", "err"); };
@@ -52,15 +52,41 @@ export function QrClient({ slug, base, listed, restaurant, queue = [], tables = 
         <Link href="/settings/storefront" className="svc-btn go sm mt-5 inline-flex"><Settings size={18} aria-hidden /><span>Open Storefront</span></Link>
       </Card>
       {/* guests the host added on Pulse still wait here, so the list stays even with the QR off */}
-      <div className="max-w-2xl mx-auto mt-5"><WaitList queue={queue} tables={tables} booked={booked} listed={false} onShare={() => {}} /></div>
+      <div className="max-w-2xl mx-auto mt-5"><WaitList queue={queue} listed={false} onShare={() => {}} /></div>
     </div>
   );
 
   return (
     <div>
       <SvcHead icon="qr" title="Join by QR" sub="Guests scan to join" />
-      {/* Left: the code itself, large, with the moves on it (copy, open, share, print). Right: how a guest uses it and
-          where to put it. Stacked under lg; the code is never wider than the screen. */}
+      {/* How guests use it, first and full width (2026-11-03, the owner: "put it above the QR and the waiting list").
+          Then, left: the code itself, large, with the moves on it (copy, open, share, print); right: the waiting list.
+          Stacked under lg; the code is never wider than the screen. */}
+      <Card className="!rounded-[24px] !p-4 sm:!p-5 @container mb-5" data-joinqr-how>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-[16px] font-extrabold leading-tight">How guests use it</h2>
+          <span className="text-[12.5px] text-steel shrink-0">Three taps. No app.</span>
+        </div>
+        <ol className="mt-3 grid grid-cols-1 @[30rem]:grid-cols-3 gap-2">
+          {STEPS.map(({ Icon, title, text }, i) => (
+            <li key={title} className="min-w-0 flex @[30rem]:flex-col gap-3 @[30rem]:gap-2.5 items-center @[30rem]:items-start rounded-[16px] bg-[var(--color-fill)] p-3">
+              <span className="relative h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-bg-2)] text-[var(--color-tint)]">
+                <Icon size={19} aria-hidden />
+                <span className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center text-[11px] font-bold num">{i + 1}</span>
+              </span>
+              <div className="min-w-0"><div className="text-[14px] font-bold leading-tight">{title}</div><p className="text-[12.5px] text-steel mt-0.5 leading-snug">{text}</p></div>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-3 pt-3 border-t border-[var(--color-separator)] flex items-center gap-3 min-w-0">
+          <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><DoorOpen size={19} aria-hidden /></span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[14px] font-bold leading-tight">Where to put it</h3>
+            <p className="text-[12.5px] text-steel mt-0.5 leading-snug">Door, host stand, waiting bench.</p>
+          </div>
+          <Link href="/pulse" className="svc-btn quiet sm shrink-0"><Activity size={18} aria-hidden /><span>Open Pulse</span></Link>
+        </div>
+      </Card>
       <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-5 items-start">
         <Card className="!rounded-[28px] !p-5 sm:!p-7 flex flex-col items-center text-center" data-joinqr>
           <div className="inline-flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[0.16em] text-[var(--color-tint)]"><QrCode size={14} aria-hidden /> Scan to join queue</div>
@@ -80,35 +106,9 @@ export function QrClient({ slug, base, listed, restaurant, queue = [], tables = 
           </div>
         </Card>
 
-        {/* Right (below the code under lg): the waiting list first — who is here and Call next — then how guests use
-            the code and where to put it, in one compact card. */}
-        <div className="space-y-5 min-w-0">
-          <WaitList queue={queue} tables={tables} booked={booked} listed onShare={() => void share()} />
-          <Card className="!rounded-[24px] !p-4 sm:!p-5 @container" data-joinqr-how>
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-[16px] font-extrabold leading-tight">How guests use it</h2>
-              <span className="text-[12.5px] text-steel shrink-0">Three taps. No app.</span>
-            </div>
-            <ol className="mt-3 grid grid-cols-1 @[30rem]:grid-cols-3 gap-2">
-              {STEPS.map(({ Icon, title, text }, i) => (
-                <li key={title} className="min-w-0 flex @[30rem]:flex-col gap-3 @[30rem]:gap-2.5 items-center @[30rem]:items-start rounded-[16px] bg-[var(--color-fill)] p-3">
-                  <span className="relative h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-bg-2)] text-[var(--color-tint)]">
-                    <Icon size={19} aria-hidden />
-                    <span className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center text-[11px] font-bold num">{i + 1}</span>
-                  </span>
-                  <div className="min-w-0"><div className="text-[14px] font-bold leading-tight">{title}</div><p className="text-[12.5px] text-steel mt-0.5 leading-snug">{text}</p></div>
-                </li>
-              ))}
-            </ol>
-            <div className="mt-3 pt-3 border-t border-[var(--color-separator)] flex items-center gap-3 min-w-0">
-              <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-orange-2)] text-[var(--color-orange)]"><DoorOpen size={19} aria-hidden /></span>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-[14px] font-bold leading-tight">Where to put it</h3>
-                <p className="text-[12.5px] text-steel mt-0.5 leading-snug">Door, host stand, waiting bench.</p>
-              </div>
-              <Link href="/pulse" className="svc-btn quiet sm shrink-0"><Activity size={18} aria-hidden /><span>Open Pulse</span></Link>
-            </div>
-          </Card>
+        {/* Right (below the code under lg): the waiting list — who is here and Call next */}
+        <div className="min-w-0">
+          <WaitList queue={queue} listed onShare={() => void share()} />
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@
 `[id]/OrderDetail.tsx` · `actions.ts` · `app/kiosk/**`
 **Reads** `orders`, `order_items`, `dining_tables`, `menu_items`, `menu_variants`, `addon_groups`,
 `menu_item_addon_groups`, `combo_items`, `categories`, `bookings`
-**Writes** `place_order`, `fire_kot`, `recall_kot`, `move_order`, `merge_orders`, `split_order`,
+**Writes** `place_order`, `order_add_items` (0165), `fire_kot`, `recall_kot`, `move_order`, `merge_orders`, `split_order`,
 `menu_stock`
 
 ## What it is
@@ -495,3 +495,39 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
   pinned the last ticket's Served key as the dialog's footer, frosted band and all. It now stops at a list item (or
   `[data-no-foot]`) — design-system.md. `.svc-btn.go:hover` is also mouse only now (a tap left it stuck on). Cancelled orders are filtered out of the query (and kitchen.md: their tickets close).
 - **A table being cleaned takes no order**: the floor tile's + is gone (cleaning.md). Assign's sheet lists only the cleaners.
+
+## 2026-11-03 — *Add items* joins the open order (0165; the owner: "extra food sent from Add items does not show in this order's bill — only after Merge")
+- *Add items* (the order page, the Tables sheet) opened the till with the table, and `place_order` always makes a new order — a
+  second order on the table with its own total and bill until somebody merged. Now the link carries the order
+  (`/orders/new?table=…&add=<order id>`); `new/page.tsx` reads it and passes `addTo` while the order is open and has no unpaid or
+  paid bill (0145's rule for QR rounds). The till (`PosClient`, `adding`) shows **one strip in place of the order-type tiles**
+  (`[data-adding]`): a tint + disc, *Adding to #n*, *Same bill*, and **Separate order** (`[data-adding-off]`, 44px) to let go. Send
+  calls `addItems` → `order_add_items` and returns to the same order — a new KOT on it, so its running total and bill include it.
+  Picking another table lets go too. **A busy table tapped in the till** now offers **Add to #n** (`[data-add-to-busy]`) beside *Start
+  a separate one* (*Open #n* when its bill is printed). The room check is skipped while adding (the order already has its guest).
+- `order_add_items(order, items, note, client_id, placed_at)` (security definer): the caller's property owns the order; refused
+  when it is closed or its bill is printed ("start a separate order"); place_order's pantry check (0137) and courses; the round's
+  request rides on each of its dishes after the dish's own note (`orders.notes` stays the first round's, shown on every ticket).
+- **Offline:** the queued `place_order` job carries `add_to`; `lib/offline/sync.ts` calls `order_add_items` with the round's
+  `client_id` (`kots.client_id`) — a replay adds nothing twice.
+- shots165 (10): 1440 dark and 834 paper — Add items → the strip, no type tiles → a dish → Send → back on the order: one open order on
+  the table, 2 tickets, ₹45 → ₹265, both dishes in the running total; *Separate order* still makes a new order.
+
+- **With 0166 (no second open order on a table, 2026-11-03):** the strip's *Separate order* shows for a parcel only — on a table it
+  would be refused. 0167 words `order_add_items`' printed-bill refusal by kind: a table's order "The bill for #n is printed — void it
+  to add more", a parcel's "… — start a separate order". shots165 re-run on top of 0166: 11 of 11.
+
+## 2026-11-03 — a table takes one order, and none while it is being cleaned (0166)
+- The owner: "while a table is being cleaned no order goes on it; only after the cleaning is done. A table QR too. A table that already
+  has an order takes no new one — only a free table goes on to ordering." **The database decides** (data-and-rls.md, 0166):
+  `place_order` refuses a table with an open `table_cleanings` job ("T4 is being cleaned — it takes an order once it is marked clean")
+  or an open order ("T4 already has #12 open — add to that order"); `move_order` refuses both (moving onto an order is Merge);
+  seating a booking or a walk-in refuses both. An order synced from offline is never refused. Split bill still makes two orders.
+- **The till:** opened on a table whose order is open with no bill (`/orders/new?table=…` without `add=`), `new/page.tsx` joins that
+  order (`into`) — the *Adding to #n* strip; opened on a table being cleaned it starts with no table chosen (the picker never offers
+  one). The busy-table card's second key is **Another table** (`[data-busy-other]`: clears the table, opens the picker) — *Start a
+  separate one* is gone.
+- **Tables:** the sheet of a table being cleaned has *Being cleaned* (`[data-take-blocked]`) in place of Take order.
+- **The order's Move:** a table being cleaned ("· being cleaned") or with its own order ("· has an order — use Merge") is a disabled
+  option; `[id]/page.tsx` reads the open cleaning jobs.
+- Checked: `dry166.cjs` 41/41 (rolled back) and `shots166.mjs` (scratchpad; testing-and-gates.md).

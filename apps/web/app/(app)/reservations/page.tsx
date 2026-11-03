@@ -20,7 +20,7 @@ export default async function Reservations({ searchParams }: { searchParams: Pro
   /* the strip of days over the list: this week from today, or from the chosen day when it is further out */
   const start = day >= today && day <= plus(today, 6) ? today : day;
   // the session travels with the page's own rows, not in front of them: one trip, not two
-  const [session, { data: list }, { data: tables }, { data: reviews }, { data: month }, { data: week }, { data: inHouse }] = await Promise.all([
+  const [session, { data: list }, { data: tables }, { data: reviews }, { data: month }, { data: week }, { data: inHouse }, { data: cleans }, { data: running }] = await Promise.all([
     requireSession(),
     // a booking for someone staying names their stay (0157): its room and guest come with it
     s.from("reservations").select("*, stay:booking_id(id, rooms(number), guests(full_name))").eq("on_date", day).order("at_time"),
@@ -30,13 +30,20 @@ export default async function Reservations({ searchParams }: { searchParams: Pro
     s.from("reservations").select("on_date, status").gte("on_date", start).lte("on_date", plus(start, 6)),
     // who is staying now, for New booking's Room (a restaurant has none)
     s.from("bookings").select("id, rooms(number), guests(full_name, phone)").eq("status", "checked_in").order("check_in"),
+    // 0166: Seat now offers only a free table — not one being cleaned, not one with an order open on it
+    s.from("table_cleanings").select("table_id").in("status", ["pending", "in_progress"]),
+    s.from("orders").select("table_id").eq("status", "open").not("table_id", "is", null),
   ]);
+  const busy = new Map<string, "cleaning" | "order">();
+  for (const o of (running ?? []) as { table_id: string }[]) busy.set(o.table_id, "order");
+  for (const c of (cleans ?? []) as { table_id: string }[]) busy.set(c.table_id, "cleaning");
+  const seatable = ((tables ?? []) as { id: string; name: string; capacity: number; status: string }[]).map((t) => ({ ...t, busy: busy.get(t.id) ?? null }));
   /* who is staying now, for New booking's Room (2026-10-30, the owner: "show the Room option too"): a hotel or resort only */
   const rooms = session.restaurant.property_type !== "restaurant";
   const stays = ((rooms ? inHouse ?? [] : []) as unknown as { id: string; rooms: { number: string } | null; guests: { full_name: string; phone: string | null } | null }[])
     .map((b) => ({ id: b.id, room: b.rooms?.number ?? "", guest: b.guests?.full_name ?? "", phone: b.guests?.phone ?? "" })).sort((a, b) => a.room.localeCompare(b.room, "en", { numeric: true }));
   const days = Array.from({ length: 7 }, (_, i) => { const d = plus(start, i); return { date: d, n: (week ?? []).filter((r) => r.on_date === d && r.status !== "cancelled" && r.status !== "no_show").length }; });
   await held;
-  return <ReservationsClient day={day} today={today} days={days} list={(list ?? []) as never} tables={tables ?? []} reviews={(reviews ?? []) as never} month={(month ?? []) as never} ai={aiEnabled()} restaurant={session.restaurant.name}
+  return <ReservationsClient day={day} today={today} days={days} list={(list ?? []) as never} tables={seatable} reviews={(reviews ?? []) as never} month={(month ?? []) as never} ai={aiEnabled()} restaurant={session.restaurant.name}
     stays={stays} openNew={fresh ? { stay: stay ?? "" } : null} />;
 }

@@ -907,3 +907,31 @@ every visit to the bare name is still a 308 to www first, ~0.3 s; confirm **Flui
   decoration, harmless where there is no gap.
 - **Not provable headless:** WebKit never matches `(any-pointer: coarse)` and has no status bar; shots163 lifts the shipped rules out
   of that media query, stands in a 24px bar and gap, and checks the frame runs 24 → 858 in an 834 window. Check on the iPad itself.
+
+## 2026-11-03 — offline, Step 1: the outbox and the saved screens, fixed (the owner: "work perfectly offline; sync properly")
+Measured first (live, a demo resort, `tap168.mjs`): taps 0.18–1.0 s warm (Dashboard 1.0 s, its server 0.43 s), sign-in 4.1 s, a reload
+0.6–0.8 s; the live functions are `bom1`. The cheap speed wins were already in (IntentPrefetch, warm-up, CSS motion, bom1) — the rest
+is the server round trip per tap, which only a device-first data layer removes (Step 2, agreed with the owner, with **provisional
+offline bills numbered on sync**). Step 1:
+- **Wi-Fi with no internet** counted as online, so screens took their online path and the send failed or threw (a crash card).
+  `lib/offline/sync.ts`: `isNetworkError` (no answer at all — Chrome "Failed to fetch", Safari "Load failed", Firefox "NetworkError"),
+  `markUnreachable` (the 15 s `/api/health` probe brings it back), and **`sendOrQueue(send, queue)`** — offline, or a send with no answer,
+  queues and returns null; a refusal is still the screen's. Used by the till (place, Add items), Mark paid, the kitchen (bump, station
+  lines, a dish, fire) and the stock count. `flush` stops at a network error (keeps the job's place, no backoff) and waits for the probe.
+- **The till sends one `client_id`** with the live call and the queued copy, so a send whose answer was lost and then queued lands
+  once; `addItems` forwards it to `order_add_items`. Saved offline, the till **stays put**, clears the ticket and says "Saved on this
+  device · sends when online" (it pushed to `/orders?queued=1`, often not on the device).
+- **`alreadyDone` narrowed** to duplicate key / already exists / already paid|settled|accepted|recorded: a bare /already/ deleted
+  refusals that mean "not done" ("the bill for this table is already out").
+- **The pill lists what is on the device** (`[data-offline-waiting]`, `[data-offline-job]`; `[data-offline-list]` opens it) — not only
+  held jobs; offline it reads "Working offline · n saved here" in `--color-label` / `--color-on-label` (it was `bg-ink` + white,
+  light on light in the dark themes).
+- **The warm-up saves each screen's build files** (the `/_next/static` and `static/chunks` names in its HTML) — a screen never opened
+  on the device had none and showed the reconnect page offline — and re-warms when the first screen's copy is gone (a worker update
+  empties the cache) even inside the half hour.
+- **sw.js v22**: a page with no copy of its exact address falls back to the copy of its path (`/orders/new?table=…&add=…` → the till),
+  and copies are matched with `ignoreVary` (Next's `Vary: RSC, …` could keep a warm-up copy from matching a navigation).
+- Kept on purpose: the sign-in screen still clears saved pages (`SignedOutCleanup` — a shared till must not leak the last shift).
+- Pulse: `walkin_add` replays with `client_id` (0168, dineflow-55); the stock count sends `counted_at` (0169, inventory.md).
+- Not yet (Step 2/3): screens read their data from the device; generate bill offline (provisional); tables, cleaning, housekeeping,
+  front desk, attendance offline; queued orders drawn on the floor and the till's strip.

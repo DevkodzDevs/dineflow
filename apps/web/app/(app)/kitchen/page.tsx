@@ -20,7 +20,8 @@ export default async function KitchenPage() {
   const [session, { data }, { data: needs }, { data: stale }, { data: bumped }] = await Promise.all([
     requireSession(),
     // each line carries the station that makes it — the dish's own, else its category's
-    s.from("kots").select("id, kot_no, status, created_at, held, started_by, orders(order_no, type, customer_name, token_no, promised_at, notes, dining_tables(name)), order_items(id, name_snapshot, qty, status, notes, addons, components, course, menu_items(station, categories(station)))")
+    // online_orders: the channel order this ticket came from (0163) — its source and reference, a grey chip on the ticket
+    s.from("kots").select("id, kot_no, status, created_at, held, started_by, online_orders(display_id, external_id, table_id, order_channels(kind, label)), orders(order_no, type, customer_name, token_no, promised_at, notes, dining_tables(name)), order_items(id, name_snapshot, qty, status, notes, addons, components, course, menu_items(station, categories(station)))")
       .in("status", ["pending", "preparing", "ready"]).gte("created_at", since).order("created_at").limit(200),
     s.rpc("kots_needs_live"),
     s.rpc("stale_kot_count", { p_hours: 24 }),

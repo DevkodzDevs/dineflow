@@ -12,13 +12,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const s = await createClient();
   // the session travels with the page's own rows, not in front of them: one trip, not two
-  const [session, { data: order }, { data: tables }, { data: open }] = await Promise.all([
+  const [session, { data: order }, { data: rawTables }, { data: open }, { data: cleans }] = await Promise.all([
     requireSession(),
     s.from("orders").select("*, dining_tables(name), kots(id, kot_no, status, held, created_at), order_items(*)").eq("id", id).maybeSingle(),
     // where this order could move to, and what it could join
     s.from("dining_tables").select("id, name, status").order("sort_order"),
     s.from("orders").select("id, order_no, table_id, dining_tables(name)").eq("status", "open").neq("id", id).order("created_at"),
+    // 0166: a table being cleaned is not somewhere to move to (move_order refuses it); it reads "cleaning" in Move's list
+    s.from("table_cleanings").select("table_id").in("status", ["pending", "in_progress"]),
   ]);
+  const cleaning = new Set(((cleans ?? []) as { table_id: string }[]).map((c) => c.table_id));
+  const tables = ((rawTables ?? []) as { id: string; name: string; status: string }[]).map((t) => (cleaning.has(t.id) ? { ...t, status: "cleaning" } : t));
   if (!order) notFound();
   const canBill = ["owner", "manager", "cashier"].includes(session.profile.role);
   return (
@@ -30,12 +34,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <div className="min-w-0 flex-1"><div className="text-xs font-semibold uppercase tracking-[0.14em] text-steel">Order #{order.order_no}</div><h1 className="text-3xl leading-tight truncate">{order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery")}{order.customer_name && <span className="text-steel text-xl"> · {order.customer_name}</span>}</h1></div>
         {order.status === "open" && (
           <div className={`w-full sm:w-auto sm:ml-auto grid ${canBill ? "grid-cols-2" : "grid-cols-1"} sm:flex gap-2`}>
-            <Link href={`/orders/new?table=${order.table_id ?? ""}`} className="min-w-0"><Button variant="outline" className="w-full max-sm:!h-12"><Plus size={16} /> Add items</Button></Link>
+            <Link href={`/orders/new?table=${order.table_id ?? ""}&add=${order.id}`} className="min-w-0" data-add-items><Button variant="outline" className="w-full max-sm:!h-12"><Plus size={16} /> Add items</Button></Link>
             {canBill && <Link href={`/billing/${order.id}`} className="min-w-0"><Button className="w-full max-sm:!h-12"><Receipt size={16} /> Bill</Button></Link>}
           </div>
         )}
       </div>
-      <OrderDetail order={order as never} tables={tables ?? []} open={(open ?? []) as never} />
+      <OrderDetail order={order as never} tables={tables} open={(open ?? []) as never} />
     </>
   );
 }

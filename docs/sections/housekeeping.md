@@ -171,3 +171,9 @@ are the whole point and they are theme-dependent.
   (`[data-task-assign]`), the **New task** card, Start (a boss starts only what was given to them) and "X's task — ask a supervisor";
   `canInspect` keeps Pass / Fail / "Supervisor signs off rooms". A Floor Supervisor: Pass / Fail and Start, no Give to…, no New task.
   On a phone the tasks are behind the **Tasks** segment (a probe taps it before counting Start).
+
+## 2026-11-03 — what this board says now decides booking and check-in (0166)
+- "A room is sellable when it is `inspected`, or `clean` if the property has `hk_inspect_required` off" is now enforced:
+  `check_in` and a booking from today refuse a room that is dirty, being cleaned, owed a touch-up, not inspected where required, out
+  of order or still holding a guest (`_room_not_ready`, data-and-rls.md). Front desk's New booking shows the same why on each tile
+  (front-desk.md).

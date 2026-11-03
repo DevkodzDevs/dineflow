@@ -162,3 +162,8 @@ Then receive a small PO on a demo property and confirm the ledger and the level 
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+- **A stock count sent later keeps the sales since (0169, 2026-11-03).** `stock_count(p_counts, p_counted_at default null)`: with a time,
+  the change is counted + every non-count movement since − current stock, and an ingredient counted again after that time (or this very
+  count already applied — a replay) is left alone; null is 0017's rule. The Leaks count goes through `sendOrQueue` and queues
+  `counted_at`. Before, a count taken offline at 3 pm and synced at 6 pm erased three hours of sales.

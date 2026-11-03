@@ -16,7 +16,7 @@ type R = { id: string; reservation_no: number; guest_name: string; guest_phone: 
   booking_id?: string | null; stay?: { id: string; rooms: { number: string } | null; guests: { full_name: string } | null } | null };
 /** Someone staying now (page.tsx), for New booking's Room. */
 export type Stay = { id: string; room: string; guest: string; phone: string };
-type T = { id: string; name: string; capacity: number; status: string };
+type T = { id: string; name: string; capacity: number; status: string; busy?: "cleaning" | "order" | null };
 type V = { id: string; guest_name: string | null; rating: number; body: string | null; reply: string | null; created_at: string };
 type Kind = "coming" | "late" | "seated";
 /** minutes into the day, in India — a booking's time is the restaurant's wall clock */
@@ -213,9 +213,10 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
           <p className="text-sm text-[var(--color-label-2)]">Pick a table. {seating ? `${seating.party_size} people.` : ""}</p>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {tables.map((t) => (
-              <button key={t.id} disabled={t.status === "occupied"} onClick={() => seating && act(seating, "seated", t.id)}
+              /* 0166: a table being cleaned or with an order open cannot be seated (reservation_set refuses it too) */
+              <button key={t.id} disabled={t.status === "occupied" || !!t.busy} onClick={() => seating && act(seating, "seated", t.id)} data-seat-table={t.name} data-busy={t.busy ?? undefined}
                 className={cn("card !min-h-16 p-3 text-center disabled:opacity-35", t.capacity < (seating?.party_size ?? 0) && "border-[var(--color-red)]/40", t.id === seating?.table_id && "ring-2 ring-[var(--color-tint)]")}>
-                <div className="font-display text-xl">{t.name}</div><div className="text-[11px] text-[var(--color-label-2)]">{t.capacity} seats</div>
+                <div className="font-display text-xl">{t.name}</div><div className="text-[11px] text-[var(--color-label-2)]">{t.busy === "cleaning" ? "Being cleaned" : t.busy === "order" || t.status === "occupied" ? "In use" : `${t.capacity} seats`}</div>
               </button>
             ))}
           </div>

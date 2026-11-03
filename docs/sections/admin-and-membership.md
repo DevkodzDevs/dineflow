@@ -369,3 +369,6 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
   limit — a run uses two.
 - **Not covered by a flow test:** what happens only in a browser (the client-side sign-in hand-off, layout at widths, gestures) —
   the scratchpad browser suites keep those (testing-and-gates.md); and the live properties' own data, which it never touches.
+- **Flow tests and 0166 (2026-11-03):** *Order flow* starts on free tables nobody is cleaning; *A second round on the same table* now
+  checks that a second `place_order` is refused ("A busy table takes no second order"), adds the round with `order_add_items` and
+  splits it off with `split_order` for Billing's void step. The hotel's meal for the folio picks a table that is not being cleaned.
