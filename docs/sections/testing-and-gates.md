@@ -618,3 +618,11 @@ of a second." Measured first, on the live site and on a local production build (
   "Confirmed for this stay" with no digits; DB one room-service order, two tickets; an empty room says so at 834. Staff at 1440:
   the kitchen chip "Room", served → the folio's "Room service #n" + GST, the room QR sheet a card per room, Settings' link.
   Page errors are tagged by step (React #418 seen at the 834 step in 2 of 5 runs — open). `hyd170`, `guest170`, `fresh170` hunt it.
+
+- **`pw/book171.mjs` (51)** — Book a room, Edge, :3143, a fresh demo resort (demo_ids.txt; dropdemos after) with a VIP returning guest.
+  1440 dark: Rooms' ready card shows Book and opens the sheet with that room picked; four steps; the button says *Add the guest's name*;
+  the nights counter moves check-out; "3 nights · 3 guests"; "Pri" offers the guest, Use fills her; total = nights × rate + GST by
+  `roomGstFor`; the *1 night* advance → *Due*; Phone; a note; Confirm → the folio, and the row has the guest (no duplicate), dates, rate,
+  adults, source, note and the advance; closing clears `?new`; no page errors. 1920/1440/1194/834/412 dark and 834 paper/colour/bright,
+  412 royal: the foot on screen at rest, no sideways overflow, every sheet control ≥ 44px on touch, 0166 rooms disabled with a why, one
+  night offers no separate Full stay. (shots166's "New booking" button is now *Book a room*, `[data-fd-new-booking]`.)

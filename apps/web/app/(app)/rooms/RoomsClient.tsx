@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Sparkles, Wrench, Check, Trash2, BedDouble } from "lucide-react";
+import { Plus, Pencil, Sparkles, Wrench, Check, Trash2, BedDouble, CalendarPlus } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
 import { Button, Sheet, Field, cn, FlapSpell } from "@/components/ui";
@@ -45,7 +45,8 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
               ];
               return (
               <motion.div key={r.id} className={cn("keycard feather-lift flex flex-col", r.status)} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}>
-                <Link href={b ? `/frontdesk/${b.id}` : "/frontdesk"} className="flex-1 min-h-[6.5rem] p-3 flex flex-col">
+                {/* a ready room books from here (2026-11-03, the owner: "room booking more easily accessible"): Book a room opens with it picked */}
+                <Link href={b ? `/frontdesk/${b.id}` : r.status === "available" ? `/frontdesk?new=1&room=${r.id}` : "/frontdesk"} className="flex-1 min-h-[6.5rem] p-3 flex flex-col" data-room-card={r.number}>
                   {/* the number and housekeeping's dot on one line, the type on its own line under it (2026-10-24, the owner: the
                       text went out of the card). Beside the flaps, "Deluxe Cottage" was shrink-0 and ran past a 184px phone card. */}
                   <span className="font-display text-2xl inline-flex items-center max-w-full">{String(r.number).length <= 4 ? <FlapSpell text={String(r.number)} size="xs" tile={String(r.number).length <= 3 ? "36px" : "32px"} bare say={`Room ${r.number}`} /> : r.number}{r.condition && r.status !== "maintenance" && <span title={`Housekeeping: ${r.condition}`} className={cn("inline-block h-2 w-2 rounded-full ml-1.5 align-middle", CONDITION_DOT[r.condition] ?? "bg-steel")} />}</span><span className="mt-1.5 block text-[11.5px] font-semibold text-[var(--card-muted)] truncate" title={r.room_types?.name ?? undefined} data-room-type>{r.room_types?.name}</span>
@@ -54,7 +55,7 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
                       : r.status === "cleaning" ? <span className="flex items-center gap-1 text-ink"><Sparkles size={12} /> cleaning</span>
                       : r.status === "maintenance" ? <span className="flex items-center gap-1 text-chili"><Wrench size={12} /> maintenance</span>
                       : r.status === "reserved" ? <span className="text-champagne font-semibold">arriving</span>
-                      : <span className="num text-[var(--card-muted)]">{formatINR(Number(r.room_types?.base_rate ?? 0), { whole: true })}<span className="text-[10px]"> / night</span></span>}
+                      : <span className="flex items-center justify-between gap-1.5 min-w-0"><span className="num text-[var(--card-muted)] truncate">{formatINR(Number(r.room_types?.base_rate ?? 0), { whole: true })}<span className="text-[10px]"> / night</span></span><span className="shrink-0 h-6 px-2 rounded-full inline-flex items-center gap-1 text-[11px] font-bold text-[var(--color-tint)] bg-[color-mix(in_srgb,var(--color-tint)_14%,transparent)]" data-room-book><CalendarPlus size={12} aria-hidden />Book</span></span>}
                   </div>
                 </Link>
                 <div className="grid gap-1 px-1.5 pb-1.5" style={{ gridTemplateColumns: `repeat(${acts.length + 1}, minmax(0, 1fr))` }}>

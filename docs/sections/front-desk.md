@@ -232,3 +232,24 @@ pnpm --filter @dineflow/web typecheck
   bill when served" (`[data-folio-order="room"]`); **Post to room** still works on it (it serves it at once).
 - **Check-out refuses while room service is open on the stay**: "room service order #n is still open — post it to the room or bill
   it before check-out" — before, food still cooking at check-out was never charged.
+
+## 2026-11-03 — Book a room: four steps, one sheet, a foot that says what is missing
+The owner: "room booking options more easily accessible, more user friendly and easily understandable." The form moved out of
+`FrontDeskClient.tsx` into **`frontdesk/BookingForm.tsx`** (+ `BookingForm.module.css`; `COND_TONE`, `Room`, `RoomTax` are exported from
+it). The button and the sheet are **Book a room** (`[data-fd-new-booking]`; it was "New booking" — a probe that clicked that text needs
+the hook). The empty Upcoming board has a *Booking* button too.
+- **Four numbered steps** (`[data-step=when|room|guest|pay]`), each number a tick when done. **When**: the two dates and counters for
+  Nights · Adults · Children (`[data-counter]`, 44px − / +); moving check-in keeps the nights, check-out is never on or before it.
+  **Room**: room-type chips — rate, sleeps, *n free* (`[data-room-type-chip]`, a filter over the same list); the picker, the layout switch
+  and **every part of 0166 unchanged** (`whyNot`, `ranked`, `[data-rooms-open]`, `RoomPick` with `why` / `[data-why]` / disabled); a room that
+  sleeps fewer than the party warns, it does not refuse (`[data-sleeps-warn]`). **Guest**: one name and one phone; a returning guest
+  (the 200 most recent) appears as either is typed (`[data-guest-matches]`), *Use* fills both (`[data-guest-chosen]`, *Change* undoes it);
+  ID and email fold under *+ ID and email*. **Payment**: the rate (with *Use it* back to the type's rate when changed), the advance with
+  None · 1 night · Full stay (Full stay only when more than one night), **Booked by** Walk-in · Phone · OTA · Agent, and *+ Note* —
+  `notes` reaches `create_booking` for the first time.
+- **The foot** (`[data-booking-foot]`, `data-no-foot` so the kit's own foot does not pin the button alone): "Room 102 · 3 nights · 3 guests",
+  the room charge + GST, the advance; **Total**, or **Due at check-out** after an advance. The GST is the folio's: `roomGstFor(rate, low, high,
+  threshold)` only where `gstCollectable` (page.tsx passes `tax`; defaults 5 / 18 / 7,500 as `room_gst_for`). The button names what is
+  missing — *Pick a room*, *Room 102: booked — pick another*, *Add the guest's name* — until it is **Confirm booking**.
+- **`/frontdesk?new=1&room=<id>`** opens the sheet with that room picked (`openNew`); closing it takes `?new` off the URL.
+- Checked: `pw/book171.mjs` (51) — testing-and-gates.md.

@@ -3,11 +3,12 @@ import { holdDue } from "@/lib/holdDue";
 import { requireSession } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { todayIST } from "@/lib/format";
-import { modulesFor } from "@dineflow/shared";
+import { modulesFor, gstCollectable } from "@dineflow/shared";
 import { FrontDeskClient } from "./FrontDeskClient";
 export const metadata = { title: "Front desk" };
 export const dynamic = "force-dynamic";
-export default async function FrontDesk() {
+export default async function FrontDesk({ searchParams }: { searchParams: Promise<{ new?: string; room?: string }> }) {
+  const { new: fresh, room } = await searchParams;
   const s = await createClient(); const today = todayIST(); const held = holdDue(s);   // a booking due now holds its table or room (0154)
   // the session is fetched alongside the rows, not in front of them — one round trip, not two
   const [session, { data: bookings }, { data: rooms }, { data: types }, { data: guests }, { data: tableBookings }] = await Promise.all([
@@ -20,11 +21,14 @@ export default async function FrontDesk() {
     s.from("reservations").select("id, at_time, guest_name, party_size, status, table:table_id(name), stay:booking_id(rooms(number))").eq("on_date", today).in("status", ["requested", "confirmed", "seated"]).order("at_time"),
   ]);
   await held;
+  const r = session.restaurant;
+  // the GST the folio will add to the room (roomGstFor: the slab by the nightly rate), so Book a room shows the same total
+  const tax = { on: gstCollectable(r.gst_scheme, r.gstin), low: Number(r.room_gst_rate ?? 5), high: Number(r.room_gst_rate_high ?? 18), threshold: Number(r.room_gst_threshold ?? 7500) };
   return (
     <>
       <PageHeader eyebrow={session.restaurant.property_type === "resort" ? "Resort · reception" : "Hotel · reception"} title="Front" accent="desk" sub={`Check-in ${session.restaurant.check_in_time.slice(0, 5)} · Check-out ${session.restaurant.check_out_time.slice(0, 5)}`} />
       <FrontDeskClient today={today} bookings={(bookings ?? []) as never} rooms={(rooms ?? []) as never} types={types ?? []} guests={guests ?? []} inspectRule={!!session.restaurant.hk_inspect_required}
-        tableBookings={(tableBookings ?? []) as never} canBook={modulesFor(session.restaurant.property_type, session.profile.role, session.restaurant.enabled_modules ?? null, session.profile.allowed_modules ?? null).includes("reservations")} />
+        tableBookings={(tableBookings ?? []) as never} tax={tax} openNew={fresh ? { room: room ?? "" } : null} canBook={modulesFor(session.restaurant.property_type, session.profile.role, session.restaurant.enabled_modules ?? null, session.profile.allowed_modules ?? null).includes("reservations")} />
     </>
   );
 }

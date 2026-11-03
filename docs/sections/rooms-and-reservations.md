@@ -190,3 +190,7 @@ already chosen, or one that fits the party."
 ## 2026-11-03 — Seat now offers only a free table (0166)
 - `page.tsx` reads the open cleaning jobs and open orders; *Seat now*'s sheet disables a table being cleaned (*Being cleaned*) or with an
   order on it (*In use*) — `[data-seat-table]`, `[data-busy="cleaning|order"]`. `reservation_set` refuses both (data-and-rls.md, 0166).
+
+## 2026-11-03 — a ready room books from its card
+- A Ready room's card (`[data-room-card]`) links to `/frontdesk?new=1&room=<id>` — Book a room opens with it picked — and its foot shows a
+  **Book** pill beside the rate (`[data-room-book]`). Occupied rooms still open their folio; the others the front desk. front-desk.md.
