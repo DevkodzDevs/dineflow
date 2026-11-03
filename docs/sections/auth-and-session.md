@@ -207,3 +207,18 @@ pnpm --filter @dineflow/web build
   (`driftLow` — keyframes nested in a container query are not honoured by Safari) · one row of two tiles (≤ 218) · none (≤ 180).
   shots163: 1194×834 four compact tiles 515–725 with the tagline at 769; 1180×820 one row; 1194×744, 1024×768, 1280×720 none;
   1366×1024, 1440×900, 1920×1080 clear of the tagline; 834 and 412 have no wall. Never under the tagline, never past the foot.
+
+## 2026-11-03 — the wall's headline, redesigned
+- **The owner's iPad (royal): "upgrade this marked section — ultra modern, unique, user friendly"** — the headline *Orders, rooms
+  and stock on one board.* and its grey line under the clock. Now `Headline.tsx` / `Headline.module.css` (`[data-auth-headline]`,
+  a server component, pure CSS): three glass word tokens — **Orders · Rooms · Stock**, in the live board's hues (kitchen orange,
+  front desk blue, pantry violet) — on a wire a light runs along, each token lighting as it passes; then **All on one board.** in
+  a slow sheen (the theme's own display face — royal's serif, dark's condensed); then what it does as two chips, *Phone orders
+  reach the kitchen at once* and *Stock updates by itself*. Still for reduced motion. The h1 keeps the full sentence for screen
+  readers (`sr-only`; the tokens and the line are `aria-hidden`).
+- **Each visible phrase is one text node** so the whole-app Tamil / Hindi pass translates it whole; do not split a phrase into
+  spans. Under `html[data-lang-all]` the line and chips step down (wider glyphs), so the live board keeps its room: at 1194×834
+  in Tamil the board shows (two tiles). A short wall (`max-height: 860px`) is tighter too. The flap clock is untouched.
+- Probe `head.mjs` (WebKit, production build on :3171): five themes × 1920×1080, 1440×900, 1194×834, 1366×1024, 1180×820 — the
+  headline above the tagline, the board between them, the wall the screen's height, no sideways scroll, no page errors; 834 and
+  412 have no wall; Tamil reads *எல்லாம் ஒரே போர்டில்.*; reduced motion stops every animation. 208/208.
