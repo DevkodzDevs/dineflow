@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Printer, Plus, Trash2, QrCode, Smartphone, Timer, MessageCircle, Ticket as TicketIcon, UserRound, Coins, Copy, Check, ExternalLink, X, Package, Undo2, Percent, ChevronDown } from "lucide-react";
-import { Button, Field, Card, cn, Pill } from "@/components/ui";
+import { Button, Field, Card, cn, Pill, PhoneInput } from "@/components/ui";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { computeBill, formatINR, PAYMENT_METHODS, billTitle, SAC, gstCollectable, lineExtras, type PaymentMethod, type TaxLine } from "@dineflow/shared";
 import { RefundSheet } from "./RefundSheet";
@@ -225,7 +225,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
                 <motion.div key="guest" id="bill-guest-panel" data-bill-panel="guest" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
                   <div className="pt-3 pb-0.5 space-y-3">
-                    <div className="grid grid-cols-2 gap-3"><input placeholder="Phone" inputMode="tel" className="num" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} /><input placeholder="Name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} /></div>
+                    <div className="grid grid-cols-2 gap-3"><PhoneInput placeholder="Phone" value={guest.phone} onValue={(v) => setGuest({ ...guest, phone: v })} /><input placeholder="Name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} /></div>
                     {known ? (
                       <div className="rounded-xl bg-[var(--color-fill)] px-3 py-2 text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span className="font-semibold">{known.name ?? "Known guest"}</span><span className="text-steel">{known.visits} visit{known.visits === 1 ? "" : "s"} · {formatINR(Number(known.total_spend))}</span>

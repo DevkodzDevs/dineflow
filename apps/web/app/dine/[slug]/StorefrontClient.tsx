@@ -1,9 +1,10 @@
 "use client";
+import { isMobile } from "@/lib/phone";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, ChevronRight, Minus, Plus, Bike, ShoppingBag, UtensilsCrossed, BedDouble, Users, CalendarDays, Building2, TreePalm, Trash2, User, Wallet, AlertCircle, Send, LoaderCircle, SlidersHorizontal } from "lucide-react";
-import { Button, Field, Segmented, Sheet, Select, cn } from "@/components/ui";
+import { Button, Field, Segmented, Sheet, Select, cn, PhoneInput } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DishImage } from "@/components/menu/DishImage";
 import { slots as fetchSlots, reserve, placeOrder, trackToken } from "../actions";
@@ -284,7 +285,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                 <h2 className="text-xl mb-4">Your details</h2>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Field label="Name"><input value={guest.full_name} onChange={(e) => setGuest({ ...guest, full_name: e.target.value })} /></Field>
-                  <Field label="Phone"><input value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} className="num" /></Field>
+                  <Field label="Phone"><PhoneInput value={guest.phone} onValue={(v) => setGuest({ ...guest, phone: v })} /></Field>
                   <Field label="Occasion (optional)"><Select value={occasion} onChange={setOccasion} placeholder="Just dining" options={[{ value: "", label: "Just dining" }, { value: "Birthday", label: "🎂 Birthday" }, { value: "Anniversary", label: "💍 Anniversary" }, { value: "Business", label: "💼 Business meal" }, { value: "Family", label: "👨‍👩‍👧 Family get-together" }]} /></Field>
                   <Field label="Anything we should know"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Window table, high chair…" /></Field>
                 </div>
@@ -293,7 +294,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
                   {slot.offer_pct ? <span className="pill pill-gold">{slot.offer_pct}% off</span> : null}
                 </div>
                 {err && <div role="alert" className="mt-4 flex gap-2.5 rounded-[16px] bg-[var(--color-red-2)] text-[var(--color-red)] px-3.5 py-3 text-[13.5px] font-semibold" data-book-error><AlertCircle size={18} className="shrink-0 mt-px" aria-hidden />{err}</div>}
-                <Button size="lg" className="w-full mt-4" loading={pending} disabled={!guest.full_name || !guest.phone}
+                <Button size="lg" className="w-full mt-4" loading={pending} disabled={!guest.full_name || !isMobile(guest.phone)}
                   onClick={() => start(async () => { const r = await reach(() => reserve(slug, guest, date, slot.time, party, occasion, note, slot.offer_id)); if ("error" in r) setErr(nice(r.error!)); else setDone({ kind: "book", data: r.booking as Record<string, unknown> }); })}>
                   Confirm booking
                 </Button>
@@ -432,7 +433,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
               </Field>
             )) : <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
               <Field label="Name"><div className="relative"><User size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-label-3)] pointer-events-none" aria-hidden /><input aria-label="Name" autoComplete="name" value={guest.full_name} onChange={(e) => setGuest({ ...guest, full_name: e.target.value })} placeholder="Your name" className="!pl-11" /></div></Field>
-              <Field label="Phone"><div className="relative"><Phone size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-label-3)] pointer-events-none" aria-hidden /><input aria-label="Phone" type="tel" inputMode="tel" autoComplete="tel" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} placeholder="10-digit mobile" className="num !pl-11" /></div></Field>
+              <Field label="Phone"><div className="relative"><Phone size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-label-3)] pointer-events-none" aria-hidden /><PhoneInput aria-label="Phone" value={guest.phone} onValue={(v) => setGuest({ ...guest, phone: v })} placeholder="10-digit mobile" className="!pl-11" /></div></Field>
             </div>}
             {omode === "delivery" && <Field label="Delivery address"><textarea rows={2} value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Door number, street, landmark" /></Field>}
             <Field label="Note for the kitchen"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Less spicy, no onion…" /></Field>
@@ -451,10 +452,10 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
           {atRoom
             ? (!d.room!.in_house ? <p className="text-center text-[12.5px] text-[var(--color-red)]" data-order-needs>No guest is checked in to this room — please call reception</p>
                : !pass && digits.length !== 4 && <p className="text-center text-[12.5px] text-[var(--color-label-3)]" data-order-needs>Enter the last 4 digits of your phone number to order</p>)
-            : (!guest.full_name || !guest.phone) && <p className="text-center text-[12.5px] text-[var(--color-label-3)]" data-order-needs>Add your name and phone to place the order</p>}
+            : (!guest.full_name || !isMobile(guest.phone)) && <p className="text-center text-[12.5px] text-[var(--color-label-3)]" data-order-needs>Add your name and phone to place the order</p>}
           <GuestNotice property={d.name} use="for this order" />
           <div>
-            <button type="button" onClick={placeNow} disabled={pending || (atRoom ? !d.room!.in_house || (!pass && digits.length !== 4) : !guest.full_name || !guest.phone) || (!inPlace && sub < Number(d.min_order)) || (omode === "delivery" && !addr)}
+            <button type="button" onClick={placeNow} disabled={pending || (atRoom ? !d.room!.in_house || (!pass && digits.length !== 4) : !guest.full_name || !isMobile(guest.phone)) || (!inPlace && sub < Number(d.min_order)) || (omode === "delivery" && !addr)}
               className="w-full h-14 rounded-[18px] pl-5 pr-2 flex items-center gap-3 bg-[var(--color-tint)] text-[var(--color-on-tint)] text-[16px] font-bold shadow-[0_16px_30px_-16px_color-mix(in_srgb,var(--color-tint)_90%,transparent)] disabled:opacity-45 active:scale-[.985] transition" data-place-order>
               {pending ? <LoaderCircle size={20} className="animate-spin shrink-0" aria-hidden /> : <Send size={18} className="shrink-0" aria-hidden />}
               <span className="flex-1 text-left">{pending ? "Placing…" : "Place order"}</span>

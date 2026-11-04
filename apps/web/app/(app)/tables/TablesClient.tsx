@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Armchair, Clock, Receipt, CalendarClock, SprayCan, Plus, QrCode, Settings2, ClipboardList, Phone, IndianRupee, ChevronRight, Check } from "lucide-react";
+import { Armchair, Clock, Receipt, CalendarClock, SprayCan, Plus, QrCode, Settings2, ClipboardList, Phone, IndianRupee, ChevronRight, Check, Link2, Lock } from "lucide-react";
 import { Card, Sheet, cn } from "@/components/ui";
 import { SvcHead } from "@/components/ui/Service";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -35,7 +35,7 @@ const amountOf = (o: OpenOrder) => { const unpaid = o.bills?.find((b) => b.statu
  * its items and their state, who took it, how long they have sat), the bookings on it today, today's bills there and
  * how long a sitting took, its cleaning job — with Take order / Add items and Bill at the foot.
  */
-export function TablesClient({ tables, open, paid, booked, cleaning, names, slug, canEdit }: { tables: TableRow[]; open: OpenOrder[]; paid: PaidBill[]; booked: Booking[]; cleaning: Clean[]; names: Record<string, string>; slug: string; canEdit: boolean }) {
+export function TablesClient({ tables, open, paid, booked, cleaning, names, slug, canEdit, merged = {} }: { tables: TableRow[]; open: OpenOrder[]; paid: PaidBill[]; booked: Booking[]; cleaning: Clean[]; names: Record<string, string>; slug: string; canEdit: boolean; merged?: Record<string, string[]> }) {
   useLive(["orders", "order_items", "bills", "dining_tables", "reservations", "table_cleanings"]);
   const [filter, setFilter] = useState<St | "all">("all"); const [zone, setZone] = useState<string>("all"); const [pick, setPick] = useState<string | null>(null);
   const [origin, setOrigin] = useState(""); useEffect(() => { setOrigin(location.origin); }, []);
@@ -43,16 +43,25 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
   const nowMin = minsOf(new Date(now + 5.5 * 3600e3).toISOString().slice(11, 16));
   const openBy = useMemo(() => new Map(open.map((o) => [o.table_id, o])), [open]);
   const cleanBy = useMemo(() => new Map(cleaning.map((c) => [c.table_id, c])), [cleaning]);
+  /* merged tables (2026-11-04, the owner: "show that both tables are merged", lib/merged.ts): a table whose order joined
+     another one's shows that order — its state and total, "With T3" — and the table it joined "+ T5" */
+  const nameOf = useMemo(() => new Map(tables.map((x) => [x.id, x.name])), [tables]);
+  const joinedTo = useMemo(() => { const m = new Map<string, OpenOrder>(); open.forEach((o) => (merged[o.id] ?? []).forEach((tid) => { if (!openBy.has(tid) && !cleanBy.has(tid)) m.set(tid, o); })); return m; }, [open, merged, openBy, cleanBy]);
+  const orderAt = (id: string) => openBy.get(id) ?? joinedTo.get(id);
+  /** the other tables of a merged party, by name: on the table the order sits on, the ones that joined it; on one that joined, the order's own table first */
+  const partners = (id: string): string[] => { const o = orderAt(id); if (!o) return []; const joinedHere = (merged[o.id] ?? []).filter((tid) => joinedTo.get(tid) === o);
+    if (!joinedHere.length) return [];
+    return [o.table_id, ...joinedHere].filter((tid) => tid !== id).map((tid) => nameOf.get(tid)).filter((n): n is string => !!n); };
   const bookingsOf = (id: string) => booked.filter((b) => b.table_id === id);
   // a booking still holds the table for half an hour after its time — the party may be running late
   const nextOf = (id: string) => bookingsOf(id).find((b) => b.status !== "seated" && minsOf(b.at_time) >= nowMin - 30);
   const paidOf = (id: string) => paid.filter((b) => b.orders?.table_id === id);
-  const stOf = (t: TableRow): St => { const o = openBy.get(t.id); if (o) return o.bills?.some((b) => b.status === "unpaid") ? "bill" : "use"; if (cleanBy.has(t.id)) return "clean"; if (nextOf(t.id)) return "reserved"; return "free"; };
+  const stOf = (t: TableRow): St => { const o = orderAt(t.id); if (o) return o.bills?.some((b) => b.status === "unpaid") ? "bill" : "use"; if (cleanBy.has(t.id)) return "clean"; if (nextOf(t.id)) return "reserved"; return "free"; };
   const zones = [...new Set(tables.map((t) => t.zone || "Main"))];
   const counts = tables.reduce((m, t) => { const s = stOf(t); m[s] = (m[s] ?? 0) + 1; return m; }, {} as Partial<Record<St, number>>);
   const shown = tables.filter((t) => (filter === "all" || stOf(t) === filter) && (zone === "all" || (t.zone || "Main") === zone));
   const takings = paid.reduce((s, b) => s + Number(b.total), 0);
-  const seatsUsed = tables.filter((t) => openBy.has(t.id)).reduce((s, t) => s + t.capacity, 0), seats = tables.reduce((s, t) => s + t.capacity, 0);
+  const seatsUsed = tables.filter((t) => !!orderAt(t.id)).reduce((s, t) => s + t.capacity, 0), seats = tables.reduce((s, t) => s + t.capacity, 0);
   const t = tables.find((x) => x.id === pick) ?? null;
 
   const tiles = [
@@ -113,7 +122,7 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
               {/* a table (2026-10-30, the owner: "ultra-modern, unique"): a bar in its state's colour along the top and a glow in
                   its corner, the name big and the state as a pill with its icon, a dot a seat (lit while it is in use), the one
                   thing to know — what it has come to, who is cleaning it, who is coming, or ready — and today's bills at its foot */}
-              {list.map((tb) => { const s = stOf(tb); const o = openBy.get(tb.id); const nb = nextOf(tb.id); const c = cleanBy.get(tb.id); const day = paidOf(tb.id); const SI = ST_ICON[s];
+              {list.map((tb) => { const s = stOf(tb); const o = orderAt(tb.id); const pals = partners(tb.id); const joined = !!o && o.table_id !== tb.id; const nb = nextOf(tb.id); const c = cleanBy.get(tb.id); const day = paidOf(tb.id); const SI = ST_ICON[s];
                 const items = o ? o.order_items.filter((i) => i.status !== "cancelled").length : 0; return (
                 <button key={tb.id} type="button" onClick={() => setPick(tb.id)} data-table-row={tb.name} data-table-state={s}
                   className="tcard" style={{ "--hue": `var(${ST[s].hue})` } as React.CSSProperties}>
@@ -122,6 +131,9 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
                     <span className="tcard-name truncate">{tb.name}</span>
                     <span className="tcard-state" data-live={s === "use" || s === "bill" || s === "clean" || undefined}><SI size={13} strokeWidth={2.4} aria-hidden />{ST[s].label}</span>
                   </div>
+                  {pals.length > 0 && <div className="self-start !w-fit max-w-full h-6 px-2 -mt-0.5 rounded-full inline-flex items-center gap-1 text-[12px] font-bold num"
+                    style={{ color: "var(--hue)", background: "color-mix(in srgb, var(--hue) 15%, transparent)" }} data-merged={joined ? "joined" : "into"} title={`Merged with ${pals.join(", ")}`}>
+                    <Link2 size={12} strokeWidth={2.4} aria-hidden className="shrink-0" /><span className="truncate">{joined ? `With ${pals[0]}` : `+ ${pals.join(" + ")}`}</span></div>}
                   <div className="tcard-seats" aria-label={`${tb.capacity} seats`}>
                     {Array.from({ length: Math.min(tb.capacity, 8) }, (_, i) => <span key={i} className="tcard-seat" data-on={o ? "" : undefined} />)}
                     <span className="ml-1 text-[11.5px] font-semibold text-steel num">{tb.capacity > 8 ? `+${tb.capacity - 8} · ` : ""}{tb.capacity} seats</span>
@@ -142,7 +154,7 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
       {tables.length > 0 && shown.length === 0 && <p className="text-[14px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] p-6 text-center">No tables {filter === "all" ? "in this zone" : ST[filter as St].label.toLowerCase()}</p>}
 
       <Sheet open={!!t} onClose={() => setPick(null)} title={t ? `Table ${t.name}` : ""} wide>
-        {t && <TableDetail t={t} st={stOf(t)} o={openBy.get(t.id)} bookings={bookingsOf(t.id)} bills={paidOf(t.id)} clean={cleanBy.get(t.id)} names={names} qrUrl={t.qr_token && slug && origin ? `${origin}/dine/${slug}?t=${t.qr_token}` : null} />}
+        {t && <TableDetail t={t} st={stOf(t)} o={orderAt(t.id)} pals={partners(t.id)} bookings={bookingsOf(t.id)} bills={paidOf(t.id)} clean={cleanBy.get(t.id)} names={names} qrUrl={t.qr_token && slug && origin ? `${origin}/dine/${slug}?t=${t.qr_token}` : null} />}
       </Sheet>
     </div>
   );
@@ -150,7 +162,9 @@ export function TablesClient({ tables, open, paid, booked, cleaning, names, slug
 
 /** One table, completely: its facts, what is on it now, today's bookings and bills on it, cleaning — and the moves. Its QR
  *  is not drawn here (2026-10-30, the owner: "no need to show here") — the head's Table QR codes has every table's. */
-function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: TableRow; st: St; o?: OpenOrder; bookings: Booking[]; bills: PaidBill[]; clean?: Clean; names: Record<string, string>; qrUrl: string | null }) {
+function TableDetail({ t, st, o, pals = [], bookings, bills, clean, names, qrUrl }: { t: TableRow; st: St; o?: OpenOrder; pals?: string[]; bookings: Booking[]; bills: PaidBill[]; clean?: Clean; names: Record<string, string>; qrUrl: string | null }) {
+  /* the bill is printed (unpaid) or paid: nothing more goes on it (0165/0167 refuse it too) — Add items is shown, switched off */
+  const billed = !!o?.bills?.some((b) => b.status === "unpaid" || b.status === "paid");
   const items = o?.order_items.filter((i) => i.status !== "cancelled") ?? [];
   const sat = bills.filter((b) => b.orders?.created_at).map((b) => (new Date(b.paid_at).getTime() - new Date(b.orders!.created_at).getTime()) / 60000).filter((m) => m > 0 && m < 600);
   const avgSit = sat.length ? Math.round(sat.reduce((s, m) => s + m, 0) / sat.length) : null;
@@ -172,6 +186,8 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
           <div className="rounded-2xl border border-[var(--color-separator)] overflow-hidden">
             <div className="px-3.5 py-3 flex flex-wrap items-center gap-x-3 gap-y-1 bg-[var(--color-fill)]">
               <span className="font-bold num">Order #{o.order_no}</span>
+              {pals.length > 0 && <span className="h-6 px-2 rounded-full inline-flex items-center gap-1 text-[12px] font-bold num bg-[color-mix(in_srgb,var(--color-blue)_15%,transparent)] text-[var(--color-blue)]" data-merged-detail>
+                <Link2 size={12} strokeWidth={2.4} aria-hidden />Merged · {[t.name, ...pals].join(" + ")}</span>}
               {o.customer_name && <span className="text-[13px] text-[var(--color-label-2)] truncate">{o.customer_name}</span>}
               <span className="ml-auto text-[12.5px] text-steel num inline-flex items-center gap-1" suppressHydrationWarning><Clock size={13} aria-hidden />since {hm(o.created_at)} · {fmtSince(o.created_at)}</span>
               {o.created_by && <span className="w-full text-[12px] text-steel">Taken by {names[o.created_by] ?? "—"}</span>}
@@ -224,7 +240,11 @@ function TableDetail({ t, st, o, bookings, bills, clean, names, qrUrl }: { t: Ta
         {/* 0166 (the owner): a table being cleaned takes no order until it is marked clean — place_order refuses it too */}
         {!o && clean
           ? <span className="svc-btn quiet flex-1 cursor-default" aria-disabled="true" data-take-blocked><SprayCan size={17} aria-hidden />Being cleaned</span>
-          : <Link href={o ? `/orders/new?table=${t.id}&add=${o.id}` : `/orders/new?table=${t.id}`} className="svc-btn go flex-1"><Plus size={18} aria-hidden />{o ? "Add items" : "Take order"}</Link>}
+          : o && billed
+            /* bill out (2026-11-04, the owner: "when the bill is out, Add items should be disabled") */
+            ? <button type="button" disabled className="svc-btn go flex-1" data-add-items-blocked aria-label="Add items — the bill is printed; void it to add more">
+                <Lock size={17} aria-hidden /><span className="flex flex-col items-start leading-tight"><span>Add items</span><span className="text-[11.5px] font-semibold opacity-80">Bill printed</span></span></button>
+            : <Link href={o ? `/orders/new?table=${o.table_id}&add=${o.id}` : `/orders/new?table=${t.id}`} className="svc-btn go flex-1" data-add-items={o ? "" : undefined}><Plus size={18} aria-hidden />{o ? "Add items" : "Take order"}</Link>}
         {o && <Link href={`/billing/${o.id}`} className="svc-btn quiet flex-1"><Receipt size={17} aria-hidden />Bill</Link>}
       </div>
     </div>

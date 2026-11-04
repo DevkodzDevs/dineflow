@@ -1,9 +1,10 @@
 "use client";
+import { okPhone } from "@/lib/phone";
 import { useState, useTransition, useEffect, type ReactNode } from "react";
 import { type LucideIcon, Phone, Bell, BellRing, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check, Hourglass, Clock, Timer, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { waHref, firstName } from "@/lib/wa";
-import { Card, useToast, cn, FlapShuffle, FlapSpell, FlapClock, FlapBreathe } from "@/components/ui";
+import { Card, useToast, cn, FlapShuffle, FlapSpell, FlapClock, FlapBreathe, PhoneInput } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import { motion } from "framer-motion";
@@ -205,12 +206,12 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
           <div className="mt-5"><Step n={2}>Their name and phone</Step></div>
           <div className="grid grid-cols-1 @[26rem]:grid-cols-2 gap-2">
             <input placeholder="Name" aria-label="Guest's name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="!h-12" autoComplete="off" />
-            <input placeholder="Phone (optional)" aria-label="Guest's phone (optional)" inputMode="tel" className="num !h-12" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} autoComplete="off" />
+            <PhoneInput placeholder="Phone (optional)" aria-label="Guest's phone (optional)" className="!h-12" value={form.phone} onValue={(v) => setForm({ ...form, phone: v })} autoComplete="off" />
           </div>
           <p className="mt-1.5 text-[12px] text-steel">Phone for WhatsApp alert</p>
 
           <div className="mt-5"><Step n={3}>Add to list</Step></div>
-          <button type="button" className="svc-btn go xl w-full" disabled={!form.name.trim() || pending} onClick={add} data-add-walkin><UserPlus size={21} aria-hidden /><Say w="add_waiting" /></button>
+          <button type="button" className="svc-btn go xl w-full" disabled={!form.name.trim() || pending || !okPhone(form.phone)} onClick={add} data-add-walkin><UserPlus size={21} aria-hidden /><Say w="add_waiting" /></button>
           <p className="mt-2 text-[12px] text-steel">{pulse.history_days >= 7 ? `Learned from ${pulse.history_days} days` : "Assumes 45 min a table"}</p>
         </Card>
 

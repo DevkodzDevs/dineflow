@@ -4,7 +4,7 @@ import Link from "next/link";
 import { csvCell } from "@/lib/csv";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Landmark, Pencil, Plus, Trash2, Undo2, UserRound, X } from "lucide-react";
-import { Button, Card, CardStrip, Field, Pill, Sheet, cn, type StripAction, ask } from "@/components/ui";
+import { Button, Card, CardStrip, Field, Pill, Sheet, cn, type StripAction, ask, PhoneInput } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DOC_KINDS, GST_STATES, financialYear, statutoryCalendar, taxLabels, type CalendarItem } from "@dineflow/shared";
 import { saveTaxProfile, saveDoc, deleteDoc, markFiled, unmarkFiled } from "./actions";
@@ -341,7 +341,7 @@ function Profile({ r, role, pending, onSave }: { r: Rest; role: string; pending:
           <div className="space-y-4">
             <Field label="Name"><input name="ca_name" defaultValue={r.ca_name ?? ""} /></Field>
             <Field label="Firm"><input name="ca_firm" defaultValue={r.ca_firm ?? ""} /></Field>
-            <div className="grid grid-cols-2 gap-3"><Field label="ICAI membership no."><input name="ca_membership_no" className="num" defaultValue={r.ca_membership_no ?? ""} /></Field><Field label="Phone"><input name="ca_phone" className="num" defaultValue={r.ca_phone ?? ""} /></Field></div>
+            <div className="grid grid-cols-2 gap-3"><Field label="ICAI membership no."><input name="ca_membership_no" className="num" defaultValue={r.ca_membership_no ?? ""} /></Field><Field label="Phone"><PhoneInput name="ca_phone" defaultValue={r.ca_phone ?? ""} /></Field></div>
             <Field label="Email"><input name="ca_email" type="email" defaultValue={r.ca_email ?? ""} /></Field>
           </div>
         </Card>

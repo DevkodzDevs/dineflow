@@ -1,10 +1,11 @@
 "use client";
+import { okPhone } from "@/lib/phone";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { dishMatch } from "@/lib/tillSearch";
 import { motion, AnimatePresence } from "framer-motion";
 import { Minus, Plus, Search, Send, AlertTriangle, Mic, MicOff, Sparkles, Loader2, X, Timer, SlidersHorizontal, Layers, ListOrdered, Armchair, UtensilsCrossed, UserRound, MessageSquarePlus, Clock, Check, MessageSquareText, Repeat, ShoppingBag, Bike, BedDouble, Utensils, Package, Trash2, IndianRupee, Maximize2, Eye, ChevronUp } from "lucide-react";
-import { Button, Sheet, cn, useToast, FlapMini } from "@/components/ui";
+import { Button, Sheet, cn, useToast, FlapMini, PhoneInput } from "@/components/ui";
 import { Say, CatIcon } from "@/components/ui/Say";
 import { SVC_ICON, stClass } from "@/components/ui/Service";
 import { catIcon } from "@/lib/say";
@@ -318,6 +319,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
     if (shortfalls.length > 0 && stockBlock) { setWarned(true); return setErr("Not enough in the pantry — reduce or remove the marked dishes"); }
     if (shortfalls.length > 0 && !warned) return setWarned(true);
     if (type === "room_service" && !room && !adding) return setErr("Pick the guest room");
+    if (!okPhone(customer.phone)) { setCartOpen(true); return setErr("The guest's phone needs all 10 digits"); }
     const label = type === "dine_in" ? (tables.find((t) => t.id === tableId)?.name ?? "Table") : type === "room_service" ? customer.name : type.replace("_", " ");
     const payload = { type, promise: promised, table_id: type === "dine_in" ? tableId : null, customer_name: customer.name || null, customer_phone: customer.phone || null, note: ([ticketNote.trim(), ...parcelNote()].filter(Boolean).join(" · ")) || null,
       items: lines.map((l) => ({ menu_item_id: l.item.id, qty: l.qty, notes: l.note || undefined, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id), course: coursing ? l.course : 1 })) };
@@ -581,9 +583,9 @@ export function PosClient({ categories, items, tables, initialTable, initialType
                         className="!h-11 !min-h-11 !py-0 !px-3.5 !rounded-xl min-w-0"
                         onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.parentElement?.querySelector<HTMLInputElement>("[data-guest-phone]")?.focus(); } }} />
-                      <input type="tel" placeholder="Phone" aria-label="Guest phone" inputMode="tel" autoComplete="off" enterKeyHint="done" value={customer.phone}
-                        className="num !h-11 !min-h-11 !py-0 !px-3.5 !rounded-xl min-w-0" data-guest-phone
-                        onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
+                      <PhoneInput placeholder="Phone" aria-label="Guest phone" autoComplete="off" enterKeyHint="done" value={customer.phone}
+                        className="!h-11 !min-h-11 !py-0 !px-3.5 !rounded-xl min-w-0" data-guest-phone
+                        onValue={(v) => setCustomer({ ...customer, phone: v })}
                         onKeyDown={(e) => { if (e.key === "Enter") setGuestOpen(false); }} />
                     </div>
                   </div>
@@ -597,7 +599,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
       ) : (
         <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-x-0">
           <input placeholder="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className="lg:!rounded-r-none lg:!text-[15px] lg:!px-3.5" data-cust-name />
-          <input placeholder="Phone" inputMode="tel" className="num lg:!rounded-l-none lg:![border-left:1px_solid_var(--color-separator)] lg:!text-[15px] lg:!px-3.5" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} data-cust-phone />
+          <PhoneInput placeholder="Phone" className="lg:!rounded-l-none lg:![border-left:1px_solid_var(--color-separator)] lg:!text-[15px] lg:!px-3.5" value={customer.phone} onValue={(v) => setCustomer({ ...customer, phone: v })} data-cust-phone />
           {type === "delivery" && <textarea placeholder="Delivery address" rows={2} className="col-span-2 lg:!text-[15px] lg:!px-3.5 lg:!py-2.5 lg:!min-h-[68px] lg:resize-none" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} data-delivery-address />}
           <div className="col-span-2 mt-1 space-y-2 lg:mt-1.5 lg:space-y-3" data-parcel-details>
             <div>

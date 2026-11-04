@@ -711,6 +711,8 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, te
   transition: background var(--dur-fast), box-shadow var(--dur), border-color var(--dur-fast); -webkit-appearance: none; appearance: none; }
 input:hover, select:hover, textarea:hover { background-color: var(--color-fill-2); }
 input:focus, select:focus, textarea:focus { background-color: var(--color-bg-2); border-color: color-mix(in srgb, var(--color-tint) 60%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-tint) 18%, transparent); }
+/* a box left with something it cannot take — a half-typed phone number (PhoneInput, 2026-11-04) — rings red */
+input[aria-invalid="true"], input[aria-invalid="true"]:focus { border-color: color-mix(in srgb, var(--color-red) 70%, transparent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-red) 16%, transparent); }
 input::placeholder, textarea::placeholder { color: var(--color-label-3); }
 /* A field inside a grey panel (Settings → Razorpay, Add a table, …) was the panel's own grey and
    vanished into it, in both themes. Inside any element filled with --color-fill, fields take the

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Plus, QrCode, Printer, Check, Banknote, Pencil, Link2, Copy, MessageCircle, Fingerprint, Camera, ClipboardCheck, MapPin, CalendarDays, LayoutGrid, Rows3 } from "lucide-react";
 import { copyText } from "@/lib/clipboard";
-import { Button, Sheet, Field, Card, Pill, StatTile, cn, Empty, useToast } from "@/components/ui";
+import { Button, Sheet, Field, Card, Pill, StatTile, cn, Empty, useToast, PhoneInput } from "@/components/ui";
 import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { formatINR } from "@/lib/format";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -123,7 +123,7 @@ export function LabourClient({ today, labourers, attendance, payments, tab, open
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? `${edit.full_name} · ${edit.code}` : "New labourer"}>
         <form className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveLabourer(fd); if ("error" in r) setErr(r.error!); else setEdit(null); })}>
           {edit?.id && <input type="hidden" name="id" value={edit.id} />}
-          <div className="grid grid-cols-2 gap-3"><Field label="Full name"><input name="full_name" defaultValue={edit?.full_name} required autoFocus /></Field><Field label="Phone"><input name="phone" defaultValue={edit?.phone ?? ""} /></Field>
+          <div className="grid grid-cols-2 gap-3"><Field label="Full name"><input name="full_name" defaultValue={edit?.full_name} required autoFocus /></Field><Field label="Phone"><PhoneInput name="phone" defaultValue={edit?.phone ?? ""} /></Field>
             {/* a skill picked fills its usual day's wage (2026-10-30, the owner: "the amount by their position") — what this
                 property pays that skill now, else the usual rate — until the wage is typed by hand */}
             <Field label="Skill"><select name="skill" defaultValue={edit?.skill ?? "other"} data-labour-skill onChange={(e) => { const w = e.currentTarget.form?.elements.namedItem("daily_wage") as HTMLInputElement | null; if (w && !w.dataset.typed) w.value = String(wageFor(e.target.value, labourers)); }}>{LABOUR_SKILLS.map((k) => <option key={k}>{k}</option>)}</select></Field>

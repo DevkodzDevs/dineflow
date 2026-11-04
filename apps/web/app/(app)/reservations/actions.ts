@@ -17,6 +17,14 @@ export async function addWalkIn(v: { name: string; phone: string; date: string; 
   const s = await createClient(); const { data: { user } } = await s.auth.getUser();
   const { data: p } = await s.from("profiles").select("restaurant_id").eq("id", user!.id).maybeSingle();
   const rid = p?.restaurant_id ?? (await s.rpc("admin_acting_as")).data;
+  // a table chosen must still be free then (2026-11-04): no other live booking on it within 90 min that day — the sheet offers
+  // only free tables, this catches one booked from another screen meanwhile
+  if (v.table) {
+    const { data: near } = await s.from("reservations").select("at_time, dining_tables(name)").eq("table_id", v.table).eq("on_date", v.date).in("status", ["requested", "confirmed", "seated"]);
+    const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+    const clash = ((near ?? []) as unknown as { at_time: string; dining_tables: { name: string } | null }[]).find((r) => Math.abs(toMin(r.at_time) - toMin(v.time)) < 90);
+    if (clash) return { error: `${clash.dining_tables?.name ?? "That table"} is booked at ${clash.at_time.slice(0, 5)} — pick another table or Auto.` };
+  }
   const { data: last } = await s.from("reservations").select("reservation_no").order("reservation_no", { ascending: false }).limit(1).maybeSingle();
   // a table chosen now is held for them when their time comes; none — one that seats them is given then (0154). Another
   // property's table is refused by the same-property trigger. A guest staying here names their stay (0157, booking_id) —

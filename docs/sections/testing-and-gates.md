@@ -626,3 +626,22 @@ of a second." Measured first, on the live site and on a local production build (
   adults, source, note and the advance; closing clears `?new`; no page errors. 1920/1440/1194/834/412 dark and 834 paper/colour/bright,
   412 royal: the foot on screen at rest, no sideways overflow, every sheet control ≥ 44px on touch, 0166 rooms disabled with a why, one
   night offers no separate Full stay. (shots166's "New booking" button is now *Book a room*, `[data-fd-new-booking]`.)
+
+## 2026-11-04 — `pw/s172.mjs` (scratchpad): the owner's 16 points, 114 checks
+- A fresh demo resort, seeded: a returning guest with a phone only; six stays in house; a stranger's dine-in order, a till room-service
+  ticket for one room, a printed unpaid bill, a merge (T4 into T3, `merged_into`), a table booked at 19:30.
+- Flow at 1440 dark: the Tables tile and its numbers; In house 1 full + 5 compact; Book a room — the five fields, the button's order,
+  "+91 98765 43210" → 9876543210, 14 typed digits keep ten, a half-typed phone rings red, Aadhaar's last 4 digits only, the saved guest;
+  a returning guest asked only email + ID, the record updated, no duplicate; the folio — Front desk link, stay pill, charge picker (list,
+  own words, keyboard), Laundry ₹150 posted, the payment follows the balance and Check out is ready, no stranger's order, Another order,
+  the room's own ticket on its folio, *Used here* with "₹150 last time"; check out → `?done=checkout` banner, Print in view, Front desk
+  link, after `afterprint` Back is the main key; Rooms — every occupied room *Occupied*, no pencil, a free room keeps it; Room status — no
+  room with a guest on the board, Give to… above Done, three tabs, New task's form; Reservations — the 19:30 table not offered at 19:30;
+  Tables — "+ T4" on T3, bill out → Add items disabled; the order page "T3 + T4" and *Merged · 2 tables*, a printed bill's Add items
+  blocked; no page errors.
+- Layout: front desk, folio, invoice, rooms, room status, tables at 1920/1440/1194/834/412 dark and 834 paper/colour/bright/royal — no
+  sideways scroll, the new keys ≥44px on touch. Shots in `s172/`.
+- **The probe's own mistakes, so they are not made again:** `innerText` returns CSS upper-case ("USED HERE"), so compare text without
+  case; the merged order's head puts "T3 + T4" in the `h1` and *Merged · 2 tables* in `[data-merged-head]`.
+- A React #418 (hydration) showed twice on the first page after sign-in at 1440 dark across three full runs; 27 targeted reloads of
+  /frontdesk and /dashboard gave none. Same open item as the storefront room page's.

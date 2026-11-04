@@ -76,6 +76,10 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
   useLive(["housekeeping_tasks", "rooms", "bookings"]);
   const byRoom = useMemo(() => Object.fromEntries(stays.map((s) => [s.room_id, s])) as Record<string, Stay>, [stays]);
   const floors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b);
+  /* A room with a guest in is not on the board (2026-11-04, the owner: "if the room is occupied or the guest is in, don't show
+     that room here — only rooms with no guest"). Its stayover / touch-up work stays on the task sheet. */
+  const guestIn = (r: Room) => !!byRoom[r.id] || r.status === "occupied";
+  const board = rooms.filter((r) => !guestIn(r));
   const count = (c: Condition) => rooms.filter((r) => r.status !== "maintenance" && r.condition === c).length;
   const ooo = rooms.filter((r) => r.status === "maintenance").length;
 
@@ -111,7 +115,12 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
   };
   const sheet = () => start(async () => { const r = await buildSheet(); if (r.error) toast(r.error, "err"); else toast(r.added ? `${r.added} task${r.added === 1 ? "" : "s"} added` : "Sheet already complete"); });
 
-  const cols = [{ key: "pending", title: "To do" }, { key: "in_progress", title: "In progress" }];
+  const [tab, setTab] = useState<"todo" | "doing" | "new">("todo");
+  const tabs = [
+    { key: "todo" as const, label: "To do", Icon: ClipboardList, n: tasks.filter((t) => t.status === "pending").length as number | null },
+    { key: "doing" as const, label: "In progress", Icon: Play, n: tasks.filter((t) => t.status === "in_progress").length as number | null },
+    ...(canAssign ? [{ key: "new" as const, label: "New task", Icon: Plus, n: null as number | null }] : []),
+  ];
   return (
     <div className="space-y-6">
       {/* the room status board */}
@@ -128,7 +137,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
 
       <div className="sm:hidden">
         <Segmented value={view} onChange={setView} className="w-full [&>button]:flex-1 [&>button]:!h-11"
-          options={[{ value: "rooms", label: <span className="inline-flex items-center gap-1.5">Rooms <span className="num opacity-60">{rooms.length}</span></span> },
+          options={[{ value: "rooms", label: <span className="inline-flex items-center gap-1.5">Rooms <span className="num opacity-60">{board.length}</span></span> },
                     { value: "tasks", label: <span className="inline-flex items-center gap-1.5">Tasks <span className="num opacity-60">{tasks.length}</span></span> }]} />
       </div>
 
@@ -175,7 +184,8 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
           </div>
         </div>
       )}
-      {floors.map((fl) => { const on = openFloor === "all" || openFloor === fl; const here = rooms.filter((r) => r.floor === fl);
+      {floors.map((fl) => { const on = openFloor === "all" || openFloor === fl; const here = board.filter((r) => r.floor === fl);
+        const inUse = rooms.filter((r) => r.floor === fl && guestIn(r)).length;
         const dirty = here.filter((r) => r.status !== "maintenance" && r.condition === "dirty").length; const outN = here.filter((r) => r.status === "maintenance").length;
         return (
         <section key={fl} className={cn("feather transition-shadow", on && "shadow-[var(--shadow-pop)]")}>
@@ -188,6 +198,7 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
               <span className="block text-[15px] font-bold leading-tight">Floor {fl}</span>
               <span className="mt-1 flex flex-wrap items-center gap-1.5">
                 <span className="num h-5 px-2 rounded-full bg-[var(--color-fill)] text-[11px] font-semibold text-[var(--color-label-2)] inline-flex items-center">{here.length} room{here.length === 1 ? "" : "s"}</span>
+                {inUse > 0 && <span className="num h-5 px-2 rounded-full bg-[var(--color-blue-2)] text-[11px] font-semibold text-[var(--color-blue)] inline-flex items-center" data-floor-in-use>{inUse} in use</span>}
                 {dirty > 0 && <span className="num h-5 px-2 rounded-full bg-[var(--color-red-2)] text-[11px] font-semibold text-[var(--color-red)] inline-flex items-center">{dirty} dirty</span>}
                 {outN > 0 && <span className="num h-5 px-2 rounded-full bg-[var(--color-red-2)] text-[11px] font-semibold text-[var(--color-red)] inline-flex items-center">{outN} out of order</span>}
                 {!dirty && !outN && <span className="h-5 px-2 rounded-full bg-[var(--color-green-2)] text-[11px] font-semibold text-[var(--color-green)] inline-flex items-center">all clear</span>}
@@ -203,7 +214,8 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
               1920 screen), with the wide card below: auto-fill put four or five squeezed cards in a
               row and a four-tile dock cut "Pickup" to "Pick…". */}
           <div className="grid grid-cols-1 min-[520px]:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] sm:grid-cols-3 min-[1800px]:!grid-cols-4 sm:items-start gap-3 sm:gap-2.5 lg:gap-3.5" data-board>
-            {rooms.filter((r) => r.floor === fl).map((r) => {
+            {here.length === 0 && <p className="col-span-full text-[13.5px] text-steel px-1 py-3" data-floor-full>Every room has a guest</p>}
+            {here.map((r) => {
               const s = byRoom[r.id]; const out = r.status === "maintenance"; const c = COND[r.condition] ?? COND.clean;
               const sellable = r.condition === "inspected" || (r.condition === "clean" && !inspectRule);
               const waiting = !out && r.condition === "clean" && !canInspect && inspectRule;
@@ -334,56 +346,72 @@ export function HousekeepingClient({ today, tasks, rooms, stays, done, canInspec
       {rooms.length === 0 && <p className="text-sm text-steel">No rooms yet</p>}
       </div>
 
-      {/* the task sheet */}
-      {/* The board gets two real columns before the form takes a side of its own: at lg the form's
-          320px left each column ~290px and "Done · room ready" ran out of its button. Below xl the
-          form and "Recently done" sit under the board, side by side. */}
-      <div className={cn("grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] items-start", view !== "tasks" && "max-sm:hidden")}>
-        <div className="grid md:grid-cols-2 gap-4 min-w-0">
-          {cols.map((c) => { const list = tasks.filter((t) => t.status === c.key); return (
-            <section key={c.key} className={cn("rounded-[20px] p-3", c.key === "pending" ? "bg-sky-2" : "bg-champagne-2")}><div className="text-sm font-semibold px-1 pb-3">{c.title} <span className="num text-steel">{list.length}</span></div>
-              <div className="space-y-3"><AnimatePresence>{list.map((t) => (
-                <motion.div key={t.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="feather p-4">
+      {/* the task sheet — one panel, three tabs (2026-11-04, the owner: "tab options like To do, In progress and New task
+          only"). It was two tinted columns with the New task form in a card of its own beside them. Recently done sits beside
+          the panel from xl, under it below. */}
+      <div className={cn("grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] items-start", view !== "tasks" && "max-sm:hidden")}>
+        <section className="feather overflow-hidden min-w-0" data-task-panel>
+          <div className="p-2.5 sm:p-3 border-b border-[var(--color-separator)]">
+            <div role="tablist" aria-label="Tasks" className="grid gap-1 p-1 rounded-[16px] bg-[var(--color-fill)] min-w-0 w-full md:w-auto md:inline-grid"
+              style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }} data-task-tabs>
+              {tabs.map((x) => { const on = tab === x.key; return (
+                <button key={x.key} type="button" role="tab" id={`task-tab-${x.key}`} aria-selected={on} aria-controls="task-panel" data-task-tab={x.key} data-on={on} onClick={() => setTab(x.key)}
+                  className={cn("!min-h-10 [@media(pointer:coarse)]:!min-h-11 min-w-0 px-3 md:px-4 rounded-[12px] inline-flex items-center justify-center gap-1.5 text-[14px] font-bold whitespace-nowrap transition-colors",
+                    on ? "bg-[var(--color-label)] text-[var(--color-on-label)] shadow-[0_2px_8px_-3px_rgb(0_0_0/.45)]" : "text-steel hover:text-[var(--color-label)]")}>
+                  <x.Icon size={15} className="shrink-0" aria-hidden /><span className="truncate">{x.label}</span>
+                  {x.n != null && <b className={cn("num shrink-0 min-w-5 h-5 px-1.5 rounded-full grid place-items-center text-[11.5px]", on ? "bg-[color-mix(in_srgb,var(--color-on-label)_16%,transparent)]" : "bg-[var(--color-fill-2)]")} data-task-count>{x.n}</b>}
+                </button>); })}
+            </div>
+          </div>
+          <div id="task-panel" role="tabpanel" aria-labelledby={`task-tab-${tab}`} className="p-3 sm:p-4 min-w-0">
+            {tab === "new" ? (
+              /* New task is a supervisor's and above (2026-11-01, the owner: not for the housekeeping or cleaning worker) */
+              <div className="max-w-xl space-y-3" data-task-new>
+                <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
+                  <Field label="Room"><select value={f.room} onChange={(e) => setF({ ...f, room: e.target.value })}><option value="">Choose</option>{rooms.map((r) => <option key={r.id} value={r.id}>{r.number} · {r.status === "maintenance" ? "out of order" : guestIn(r) ? "guest in" : r.condition}</option>)}</select></Field>
+                  <Field label="Type"><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{Object.entries(KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
+                </div>
+                <Field label="Notes"><input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="AC not cooling, extra towels…" /></Field>
+                <button type="button" className="svc-btn go w-full" disabled={pending || !f.room} data-add-task onClick={() => start(async () => { const r = await addTask(f.room, f.kind, f.notes); if ("error" in r) return void toast(r.error!, "err"); setF({ room: "", kind: "clean", notes: "" }); setTab("todo"); toast("Task added"); })}><Plus size={18} strokeWidth={2.4} aria-hidden /> {f.room ? "Add task" : "Choose a room first"}</button>
+              </div>
+            ) : (() => { const key = tab === "todo" ? "pending" : "in_progress"; const list = tasks.filter((t) => t.status === key); return (
+              list.length === 0
+                ? (tasks.length === 0 ? <Empty title="Nothing on the sheet" hint="Check-outs add cleans automatically." />
+                  : <p className="text-sm text-steel px-1 py-6 text-center" data-task-empty>{key === "pending" ? "Nothing to do." : "Nothing in progress."}</p>)
+                : <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))]" data-task-list={tab}><AnimatePresence>{list.map((t) => (
+                <motion.div key={t.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="min-w-0 flex flex-col rounded-[18px] p-4 bg-[var(--color-bg-2)] border border-[var(--color-separator)]" data-task={t.id}>
                   <div className="flex items-start gap-3"><span className="shrink-0 min-w-12 grid place-items-center" data-task-room>{t.rooms?.number ? <FlapSpell text={t.rooms.number} size="xs" tile="30px" say={`Room ${t.rooms.number}`} /> : <span className="keycard h-11 w-12 grid place-items-center font-display text-lg">—</span>}</span><div className="flex-1 min-w-0"><div className="font-semibold flex items-center gap-1.5">{t.kind === "maintenance" ? <Wrench size={14} className="text-chili shrink-0" /> : <Sparkles size={14} className="shrink-0" />}<span className="truncate">{KIND[t.kind] ?? t.kind}</span></div><div className="text-xs text-steel line-clamp-2 mt-0.5">{t.notes || "No notes"}</div><div className="num text-[11px] text-[var(--color-label-2)] mt-0.5">{fmtSince(t.created_at)} ago</div>
                     {t.status === "in_progress" && t.taken_by && <div className="text-[12.5px] font-semibold text-[var(--color-cyan)] mt-1 truncate" data-task-who>{nameOf(t.taken_by)} · since {fmtSince(t.taken_at ?? t.created_at)}</div>}
                     {t.status === "pending" && t.assigned_to && <div className="text-[12.5px] font-semibold mt-1 truncate" data-task-who>Given to {nameOf(t.assigned_to)}{t.assigned_by && <span className="font-normal text-steel"> by {nameOf(t.assigned_by)}</span>}</div>}</div></div>
-                  {/* "Done", never "Done · room ready": the long label ran out of its half of a narrow
-                      card. What Done does to the room is in its title instead. */}
-                  {/* a task given to someone else, or someone else on it, is theirs: no buttons for anyone but them and a supervisor */}
-                  {!canAssign && ((t.status === "pending" && t.assigned_to && t.assigned_to !== me) || (t.status === "in_progress" && t.taken_by && t.taken_by !== me && t.assigned_to !== me))
-                    ? <p className="mt-3 text-[12.5px] text-steel" data-task-theirs>{t.status === "in_progress" ? `${nameOf(t.taken_by)}'s task` : `${nameOf(t.assigned_to)}'s task`} — ask a supervisor</p>
-                    /* Start is the team's (0158: clean_take refuses an owner, manager or supervisor) — a boss gives the task out
-                       below, and keeps Done to close it */
-                    : <div className="mt-3 grid grid-cols-2 gap-2">{c.key === "pending" && (!canAssign || t.assigned_to === me) ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={!!busy[t.id]} onClick={() => act(() => takeJob("room", t.id), t.id)}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", (c.key !== "pending" || (canInspect && t.assigned_to !== me)) && "col-span-2")} disabled={!!busy[t.id]} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Done — room goes on sale"} onClick={() => act(() => finishJob("room", t.id), t.id)}><Check size={14} /> Done</Button></div>}
-                  {/* Give to… is a supervisor's and above — not a 2nd-level supervisor, who inspects but works as the team (0159) */}
-                  {canAssign && <select className="mt-2 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={!!busy[t.id]} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign data-clean-assign="select"
+                  {/* Give to… on top, Done at the bottom (2026-11-04, the owner). Give to… is a supervisor's and above — not a
+                      2nd-level supervisor, who inspects but works as the team (0159) */}
+                  {canAssign && <select className="mt-3 !h-11 !min-h-11 w-full text-[13.5px] font-semibold" value={t.assigned_to ?? ""} disabled={!!busy[t.id]} aria-label={`Give room ${t.rooms?.number ?? ""} to`} data-task-assign data-clean-assign="select"
                     onChange={(e) => act(() => assignJob("room", t.id, e.target.value || null), t.id)}>
                     <option value="">{t.assigned_to ? "Anyone can take" : "Give to…"}</option>
                     {crewFor(t).map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.position_title ? ` — ${p.position_title}` : ""}</option>)}</select>}
-                </motion.div>))}</AnimatePresence>{list.length === 0 && <p className="text-sm text-steel px-1 py-3">{c.key === "pending" ? "Nothing to do." : "Nothing in progress."}</p>}</div></section>); })}
-          {tasks.length === 0 && <div className="sm:col-span-2"><Empty title="Nothing on the sheet" hint="Check-outs add cleans automatically." /></div>}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 items-start min-w-0">
-          {/* New task is a supervisor's and above (2026-11-01, the owner: not for the housekeeping or cleaning worker) */}
-          {canAssign && <Card><h3 className="text-lg mb-3">New task</h3><div className="space-y-3">
-            <Field label="Room"><select value={f.room} onChange={(e) => setF({ ...f, room: e.target.value })}><option value="">Choose</option>{rooms.map((r) => <option key={r.id} value={r.id}>{r.number} · {r.status === "maintenance" ? "out of order" : r.condition}</option>)}</select></Field>
-            <Field label="Type"><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{Object.entries(KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
-            <Field label="Notes"><input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="AC not cooling, extra towels…" /></Field>
-            <button type="button" className="svc-btn go w-full" disabled={pending || !f.room} data-add-task onClick={() => start(async () => { const r = await addTask(f.room, f.kind, f.notes); if ("error" in r) return void toast(r.error!, "err"); setF({ room: "", kind: "clean", notes: "" }); })}><Plus size={18} strokeWidth={2.4} aria-hidden /> {f.room ? "Add task" : "Choose a room first"}</button></div></Card>}
-          {/* each finished task a row: the room on its key card, what and who, and how long it took (2026-10-21) */}
-          <Card data-hk-done><div className="flex items-center gap-2.5 mb-3"><span className="h-9 w-9 rounded-[11px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]" aria-hidden><Check size={17} strokeWidth={2.6} /></span><h3 className="text-lg leading-none">Recently done</h3><span className="ml-auto num text-[12.5px] font-semibold text-steel">{done.length}</span></div>
-            {done.length === 0 ? <p className="text-[13.5px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] px-3 py-4 text-center">None finished yet</p>
-              : <ul className="divide-y divide-[var(--color-separator)]">{done.map((d) => { const took = d.taken_at ? Math.max(1, Math.round((new Date(d.done_at).getTime() - new Date(d.taken_at).getTime()) / 60000)) : null; return (
-                <li key={d.id} className="flex items-center gap-3 py-2.5 min-w-0">
-                  <span className="shrink-0 min-w-11 grid place-items-center">{d.rooms?.number ? <FlapSpell text={d.rooms.number} size="xs" tile="26px" say={`Room ${d.rooms.number}`} /> : <span className="keycard h-10 w-11 grid place-items-center font-display text-[16px]">—</span>}</span>
-                  <div className="min-w-0 flex-1 leading-tight">
-                    <div className="text-[14px] font-semibold truncate">{KIND[d.kind] ?? d.kind}</div>
-                    <div className="text-[12px] text-steel truncate mt-0.5">{d.done_by ? `by ${nameOf(d.done_by)}` : "done"}{d.done_at ? ` · ${fmtSince(d.done_at)} ago` : ""}</div>
-                  </div>
-                  {took != null && <span className="shrink-0 inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)] num"><Clock size={12} aria-hidden />{took} min</span>}
-                </li>); })}</ul>}
-          </Card>
-        </div>
+                  {/* "Done", never "Done · room ready": the long label ran out of its half of a narrow card. What Done does to the
+                      room is in its title instead. A task given to someone else, or someone else on it, is theirs: no buttons for
+                      anyone but them and a supervisor. Start is the team's (0158). */}
+                  {!canAssign && ((t.status === "pending" && t.assigned_to && t.assigned_to !== me) || (t.status === "in_progress" && t.taken_by && t.taken_by !== me && t.assigned_to !== me))
+                    ? <p className="mt-3 text-[12.5px] text-steel" data-task-theirs>{t.status === "in_progress" ? `${nameOf(t.taken_by)}'s task` : `${nameOf(t.assigned_to)}'s task`} — ask a supervisor</p>
+                    : <div className={cn("mt-auto grid grid-cols-2 gap-2", canAssign ? "pt-2" : "pt-3")} data-task-actions>{key === "pending" && (!canAssign || t.assigned_to === me) ? <Button size="sm" variant="outline" className="w-full !px-2" disabled={!!busy[t.id]} onClick={() => act(() => takeJob("room", t.id), t.id)}><Play size={14} /> Start</Button> : null}<Button size="sm" variant="ink" className={cn("w-full !px-2", (key !== "pending" || (canInspect && t.assigned_to !== me)) && "col-span-2")} disabled={!!busy[t.id]} title={t.kind === "maintenance" || inspectRule ? "Mark the task done" : "Done — room goes on sale"} data-task-done onClick={() => act(() => finishJob("room", t.id), t.id)}><Check size={14} /> Done</Button></div>}
+                </motion.div>))}</AnimatePresence></div>); })()}
+          </div>
+        </section>
+        {/* each finished task a row: the room on its key card, what and who, and how long it took (2026-10-21) */}
+        <Card data-hk-done className="min-w-0"><div className="flex items-center gap-2.5 mb-3"><span className="h-9 w-9 rounded-[11px] grid place-items-center bg-[var(--color-green-2)] text-[var(--color-green)]" aria-hidden><Check size={17} strokeWidth={2.6} /></span><h3 className="text-lg leading-none">Recently done</h3><span className="ml-auto num text-[12.5px] font-semibold text-steel">{done.length}</span></div>
+          {done.length === 0 ? <p className="text-[13.5px] text-steel rounded-2xl border border-dashed border-[var(--color-separator)] px-3 py-4 text-center">None finished yet</p>
+            : <ul className="divide-y divide-[var(--color-separator)]">{done.map((d) => { const took = d.taken_at ? Math.max(1, Math.round((new Date(d.done_at).getTime() - new Date(d.taken_at).getTime()) / 60000)) : null; return (
+              <li key={d.id} className="flex items-center gap-3 py-2.5 min-w-0">
+                <span className="shrink-0 min-w-11 grid place-items-center">{d.rooms?.number ? <FlapSpell text={d.rooms.number} size="xs" tile="26px" say={`Room ${d.rooms.number}`} /> : <span className="keycard h-10 w-11 grid place-items-center font-display text-[16px]">—</span>}</span>
+                <div className="min-w-0 flex-1 leading-tight">
+                  <div className="text-[14px] font-semibold truncate">{KIND[d.kind] ?? d.kind}</div>
+                  <div className="text-[12px] text-steel truncate mt-0.5">{d.done_by ? `by ${nameOf(d.done_by)}` : "done"}{d.done_at ? ` · ${fmtSince(d.done_at)} ago` : ""}</div>
+                </div>
+                {took != null && <span className="shrink-0 inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-bold bg-[var(--color-green-2)] text-[var(--color-green)] num"><Clock size={12} aria-hidden />{took} min</span>}
+              </li>); })}</ul>}
+        </Card>
       </div>
     </div>
   );

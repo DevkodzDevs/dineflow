@@ -5,7 +5,8 @@ import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCar
 import { NotificationSettings } from "@/components/shell/Notifier";
 import { LogoUpload } from "./LogoUpload";
 import { AttendanceSettings } from "./AttendanceSettings";
-import { Button, Card, Field, Switch, cn, ask } from "@/components/ui";
+import { LateCheckoutRule } from "./LateCheckoutRule";
+import { Button, Card, Field, Switch, cn, ask, PhoneInput } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
 import { SidebarPicker } from "@/components/shell/SidebarPicker";
@@ -14,7 +15,7 @@ import { InstallApp } from "@/components/InstallApp";
 import { saveRestaurant, saveTable, deleteTable, loadDemoData, removeDemoData, issueBoxToken, savePayments, saveLoyalty } from "./actions";
 import { copyText } from "@/lib/clipboard";
 
-type Rest = { id: string; name: string; stock_block?: boolean; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null; attendance_methods?: string[]; attend_lat?: number | null; attend_lng?: number | null; attend_radius_m?: number; stock_draw?: "ticket" | "cook" };
+type Rest = { id: string; name: string; stock_block?: boolean; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; late_checkout_on?: boolean; late_half_after_min?: number; late_full_after_min?: number; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null; attendance_methods?: string[]; attend_lat?: number | null; attend_lng?: number | null; attend_radius_m?: number; stock_draw?: "ticket" | "cook" };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number; qr_token?: string | null };
 type Tab = "general" | "payments" | "tables" | "attendance" | "advanced";
 
@@ -156,7 +157,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                 </Field>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Field label="Name"><input name="name" defaultValue={restaurant.name} required /></Field>
-                  <Field label="Phone"><input name="phone" defaultValue={restaurant.phone ?? ""} className="num" /></Field>
+                  <Field label="Phone"><PhoneInput name="phone" defaultValue={restaurant.phone ?? ""} /></Field>
                 </div>
                 <Field label="Address"><input name="address" defaultValue={restaurant.address ?? ""} /></Field>
               </Section>
@@ -212,6 +213,8 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                     <input type="checkbox" name="hk_inspect_required" className="mt-0.5" defaultChecked={restaurant.hk_inspect_required ?? false} />
                     <span>Inspect rooms before sale<span className="block text-xs text-steel mt-0.5">Supervisor approves each clean</span></span>
                   </label>
+                  {/* 0171: a guest still in after the check-out time is charged by the hour band, on the room bill (front-desk.md) */}
+                  <LateCheckoutRule key={`${restaurant.late_checkout_on}-${restaurant.late_half_after_min}-${restaurant.late_full_after_min}`} on={restaurant.late_checkout_on ?? true} half={restaurant.late_half_after_min ?? 180} full={restaurant.late_full_after_min ?? 360} />
                   {/* 0170: a code in each room — the guest orders food and it goes on the room bill */}
                   <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:items-center" data-room-qr-link>
                     <Link href="/settings/room-qr" className="btn btn-filled"><QrCode size={16} /> Print room codes</Link>
@@ -277,7 +280,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               <Section icon={<Sunrise size={16} />} title="Tomorrow brief" description="Tomorrow's prep list">
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Field label="Prep buffer %" hint="Extra prep added"><input name="prep_buffer_pct" type="number" className="num" defaultValue={restaurant.prep_buffer_pct ?? 10} /></Field>
-                  <Field label="WhatsApp for the brief" hint="'Send to the team' opens this"><input name="brief_whatsapp" className="num" defaultValue={restaurant.brief_whatsapp ?? ""} placeholder="98400 11223" /></Field>
+                  <Field label="WhatsApp for the brief" hint="'Send to the team' opens this"><PhoneInput name="brief_whatsapp" defaultValue={restaurant.brief_whatsapp ?? ""} placeholder="98400 11223" /></Field>
                 </div>
               </Section>
             </Card>

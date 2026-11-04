@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Camera, ScanLine, Upload, Leaf, Drumstick, BedDouble, HardHat, Boxes, UtensilsCrossed, RotateCcw, Check, Zap, Keyboard } from "lucide-react";
-import { Button, Field, Card, Pill, cn } from "@/components/ui";
+import { Button, Field, Card, Pill, cn, PhoneInput } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { QUICK_QTY, INGREDIENT_CATEGORIES, LABOUR_SKILLS, UNITS, type ScanResult } from "@dineflow/shared";
 import { lookupCode, createProductFromScan, stockFromScan, createDishFromScan, createLabourFromScan, punch, punchStaff, roomQuick } from "./actions";
@@ -185,7 +185,7 @@ function AiCard({ ai, setAi, categories, onDone, onReset }: { ai: ScanResult; se
       {ai.kind === "labour" && (<>
         <div className="grid sm:grid-cols-2 gap-3">
           <Field label="Full name"><input value={ai.labour?.full_name ?? ai.name} onChange={(e) => set("labour", { ...ai.labour, full_name: e.target.value })} autoFocus /></Field>
-          <Field label="Phone"><input value={ai.labour?.phone ?? ""} onChange={(e) => set("labour", { ...ai.labour, phone: e.target.value })} /></Field>
+          <Field label="Phone"><PhoneInput value={ai.labour?.phone ?? ""} onValue={(v) => set("labour", { ...ai.labour, phone: v })} /></Field>
           <Field label="Skill"><select value={ai.labour?.skill ?? "other"} onChange={(e) => set("labour", { ...ai.labour, skill: e.target.value })}>{LABOUR_SKILLS.map((k) => <option key={k}>{k}</option>)}</select></Field>
           <Field label="Daily wage (₹)"><input type="number" className="num" value={wage || ""} onChange={(e) => setWage(Number(e.target.value))} /></Field>
           <Field label="ID type"><input value={ai.labour?.id_type ?? ""} onChange={(e) => set("labour", { ...ai.labour, id_type: e.target.value })} placeholder="Aadhaar" /></Field>

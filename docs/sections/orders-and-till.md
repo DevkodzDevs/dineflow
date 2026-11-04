@@ -531,3 +531,20 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
 - **The order's Move:** a table being cleaned ("· being cleaned") or with its own order ("· has an order — use Merge") is a disabled
   option; `[id]/page.tsx` reads the open cleaning jobs.
 - Checked: `dry166.cjs` 41/41 (rolled back) and `shots166.mjs` (scratchpad; testing-and-gates.md).
+
+## 2026-11-04 — bill out locks Add items; merged tables say so
+- **The owner: "when the bill is out, Add items should be disabled — the same on every table".** The Tables sheet's foot and the order
+  page's head show **Add items** switched off with a lock and *Bill printed* (`[data-add-items-blocked]`) once the order has an unpaid
+  or paid bill — 0165/0167 already refused it; the link used to open the till and fail there. Without a bill it is the link as before
+  (`[data-add-items]`). The Tables sheet's Add items now opens the till on the **order's** table (it matters for a merged table).
+- **The owner: "when I merge one table with another, show both tables merged".** Nothing new is stored: `merge_orders` already cancels
+  the joining order with `merged_into` and keeps its `table_id`. **`lib/merged.ts`** reads those rows (`mergedRows`, three days back,
+  with the screen's own reads — no extra round trip) and `mergedTables` resolves them to *open order → tables merged into it*, following
+  a merge of a merge; a merged table that has an open order of its own again (a new party) no longer counts (`merged.test.ts`, 2).
+  - **Orders floor:** the table that joined shows the order it joined — its state, total, a tap opens it — with **With T3**; the table it
+    joined says **+ T5** (`[data-merged=joined|into]`). The List view's title reads "Table T3 + T5".
+  - **Tables:** the same tag on the cards (`[data-merged]`), the joined table counts as in use, and its sheet is the merged order's
+    (*Merged · T3 + T5*, `[data-merged-detail]`).
+  - **The order page:** the head reads **T3 + T5** with *Merged · 2 tables* (`[data-merged-head]`).
+  - `merge_orders` still sets the joined table free in `dining_tables` (unchanged); the screens show it as part of the merged order until
+    that order closes or someone seats a new order there.

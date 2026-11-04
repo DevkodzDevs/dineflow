@@ -2,14 +2,15 @@
 import { useState, useTransition } from "react";
 import { Minus, Plus, List, Check, Star, AlertTriangle } from "lucide-react";
 import { roomGstFor } from "@dineflow/shared";
-import { Button, Field, cn } from "@/components/ui";
+import { Button, Field, PhoneInput, cn } from "@/components/ui";
+import { isMobile } from "@/lib/phone";
 import { formatINR } from "@/lib/format";
 import { createBooking } from "./actions";
 import s from "./BookingForm.module.css";
 
 export type Room = { id: string; number: string; floor: number; status: string; condition?: string | null; room_type_id: string | null; room_types: { name: string; base_rate: number; capacity: number } | null };
 export type RT = { id: string; name: string; base_rate: number; capacity: number };
-export type G = { id: string; full_name: string; phone: string | null; vip?: boolean };
+export type G = { id: string; full_name: string; phone: string | null; vip?: boolean; email?: string | null; id_type?: string | null; id_last4?: string | null };
 type Bk = { room_id: string | null; check_in: string; check_out: string; status: string };
 /** The room tax the folio will charge (roomGstFor — 5% up to ₹7,500 a night, 18% above), and whether the property may collect it. */
 export type RoomTax = { on: boolean; low: number; high: number; threshold: number };
@@ -26,6 +27,10 @@ const addDays = (d: string, n: number) => { const x = new Date(d + "T00:00:00Z")
 const daysBetween = (a: string, b: string) => Math.round((new Date(b + "T00:00:00Z").getTime() - new Date(a + "T00:00:00Z").getTime()) / 86400000);
 const longDate = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "G";
+const ID_TYPES = ["Aadhaar", "Passport", "Driving licence", "Voter ID", "PAN"] as const;
+/** what the desk must have before a booking is made (2026-11-04, the owner: "name, number, email, ID type and ID last 4 must be required") */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const ID4_RE = /^[A-Za-z0-9]{4}$/;
 const SOURCES = [["walk_in", "Walk-in"], ["phone", "Phone"], ["ota", "OTA"], ["agent", "Agent"]] as const;
 
 /**
@@ -34,7 +39,8 @@ const SOURCES = [["walk_in", "Walk-in"], ["phone", "Phone"], ["ota", "OTA"], ["a
  *   1 When — the two dates, and counters for nights, adults and children (moving check-in keeps the nights);
  *   2 Room — the room types as chips with their rate, how many they sleep and how many are free; the picker as before
  *     (0166: a room that cannot take these dates says why and cannot be picked);
- *   3 Guest — one name and phone; a returning guest appears as you type either and one tap fills both;
+ *   3 Guest — name, a 10-digit mobile, email, ID type and the ID's last four, all required (2026-11-04); a returning guest
+ *     appears as you type the name or phone, one tap fills what their record has, and only what it lacks is asked for;
  *   4 Payment — the rate (the type's, or changed), where the booking came from, the advance, a note.
  * The foot stays in view: the room, the nights and the guests, the room charge with its GST, the total or what is due,
  * and one button that says what is still missing until nothing is.
@@ -44,7 +50,7 @@ export function BookingForm({ today, rooms, types, guests, bookings = [], inspec
   const [f, setF] = useState({ check_in: today, check_out: addDays(today, 1), room_id: first?.id ?? "", adults: 2, children: 0, rate: Number(first?.room_types?.base_rate ?? 0), advance: 0, source: "walk_in", notes: "" });
   const [g, setG] = useState({ id: "", full_name: "", phone: "", email: "", id_type: "Aadhaar", id_last4: "", address: "" });
   const [typeId, setTypeId] = useState("");
-  const [moreGuest, setMoreGuest] = useState(false); const [moreNote, setMoreNote] = useState(false);
+  const [moreNote, setMoreNote] = useState(false);
   const [err, setErr] = useState<string | null>(null); const [pending, start] = useTransition();
   const nights = Math.max(1, daysBetween(f.check_in, f.check_out));
   const party = f.adults + f.children;
@@ -95,8 +101,12 @@ export function BookingForm({ today, rooms, types, guests, bookings = [], inspec
   const q = g.full_name.trim().toLowerCase();
   const matches = g.id ? [] : guests.filter((x) => (q.length >= 2 && x.full_name.toLowerCase().includes(q)) || (digits.length >= 3 && (x.phone ?? "").replace(/\D/g, "").includes(digits))).slice(0, 4);
   const chosen = g.id ? guests.find((x) => x.id === g.id) : undefined;
-  const pickGuest = (x: G) => setG({ ...g, id: x.id, full_name: x.full_name, phone: x.phone ?? "" });
+  const pickGuest = (x: G) => setG({ ...g, id: x.id, full_name: x.full_name, phone: x.phone ?? "", email: x.email ?? "", id_type: x.id_type || "Aadhaar", id_last4: x.id_last4 ?? "" });
   const forgetGuest = () => setG({ ...g, id: "" });
+  /* every one of the five is required; a returning guest's record fills what it has, and the boxes for what it lacks stay */
+  const okName = !!g.full_name.trim(), okPhone = isMobile(g.phone), okEmail = EMAIL_RE.test(g.email.trim()), okIdType = !!g.id_type, okId4 = ID4_RE.test(g.id_last4.trim());
+  const guestOk = okName && okPhone && okEmail && okIdType && okId4;
+  const lacks = { phone: !isMobile(chosen?.phone), email: !EMAIL_RE.test(chosen?.email ?? ""), id: !chosen?.id_type || !ID4_RE.test(chosen?.id_last4 ?? "") };
 
   /* money: the room for the nights, the GST the folio will add (the slab is by the nightly rate), what is left after the advance */
   const room = nights * (f.rate || 0);
@@ -105,10 +115,10 @@ export function BookingForm({ today, rooms, types, guests, bookings = [], inspec
   const total = room + gst;
   const due = Math.max(0, total - (f.advance || 0));
 
-  const missing = !picked ? "Pick a room" : pickedWhy ? `Room ${picked.number}: ${pickedWhy.toLowerCase()} — pick another` : !g.full_name.trim() ? "Add the guest's name" : null;
+  const missing = !picked ? "Pick a room" : pickedWhy ? `Room ${picked.number}: ${pickedWhy.toLowerCase()} — pick another` : !okName ? "Add the guest's name" : !okPhone ? "Add a 10-digit mobile number" : !okEmail ? "Add the guest's email" : !okIdType ? "Choose the ID type" : !okId4 ? "Add the ID's last 4" : null;
   const save = () => start(async () => {
     setErr(null);
-    const r = await createBooking({ ...f, notes: f.notes.trim() || undefined, guest: g });
+    const r = await createBooking({ ...f, notes: f.notes.trim() || undefined, guest: { ...g, full_name: g.full_name.trim(), email: g.email.trim(), id_last4: g.id_last4.trim().toUpperCase() } });
     if ("error" in r) setErr(r.error!); else onDone(r.id!);
   });
 
@@ -164,17 +174,20 @@ export function BookingForm({ today, rooms, types, guests, bookings = [], inspec
 
       {/* 3 · Guest */}
       <section className={s.step} data-step="guest">
-        <StepHead n={3} done={!!g.full_name.trim()} title="Guest" aside={chosen ? "Returning guest" : g.full_name.trim() ? "New guest" : undefined} />
+        <StepHead n={3} done={guestOk} title="Guest" aside={chosen ? "Returning guest" : g.full_name.trim() ? "New guest" : undefined} />
         {chosen ? (
           <div className={s.known} data-guest-chosen>
             <span className={s.avatar} aria-hidden>{initials(chosen.full_name)}</span>
             <span className={s.matchName}><b className="flex items-center gap-1.5">{chosen.vip && <Star size={13} className="text-champagne fill-current shrink-0" aria-label="VIP" />}<span className="truncate">{chosen.full_name}</span></b><span className="num">{chosen.phone || "No phone saved"}</span></span>
             <button type="button" className={s.change} onClick={forgetGuest}>Change</button>
           </div>
-        ) : (<>
+        ) : null}
+        {chosen && (lacks.phone || lacks.email || lacks.id) && <p className={s.line} data-guest-lacks>Their record is missing these — add them once</p>}
+        {chosen && lacks.phone && <Field label="Mobile number *"><PhoneInput value={g.phone} onValue={(v) => setG({ ...g, phone: v })} required data-guest-phone /></Field>}
+        {!chosen && (<>
           <div className={s.grid2}>
-            <Field label="Guest name"><input value={g.full_name} onChange={(e) => setG({ ...g, full_name: e.target.value })} autoComplete="off" placeholder="Name" required data-guest-name /></Field>
-            <Field label="Phone"><input value={g.phone} onChange={(e) => setG({ ...g, phone: e.target.value })} inputMode="tel" autoComplete="off" className="num" placeholder="98400 12345" data-guest-phone /></Field>
+            <Field label="Guest name *"><input value={g.full_name} onChange={(e) => setG({ ...g, full_name: e.target.value })} autoComplete="off" placeholder="Name" required data-guest-name /></Field>
+            <Field label="Mobile number *"><PhoneInput value={g.phone} onValue={(v) => setG({ ...g, phone: v })} autoComplete="off" required data-guest-phone /></Field>
           </div>
           {matches.length > 0 && (
             <div className={s.matches} data-guest-matches>
@@ -188,14 +201,15 @@ export function BookingForm({ today, rooms, types, guests, bookings = [], inspec
               ))}
             </div>
           )}
-          {moreGuest ? (
-            <div className={s.grid3}>
-              <Field label="Email"><input type="email" value={g.email} onChange={(e) => setG({ ...g, email: e.target.value })} autoComplete="off" /></Field>
-              <Field label="ID type"><select value={g.id_type} onChange={(e) => setG({ ...g, id_type: e.target.value })}><option>Aadhaar</option><option>Passport</option><option>Driving licence</option><option>Voter ID</option></select></Field>
-              <Field label="ID last 4"><input maxLength={4} inputMode="numeric" className="num" value={g.id_last4} onChange={(e) => setG({ ...g, id_last4: e.target.value })} /></Field>
-            </div>
-          ) : <button type="button" className={s.more} onClick={() => setMoreGuest(true)} data-guest-more><Plus size={15} aria-hidden /> ID and email</button>}
         </>)}
+        {(!chosen || lacks.email || lacks.id) && <div className={s.grid3} data-guest-id>
+          {(!chosen || lacks.email) && <Field label="Email *"><input type="email" inputMode="email" value={g.email} onChange={(e) => setG({ ...g, email: e.target.value })} autoComplete="off" placeholder="name@mail.com" required aria-invalid={(!!g.email.trim() && !okEmail) || undefined} data-guest-email /></Field>}
+          {(!chosen || lacks.id) && <>
+            <Field label="ID type *"><select value={g.id_type} onChange={(e) => setG({ ...g, id_type: e.target.value, id_last4: "" })} required data-guest-id-type>{ID_TYPES.map((t) => <option key={t}>{t}</option>)}</select></Field>
+            {/* Aadhaar's last four are digits; a passport's or a licence's can carry letters */}
+            <Field label="ID last 4 *"><input maxLength={4} inputMode={g.id_type === "Aadhaar" ? "numeric" : "text"} className="num uppercase" placeholder="1234" value={g.id_last4} onChange={(e) => setG({ ...g, id_last4: (g.id_type === "Aadhaar" ? e.target.value.replace(/\D/g, "") : e.target.value.replace(/[^A-Za-z0-9]/g, "")).slice(0, 4) })} required data-guest-id4 /></Field>
+          </>}
+        </div>}
       </section>
 
       {/* 4 · Payment */}

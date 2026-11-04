@@ -285,3 +285,13 @@ node dialog-audit.mjs    # /proof opens two dialogs; both are audited
   - The screen-reader "waiting N min" on a card is `suppressHydrationWarning`: rendered on the server, it differed from the browser's
     whenever a minute ticked over before hydration (React #418, seen once in five loads at 834px).
   - Probe `pulse164.mjs` (testing-and-gates.md).
+
+## 2026-11-04 — Join by QR: "How guests use it" folds away; the code stands still, the list scrolls
+- The owner: "How guests use it needs a hide option, and the QR section static with the waiting list on the right only scrollable."
+- **Hide** (`[data-joinqr-how-hide]`, 44px, in the card's head) folds `[data-joinqr-how]` away on this device — a cookie,
+  `df-joinqr-how=hidden`, read by `qr/page.tsx` (`howHidden`) so the server draws the page without it and nothing jumps. While it
+  is hidden the page head carries **How it works** (`[data-joinqr-how-show]`) to bring it back and **Open Pulse** (the card held it).
+- **From lg** the code card `[data-joinqr]` is `sticky top-24` (under the sticky top bar, as the folio's slip) and so is the
+  waiting list; `WaitList fill` caps the list card at `100dvh − 7.5rem` (flex column): its head and *Call next* stay put and only
+  the rows scroll (`[data-waitlist-scroll]`, `overscroll-contain`). Below lg one column, as before, and nothing scrolls inside.
+  The waiting list under "Join by QR is off" does not take `fill`.

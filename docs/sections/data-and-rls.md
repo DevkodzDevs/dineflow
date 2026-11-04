@@ -773,3 +773,16 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   two rounds → one order, two tickets; served → ₹1,860 + ₹334.80 GST on the folio; check-out refused while a third cooks; 1+5 wrong
   → "too many tries" (the pass still works); after check-out the old pass is refused; the table path unchanged; anon cannot call
   `_post_room_order`. Live with `--live`.
+
+## 0171 — late check-out (2026-11-04)
+- **restaurants**: `late_checkout_on` (true), `late_half_after_min` (180), `late_full_after_min` (360) — check
+  `restaurants_late_checkout_steps` (0 ≤ half ≤ full ≤ 1439) — and `late_checkout_since` (now() at apply). Owner-only through
+  `guard_restaurant_update` like every setting. **bookings**: `late_fee`, `late_label` (frozen at check-out), `late_waived`;
+  `fence_bookings` (0150's body) now also refuses API writes to those three.
+- `_late_steps(minutes, half, full)` (immutable), `late_checkout(booking)` → jsonb, `late_checkout_waive(booking, bool)` (owner /
+  manager / supervisor; checked in only). **`folio_totals` was dropped and made again** — two columns added at the end
+  (`late_fee`, `late_label`) — grants as before (authenticated, service_role). A connection that prepared `select * from
+  folio_totals(…)` before the change gets "cached plan must not change result type" once; PostgREST wraps its calls, so the app
+  does not. `check_out` (0170's body) locks the booking, names the late check-out when the balance is short, and freezes it;
+  `generate_stay_invoice` (0100's body) adds the late line. No new table, so no new policy.
+- Dry run `dry171.mjs` 40/40 (front-desk.md). Applied with `--live` on 2026-11-04; `late_checkout` over REST as anon → 42501.

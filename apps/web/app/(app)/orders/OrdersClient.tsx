@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone, Receipt, GlassWater, QrCode, UserPlus, Search } from "lucide-react";
+import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone, Receipt, GlassWater, QrCode, UserPlus, Search, Link2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
 import { cn, Empty, Sheet, useToast } from "@/components/ui";
@@ -50,7 +50,7 @@ const PLATE: Record<string, { word: "ordered" | "cooking" | "food_ready" | "eati
 /** Someone a table can be given to (page.tsx: on duty first, then the cleaners). */
 export type Crew = { id: string; name: string; title: string | null; on_duty: boolean; cleans: boolean };
 
-export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt = 15, cleaning = [], me = "", boss = false, cleaner = false, crew = [] }: { tables: Table[]; orders: Order[]; calls?: Call[]; qrOrders?: QrOrder[]; lateAt?: number; cleaning?: Clean[]; me?: string; boss?: boolean; cleaner?: boolean; crew?: Crew[] }) {
+export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt = 15, cleaning = [], me = "", boss = false, cleaner = false, crew = [], merged = {} }: { tables: Table[]; orders: Order[]; calls?: Call[]; qrOrders?: QrOrder[]; lateAt?: number; cleaning?: Clean[]; me?: string; boss?: boolean; cleaner?: boolean; crew?: Crew[]; merged?: Record<string, string[]> }) {
   /* the table an owner, manager or supervisor is giving to someone (2026-10-30): a sheet of the crew, on duty first */
   const [giving, setGiving] = useState<{ table: Table; job: Clean } | null>(null); const [find, setFind] = useState("");
   const [pending, start] = useTransition(); const toast = useToast();
@@ -65,7 +65,14 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
 
   const byTable = new Map<string, Order>(); orders.forEach((o) => { if (o.table_id && !byTable.has(o.table_id)) byTable.set(o.table_id, o); });
   const cleanOf = new Map(cleaning.map((c) => [c.table_id, c]));
-  const tableState = (t: Table): Svc => { const o = byTable.get(t.id); return o ? stateOf(o) : t.status === "reserved" ? "hold" : t.status === "occupied" ? "eat" : cleanOf.has(t.id) ? "clean" : "free"; };
+  /* merged tables (2026-11-04, the owner: "show that both tables are merged", lib/merged.ts): a table whose order joined
+     another shows that order — its state, its total, a tap opens it — with "With T3"; the table it joined says "+ T5" */
+  const nameOf = new Map(tables.map((t) => [t.id, t.name]));
+  const joinedTo = new Map<string, Order>();
+  orders.forEach((o) => (merged[o.id] ?? []).forEach((tid) => { if (!byTable.has(tid) && !cleanOf.has(tid)) joinedTo.set(tid, o); }));
+  const mergedNames = (o: Order) => (merged[o.id] ?? []).filter((tid) => joinedTo.get(tid) === o).map((tid) => nameOf.get(tid)).filter((n): n is string => !!n);
+  const orderAt = (t: Table) => byTable.get(t.id) ?? joinedTo.get(t.id);
+  const tableState = (t: Table): Svc => { const o = orderAt(t); return o ? stateOf(o) : t.status === "reserved" ? "hold" : t.status === "occupied" ? "eat" : cleanOf.has(t.id) ? "clean" : "free"; };
   const lateOf = (o: Order | undefined) => !!o && isLate(live(o), lateAt, o.created_at);
   const zones = [...new Set(tables.map((t) => t.zone))];
   const loose = orders.filter((o) => !o.table_id);
@@ -125,7 +132,8 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
 
   /** One table: a link to its ticket, or — free — a card whose Take order covers it, with Reserve on top. */
   const tableCard = (t: Table, i: number) => {
-    const o = byTable.get(t.id); const s = tableState(t); const late = lateOf(o); const I = SVC_ICON[s];
+    const o = orderAt(t); const s = tableState(t); const late = lateOf(o); const I = SVC_ICON[s];
+    const joined = o && o.table_id !== t.id ? nameOf.get(o.table_id ?? "") ?? null : null; const others = o && !joined ? mergedNames(o) : [];
     const seats = <span className="ml-auto flex items-center gap-1 text-[14px] font-bold text-[var(--color-label-2)] shrink-0"><Users size={16} aria-hidden />{t.capacity}</span>;
     const motionProps = { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { delay: Math.min(i, 12) * 0.012 } };
     /* Paid and left (0111): cyan and dashed — who has it and since when, and the one move this person can make (take it,
@@ -193,6 +201,8 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
         <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`} className={cn("svc-table flex-1", stClass(s), al?.cls)} style={al?.pad} data-table-card={t.name} data-state={s} data-late={late || undefined}>
           <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span>{seats}</div>
           <div className="tstate"><I size={19} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={o ? SVC_WORD[s] : "at_table"} start /></div>
+          {(joined || others.length > 0) && <div className="mt-1.5 self-start max-w-full h-7 px-2.5 rounded-full inline-flex items-center gap-1 text-[12.5px] font-bold num bg-[color-mix(in_srgb,var(--st)_18%,transparent)] text-[var(--st-ink)]" data-merged={joined ? "joined" : "into"} title={joined ? `Merged with ${joined}` : `Merged with ${others.join(", ")}`}>
+            <Link2 size={13} strokeWidth={2.4} aria-hidden className="shrink-0" /><span className="truncate">{joined ? `With ${joined}` : `+ ${others.join(" + ")}`}</span></div>}
           <div className="mt-auto pt-2 flex items-end gap-2 font-bold min-w-0">
             {o ? <><span className={cn("flex items-center gap-1 text-[14px] shrink-0", Date.now() - new Date(o.created_at).getTime() > STALE_MS ? "text-[var(--color-orange)]" : "text-[var(--color-label-2)]")}><Clock size={15} aria-hidden />{fmtSince(o.created_at)}</span>
               <span className="ml-auto font-display num text-[21px] leading-none truncate">{formatINR(totalOf(o), { whole: true })}</span></>
@@ -285,7 +295,7 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
                           {tbl ? <span className="font-display text-[18px] leading-none num">{tbl.name}</span> : <k.Icon size={20} />}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="text-[16px] font-bold truncate" data-title>{tbl ? `Table ${tbl.name}` : <Say w={k.word} start />}</div>
+                          <div className="text-[16px] font-bold truncate" data-title>{tbl ? `Table ${[tbl.name, ...mergedNames(o)].join(" + ")}` : <Say w={k.word} start />}</div>
                           <div className="mt-0.5 flex items-center gap-1.5 text-[13px] text-steel num min-w-0">
                             <span className="shrink-0">#{o.order_no}</span><span aria-hidden>·</span><span className="shrink-0">{plates} item{plates === 1 ? "" : "s"}</span><span aria-hidden>·</span>
                             <span className={cn("inline-flex items-center gap-1 shrink-0", Date.now() - new Date(o.created_at).getTime() > STALE_MS && "text-[var(--color-orange)] font-semibold")} data-age><Clock size={12} />{fmtSince(o.created_at)}</span>

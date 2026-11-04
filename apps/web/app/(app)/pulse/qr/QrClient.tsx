@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { QrCode, Copy, ExternalLink, Printer, Share2, ScanLine, UserPlus, BellRing, Activity, DoorOpen, Settings } from "lucide-react";
+import { useState } from "react";
+import { QrCode, Copy, ExternalLink, Printer, Share2, ScanLine, UserPlus, BellRing, Activity, DoorOpen, Settings, EyeOff, CircleHelp } from "lucide-react";
 import { QR, qrDataUrl } from "@/components/QR";
 import { Card, useToast } from "@/components/ui";
 import { SvcHead } from "@/components/ui/Service";
@@ -33,8 +34,17 @@ const STEPS = [
  * scanner wants dark on light); Print poster opens an A4 door sign. A property that is not Listed publicly has no
  * public queue page, so it gets the way to turn that on instead.
  */
-export function QrClient({ slug, base, listed, restaurant, queue = [] }: { slug: string; base: string; listed: boolean; restaurant: string; queue?: W[] }) {
+/** Whether "How guests use it" is hidden on this device — a cookie, so the server draws the page the same way and
+ *  nothing jumps after it loads (page.tsx reads it). */
+const HOW_COOKIE = "df-joinqr-how";
+
+export function QrClient({ slug, base, listed, restaurant, queue = [], howHidden = false }: { slug: string; base: string; listed: boolean; restaurant: string; queue?: W[]; howHidden?: boolean }) {
   const toast = useToast();
+  const [hideHow, setHideHow] = useState(howHidden);
+  const showHow = (on: boolean) => {
+    setHideHow(!on);
+    try { document.cookie = `${HOW_COOKIE}=${on ? "shown" : "hidden"}; path=/; max-age=31536000; samesite=lax`; } catch { /* a blocked cookie only forgets it */ }
+  };
   const joinUrl = `${base}/queue/${slug}`;
   const copy = async () => { if (await copyText(joinUrl)) toast("Link copied"); else toast("Could not copy — hold the link to copy it", "err"); };
   const share = async () => {
@@ -58,14 +68,27 @@ export function QrClient({ slug, base, listed, restaurant, queue = [] }: { slug:
 
   return (
     <div>
-      <SvcHead icon="qr" title="Join by QR" sub="Guests scan to join" />
+      <SvcHead icon="qr" title="Join by QR" sub="Guests scan to join"
+        actions={hideHow ? (<>
+          <button type="button" className="svc-btn quiet sm" onClick={() => showHow(true)} data-joinqr-how-show><CircleHelp size={18} aria-hidden /><span>How it works</span></button>
+          <Link href="/pulse" className="svc-btn quiet sm"><Activity size={18} aria-hidden /><span>Open Pulse</span></Link>
+        </>) : undefined} />
       {/* How guests use it, first and full width (2026-11-03, the owner: "put it above the QR and the waiting list").
-          Then, left: the code itself, large, with the moves on it (copy, open, share, print); right: the waiting list.
-          Stacked under lg; the code is never wider than the screen. */}
+          It can be hidden (2026-11-04, the owner: "set hide option"): Hide folds it away on this device (HOW_COOKIE) and
+          How it works, in the head, brings it back with Open Pulse beside it. Then, left: the code itself, large, with the
+          moves on it (copy, open, share, print); right: the waiting list. Stacked under lg; the code is never wider than
+          the screen. */}
+      {!hideHow && (
       <Card className="!rounded-[24px] !p-4 sm:!p-5 @container mb-5" data-joinqr-how>
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-[16px] font-extrabold leading-tight">How guests use it</h2>
-          <span className="text-[12.5px] text-steel shrink-0">Three taps. No app.</span>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-[16px] font-extrabold leading-tight min-w-0">How guests use it</h2>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[12.5px] text-steel max-[480px]:hidden">Three taps. No app.</span>
+            <button type="button" onClick={() => showHow(false)} aria-label="Hide how guests use it" data-joinqr-how-hide
+              className="inline-flex items-center gap-1.5 h-11 px-3.5 -my-1.5 rounded-full bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] text-[13px] font-semibold text-[var(--color-label-2)] hover:text-[var(--color-label)] transition-colors">
+              <EyeOff size={15} aria-hidden /><span>Hide</span>
+            </button>
+          </div>
         </div>
         <ol className="mt-3 grid grid-cols-1 @[30rem]:grid-cols-3 gap-2">
           {STEPS.map(({ Icon, title, text }, i) => (
@@ -87,8 +110,11 @@ export function QrClient({ slug, base, listed, restaurant, queue = [] }: { slug:
           <Link href="/pulse" className="svc-btn quiet sm shrink-0"><Activity size={18} aria-hidden /><span>Open Pulse</span></Link>
         </div>
       </Card>
+      )}
+      {/* From lg the code stands still (sticky under the top bar) and only the waiting list scrolls, inside its own card
+          (2026-11-04, the owner: "QR section static, right side waiting list only scrollable"). */}
       <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-5 items-start">
-        <Card className="!rounded-[28px] !p-5 sm:!p-7 flex flex-col items-center text-center" data-joinqr>
+        <Card className="!rounded-[28px] !p-5 sm:!p-7 flex flex-col items-center text-center lg:sticky lg:top-24" data-joinqr>
           <div className="inline-flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[0.16em] text-[var(--color-tint)]"><QrCode size={14} aria-hidden /> Scan to join queue</div>
           <div className="font-display text-[26px] sm:text-[30px] leading-tight mt-1 max-w-full truncate">{restaurant}</div>
           <div className="mt-5 w-full max-w-[19rem] rounded-[24px] bg-white p-4 shadow-[0_0_0_1px_var(--color-separator),0_18px_40px_-24px_rgb(0_0_0/.45)] [&_img]:w-full [&_img]:h-auto [&_div]:!w-full [&_.shimmer]:!h-auto [&_.shimmer]:aspect-square" data-code>
@@ -107,8 +133,8 @@ export function QrClient({ slug, base, listed, restaurant, queue = [] }: { slug:
         </Card>
 
         {/* Right (below the code under lg): the waiting list — who is here and Call next */}
-        <div className="min-w-0">
-          <WaitList queue={queue} listed onShare={() => void share()} />
+        <div className="min-w-0 lg:sticky lg:top-24">
+          <WaitList queue={queue} listed onShare={() => void share()} fill />
         </div>
       </div>
     </div>

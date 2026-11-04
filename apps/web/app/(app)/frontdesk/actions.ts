@@ -9,7 +9,10 @@ export async function createBooking(input: unknown) {
   const p = bookingSchema.safeParse(input); if (!p.success) return { error: p.error.issues[0].message };
   const s = await createClient(); const d = p.data;
   const { data, error } = await s.rpc("create_booking", { p_guest: d.guest, p_room_id: d.room_id, p_check_in: d.check_in, p_check_out: d.check_out, p_adults: d.adults, p_children: d.children, p_rate: d.rate, p_advance: d.advance, p_source: d.source, p_notes: d.notes ?? null });
-  if (error) return { error: error.message }; bump(); return { ok: true, id: data as string };
+  if (error) return { error: error.message };
+  // a returning guest: what was asked for because their record lacked it (2026-11-04 — all five are required) is kept on the record
+  if (d.guest.id) await s.from("guests").update({ phone: d.guest.phone, email: d.guest.email, id_type: d.guest.id_type, id_last4: d.guest.id_last4 }).eq("id", d.guest.id);
+  bump(); return { ok: true, id: data as string };
 }
 /** Moves a booking that has not checked in to another room — offered when its own room is not ready. */
 export async function moveRoom(id: string, roomId: string) { const s = await createClient(); const { data, error } = await s.rpc("booking_move_room", { p_booking: id, p_room: roomId }); if (error) return { error: error.message }; bump(); return { ok: true as const, number: data as string }; }
@@ -18,6 +21,8 @@ export async function checkOut(id: string, payments: unknown) {
   const p = z.array(paymentSchema).safeParse(payments); if (!p.success) return { error: "Enter payment" };
   const s = await createClient(); const { data, error } = await s.rpc("check_out", { p_booking_id: id, p_payments: p.data }); if (error) return { error: error.message }; bump(); revalidatePath("/invoices"); return { ok: true, invoiceId: data as string | null };
 }
+/** 0171: waive a stay's late check-out, or charge it again (owner / manager / supervisor; the guest still in). */
+export async function waiveLate(id: string, waive: boolean) { const s = await createClient(); const { error } = await s.rpc("late_checkout_waive", { p_booking_id: id, p_waive: waive }); if (error) return { error: error.message }; bump(); revalidatePath(`/frontdesk/${id}`); return { ok: true as const }; }
 export async function cancelBooking(id: string) {
   const s = await createClient();
   const { data: b, error } = await s.from("bookings").update({ status: "cancelled" }).eq("id", id).eq("status", "reserved").select("room_id").maybeSingle();

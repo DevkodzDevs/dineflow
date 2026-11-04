@@ -8,6 +8,7 @@ import { CLEAN_BOSSES, isCleaner } from "@/lib/notify";
 import { positionByKey } from "@dineflow/shared";
 import { SvcHead } from "@/components/ui/Service";
 import { Say } from "@/components/ui/Say";
+import { mergedRows, mergedTables } from "@/lib/merged";
 import { OrdersClient } from "./OrdersClient";
 
 export const metadata = { title: "Orders" };
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
   const s = await createClient(); const held = holdDue(s);   // a booking due now holds its table or room (0154)
-  const [session, { data: tables }, { data: orders }, { data: calls }, { data: cleans }, { data: people }, { data: qr }] = await Promise.all([
+  const [session, { data: tables }, { data: orders }, { data: calls }, { data: cleans }, { data: people }, { data: qr }, { data: mergedFrom }] = await Promise.all([
     requireSession(),
     s.from("dining_tables").select("*").order("sort_order"),
     // a printed, unpaid bill turns the table violet ("Bill"); each dish's own time decides LATE
@@ -27,7 +28,10 @@ export default async function OrdersPage() {
     s.from("profiles").select("id, full_name, role, department, position").eq("is_active", true),
     // orders placed from a table's QR, waiting for someone to accept them into the kitchen (2026-10-27)
     s.from("online_orders").select("id, table_id, display_id, gross, items, created_at").eq("status", "new").is("order_id", null).not("table_id", "is", null).gte("created_at", new Date(Date.now() - 12 * 3600e3).toISOString()).order("created_at"),
+    // the tables merged into an open order (lib/merged.ts): their cards show the order they joined, "With T3"
+    mergedRows(s),
   ]);
+  const merged = mergedTables(mergedFrom, (orders ?? []) as { id: string; table_id: string | null }[]);
   const staff = (people ?? []) as { id: string; full_name: string; role: string; department: string | null; position: string | null }[];
   const nameOf = new Map(staff.map((p) => [p.id, p.full_name]));
   /* who does what with a table to clean (2026-10-30): a cleaner takes it, an owner / manager / supervisor gives it out
@@ -59,7 +63,7 @@ export default async function OrdersPage() {
           <Link href="/orders/new?type=takeaway" className="svc-btn go sm !px-5" data-new-parcel><ShoppingBag size={19} aria-hidden /><Say w="parcel" /></Link>
         </>} />
       <OrdersClient tables={tables ?? []} orders={(orders ?? []) as never} calls={(calls ?? []) as never} qrOrders={(qr ?? []) as never} lateAt={Number(session.restaurant.kds_target_minutes ?? 15)}
-        cleaning={cleaning} me={session.profile.id} boss={boss} cleaner={cleaner} crew={crew} />
+        cleaning={cleaning} me={session.profile.id} boss={boss} cleaner={cleaner} crew={crew} merged={merged} />
     </>
   );
 }

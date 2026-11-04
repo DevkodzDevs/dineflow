@@ -1,9 +1,10 @@
 "use client";
+import { isMobile } from "@/lib/phone";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ChevronLeft, Search, Phone } from "lucide-react";
-import { Button, Field, Pill, useToast } from "@/components/ui";
+import { Button, Field, Pill, useToast, PhoneInput } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { track } from "../actions";
 import { reach } from "@/lib/reach";
@@ -21,8 +22,8 @@ export function TrackClient() {
         <p className="text-sm text-[var(--color-label-2)] mt-1.5">Enter your booking reference and the phone you booked with.</p>
         <div className="card p-5 mt-5 space-y-3">
           <Field label="Reference"><input value={f.ref} onChange={(e) => setF({ ...f, ref: e.target.value })} placeholder="123456 or a booking number" className="num" /></Field>
-          <Field label="Phone"><input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} className="num" /></Field>
-          <Button className="w-full" loading={pending} disabled={!f.ref || !f.phone}
+          <Field label="Phone"><PhoneInput value={f.phone} onValue={(v) => setF({ ...f, phone: v })} /></Field>
+          <Button className="w-full" loading={pending} disabled={!f.ref || !isMobile(f.phone)}
             onClick={() => start(async () => { const x = await reach(() => track(f.ref.trim(), f.phone.trim())) as { error?: string; result?: Record<string, unknown> | null }; if (x.error) toast(x.error, "err"); else if (!x.result) toast("Nothing found with that reference and number", "err"); else setRes(x.result); })}>
             <Search size={16} /> Find it
           </Button>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { csvCell } from "@/lib/csv";
 import { motion } from "framer-motion";
 import { Plus, Search, MessageCircle, Download, Gift, Coins, Cake, Heart, Users, Sparkles, Moon, Star, Phone, Info, Check, Minus, LayoutGrid, Rows3 } from "lucide-react";
-import { Button, Card, Field, Sheet, Empty, StatTile, cn, useToast } from "@/components/ui";
+import { Button, Card, Field, Sheet, Empty, StatTile, cn, useToast, PhoneInput } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import { formatINR, fmtDate } from "@/lib/format";
@@ -165,7 +165,7 @@ function CustomerForm({ c, onDone }: { c?: Customer; onDone: () => void }) {
   return (
     <form className="space-y-3" action={(fd) => start(async () => { const r = await saveCustomer(fd); if ("error" in r) toast(r.error!, "err"); else { toast("Saved"); onDone(); } })}>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Phone" hint={c ? "The key we know them by" : ""}><input name="phone" className="num" defaultValue={c?.phone ?? ""} required readOnly={!!c} inputMode="tel" placeholder="98765 43210" /></Field>
+        <Field label="Phone" hint={c ? "The key we know them by" : ""}><PhoneInput name="phone" defaultValue={c?.phone ?? ""} required readOnly={!!c} placeholder="98765 43210" /></Field>
         <Field label="Name"><input name="name" defaultValue={c?.name ?? ""} placeholder="Ravi Kumar" /></Field>
       </div>
       <Field label="Email"><input name="email" type="email" defaultValue={c?.email ?? ""} /></Field>

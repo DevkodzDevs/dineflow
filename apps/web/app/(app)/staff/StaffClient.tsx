@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Copy, UserPlus, KeyRound, Check, MailWarning, MailCheck, Mail, Hash, Users, Network, BookOpen, Briefcase, Search, Ticket, ShieldCheck, UserCheck, Building2, AlertCircle, Phone, CalendarDays, X, LayoutDashboard, LayoutGrid, Rows3, Clock3, ChevronLeft, ChevronRight } from "lucide-react";
 import { SlidersHorizontal as AccessIcon, Plug, BarChart3 } from "lucide-react";
-import { Button, Field, Sheet, cn, useToast, FlapShuffle } from "@/components/ui";
+import { Button, Field, Sheet, cn, useToast, FlapShuffle, PhoneInput } from "@/components/ui";
 import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, ROLE_DEFAULT, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
 import { createInvite, setAccess, setPasswordRight, setAssistAccess, setGrant, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency, setStaffChecklists } from "./actions";
@@ -561,8 +561,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               <input name="contact_email" type="email" required placeholder="ravi@example.com" />
             </Field>
             <Field label="Phone" hint="10 digits.">
-              <input name="phone" inputMode="numeric" maxLength={10} pattern="[0-9]{10}" placeholder="9876543210"
-                onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/\D/g, "").slice(0, 10); }} />
+              <PhoneInput name="phone" placeholder="9876543210" />
             </Field>
             {/* who to call if something happens to them (2026-10-23, 0134) — on file from the first day; they can change it on My profile */}
             <div className="grid gap-3 sm:grid-cols-2" data-add-emergency>
@@ -570,8 +569,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
                 <input name="emergency_name" maxLength={60} placeholder="Lakshmi · mother" />
               </Field>
               <Field label="Emergency number" hint="Optional.">
-                <input name="emergency_phone" type="tel" inputMode="tel" maxLength={20} placeholder="98400 67890" className="num"
-                  onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9 +()-]/g, ""); }} />
+                <PhoneInput name="emergency_phone" placeholder="98400 67890" />
               </Field>
             </div>
             <Field label="Login ID" hint="Blank = from name">

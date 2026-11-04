@@ -20,7 +20,7 @@ export default async function Reservations({ searchParams }: { searchParams: Pro
   /* the strip of days over the list: this week from today, or from the chosen day when it is further out */
   const start = day >= today && day <= plus(today, 6) ? today : day;
   // the session travels with the page's own rows, not in front of them: one trip, not two
-  const [session, { data: list }, { data: tables }, { data: reviews }, { data: month }, { data: week }, { data: inHouse }, { data: cleans }, { data: running }] = await Promise.all([
+  const [session, { data: list }, { data: tables }, { data: reviews }, { data: month }, { data: week }, { data: inHouse }, { data: cleans }, { data: running }, { data: taken }] = await Promise.all([
     requireSession(),
     // a booking for someone staying names their stay (0157): its room and guest come with it
     s.from("reservations").select("*, stay:booking_id(id, rooms(number), guests(full_name))").eq("on_date", day).order("at_time"),
@@ -33,6 +33,9 @@ export default async function Reservations({ searchParams }: { searchParams: Pro
     // 0166: Seat now offers only a free table — not one being cleaned, not one with an order open on it
     s.from("table_cleanings").select("table_id").in("status", ["pending", "in_progress"]),
     s.from("orders").select("table_id").eq("status", "open").not("table_id", "is", null),
+    // New booking offers only a free table (2026-11-04, the owner): every live booking from today that has a table, so a table
+    // already booked near the chosen time is left out whatever day the sheet is set to
+    s.from("reservations").select("id, table_id, on_date, at_time").gte("on_date", today).in("status", ["requested", "confirmed", "seated"]).not("table_id", "is", null).limit(1000),
   ]);
   const busy = new Map<string, "cleaning" | "order">();
   for (const o of (running ?? []) as { table_id: string }[]) busy.set(o.table_id, "order");
@@ -45,5 +48,5 @@ export default async function Reservations({ searchParams }: { searchParams: Pro
   const days = Array.from({ length: 7 }, (_, i) => { const d = plus(start, i); return { date: d, n: (week ?? []).filter((r) => r.on_date === d && r.status !== "cancelled" && r.status !== "no_show").length }; });
   await held;
   return <ReservationsClient day={day} today={today} days={days} list={(list ?? []) as never} tables={seatable} reviews={(reviews ?? []) as never} month={(month ?? []) as never} ai={aiEnabled()} restaurant={session.restaurant.name}
-    stays={stays} openNew={fresh ? { stay: stay ?? "" } : null} />;
+    stays={stays} openNew={fresh ? { stay: stay ?? "" } : null} taken={(taken ?? []) as never} />;
 }

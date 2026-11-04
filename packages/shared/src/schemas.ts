@@ -82,7 +82,10 @@ export const paymentSchema = z.object({
 export const inviteSchema = z.object({ role: z.enum(ROLES).exclude(["owner"]) });
 
 export const bookingSchema = z.object({
-  guest: z.object({ id: z.string().uuid().optional().or(z.literal("")), full_name: z.string().min(1).max(80), phone: z.string().max(20).optional(), email: z.string().max(120).optional(), id_type: z.string().max(30).optional(), id_last4: z.string().max(4).optional(), address: z.string().max(200).optional() }),
+  // 2026-11-04, the owner: name, mobile, email, ID type and ID last 4 are all required for a booking
+  guest: z.object({ id: z.string().uuid().optional().or(z.literal("")), full_name: z.string().trim().min(1, "Add the guest's name").max(80),
+    phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a 10-digit mobile number"), email: z.string().trim().email("Enter the guest's email").max(120),
+    id_type: z.string().min(1, "Choose the ID type").max(30), id_last4: z.string().regex(/^[A-Za-z0-9]{4}$/, "Enter the last 4 of the ID"), address: z.string().max(200).optional() }),
   room_id: z.string().uuid(),
   check_in: z.string(), check_out: z.string(),
   adults: z.coerce.number().int().min(1).max(10).default(2),

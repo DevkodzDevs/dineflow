@@ -1,4 +1,6 @@
 "use client";
+import { okPhone } from "@/lib/phone";
+import { PhoneInput } from "@/components/ui/PhoneInput";   // the box alone: this page keeps the kit out of its bundle
 /* eslint-disable @next/next/no-img-element -- logos and dish photos are the property's own uploads on any host; a plain img keeps these pages free of next/image remote patterns */
 import { useState, useTransition } from "react";
 import { Star, Check, Loader2 } from "lucide-react";
@@ -68,11 +70,11 @@ export function FeedbackClient({ slug, table, place }: { slug: string; table: st
             </label>
             <div className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
               <label className="min-w-0"><span className="text-[13px] font-semibold text-[var(--color-label-2)]">Name (optional)</span><input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="mt-1.5 w-full h-12 rounded-xl border px-3 text-[16px]" autoComplete="name" /></label>
-              <label className="min-w-0"><span className="text-[13px] font-semibold text-[var(--color-label-2)]">Phone (optional)</span><input value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} inputMode="tel" className="mt-1.5 w-full h-12 rounded-xl border px-3 text-[16px]" autoComplete="tel" /></label>
+              <label className="min-w-0"><span className="text-[13px] font-semibold text-[var(--color-label-2)]">Phone (optional)</span><PhoneInput value={phone} onValue={setPhone} className="mt-1.5 w-full h-12 rounded-xl border px-3 text-[16px]" /></label>
             </div>
             {rating <= 3 && <p className="mt-2 text-[12.5px] text-[var(--color-label-2)]">Leave a number and the manager can call you back.</p>}
             {err && <p className="mt-4 text-[14px] font-semibold text-[var(--color-red)]" role="alert" data-feedback-error>{err}</p>}
-            <button type="button" onClick={send} disabled={pending} data-feedback-send
+            <button type="button" onClick={send} disabled={pending || !okPhone(phone)} data-feedback-send
               className="mt-5 w-full !min-h-14 rounded-2xl text-[17px] font-extrabold flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--color-tint)", color: "var(--color-on-tint, #fff)" }}>
               {pending && <Loader2 size={18} className="animate-spin" aria-hidden />}Send feedback
             </button>

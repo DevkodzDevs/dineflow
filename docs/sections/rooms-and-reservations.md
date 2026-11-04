@@ -194,3 +194,16 @@ already chosen, or one that fits the party."
 ## 2026-11-03 — a ready room books from its card
 - A Ready room's card (`[data-room-card]`) links to `/frontdesk?new=1&room=<id>` — Book a room opens with it picked — and its foot shows a
   **Book** pill beside the rate (`[data-room-book]`). Occupied rooms still open their folio; the others the front desk. front-desk.md.
+
+## 2026-11-04 — an occupied room is not edited from its card
+- The owner: "don't show the edit option when the room is occupied — show Occupied." An occupied room's action bar is one strip,
+  **Occupied** (`[data-room-occupied]`, `.room-act`, 40/44px), a link to the stay's folio like the card above it (to the front desk
+  when no stay is checked in). The pencil — and with it the Room sheet — comes back once the room is free. Other states unchanged.
+
+## 2026-11-04 — New booking's Table offers only free tables
+- **The owner: "only show free tables in the dropdown".** `page.tsx` reads every live booking (requested / confirmed / seated) with a
+  table from today on; New booking's Table (`[data-new-table-select]`) lists a table only when it seats the party, has no other booking
+  within 90 min of the chosen time on the chosen day, and — for a time within 90 min of now, today — no open order, no cleaning job and
+  is not occupied. *Auto* stays (it reads "Auto · none free now" when nothing is). Under it, "3 of 5 free" / "No table seats them"
+  (`[data-new-table-free]`). A table chosen and then made busy by another date, time or party goes back to Auto. **`addWalkIn`** checks
+  the 90 minutes again on save ("T3 is booked at 19:30 — pick another table or Auto").

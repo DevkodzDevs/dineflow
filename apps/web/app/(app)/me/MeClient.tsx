@@ -1,8 +1,9 @@
 "use client";
+import { okPhone } from "@/lib/phone";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { BadgeCheck, BellRing, CalendarCheck, CalendarDays, Check, ChevronRight, Clock3, Copy, Hash, KeyRound, Lock, ListChecks, ListTodo, Mail, MailCheck, MonitorSmartphone, Palette, ShieldCheck, Undo2, UserRound, Users } from "lucide-react";
-import { Button, Card, Sheet, cn, useToast } from "@/components/ui";
+import { Button, Card, Sheet, cn, useToast, PhoneInput } from "@/components/ui";
 import { copyText } from "@/lib/clipboard";
 import { ThemePicker } from "@/components/ui/Theme";
 import { LangPicker } from "@/components/ui/Say";
@@ -154,7 +155,7 @@ function Profile({ me }: { me: Me }) {
             <input className="mt-1" value={d.display_name} onChange={(e) => set("display_name", e.target.value)} maxLength={40} placeholder={me.full_name} disabled={!me.ready} data-me-field="display_name" />
             <span className="mt-1 block text-[11.5px] text-steel">Staff list: {me.full_name}</span></label>
           <label className="block min-w-0"><span className="text-[13px] font-semibold text-steel">Phone</span>
-            <input className="mt-1" type="tel" inputMode="tel" autoComplete="tel" value={d.phone} onChange={(e) => set("phone", e.target.value)} maxLength={20} placeholder="98400 12345" data-me-field="phone" /></label>
+            <PhoneInput className="mt-1" value={d.phone} onValue={(v) => set("phone", v)} placeholder="98400 12345" data-me-field="phone" /></label>
           <div className="sm:col-span-2 min-w-0">
             <label className="block"><span className="text-[13px] font-semibold text-steel">Email</span>
               <input className="mt-1" type="email" inputMode="email" autoComplete="email" value={d.contact_email} onChange={(e) => set("contact_email", e.target.value)} maxLength={120} placeholder="you@example.com" data-me-field="contact_email" /></label>
@@ -163,7 +164,7 @@ function Profile({ me }: { me: Me }) {
           <label className="block min-w-0"><span className="text-[13px] font-semibold text-steel">Emergency contact</span>
             <input className="mt-1" value={d.emergency_name} onChange={(e) => set("emergency_name", e.target.value)} maxLength={60} placeholder="Name · relation" disabled={!me.ready} data-me-field="emergency_name" /></label>
           <label className="block min-w-0"><span className="text-[13px] font-semibold text-steel">Their number</span>
-            <input className="mt-1" type="tel" inputMode="tel" value={d.emergency_phone} onChange={(e) => set("emergency_phone", e.target.value)} maxLength={20} placeholder="98400 67890" disabled={!me.ready} data-me-field="emergency_phone" /></label>
+            <PhoneInput className="mt-1" value={d.emergency_phone} onValue={(v) => set("emergency_phone", v)} placeholder="98400 67890" disabled={!me.ready} data-me-field="emergency_phone" /></label>
           <div className="sm:col-span-2 min-w-0" data-me-langs>
             <div className="text-[13px] font-semibold text-steel mb-1.5">Languages you speak</div>
             <div className="flex flex-wrap gap-2" translate="no">
@@ -194,7 +195,7 @@ function Profile({ me }: { me: Me }) {
         {err && <p className="mt-3 text-[14px] font-semibold text-chili" role="alert" data-me-error>{err}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2 justify-end">
           {dirty && <button type="button" onClick={() => { setD(saved); setErr(null); }} className="svc-btn quiet sm !px-4" data-me-undo><Undo2 size={16} aria-hidden /> Undo</button>}
-          <button type="button" disabled={!dirty || pending} onClick={save} className="svc-btn go sm !px-5 max-sm:flex-1" data-me-save><Check size={17} aria-hidden />{pending ? "Saving…" : dirty ? "Save my details" : "Saved"}</button>
+          <button type="button" disabled={!dirty || pending || !okPhone(d.phone) || !okPhone(d.emergency_phone)} onClick={save} className="svc-btn go sm !px-5 max-sm:flex-1" data-me-save><Check size={17} aria-hidden />{pending ? "Saving…" : dirty ? "Save my details" : "Saved"}</button>
         </div>
       </div>
     </Card>

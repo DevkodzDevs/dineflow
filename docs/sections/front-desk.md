@@ -244,7 +244,7 @@ the hook). The empty Upcoming board has a *Booking* button too.
   and **every part of 0166 unchanged** (`whyNot`, `ranked`, `[data-rooms-open]`, `RoomPick` with `why` / `[data-why]` / disabled); a room that
   sleeps fewer than the party warns, it does not refuse (`[data-sleeps-warn]`). **Guest**: one name and one phone; a returning guest
   (the 200 most recent) appears as either is typed (`[data-guest-matches]`), *Use* fills both (`[data-guest-chosen]`, *Change* undoes it);
-  ID and email fold under *+ ID and email*. **Payment**: the rate (with *Use it* back to the type's rate when changed), the advance with
+  ID and email no longer fold — all five are required since 2026-11-04 (below). **Payment**: the rate (with *Use it* back to the type's rate when changed), the advance with
   None · 1 night · Full stay (Full stay only when more than one night), **Booked by** Walk-in · Phone · OTA · Agent, and *+ Note* —
   `notes` reaches `create_booking` for the first time.
 - **The foot** (`[data-booking-foot]`, `data-no-foot` so the kit's own foot does not pin the button alone): "Room 102 · 3 nights · 3 guests",
@@ -253,3 +253,72 @@ the hook). The empty Upcoming board has a *Booking* button too.
   missing — *Pick a room*, *Room 102: booked — pick another*, *Add the guest's name* — until it is **Confirm booking**.
 - **`/frontdesk?new=1&room=<id>`** opens the sheet with that room picked (`openNew`); closing it takes `?new` off the URL.
 - Checked: `pw/book171.mjs` (51) — testing-and-gates.md.
+
+
+## 2026-11-04 — late check-out on the stay bill (0171)
+The owner: "if the guest overstays, add an extra amount by how long — more than 3 hours half a day, more than that a full day,
+and further on the same way."
+- **The rule** (Settings → Rooms & stays → *Charge late check-out*, `LateCheckoutRule.tsx`, `[data-late-rule]`; owner only, as every
+  property setting): the stay is due out on its check-out date at the property's check-out time (IST). Each whole 24 h late is a
+  night at the stay's rate; of the rest, up to **Half night after** (3 h) is free, then **½ night**, past **Full night after** (6 h)
+  **1 night**. 2 h → ₹0 · 3 h 20 m → ½ · 6 h 40 m → 1 · 27 h 20 m → 1½. The boxes are hours (step ½), saved as minutes
+  (`late_half_after_min` / `late_full_after_min`); the three bands are drawn under them as they are typed (`[data-late-band]`).
+- **Where it lands**: `folio_totals` returns `late_fee` and `late_label` ("Late check-out · 3h 20m · half day"); the fee is room
+  revenue — in `taxable`, taxed at the room's slab (`room_gst_for`), its own line on the stay invoice (SAC 996311, qty ½ / 1 / 1½).
+  Live while the guest is in; **frozen at check-out** on `bookings.late_fee / late_label`, so a closed stay never changes.
+  `check_out` asks for it in the balance — paying only the nights is refused with "it includes the late check-out (…)".
+- **Waive**: `late_checkout_waive(booking, true|false)` — owner, manager or supervisor, while the guest is in; the label says
+  "· waived" and the fee is ₹0. The booking columns are fenced (`fence_bookings`): not writable through the API.
+- **Only stays due out after the rule went on** (`restaurants.late_checkout_since`, set when 0171 was applied) are charged: three
+  live stays were already overdue (one since 17 Sep) and get no surprise charge — settle those by hand as before.
+- **Do not also add "Late check-out" by hand** from the charge picker: that would charge it twice, and at the 18% extras rate.
+- **On the folio** (`FolioClient`, the Stay card, `[data-folio-late]`): *half* / *full* — the clock in orange or red, "Late check-out",
+  "4h 00m · half day", the amount and **Waive** (`waiveLate` → `late_checkout_waive`); *waived* — struck through, **Charge it** puts it
+  back; *soon* — due out today and not late yet: "Late check-out after 15:42 · ½ night, 1 night after 18:42". The slip has the line and
+  it is in the subtotal; the payment row follows the balance (the folio's own effect). While the folio is open it fetches itself once
+  when the next step is reached (a timer, not after an action). Inside the Stay card `due` is the balance — the check-out moment is
+  `dueOut` (the hint first compared the clock with the rupees).
+- Checked: `folio171.mjs` 47/47 on a Try-Demo resort — 1440 dark, 1194 royal, 834 paper, 412 dark and bright, 1920 colour: half a night
+  ₹1,250, the slip line, payment = balance (₹4,351), Waive → To pay ₹3,038 and back, the hint an hour before, nothing two days out, 44px on
+  touch, inside the card; it puts the stay back. `qr171.mjs` 142/142 for Settings (and Join by QR).
+- Checked: `dry171.mjs` (rolled back, a fresh demo resort) 40/40 — the bands at 0, 2 h, the 3 h and 6 h edges, 1 d + 1 h, 1 d 3 h 20 m,
+  2 d 6 h 40 m; folio ₹5,000 + 5% = ₹5,250; short payment refused; waiter refused, manager waives and puts back; API writes refused;
+  the owner's 4 h / 8 h rule, off → ₹0; full before half refused; checked out → frozen, invoice line ₹1,000 and invoice = folio, paid;
+  three closed stays' folios unchanged; anon refused.
+
+## 2026-11-04 — the owner's round: required guest details, the folio, the invoice after check-out, compact lists, tables
+- **Book a room's guest needs all five** (the owner: "name, number, email, ID type and ID last 4 must be required"): *Guest name ·
+  Mobile number · Email · ID type · ID last 4*, all shown (no fold), each marked *. The button walks them in order — *Add the guest's
+  name* → *Add a 10-digit mobile number* → *Add the guest's email* → *Choose the ID type* → *Add the ID's last 4* → Confirm booking. The
+  phone is the shared `PhoneInput` (design-system.md); Aadhaar's last four are digits, other IDs letters or digits (stored upper-case);
+  PAN joined the ID types. **A returning guest** (page.tsx now reads their email and ID) is asked only for what the record lacks
+  (`[data-guest-lacks]`), and `createBooking` writes those back onto the guest after `create_booking` — a returning guest's record
+  was never updated before. `bookingSchema.guest` (packages/shared) refuses the same (10-digit mobile, email, ID type, 4 characters);
+  nothing else uses that schema. Hooks: `[data-guest-email]`, `[data-guest-id-type]`, `[data-guest-id4]`.
+- **The folio** (`[id]/FolioClient.tsx`, `Folio.module.css`):
+  - **← Front desk** at the top (`[data-folio-back]`).
+  - **The Stay card, redrawn** ("messy — clean"): a pill for where the stay stands (`[data-stay-when]`: Night 2 of 3 / Due out today /
+    Arriving today / Arrives in n days / Checked out), arrive and leave with the check-in and check-out times on a dashed line with the
+    nights between, **Room · Guests · Rate** as three quiet cells, then Total and To pay with a bar for how much is paid.
+  - **Add to folio's words are a pick-or-type box** (`ChargePicker.tsx`, `[data-charge-picker]`): open it (focus or the chevron,
+    `[data-charge-toggle]`, 44px on touch) for **Used here** — what this property has posted before, newest amount, "₹150 last time"
+    — then **Common** (`charges.ts`: Laundry, Minibar, Airport pickup/drop, Extra bed, Early check-in, Breakfast, Room service, Spa,
+    Damage charge; discounts: Loyal guest, Corporate rate, Long stay, Service recovery, Manager's discount). Typing filters; words that
+    match nothing offer *Use "…"* (`[data-charge-own]`); ↑ ↓ Enter Escape. Picking fills the amount when it is empty. **No "Late
+    check-out"** — 0171 (dineflow-55) works that fee out and adds it itself; a hand-posted one would charge it twice. The lists are in
+    `charges.ts`, not the client file: a server page cannot read plain values out of a "use client" module.
+  - **Charge a restaurant order lists this stay's orders only** (the owner: "it shows for every new customer"). It listed every open
+    order in the property, unfiltered. Now: room service from the room's QR (`booking_id`, 0170), a till room-service ticket for this room
+    ("Room 305 · …"), or an order with the guest's phone (`phone10` both sides) — else *No orders for this room*. Anyone else's open
+    order (not another room's ticket) waits behind **Another order** (`[data-folio-another]`) and asks before it posts.
+  - **The payment follows the balance.** Posting an extra or an order left Check out's amount at the old balance, and Check out & invoice
+    stayed greyed out until someone retyped it (found by s172's screenshot). A split the desk has made is left alone.
+  - **Check out lands on `/invoices/<id>?done=checkout`** — billing-and-invoices.md.
+- **The front desk's lists past three** (the owner: "first in full, the others compact"): Arrivals, Upcoming and In house each show their
+  first stay as the ticket and the rest as one-row cards (`Mini`, `StayCard.module.css` `.mini*`, `[data-compact]`): the room on a
+  stub in the section's colour, the guest, a badge (Today / Late / Tomorrow / In n days / Night 2/3 / Due out), the dates and the party, and
+  the same move — Check in, a ✕ to cancel (`[data-cancel-compact]`, asks first), a Table key and ›. Three or fewer stay tickets.
+- **Tables on the desk, only where there are tables** (`[data-fd-tables-tile]`): a fifth tile, *Tables free* n, "3 in use · 1 cleaning ·
+  12 in all" (page.tsx: `dining_tables`, open orders on a table, open `table_cleanings`). No tables → four tiles as before. With tables
+  the page also listens to `dining_tables`, `table_cleanings` and `orders`.
+- Checked: `pw/s172.mjs` — testing-and-gates.md.

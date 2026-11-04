@@ -10,6 +10,7 @@ import { snap, glide, sheetV } from "@/lib/motion";
 export { Flip, FlipClock, Loader, PageLoader, Countdown, Waiting, reducedMotion } from "./flip";
 export { FlapShuffle, FlapSpell, FlapPercent, FlapClock, FlapMini, FlapBreathe, useNow } from "./Flap";
 export { PasswordInput } from "./PasswordInput";
+export { PhoneInput } from "./PhoneInput";
 import { Loader } from "./flip";
 import { FlapShuffle } from "./Flap";
 /** The bar along the top while the next page is on its way, and a ring on any tap that has to wait (Busy.tsx). */
@@ -103,7 +104,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
   // inputs on the till, billing and front desk with no name. Only a plain input, select or textarea is given
   // an id; anything else (PasswordInput, a group of chips) keeps its own wiring.
   const auto = useId();
-  const plain = isValidElement(children) && typeof children.type === "string" && ["input", "select", "textarea"].includes(children.type);
+  const plain = isValidElement(children) && ((typeof children.type === "string" && ["input", "select", "textarea"].includes(children.type)) || !!(children.type as { fieldControl?: boolean }).fieldControl);   // PhoneInput too
   const id = plain ? ((children.props as { id?: string }).id ?? auto) : undefined;
   return <div className="space-y-1.5"><label htmlFor={id}>{label}</label>{plain ? cloneElement(children as ReactElement<{ id?: string }>, { id }) : children}{hint && <p className="footnote">{hint}</p>}</div>;
 }

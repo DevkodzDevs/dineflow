@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { Printer, Share2, Pencil } from "lucide-react";
-import { Button, Field, Pill, Sheet, useToast } from "@/components/ui";
+import { Printer, Share2, Pencil, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Button, Field, Pill, Sheet, PhoneInput, useToast } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { taxLabels, billTitle, SAC, COMPOSITION_NOTE } from "@dineflow/shared";
 import { updateInvoiceGuest } from "../actions";
@@ -18,6 +19,13 @@ export function InvoiceView({ inv, restaurant, cashier }: { inv: Inv; restaurant
   /* the Print button on the invoices list links straight here with ?print=1 */
   const sp = useSearchParams();
   useEffect(() => { if (sp.get("print") !== "1") return; const t = setTimeout(() => window.print(), 500); return () => clearTimeout(t); }, [sp]);
+  /* 2026-11-04, the owner: after Check out the invoice opens with Print in plain view, and once it is printed the way back to the
+     front desk is the next thing to press. ?done=checkout is what the folio's Check out lands on. */
+  const done = sp.get("done") === "checkout";
+  const [printed, setPrinted] = useState(false);
+  useEffect(() => { const on = () => setPrinted(true); window.addEventListener("afterprint", on); return () => window.removeEventListener("afterprint", on); }, []);
+  const stay = inv.kind === "stay";
+  const back = stay ? { href: "/frontdesk", label: "Front desk" } : { href: "/invoices", label: "Invoices" };
   const no = `INV-${String(inv.invoice_no).padStart(5, "0")}`;
   const lab = taxLabels(restaurant.gst_state_code), comp = restaurant.gst_scheme === "composition";
   const title = billTitle(restaurant.gst_scheme, restaurant.gstin, true);
@@ -29,6 +37,21 @@ export function InvoiceView({ inv, restaurant, cashier }: { inv: Inv; restaurant
   const share = async () => { const text = `${restaurant.name} · ${no} · ${formatINR(Number(inv.total))} · ${window.location.href}`; const shared = await shareText({ title: no, text }); if (shared === "unavailable") toast(await copyText(text) ? "Link copied" : "Couldn't copy the link"); };
   return (
     <div className="max-w-3xl mx-auto">
+      <Link href={back.href} className="no-print inline-flex items-center gap-1.5 min-h-10 [@media(pointer:coarse)]:min-h-11 pl-2.5 pr-3.5 mb-4 rounded-full text-[13.5px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors" data-inv-back><ArrowLeft size={16} aria-hidden /> {back.label}</Link>
+      {done && (
+        <div className="no-print mb-5 rounded-[22px] p-4 sm:p-5 flex flex-wrap items-center gap-3 sm:gap-4 bg-[color-mix(in_srgb,var(--color-green)_11%,var(--color-bg-2))] border border-[color-mix(in_srgb,var(--color-green)_30%,transparent)]" data-checkout-done role="status">
+          <span className="h-11 w-11 shrink-0 rounded-full grid place-items-center bg-[color-mix(in_srgb,var(--color-green)_18%,transparent)] text-[var(--color-green)]"><CheckCircle2 size={22} aria-hidden /></span>
+          <div className="min-w-0 flex-1 basis-48">
+            <div className="text-[16px] font-bold leading-tight">{printed ? "Invoice printed" : "Checked out"}{inv.bookings?.rooms?.number ? ` · Room ${inv.bookings.rooms.number}` : ""}</div>
+            <div className="text-[13px] text-[var(--color-label-2)]">{printed ? "Back to the desk when you are done" : `${no} is ready to print`}</div>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
+            {printed
+              ? <><Button variant="outline" onClick={() => window.print()} data-done-print><Printer size={16} /> Print again</Button><Link href={back.href} className="btn btn-filled min-h-11 px-5 rounded-full inline-flex items-center justify-center gap-2 font-semibold" data-done-back><ArrowLeft size={16} aria-hidden /> Back to {back.label}</Link></>
+              : <><Link href={back.href} className="min-h-11 px-4 rounded-full inline-flex items-center justify-center gap-2 text-sm font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]" data-done-back><ArrowLeft size={16} aria-hidden /> {back.label}</Link><Button size="lg" onClick={() => window.print()} data-done-print><Printer size={17} /> Print invoice</Button></>}
+          </div>
+        </div>
+      )}
       <div className="no-print flex items-center gap-3 mb-6">
         <div className="min-w-0"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">{inv.kind} invoice</div><h1 className="text-3xl num">{no}</h1></div>
         <Pill tone={inv.status === "paid" ? "ready" : "alert"}>{inv.status}</Pill>
@@ -58,7 +81,7 @@ export function InvoiceView({ inv, restaurant, cashier }: { inv: Inv; restaurant
       </motion.div>
       <Sheet open={edit} onClose={() => setEdit(false)} title="Guest details">
         <form className="space-y-4" action={(fd) => start(async () => { const r = await updateInvoiceGuest(inv.id, { name: String(fd.get("name")), phone: String(fd.get("phone")), gstin: String(fd.get("gstin")) }); if ("error" in r) return void toast(r.error!, "err"); setEdit(false); })}>
-          <Field label="Name"><input name="name" defaultValue={inv.guest_name ?? ""} /></Field><Field label="Phone"><input name="phone" defaultValue={inv.guest_phone ?? ""} /></Field><Field label="Guest GSTIN (B2B)"><input name="gstin" className="num uppercase" defaultValue={inv.guest_gstin ?? ""} /></Field>
+          <Field label="Name"><input name="name" defaultValue={inv.guest_name ?? ""} /></Field><Field label="Phone"><PhoneInput name="phone" defaultValue={inv.guest_phone ?? ""} /></Field><Field label="Guest GSTIN (B2B)"><input name="gstin" className="num uppercase" defaultValue={inv.guest_gstin ?? ""} /></Field>
           <Button className="w-full" disabled={pending}>Save</Button></form>
       </Sheet>
     </div>

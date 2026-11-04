@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { Plus, Trash2, Send, PackageCheck, XCircle, MessageCircle, Sparkles, Pencil, Truck, Flame, Undo2, FilePenLine, Columns2, Columns3, Columns4, Repeat, Phone, type LucideIcon } from "lucide-react";
-import { Button, Card, Field, Sheet, Empty, Pill, StatTile, CardStrip, Segmented, cn, useToast, type StripAction, ask } from "@/components/ui";
+import { Button, Card, Field, Sheet, Empty, Pill, StatTile, CardStrip, Segmented, cn, useToast, type StripAction, ask, PhoneInput } from "@/components/ui";
 import { formatINR, fmtDate } from "@/lib/format";
 import { savePo, setPoStatus, receivePo, suggestPo, saveSupplier, archiveSupplier, type PoLine } from "./actions";
 
@@ -271,7 +271,7 @@ export function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
         <form className="space-y-3" action={(fd) => start(async () => { const r = await saveSupplier(fd); if (r && "error" in r) toast(r.error!, "err"); else { toast("Saved"); setEditing(null); } })}>
           {editing?.id && <input type="hidden" name="id" value={editing.id} />}
           <Field label="Name"><input name="name" defaultValue={editing?.name ?? ""} required autoFocus placeholder="Murugan Traders" /></Field>
-          <div className="grid grid-cols-2 gap-3"><Field label="Phone" hint="for WhatsApp orders"><input name="phone" className="num" inputMode="tel" defaultValue={editing?.phone ?? ""} /></Field><Field label="Lead days"><input name="lead_days" type="number" min={0} className="num" defaultValue={editing?.lead_days ?? 1} /></Field></div>
+          <div className="grid grid-cols-2 gap-3"><Field label="Phone" hint="for WhatsApp orders"><PhoneInput name="phone" defaultValue={editing?.phone ?? ""} /></Field><Field label="Lead days"><input name="lead_days" type="number" min={0} className="num" defaultValue={editing?.lead_days ?? 1} /></Field></div>
           <div className="grid grid-cols-2 gap-3"><Field label="GSTIN"><input name="gstin" className="num uppercase" defaultValue={editing?.gstin ?? ""} /></Field><Field label="Email"><input name="email" type="email" defaultValue={editing?.email ?? ""} /></Field></div>
           <Field label="Address"><input name="address" defaultValue={editing?.address ?? ""} /></Field>
           <Field label="Notes"><textarea name="notes" rows={2} defaultValue={editing?.notes ?? ""} placeholder="Delivers Mon/Thu" /></Field>

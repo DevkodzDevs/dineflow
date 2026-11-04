@@ -1,10 +1,11 @@
 "use client";
+import { isMobile } from "@/lib/phone";
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Phone, X, Armchair, BedDouble, Plus, Star, PartyPopper, Percent, ChevronLeft, ChevronRight, MessageCircle, Clock, AlarmClock, MoreHorizontal, ClipboardList, Check, CalendarDays, List, Undo2 } from "lucide-react";
 import { waHref, waDate, waTime, firstName } from "@/lib/wa";
-import { Button, Card, Field, Pill, Sheet, cn, Empty, useToast, FlapClock, ask } from "@/components/ui";
+import { Button, Card, Field, Pill, Sheet, cn, Empty, useToast, FlapClock, ask, PhoneInput } from "@/components/ui";
 import { Say } from "@/components/ui/Say";
 import { SvcHead } from "@/components/ui/Service";
 import { useLive } from "@/lib/useLive";
@@ -17,6 +18,10 @@ type R = { id: string; reservation_no: number; guest_name: string; guest_phone: 
 /** Someone staying now (page.tsx), for New booking's Room. */
 export type Stay = { id: string; room: string; guest: string; phone: string };
 type T = { id: string; name: string; capacity: number; status: string; busy?: "cleaning" | "order" | null };
+/** a live booking with a table, from today on (page.tsx) — what makes a table not free for New booking */
+export type Taken = { id: string; table_id: string; on_date: string; at_time: string };
+/** a table is taken this many minutes either side of another booking on it (0154 holds one 30 min before; a sitting runs ~90) */
+const SLOT = 90;
 type V = { id: string; guest_name: string | null; rating: number; body: string | null; reply: string | null; created_at: string };
 type Kind = "coming" | "late" | "seated";
 /** minutes into the day, in India — a booking's time is the restaurant's wall clock */
@@ -32,7 +37,7 @@ const LATE_AFTER = 15;
  * booking — the time big, the name, how many — with Seat now, a call and the WhatsApp confirmation. The
  * month grid and the guests' reviews are the other two tabs.
  */
-export function ReservationsClient({ day, today, days, list, tables, reviews, month, ai = false, restaurant = "", stays = [], openNew = null }: { day: string; today: string; days: { date: string; n: number }[]; list: R[]; tables: T[]; reviews: V[]; month: Day[]; ai?: boolean; restaurant?: string; stays?: Stay[]; openNew?: { stay: string } | null }) {
+export function ReservationsClient({ day, today, days, list, tables, reviews, month, ai = false, restaurant = "", stays = [], openNew = null, taken = [] }: { day: string; today: string; days: { date: string; n: number }[]; list: R[]; tables: T[]; reviews: V[]; month: Day[]; ai?: boolean; restaurant?: string; stays?: Stay[]; openNew?: { stay: string } | null; taken?: Taken[] }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [tab, setTab] = useState<"day" | "month" | "reviews">("day");
   const opened = openNew ? stays.find((x) => x.id === openNew.stay) : undefined;
@@ -45,6 +50,26 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => { setNow(nowIST()); const t = setInterval(() => setNow(nowIST()), 30000); return () => clearInterval(t); }, []);
   useLive(["reservations"], 30000);
+
+  /* New booking's Table offers only a free table (2026-11-04, the owner: "only show free tables in the dropdown"): one that seats
+     the party, with no other live booking on it within SLOT minutes of the chosen time that day, and — for a time within SLOT of
+     now today — no order open on it, not being cleaned and not in use. Auto stays: one that fits is given when the time comes. */
+  const busyWhy = (t: T): string | null => {
+    if (!w.date || !w.time) return null;
+    const at = mins(w.time);
+    const hit = taken.find((x) => x.table_id === t.id && x.on_date === w.date && Math.abs(mins(x.at_time) - at) < SLOT);
+    if (hit) return `booked ${hit.at_time.slice(0, 5)}`;
+    if (w.date === today && now !== null && at - now < SLOT && at - now > -SLOT) {
+      if (t.busy === "cleaning") return "being cleaned";
+      if (t.busy === "order" || t.status === "occupied") return "in use";
+    }
+    return null;
+  };
+  const freeTables = tables.filter((t) => t.capacity >= w.party && !busyWhy(t));
+  const fitting = tables.filter((t) => t.capacity >= w.party).length;
+  // a table chosen, then made busy by another date or time (or a bigger party), goes back to Auto
+  const chosenOk = !w.table || freeTables.some((t) => t.id === w.table);
+  useEffect(() => { if (!chosenOk) setW((x) => ({ ...x, table: "" })); }, [chosenOk]);
 
   const lateBy = (r: R) => (now !== null && r.on_date === today ? now - mins(r.at_time) : -1);
   const kindOf = (r: R): Kind | null => r.status === "seated" ? "seated" : ["requested", "confirmed"].includes(r.status) ? (lateBy(r) > LATE_AFTER ? "late" : "coming") : null;
@@ -228,7 +253,7 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Name"><input value={w.name} onChange={(e) => setW({ ...w, name: e.target.value })} /></Field>
-            <Field label="Phone"><input value={w.phone} inputMode="tel" onChange={(e) => setW({ ...w, phone: e.target.value })} className="num" /></Field>
+            <Field label="Phone"><PhoneInput value={w.phone} onValue={(v) => setW({ ...w, phone: v })} /></Field>
             <Field label="Date"><input type="date" value={w.date} onChange={(e) => setW({ ...w, date: e.target.value })} className="num" /></Field>
             <Field label="Time"><input type="time" value={w.time} onChange={(e) => setW({ ...w, time: e.target.value })} className="num" /></Field>
           </div>
@@ -240,9 +265,12 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
           <div className={cn("grid gap-3", stays.length ? "grid-cols-2" : "grid-cols-1")}>
             <Field label="Table"><label className="relative block min-w-0" data-new-table><Armchair size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-steel pointer-events-none z-[1]" aria-hidden />
               <select className="!pl-10 !font-semibold" value={w.table} onChange={(e) => setW({ ...w, table: e.target.value })} aria-label="Table" data-new-table-select>
-                <option value="">Auto</option>
-                {tables.filter((t) => t.capacity >= w.party).map((t) => <option key={t.id} value={t.id}>{t.name} · {t.capacity} seats</option>)}
-              </select></label></Field>
+                <option value="">{freeTables.length ? "Auto" : "Auto · none free now"}</option>
+                {freeTables.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.capacity} seats</option>)}
+              </select></label>
+              {/* how many of the tables that seat them are free then — the rest are booked near that time, or in use now */}
+              <span className="mt-1 block text-[12px] font-semibold text-steel num" data-new-table-free={freeTables.length}>
+                {fitting === 0 ? "No table seats them" : freeTables.length === fitting ? `${freeTables.length} free` : `${freeTables.length} of ${fitting} free`}</span></Field>
             {stays.length > 0 && <Field label="Room"><label className="relative block min-w-0" data-new-room><BedDouble size={17} className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-[1]", w.stay ? "text-[var(--color-violet)]" : "text-steel")} aria-hidden />
               <select className="!pl-10 !font-semibold" value={w.stay} aria-label="Room — a guest staying here" data-new-room-select
                 onChange={(e) => { const x = stays.find((y) => y.id === e.target.value); setW({ ...w, stay: e.target.value, name: x && !w.name ? x.guest : w.name, phone: x && !w.phone ? x.phone : w.phone }); }}>
@@ -251,7 +279,7 @@ export function ReservationsClient({ day, today, days, list, tables, reviews, mo
               </select></label></Field>}
           </div>
           <Field label="Note"><input value={w.note} onChange={(e) => setW({ ...w, note: e.target.value })} placeholder="Window table, birthday cake…" /></Field>
-          <Button className="w-full" size="lg" loading={pending} disabled={!w.name || !w.phone} onClick={() => start(async () => { const r = await addWalkIn(w); if ("error" in r) toast(r.error!, "err"); else { setWalkIn(false); toast("Booking added"); } })}>Add booking</Button>
+          <Button className="w-full" size="lg" loading={pending} disabled={!w.name || !isMobile(w.phone)} onClick={() => start(async () => { const r = await addWalkIn(w); if ("error" in r) toast(r.error!, "err"); else { setWalkIn(false); toast("Booking added"); } })}>Add booking</Button>
         </div>
       </Sheet>
 

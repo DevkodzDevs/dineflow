@@ -5,6 +5,7 @@ import { Phone, PhoneCall, Bike, ShoppingBag, RotateCcw, MapPin, Loader2, UserRo
 import { Card, cn } from "@/components/ui";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatINR } from "@/lib/format";
+import { phone10 } from "@/lib/phone";
 import { phoneCard, type PhoneCard } from "../actions";
 
 const ago = (iso: string) => { const d = Math.round((Date.now() - new Date(iso).getTime()) / 86400000); return d <= 0 ? "today" : d === 1 ? "yesterday" : d < 30 ? `${d} days ago` : new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" }); };
@@ -38,7 +39,7 @@ export function PhoneClient() {
     try { sessionStorage.setItem("df-phone-order", JSON.stringify({ type, name: name.trim(), phone: digits, address: type === "delivery" ? address.trim() : "", items })); } catch {}
     router.push(`/orders/new?type=${type}&from=phone`);
   };
-  const press = (k: string) => setPhone((p) => (k === "del" ? p.slice(0, -1) : (p + k).slice(0, 14)));
+  const press = (k: string) => setPhone((p) => (k === "del" ? p.slice(0, -1) : phone10(p + k)));   // ten digits, as every phone box (2026-11-04)
   const ready = digits.length === 10;
   /* iPad and desktop (2026-10-24, the owner: "Call option need add here"): call the number back from the counter — tel:
      opens the phone app, or FaceTime / the linked phone on an iPad or a Mac. The phone layout is left as it was. */
@@ -56,7 +57,7 @@ export function PhoneClient() {
       <Card className="min-w-0">
         <label className="block"><span className="text-[13px] font-bold uppercase tracking-wide text-steel">Caller&apos;s number</span>
           <div className="relative mt-2"><Phone size={22} className="absolute left-4 top-1/2 -translate-y-1/2 text-steel pointer-events-none" />
-            <input ref={input} value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+ ]/g, ""))} inputMode="tel" autoComplete="off" placeholder="98765 43210" data-phone-input
+            <input ref={input} value={phone} onChange={(e) => setPhone(phone10(e.target.value))} inputMode="numeric" pattern="[6-9][0-9]{9}" title="10-digit mobile number" autoComplete="off" placeholder="98765 43210" data-phone-input
               className="!h-16 !pl-14 sm:!pr-[7.5rem] !text-[26px] font-extrabold num tracking-wide" />
             {callBtn("absolute right-2 top-1/2 -translate-y-1/2 h-12 px-4 rounded-[14px] text-[15px]", "data-call-number")}</div></label>
         {/* a keypad for the counter tablet; a keyboard works too */}

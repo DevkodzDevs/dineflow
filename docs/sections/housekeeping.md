@@ -85,8 +85,8 @@ dirty room without a ticket.
   out of order (or "all clear"), and the chevron in a round button. Probe: `acc.mjs` (1440 dark, 390 paper).
 
 - **On a phone the page is two tabs** — `Segmented` Rooms n | Tasks n (`view` state, `sm:hidden`).
-  Rooms holds the discrepancies and the board; Tasks the To do / In progress columns, New task and
-  Recently done. Each side is hidden with `max-sm:hidden`, so from `sm` both show and there is no
+  Rooms holds the discrepancies and the board; Tasks the task panel (To do · In progress · New task tabs, since
+  2026-11-04) and Recently done. Each side is hidden with `max-sm:hidden`, so from `sm` both show and there is no
   switch. The switch is not sticky: the TopBar already sticks at top-4 and they would collide.
   Probe: `hktabs.mjs` (390 both themes, 834).
 
@@ -96,9 +96,9 @@ dirty room without a ticket.
   so a supervisor still inspects it before it sells. It was an empty dark block on the board.
 
 
-- **The task board is two columns from `md`, with the form beside it only from `xl`.** At `lg` the
-  form's column left ~290px per board column and "Done · room ready" ran out of its button. The
-  button says "Done"; what it does to the room is in its title.
+- **The task sheet is one tabbed panel (2026-11-04 — see the end of this note); Recently done beside it from `xl`.** It
+  was two columns with the New task form beside them. The button says "Done" (never "Done · room ready" — it ran out of a
+  narrow card); what it does to the room is in its title.
 
 - **Do not use `--color-saffron` or `--color-mint` for the clean/inspected distinction.** Both alias
   to the tint (green) in the dark theme. That is exactly how the board ended up showing amber
@@ -177,3 +177,21 @@ are the whole point and they are theme-dependent.
   `check_in` and a booking from today refuse a room that is dirty, being cleaned, owed a touch-up, not inspected where required, out
   of order or still holding a guest (`_room_not_ready`, data-and-rls.md). Front desk's New booking shows the same why on each tile
   (front-desk.md).
+
+## 2026-11-04 — only rooms without a guest on the board; the tasks in three tabs
+The owner: "if the room is occupied or the guest is in, don't show that room here"; "Give to on top, Done at the bottom"; "tab
+options like To do, In progress and New task only".
+- **The floor board shows a room only when no guest is in it** — `guestIn(r)`: a checked-in stay on it (`byRoom`) or `status =
+  occupied`. So a floor head's **"n rooms" counts the rooms without a guest**, with a blue **"n in use"** tag
+  (`[data-floor-in-use]`) for the rest; a floor whose every room has a guest still folds open to "Every room has a guest"
+  (`[data-floor-full]`). The phone's *Rooms n* counts the board too. The condition chips in the toolbar and **Needs a look** still
+  read every room. The board no longer offers *Pickup* / *Touched up* (those were only for rooms with a guest): a stayover or a
+  touch-up is a task — *Build today's sheet* adds a stayover for every occupied room, and New task lists every room ("· guest in").
+- **The task sheet is one panel** (`[data-task-panel]`) with a tab bar (`[data-task-tabs]`, `role=tablist`, each
+  `[data-task-tab=todo|doing|new]` with `aria-selected`; Reservations' plain three-part control): **To do** and **In progress**
+  with their counts (`[data-task-count]`), **New task** only for `canAssign` (the form, unchanged in what it sends; after Add task
+  it goes back to To do and says "Task added"). The chosen list is a grid of cards (`[data-task-list]`, `auto-fill minmax(17rem)`).
+  The tinted To do / In progress columns and the separate New task card are gone; **Recently done** sits beside the panel from
+  `xl` (340px), under it below.
+- **A task card: *Give to…* first, then Start / Done at the foot** (`[data-task-assign]` above `[data-task-actions]`,
+  `[data-task-done]`); the actions keep `mt-auto`, so cards in a row end level.

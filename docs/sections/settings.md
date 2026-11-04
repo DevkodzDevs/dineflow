@@ -182,3 +182,10 @@ pnpm --filter @dineflow/web typecheck
 - **Shorter copy (2026-10-29, the owner: "maximum 3 or 4 words, try 2 or 3 — clean and neat").** Subtitles, hints, helper
   lines and empty-state hints cut to two–four words, or removed where they said the obvious. Error and refusal messages,
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
+
+## 2026-11-04 — Rooms & stays → Charge late check-out (0171)
+- Hotels and resorts: a switch and two hour boxes, **Half night after** (3) and **Full night after** (6), with the three bands drawn
+  under them (`LateCheckoutRule.tsx`). `saveRestaurant` turns hours into minutes and only writes them when the form carries the
+  boxes (`fd.has("late_half_after_h")`), so a restaurant's save never resets the rule; an empty box takes the default, and full is
+  never before half. Switched off, the boxes are disabled and the saved hours ride along as hidden fields. What it charges:
+  front-desk.md, 2026-11-04.

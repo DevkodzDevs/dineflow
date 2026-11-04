@@ -55,7 +55,7 @@ const ACT = "h-11 [@media(pointer:coarse)]:h-12 min-w-11 [@media(pointer:coarse)
  * next calls the first guest whose table is ready (one is held for them), else the first in line.
  * Live through useLive on `walkins`; what the host does shows at once, ahead of the write.
  */
-export function WaitList({ queue, listed, onShare }: { queue: W[]; listed: boolean; onShare: () => void }) {
+export function WaitList({ queue, listed, onShare, fill = false }: { queue: W[]; listed: boolean; onShare: () => void; fill?: boolean }) {
   useLive(["walkins"], 20000);
   const toast = useToast(); const [, start] = useTransition(); const { online } = useOffline();
   const speech = scriptOf(useLang().lang) as Speech;
@@ -92,7 +92,9 @@ export function WaitList({ queue, listed, onShare }: { queue: W[]; listed: boole
   };
 
   return (
-    <Card className="min-w-0 !rounded-[24px] !p-4 sm:!p-5 @container" data-waitlist>
+    /* fill (Join by QR from lg): the card is never taller than the screen under the top bar; its head and Call next stay
+       put and only the rows scroll (data-waitlist-scroll) */
+    <Card className={cn("min-w-0 !rounded-[24px] !p-4 sm:!p-5 @container", fill && "lg:flex lg:flex-col lg:max-h-[calc(100dvh-7.5rem)]")} data-waitlist>
       <div className="flex items-center gap-3">
         <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center bg-[var(--color-blue-2)] text-[var(--color-blue)]" aria-hidden><Users size={19} /></span>
         <div className="min-w-0 flex-1">
@@ -125,7 +127,7 @@ export function WaitList({ queue, listed, onShare }: { queue: W[]; listed: boole
             : <Link href="/pulse" className="mt-3 inline-flex items-center gap-1.5 min-h-11 px-4 rounded-full bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] text-[13px] font-semibold"><UserPlus size={15} aria-hidden /> Open Pulse</Link>}
         </div>
       ) : (
-        <ol className="mt-3 divide-y divide-[var(--color-separator)]">
+        <ol className={cn("mt-3 divide-y divide-[var(--color-separator)]", fill && "lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:-mr-2 lg:pr-2")} data-waitlist-scroll={fill ? "" : undefined}>
           {live.map((w, i) => {
             const called = w.status === "called";
             const m = now ? Math.max(0, Math.floor((now - Date.parse(w.joined_at)) / 60000)) : null;

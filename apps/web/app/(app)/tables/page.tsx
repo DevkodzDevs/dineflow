@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { holdDue } from "@/lib/holdDue";
 import { requireSession } from "@/lib/auth";
 import { todayIST } from "@/lib/format";
+import { mergedRows, mergedTables } from "@/lib/merged";
 import { TablesClient, type TableRow, type OpenOrder, type PaidBill, type Booking, type Clean } from "./TablesClient";
 export const metadata = { title: "Tables" };
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function TablesPage() {
   const s = await createClient(); const session = await requireSession(); const rid = session.restaurant.id; const held = holdDue(s);   // a booking due now holds its table or room (0154)
   const today = todayIST(); const dayStart = `${today}T00:00:00+05:30`;
-  const [{ data: tables }, { data: open }, { data: paid }, { data: booked }, { data: cleaning }, { data: people }] = await Promise.all([
+  const [{ data: tables }, { data: open }, { data: paid }, { data: booked }, { data: cleaning }, { data: people }, { data: mergedFrom }] = await Promise.all([
     s.from("dining_tables").select("id, name, capacity, zone, status, sort_order, qr_token").eq("restaurant_id", rid).order("sort_order"),
     s.from("orders").select("id, order_no, table_id, customer_name, created_at, created_by, bills(status, total), order_items(id, name_snapshot, variant_name, qty, price_snapshot, status)")
       .eq("restaurant_id", rid).eq("status", "open").not("table_id", "is", null).order("created_at"),
@@ -23,9 +24,12 @@ export default async function TablesPage() {
       .in("status", ["requested", "confirmed", "seated"]).not("table_id", "is", null).order("at_time"),
     s.from("table_cleanings").select("id, table_id, status, created_at, taken_by").eq("restaurant_id", rid).in("status", ["pending", "in_progress"]),
     s.from("profiles").select("id, full_name").eq("restaurant_id", rid),
+    // the tables merged into an open order (lib/merged.ts) — "With T3" on theirs, "+ T5" on the one they joined
+    mergedRows(s).eq("restaurant_id", rid),
   ]);
+  const merged = mergedTables(mergedFrom, (open ?? []) as { id: string; table_id: string | null }[]);
   const names = Object.fromEntries((people ?? []).map((p: { id: string; full_name: string }) => [p.id, p.full_name]));
   await held;
   return <TablesClient tables={(tables ?? []) as TableRow[]} open={(open ?? []) as unknown as OpenOrder[]} paid={(paid ?? []) as unknown as PaidBill[]} booked={(booked ?? []) as Booking[]}
-    cleaning={(cleaning ?? []) as Clean[]} names={names} slug={session.restaurant.booking_slug ?? ""} canEdit={["owner", "manager"].includes(session.profile.role)} />;
+    cleaning={(cleaning ?? []) as Clean[]} names={names} slug={session.restaurant.booking_slug ?? ""} canEdit={["owner", "manager"].includes(session.profile.role)} merged={merged} />;
 }

@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Sparkles, Wrench, Check, Trash2, BedDouble, CalendarPlus } from "lucide-react";
+import { Plus, Pencil, Sparkles, Wrench, Check, Trash2, BedDouble, CalendarPlus, UserRound } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
 import { Button, Sheet, Field, cn, FlapSpell } from "@/components/ui";
@@ -58,11 +58,21 @@ export function RoomsClient({ rooms, types, bookings }: { rooms: Room[]; types: 
                       : <span className="flex items-center justify-between gap-1.5 min-w-0"><span className="num text-[var(--card-muted)] truncate">{formatINR(Number(r.room_types?.base_rate ?? 0), { whole: true })}<span className="text-[10px]"> / night</span></span><span className="shrink-0 h-6 px-2 rounded-full inline-flex items-center gap-1 text-[11px] font-bold text-[var(--color-tint)] bg-[color-mix(in_srgb,var(--color-tint)_14%,transparent)]" data-room-book><CalendarPlus size={12} aria-hidden />Book</span></span>}
                   </div>
                 </Link>
+                {/* a room with a guest in is not edited (2026-11-04, the owner: "don't show the edit option when the room is occupied —
+                    show Occupied"): one strip in its place, to the stay's folio like the card above it */}
+                {r.status === "occupied" ? (
+                  <div className="px-1.5 pb-1.5">
+                    <Link href={b ? `/frontdesk/${b.id}` : "/frontdesk"} className="room-act w-full" aria-label={`Room ${r.number} is occupied${b ? " · open the folio" : ""}`} data-room-occupied={r.number}>
+                      <span className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.08em]"><UserRound size={14} aria-hidden />Occupied</span>
+                    </Link>
+                  </div>
+                ) : (
                 <div className="grid gap-1 px-1.5 pb-1.5" style={{ gridTemplateColumns: `repeat(${acts.length + 1}, minmax(0, 1fr))` }}>
                   {acts.map((a) => <button key={a.k} type="button" title={a.label} aria-label={`${a.label} · room ${r.number}`} disabled={pending} onClick={() => start(async () => { const r = await a.run(); if ("error" in r) setErr(r.error!); })}
                     className={cn("room-act", a.k === "fix" && "hover:!text-[var(--color-red)]")}>{a.icon}</button>)}
                   <button type="button" title="Edit room" aria-label={`Edit room ${r.number}`} onClick={() => setEdit(r)} className="room-act"><Pencil size={15} /></button>
                 </div>
+                )}
               </motion.div>); })}
           </div></section>
       ))}

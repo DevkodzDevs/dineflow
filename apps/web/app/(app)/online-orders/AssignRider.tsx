@@ -1,7 +1,8 @@
 "use client";
+import { okPhone } from "@/lib/phone";
 import { useState, useTransition } from "react";
 import { Bike, Check, Copy, MessageCircle, UserRound } from "lucide-react";
-import { Button, Sheet, Field, cn, useToast } from "@/components/ui";
+import { Button, Sheet, Field, cn, useToast, PhoneInput } from "@/components/ui";
 import { copyText } from "@/lib/clipboard";
 import { waHref, firstName } from "@/lib/wa";
 import { assignRider } from "./actions";
@@ -46,13 +47,13 @@ export function AssignRider({ order, riders, base, property, existing, onClose }
               {riders.map((r) => <button key={r.id} type="button" className={chip(pick === r.id)} aria-pressed={pick === r.id} onClick={() => setPick(r.id)} data-rider={r.id}><Bike size={16} aria-hidden />{r.full_name}</button>)}
               <button type="button" className={chip(pick === "other")} aria-pressed={pick === "other"} onClick={() => setPick("other")} data-rider="other"><UserRound size={16} aria-hidden />Someone else</button>
             </div>
-            {pick === "other" && <div className="grid grid-cols-2 gap-3 mt-3"><Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Kumar" autoFocus /></Field><Field label="Phone" hint="For the WhatsApp link"><input value={phone} onChange={(e) => setPhone(e.target.value)} className="num" inputMode="tel" placeholder="98400 00000" /></Field></div>}
+            {pick === "other" && <div className="grid grid-cols-2 gap-3 mt-3"><Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Kumar" autoFocus /></Field><Field label="Phone" hint="For the WhatsApp link"><PhoneInput value={phone} onValue={setPhone} placeholder="98400 00000" /></Field></div>}
           </div>
           <div>
             <div className="text-[12px] font-bold uppercase tracking-[.1em] text-steel mb-2">Should reach in</div>
             <div className="flex flex-wrap gap-2">{[15, 25, 35, 45, 60].map((m) => <button key={m} type="button" className={chip(eta === m)} aria-pressed={eta === m} onClick={() => setEta(m)} data-eta={m}><span className="num">{m}</span> min</button>)}</div>
           </div>
-          <Button size="lg" className="w-full" disabled={pending || (pick === "other" && !name.trim())} onClick={sendOut} data-send-out-confirm><Bike size={18} /> Send out</Button>
+          <Button size="lg" className="w-full" disabled={pending || (pick === "other" && (!name.trim() || !okPhone(phone)))} onClick={sendOut} data-send-out-confirm><Bike size={18} /> Send out</Button>
         </div>
       ) : (
         <div className="space-y-4" data-assign-done>

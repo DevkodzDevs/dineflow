@@ -2,7 +2,7 @@
 import { useEffect, useState, useTransition, type ReactNode, type ComponentType, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, LogIn, CalendarDays, Moon, Star, ClipboardCheck, CheckCircle2, ArrowRightLeft, Sparkles, ChevronRight, Armchair, BedDouble, Users } from "lucide-react";
+import { Plus, LogIn, CalendarDays, Moon, Star, ClipboardCheck, CheckCircle2, ArrowRightLeft, Sparkles, ChevronRight, Armchair, BedDouble, Users, X } from "lucide-react";
 import { suggestRoom } from "@/lib/roomsuggest";
 import { useLive } from "@/lib/useLive";
 import { Button, Sheet, StatTile, cn, useToast, ask } from "@/components/ui";
@@ -17,8 +17,12 @@ type RT = { id: string; name: string; base_rate: number; capacity: number };
 type G = { id: string; full_name: string; phone: string | null; vip?: boolean };
 /** A table booking today (page.tsx), with its table and the staying guest's room when it names one (0157). */
 type TB = { id: string; at_time: string; guest_name: string; party_size: number; status: string; table: { name: string } | null; stay: { rooms: { number: string } | null } | null };
+/** The dining room at a glance, only where tables are set up (page.tsx; 2026-11-04). */
+export type TablesNow = { total: number; inUse: number; cleaning: number; free: number };
+/** a list longer than this shows its first stay in full and the rest as compact rows (2026-11-04) */
+const FULL = 3;
 
-export function FrontDeskClient({ today, bookings, rooms, types, guests, inspectRule = false, tableBookings = [], canBook = false, tax, openNew = null }: { today: string; bookings: Booking[]; rooms: Room[]; types: RT[]; guests: G[]; inspectRule?: boolean; tableBookings?: TB[]; canBook?: boolean; tax?: RoomTax; openNew?: { room: string } | null }) {
+export function FrontDeskClient({ today, bookings, rooms, types, guests, inspectRule = false, tableBookings = [], canBook = false, tax, openNew = null, tables = null }: { today: string; bookings: Booking[]; rooms: Room[]; types: RT[]; guests: G[]; inspectRule?: boolean; tableBookings?: TB[]; canBook?: boolean; tax?: RoomTax; openNew?: { room: string } | null; tables?: TablesNow | null }) {
   const router = useRouter(); const [pending, start] = useTransition();
   /* /frontdesk?new=1&room=<id> opens Book a room with that room picked — a ready room's card on Rooms comes here (2026-11-03) */
   const [open, setOpenState] = useState(!!openNew); const [startRoom, setStartRoom] = useState(openNew?.room ?? ""); const toast = useToast();
@@ -26,7 +30,7 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
     setOpenState(v);
     if (!v) { setStartRoom(""); if (window.location.search) window.history.replaceState(null, "", window.location.pathname); }   // a reload does not open it again
   };
-  useLive(["bookings", "rooms", "reservations"].map(String));
+  useLive(tables ? ["bookings", "rooms", "reservations", "dining_tables", "table_cleanings", "orders"] : ["bookings", "rooms", "reservations"]);
   const arrivals = bookings.filter((b) => b.status === "reserved" && b.check_in <= today);
   const departures = bookings.filter((b) => b.status === "checked_in" && b.check_out <= today);
   const inHouse = bookings.filter((b) => b.status === "checked_in");
@@ -110,13 +114,55 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
     );
   };
 
+  /* More than three in a list (2026-11-04, the owner: "show the first one in full, the others compact"): the first stays a
+     ticket, the rest are one row each — the room on a stub in the section's colour, the guest, where the stay stands and its
+     dates, and the same one thing to do. Three or fewer stay tickets. */
+  const Mini = ({ b, kind, action }: { b: Booking; kind: "arrival" | "upcoming" | "inhouse"; action?: React.ReactNode }) => {
+    const at = (d: string) => new Date(d + "T12:00:00");
+    const nights = Math.max(1, Math.round((at(b.check_out).getTime() - at(b.check_in).getTime()) / 86400000));
+    const party = b.adults + b.children;
+    const dueOut = kind === "inhouse" && b.check_out <= today;
+    const night = Math.min(nights, Math.max(1, Math.round((at(today).getTime() - at(b.check_in).getTime()) / 86400000) + 1));
+    const inDays = Math.max(1, Math.round((at(b.check_in).getTime() - at(today).getTime()) / 86400000));
+    const badge = kind === "arrival" ? (b.check_in < today ? "Late" : "Today") : kind === "upcoming" ? (inDays === 1 ? "Tomorrow" : `In ${inDays} days`) : dueOut ? "Due out" : `Night ${night}/${nights}`;
+    const toneVar = dueOut ? "var(--color-red)" : kind === "arrival" ? "var(--color-green)" : kind === "upcoming" ? "var(--color-blue)" : "var(--color-orange)";
+    return (
+      <Link href={`/frontdesk/${b.id}`} className={sc.mini} style={{ "--tone": toneVar } as React.CSSProperties} data-booking={b.booking_no} data-kind={kind} data-compact>
+        <span className={sc.miniRoom}><small>Room</small><b className="num">{b.rooms?.number ?? "—"}</b></span>
+        <span className={sc.miniPerf} aria-hidden />
+        <span className={sc.miniBody}>
+          <span className={sc.miniName}>{b.guests?.vip && <Star size={13} className="text-champagne fill-current shrink-0" aria-label="VIP" />}<span>{b.guests?.full_name ?? "Guest"}</span></span>
+          <span className={sc.miniMeta}><b className={sc.miniBadge} data-badge>{badge}</b><span className="num">{fmtDate(at(b.check_in).toISOString())} → {fmtDate(at(b.check_out).toISOString())}</span><span aria-hidden>·</span><span className="num">{party}</span>{party === 1 ? " guest" : " guests"}</span>
+        </span>
+        <span className={sc.miniAct}>{action ?? <ChevronRight size={18} className="text-[var(--color-label-3)]" aria-hidden />}</span>
+      </Link>
+    );
+  };
+  /** a section's stays: tickets, or — past three — the first a ticket and the rest compact */
+  const stays = (list: Booking[], kind: "arrival" | "upcoming" | "inhouse", act: (b: Booking, compact: boolean) => React.ReactNode) =>
+    list.map((b, i) => list.length > FULL && i > 0 ? <Mini key={b.id} b={b} kind={kind} action={act(b, true)} /> : <Row key={b.id} b={b} kind={kind} action={act(b, false)} />);
+  const checkInBtn = (b: Booking, compact: boolean) => <Button size="sm" variant="ink" disabled={pending} data-check-in aria-label={compact ? `Check in ${b.guests?.full_name ?? "guest"}` : undefined} onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}><LogIn size={15} /> Check in</Button>;
+  const cancel = async (e: React.MouseEvent, b: Booking) => { e.preventDefault(); if (await ask({ title: "Cancel booking?", body: "The guest's booking is cancelled.", ok: "Cancel booking", cancel: "Keep it", tone: "danger", icon: "alert" })) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); };
+  const cancelBtn = (b: Booking, compact: boolean) => compact
+    ? <button type="button" className={sc.miniKey} aria-label={`Cancel booking #${b.booking_no}`} title="Cancel booking" onClick={(e) => cancel(e, b)} data-cancel-compact><X size={16} aria-hidden /></button>
+    : <button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full text-[13px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors" onClick={(e) => cancel(e, b)}>Cancel</button>;
+  const tableBtn = (b: Booking, compact: boolean) => !canBook ? undefined : compact
+    ? <span className="inline-flex items-center gap-1"><button type="button" className={sc.miniKey} aria-label={`Book a table for room ${b.rooms?.number ?? ""}`} title="Book a table" data-book-table={b.rooms?.number ?? ""} onClick={(e) => { e.preventDefault(); router.push(`/reservations?new=1&stay=${b.id}`); }}><Armchair size={16} aria-hidden /></button><ChevronRight size={18} className="text-[var(--color-label-3)]" aria-hidden /></span>
+    : <span className="inline-flex items-center gap-2">
+        {/* a table for this guest: New booking opens with their room chosen (0157) */}
+        <button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors" data-book-table={b.rooms?.number ?? ""}
+          onClick={(e) => { e.preventDefault(); router.push(`/reservations?new=1&stay=${b.id}`); }}><Armchair size={14} aria-hidden /> Table</button>
+        <span className={sc.folio}>Folio <ChevronRight size={16} aria-hidden /></span></span>;
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
+      <div className={cn("grid grid-cols-2 gap-3", tables ? "min-[900px]:grid-cols-5" : "min-[900px]:grid-cols-4")}>
         <StatTile label="Arrivals today" value={String(arrivals.length)} sub={arrivals.length ? "waiting to check in" : "all arrived"} />
         <StatTile label="Departures today" value={String(departures.length)} delay={0.05} />
         <StatTile label="In house" value={String(inHouse.length)} sub={`${occ}% occupancy`} tone={occ >= 80 ? "good" : undefined} delay={0.1} />
         <StatTile label="Rooms ready" value={String(rooms.filter((r) => r.status === "available").length)} sub={`${rooms.filter((r) => r.status === "cleaning").length} being cleaned`} delay={0.15} />
+        {/* the dining room, only once tables are set up (2026-11-04, the owner: "show the tables here — only when there are tables") */}
+        {tables && <div className="max-[899px]:col-span-2 min-w-0" data-fd-tables-tile><StatTile label="Tables free" value={String(tables.free)} sub={`${tables.inUse} in use${tables.cleaning ? ` · ${tables.cleaning} cleaning` : ""} · ${tables.total} in all`} delay={0.2} /></div>}
       </div>
       <div className="flex flex-wrap items-center gap-2"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-steel">Today</div>
         {/* under 440px the two buttons take a row of their own and share it — "New booking" ran off a 360px phone */}
@@ -130,15 +176,11 @@ export function FrontDeskClient({ today, bookings, rooms, types, guests, inspect
       {/* rows stretch (2026-11-02): an empty board takes its row-mate's height (Board.module.css), so both cells of a row end level */}
       <div className="grid gap-x-6 gap-y-7 lg:grid-cols-2" data-fd-grid>
         <section className="min-w-0 flex flex-col max-lg:order-1"><Head icon={<LogIn size={16} />} tone="green" label="Arrivals" n={arrivals.length} />
-          <div className="flex-1 flex flex-col gap-3">{arrivals.map((b) => <Row key={b.id} b={b} kind="arrival" action={<Button size="sm" variant="ink" disabled={pending} data-check-in onClick={(e) => { e.preventDefault(); start(async () => { const r = await checkIn(b.id); if ("error" in r) toast(r.error!, "err"); }); }}><LogIn size={15} /> Check in</Button>} />)}{arrivals.length === 0 && <BoardEmpty icon={LogIn} tone="green" title="No arrivals waiting" hint="Today's check-ins" kind="arrivals" action={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div></section>
+          <div className="flex-1 flex flex-col gap-3">{stays(arrivals, "arrival", checkInBtn)}{arrivals.length === 0 && <BoardEmpty icon={LogIn} tone="green" title="No arrivals waiting" hint="Today's check-ins" kind="arrivals" action={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div></section>
         <section className="min-w-0 flex flex-col max-lg:order-2 lg:order-3"><Head icon={<CalendarDays size={16} />} tone="blue" label="Upcoming" n={upcoming.length} />
-          <div className="flex-1 flex flex-col gap-3">{upcoming.slice(0, 8).map((b) => <Row key={b.id} b={b} kind="upcoming" action={<button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full text-[13px] font-semibold text-[var(--color-label-2)] bg-[var(--color-fill)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-2)] transition-colors" onClick={async (e) => { e.preventDefault(); if (await ask({ title: "Cancel booking?", body: "The guest's booking is cancelled.", ok: "Cancel booking", cancel: "Keep it", tone: "danger", icon: "alert" })) start(async () => { const r = await cancelBooking(b.id); if ("error" in r) toast(r.error!, "err"); else toast("Booking cancelled"); }); }}>Cancel</button>} />)}{upcoming.length === 0 && <BoardEmpty icon={CalendarDays} tone="blue" title="Nothing coming up" hint="Future bookings" kind="upcoming" action={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div></section>
+          <div className="flex-1 flex flex-col gap-3">{stays(upcoming.slice(0, 8), "upcoming", cancelBtn)}{upcoming.length === 0 && <BoardEmpty icon={CalendarDays} tone="blue" title="Nothing coming up" hint="Future bookings" kind="upcoming" action={<button type="button" onClick={() => setOpen(true)} className="svc-btn quiet sm !px-3.5"><Plus size={15} aria-hidden /> Booking</button>} />}</div></section>
         <section className="min-w-0 flex flex-col order-3 lg:order-2"><Head icon={<Moon size={16} />} tone="orange" label="In house" n={inHouse.length} />
-          <div className="flex-1 flex flex-col gap-3">{inHouse.map((b) => <Row key={b.id} b={b} kind="inhouse" action={canBook ? <span className="inline-flex items-center gap-2">
-              {/* a table for this guest: New booking opens with their room chosen (0157) */}
-              <button type="button" className="min-h-10 [@media(pointer:coarse)]:min-h-11 px-3.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors" data-book-table={b.rooms?.number ?? ""}
-                onClick={(e) => { e.preventDefault(); router.push(`/reservations?new=1&stay=${b.id}`); }}><Armchair size={14} aria-hidden /> Table</button>
-              <span className={sc.folio}>Folio <ChevronRight size={16} aria-hidden /></span></span> : undefined} />)}{inHouse.length === 0 && <BoardEmpty icon={Moon} tone="orange" title="No guests in house" hint="Checked-in stays" kind="inhouse" action={<Button size="sm" onClick={() => setOpen(true)}><Plus size={15} /> New booking</Button>} />}</div></section>
+          <div className="flex-1 flex flex-col gap-3">{stays(inHouse, "inhouse", tableBtn)}{inHouse.length === 0 && <BoardEmpty icon={Moon} tone="orange" title="No guests in house" hint="Checked-in stays" kind="inhouse" action={<Button size="sm" onClick={() => setOpen(true)}><Plus size={15} /> New booking</Button>} />}</div></section>
         {/* today's table bookings (2026-10-30, the owner: "show the table reservations here too"): when, who, how many, the
             table and — a guest staying here — their room; tap one for Reservations, + for a new one */}
         <section className="min-w-0 flex flex-col order-4"><div><Head icon={<Armchair size={16} />} tone="violet" label="Table bookings" n={tableBookings.length}

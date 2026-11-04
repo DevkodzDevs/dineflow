@@ -232,3 +232,10 @@ from the screens (`fence150.mjs`): the kitchen's Start cooking → Ready → Ser
   paper, inside it, nor one of its parents (`display:none`, so no blank second page), strips the parents' frames and transforms, and
   gives the paper the light theme's ink on white (the html, body and paper backgrounds white) whatever the screen's theme. Pages
   without the mark print as before. shots159 (print media): 0 other boxes, sidebar gone, for the invoice and the folio.
+
+## 2026-11-04 — the invoice after check-out (the owner: "Print in view after Check out"; "Back to Front desk after printing")
+- `InvoiceView`: **← Front desk** at the top of a stay invoice (`[data-inv-back]`; ← Invoices for the others).
+- Opened from the folio's Check out (`?done=checkout`) it starts with a green **Checked out · Room 106** panel (`[data-checkout-done]`):
+  *INV-00044 is ready to print*, **Print invoice** (`[data-done-print]`, large) and Front desk. After the print dialog closes
+  (`afterprint`) it reads *Invoice printed* and **Back to Front desk** becomes the filled key (`[data-done-back]`), Print again beside it.
+  The panel is `no-print`. On a 412 phone the Print key is on the first screen. The Guest / GSTIN sheet's phone is the shared `PhoneInput`.

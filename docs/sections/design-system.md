@@ -833,3 +833,20 @@ so **no screen has to remember a spinner**.
   stops at an `li` or `[data-no-foot]`. A sheet whose content ends in a list keeps no pinned foot.
 - `.svc-btn.go:hover`'s brightness is `@media (hover: hover) and (pointer: fine)` only (a tap left it on).
 - The ready dock's ticket: `.ready-row` / `.ready-tile` / `.ready-since[data-late]` / `.ready-go` (tokens, `--hue` per dock).
+
+## 2026-11-04 — one phone box: ten digits, an Indian mobile (`components/ui/PhoneInput.tsx`, `lib/phone.ts`)
+- The owner: "all phone number fields must allow 10 digits only, like the Indian mobile format." **`PhoneInput`** is every phone box:
+  it keeps at most ten digits of whatever is typed or pasted (`phone10`: spaces and dashes go; a pasted +91 / 91 in front of ten digits
+  goes, and a trunk 0), `type=tel` with the number pad, `pattern="[6-9][0-9]{9}"` so a plain `<form>` refuses a short number, and
+  `aria-invalid` once it is left half-typed (globals.css rings it red). Controlled (`value` + `onValue`) or not (`name` +
+  `defaultValue`). **No `maxLength`**: it cut a pasted "+91 98765 43210" to "+91 98765 " before `phone10` saw it (s172 found it).
+  `isMobile` / `okPhone` (empty allowed) gate the forms that save on a button: Book (public), Track, Queue, Feedback, Pulse, the rider,
+  Reservations' New booking, the storefront, the till (a half-typed guest phone stops Send) and My profile.
+- Swapped in (18 files): Book a room, the invoice's Guest sheet, the bill's guest, Customers, Purchasing's supplier, Labour, My profile
+  (phone and emergency), the rider, the till's guest (both), Phone orders (its own box and keypad now stop at ten), Pulse, Reservations,
+  Scan's labour line, Settings (property phone and the brief's WhatsApp), Staff (phone, emergency), Tax (the CA), and the public Book,
+  Track, storefront (both), Feedback and Queue. The feedback page imports the box alone (`@/components/ui/PhoneInput`) to keep the kit
+  out of its bundle. Search boxes, the storefront's "last 4 digits" and name boxes are not phone boxes.
+- **`Field` ties its label to a `PhoneInput`** as to a plain input (a `fieldControl` mark on the component).
+- An existing number stored as "+91 98430 22118" shows as 9843022118 in the box and is saved that way the next time the form is saved.
+- `lib/phone.test.ts` (5).

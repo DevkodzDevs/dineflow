@@ -1,8 +1,9 @@
 "use client";
+import { isMobile } from "@/lib/phone";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { BedDouble, Users, Check, Phone, MapPin, CalendarDays } from "lucide-react";
-import { Button, Field, cn } from "@/components/ui";
+import { Button, Field, cn, PhoneInput } from "@/components/ui";
 import { roomGstFor } from "@dineflow/shared";
 import { formatINR } from "@/lib/format";
 import { GuestNotice } from "@/components/legal/GuestNotice";
@@ -84,7 +85,7 @@ export function BookClient({ slug, property }: { slug: string; property: P }) {
             <h2 className="text-2xl">Your details</h2>
             <div className="grid sm:grid-cols-2 gap-3 mt-4">
               <Field label="Full name"><input value={g.full_name} onChange={(e) => setG({ ...g, full_name: e.target.value })} required /></Field>
-              <Field label="Phone"><input value={g.phone} onChange={(e) => setG({ ...g, phone: e.target.value })} required /></Field>
+              <Field label="Phone"><PhoneInput value={g.phone} onValue={(v) => setG({ ...g, phone: v })} required /></Field>
               <Field label="Email"><input value={g.email} onChange={(e) => setG({ ...g, email: e.target.value })} /></Field>
               <Field label="Anything we should know"><input value={g.note} onChange={(e) => setG({ ...g, note: e.target.value })} placeholder="Late arrival, extra bed…" /></Field>
             </div>
@@ -95,7 +96,7 @@ export function BookClient({ slug, property }: { slug: string; property: P }) {
             <p className="text-xs text-steel mt-1">Pay at the property. {roomGstFor(Number(avail[pick.id]?.rate ?? pick.base_rate), property.room_gst_rate, property.room_gst_rate_high, property.room_gst_threshold)}% GST is added on the final invoice.</p>
             {property.policies && <p className="text-xs text-steel mt-2">{property.policies}</p>}
             {err && <p className="text-sm text-chili mt-2">{err}</p>}
-            <Button size="lg" className="w-full mt-4" disabled={busy || !g.full_name || !g.phone} onClick={book}>{busy ? "Confirming…" : "Confirm booking"}</Button>
+            <Button size="lg" className="w-full mt-4" disabled={busy || !g.full_name || !isMobile(g.phone)} onClick={book}>{busy ? "Confirming…" : "Confirm booking"}</Button>
             <GuestNotice property={property.name} use="for this booking" className="mt-2" />
           </motion.div>
         )}
