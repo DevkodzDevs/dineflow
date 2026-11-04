@@ -54,7 +54,7 @@ export function AuthForm({ mode, action, pendingApproval }:
     join: { title: "Join your team", sub: "Enter your property's DineFlow code.", cta: "Join restaurant" },
   }[mode];
   return (
-    <Reveal className="w-full max-w-sm">
+    <Reveal className="w-full max-w-sm min-[1800px]:max-w-[26rem]">
       {/* the left panel carries the brand from lg up; below that this is the only place it appears */}
       <div className="lg:hidden flex items-center gap-2.5 mb-8">
         {/* the card behind this one flips with the theme, so the mark ships in two inks */}

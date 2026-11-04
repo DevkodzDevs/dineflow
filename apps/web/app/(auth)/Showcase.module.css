@@ -5,7 +5,7 @@
    the headline, not by the screen's — the screen's height alone let it spill onto the tagline on an iPad on its side with
    Safari's bars, and off the bottom of the installed app (2026-11-02, the owner: "screen design breaking") */
 .stage {
-  position: relative; width: 100%; max-width: 560px; height: 100%; min-height: 0; container: board / size;
+  position: relative; width: 100%; max-width: clamp(640px, 34vw, 880px); height: 100%; min-height: 0; container: board / size;
   display: grid; place-items: center; perspective: 1400px; perspective-origin: 50% 20%;
   pointer-events: none; user-select: none;
 }

@@ -222,3 +222,12 @@ pnpm --filter @dineflow/web build
 - Probe `head.mjs` (WebKit, production build on :3171): five themes × 1920×1080, 1440×900, 1194×834, 1366×1024, 1180×820 — the
   headline above the tagline, the board between them, the wall the screen's height, no sideways scroll, no page errors; 834 and
   412 have no wall; Tamil reads *எல்லாம் ஒரே போர்டில்.*; reduced motion stops every animation. 208/208.
+- **Large screens: the empty band (2026-11-03, the owner at 1920: "that spacing gap is not good looking").** The clock, headline
+  and board stood in a 560px column of a 1006px wall (a ~400px empty band before the card), and the 384px form sat in a 902px card.
+  From **1800px wide** the frame is `minmax(0,1fr) clamp(560px,37vw,760px)` (with `!` — Tailwind v4 emits `min-[1800px]:` before
+  `lg:`, so without it the `lg:` columns won), the wall's middle is a grid — the clock and headline on the left, centred, and the
+  board beside them, centred, its slot capped at 34rem tall so the grid floor stays under it — and the form is 26rem. Below 1800 the
+  layout is as before; the board's stage may now grow to `clamp(640px, 34vw, 880px)` (was 560) so it fills a wider single column.
+  `head.mjs` adds 2560×1440, 1800×1000, 1680×1050 and 1536×864 and checks the band on the wall's right (≤ 16% of the wall), the
+  form's margins (≤ 0.6 × its width) and the board's width (≥ 380): at 1920 the band is 49px, the card 698, the board 530.
+  483/483, five themes.
