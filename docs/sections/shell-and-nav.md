@@ -935,3 +935,5 @@ offline bills numbered on sync**). Step 1:
 - Pulse: `walkin_add` replays with `client_id` (0168, dineflow-55); the stock count sends `counted_at` (0169, inventory.md).
 - Not yet (Step 2/3): screens read their data from the device; generate bill offline (provisional); tables, cleaning, housekeeping,
   front desk, attendance offline; queued orders drawn on the floor and the till's strip.
+
+- **A second cron (2026-11-05, 0172):** `apps/web/vercel.json` also runs `/api/cron/backup` at `30 20 * * *` (02:00 IST). admin-and-membership.md → Data.

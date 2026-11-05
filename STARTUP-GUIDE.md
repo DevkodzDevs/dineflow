@@ -524,11 +524,14 @@ re-creates the master admin. Your orders, bills and bookings stay.
 
 ## 30. Backups, restore, and how to update
 
-**Backups.** Supabase takes daily backups on the free tier (Project Settings → Database → Backups). The
-Box takes its own nightly (option `10` lists them). Proof of business is a third, independent record
-of every sealed month.
+**Backups.** Supabase's free tier keeps **no** backups (Pro keeps one a day for 7 days). DineFlow keeps its own:
+Master control → **Data** → Back up now, every night at 2 am once `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` are
+set on Vercel, kept in a private folder, with Download, Check and an optional copy to Cloudflare R2 or Backblaze
+(free up to 10 GB). The Box takes its own nightly (option `10` lists them). Proof of business is a third,
+independent record of every sealed month.
 
-**Restore.** Supabase: Database → Backups → Restore. Box: option `10`.
+**Restore.** Rows that were deleted: Master control → Data → Restore. A whole project: Supabase Pro's
+Database → Backups → Restore. Box: option `10`.
 
 **Updating DineFlow.** Unzip the new `dineflow-complete.zip` over the old folder (keep your
 `apps/web/.env.local`), run option `7` to apply any new migrations, then option `1`. Every migration

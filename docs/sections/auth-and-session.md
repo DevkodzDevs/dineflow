@@ -231,3 +231,6 @@ pnpm --filter @dineflow/web build
   `head.mjs` adds 2560×1440, 1800×1000, 1680×1050 and 1536×864 and checks the band on the wall's right (≤ 16% of the wall), the
   form's margins (≤ 0.6 × its width) and the board's width (≥ 380): at 1920 the band is 49px, the card 698, the board 530.
   483/483, five themes.
+
+- **`/api/cron/` is public (2026-11-05, 0172).** Added to `PUBLIC_PREFIX` (not `SESSION_FREE`) for the nightly backup — Vercel Cron has no
+  session. The route itself refuses without `CRON_SECRET` (api-routes.md).

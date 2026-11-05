@@ -372,3 +372,100 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
 - **Flow tests and 0166 (2026-11-03):** *Order flow* starts on free tables nobody is cleaning; *A second round on the same table* now
   checks that a second `place_order` is refused ("A busy table takes no second order"), adds the round with `order_add_items` and
   splits it off with `split_order` for Billing's void step. The hotel's meal for the folio picks a table that is not being cleaned.
+
+## Data (2026-11-05, 0172 — the owner: "our own storage, database, files, backups and data handling, linked to Master control, a menu in the top bar; mostly free — anything paid finished with a test")
+- **Why:** the live project is on Supabase **Free**, which keeps **no backup at all** (App files' own code says so: "Supabase Free will not
+  take 50 MB a file"). DineFlow now keeps its own.
+- **Where:** top bar → **Data** (`/admin/data`, `AdminNav`, after App files — eight tabs, four to a row on a phone). Master only:
+  `requireAdmin` on the page, `is_master` in `api/admin/data`, and every 0172 function checks for itself.
+- **Files:** `app/admin/data/page.tsx` reads `data_overview`, `data_server`, `data_settings_get` and `data_backups` (and times those four
+  calls — the Server tab's *Answer time*); `DataClient.tsx` (the protection strip, the six tabs, Storage, Server, `BackupNow`),
+  `BackupsPanel.tsx` (Backups, Restore), `CarePanel.tsx` (Clean-up, Off-site & plans), `bits.tsx` (`api()`, `when`, `useNow`, Meter, Tile,
+  Panel, Note, Spark), `actions.ts` (`saveDataSettings`), `Data.module.css`. The engine is `lib/backup/`: `format.ts` (the file),
+  `plan.ts` (restore order, what to prune), `s3.ts` (Signature V4 by hand — no SDK), `supabaseApi.ts` (Supabase's Management API, the plans),
+  `providers.ts`, `bytes.ts` (the two a client may import), `run.ts` (server-only: backup, check, prune, delete, off-site, restore).
+- **The strip** (`[data-data-guard=ok|warn|bad]`): *Data is backed up* (newest full backup under 30 h and checked) / *Last backup n days ago* /
+  *No backup yet* / *The last backup failed its check*; then last backup, nightly, off-site, last download — and **Back up now**.
+- **Storage:** database against Free's 500 MB, files against 1 GB, rows, sign-ins; growth from `storage_snapshots` (one row a day, written by
+  `data_overview`) with "full in about n days"; the ten biggest tables (*Show all*); each property's rows and its share of each table's bytes;
+  the buckets; the largest files; space by schema.
+- **Backups:** nightly switch (says *Waits for CRON_SECRET and SUPABASE_SERVICE_ROLE_KEY on Vercel* until both are set), keep the newest
+  3–60 (default 14), stored files in or out and how many MB of them; *Download the newest* with a weekly nudge; the list with **Download**
+  (a 10-minute signed link; remembered as `last_download_at`), **Check**, **Off-site** (when set up) and Delete (asks); **Export one property**
+  (its rows from every table and its own files, with keys, tokens, codes and passwords left out — `SECRET_COLUMN`).
+- **The file** (`format.ts`): gzip of newline JSON — header, each table in pages of 2 000, the sign-in list (no password hashes), the stored
+  files as base64 (each under the cap, the lot under the cap; the rest listed as *skipped*), a footer with every table's rows and SHA-256.
+  The file's own SHA-256 is in `data_backups`. **Check** re-reads the file and proves both. `data_settings` is never exported (its secrets).
+  At 2026-11-05: 116 tables, 52 561 rows, 2 files — 21.6 MB of JSON in a **3.5 MB** file, **20 s**. Supabase Free takes 50 MB a file; past
+  that the run says so (lower the files cap or turn files off).
+- **Restore** brings back **missing** rows only: open a backup, tick tables, *See what is missing* (it adds the tables they depend on, marked
+  *needed*), type **RESTORE**, *Bring back n rows*. A row that is there is never changed or deleted. Rows go back with their own ids, numbers
+  and dates; the table's triggers are switched off for the call so stock, tickets and totals are not run twice; foreign keys stay checked.
+  Never restored: sign-in state, codes, throttles, the migration list, `platform_admins`, the backup tables. Each restore is in `admin_log`.
+  A whole-database disaster restore is not this — that is Supabase Pro's dashboard, or a new project from the file.
+- **Server:** connections of max, cache hits, answer time, uptime, longest query, deadlocks, rollbacks, temp files, transaction-ID age, unused
+  indexes, statement timeout; who is connected; tables with dead rows; the slowest statements (`pg_stat_statements`).
+- **Clean-up:** seven rules with a preview count and their own minimums (`data_cleanup`): print jobs (≥ 7 days — 5 132 sat *queued* on
+  2026-11-05, 5 038 of them over 30 days), self-test runs, crash reports, scan log, channel sync log, used codes, throttle hits. *Clean* /
+  *Clean all* ask first; *Every night* runs a rule after the nightly backup. Never cleaned: bills, orders, payments, invoices, stock, guests,
+  bookings, staff, the audit trail, Master control's log.
+- **Off-site & plans:** what is free and what is paid (Supabase Free / Pro $25 / point-in-time); the off-site store — Cloudflare R2 or
+  Backblaze B2 (free to 10 GB), Amazon S3 (paid) or any S3-compatible — with **Test connection** (writes, reads back and deletes a test file,
+  each step timed) and *Copy the newest now*; a Supabase access token with **Test** (`GET /v1/projects/{ref}/database/backups` — on Pro it
+  lists the daily backups; a bad token is told apart from no backups). Buying Pro is done in Supabase's dashboard, not here.
+- **Before you edit:**
+  - **No `toLocaleString` or `Date.now()` in render here.** `when()` builds India time by hand and "ago" counts from `overview.at` until the
+    page has mounted (`useNow`) — otherwise the server and the browser write different text and React throws #418.
+  - A secret (the off-site key, the Supabase token) is written by `data_settings_set` and read only by `data_secrets` on the server; the page
+    gets "set" and its last four. A blank box keeps it; *Forget* / *Remove* clear it. The settings log never holds one.
+  - A backup is one request (`maxDuration` 300). If it ever nears that, page it across requests rather than raising the limit.
+  - Restore takes the table's lock for its call (500 rows) — fine for a deleted order; do not run a big one in the dinner rush.
+
+## Data → Servers (2026-11-05, 0173 / 0174 — the owner: "three kinds — our own server, my laptop, outside like Supabase; a Server connection button; a warning before the change; add, delete, copy, backup perfect; a dashboard and controls for each; an AI option")
+- **The idea.** The live database always stays on Supabase. A *server* is a machine that keeps DineFlow's backups: your own
+  server, your laptop, or the cloud (Supabase's own storage). The **Server connection** (top right of every Data page,
+  `[data-server-connection]`) says which one Back up now, the nightly and Restore use; picking another asks first (`ask`,
+  danger tone) and is logged (`data_server_switch`). Whichever is not connected keeps what it has.
+- **Data is now routes, not tabs** (`app/admin/data/layout.tsx` → `DataShell`: a rail on ≥1100px, a chip row below): Overview ·
+  Servers · Backups · Records · Restore · Database health · Clean-up · Outside copies & plans · Advisor. `?tab=` is gone.
+- **The node** (`public/data-node/dineflow-data-node.mjs`, served at `/data-node/`, with `install-windows.ps1` and
+  `install-linux.sh`): one file, Node 20+, nothing to install. It opens no port and never holds the database password — every
+  minute it POLLS `data_node_call(token, fn, args)` (anon, by token), takes the commands Master control queued (backup, verify,
+  delete, prune, restore, restore_preview, report), does them, and reports back with its inventory and a machine report (host,
+  OS, disk, memory, uptime). It backs up straight from the database by token (the same file format as the cloud's — `format.ts`
+  ported), writes to its disk (`DINEFLOW_NODE_DIR`, default `./dineflow-backups`), checks the file after writing, runs its own
+  nightly at 02:00 on its clock while `nightly` is on and it is not paused, and prunes to its keep count. Settings in a `.env`
+  beside it. `--check` says whether it connects. On 2026-11-05 a full backup from this laptop took **9 s** (3.53 MB).
+- **Servers** (`/admin/data/servers`, `ServersClient`): three sections — Own server, Laptop, Outside · Supabase — each server a
+  card (online/offline/never connected, backups, last backup, disk free with a meter, machine, Dashboard, Connect). **Add** asks a
+  name, makes the server and shows the **token once** inside the setup steps (`Setup.tsx`: Node, download, the `.env` to copy,
+  the installer command, come back). `?add=laptop|own` opens it (the dialog's Add links).
+- **A server's dashboard** (`/admin/data/servers/[id]`, `ServerDashboard`): hero (status, machine, node version), tiles (disk,
+  files held, memory, up for), **Controls** (nightly, keep 7–365, pause, name, note), **Actions** (Back up now, Check every file,
+  Prune, Fresh report, Restore from here, Rotate token, Setup, Remove — Remove needs `confirm: "REMOVE"` in the route and leaves
+  the files on the machine), **Files on this server** (Restore / Check / Delete each), the **Job log**. A job is queued and the
+  page polls `command` every 2 s (`useCommand`); an offline server's jobs wait. The cloud's dashboard shows its own controls and
+  the database health instead.
+- **Backups** shows the connected server's: the cloud's as before; a node's files with Back up now, Check all, Export one property
+  (kept on the node), Restore / Check / Delete. **Restore** from a node (`NodeRestore`): the table list comes from the backup
+  record's manifest; *See what is missing* queues `restore_preview`, RESTORE queues `restore` — the node reads its own file and
+  sends rows through the gateway, which accepts only the tables that command named.
+- **Records** (`/admin/data/records`): every backup on every server (`data_records`) — when, what, server, size, rows, state
+  (checked / check failed / file gone / outside copy) — with search, server, kind and state filters and a CSV; then **Activity**
+  (`data_activity`: the `data_*` rows of admin_log, in words, with who).
+- **Advisor** (`/admin/data/advisor`, `lib/backup/advisor.ts` + `advisor-rules.ts`, `api/admin/data/advisor`): findings from
+  rules over the whole picture (no backup / stale / check failed; the cloud's nightly off or waiting for Vercel keys; a node
+  offline, paused, nightly off, disk under 10%, failed jobs, not seen for two days; backups in one place; no download for a week;
+  database past 80% / 95% of Free; over 1 000 rows to clean; damaged records; health — cache, connections, XID age), serious first.
+  A question is answered by Claude (`askJson`, effort medium, the facts and findings as the brief) when `ANTHROPIC_API_KEY` is
+  set, else from the rules (`rulesAnswer`: safety, servers, space, clean-up, last night, or the findings in order). It only reads;
+  every step is a link to a screen. Six suggested questions.
+- **Before you edit:**
+  - A node refusal is **returned** (`{error}`), not raised — an exception would roll back the hit that counts a wrong token
+    (sixty in ten minutes close the door). The node treats `{error}` as a failure.
+  - `data_node_call` sets `dineflow.node` for the call and clears it before returning; `_data_caller()` and `data_restore_rows`
+    accept it. A node may restore only through a taken restore command naming the table.
+  - A deleted or pruned file leaves the inventory and its record at once (the `done` of delete/prune, or 0174's `deleted` in the
+    next poll for the node's own nightly prune).
+  - Twenty jobs waiting on one server is the cap; a job taken over an hour ago and never finished is failed at the next poll.
+  - The nightly on the cloud still needs `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` on Vercel; a node's nightly needs neither.

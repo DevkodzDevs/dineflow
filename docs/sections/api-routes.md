@@ -129,3 +129,15 @@ month"), `findings` (health-check cards), `doc` (a PDF's contents, drawn in the 
 - **The i18n scan skips `lib/assist/`** like `lib/ai.ts` and the API: its words are server text (the model answers
   in the person's language; documents are English, like printed bills).
 
+## Data (0172, 2026-11-05)
+| Route | Public? | What it is |
+| --- | --- | --- |
+| `api/admin/data` | master | Master control → Data: `backup`, `verify`, `download` (10-min signed link), `delete`, `contents`, `restore` (`apply` needs `confirm: "RESTORE"`), `export` (one property), `offsite-test`, `offsite-copy`, `supabase-test`, `cleanup`. No session → 401, not the master → 403. `maxDuration` 300. |
+| `api/cron/backup` | scheduler | The nightly backup: `Authorization: Bearer $CRON_SECRET` (Vercel Cron) or `?key=`. CRON_SECRET unset → 503; wrong key → 401; no `SUPABASE_SERVICE_ROLE_KEY` → 503 (it says which). Then back up, check, keep the newest N, off-site copy if on, the clean-up rules switched on. |
+- `/api/cron/` joined `PUBLIC_PREFIX` (the scheduler has no session; the route checks its key and fails closed). `apps/web/vercel.json` runs it at
+  **20:30 UTC = 02:00 IST**, half an hour before the OTA sync. Hobby allows once a day.
+
+- **0173:** `api/admin/data` adds `servers`, `server-add`, `server-set`, `server-delete` (`confirm: "REMOVE"`), `server-rotate`,
+  `server-command` (`restore` needs `confirm: "RESTORE"`), `command`, `server-files`, `server-commands`, `active-server`, `records`,
+  `activity`. New `api/admin/data/advisor` (POST {question}, master only, reads only; Claude when a key exists). The node itself
+  talks to PostgREST directly (`rpc/data_node_call`), not to an app route.

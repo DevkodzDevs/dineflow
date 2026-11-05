@@ -786,3 +786,41 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   does not. `check_out` (0170's body) locks the booking, names the late check-out when the balance is short, and freezes it;
   `generate_stay_invoice` (0100's body) adds the late line. No new table, so no new policy.
 - Dry run `dry171.mjs` 40/40 (front-desk.md). Applied with `--live` on 2026-11-04; `late_checkout` over REST as anon → 42501.
+
+## 0172 — DineFlow's own backups (2026-11-05)
+- **Bucket** `backups`: private, 50 MB a file (Free's limit), gzip/json; four policies, all `is_master()`.
+- **Tables:** `data_backups` (RLS: the master reads; written only by functions), `data_settings` (one row, `id boolean`; no policy and no
+  grants — only through functions; holds `offsite_secret` and `supabase_token`), `storage_snapshots` (a row a day).
+- **Who may call:** `_data_caller()` = `is_platform_admin()` **or** `auth.role() = 'service_role'` (the nightly run has no sign-in). Not callable
+  itself. `data_settings_set` and `data_restore_rows` are the master's only — the service role cannot change settings or restore.
+- **Functions:** `data_overview` (and today's snapshot), `data_server`, `data_tables` (keys, `restaurant_id`, columns, FKs, stored files),
+  `data_export_rows(table, offset, limit, restaurant)` (5 000 a page; one property = its `restaurant_id`, or `id` for `restaurants`; a table
+  without either gives nothing), `data_auth_users` (no `encrypted_password`), `data_backup_log(start|done|fail|verify|offsite|downloaded)` (a run
+  stuck *running* 15 min is marked failed at the next start), `data_backup_forget`, `data_settings_get/set`, `data_secrets`,
+  `data_restore_rows(table, rows ≤ 2000, apply)`, `data_cleanup(days, apply, only)`. All `security definer`, pinned `search_path`; anon has none.
+- **Restore and triggers:** `session_replication_role` cannot be set from a function here (*permission denied to set parameter*, though
+  `postgres` may set it directly). So the table's own enabled triggers are disabled **by name** for the call and the same ones enabled after —
+  foreign keys, being internal triggers, stay on. The ALTER is transactional and holds an exclusive lock, so no other session ever sees the
+  triggers off. Rows are inserted one by one (`on conflict do nothing`, a failure counted, not fatal); generated and identity-always columns are
+  left to the database.
+- **Checked:** `dry172.mjs` 51/51 — applied in a rolled-back transaction, then the same 51 against the live database after `--live`
+  (2026-11-05): the master's reads, settings and secrets, a deleted order line brought back with 10 triggers off and on again and the stock
+  ledger and tickets unchanged, the exclusions, clean-up previews and minimums; an owner refused 12 ways, anon 3, the service role allowed to
+  read and refused settings and restore.
+
+## 0173 / 0174 — servers (2026-11-05)
+- **Tables:** `data_servers` (the cloud row `00000000-0000-4000-8000-000000000001` seeded; nodes with `token_hash` = sha256 of a
+  `dfn_` + 48-hex token, `token_hint`, keep, nightly, paused, `last_report`), `data_node_commands` (op, args, status queued →
+  taken → done|failed, result, error), `data_node_files` (a node's inventory, pk (server_id, name)). `data_settings.active_server`,
+  `data_backups.server_id` (default the cloud). RLS on, no grants — only functions.
+- **Master (is_platform_admin):** `data_server_add(kind, name)` → {id, token} (own | laptop; at most 12), `data_server_rotate`,
+  `data_server_set`, `data_server_delete` (not the cloud; cascades jobs and inventory; records stay unlinked),
+  `data_active_server_set(id|null)`, `data_server_command(id, op, args)` (restore / delete / prune logged). Reads for the master
+  or a node or the service role: `data_servers_get` (online = seen in 3 min), `data_server_commands`, `data_command_get`,
+  `data_server_files`, `data_records`, `data_activity`.
+- **The node (anon, by token):** `data_node_call(token, fn, args)` — `poll` (report, inventory, 0174's `deleted`, hands out five
+  queued commands), `done`, `tables`, `rows`, `users`, `log`, `restore` (only with a taken restore/restore_preview command naming
+  the table; a preview never inserts). `_data_node_id()` reads the per-call GUC; `_data_actor()` is the master who added the node.
+- **Checked:** `dry173.mjs` 53/53 rolled back, then live after `--live`; `pw/node173.mjs` 18/18 — the real node against the live
+  cloud (a real server row, backup 9 s, verify, report, a property export, a deleted row back from the node's file, prune, delete
+  with a `..` path ignored, a wrong token counted), everything put back.

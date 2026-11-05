@@ -134,6 +134,9 @@ PR descriptions end with:
   cold starts; both `vercel.json` files now set `"fluid": true` — check Vercel → Settings → Functions shows
   Fluid compute on after the next deploy. The database is Supabase **Micro** (shared CPU, spiky under load); a
   larger compute size is the owner's call. Never add `router.refresh()` after an action that revalidates.
+- **Backups (0172–0174, 2026-11-05):** Supabase Free keeps none; Master control → Data keeps DineFlow's own, on the cloud, your own
+  server or your laptop (the data node, `public/data-node`). The cloud's **nightly** needs `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY`
+  on Vercel; a node's nightly needs neither. [admin-and-membership.md](docs/sections/admin-and-membership.md)
 - The browser suites are rewritten every session and never committed; `scripts/verify.mjs` carries
   paths from another machine and does not run.
   [testing-and-gates.md](docs/sections/testing-and-gates.md)

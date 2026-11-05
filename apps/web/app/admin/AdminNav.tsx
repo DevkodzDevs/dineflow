@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Building2, KeyRound, ShieldCheck, FlaskConical, LifeBuoy, PackageOpen, Workflow } from "lucide-react";
+import { Building2, KeyRound, ShieldCheck, FlaskConical, LifeBuoy, PackageOpen, Workflow, Database } from "lucide-react";
 import { cn } from "@/components/ui";
 
 /**
@@ -11,7 +11,7 @@ import { cn } from "@/components/ui";
  */
 export function AdminNav({ support = 0 }: { support?: number }) {
   const path = usePathname(); const q = useSearchParams();
-  const at = path.startsWith("/admin/flow-tests") ? "flow-tests" : path.startsWith("/admin/support") ? "support" : path.startsWith("/admin/testing") ? "testing" : path.startsWith("/admin/compliance") ? "compliance" : path.startsWith("/admin/app-files") ? "app-files" : q.get("tab") === "keys" ? "keys" : path === "/admin" ? "properties" : null;
+  const at = path.startsWith("/admin/flow-tests") ? "flow-tests" : path.startsWith("/admin/support") ? "support" : path.startsWith("/admin/testing") ? "testing" : path.startsWith("/admin/compliance") ? "compliance" : path.startsWith("/admin/app-files") ? "app-files" : path.startsWith("/admin/data") ? "data" : q.get("tab") === "keys" ? "keys" : path === "/admin" ? "properties" : null;
   const items = [
     { key: "properties", href: "/admin", label: "Properties", Icon: Building2 },
     { key: "keys", href: "/admin?tab=keys", label: "Keys", Icon: KeyRound },
@@ -22,9 +22,11 @@ export function AdminNav({ support = 0 }: { support?: number }) {
     { key: "flow-tests", href: "/admin/flow-tests", label: "Flow tests", Icon: Workflow },
     // 0128: the Android and Windows app files every install screen offers — uploaded here, no deploy
     { key: "app-files", href: "/admin/app-files", label: "App files", Icon: PackageOpen },
+    // 0172: storage, backups, restore, server health, clean-up, the off-site copy and the plans — the owner: "our own data storage"
+    { key: "data", href: "/admin/data", label: "Data", Icon: Database },
   ];
   return (
-    <nav aria-label="Master control" className="grid grid-cols-4 sm:grid-cols-7 gap-1 p-1 rounded-2xl bg-white/[.06] md:flex md:bg-transparent md:p-0 md:gap-1.5">
+    <nav aria-label="Master control" className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-1 rounded-2xl bg-white/[.06] md:flex md:bg-transparent md:p-0 md:gap-1.5">
       {items.map(({ key, href, label, Icon }) => (
         <Link key={key} href={href} aria-current={at === key ? "page" : undefined}
           className={cn("h-10 min-w-0 px-3 rounded-xl inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold transition-colors",

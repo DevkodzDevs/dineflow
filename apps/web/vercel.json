@@ -1,1 +1,1 @@
-{"crons": [{"path": "/api/ota/sync", "schedule": "0 21 * * *"}], "regions": ["bom1"], "fluid": true}
+{"crons": [{"path": "/api/ota/sync", "schedule": "0 21 * * *"}, {"path": "/api/cron/backup", "schedule": "30 20 * * *"}], "regions": ["bom1"], "fluid": true}

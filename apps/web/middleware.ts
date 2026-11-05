@@ -5,7 +5,9 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC = ["/", "/login", "/signup", "/join", "/forgot", "/membership", "/offline", "/get"];
 /* The legal pages must answer a stranger. A payment gateway's reviewer, a regulator and someone
    deciding whether to sign up all read them before there is any session to check. */
-const PUBLIC_PREFIX = ["/for/", "/blog", "/legal", "/queue/", "/checkin/", "/dine", "/book/", "/record/", "/pay/", "/track/", "/ride/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/", "/attend/", "/screen/", "/feedback/", "/api/screen/"];
+const PUBLIC_PREFIX = ["/for/", "/blog", "/legal", "/queue/", "/checkin/", "/dine", "/book/", "/record/", "/pay/", "/track/", "/ride/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/", "/attend/", "/screen/", "/feedback/", "/api/screen/",
+  // 0172: the nightly backup — the scheduler has no sign-in; the route checks CRON_SECRET itself and fails closed
+  "/api/cron/"];
 /** Pages a signed-in user must always be able to reach, even with must_change_password set. Without
  *  this the password-change screen has no way out: the middleware bounces /login to /dashboard, and
  *  the app layout bounces /dashboard back to /account/password. */
