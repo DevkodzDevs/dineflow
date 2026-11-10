@@ -6,8 +6,19 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(join(ROOT, "packages/db/package.json"));
 const postgres = require("postgres");
+// Fall back to .dineflow.env when DATABASE_URL (and friends) are not already in the shell — the same file the dry-run
+// scripts read, so `node scripts/migrate.mjs` works without exporting the secret by hand. A real environment variable wins.
+if (!process.env.DATABASE_URL) {
+  try {
+    for (const line of readFileSync(join(ROOT, ".dineflow.env"), "utf8").split(/\r?\n/)) {
+      if (!line.includes("=") || line.startsWith("#")) continue;
+      const i = line.indexOf("="); const k = line.slice(0, i).trim();
+      if (!(k in process.env)) process.env[k] = line.slice(i + 1).trim();
+    }
+  } catch { /* no env file — the check below reports DATABASE_URL missing */ }
+}
 const url = process.env.DATABASE_URL;
-if (!url) { console.error("DATABASE_URL missing"); process.exit(1); }
+if (!url) { console.error("DATABASE_URL missing — set it, or put it in .dineflow.env at the repo root"); process.exit(1); }
 /* Which database is this? (2026-10-29, the owner's item 19.) Development and production shared one Supabase project, so
    every migration reached the live site at once. With a staging project, DATABASE_URL points there for everyday work; the
    live project answers only to an explicit --live. The ref is the project's public id (it is in every Supabase URL). */
