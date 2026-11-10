@@ -338,14 +338,24 @@ const flappable = (v: string) => v.length <= 4 && /^[0-9]+([%/][0-9]*)?$/.test(v
 const figureSize = (v: string) =>
   v.length > 13 ? "20px" : v.length > 10 ? "23px" : v.length > 7 ? "27px" : v.length > 5 ? "30px" : "34px";
 
+/** A percentage ("15%", "72%") — the card's foot rule fills to it, so the figure is also a meter. */
+const percentOf = (v: string) => { const m = /^(\d{1,3})%$/.exec(v); return m ? Math.min(100, Number(m[1])) : null; };
+
 export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string; value: string; sub?: string; tone?: "alert" | "good"; delay?: number }) {
+  const pct = percentOf(value);
   return (
     <Reveal delay={delay}>
+      {/* 2026-11-11: the card is three fixed slots — the label row, the number band, the foot — so a
+          row of cards lines up at every edge whatever each one holds. Before, the caption stood
+          beside the number when it fit and dropped under it when it did not, so on one row three
+          cards read "[00] of 24 rooms" and the fourth "[15%]" over "0 comparable days": the same
+          design, four alignments. The caption now always sits in the foot, under a hairline rule
+          pinned to the card's bottom edge, and the band above it is the same height on every card. */}
       <div onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`); e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`); }}
-        className={cn("card spotlight feather-lift p-5 h-full relative @container flex flex-col", tone === "alert" && "!border-[var(--color-red)]/40", tone === "good" && "!border-[var(--color-green)]/50")}>
+        className="card spotlight feather-lift p-5 h-full relative @container flex flex-col stat-tile" data-tone={tone}>
         {/* The state as a status light, only when it is saying something: a plain tile once carried
             a dot at 12% white beside every label on fourteen screens, signalling nothing. */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 min-h-5">   {/* 20px with or without the status light, so every card's number starts on the same line */}
           <div className="eyebrow min-w-0 flex-1 truncate">{label}</div>
           {/* A status light at the end of the label row: a soft halo with a solid core, centred on
               the label's line. It was an absolutely placed .stat-pip, but .pulse-dot (declared
@@ -359,23 +369,30 @@ export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string
             number left, words right — which suited an 86px flap tile and punished a figure:
             "₹8,85,154.72" came out at 23px beside a three-line caption, a sum of money reading like
             a footnote. Stacked, a figure takes the full width at 34px wherever the card has the
-            room (.stat-fig in globals.css decides, by the card's own width), and the caption stands
-            beside the number when it fits — a flap tile leaves 142px for it — and drops beneath it
-            when it does not: a long figure, or a phone.
+            room (.stat-fig in globals.css decides, by the card's own width).
 
             A short count gets the split-flap treatment this whole design is named for — it is the
             same tile the control room and the kitchen use, so a number means the same thing on
             every screen. Money does not: "₹8,85,154.72" is twelve flaps and no card is that wide,
             so a figure stays a figure. Flaps count things; the display numeral states amounts. */}
-        <div className="stat-body mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <div className="stat-body mt-3 flex items-center">
           {flappable(value)
             ? <div className="flip-stat shrink-0"><FlapShuffle value={value} size="sm" /></div>   /* shuffles and settles on a change (Flap.tsx) */
             /* the same band a tile occupies, so a row of cards lines up whether its numbers are
                counted or priced */
             : <div className="stat-fig shrink-0 flex items-center leading-none font-display num count-up tabular-nums"
                 style={{ fontVariationSettings: '"opsz" 72', "--fig-narrow": figureSize(value) } as React.CSSProperties}>{value}</div>}
-          {sub && <div className={cn("min-w-0 flex-1 basis-28 text-xs leading-snug", tone === "alert" ? "text-[var(--color-red)]" : "text-[var(--color-label-2)]")}>{sub}</div>}
         </div>
+        {/* The foot: a hairline rule and the caption under it, pushed to the card's bottom edge so
+            every card in a row ends the same way. A percentage fills the rule to its value — the
+            number is also its own meter — and a toned card colours the fill. Every card has the foot,
+            caption or not (the line is reserved), so the rules of a row sit on one line. */}
+        {(
+          <div className="stat-foot-slot">
+            <span className="stat-rule" aria-hidden>{pct !== null && <i style={{ width: `${pct}%` }} />}</span>
+            <div className="stat-cap">{sub}</div>
+          </div>
+        )}
       </div>
     </Reveal>
   );

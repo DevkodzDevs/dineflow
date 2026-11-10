@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Camera, ScanLine, Upload, Leaf, Drumstick, BedDouble, HardHat, Boxes, UtensilsCrossed, RotateCcw, Check, Zap, Keyboard } from "lucide-react";
+import { Camera, Upload, Leaf, Drumstick, BedDouble, HardHat, Boxes, UtensilsCrossed, RotateCcw, Check, Zap, Keyboard, ArrowRight, QrCode, Barcode, Image as ImageIcon, Receipt, X, type LucideIcon } from "lucide-react";
 import { Button, Field, Card, Pill, cn, PhoneInput } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { QUICK_QTY, INGREDIENT_CATEGORIES, LABOUR_SKILLS, UNITS, type ScanResult } from "@dineflow/shared";
@@ -10,13 +10,25 @@ import { lookupCode, createProductFromScan, stockFromScan, createDishFromScan, c
 
 type Mode = "idle" | "camera" | "result";
 type Found = Awaited<ReturnType<typeof lookupCode>>;
+type HintKey = "auto" | "ingredient" | "dish" | "room" | "labour";
+
+/* one hue per kind of thing, as a token — the dock, the stage, the lanes and the log all read `--hue` (2026-11-11) */
+const HUE: Record<string, string> = {
+  auto: "var(--color-violet)", ingredient: "var(--color-orange)", product: "var(--color-orange)", dish: "var(--color-green)", room: "var(--color-blue)",
+  booking: "var(--color-blue)", labour: "var(--color-cyan)", staff: "var(--color-cyan)", bill: "var(--color-tint)", unknown: "var(--color-label-3)",
+};
+const MODE_ICON: Record<HintKey, LucideIcon> = { auto: Zap, ingredient: Boxes, dish: UtensilsCrossed, room: BedDouble, labour: HardHat };
+const KIND_LABEL: Record<string, string> = { ingredient: "Product", product: "Product", dish: "Dish", room: "Room", booking: "Booking", labour: "Labour", staff: "Staff", bill: "Bill" };
+const KIND_ICON: Record<string, LucideIcon> = { ingredient: Boxes, product: Boxes, dish: UtensilsCrossed, room: BedDouble, booking: BedDouble, labour: HardHat, staff: HardHat, bill: Receipt };
+const hueStyle = (k: string) => ({ "--hue": HUE[k] ?? HUE.unknown }) as CSSProperties;
 
 export function ScanClient({ categories, recent, aiEnabled, idScan = false, propertyType }: { categories: { id: string; name: string }[]; recent: { id: string; source: string; kind: string | null; action: string | null; created_at: string; result: ScanResult | null }[]; aiEnabled: boolean; idScan?: boolean; propertyType: string }) {
   const videoRef = useRef<HTMLVideoElement>(null); const readerRef = useRef<{ stop: () => void } | null>(null);
-  const [mode, setMode] = useState<Mode>("idle"); const [hint, setHint] = useState<"auto" | "ingredient" | "dish" | "room" | "labour">("auto");
+  const [mode, setMode] = useState<Mode>("idle"); const [hint, setHint] = useState<HintKey>("auto");
   const [busy, setBusy] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
   const [photo, setPhoto] = useState<string | null>(null); const [ai, setAi] = useState<ScanResult | null>(null); const [found, setFound] = useState<Found | null>(null);
   const [manual, setManual] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
 
   // ── camera + live barcode/QR reading ──
   const startCamera = async () => {
@@ -57,30 +69,53 @@ export function ScanClient({ categories, recent, aiEnabled, idScan = false, prop
     setAi(j);
   };
   const reset = () => { stopCamera(); setMode("idle"); setAi(null); setFound(null); setPhoto(null); setErr(null); setToast(null); };
-  const [toast, setToast] = useState<string | null>(null);
 
-  const Hint = ({ k, label, Icon }: { k: typeof hint; label: string; Icon: typeof Leaf }) => <button onClick={() => setHint(k)} className={cn("chip gap-1.5", hint === k && "on")}><Icon size={14} /> {label}</button>;
+  const modes: { k: HintKey; label: string }[] = [
+    { k: "auto", label: "Auto" }, { k: "ingredient", label: "Vegetable / product" }, { k: "dish", label: "Dish" },
+    ...(propertyType !== "restaurant" ? [{ k: "room" as const, label: "Room" }] : []), ...(idScan ? [{ k: "labour" as const, label: "Labour / ID" }] : []),
+  ];
+  // the screen's hue: the chosen mode while scanning, the recognised kind once there is a result
+  const kindNow = found && found.kind !== "unknown" ? found.kind : ai?.kind;
+  const hueKey = mode === "result" && kindNow ? kindNow : hint;
+  const ModeIcon = MODE_ICON[hint];
+  const hasRooms = propertyType !== "restaurant";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="space-y-4">
-        <div className="chip-rail"><Hint k="auto" label="Auto" Icon={Zap} /><Hint k="ingredient" label="Vegetable / product" Icon={Boxes} /><Hint k="dish" label="Dish" Icon={UtensilsCrossed} />{propertyType !== "restaurant" && <Hint k="room" label="Room" Icon={BedDouble} />}{idScan && <Hint k="labour" label="Labour / ID" Icon={HardHat} />}</div>
+    <div data-scan className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]" style={hueStyle(hueKey)}>
+      <div className="space-y-4 min-w-0">
+        <div className="scan-modes" role="tablist" aria-label="What to scan">
+          {modes.map(({ k, label }) => { const Icon = MODE_ICON[k]; const on = hint === k; return (
+            <button key={k} type="button" role="tab" aria-selected={on} data-on={on} onClick={() => setHint(k)} className="scan-mode" style={hueStyle(k)}>
+              {on && <motion.span layoutId="scan-mode-thumb" className="scan-mode-thumb" transition={{ type: "spring", stiffness: 520, damping: 42 }} />}
+              <span className="scan-mode-ico"><Icon size={16} /></span><span>{label}</span>
+            </button>); })}
+        </div>
 
-        <div className="glass overflow-hidden">
-          <div className="relative aspect-[4/3] md:aspect-video bg-[var(--color-bezel)]">
-            <video ref={videoRef} className={cn("absolute inset-0 h-full w-full object-cover", mode !== "camera" && "hidden")} muted playsInline autoPlay />
-            {photo && mode === "result" && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-contain" />}
-            {mode === "camera" && <><div className="absolute inset-x-[12%] inset-y-[18%] border-2 border-saffron/80 rounded-2xl [box-shadow:0_0_0_9999px_rgb(16_32_26/.35)]" /><motion.div className="absolute left-[12%] right-[12%] h-0.5 bg-saffron/90 shadow-[0_0_16px_rgb(232_163_61)]" animate={{ top: ["20%", "80%", "20%"] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} /><div className="absolute bottom-3 inset-x-0 text-center text-xs text-white/80">Codes auto-read · <b>Capture</b> photos</div></>}
-            {mode === "idle" && <div className="absolute inset-0 grid place-items-center text-center text-white/70 p-6"><div><ScanLine size={40} className="mx-auto mb-3 text-saffron" /><div className="font-display text-2xl text-white">Ready to scan</div><div className="text-sm mt-1">Barcode, QR or photo</div></div></div>}
-            {busy && <div className="absolute inset-0 grid place-items-center bg-bezel/70 text-white"><div className="flex items-center gap-2 text-sm"><motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><RotateCcw size={16} /></motion.span>{busy}</div></div>}
+        <div className="scan-stage" data-mode={mode} data-photo={!!photo}>
+          <div className="scan-view">
+            <video ref={videoRef} className={cn(mode !== "camera" && "hidden")} muted playsInline autoPlay />
+            {photo && mode === "result" && <img src={photo} alt="" />}
+            <div className="scan-hud">
+              <span className="scan-tag" data-live={mode === "camera" || undefined}><b />{mode === "camera" ? "Live" : mode === "result" ? "Result" : modes.find((m) => m.k === hint)?.label ?? "Auto"}</span>
+              {!aiEnabled && <span className="scan-tag" data-sample title="Photos are a sample until the add-on is on">Sample mode</span>}
+            </div>
+            {mode !== "result" && <div className="scan-frame" aria-hidden><i /><i /><i /><i /></div>}
+            {mode === "camera" && <><div className="scan-dim" /><motion.div className="scan-sweep" animate={{ top: ["20%", "80%", "20%"] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} /><div className="scan-foot">Codes auto-read · <b>Capture</b> photos</div></>}
+            {mode === "idle" && <div className="scan-idle"><div><div className="scan-orb"><ModeIcon size={30} /></div><h2>Ready to scan</h2>
+              <div className="scan-inputs"><span><Barcode size={13} /> Barcode</span><span><QrCode size={13} /> QR</span><span><ImageIcon size={13} /> Photo</span></div></div></div>}
+            {mode === "result" && !photo && !busy && (() => { const I = KIND_ICON[kindNow ?? ""] ?? QrCode; return <div className="scan-idle"><div><div className="scan-orb"><I size={30} /></div><h2>{KIND_LABEL[kindNow ?? ""] ?? "Not found"}</h2>
+              <div className="scan-inputs"><span>{kindNow ? "Details below" : "Try another code"}</span></div></div></div>; })()}
+            {busy && <div className="scan-busy"><span><motion.span className="inline-flex" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><RotateCcw size={16} /></motion.span>{busy}</span></div>}
           </div>
-          <div className="p-3 flex flex-wrap gap-2 items-center">
-            {mode !== "camera" ? <Button onClick={startCamera}><Camera size={16} /> Open camera</Button> : <><Button onClick={snap}><Camera size={16} /> Capture photo</Button><Button variant="outline" onClick={reset}>Close</Button></>}
-            <label className="btn-like inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-line bg-card text-sm font-semibold cursor-pointer hover:bg-porcelain"><Upload size={16} /> Upload photo<input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} /></label>
-            <form className="basis-full sm:basis-auto sm:ml-auto flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (manual) handleCode(manual, "manual"); }}><input placeholder="Type code / room no." value={manual} onChange={(e) => setManual(e.target.value)} className="flex-1 min-w-0 sm:!w-44 sm:flex-none !py-2 num" /><Button variant="outline" size="md" aria-label="Look up"><Keyboard size={16} /></Button></form>
+          <div className="scan-dock">
+            {mode !== "camera" ? <Button onClick={startCamera}><Camera size={18} /> Open camera</Button> : <><Button onClick={snap}><Camera size={18} /> Capture photo</Button><Button variant="outline" onClick={reset}><X size={16} /> Close</Button></>}
+            <label className="btn btn-gray cursor-pointer"><Upload size={16} /> Upload photo<input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} /></label>
+            <form className="scan-code" onSubmit={(e) => { e.preventDefault(); if (manual) handleCode(manual, "manual"); }}>
+              <Keyboard size={16} className="shrink-0" /><input placeholder="Type code / room no." value={manual} onChange={(e) => setManual(e.target.value)} className="num" aria-label="Code or room number" />
+              <button type="submit" aria-label="Look up" disabled={!manual}><ArrowRight size={17} /></button>
+            </form>
           </div>
-          {!aiEnabled && <p className="px-4 pb-3 text-xs text-steel"><b>Sample mode</b> · photos only</p>}
-          {err && <p className="px-4 pb-3 text-sm text-chili">{err}</p>}
+          {err && <p className="scan-err">{err}</p>}
         </div>
 
         <AnimatePresence>
@@ -90,20 +125,37 @@ export function ScanClient({ categories, recent, aiEnabled, idScan = false, prop
         </AnimatePresence>
       </div>
 
-      <aside className="space-y-4">
-        <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">How it lands</div>
-          <ul className="text-sm space-y-2 text-steel">
-            <li className="flex gap-2"><Boxes size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Vegetable / packet</b> → Pantry item</span></li>
-            <li className="flex gap-2"><UtensilsCrossed size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Dish</b> → new Menu item.</span></li>
-            {propertyType !== "restaurant" && <li className="flex gap-2"><BedDouble size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Room door / key tag</b> → opens the room.</span></li>}
-            <li className="flex gap-2"><HardHat size={15} className="shrink-0 mt-0.5 text-ink" /><span><b className="text-ink">Worker / ID card</b> → new worker</span></li>
+      <aside className="space-y-4 min-w-0">
+        <Card>
+          <div className="card-title"><h3>Where it lands</h3><Link href="/labour?tab=labels" className="more">Print labels</Link></div>
+          <div className="scan-lanes">
+            <Lane k="ingredient" Icon={Boxes} label="Vegetable / packet" to="Pantry" />
+            <Lane k="dish" Icon={UtensilsCrossed} label="Dish" to="Menu" />
+            {hasRooms && <Lane k="room" Icon={BedDouble} label="Room door / key tag" to="Room" />}
+            <Lane k="labour" Icon={HardHat} label="Worker / ID card" to="Labour" />
+            <Lane k="bill" Icon={Receipt} label="Bill QR" to="Bill" />
+          </div>
+        </Card>
+        <Card>
+          <div className="card-title"><h3>Recent scans</h3>{recent.length > 0 && <span className="more num">{recent.length}</span>}</div>
+          <ul className="scan-log">
+            {recent.map((r) => { const Icon = KIND_ICON[r.kind ?? ""] ?? QrCode; return (
+              <li key={r.id} style={hueStyle(r.kind ?? "unknown")}>
+                <span className="scan-ico sm"><Icon size={14} /></span>
+                <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{r.result?.name ?? r.action ?? r.source}</span><span className="kind">{r.kind ?? "?"}</span></span>
+                <span className="num text-xs text-steel">{new Date(r.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+              </li>); })}
+            {recent.length === 0 && <li className="text-sm text-steel">Nothing yet</li>}
           </ul>
-          <Link href="/labour?tab=labels" className="mt-2 inline-flex items-center min-h-10 text-xs font-semibold underline">Print QR labels →</Link></Card>
-        <Card><div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">Recent scans</div>
-          <ul className="space-y-1.5 text-sm">{recent.map((r) => <li key={r.id} className="flex items-center gap-2"><Pill tone={r.kind === "labour" ? "gold" : r.kind === "room" ? "sky" : r.kind === "dish" ? "preparing" : "ready"}>{r.kind ?? "?"}</Pill><span className="flex-1 truncate">{r.result?.name ?? r.action ?? r.source}</span><span className="num text-xs text-steel">{new Date(r.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span></li>)}{recent.length === 0 && <li className="text-steel">Nothing scanned yet.</li>}</ul></Card>
+        </Card>
       </aside>
     </div>
   );
+}
+
+/* a row of the "Where it lands" panel: a hue square, what you point at, where it goes */
+function Lane({ k, Icon, label, to }: { k: string; Icon: LucideIcon; label: string; to: string }) {
+  return <div className="scan-lane" style={hueStyle(k)}><span className="scan-ico"><Icon size={16} /></span><b>{label}</b><span className="to">{to} <ArrowRight size={12} /></span></div>;
 }
 
 /* ── an existing thing was recognised by code ── */

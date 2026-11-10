@@ -169,10 +169,18 @@ export function TomorrowClient({ date, forecast, score, saved, restaurant }: { d
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* ── prep ── */}
-        <Card>
+        {/* 2026-11-11: the grid stretches this card to the height of the market list beside it, and the
+            empty state was a short card floating in the top third of it, a plain void under. The card is
+            now a column and the empty state grows to its foot, its icon and words centred in the room it
+            has. A list of dishes is unchanged: it stacks from the top as it did. */}
+        <Card className="flex flex-col">
           <div className="flex items-center gap-2 mb-1"><ChefHat size={17} /><h2 className="text-2xl">Prep for the kitchen</h2></div>
           <p className="text-xs text-steel mb-4">Incl. {forecast.buffer_pct}% buffer</p>
-          {dishes.length === 0 ? <Empty title="Nothing to prep yet" hint="After dishes sell" /> : (
+          {dishes.length === 0 ? (
+            <div className="flex-1 flex flex-col [&>*]:flex-1 [&>*]:flex [&>*]:flex-col [&>*]:justify-center" data-prep-empty>
+              <Empty title="Nothing to prep yet" hint="After dishes sell" />
+            </div>
+          ) : (
             <div className="divide-y divide-line">
               {dishes.slice(0, 18).map((d, i) => (
                 <motion.div key={d.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }} className="flex items-center gap-3 py-2.5">

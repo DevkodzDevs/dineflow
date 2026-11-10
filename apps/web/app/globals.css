@@ -294,8 +294,10 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
 .flip-stat .flip { --tile: clamp(76px, calc(26cqw + 30px), 136px);
   border-radius: calc(var(--tile) * .22);
   background: linear-gradient(180deg, #32333d 0%, #23242c 48%, #1a1b21 100%);
-  border: 1px solid rgb(0 0 0 / .5);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .11), 0 0 0 1px rgb(255 255 255 / .05), 0 10px 26px -16px rgb(0 0 0 / .9); }
+  border: 1px solid rgb(0 0 0 / .55);
+  /* 2026-11-11: a lighter footprint on the card — the rim's line of light, a hairline of white around it,
+     and a short soft shadow instead of the 26px drop that made the tile look lifted off a different surface */
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 1px rgb(255 255 255 / .06), 0 8px 22px -14px rgb(0 0 0 / .8); }
 .flip-stat .flap-top { background: linear-gradient(180deg, #3f404b 0%, #35363f 100%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .10), inset 0 -1px 0 rgb(0 0 0 / .42); }
 .flip-stat .flap-bottom { background: linear-gradient(180deg, #2b2c35 0%, #24252e 100%);
@@ -339,6 +341,25 @@ h1 em, h2 em { font-style: normal; font-weight: 300; color: var(--color-label-2)
    wide desktop row is exactly where the bigger figure belongs. The longest figure is 244px at
    38px; 16rem is 256. */
 @container (min-width: 16rem) { .stat-fig { font-size: 38px; } }
+
+/* ── the stat card's foot (2026-11-11) ────────────────────────────────
+   A StatTile is three slots: the label row, the number band, the foot. The caption lives in the
+   foot under a hairline rule, pushed to the card's bottom edge (margin-top: auto), so a row of cards
+   ends on one line whatever each number is. It used to stand beside the number when it fit and drop
+   under it when it did not — "[00] of 24 rooms" three times and "[15%]" over "0 comparable days" on
+   the fourth card: one design, four alignments. The rule is also a meter: when the value is a
+   percentage StatTile fills it to the value, in the card's hue (the tint, or the tone's colour). */
+.stat-tile { --stat-hue: var(--color-tint); }
+.stat-tile[data-tone="good"] { --stat-hue: var(--color-green); border-color: color-mix(in srgb, var(--color-green) 45%, var(--color-separator)); }
+.stat-tile[data-tone="alert"] { --stat-hue: var(--color-red); border-color: color-mix(in srgb, var(--color-red) 40%, var(--color-separator)); }
+.stat-foot-slot { margin-top: auto; padding-top: 14px; display: grid; gap: 9px; min-width: 0; }
+.stat-rule { display: block; height: 2px; border-radius: 99px; background: color-mix(in srgb, var(--color-label-3) 28%, transparent); overflow: hidden; }
+.stat-rule > i { display: block; height: 100%; border-radius: 99px; background: var(--stat-hue); box-shadow: 0 0 10px color-mix(in srgb, var(--stat-hue) 55%, transparent); transition: width var(--dur-slow) var(--ease-out); }
+.stat-cap { font-size: 13px; line-height: 1.35; min-height: 1.35em; color: var(--color-label-2); overflow-wrap: anywhere; }   /* the line is reserved on a captionless card, so a row's rules sit on one line */
+.stat-tile[data-tone="alert"] .stat-cap { color: var(--color-red); }
+/* a toned card's tile answers it: the rim and a soft glow take the card's hue, so a red or green card
+   is red or green at the number, not only at its edge */
+.stat-tile[data-tone] .flip-stat .flip { box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 1px color-mix(in srgb, var(--stat-hue) 45%, rgb(255 255 255 / .06)), 0 12px 30px -14px color-mix(in srgb, var(--stat-hue) 60%, transparent); }
 /* the state light, in the corner where one goes */
 .flip.live { color: #49c785; } .flip.alert { color: #f0786c; }   /* the plates are dark in every theme: a fixed emerald and ruby */
 .flip-label { font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-label-2); text-align: center; margin-top: 12px; font-weight: 500; }
@@ -627,38 +648,45 @@ body:has(.deck-card) { background: #0a0a0d; }
    empty space under the last row for the fade to land on. */
 .list-fade { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
   mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
-.stat { flex: 1 1 158px; min-width: 0; max-width: 400px; --stat: var(--color-label-3); position: relative; display: flex; flex-direction: column; padding: 16px; overflow: hidden; }
-/* a tile that needs a person takes the colour on its own edge — a top bar cannot follow
-   a 22px corner without growing ears at both ends, and this reads from further away anyway */
-.stat:is(.stat-warn, .stat-alert) { border-color: color-mix(in srgb, var(--stat) 40%, transparent); background: color-mix(in srgb, var(--stat) 5%, var(--color-bg-2)); }
+.stat { flex: 1 1 158px; min-width: 0; max-width: 400px; --stat: var(--color-label-3); --stat-pad: 16px; position: relative; display: flex; flex-direction: column; padding: var(--stat-pad); overflow: hidden;
+  background: linear-gradient(180deg, rgb(255 255 255 / .05), transparent 46%), linear-gradient(180deg, color-mix(in srgb, var(--color-bg-2) 97%, #fff) 0%, var(--color-bg-2) 42%); }
+/* a tile that needs a person lifts off the wall — a soft glow and a slow pulse on the dot — rather than tint the whole card */
+.stat-alert { border-color: color-mix(in srgb, var(--color-red) 34%, var(--color-separator));
+  box-shadow: var(--shadow-card), 0 0 0 1px color-mix(in srgb, var(--color-red) 13%, transparent), 0 12px 38px -18px color-mix(in srgb, var(--color-red) 36%, transparent); }
 .stat-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.stat-chip { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0; background: var(--color-fill); color: var(--color-label-2); }
+.stat-chip { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; flex-shrink: 0; background: var(--color-fill); color: var(--color-label-2); box-shadow: 0 1px 0 rgb(255 255 255 / .05) inset; }
 .stat:is(.stat-good, .stat-warn, .stat-alert) .stat-chip { background: color-mix(in srgb, var(--stat) 16%, transparent); color: var(--stat); }
-.stat-label { flex: 1; min-width: 0; font-size: 13px; color: var(--color-label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-label { flex: 1; min-width: 0; font-size: 10.5px; font-weight: 600; letter-spacing: .11em; text-transform: uppercase; color: var(--color-label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* out of the flow: in the head it reserved 22px of a 105px label line whether it was showing or
    not, which is what truncated "Housekeeping" on a six-across row */
 .stat-go { position: absolute; top: 16px; right: 14px; color: var(--color-label-3); opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
 .stat:hover .stat-label { padding-right: 18px; }
 .stat:hover .stat-go, .stat:focus-visible .stat-go { opacity: 1; transform: none; }
-.stat-value { display: flex; align-items: baseline; gap: 5px; margin-top: 14px; font-size: 34px; line-height: 1; }
+.stat-value { display: flex; align-items: baseline; gap: 5px; margin-top: 16px; font-size: 38px; line-height: 1; letter-spacing: .4px; font-variant-numeric: tabular-nums; }
 .stat-alert .stat-value { color: var(--color-red); }
 .stat-unit { font-family: var(--font-sans); font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--color-label-2); }
 .stat-sep { color: var(--color-label-3); margin: 0 1px; }
-.stat-base { margin-top: auto; padding-top: 14px; }
+.stat-base { position: relative; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--color-separator); }
+.stat-base::before, .stat-base::after { content: ""; position: absolute; top: 0; width: 6px; height: 6px; border-radius: 2px; transform: translateY(-50%); background: var(--stat); }
+.stat-base::before { left: calc(-1 * var(--stat-pad)); }
+.stat-base::after { right: calc(-1 * var(--stat-pad)); }
 .stat-meter { display: block; height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--stat) 20%, transparent); overflow: hidden; }
 .stat-meter > i { display: block; height: 100%; border-radius: 99px; background: var(--stat); transition: width var(--dur-slow) var(--ease-out); }
 .stat-foot { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1.35; color: var(--color-label-2); }
 .stat-meter + .stat-foot { margin-top: 10px; }
 .stat:is(.stat-good, .stat-warn, .stat-alert) .stat-foot { color: var(--stat); }
 .stat-dot { width: 6px; height: 6px; border-radius: 99px; background: currentColor; flex-shrink: 0; }
+.stat-alert .stat-dot { animation: statpulse 2.4s ease-out infinite; }
+@keyframes statpulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-red) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .stat-alert .stat-dot { animation: none; } }
 /* min-width:0 is load-bearing: a -webkit-box clamp reports its whole unwrapped line as
    its minimum width, which would hold the tile wider than the phone it is on */
 .stat-sub { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .stat-good { --stat: var(--color-green); }
 .stat-warn { --stat: var(--color-orange); }
 .stat-alert { --stat: var(--color-red); }
-@media (max-width: 640px) { .stat { padding: 14px; } .stat-value { margin-top: 12px; font-size: 28px; } .stat-base { padding-top: 12px; } }
-@media (min-width: 1536px) { .stat { padding: 18px; } .stat-value { font-size: 40px; } }
+@media (max-width: 640px) { .stat { --stat-pad: 14px; } .stat-value { margin-top: 13px; font-size: 30px; } .stat-base { padding-top: 12px; } }
+@media (min-width: 1536px) { .stat { --stat-pad: 18px; } .stat-value { font-size: 42px; } }
 
 /* grouped list */
 .group { background: var(--color-bg-2); border-radius: var(--radius-md); border: .5px solid var(--color-separator); overflow: hidden; box-shadow: var(--shadow-card); }
@@ -2222,3 +2250,119 @@ a.fdt:hover .fdt-go { background: var(--hue); color: var(--color-bezel); }
 .ready-go:active { transform: scale(.96); }
 .ready-go[disabled] { opacity: .5; }
 @media (max-width: 399.98px) { .ready-go { min-width: 48px; padding: 0 12px; } .ready-go span { display: none; } }
+
+/* ═══ 2026-11-11 · SCAN — the one-camera console (app/(app)/scan) ════════════════════════════════════════════════════
+   The chosen mode carries a hue (--hue, set inline from a token: violet Auto, orange product, green dish, blue room, cyan
+   labour) and everything on the screen follows it: the mode dock's thumb, the stage's brackets, glow and sweep, the code
+   field's focus ring, the lanes and the log. The stage is --color-bezel in every theme, so its words are fixed light the
+   way .wall's are. Reduced motion is handled by the global rule (every animation off). */
+.scan-modes { display: flex; gap: 6px; padding: 5px; border-radius: 22px; background: var(--color-fill); border: .5px solid var(--color-separator);
+  overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; min-width: 0; }
+.scan-modes::-webkit-scrollbar { display: none; }
+.scan-mode { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 9px; height: 46px; padding: 0 16px 0 8px; border-radius: 17px;
+  font-size: 14px; font-weight: 700; color: var(--color-label-2); white-space: nowrap; -webkit-tap-highlight-color: transparent; transition: color var(--dur-fast); }
+.scan-mode > * { position: relative; z-index: 1; }
+.scan-mode[data-on="true"] { color: var(--color-label); }
+.scan-mode-thumb { position: absolute; inset: 0; z-index: 0; border-radius: 17px; background: var(--color-bg-2);
+  border: .5px solid color-mix(in srgb, var(--hue) 50%, var(--color-separator));
+  box-shadow: var(--shadow-inset-top), 0 8px 20px -12px rgb(0 0 0 / .6), 0 0 0 3px color-mix(in srgb, var(--hue) 12%, transparent); }
+.scan-mode-ico { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; color: var(--hue);
+  background: color-mix(in srgb, var(--hue) 13%, transparent); transition: background var(--dur-fast); }
+.scan-mode[data-on="true"] .scan-mode-ico { background: color-mix(in srgb, var(--hue) 24%, transparent); }
+@media (pointer: coarse) { .scan-mode { height: 48px; } }
+
+.scan-stage { position: relative; overflow: hidden; border-radius: var(--radius-feather); background: var(--color-bezel);
+  border: .5px solid var(--color-separator); box-shadow: var(--shadow-inset-top), var(--shadow-card); }
+.scan-view { position: relative; aspect-ratio: 4 / 3; color: #f4f4f1; overflow: hidden; }   /* dark in every theme → fixed light words, like .wall */
+@media (min-width: 768px) { .scan-view { aspect-ratio: 16 / 9; } }
+@media (min-width: 1280px) { .scan-view { aspect-ratio: 2 / 1; } }
+.scan-view::before { content: ""; position: absolute; inset: 0; pointer-events: none; transition: background var(--dur-slow);
+  background:
+    radial-gradient(60% 55% at 50% 44%, color-mix(in srgb, var(--hue) 18%, transparent), transparent 70%),
+    linear-gradient(rgb(255 255 255 / .04) 1px, transparent 1px) 0 0 / 100% 28px,
+    linear-gradient(90deg, rgb(255 255 255 / .04) 1px, transparent 1px) 0 0 / 28px 100%;
+  -webkit-mask-image: radial-gradient(75% 75% at 50% 50%, black 35%, transparent 100%); mask-image: radial-gradient(75% 75% at 50% 50%, black 35%, transparent 100%); }
+.scan-stage[data-mode="result"][data-photo="true"] .scan-view::before { opacity: .35; }
+/* a result typed or read from a code has no photo: the stage shrinks to a band that names what was found */
+.scan-stage[data-mode="result"][data-photo="false"] .scan-view { aspect-ratio: 2 / 1; }
+@media (min-width: 768px) { .scan-stage[data-mode="result"][data-photo="false"] .scan-view { aspect-ratio: 3 / 1; } }
+.scan-stage[data-mode="result"] .scan-orb::before, .scan-stage[data-mode="result"] .scan-orb::after { animation: none; opacity: 0; }
+.scan-view video, .scan-view img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.scan-view video { object-fit: cover; } .scan-view img { object-fit: contain; }
+
+.scan-hud { position: absolute; top: 14px; left: 14px; right: 14px; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; }
+.scan-tag { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 11px 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: #f4f4f1; background: rgb(0 0 0 / .48); border: .5px solid rgb(255 255 255 / .14);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); white-space: nowrap; }
+.scan-tag b { width: 7px; height: 7px; border-radius: 50%; background: var(--hue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hue) 28%, transparent); }
+.scan-tag[data-live] b { animation: scanBlink 1.4s ease-in-out infinite; }
+.scan-tag[data-sample] { color: rgb(255 207 130); }   /* amber on the dark stage: a fixed light, like the words beside it */
+@keyframes scanBlink { 50% { opacity: .3 } }
+
+.scan-frame { position: absolute; inset: clamp(54px, 16%, 90px) 8%;   /* clear of the HUD tags */ z-index: 2; pointer-events: none; transition: inset var(--dur-slow) var(--ease-ios); }
+.scan-stage[data-mode="camera"] .scan-frame { inset: 18% 12%; }
+.scan-stage[data-mode="idle"] .scan-frame { animation: scanBreathe 3.4s var(--ease-ios) infinite; }
+.scan-frame i { position: absolute; width: 28px; height: 28px; border: 2.5px solid var(--hue); opacity: .95; transition: border-color var(--dur-slow);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--hue) 70%, transparent)); }
+.scan-frame i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 12px; }
+.scan-frame i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 12px; }
+.scan-frame i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 12px; }
+.scan-frame i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 12px; }
+@keyframes scanBreathe { 0%, 100% { transform: scale(1); opacity: .7 } 50% { transform: scale(1.02); opacity: 1 } }
+.scan-dim { position: absolute; inset: 18% 12%; z-index: 1; border-radius: 18px; box-shadow: 0 0 0 9999px rgb(0 0 0 / .42); pointer-events: none; }
+.scan-sweep { position: absolute; left: 12%; right: 12%; z-index: 2; height: 2px; border-radius: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--hue), transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--hue) 80%, transparent); }
+.scan-foot { position: absolute; left: 0; right: 0; bottom: 12px; z-index: 2; text-align: center; font-size: 12px; color: rgb(244 244 241 / .78); pointer-events: none; }
+.scan-foot b { color: #f4f4f1; }
+
+.scan-idle { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; text-align: center; padding: 24px; }
+.scan-orb { position: relative; width: 84px; height: 84px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; color: var(--hue);
+  background: color-mix(in srgb, var(--hue) 14%, transparent); border: .5px solid color-mix(in srgb, var(--hue) 45%, transparent);
+  box-shadow: 0 0 44px -8px color-mix(in srgb, var(--hue) 65%, transparent); transition: color var(--dur-slow), background var(--dur-slow), box-shadow var(--dur-slow); }
+.scan-orb::before, .scan-orb::after { content: ""; position: absolute; inset: -10px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--hue) 40%, transparent);
+  animation: scanRing 2.8s var(--ease-out) infinite; }
+.scan-orb::after { animation-delay: 1.4s; }
+@keyframes scanRing { 0% { transform: scale(.82); opacity: .9 } 100% { transform: scale(1.5); opacity: 0 } }
+.scan-idle h2 { font-size: 30px; color: #f4f4f1; }
+.scan-inputs { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.scan-inputs span { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  color: rgb(244 244 241 / .82); background: rgb(255 255 255 / .08); border: .5px solid rgb(255 255 255 / .1); }
+.scan-busy { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; color: #f4f4f1; font-size: 14px; font-weight: 600;
+  background: rgb(0 0 0 / .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.scan-busy > span { display: inline-flex; align-items: center; gap: 8px; }
+
+.scan-dock { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-top: .5px solid var(--color-separator); background: var(--color-bg-2); }
+.scan-code { flex: 1 1 100%; display: flex; align-items: center; gap: 6px; height: 48px; padding: 0 3px 0 14px; min-width: 0; border-radius: 16px;
+  background: var(--color-fill); border: .5px solid var(--color-separator); color: var(--color-label-2);
+  transition: box-shadow var(--dur-fast), border-color var(--dur-fast); }
+.scan-code:focus-within { border-color: color-mix(in srgb, var(--hue) 55%, var(--color-separator)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hue) 14%, transparent); }
+/* the field is the wrapper: the input inside it draws nothing of its own (every theme restyles inputs, so these are !important) */
+.scan-code input:not([type="checkbox"]) { flex: 1; min-width: 0; height: 100%; min-height: 0; background: transparent !important; border: 0 !important; box-shadow: none !important; border-radius: 0; padding: 0 !important; font-size: 15px; color: var(--color-label); }
+.scan-code input:hover, .scan-code input:focus { background: transparent !important; box-shadow: none !important; }
+.scan-code button { flex: none; width: 44px; height: 40px; border-radius: 13px; display: grid; place-items: center; color: var(--color-on-tint); background: var(--color-tint);
+  transition: opacity var(--dur-fast), transform var(--dur-fast); }
+.scan-code button:active { transform: scale(.94); }
+.scan-code button:disabled { opacity: .35; }
+@media (pointer: coarse) { .scan-code button { height: 44px; } .scan-code { height: 50px; } }
+@media (min-width: 640px) { .scan-code { flex: 1 1 200px; max-width: 300px; margin-left: auto; } }   /* on a phone the field keeps its own full-width line */
+.scan-err { padding: 0 16px 12px; font-size: 14px; color: var(--color-red); background: var(--color-bg-2); }
+
+/* a result or a toast under the stage wears the hue as a thin line on its top edge */
+[data-scan] > div > .feather { position: relative; }
+[data-scan] > div > .feather::before { content: ""; position: absolute; top: 0; left: 22px; right: 22px; height: 2px; border-radius: 0 0 2px 2px; background: var(--hue); opacity: .9; }
+
+.scan-lanes { display: grid; gap: 4px; }
+.scan-lane { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 5px 8px 5px 5px; border-radius: 14px; min-width: 0; transition: background var(--dur-fast); }
+.scan-lane:hover { background: var(--color-fill); }
+.scan-ico { flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; color: var(--hue); background: color-mix(in srgb, var(--hue) 14%, transparent); }
+.scan-ico.sm { width: 30px; height: 30px; border-radius: 10px; }
+.scan-lane b { font-size: 14px; font-weight: 700; color: var(--color-label); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scan-lane .to { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px 0 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; color: var(--hue); background: color-mix(in srgb, var(--hue) 11%, transparent); white-space: nowrap; }
+.scan-log { display: grid; gap: 2px; }
+.scan-log li { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 4px 6px; border-radius: 12px; min-width: 0; }
+.scan-log .kind { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--hue); line-height: 1.2; }
+
+/* royal: no gradient — the stage's glow and grid go, the sweep is a solid line */
+html[data-palette="royal"] .scan-view::before { background: none; -webkit-mask-image: none; mask-image: none; }
+html[data-palette="royal"] .scan-sweep { background: var(--hue); }

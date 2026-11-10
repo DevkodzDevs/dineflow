@@ -610,15 +610,26 @@ The banner is the serious one: in the paper theme its text is **effectively invi
 it sits on every page while a master is acting as a property. The pills and chips are a systematic
 issue — a tinted-background pill using its own hue as the text colour is about 3:1 in the paper
 theme across the board, so fixing one means fixing the recipe.
-- **The stat card is stacked: label, number, caption.** It was laid sideways for one commit —
-  number left, words right — which suited an 86px flap tile and punished a figure:
-  `₹8,85,154.72` came out at 23px beside a three-line caption. A figure is the headline and takes
-  the full line (`.stat-fig`: 34px from 14rem of content, 38px from 16rem, else `--fig-narrow`
-  from its own length so nothing overflows a 144px phone card). The caption stands beside the
-  number when it fits and drops under it when it does not. The tone is a status light at the end
-  of the label row — a 20px tinted halo around an 8px dot, pulsing when it is an alert — and only
-  when there is a tone. (It was an absolute `.stat-pip`; `.pulse-dot`'s `position: relative`,
-  declared later, beat it and dropped the alert dot into the flow over the label.)
+- **The stat card is three slots: the label row, the number band, the foot (2026-11-11).** It was
+  laid sideways for one commit — number left, words right — which suited an 86px flap tile and
+  punished a figure: `₹8,85,154.72` came out at 23px beside a three-line caption. A figure is the
+  headline and takes the full line (`.stat-fig`: 34px from 14rem of content, 38px from 16rem, else
+  `--fig-narrow` from its own length so nothing overflows a 144px phone card). Until 2026-11-11 the
+  caption stood beside the number when it fit and dropped under it when it did not, so one row of
+  Tomorrow's four drivers read "[00] of 24 rooms" three times and "[15%]" over "0 comparable days"
+  on the fourth (the owner: "alignment issue"). Now the caption always sits in the **foot**
+  (`.stat-foot-slot`, `margin-top: auto`): a 2px hairline rule (`.stat-rule`) and the caption
+  under it (`.stat-cap`, one line reserved even when there is none), pinned to the card's bottom
+  edge, so every card in a row has its label, its number, its rule and its caption on the same
+  four lines. A percentage value fills the rule to itself (`percentOf` in `StatTile`) — the number
+  is also its meter — in the tint, or the tone's colour (`--stat-hue`). The label row is `min-h-5`
+  so a card with the status light and one without start their numbers on the same pixel (it was
+  1px off). The tone is that status light at the end of the label row — a 20px tinted halo around
+  an 8px dot, pulsing when it is an alert — only when there is a tone; the card carries it as
+  `data-tone`, which colours the border, the caption (alert) and the tile's rim and glow. (It was
+  an absolute `.stat-pip`; `.pulse-dot`'s `position: relative`, declared later, beat it and dropped
+  the alert dot into the flow over the label.) Verified by `harness34.mjs` (testing-and-gates.md):
+  309 checks at 1920/1440/1194/834/412 in all five themes.
 - **One band for flaps and figures.** `.stat-body { --stat-band }` is the flap tile's height *and*
   the figure's `min-height`, so a counted number and a priced one share a baseline on one row. It
   is the same `cqw` clamp as `.flip-stat .flip { --tile }` — keep the two identical, or point the

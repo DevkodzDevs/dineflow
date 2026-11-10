@@ -14,8 +14,9 @@ vegetable going into the pantry, a dish, a room, a labourer's ID card.
 
 ## How it works
 
-The hint rail (`.chip-rail`) lets the person narrow it down — **Auto**, *Vegetable / product*,
-*Dish*, *Room*, *Labour / ID* — and the room hint only appears when the property has rooms.
+The mode dock (`.scan-modes`, since 2026-11-11 — it was a `.chip-rail`) lets the person narrow it down — **Auto**,
+*Vegetable / product*, *Dish*, *Room*, *Labour / ID* — and the room mode only appears when the property has rooms. The
+chosen mode slides a thumb under itself (`layoutId`) and sets the screen's hue.
 
 A recognised loose product offers `QUICK_QTY` from `@dineflow/shared` — the unit-appropriate quick
 picks (100 g, ½ kg, 1 kg…) — so a receipt can be booked in without typing.
@@ -38,9 +39,21 @@ Barcode reading uses `@zxing/browser`.
   (`idScan`); without it the route turns a "labour" hint into "auto" and a person or document the model still recognises
   comes back as `unknown` — nothing personal is logged or shown. The route asks the database (`effective_features()`), so the
   phone app is held to the same switch. Barcodes, QR punches and the bill QR need no model and no add-on.
-- **The viewfinder is `--color-bezel`, dark in both themes.** It was `bg-ink`, which is near-white
-  in the dark theme, so "Ready to scan" printed white on white.
-- **On a phone the type-a-code field takes its own full-width line** under Open camera / Upload.
+- **The console look (2026-11-11, the owner: "ultra modern … unique").** Everything on the screen reads one custom property,
+  `--hue`, set inline from a token by kind — violet Auto, orange product, green dish, blue room, cyan labour / staff, the
+  tint for a bill (`HUE` in `ScanClient`): the dock's thumb, the stage's corner brackets, radial glow and sweep, the code
+  field's focus ring, the *Where it lands* lanes, the *Recent scans* log and a thin line on the top edge of a result card.
+  While scanning the hue is the chosen mode's; once there is a result it is the recognised kind's. The CSS is the SCAN
+  block at the end of `globals.css` (`.scan-modes/-mode/-stage/-view/-hud/-tag/-frame/-sweep/-dim/-idle/-orb/-dock/-code/
+  -lanes/-lane/-ico/-log`). The stage carries `data-mode` (idle / camera / result) and `data-photo`: a result typed or
+  read from a code has no photo, so the stage shrinks to a band (2:1, 3:1 from md) naming what was found. Royal loses the
+  glow and grid (no gradients). Reduced motion: the global rule stops the brackets' breathing, the orb's rings and the sweep.
+- **The stage (`.scan-view`, inside `.scan-stage`) is `--color-bezel`, dark in every theme — so its words are fixed light,
+  like `.wall`'s.** It was `bg-ink`, which is near-white in the dark theme, so "Ready to scan" printed white on white. The
+  idle brackets sit `clamp(54px, 16%, 90px)` from the top so the HUD tags (mode, *Sample mode*) never cover them.
+- **On a phone the type-a-code field takes its own full-width line** under Open camera / Upload; from `sm` it shrinks to
+  200–300px so Capture / Close / Upload / the field share one row. The input inside `.scan-code` draws nothing of its own
+  (`!important`, because every theme restyles inputs — royal and colour drew a second box inside the field).
 
 - **The camera is a permission and it can be refused.** Every path must have a typed fallback.
 - **A scan must never write without a confirmation step.** The recogniser is a suggestion; the
@@ -54,7 +67,7 @@ Barcode reading uses `@zxing/browser`.
 
 ```
 pnpm --filter @dineflow/web typecheck
-node toolbars.mjs        # the hint rail
+node scan84.mjs          # 80 checks (2026-11-11): both kinds, five themes, five widths — see testing-and-gates.md
 ```
 
 Camera paths need a real device; the headless suites cannot cover them.
