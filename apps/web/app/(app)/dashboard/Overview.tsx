@@ -67,19 +67,23 @@ const ARC: Record<Tone, string> = { mint: "var(--color-tint)", amber: "var(--col
  * nothing or runs the money off the edge of a 190px tile.
  */
 function Stat({ icon, label, value, sub, tone = "plain", href }: Tile) {
-  const Icon = ICON[icon], n = String(value).length;
-  const size = n > 9 ? "!text-[20px]" : n > 6 ? "!text-[24px]" : n > 4 ? "!text-[28px]" : "";
+  const Icon = ICON[icon];
+  // the figure reads at one size across the whole row: each run of digits stays big, and the unit or the words beside it
+  // (%, "in", "out", "·", "₹", the ".00" paise) sit small — so "21%", "₹2,155.00" and "1 in · 5 out" all line up as one figure.
+  const parts = String(value).match(/(\.\d+|\d[\d,]*|[^\d.]+|\.)/g) ?? [String(value)];
   return (
     <Link href={href} className={cn("feather feather-lift stat", TONE[tone])}>
       <span className="stat-head">
-        <span className="stat-chip"><Icon size={15} /></span>
+        <span className="stat-chip"><Icon size={16} /></span>
         <span className="stat-label">{label}</span>
         <ArrowUpRight size={14} className="stat-go" />
       </span>
-      <span className={cn("stat-value num font-semibold", size)}><span className="min-w-0 truncate">{value}</span></span>
+      <span className="stat-value num font-semibold">
+        {parts.map((p, i) => (/^\d/.test(p) ? <span key={i}>{p}</span> : <span key={i} className="stat-unit">{p}</span>))}
+      </span>
       {sub && (
         <span className="stat-base">
-          <span className="stat-foot">{tone !== "plain" && <span className="stat-dot" />}<span className="stat-sub">{sub}</span></span>
+          <span className="stat-foot" title={sub}>{tone !== "plain" && <span className="stat-dot" />}<span className="stat-sub">{sub}</span></span>
         </span>
       )}
     </Link>

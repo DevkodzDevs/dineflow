@@ -662,14 +662,13 @@ body:has(.deck-card) { background: #0a0a0d; }
 .stat-go { position: absolute; top: 16px; right: 14px; color: var(--color-label-3); opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
 .stat:hover .stat-label { padding-right: 18px; }
 .stat:hover .stat-go, .stat:focus-visible .stat-go { opacity: 1; transform: none; }
-.stat-value { display: flex; align-items: baseline; gap: 5px; margin-top: 16px; font-size: 38px; line-height: 1; letter-spacing: .4px; font-variant-numeric: tabular-nums; }
+.stat-value { display: inline-flex; align-self: flex-start; max-width: 100%; align-items: baseline; gap: 0; margin-top: 14px; padding: 6px 11px; border-radius: 11px; font-size: 33px; line-height: 1; letter-spacing: .3px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; min-width: 0; position: relative;
+  background: var(--color-bg); box-shadow: inset 0 1px 2px rgb(0 0 0 / .45), inset 0 0 0 1px rgb(255 255 255 / .04); }
+.stat-value::after { content: ""; position: absolute; left: 8px; right: 8px; top: 50%; height: 1px; transform: translateY(-.5px); background: rgb(0 0 0 / .5); box-shadow: 0 1px 0 rgb(255 255 255 / .05); z-index: 2; pointer-events: none; }
 .stat-alert .stat-value { color: var(--color-red); }
-.stat-unit { font-family: var(--font-sans); font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--color-label-2); }
+.stat-unit { font-family: var(--font-sans); font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--color-label-2); white-space: pre; }
 .stat-sep { color: var(--color-label-3); margin: 0 1px; }
-.stat-base { position: relative; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--color-separator); }
-.stat-base::before, .stat-base::after { content: ""; position: absolute; top: 0; width: 6px; height: 6px; border-radius: 2px; transform: translateY(-50%); background: var(--stat); }
-.stat-base::before { left: calc(-1 * var(--stat-pad)); }
-.stat-base::after { right: calc(-1 * var(--stat-pad)); }
+.stat-base { margin-top: auto; padding-top: 14px; }
 .stat-meter { display: block; height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--stat) 20%, transparent); overflow: hidden; }
 .stat-meter > i { display: block; height: 100%; border-radius: 99px; background: var(--stat); transition: width var(--dur-slow) var(--ease-out); }
 .stat-foot { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1.35; color: var(--color-label-2); }
@@ -681,12 +680,13 @@ body:has(.deck-card) { background: #0a0a0d; }
 @media (prefers-reduced-motion: reduce) { .stat-alert .stat-dot { animation: none; } }
 /* min-width:0 is load-bearing: a -webkit-box clamp reports its whole unwrapped line as
    its minimum width, which would hold the tile wider than the phone it is on */
-.stat-sub { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.stat-sub { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-good { --stat: var(--color-green); }
 .stat-warn { --stat: var(--color-orange); }
 .stat-alert { --stat: var(--color-red); }
-@media (max-width: 640px) { .stat { --stat-pad: 14px; } .stat-value { margin-top: 13px; font-size: 30px; } .stat-base { padding-top: 12px; } }
-@media (min-width: 1536px) { .stat { --stat-pad: 18px; } .stat-value { font-size: 42px; } }
+@media (max-width: 640px) { .stat { --stat-pad: 14px; } .stat-value { margin-top: 13px; font-size: 28px; padding: 6px 10px; } .stat-base { padding-top: 12px; } }
+@media (min-width: 641px) and (max-width: 1100px) { .stat-value { font-size: 31px; } }
+@media (min-width: 1536px) { .stat { --stat-pad: 18px; } .stat-value { font-size: 36px; } }
 
 /* grouped list */
 .group { background: var(--color-bg-2); border-radius: var(--radius-md); border: .5px solid var(--color-separator); overflow: hidden; box-shadow: var(--shadow-card); }
