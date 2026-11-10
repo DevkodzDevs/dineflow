@@ -5,13 +5,28 @@ import { holdDue } from "@/lib/holdDue";
 import { wrote } from "@/lib/wrote";
 import { z } from "zod/v4";
 import { askJson, VOICE } from "@/lib/ai";
-import { requireSession } from "@/lib/auth";
+import { requireSession, featureOn } from "@/lib/auth";
+import { queueWhatsApp } from "@/lib/whatsapp";
+import { waDate, waTime, firstName } from "@/lib/wa";
 const bump = () => ["/reservations", "/orders", "/tables", "/dashboard"].forEach((p) => revalidatePath(p));
 
 export async function setReservation(id: string, status: "confirmed" | "seated" | "completed" | "cancelled" | "no_show", tableId?: string | null) {
   const s = await createClient();
   const { error } = await s.rpc("reservation_set", { p_id: id, p_status: status, p_table: tableId ?? null });
-  if (error) return { error: error.message }; bump(); return { ok: true };
+  if (error) return { error: error.message };
+  if (status === "confirmed") await tellGuestConfirmed(s, id);   // 0177: queued, best effort — the write above is done
+  bump(); return { ok: true };
+}
+/** 0177: a confirmed reservation → the guest's WhatsApp (dineflow_reservation), queued through wa_queue after the write. Nothing
+ *  when the add-on, the settings or the switch is off, or there is no number; never fails the action. */
+async function tellGuestConfirmed(s: Awaited<ReturnType<typeof createClient>>, id: string) {
+  try {
+    const session = await requireSession(); if (!featureOn(session, "whatsapp")) return;
+    const { data: v } = await s.from("reservations").select("guest_name, guest_phone, on_date, at_time, party_size, reservation_no").eq("id", id).maybeSingle();
+    if (!v?.guest_phone) return;
+    await queueWhatsApp(s, session, { kind: "reservation", to: v.guest_phone, dedupe: `reservation:${id}:confirmed`,
+      params: [firstName(v.guest_name ?? "") || "Guest", session.restaurant.name, waDate(v.on_date), waTime(v.at_time), String(v.party_size ?? 2), String(v.reservation_no ?? "")] });
+  } catch { /* the reservation is confirmed either way */ }
 }
 export async function addWalkIn(v: { name: string; phone: string; date: string; time: string; party: number; note: string; table?: string; stay?: string }) {
   const s = await createClient(); const { data: { user } } = await s.auth.getUser();
@@ -29,8 +44,10 @@ export async function addWalkIn(v: { name: string; phone: string; date: string; 
   // a table chosen now is held for them when their time comes; none — one that seats them is given then (0154). Another
   // property's table is refused by the same-property trigger. A guest staying here names their stay (0157, booking_id) —
   // another property's stay is refused the same way.
-  const { error } = await s.from("reservations").insert({ restaurant_id: rid, reservation_no: (last?.reservation_no ?? 0) + 1, guest_name: v.name, guest_phone: v.phone, on_date: v.date, at_time: v.time, party_size: v.party, note: v.note, status: "confirmed", source: "phone", table_id: v.table || null, booking_id: v.stay || null });
-  if (error) return { error: error.message }; await holdDue(s); bump(); return { ok: true };
+  const { data: made, error } = await s.from("reservations").insert({ restaurant_id: rid, reservation_no: (last?.reservation_no ?? 0) + 1, guest_name: v.name, guest_phone: v.phone, on_date: v.date, at_time: v.time, party_size: v.party, note: v.note, status: "confirmed", source: "phone", table_id: v.table || null, booking_id: v.stay || null }).select("id").maybeSingle();
+  if (error) return { error: error.message };
+  if (made?.id && v.phone) await tellGuestConfirmed(s, made.id);   // 0177: a booking taken by phone is confirmed at once
+  await holdDue(s); bump(); return { ok: true };
 }
 export async function saveOffer(fd: FormData) {
   const s = await createClient(); const id = fd.get("id") as string | null;

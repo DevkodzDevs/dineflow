@@ -51,6 +51,8 @@ manager role) turns a page's lock on, locks a device, or unlocks one.
 
 ## Before you edit
 
+- **Display lock is an add-on (`lock`, 0175, 2026-11-09)**, and `/lock` lists only the pages the property has on
+  (`rowsFor` / `freshFor` with `s.features`). A lock already set on a page later switched off is stale the usual way.
 - `LOCK_PAGES` in `lib/displayLock.ts` duplicates the sections' keys and hrefs (the middleware cannot import `sections.ts` —
   it pulls in the icons). `displayLock.test.ts` fails if they drift. A new section: add it to both.
 - The cookie is the lock. It is httpOnly; only the lock's server actions set or delete it. Clearing the browser's site data

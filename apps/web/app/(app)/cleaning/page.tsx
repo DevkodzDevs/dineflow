@@ -14,7 +14,7 @@ export default async function CleaningPage() {
   const session = await requireSession();
   // the people who turn tables and rooms round — service, housekeeping, front office — and whoever gives the jobs out
   // (2026-10-20: not a chef, a guard or a gardener; sections.ts seesFresh, the link asks the same). Work is open to all.
-  if (!seesFresh("cleaning", session.profile.role, deptOf(session.profile.role, session.profile.department ?? null, session.profile.position ?? null))) redirect("/work");
+  if (!seesFresh("cleaning", session.profile.role, deptOf(session.profile.role, session.profile.department ?? null, session.profile.position ?? null), session.features)) redirect("/work");   // 0175: the board is an add-on; off, the jobs stay on Work
   const s = await createClient();
   const [{ data, error }, { data: prop }] = await Promise.all([
     s.rpc("clean_board"),

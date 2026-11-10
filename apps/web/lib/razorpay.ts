@@ -14,7 +14,9 @@ export const serviceClient = () => {
   return key ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, { auth: { persistSession: false } }) : null;
 };
 
-export type Gateway = { key_id: string; key_secret: string; webhook_secret: string | null; provider: string; total: number; bill_no: number; status: "unpaid" | "paid" | "void"; bill_id: string; name: string };
+export type Gateway = { key_id: string; key_secret: string; webhook_secret: string | null; provider: string; total: number; bill_no: number; status: "unpaid" | "paid" | "void"; bill_id: string; name: string;
+  /** 0178: the dynamic UPI code issued for this bill, if any */
+  qr_id?: string | null; qr_url?: string | null; qr_amount?: number | null };
 
 export async function gatewayFor(token: string): Promise<{ gw: Gateway } | { error: string; status: number }> {
   const s = serviceClient();
@@ -56,4 +58,42 @@ export async function settle(token: string, method: "upi" | "card" | "other", re
   const { data, error } = await s.rpc("pay_link_settle", { p_token: token, p_method: method, p_ref: ref });
   if (error) return { error: error.message };
   return { ok: true as const, already: !!(data as { already?: boolean })?.already };
+}
+
+/* ── 0181: the same rail for a held online order (prepay before the counter sees it) ───────────────────
+   Parallel to the bill helpers above, keyed by the online_orders row's own pay_token. Same gateway credentials,
+   same Razorpay REST helper and webhook URL; a different settle target (dine_prepay_settle, not the bill). */
+export type PrepayGateway = {
+  key_id: string; key_secret: string; webhook_secret: string | null; provider: string;
+  total: number; name: string; order_id: string; ref: string | null; pay_status: "pending" | "paid";
+  qr_id?: string | null; qr_url?: string | null; qr_amount?: number | null;
+};
+
+/** The gateway + total for one held order, by its pay_token. 404 when the token is not a held order (so the webhook
+ *  can try the bill rail first and this second). Service role only; the function checks the role itself. */
+export async function prepayGatewayFor(token: string): Promise<{ gw: PrepayGateway } | { error: string; status: number }> {
+  const s = serviceClient();
+  if (!s) { console.error("[razorpay] SUPABASE_SERVICE_ROLE_KEY is not set — online prepay is off"); return { error: "Online payment is off right now.", status: 503 }; }
+  const { data, error } = await s.rpc("dine_prepay_gateway", { p_token: token });
+  if (error) return { error: error.message, status: 500 };
+  if (!data) return { error: "This order is not open for payment.", status: 404 };
+  return { gw: data as PrepayGateway };
+}
+
+/** Mark a held order paid and let the counter see it. Idempotent. Service role only. */
+export async function prepaySettle(token: string, ref: string) {
+  const s = serviceClient();
+  if (!s) return { error: "no service role" };
+  const { data, error } = await s.rpc("dine_prepay_settle", { p_token: token, p_ref: ref });
+  if (error) return { error: error.message };
+  return { ok: true as const, already: !!(data as { already?: boolean })?.already };
+}
+
+/** Remember the UPI code issued for a held order, so the webhook can check it and a reloaded pay page shows the same one. */
+export async function prepayQrSet(token: string, id: string | null, url: string | null, amount: number | null) {
+  const s = serviceClient();
+  if (!s) return { error: "no service role" };
+  const { error } = await s.rpc("dine_prepay_qr_set", { p_token: token, p_id: id, p_url: url, p_amount: amount });
+  if (error) return { error: error.message };
+  return { ok: true as const };
 }

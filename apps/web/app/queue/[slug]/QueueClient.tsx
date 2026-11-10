@@ -2,14 +2,14 @@
 import { okPhone } from "@/lib/phone";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, BellRing, CheckCircle2, Users, Hourglass, Vibrate, VibrateOff, ArrowUp } from "lucide-react";
+import { ChevronLeft, BellRing, CheckCircle2, Users, Hourglass, Vibrate, VibrateOff, ArrowUp, MessageCircle, Hash } from "lucide-react";
 import { buzz, canBuzz } from "@/lib/buzz";
 import { playTone, unlockAudio } from "@/lib/notify";
 import { getClient } from "@/lib/supabase/lazy";
 import { Flip, Countdown, PhoneInput } from "@/components/ui";
 import { GuestNotice } from "@/components/legal/GuestNotice";
 
-type S = { token: string; name: string; party: number; status: "waiting" | "called" | "seated" | "left"; place: number; waiting: number; minutes: number | null; table: string | null; restaurant: string };
+type S = { token: string; token_no?: number | null; name: string; party: number; status: "waiting" | "called" | "seated" | "left"; place: number; waiting: number; minutes: number | null; table: string | null; restaurant: string; note?: string | null };
 
 /** This device's place in this property's queue, so scanning the door code again (or coming back from the menu)
  *  shows the place instead of an empty form. A private window may refuse storage — the page works without it. */
@@ -25,7 +25,7 @@ const alertsOn = () => { try { return localStorage.getItem(ALERTS) !== "off"; } 
  *  only on a refresh (2026-10-21, the owner). A hidden page does not ask. */
 export function QueueClient({ slug, name, initial }: { slug: string; name: string | null; initial: S | null }) {
   const router = useRouter();
-  const [s, setS] = useState<S | null>(initial); const [form, setForm] = useState({ name: "", phone: "", party: 2 }); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  const [s, setS] = useState<S | null>(initial); const [form, setForm] = useState({ name: "", phone: "", party: 2, note: "", wa: true }); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   /* A guest opens this on their own phone, often on mobile data, and all it has to do at first is
      show a name and a form. The client is fetched when they actually press something. */
   const token = s?.token, status = s?.status;
@@ -74,7 +74,7 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
     (async () => { const { data } = await (await getClient()).rpc("queue_status", { p_token: t }); const st = data as S | null; if (st && (st.status === "waiting" || st.status === "called")) setS(st); else keep(slug, null); })();
   }, [initial, slug]);
   useEffect(() => { if (!s) return; keep(slug, s.status === "waiting" || s.status === "called" ? s.token : null); }, [s, slug]);
-  const join = async () => { setBusy(true); setErr(null); const { data, error } = await (await getClient()).rpc("queue_join", { p_slug: slug, p_name: form.name, p_phone: form.phone, p_party: form.party }); setBusy(false); if (error) setErr(error.message); else setS(data as S); };
+  const join = async () => { setBusy(true); setErr(null); const { data, error } = await (await getClient()).rpc("queue_join", { p_slug: slug, p_name: form.name, p_phone: form.phone, p_party: form.party, p_note: form.note.trim() || null, p_wa_ok: form.wa && !!form.phone }); setBusy(false); if (error) setErr(error.message); else setS(data as S); };
   const leave = async () => { if (!s) return; await (await getClient()).rpc("queue_leave", { p_token: s.token }); setS({ ...s, status: "left" }); };
   /** Back to where they came from on this site; straight from the door code there is nowhere behind them, so the
    *  property's own page (the storefront the queue belongs to). Never leaves the queue. */
@@ -92,7 +92,11 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
         className="!min-h-11 h-11 -ml-1 mb-4 inline-flex items-center gap-1 pl-2 pr-4 rounded-full bg-[var(--color-fill)] text-[15px] font-semibold text-[var(--color-label)] hover:bg-[var(--color-fill-2)] active:scale-[.97] transition">
         <ChevronLeft size={20} aria-hidden /> Back
       </button>
-      <div className="eyebrow">{name}</div>
+      <div className="eyebrow flex items-center gap-2 flex-wrap">{name}
+        {/* 0179: their number of the day — the board at the door shows it and the voice calls it */}
+        {s?.token_no != null && (s.status === "waiting" || s.status === "called" || s.status === "seated") && (
+          <span className="normal-case tracking-normal inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] text-[13px] font-bold num" data-queue-no={s.token_no} title="Your number — the board at the door shows it"><Hash size={13} aria-hidden />{s.token_no}</span>)}
+      </div>
       {queued && update && (
         <div key={update.n} role="status" aria-live="assertive" data-queue-update={update.tone}
           className={`queue-update mt-3 rounded-[16px] px-4 py-3 flex items-center gap-2.5 text-[14.5px] font-bold ${update.tone === "up" ? "bg-[var(--color-blue-2)] text-[var(--color-blue)]" : "bg-[var(--color-green-2)] text-[var(--color-green)]"}`}>
@@ -106,6 +110,15 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
           <input placeholder="Your name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <PhoneInput placeholder="Phone (optional, so we can call you)" value={form.phone} onValue={(v) => setForm({ ...form, phone: v })} />
           <div><label>How many of you</label><div className="flex gap-2 mt-2 flex-wrap">{[1, 2, 3, 4, 5, 6, 8].map((n) => <button key={n} onClick={() => setForm({ ...form, party: n })} className={`chip min-w-11 justify-center ${form.party === n ? "on" : ""}`}>{n}</button>)}</div></div>
+          {/* 0179: one line the host reads on their list — a pram, a wheelchair, a birthday */}
+          <div><label htmlFor="queue-note">Anything we should know? <span className="font-normal text-[var(--color-label-2)]">(optional)</span></label>
+            <input id="queue-note" className="mt-2" placeholder="Pram, wheelchair, birthday…" value={form.note} maxLength={140} onChange={(e) => setForm({ ...form, note: e.target.value })} data-queue-note /></div>
+          {/* 0179: the WhatsApp tick — with it, and a phone, "your table is ready" reaches them on WhatsApp the moment the host calls them */}
+          <label className={`flex items-center gap-3 min-h-12 rounded-[14px] px-3.5 py-2.5 border text-[14px] font-semibold cursor-pointer transition-colors ${form.phone ? "border-[color-mix(in_srgb,var(--color-green)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-green)_8%,transparent)]" : "border-[var(--color-separator)] text-[var(--color-label-2)]"}`} data-queue-wa={form.wa && !!form.phone ? "on" : "off"}>
+            <input type="checkbox" className="h-5 w-5 accent-[var(--color-green)]" checked={form.wa} onChange={(e) => setForm({ ...form, wa: e.target.checked })} disabled={!form.phone} />
+            <MessageCircle size={18} aria-hidden className={form.phone ? "text-[var(--color-green)]" : ""} />
+            <span className="flex-1">{form.phone ? "Message me on WhatsApp when my table is ready" : "Add your phone to get a WhatsApp when it's ready"}</span>
+          </label>
           {err && <p className="text-sm text-[var(--color-red)]">{err}</p>}
           <button disabled={!form.name || busy || !okPhone(form.phone)} onClick={join} className="btn btn-filled w-full !h-[52px] !text-base">Join the queue</button>
           <GuestNotice property={name} use="to call you when your table is ready" />
@@ -128,6 +141,7 @@ export function QueueClient({ slug, name, initial }: { slug: string; name: strin
           <h1 className="text-[34px] mt-4 leading-tight">You're up!</h1>
           <p className="mt-2 text-[18px] font-bold text-[var(--color-label)]">Please come to the host stand.</p>
           <p className="mt-1 text-[14px] text-[var(--color-label-2)]">Your table for <span className="num">{s.party}</span> is being made ready, {s.name.split(" ")[0]}.</p>
+          {s.token_no != null && <p className="mt-3 text-[13px] font-bold text-[var(--color-green)]">Your number <span className="num text-[18px]">{s.token_no}</span> is on the board</p>}
         </section>
         {/* buzz on every update: on by default; on a phone not yet touched (reopened from the QR) one tap arms it */}
         <button type="button" onClick={toggleAlerts} data-queue-alerts={alerts ? (touched ? "on" : "arm") : "off"} aria-pressed={alerts}

@@ -68,6 +68,9 @@ waiting, who is on what, and today's finished jobs with their times.
 
 ## Before you edit
 
+- **The board is an add-on (`cleaning`, 0175, 2026-11-09).** Off, the row leaves the menu and the phone bar and `/cleaning`
+  goes to `/work`, where the same jobs still are (`work_board` merges them) — a restaurant that found the Assign sheets and
+  on-duty grouping too much for wiping a table can have Work alone.
 - **`clean_done` takes a third argument since 0113** (`p_note`, default null); the two-argument function was dropped
   and replaced, not overloaded — two signatures would make a named-argument RPC call ambiguous. `JobKind` is now
   `'table' | 'room' | 'job'`; the card lives in `JobCard.tsx` and is the Work board's too.

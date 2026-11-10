@@ -130,7 +130,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
               try { const r = await autoPhotos(); if ("error" in r) toast(r.error!, "err"); else toast(r.found ? `${r.found} photo${r.found === 1 ? "" : "s"} added${r.left ? ` · ${r.left} to pick` : ""}` : r.left ? `No match · ${r.left} to pick` : "All dishes have photos"); }
               finally { setFinding(false); }
             } },
-          ] as const).map(({ k, Icon, hue, label, sub, on }) => (
+          ] as const).filter((t) => t.k !== "photo" || ai).map(({ k, Icon, hue, label, sub, on }) => (
             <button key={k} type="button" onClick={() => void on()} disabled={k === "photos" && finding} data-tool={k} {...(k === "recipes" ? { "data-recipes": "" } : k === "photos" ? { "data-find-photos": "" } : {})}
               className="min-w-0 !min-h-[4.5rem] rounded-[16px] bg-[var(--color-bg-2)] hover:bg-[var(--color-bg-3)] active:scale-[.98] transition flex items-center gap-3 px-3 py-2.5 text-left shadow-feather disabled:opacity-60">
               <span className="h-10 w-10 shrink-0 rounded-[12px] grid place-items-center" style={{ background: `color-mix(in srgb, var(${hue}) 16%, transparent)`, color: `var(${hue})` }} aria-hidden>{k === "photos" && finding ? <Loader2 size={18} className="animate-spin" /> : <Icon size={18} />}</span>
@@ -159,7 +159,21 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
 
       {visible.length === 0 ? (
         cat === "soldout" ? <Empty title="Nothing is sold out" hint="All dishes are on." /> :
-        <Empty title="No dishes yet" hint="Add your first dish" action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
+        <>
+          {/* an empty menu and AI on: the fast way in — photograph the menu card, a working menu in minutes (2026-11-09) */}
+          {items.length === 0 && ai && (
+            <button type="button" onClick={() => setImporting(true)} data-import-card
+              className="w-full text-left rounded-[22px] p-4 sm:p-5 flex items-center gap-4 bg-[var(--color-bg-2)] shadow-feather hover:bg-[var(--color-bg-3)] active:scale-[.99] transition min-h-[5.5rem]">
+              <span className="h-14 w-14 shrink-0 rounded-[16px] grid place-items-center" style={{ background: "color-mix(in srgb, var(--color-violet) 16%, transparent)", color: "var(--color-violet)" }} aria-hidden><Camera size={26} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[17px] font-bold leading-tight">Photograph your menu card</span>
+                <span className="block text-[13px] text-steel mt-1">Every page, front and back. Names, sizes, prices and GST, ready to tick and fix.</span>
+              </span>
+              <span className="svc-btn go sm !px-4 shrink-0 max-sm:hidden" aria-hidden>Start</span>
+            </button>
+          )}
+          <Empty title="No dishes yet" hint="Add your first dish" action={<Button onClick={() => openEditor({ is_veg: true, is_available: true, prep_minutes: 15 })}>Add a dish</Button>} />
+        </>
       ) : (<>
         {/* A phone: a list, one row per dish — the photo, the name, the price and its state, and the switch at
             the end of the row. A tap on the name opens the dish (its sizes, add-ons and recipe are in there). */}
@@ -276,7 +290,7 @@ export function MenuClient({ categories, items, ingredients, recipes, std = {}, 
 
       {/* dish editor */}
       <Sheet open={importing} onClose={() => setImporting(false)} title="Add dishes from a photo" wide>
-        {importing && <MenuImport existing={items.map((i) => i.name)} onDone={() => setImporting(false)} />}
+        {importing && <MenuImport existing={items.map((i) => ({ id: i.id, name: i.name, category: catName(i.category_id), price: Number(i.price) }))} categories={categories.map((c) => c.name)} gstRate={gstRate} onDone={() => setImporting(false)} />}
       </Sheet>
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? "Edit dish" : "New dish"}>
         <form ref={formRef} className="space-y-4" action={(fd) => start(async () => { setErr(null); const r = await saveMenuItem(fd); if (r && "error" in r) setErr(r.error!); else setEditing(null); })}>

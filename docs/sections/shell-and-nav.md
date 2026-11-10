@@ -26,6 +26,18 @@ modulesFor(type, role, enabled, allowed) =
 All four live in `packages/shared/src/constants.ts` so the web app and the mobile app agree. The
 sidebar renders exactly what this returns.
 
+**A fifth filter, for the rows that are add-ons (0175, 2026-11-09).** A menu row whose key names an add-on in
+`packages/shared/src/features.ts` — the "fresh" links (Intelligence, Cash & controls, Audit trail, Outlets, Payroll,
+Expenses, Checklists, Cleaning, Work records, Display lock), Connections, the Tables screen and Staff feedback — shows only
+while the property has it on: `rowsFor`, `freshFor`, `seesFresh` and `endFor` take `features` (`session.features`, resolved
+in `requireSession` from the property's own list, else its plan's, else the defaults — [admin-and-membership.md](admin-and-membership.md),
+*Add-ons*). A row that is no add-on (Work, My day, Help) ignores the list, and no list at all (tests, the flow-test
+catalogue) switches nothing off. The layout enforces it on the server: `featureForPath(path)` maps a route to its add-on
+(`FEATURE_ROUTES` — `/frontdesk/night-audit` before `/frontdesk`) and a switched-off one redirects like a locked module
+(`?locked=<key>`; the Cleaning board and Work records to `/work`). `FeaturesProvider` hands the list to client components
+(`useFeature(key)`: the receipt's extras and branding, the channel cards' push buttons). Each "fresh" page still asks
+`seesFresh` / `featureOn` itself, as before.
+
 `ROUTE_MODULE` in `app/(app)/layout.tsx` maps the first path segment to a module key and enforces
 the same rule on the server, so a locked screen cannot be reached by typing its URL. A segment not
 in that map is open to every signed-in person (e.g. `/membership`, `/home`).
@@ -937,3 +949,16 @@ offline bills numbered on sync**). Step 1:
   front desk, attendance offline; queued orders drawn on the floor and the till's strip.
 
 - **A second cron (2026-11-05, 0172):** `apps/web/vercel.json` also runs `/api/cron/backup` at `30 20 * * *` (02:00 IST). admin-and-membership.md → Data.
+
+
+## 2026-11-10 — the speed check after the November add-ons (the owner: "will all this slow the app down?")
+Measured on the live database inside rolled-back transactions (manoooo, 14 tables, 12 waiting): add a walk-in 14 → 17 ms, quote for
+four 4 → 6 ms, the floor 5 → 6 ms with 0179 + 0180 — nothing a host would feel. Three things would have cost later, and are changed:
+- **TVs called this app every few seconds, for ever** — now they read the database's API directly and slow to 15 s when empty
+  (guest-facing.md, the TV bullet; `lib/screenFeed.ts`).
+- **Seating a line of big parties re-read the floor for every guest** — 0180's fill reads it once; 541 ms → 12 ms an add on a
+  74-table floor with 30 parties nothing fits (data-and-rls.md, 0180 → Speed).
+- **The public menu page read the whole menu twice per visit** — once now, and kept 30 s for the visit without a table code
+  (guest-facing.md; `lib/keepFor.ts`).
+Still the owner's call, unchanged: the database is Supabase Micro; check the Vercel plan's function allowance and that Fluid
+compute is on.

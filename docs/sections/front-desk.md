@@ -24,6 +24,14 @@ A **folio** collects charges: the room rate per night, plus anything posted to i
 `post_order_to_room` is how a Room-type ticket from the till lands on a stay. `folio_totals` does
 the arithmetic in one place so the folio, the invoice and the night audit agree.
 
+**Corrected 2026-11-09:** the night audit **posts nothing and rolls no business date** — `run_night_audit` (0067) marks
+the day's unarrived reservations no-show, frees their rooms and records the day's numbers in `night_audits`; the folio
+prices every night at check-out. Since 0175 the sweep **leaves an OTA calendar block alone** (`bookings.is_block`, 0004):
+it used to no-show every imported block whose day had come and reopen the room, and the re-sync only updates rows still
+`reserved`, so the room stayed for sale under a guest who was coming (the review's worst defect). Night audit is also an
+add-on (`night-audit`, hotels and resorts) Master control can switch off — [admin-and-membership.md](admin-and-membership.md).
+The paragraph below is the original description and is wrong about posting and the business date.
+
 The **night audit** rolls the business date forward, posts the night's room charges and prints the
 discrepancy list — rooms the front office and housekeeping disagree about.
 
@@ -322,3 +330,9 @@ and further on the same way."
   12 in all" (page.tsx: `dining_tables`, open orders on a table, open `table_cleanings`). No tables → four tiles as before. With tables
   the page also listens to `dining_tables`, `table_cleanings` and `orders`.
 - Checked: `pw/s172.mjs` — testing-and-gates.md.
+
+## 2026-11-10 — WhatsApp after the write (0177)
+- `frontdesk/actions.ts` **`createBooking`** → `tellGuestBooked`: reads the new booking (`booking_no`, dates, `rooms(number)`,
+  `guests(full_name, phone)`) and queues `dineflow_booking` to the guest (dedupe `booking:<id>`) through `wa_queue`, after
+  `create_booking` — the RPC is untouched; nothing when the add-on, the settings or the switch is off or the guest has no number;
+  never fails the action. Online bookings (`/book`) and OTA imports are not messaged in this tier.

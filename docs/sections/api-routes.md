@@ -24,6 +24,10 @@ health.
 | `api/box/{ping,pull,push,sync}` | yes | the on-premise box talks to the cloud |
 | `api/pay/[token]/order` | yes | create a gateway order for a pay link |
 | `api/pay/[token]/verify` | yes | confirm it |
+| `api/dine/pay/[token]/qr` | yes | 0181: POST issues or re-uses a **held online order's** dynamic UPI QR for its whole total (prepay). Mirror of the bill route, keyed by the order's `pay_token`; 404 without a gateway |
+| `api/pay/[token]/qr` | yes | 0178: POST issues or re-uses the bill's dynamic UPI QR (Razorpay, exact amount, single use); DELETE closes it. 404 without a gateway. 12 a bill per 10 min |
+| `api/screen/[key]` | yes | the counter TV's feed (0103 `screen_feed`): menu and parcel tokens, by the secret screen key; 404 on a wrong or rotated key. Since 2026-11-10 the TV reads `screen_feed` straight from the database's API (`lib/screenFeed.ts`); this route is the **fallback** when that cannot be reached, and the check before the TV's 12-hour reload |
+| `api/screen/[key]/queue` | yes | 0179: the waiting-list board's feed (`screen_queue`) — numbers, party sizes, held tables; never a name or a phone. Same as above since 2026-11-10: the board reads `screen_queue` directly and this is the fallback (it is also what answers until 0179 is applied) |
 | `api/scan` | session | the recogniser behind `/scan` |
 | `api/assist`, `api/assist/act` | session | the AI panel: answer, check, make PDFs, and act — see *Assist* below |
 | `api/download/[file]` | session | installers (`lib/installers.ts`) |
@@ -74,6 +78,9 @@ Replay a webhook twice and confirm the second one changes nothing.
   `SUPABASE_SERVICE_ROLE_KEY` (0085). Feed URLs must be public `https://` (no localhost, private or
   link-local addresses), no redirects, 10 s timeout, 2 MB cap. It used to run for anyone, for every
   property, whenever no key was given.
+- **`api/webhooks/razorpay` also settles a prepaid online order (0181).** A `qr_code.credited` whose notes carry a
+  `prepay_token` (not a bill `pay_token`) is verified with the property's signature and settled through `dine_prepay_settle`,
+  which releases the held order to the counter. The bill path below is unchanged; the two are told apart by which note the code carries.
 - **`api/pay/[token]/verify` and `api/webhooks/razorpay`** settle a bill only when the Razorpay
   **order** (created server-side by `/order` with `notes.pay_token`) names this bill and covers it —
   a payment's own notes come from the guest's browser. Razorpay unreachable → not settled (verify
@@ -141,3 +148,15 @@ month"), `findings` (health-check cards), `doc` (a PDF's contents, drawn in the 
   `server-command` (`restore` needs `confirm: "RESTORE"`), `command`, `server-files`, `server-commands`, `active-server`, `records`,
   `activity`. New `api/admin/data/advisor` (POST {question}, master only, reads only; Claude when a key exists). The node itself
   talks to PostgREST directly (`rpc/data_node_call`), not to an app route.
+
+## WhatsApp (0177, 2026-11-10)
+| Route | Public? | What it is |
+| --- | --- | --- |
+| `api/cron/whatsapp` | scheduler | The sweeper, once a day (`apps/web/vercel.json` `0 1 * * *` — Vercel Hobby allows daily crons only). Messages do not wait for it: `queueWhatsApp` drains the outbox itself after the action's response (`after()` from next/server) whenever this server holds the service-role key, so a confirmation leaves within seconds; the cron picks up retries and a server without the key. `Authorization: Bearer $CRON_SECRET` or `?key=`. CRON_SECRET unset → 503; wrong → 401; no `SUPABASE_SERVICE_ROLE_KEY` → 503. Then `drainOutbox` (lib/whatsapp.ts): `wa_outbox_take(50)` → Graph `POST /v21.0/{phone_number_id}/messages` per row with the property's own token → `wa_outbox_done`. Answers `{taken, sent, failed, errors}`. |
+| `api/webhooks/whatsapp` | yes | Meta's webhook, one URL per deployment. **GET** is the handshake: `hub.mode=subscribe` + `hub.verify_token` = `WHATSAPP_VERIFY_TOKEN` → `hub.challenge` as text; no env → 503; wrong → 403. **POST**: `X-Hub-Signature-256` = HMAC-SHA256 of the raw body with `WHATSAPP_APP_SECRET`, constant-time (`metaSignatureOk`, tested); no env → 503, bad → 401 and nothing read. The statuses (sent/delivered/read/failed by wamid) go to `wa_outbox_status` with the service role; inbound messages are acknowledged and dropped. Idempotent. |
+
+- **Env names:** `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` (per deployment; never `NEXT_PUBLIC_`), plus the existing
+  `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY`. The sending credentials themselves are each property's own (Settings → WhatsApp,
+  `wa_settings`), never the server's. Both prefixes were already in `PUBLIC_PREFIX` (`/api/webhooks/`, `/api/cron/`).
+- The sender never runs from a page. Only the owner's *Send me a test* calls `drainOutbox` directly, and only when this server
+  holds the service-role key; otherwise it says the cloud's sender will.

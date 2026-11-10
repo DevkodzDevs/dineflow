@@ -3,7 +3,7 @@ import { useEffect, useState, useTransition } from "react";
 import { FileCode2, FileSpreadsheet, BookOpen, Loader2, Check } from "lucide-react";
 import { Card, cn } from "@/components/ui";
 import { formatINR } from "@/lib/format";
-import { DEFAULT_LEDGERS, withDefaults, tallyVouchers, tallyLedgers, saleLines, stayLines, balances, payMethodOf, type Ledgers, type SaleDay, type Expense, type StayInvoice } from "@/lib/tally";
+import { DEFAULT_LEDGERS, withDefaults, tallyVouchers, tallyLedgers, saleLines, stayLines, creditLines, balances, payMethodOf, type Ledgers, type SaleDay, type Expense, type StayInvoice, type CreditVoucher } from "@/lib/tally";
 import { tallyDays, saveTallyNames } from "./actions";
 
 const LABEL: Record<keyof Ledgers, string> = {
@@ -22,7 +22,7 @@ const lastDay = (ym: string) => { const [y, m] = ym.split("-").map(Number); retu
  */
 export function TallyTab({ month, company: company0, ledgers: ledgers0, canEdit }: { month: string; company: string; ledgers: Partial<Ledgers>; canEdit: boolean }) {
   const [from, setFrom] = useState(`${month}-01`); const [to, setTo] = useState(lastDay(month));
-  const [data, setData] = useState<{ sales: SaleDay[]; expenses: Expense[]; stays: StayInvoice[] } | null>(null); const [err, setErr] = useState<string | null>(null); const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<{ sales: SaleDay[]; expenses: Expense[]; stays: StayInvoice[]; credits?: CreditVoucher[] } | null>(null); const [err, setErr] = useState<string | null>(null); const [loading, setLoading] = useState(false);
   const [company, setCompany] = useState(company0); const [names, setNames] = useState<Partial<Ledgers>>(ledgers0);
   const [pending, start] = useTransition(); const [saved, setSaved] = useState(false);
   const L = withDefaults(names);
@@ -32,12 +32,12 @@ export function TallyTab({ month, company: company0, ledgers: ledgers0, canEdit 
     return () => { on = false; };
   }, [from, to]);
   const totals = data ? data.sales.reduce((a, d) => ({ bills: a.bills + Number(d.bills), total: a.total + Number(d.total), gst: a.gst + Number(d.cgst) + Number(d.sgst) }), { bills: 0, total: 0, gst: 0 }) : null;
-  const unbalanced = data ? data.sales.filter((d) => !balances(saleLines(d, L))).length + (data.stays ?? []).filter((x) => !balances(stayLines(x, L))).length : 0;
+  const unbalanced = data ? data.sales.filter((d) => !balances(saleLines(d, L))).length + (data.stays ?? []).filter((x) => !balances(stayLines(x, L))).length + (data.credits ?? []).filter((c) => !balances(creditLines(c, L))).length : 0;
   const file = async (kind: "vouchers" | "ledgers" | "daybook") => {
     if (!data) return;
     const { download, xlsx, XLSX_TYPE } = await import("@/lib/xlsx");
     const base = `tally-${from}-to-${to}`;
-    if (kind === "vouchers") download(`${base}-vouchers.xml`, tallyVouchers(company, data.sales, data.expenses, L, data.stays ?? []).xml, "application/xml");
+    if (kind === "vouchers") download(`${base}-vouchers.xml`, tallyVouchers(company, data.sales, data.expenses, L, data.stays ?? [], data.credits ?? []).xml, "application/xml");
     else if (kind === "ledgers") download(`tally-ledgers.xml`, tallyLedgers(company, data.expenses, L), "application/xml");
     else download(`${base}-daybook.xlsx`, xlsx([
       { name: "Sales by day", rows: [["Day", "Bills", "First bill", "Last bill", "Taxable", "Service", "CGST", "SGST", "Round off", "Total", "Cash", "UPI", "Card", "Other"],
@@ -45,6 +45,7 @@ export function TallyTab({ month, company: company0, ledgers: ledgers0, canEdit 
       { name: "Stays", rows: [["Day", "Invoice", "Kind", "Guest", "GSTIN", "Subtotal", "Discount", "CGST", "SGST", "Round off", "Total", "Paid", "Owing", "Paid by"],
         ...(data.stays ?? []).map((x) => [x.day, x.no, x.kind, x.guest ?? "", x.gstin ?? "", Number(x.subtotal), Number(x.discount), Number(x.cgst), Number(x.sgst), Number(x.round_off), Number(x.total), Number(x.paid), Math.round((Number(x.total) - Number(x.paid)) * 100) / 100, [...new Set((x.payments ?? []).map((p) => payMethodOf(p.description)))].join(", ")])] },
       { name: "Expenses", rows: [["Day", "Head", "Paid to", "Amount", "GST in it", "Paid by", "Ref"], ...data.expenses.map((e) => [e.day, e.category, e.payee ?? "", Number(e.amount), Number(e.gst), e.method.toUpperCase(), e.ref ?? ""])] },
+      { name: "Credit notes", rows: [["Day", "Credit note", "Bill", "Refund", "Taxable", "CGST", "SGST", "Given back by"], ...(data.credits ?? []).map((c) => [c.day, `CN-${String(c.no).padStart(4, "0")}`, c.bill_no ?? "", Number(c.amount), Number(c.taxable), Number(c.cgst), Number(c.sgst), c.method.toUpperCase()])] },
     ]), XLSX_TYPE);
   };
 
@@ -58,7 +59,7 @@ export function TallyTab({ month, company: company0, ledgers: ledgers0, canEdit 
             <label className="min-w-0"><span className="text-[13px] font-semibold text-steel">To</span><input type="date" className="mt-1" value={to} onChange={(e) => setTo(e.target.value)} /></label>
           </div>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2" data-tally-totals>
-            {[["Bills", totals ? String(totals.bills) : "—"], ["Billed", totals ? formatINR(totals.total) : "—"], ["Stays", data ? String((data.stays ?? []).length) : "—"], ["Expenses", data ? String(data.expenses.length) : "—"]].map(([k, v]) => (
+            {[["Bills", totals ? String(totals.bills) : "—"], ["Billed", totals ? formatINR(totals.total) : "—"], ["Stays · credit notes", data ? `${(data.stays ?? []).length} · ${(data.credits ?? []).length}` : "—"], ["Expenses", data ? String(data.expenses.length) : "—"]].map(([k, v]) => (
               <div key={k} className="rounded-2xl bg-[var(--color-fill)] px-3 py-2.5 min-w-0"><div className="text-[12px] font-bold text-steel">{k}</div><div className="num font-extrabold text-[18px] truncate">{loading ? "…" : v}</div></div>))}
           </div>
           {err && <p className="mt-3 text-[14px] font-semibold text-chili" role="alert">{err}</p>}

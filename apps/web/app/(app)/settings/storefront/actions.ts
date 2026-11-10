@@ -20,7 +20,7 @@ export async function saveStorefront(fd: FormData) {
     cuisines, photos, price_for_two: Number(fd.get("price_for_two") || 0) || null,
     opens_at: String(fd.get("opens_at") || "11:00"), closes_at: String(fd.get("closes_at") || "23:00"),
     slot_minutes: Number(fd.get("slot_minutes") || 30), seats_per_slot: Number(fd.get("seats_per_slot") || 0) || null,
-    min_order: Number(fd.get("min_order") || 0), delivery_fee: Number(fd.get("delivery_fee") || 0),
+    min_order: Number(fd.get("min_order") || 0), delivery_fee: Number(fd.get("delivery_fee") || 0), online_prepay: fd.get("online_prepay") === "on",
     packing_charge: Number(fd.get("packing_charge") || 0), delivery_radius_km: Number(fd.get("delivery_radius_km") || 6),
     tagline: (fd.get("tagline") as string) || null,
   }).eq("id", rid);

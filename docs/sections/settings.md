@@ -47,7 +47,8 @@ never be reachable on a real one.
 ## Before you edit
 
 - **Screens & feedback** (`/settings/screens`, a quick link under General, 0103/0104): the TV link with *Menu +
-  tokens · Menu only · Tokens only*, Copy, Open and **New link** (`screenKey(true)` — every old screen stops; it
+  tokens · Menu only · Tokens only · Waiting list board* (0179: `/screen/<key>/queue`, the same key — its hint says numbers only,
+  `?lang=ta` / `hi` for the voice, tap once for sound), Copy, Open and **New link** (`screenKey(true)` — every old screen stops; it
   asks first); *Open kiosk here*; the feedback QR with Copy, Open and *Print card* (a window of its own,
   like Pulse's poster). Links are built on `NEXT_PUBLIC_CLOUD_URL`, so on a local server they point at the live
   site. Staff other than owner and manager see "Owner and managers only." in place of the screen link.
@@ -170,6 +171,14 @@ pnpm --filter @dineflow/web typecheck
 - **Printers → "kick the drawer" does something now** (0087): `openDrawer()` sends ESC p to every
   bill printer with the switch on, after a cash settlement and after a cash in/out on Cash & controls.
   Browser printing cannot kick a drawer.
+- **Printers → Script** (2026-11-09, `[data-print-script=<id>]`, on every card that is not a browser printer): **Auto · Text
+  only · Picture**, three 44px radio buttons (`role=radio`, `data-script`) with a one-line hint under them. Auto prints
+  text unless a line is in Tamil, Hindi or another script, then a picture drawn with this device's fonts; Text only is the
+  fast path and prints those lines as symbols; Picture always draws. **The choice is this device's**, kept in localStorage
+  (`df-print-script:<id>`) by `lib/print/script.ts` — not a `printers` column, so a second till chooses for itself. **Test
+  print** now sends a bill in three scripts (Masala dosa · மசால் தோசை, Paneer tikka · पनीर टिक्का, a trilingual
+  footer) through the chosen path and the message says which: *Test sent to Counter as a picture*. See
+  [billing-and-invoices.md](billing-and-invoices.md), *Tamil on the thermal printer*. Not checked on paper yet.
 
 - **A link can open a section** (2026-10-23): `/settings#tables` opens Tables (Tables' *Set up tables*); the tab is read from
   the hash after mount and on every hash change, and a tab chosen here writes it back (replaceState), so Back and a shared
@@ -189,3 +198,26 @@ pnpm --filter @dineflow/web typecheck
   boxes (`fd.has("late_half_after_h")`), so a restaurant's save never resets the rule; an empty box takes the default, and full is
   never before half. Switched off, the boxes are disabled and the saved hours ride along as hidden fields. What it charges:
   front-desk.md, 2026-11-04.
+
+## 2026-11-10 — WhatsApp tab (0177, an add-on)
+- **`/settings#whatsapp`** (`WhatsAppSettings.tsx`, the owner only, and only with the `whatsapp` add-on on — the tab is not drawn
+  otherwise, and the hash is ignored). Beside Payments because it is the same shape of thing: the property's **own** Meta WhatsApp
+  Business Cloud API number and token, never DineFlow's. One form, `saveWhatsApp` → `wa_settings_set`: Phone number ID, Access token
+  (`PasswordInput`, "Saved. Blank keeps it; 'clear' removes."), Template language (en / தமிழ் / हिन्दी), the webhook address with Copy
+  (`[data-link-field=wa-webhook]`), six switch rows (`[data-wa-events]` — the loyalty pattern: a `card` row, a `Switch` named after the
+  row, a hidden checkbox kept in step), *Alert when a discount is over (₹)*. The page gives the client `has_token` and nothing more.
+- **Send me a test** (`[data-wa-test]`, `sendWaTest`): queues `dineflow_test` to the number typed (defaults to the brief number, else
+  the property's) and, when this server has `SUPABASE_SERVICE_ROLE_KEY`, runs the sender at once and says "Sent" or repeats Meta's
+  refusal; without it, says the cloud's five-minute sender will. An orange footnote when `CRON_SECRET` is unset on this server.
+- **Template texts** (`[data-wa-texts]`): the eight templates in the chosen language with Copy on the name and the body, and what
+  each {{n}} is — the owner creates them in Meta verbatim (`lib/whatsapp-templates.ts` is the one source). The eighth,
+  `dineflow_table_ready` (0179: first name, property, their number of the day, their place-in-line link), has its own switch
+  **Table ready (waiting list)** (`on_table_ready`, on by default) and is queued by Pulse's Table ready / Join by QR's Call next
+  for a guest who ticked WhatsApp on the queue page (reports-and-forecast.md). **0182** adds three more — `dineflow_order_accepted`,
+  `_order_ready`, `_order_out` — under one switch **Online order updates** (`on_order`, on by default), queued by the Online
+  orders screen when the counter accepts, marks ready, or sends an order out (online-and-channels.md).
+- **Last messages** (`[data-wa-log]`, `wa_outbox_list(50)`): kind, number, time, a status chip (`[data-wa-status]` queued grey, sent sky,
+  delivered/read green, failed red), the error under it. 44px: the Copy keys and the toggle are `min-h-11`; the select is `min-h-11`.
+- **Before 0177 is applied** the card shows an orange "not on this database yet" note (`[data-wa-unavailable]`) and Save is disabled;
+  the page tolerates the missing functions (`available: !waS?.error`).
+- Not probed in a browser this session (no server was run): check 412 and 1440, the five themes, and `responsive.mjs` before claiming it.

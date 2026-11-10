@@ -15,7 +15,7 @@ const CAN = ["owner", "manager", "supervisor", "cashier"];
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
   const session = await requireSession();
   // and since 2026-10-20 only the money teams' supervisors and cashiers (sections.ts seesFresh — the link asks the same)
-  if (!CAN.includes(session.profile.role) || !seesFresh("expenses", session.profile.role, deptOf(session.profile.role, session.profile.department ?? null, session.profile.position ?? null))) redirect("/dashboard?locked=expenses");
+  if (!CAN.includes(session.profile.role) || !seesFresh("expenses", session.profile.role, deptOf(session.profile.role, session.profile.department ?? null, session.profile.position ?? null), session.features)) redirect("/dashboard?locked=expenses");
   const { m } = await searchParams;
   const month = /^\d{4}-\d{2}$/.test(m ?? "") ? m! : todayIST().slice(0, 7);
   const [y, mo] = month.split("-").map(Number); const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();

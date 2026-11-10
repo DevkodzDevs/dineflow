@@ -142,6 +142,23 @@ every property — counters, filters, the thread with replies and internal notes
 way into the property. The tab carries a red count of requests whose latest word is the property's and unread
 (`admin_support_badge`, read in `app/admin/layout.tsx`). See [help-and-support.md](help-and-support.md).
 
+**Add-ons (0175, 2026-11-09 — the owner: "everything the review called unwanted: make each one an option, switched here,
+per property, set by the subscription").** Finer than a module: a screen that was never one (Intelligence, Cash & controls,
+Audit trail, Outlets, Payroll, Expenses, Checklists, Work records, Staff feedback, the Cleaning board, the Tables screen,
+Display lock, Connections, Night audit), a piece inside a screen (the on-time promise, "Goes well with", the receipt's
+extras, "Say the order", photo recognition, ID-card reading, the OTA push buttons) or a paid thing (AI help, White label).
+The list is `FEATURES` in `packages/shared/src/features.ts`, grouped as the sheet shows it. **Who decides:** the property's
+own list (`restaurants.enabled_features`, the Access sheet's *Add-ons* block — *Follow plan* is NULL, *Custom* saves a list,
+`master_set_features`), else the plan's (`plans.features`, Keys → Plans & prices → *Included add-ons*, `admin_set_plan_features`;
+*Defaults* is NULL), else the defaults (`on: true` in features.ts = `default_features()` in SQL — a unit test keeps them
+equal). `session_bundle` carries `plan_features`; `requireSession` resolves the three into `session.features`;
+`effective_features()` / `has_feature(key)` answer the same in the database (the scan and assist routes ask it). Off by
+default: *ID card reading* (personal data), *Push rates & menu* (the connection is not built), *White label*. **A saved list
+is explicit**: an add-on added to features.ts later is off for a plan or property with a saved list until it is ticked;
+NULL picks it up. Both columns are the master's: `guard_restaurant_update` refuses them through the API and
+`audit_restaurant` records a change. Saving the Access sheet makes two calls (modules, add-ons); either refusal is shown.
+See [shell-and-nav.md](shell-and-nav.md) for how the menu and the layout gate a switched-off screen.
+
 **Module switches.** `master_set_modules` sets a property's `enabled_modules`, the third filter in
 `modulesFor()` (see [shell-and-nav.md](shell-and-nav.md)). A property that opens a screen it is not
 entitled to lands on `/dashboard?locked=1` and gets the "not switched on for this property" card.
@@ -469,3 +486,7 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
     next poll for the node's own nightly prune).
   - Twenty jobs waiting on one server is the cap; a job taken over an hour ago and never finished is failed at the next poll.
   - The nightly on the cloud still needs `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` on Vercel; a node's nightly needs neither.
+
+- **0177 (2026-11-10):** a 24th add-on, `whatsapp` ("WhatsApp messages", Channels, on by default) — Settings → WhatsApp and every
+  queued message follow it (`featureOn` in the actions, `has_feature('whatsapp')` inside `wa_queue`). `default_features()` is
+  re-created in 0177 with 21 keys; `features.test.ts` reads 0177 now. [settings.md](settings.md), [api-routes.md](api-routes.md).

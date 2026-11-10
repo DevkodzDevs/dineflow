@@ -87,9 +87,9 @@ async function run(job: Job) {
     case "kot_fire": { const a = job.args as { id: string }; fail((await s.rpc("fire_kot", { p_kot_id: a.id })).error); break; }
     case "table_status": { const a = job.args as { id: string; status: string }; fail((await s.from("dining_tables").update({ status: a.status }).eq("id", a.id)).error); break; }
     case "hk_status": { const a = job.args as { id: string; status: string }; fail((await s.from("housekeeping_tasks").update({ status: a.status }).eq("id", a.id)).error); break; }
-    case "walkin_add": { const a = job.args as Record<string, never>; fail((await s.rpc("walkin_add", { p_name: a.name, p_phone: a.phone, p_party: a.party, p_client_id: a.client_id ?? null })).error); break; }   // 0168: a replay returns the same walk-in
-    case "walkin_set": { const a = job.args as Record<string, never>; fail((await s.rpc("walkin_set", { p_id: a.id, p_status: a.status, p_table: a.table ?? null })).error); break; }
-    case "walkin_hold": { const a = job.args as { id: string; table: string }; fail((await s.rpc("walkin_hold", { p_id: a.id, p_table: a.table })).error); break; }
+    case "walkin_add": { const a = job.args as Record<string, never>; fail((await s.rpc("walkin_add", { p_name: a.name, p_phone: a.phone, p_party: a.party, p_client_id: a.client_id ?? null, p_note: a.note ?? null })).error); break; }   // 0168: a replay returns the same walk-in; 0179: the request too
+    case "walkin_set": { const a = job.args as Record<string, never>; fail((await s.rpc("walkin_set", { p_id: a.id, p_status: a.status, p_table: a.table ?? null, p_more: a.more ?? [] })).error); break; }   // 0180: joined tables
+    case "walkin_hold": { const a = job.args as { id: string; table: string; more?: string[] }; fail((await s.rpc("walkin_hold", { p_id: a.id, p_table: a.table, p_more: a.more ?? [] })).error); break; }
     // 0169: sent with when it was counted, so the sales since are kept (a job queued before has none: 0017's rule)
     case "stock_count": { const a = job.args as { counts: unknown; counted_at?: string }; fail((await s.rpc("stock_count", { p_counts: a.counts, p_counted_at: a.counted_at ?? null })).error); break; }
     case "stock": { fail((await s.from("stock_ledger").insert(job.args)).error); break; }

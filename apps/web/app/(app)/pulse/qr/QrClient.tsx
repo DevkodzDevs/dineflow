@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { QrCode, Copy, ExternalLink, Printer, Share2, ScanLine, UserPlus, BellRing, Activity, DoorOpen, Settings, EyeOff, CircleHelp } from "lucide-react";
+import { QrCode, Copy, ExternalLink, Printer, Share2, ScanLine, UserPlus, BellRing, Activity, DoorOpen, Settings, EyeOff, CircleHelp, Tv } from "lucide-react";
 import { QR, qrDataUrl } from "@/components/QR";
 import { Card, useToast } from "@/components/ui";
 import { SvcHead } from "@/components/ui/Service";
@@ -38,7 +38,7 @@ const STEPS = [
  *  nothing jumps after it loads (page.tsx reads it). */
 const HOW_COOKIE = "df-joinqr-how";
 
-export function QrClient({ slug, base, listed, restaurant, queue = [], howHidden = false }: { slug: string; base: string; listed: boolean; restaurant: string; queue?: W[]; howHidden?: boolean }) {
+export function QrClient({ slug, base, listed, restaurant, queue = [], howHidden = false, boardUrl = null }: { slug: string; base: string; listed: boolean; restaurant: string; queue?: W[]; howHidden?: boolean; boardUrl?: string | null }) {
   const toast = useToast();
   const [hideHow, setHideHow] = useState(howHidden);
   const showHow = (on: boolean) => {
@@ -69,10 +69,12 @@ export function QrClient({ slug, base, listed, restaurant, queue = [], howHidden
   return (
     <div>
       <SvcHead icon="qr" title="Join by QR" sub="Guests scan to join"
-        actions={hideHow ? (<>
-          <button type="button" className="svc-btn quiet sm" onClick={() => showHow(true)} data-joinqr-how-show><CircleHelp size={18} aria-hidden /><span>How it works</span></button>
-          <Link href="/pulse" className="svc-btn quiet sm"><Activity size={18} aria-hidden /><span>Open Pulse</span></Link>
-        </>) : undefined} />
+        actions={<>
+          {/* 0179: the waiting-list TV at the door — numbers only, the same secret key as the counter TV (owner and managers) */}
+          {boardUrl && <a href={boardUrl} target="_blank" rel="noreferrer" className="svc-btn quiet sm" data-board-link><Tv size={18} aria-hidden /><span>TV board</span></a>}
+          {hideHow && <button type="button" className="svc-btn quiet sm" onClick={() => showHow(true)} data-joinqr-how-show><CircleHelp size={18} aria-hidden /><span>How it works</span></button>}
+          {hideHow && <Link href="/pulse" className="svc-btn quiet sm"><Activity size={18} aria-hidden /><span>Open Pulse</span></Link>}
+        </>} />
       {/* How guests use it, first and full width (2026-11-03, the owner: "put it above the QR and the waiting list").
           It can be hidden (2026-11-04, the owner: "set hide option"): Hide folds it away on this device (HOW_COOKIE) and
           How it works, in the head, brings it back with Open Pulse beside it. Then, left: the code itself, large, with the

@@ -207,3 +207,9 @@ already chosen, or one that fits the party."
   is not occupied. *Auto* stays (it reads "Auto · none free now" when nothing is). Under it, "3 of 5 free" / "No table seats them"
   (`[data-new-table-free]`). A table chosen and then made busy by another date, time or party goes back to Auto. **`addWalkIn`** checks
   the 90 minutes again on save ("T3 is booked at 19:30 — pick another table or Auto").
+
+## 2026-11-10 — WhatsApp after the write (0177)
+- `reservations/actions.ts`: **`setReservation(…, "confirmed")`** and **`addWalkIn`** (which now inserts `.select("id")`) call
+  `tellGuestConfirmed` → `dineflow_reservation` to `guest_phone` (first name, property, `waDate`, `waTime`, party, reservation no;
+  dedupe `reservation:<id>:confirmed`). Queued through `wa_queue` after `reservation_set` succeeds — the RPC is untouched; off
+  when the add-on, the settings or the switch is off; never fails the action. [settings.md](settings.md), [api-routes.md](api-routes.md).

@@ -1,7 +1,7 @@
 import { aiEnabled } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { holdDue } from "@/lib/holdDue";
-import { requireSession } from "@/lib/auth";
+import { requireSession, featureOn } from "@/lib/auth";
 import { todayIST } from "@/lib/format";
 import { withOptions } from "@/lib/menuOptions";
 import { optionReads, optionsFor } from "@/lib/scoped";
@@ -27,8 +27,9 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
     s.from("orders").select("id, order_no, table_id, type, token_no, customer_name, created_at, order_items(qty, status), dining_tables(name), bills(status)").eq("status", "open").in("type", ["dine_in", "takeaway", "delivery"]).order("created_at", { ascending: false }).limit(60),
     // sizes, add-on groups and combo parts: what a dish asks before it goes on a ticket
     ...optionReads(s),
-    // what this property's guests order together, for "Goes well with" at the till (0080)
-    s.rpc("menu_pairings"),
+    // what this property's guests order together, for "Goes well with" at the till (0080) — only asked while the add-on is
+    // on (0175): the rail is the one query of its own this page makes
+    requireSession().then(async (ss) => ({ data: featureOn(ss, "till-pairings") ? (await s.rpc("menu_pairings")).data : [] })),
     // what sells most here, for the till's Popular chip: plates in the last 30 days
     s.from("order_items").select("menu_item_id, qty").gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString()).neq("status", "cancelled").not("menu_item_id", "is", null).limit(5000),
     // today's bookings that hold a table, and the tables still being cleaned: with the open orders, what is not free
@@ -67,6 +68,8 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const first = table && notFree[table] === "cleaning" ? null : table || into?.table_id || null;
   await held;
   return <PosClient stockBlock={(session.restaurant as { stock_block?: boolean }).stock_block !== false} categories={categories ?? []} items={menu as never} tables={tables ?? []} initialTable={first} addTo={into} initialType={type === "takeaway" || type === "delivery" ? type : null}
-    inHouse={(inHouse ?? []) as never} stock={(stock ?? {}) as never} running={(running ?? []) as never} ai={aiEnabled()}
-    promise={session.restaurant.promise_enabled ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} pairs={pairs} popular={popular} notFree={notFree} />;
+    inHouse={(inHouse ?? []) as never} stock={(stock ?? {}) as never} running={(running ?? []) as never}
+    /* 0175: the spoken order needs the server's key and the AI and "Say the order" add-ons; the promise its own add-on */
+    ai={aiEnabled() && featureOn(session, "ai") && featureOn(session, "till-voice")}
+    promise={session.restaurant.promise_enabled && featureOn(session, "promise") ? { minutes: Number(session.restaurant.promise_minutes ?? 30), pct: Number(session.restaurant.promise_pct ?? 0) } : null} pairs={pairs} popular={popular} notFree={notFree} />;
 }

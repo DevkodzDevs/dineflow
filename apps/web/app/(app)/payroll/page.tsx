@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requireSession } from "@/lib/auth";
+import { requireSession, featureOn } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { todayIST } from "@/lib/format";
 import { PayrollClient, type Person, type Line, type Run, type Advance } from "./PayrollClient";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  *  is last month — pay is worked out once a month is over. */
 export default async function PayrollPage({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
   const session = await requireSession();
-  if (!["owner", "manager"].includes(session.profile.role)) redirect("/dashboard?locked=payroll");
+  if (!["owner", "manager"].includes(session.profile.role) || !featureOn(session, "payroll")) redirect("/dashboard?locked=payroll");   // 0175: an add-on
   const today = todayIST(); const { m } = await searchParams;
   const last = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 2, 1)).toISOString().slice(0, 7);
   const month = /^\d{4}-\d{2}$/.test(m ?? "") && (m as string) <= today.slice(0, 7) ? m! : last;

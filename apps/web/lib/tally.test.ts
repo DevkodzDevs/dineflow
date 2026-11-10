@@ -76,3 +76,33 @@ describe("Tally export — stays (0109)", () => {
     expect(count).toBe(1); expect(xml).toContain("<VOUCHERNUMBER>DF-R-412</VOUCHERNUMBER>"); expect(xml).toContain("<LEDGERNAME>Room Revenue</LEDGERNAME>");
   });
 });
+
+import { creditLines, type CreditVoucher } from "./tally";
+describe("Tally export — credit notes and charges (2026-11-09)", () => {
+  const cn: CreditVoucher = { id: "c1", no: 7, day: "2026-10-20", amount: 210, taxable: 200, cgst: 5, sgst: 5, method: "cash", bill_no: 412 };
+  it("a credit note voucher balances: sales, CGST and SGST debited, the refund credited to where the money left", () => {
+    const l = creditLines(cn, DEFAULT_LEDGERS);
+    expect(balances(l)).toBe(true);
+    expect(l).toEqual([{ ledger: "Food Sales", amount: -200 }, { ledger: "Output CGST", amount: -5 }, { ledger: "Output SGST", amount: -5 }, { ledger: "Cash", amount: 210 }]);
+    expect(creditLines({ ...cn, method: "upi" }, DEFAULT_LEDGERS).at(-1)).toEqual({ ledger: "UPI Collections", amount: 210 });
+    expect(creditLines({ ...cn, method: "card" }, DEFAULT_LEDGERS).at(-1)).toEqual({ ledger: "Card Collections", amount: 210 });
+  });
+  it("a paisa between the parts and the amount goes to Round off, and it still balances", () => {
+    const l = creditLines({ ...cn, amount: 210.01 }, DEFAULT_LEDGERS);
+    expect(balances(l)).toBe(true); expect(l).toContainEqual({ ledger: "Round Off", amount: -0.01 });
+  });
+  it("the file carries a Credit Note voucher per note, numbered DF-CN-<n>, on its day", () => {
+    const { xml, count } = tallyVouchers("", [], [], DEFAULT_LEDGERS, [], [cn, { ...cn, id: "c2", no: 8, amount: 0 }]);
+    expect(count).toBe(1);   // a zero note is skipped
+    expect(xml).toContain('VCHTYPE="Credit Note"'); expect(xml).toContain("<VOUCHERNUMBER>DF-CN-7</VOUCHERNUMBER>"); expect(xml).toContain("<DATE>20261020</DATE>");
+    expect(xml).toContain("<LEDGERNAME>Food Sales</LEDGERNAME><ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE><AMOUNT>-200.00</AMOUNT>");
+    expect(xml).toContain("<NARRATION>DineFlow credit note CN-0007 · bill #412 · refund by cash</NARRATION>");
+  });
+  it("packing & delivery charges are sales, not Other income; the voucher still balances", () => {
+    const d: SaleDay = { day: "2026-10-16", bills: 2, first: 1, last: 2, taxable: 1000, service: 0, cgst: 27, sgst: 27, round_off: 0, total: 1094, paid: { upi: 1094 }, charges: 40 };
+    const l = saleLines(d, DEFAULT_LEDGERS);
+    expect(balances(l)).toBe(true);
+    expect(l).toContainEqual({ ledger: "Food Sales", amount: 1040 });
+    expect(l.find((x) => x.ledger === "Other Income")).toBeUndefined();
+  });
+});

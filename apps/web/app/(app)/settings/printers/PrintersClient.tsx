@@ -1,11 +1,11 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Plus, Printer as P, Bluetooth, Usb, Wifi, Monitor, Trash2, Play, Info } from "lucide-react";
 import { Button, Sheet, Field, Card, Pill, Empty, ask } from "@/components/ui";
-import { buildBill } from "@/lib/print/escpos";
 import { billHtml } from "@/lib/print/html";
-import { sendToPrinter } from "@/lib/print/transport";
+import { sendToPrinter, type PrinterCfg, type Script } from "@/lib/print/transport";
+import { buildBillBytes, decideScript, getScript, sampleBill, setScript, SCRIPTS } from "@/lib/print/script";
 import { savePrinter, deletePrinter } from "./actions";
 
 type Pr = { id: string; name: string; kind: string; transport: string; width: number; address: string | null; station: string | null; copies: number; cut: boolean; drawer: boolean; footer: string | null; is_default: boolean };
@@ -13,16 +13,22 @@ const TIcon = ({ t }: { t: string }) => (t === "bluetooth" ? <Bluetooth size={15
 
 export function PrintersClient({ printers, restaurant }: { printers: Pr[]; restaurant: { name: string; address: string | null; phone: string | null; gstin: string | null } }) {
   const [edit, setEdit] = useState<Partial<Pr> | null>(null); const [err, setErr] = useState<string | null>(null); const [msg, setMsg] = useState<string | null>(null); const [pending, start] = useTransition();
+  /* Script (text or picture) is this device's choice, read after mount — the server does not know it. */
+  const [scripts, setScripts] = useState<Record<string, Script>>({});
+  useEffect(() => { setScripts(Object.fromEntries(printers.map((p) => [p.id, getScript(p.id)]))); }, [printers]);
+  const choose = (id: string, s: Script) => { setScript(id, s); setScripts((m) => ({ ...m, [id]: s })); };
+  const cfgOf = (p: Pr): PrinterCfg => ({ id: p.id, name: p.name, transport: p.transport as never, width: p.width, address: p.address, copies: 1, script: scripts[p.id] ?? "auto" });
+  /* The sample is in three scripts on purpose: on Text only the Tamil and Hindi lines print as symbols, which is the point. */
   const test = async (p: Pr) => {
     setErr(null); setMsg(null);
-    const d = { restaurant, billNo: "TEST-001", when: new Date().toLocaleString("en-IN"), tableOrType: "Table T1", cashier: "Test", items: [{ name: "Chicken biryani", qty: 2, price: 280 }, { name: "Butter naan", qty: 3, price: 45, note: "less butter" }], subtotal: 695, discount: 0, cgst: 17.38, sgst: 17.38, roundOff: 0.24, total: 730, payments: [{ method: "upi", amount: 730 }], footer: p.footer ?? "Thank you, visit again" };
-    try { await sendToPrinter({ id: p.id, name: p.name, transport: p.transport as never, width: p.width, address: p.address, copies: 1 }, buildBill(d, p.width === 58 ? 58 : 80), billHtml(d)); setMsg(`Test sent to ${p.name}`); }
+    const d = sampleBill(restaurant, p.footer), cfg = cfgOf(p);
+    try { await sendToPrinter(cfg, await buildBillBytes(d, cfg), billHtml(d)); setMsg(`Test sent to ${p.name}${cfg.transport === "browser" ? "" : decideScript(cfg, d) === "raster" ? " as a picture" : " as text"}`); }
     catch (e) { setErr((e as Error).message); }
   };
   return (
     <div className="space-y-5">
       <Card className="flex items-start gap-3 !bg-sky-2 border-sky"><Info size={18} className="shrink-0 mt-0.5" /><div className="text-sm">
-        <b>Which connection?</b> <b>Bluetooth</b>: 58 mm, Chrome on Android/Windows. <b>USB</b>: this machine, Chrome desktop. <b>Network</b>: run <span className="num">node scripts/print-bridge.mjs</span> once (or <span className="num">Print-Bridge.bat</span>). <b>Browser</b>: print dialog, works everywhere.</div></Card>
+        <b>Which connection?</b> <b>Bluetooth</b>: 58 mm, Chrome on Android/Windows. <b>USB</b>: this machine, Chrome desktop. <b>Network</b>: run <span className="num">node scripts/print-bridge.mjs</span> once (or <span className="num">Print-Bridge.bat</span>). <b>Browser</b>: print dialog, works everywhere. <b>Tamil / Hindi</b>: leave Script on Auto — a line in another script prints as a picture.</div></Card>
       <div className="flex justify-end"><Button onClick={() => setEdit({ kind: "bill", transport: "browser", width: 80, copies: 1, cut: true })}><Plus size={16} /> Add printer</Button></div>
       {msg && <p className="text-sm text-mint">{msg}</p>}{err && <p className="text-sm text-chili">{err}</p>}
       {printers.length === 0 ? <Empty title="No printers yet" hint="Or use browser printing" /> : (
@@ -31,6 +37,17 @@ export function PrintersClient({ printers, restaurant }: { printers: Pr[]; resta
             <Card lift className="h-full"><div className="flex items-start gap-3"><span className="h-10 w-10 rounded-2xl bg-ink text-on-label grid place-items-center"><P size={17} /></span>
               <div className="flex-1 min-w-0"><div className="font-semibold truncate">{p.name} {p.is_default && <Pill tone="gold">default</Pill>}</div><div className="text-xs text-steel flex items-center gap-1.5"><TIcon t={p.transport} /> {p.transport}{p.address ? ` · ${p.address}` : ""} · {p.width} mm</div></div></div>
               <div className="mt-3 flex flex-wrap gap-1.5 text-xs"><Pill tone={p.kind === "kot" ? "preparing" : "ready"}>{p.kind}</Pill>{p.station && <Pill tone="sky">{p.station}</Pill>}{p.copies > 1 && <Pill tone="pending">{p.copies} copies</Pill>}{p.drawer && <Pill tone="pending">opens drawer</Pill>}</div>
+              {p.transport !== "browser" && (
+                <div className="mt-3" data-print-script={p.id}>
+                  <div className="text-xs font-semibold text-steel mb-1.5">Script</div>
+                  <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label={`Script for ${p.name}`}>
+                    {SCRIPTS.map((s) => { const on = (scripts[p.id] ?? "auto") === s.value; return (
+                      <button key={s.value} type="button" role="radio" aria-checked={on} data-script={s.value} onClick={() => choose(p.id, s.value)}
+                        className={`btn ${on ? "btn-filled" : "btn-gray"} !h-11 !min-h-[44px] !px-2 !rounded-xl !text-[13px] min-w-0`}>{s.label}</button>); })}
+                  </div>
+                  <p className="footnote mt-1.5">{SCRIPTS.find((s) => s.value === (scripts[p.id] ?? "auto"))?.hint}</p>
+                </div>
+              )}
               <div className="mt-3 flex gap-2"><Button size="sm" variant="outline" className="flex-1" onClick={() => test(p)}><Play size={14} /> Test print</Button><Button size="sm" variant="ghost" onClick={() => setEdit(p)}>Edit</Button><Button size="sm" variant="ghost" onClick={async () => { if (await ask({ title: `Remove ${p.name}?`, body: "Tickets stop printing on it.", ok: "Remove", tone: "danger", icon: "trash" })) start(async () => { const r = await deletePrinter(p.id); if ("error" in r) setErr(r.error!); }); }}><Trash2 size={14} /></Button></div>
             </Card></motion.div>))}</div>
       )}

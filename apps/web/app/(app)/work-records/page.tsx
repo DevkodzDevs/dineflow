@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requireSession } from "@/lib/auth";
+import { requireSession, featureOn } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { todayIST } from "@/lib/format";
 import { RecordsClient, type Log } from "./RecordsClient";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  *  the boards show each department its own work; this is the whole property's record. `?from=&to=` (IST dates). */
 export default async function WorkRecordsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   const session = await requireSession();
-  if (!["owner", "manager"].includes(session.profile.role)) redirect("/work");
+  if (!["owner", "manager"].includes(session.profile.role) || !featureOn(session, "work-records")) redirect("/work");   // 0175: an add-on
   const today = todayIST(); const sp = await searchParams;
   const ok = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) && v <= today ? v : null);
   const to = ok(sp.to) ?? today; let from = ok(sp.from) ?? to; if (from > to) from = to;

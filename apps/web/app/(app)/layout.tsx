@@ -1,7 +1,8 @@
 import { requireSession, daysLeft, assistAllowed, connectionsAllowed, reportsAllowed } from "@/lib/auth";
 import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { modulesFor, landingFor } from "@dineflow/shared";
+import { modulesFor, landingFor, featureForPath, hasFeature } from "@dineflow/shared";
+import { FeaturesProvider } from "@/components/shell/Features";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar, BottomNav } from "@/components/shell/Nav";
 import { deptOf, sectionByKey } from "@/components/shell/sections";
@@ -76,6 +77,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if ((seg === "connections" && !connectionsAllowed(s.profile)) || (seg === "reports" && !reportsAllowed(s.profile))) {
     redirect(`/${landingFor(s.profile.role, mods, s.profile.position ?? null)}?locked=${seg}`);
   }
+  /* Add-ons (0175): a screen Master control switched off for this property — by its plan or by hand — is not reachable by
+     its URL either (features.ts FEATURE_ROUTES: Intelligence, Cash & controls, the Audit trail, Outlets, Payroll, Expenses,
+     Checklists, Work records, Staff feedback, the Cleaning board, the Tables screen, Display lock, Connections, Night audit).
+     The same note as a locked module; the menu never offered the row (sections.ts asks the same list). */
+  const needs = featureForPath(path);
+  if (needs && !hasFeature(s.features, needs)) {
+    redirect(needs === "cleaning" || needs === "work-records" ? "/work" : `/${landingFor(s.profile.role, mods, s.profile.position ?? null)}?locked=${needs}`);
+  }
   // the profile avatar opens the property's Settings for whoever may open them, and everyone else's own settings (/me, 2026-10-20)
   const accountHref = mods.includes("settings") ? "/settings" : "/me";
   // the person's team — set on them, else their position's, else their role's — decides the team-bound control links
@@ -103,6 +112,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
    <OfflineProvider modules={mods} outlet={s.restaurant.id}>
+   {/* the property's add-ons, for any client component that draws differently with one off (the receipt, the channel cards) */}
+   <FeaturesProvider features={s.features}>
    <ToastProvider>
    {/* new orders, bookings and tickets: a tone, a toast and the bell's list, on every screen */}
    <NotifierProvider modules={mods} propertyType={s.restaurant.property_type} me={s.profile.id} role={s.profile.role} dept={s.profile.department ?? null} position={s.profile.position ?? null}>
@@ -110,7 +121,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
-      {!lock && <Sidebar name={s.profile.full_name} role={s.profile.role} dept={dept} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} grants={s.profile.grants ?? null} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />}
+      {!lock && <Sidebar name={s.profile.full_name} role={s.profile.role} dept={dept} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} grants={s.profile.grants ?? null} features={s.features} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />}
       <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-[calc(var(--tabbar)+28px)] md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
@@ -122,13 +133,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {lock ? <div data-lock-area={lock.mode}>{children}</div> : children}
       </div></main>
       {!lock && <BottomNav role={s.profile.role} type={s.restaurant.property_type} dept={dept} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null}
-        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} grants={s.profile.grants ?? null} />}
+        name={s.profile.full_name} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} accountHref={accountHref} lateKots={s.lateKots} attend={attend} grants={s.profile.grants ?? null} features={s.features} />}
       {/* food at the pass, brought to whoever takes it out: parcels, and the orders this person took (ReadyDock.tsx) */}
       {mods.includes("orders") && (!lock || lock.mode === "work") && <ReadyDock me={s.profile.id} all={["owner", "manager", "supervisor", "supervisor_2"].includes(s.profile.role)} parcels={mods.includes("orders") || mods.includes("online-orders")} />}
       {/* tables and rooms nobody took in time go to a free cleaner (0158 — AutoAssign.tsx asks once a minute) */}
       <AutoAssign />
-      {/* Assist only for whoever may use it (0138) */}
-      {!lock && assistAllowed(s.profile) && <Assist />}
+      {/* Assist only for whoever may use it (0138), and only while the property has the AI add-on (0175) */}
+      {!lock && assistAllowed(s.profile) && hasFeature(s.features, "ai") && <Assist />}
       {/* a locked device: the guard, the "Locked" pill and its unlock (DisplayLock.tsx); a lock no longer allowed is forgotten */}
       {lock && <DisplayLock lock={lock} />}
       {staleLock && <StaleLock />}
@@ -140,11 +151,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* the next screen is fetched when a finger touches a menu link or a mouse rests on one, not on the click */}
       <IntentPrefetch />
       {/* the keyboard: Ctrl K go to, G + letter, N new order, ↑ ↓ Enter on lists, ? for the list (keymap.ts) */}
-      {!lock && <Keys modules={mods} role={s.profile.role} dept={dept} grants={s.profile.grants ?? null} />}
+      {!lock && <Keys modules={mods} role={s.profile.role} dept={dept} grants={s.profile.grants ?? null} features={s.features} />}
     </div>
    </SayProvider>
    </NotifierProvider>
    </ToastProvider>
+   </FeaturesProvider>
    </OfflineProvider>
   );
 }

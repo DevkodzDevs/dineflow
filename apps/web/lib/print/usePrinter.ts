@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { getClient } from "@/lib/supabase/lazy";
-import { buildBill, buildKot, drawerBytes, type BillData, type KotData } from "./escpos";
+import { drawerBytes, type BillData, type KotData } from "./escpos";
+import { buildBillBytes, buildKotBytes } from "./script";   // text or picture, per printer (Tamil / Hindi print as a picture)
 import { billHtml, kotHtml } from "./html";
 import { sendToPrinter, type PrinterCfg } from "./transport";
 import { ticketsFor } from "./route";
@@ -21,7 +22,7 @@ export function usePrinters() {
   const printBill = useCallback(async (d: BillData) => {
     const targets = pick("bill");
     if (!targets.length) { const { printBrowser } = await import("./transport"); printBrowser(billHtml(d), 80); return "browser"; }
-    for (const t of targets) await sendToPrinter(t, buildBill(d, t.width === 58 ? 58 : 80), billHtml(d));
+    for (const t of targets) await sendToPrinter(t, await buildBillBytes(d, t), billHtml(d));
     return targets.map((t) => t.name).join(", ");
   }, [pick]);
 
@@ -43,7 +44,7 @@ export function usePrinters() {
     if (!targets.length) return null;
     const printed: string[] = [];
     for (const { printer: t, ticket } of ticketsFor(targets, d)) {
-      await sendToPrinter(t, buildKot(ticket, t.width === 58 ? 58 : 80), kotHtml(ticket));
+      await sendToPrinter(t, await buildKotBytes(ticket, t), kotHtml(ticket));
       printed.push(t.name);
     }
     return printed.length ? printed.join(", ") : null;

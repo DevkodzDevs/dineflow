@@ -121,7 +121,8 @@ const resolved = () => look(readTheme());
 export function ThemeKeeper() {
   useEffect(() => {
     const html = document.documentElement;
-    const fix = () => wear(html, resolved());
+    // a TV page (app/screen, 0179) pins dark whatever the cookie says: it marks <html data-screen-dark> and this keeps dark for it
+    const fix = () => wear(html, html.hasAttribute("data-screen-dark") ? { theme: "dark", palette: null } : resolved());
     fix();
     const mo = new MutationObserver(fix); mo.observe(html, { attributes: true, attributeFilter: ["data-theme", "data-palette"] });
     const mq = matchMedia("(prefers-color-scheme: light)"); const sys = () => { if (readTheme() === "system") fix(); };

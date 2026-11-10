@@ -41,9 +41,9 @@ transaction you roll back, then apply with `node scripts/migrate.mjs` — agains
 **Gates, all four, every time:**
 
 ```
-pnpm lint        # 0 errors (14 warnings are known)
+pnpm lint        # 0 errors (13 warnings are known)
 pnpm typecheck
-pnpm test        # 140 unit tests
+pnpm test        # 373 unit tests in 52 files (2026-11-10)
 pnpm build       # note: this clobbers .next and kills a running `next dev`
 ```
 

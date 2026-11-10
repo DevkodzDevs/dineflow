@@ -56,6 +56,14 @@ from both; only tokens changed (and the few rules that had the old green written
 - Theme swatches and the phone bar colour (`Theme.tsx`) follow. The three colourful/royal palettes set their own
   tokens and are unchanged.
 
+## The TV pins dark (2026-11-10, 0179)
+
+`ThemeKeeper` (`components/ui/Theme.tsx`) watches `<html>`'s `data-theme` / `data-palette` and puts the cookie's theme back the
+moment anything changes them. A screen page (`app/screen/**`, the counter TV and the waiting-list board) must be dark whatever the
+cookie or the OS says, so `app/screen/ForceDark.tsx` marks `<html data-screen-dark>` while it is open and `ThemeKeeper`'s `fix`
+resolves to `{ theme: "dark", palette: null }` while the mark is there. Do not add a second observer for this — two keepers
+fighting over the attribute hang the page (measured 2026-11-10, the first attempt).
+
 ## Flap numbers (2026-10-20)
 
 The owner picked six split-flap designs (first shown as loaders) and approved them for the numbers people watch all

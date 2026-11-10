@@ -27,6 +27,7 @@ owner installs the app.
 | `/attend/[token]` | a labourer, on their own phone | punch in/out by fingerprint or selfie — see [staff-and-labour.md](staff-and-labour.md) |
 | `/feedback/[slug]` | a diner (`?t=` from the table card, or the printed feedback QR) | a private 1–5 rating, tags, a note, an optional phone |
 | `/screen/[key]` | the TV by the counter | the menu and the parcel tokens (`?show=menu` / `tokens`); dark, no sign-in |
+| `/screen/[key]/queue` | the TV at the door (0179) | the waiting list: the join QR, the numbers called with their table, the numbers waiting; a voice calls each number (`?lang=ta` / `hi`, then English); the same key, dark, no sign-in |
 | `/get` | a new owner | install the app |
 | `/offline` | anyone | the service-worker fallback |
 
@@ -92,6 +93,19 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
   `RATE_LIMIT_SECRET` (else `SUPABASE_SERVICE_ROLE_KEY`) — the database never holds the address and the hash changes
   daily; `feedback_ip_hits` keeps two days. With neither secret set there is no hash and only the per-place,
   per-table and per-phone limits apply. A script calling the API directly skips the action, so those limits stay. Title is a `div role=heading` (an `h1` takes the display font).
+- **A TV reads its feed from the database's API, not from this app (2026-11-10, `lib/screenFeed.ts`, `app/screen/useScreenFeed.ts`).**
+  A screen left on asked `/api/screen/…` every 8 s (counter) or 4 s (door board), all day and all night: about 324,000 and
+  648,000 function calls a month per TV, most of them for an empty list. Now the browser posts to
+  `{NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/screen_feed` | `screen_queue` with the anon key (both are granted to anon and answer
+  only for the right key) — a plain `fetch`, not the Supabase client. A null answer is a rotated key (*Reconnecting…*), and the
+  route is not asked the same question. When the direct call fails (blocked address, function not applied yet) the GET route
+  below answers instead and the direct call rests five minutes. **Pace:** the screen's own (8 s / 4 s) while something is on it —
+  a token preparing or ready; a number waiting or called — and **15 s while it is empty** or unreachable. The 12-hour self-reload
+  still asks this app's route first (at most once every five minutes), so a TV never reloads into an error page.
+  Both screens use the one hook; do not put a `setInterval` fetch back into either. Checked on the production build with the
+  real key (`tvprobe.mjs`, reads only, 8 of 8): three reads in 50 s, all to the database's API, 200, none to the app, no console
+  error; with that address blocked, one failed try and then the route every 15 s. The door board's own function is not live
+  until 0179, so until then it runs on the fallback.
 - **The TV polls `GET /api/screen/[key]`** (a route handler, session-free, in both route lists) — it polled a server
   action, whose id changes with every build, so a TV left on across a deploy froze on *Reconnecting…*. Twelve hours
   after loading it reloads itself, only when the server answers, to pick up a new build.
@@ -132,6 +146,9 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
 - **A card payment settles the bill only once Razorpay has captured it** (`/api/pay/[token]/verify`):
   an *authorized* payment is captured there first; if it stays authorized the guest is told it will
   show as paid in a minute (the `payment.captured` webhook settles it).
+- **The counter's dynamic UPI QR settles through the same webhook (0178, 2026-11-09):** `qr_code.credited` with the code issued for
+  the bill, captured in full → `pay_link_settle`; a part payment → `pay_link_claim` (the guest's "I've paid" note). The webhook must
+  be subscribed to both events. [billing-and-invoices.md](billing-and-invoices.md).
 - **On a phone the address and phone are one contact card** (`sm:hidden`): a row with a map pin, the
   address on up to two lines and "Directions" (Google Maps search for the name and address), and a row
   with the number and a Call pill, each at least 60px tall. Side by side they both wrapped mid-line.
@@ -281,6 +298,47 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   condensed display face), the price in whole rupees (`formatINR(…, { whole: true })` — a menu price), two lines of
   description; the photo 128/140px on the right with **ADD** (44px tall) riding its foot, the − n + stepper 44×44 buttons;
   without a photo Add sits under the text. Two columns from `md`. A dish not sold now is dimmed (its photo greyscale).
+- **A number, a request and a WhatsApp tick (0179, 2026-11-10 — the owner's comparison with a queue system at a restaurant door).**
+  The join form has one more line, *Anything we should know?* (`[data-queue-note]`, ≤140 — a pram, a wheelchair, a birthday;
+  shown on Pulse's and Join by QR's rows) and a tick *Message me on WhatsApp when my table is ready* (`[data-queue-wa]` on|off;
+  on by default, disabled until a phone is typed — without a phone it reads *Add your phone to get a WhatsApp…*). `queue_join`
+  takes both (`p_note`, `p_wa_ok`; a tick without a phone is stored as no). A party on joined tables reads its table as "T1 + T2" (0180, from `queue_status`; the board the same). Every state but *left* shows **their number of the
+  day** in a black pill by the place's name (`[data-queue-no]`, `token_no` from `queue_status`) — the board at the door shows
+  the same number and the voice calls it; the *You're up* card adds *Your number N is on the board*. The host's Table ready /
+  Call next queues `dineflow_table_ready` to a guest who ticked (settings.md, WhatsApp) — the page's own buzz and chime are as before.
+- **The waiting-list TV, `/screen/[key]/queue` (0179; redrawn the same day — the owner: "not good at all, ultra modern,
+  unique").** `QueueBoard.tsx`, keyed by the counter TV's `screen_key` (the link is the fourth choice in Settings → Screens &
+  feedback, and *TV board* in Join by QR's head for the owner and managers; rotating the key switches it off too). **Always
+  dark**: `app/screen/ForceDark.tsx` marks `<html data-screen-dark>` while any screen page is open and `ThemeKeeper`
+  (design-system.md) keeps dark for it — the layout's own `data-theme="dark"` div never beat a paper cookie or a light OS under
+  "system", and a second observer fighting ThemeKeeper hung the page (that was the first attempt). The look (`.board*` rules at
+  the end of the TV block in globals.css, tokens and mixes only): a deep ground with a green glow over the call and an amber one
+  under the strip, glass cards (`.board-glass`), and one **hero** (`[data-board-hero]=<no>`, `.board-hero`): *NOW CALLING* with
+  the number called last **centred** on the app's flap tiles (`FlapShuffle`, tone live, tile clamp(120px, 14vw, 320px)) in a
+  breathing halo (`.board-halo.on` for 45 s, `.board-called-in` settles a fresh one), *Called 1 min ago* top right, *Party of n*
+  and *Table T4* as pills, *Please come to the host stand*; beside it, past a hairline, the **ALSO READY** column
+  (`[data-board-also]`): up to four earlier calls with the **table large** (or *Host stand*) and the party, then *+n more at the
+  host stand*. With nobody called the
+  hero reads *UP NEXT* with the first waiting number on plain tiles in a dashed frame; with nobody at all, *No wait right now —
+  walk right in*. Left (`[data-board-join]`, only when Listed publicly): *SKIP THE WAIT · Scan to join the queue*, the code on
+  white with a soft glow **sized by the room left** (`h-full max-h-[31vh] aspect-square` — sized by width it ran over the lines
+  under it), the join link as a chip (`[data-board-link]`), three steps, *No phone handy? The host will add you.* Along the
+  bottom the **WAITING · n** strip (`[data-board-waiting]`) with *Joining now · about 20 min* (`[data-board-typical]`, the median
+  of what the waiting were told — `typicalWait`): up to 8 fixed-width cards, each the number, party and minutes waited, a thin
+  bar filling towards the minutes the guest was told (`waitLeft`: amber on the first, green once the told time is up or a table
+  is held) and a last line — *NEXT › · ~3 min*, *WAITING · ~7 min*, *SOON · any minute* (`[data-board-left]`) — then *+n more*.
+  The feed carries `quoted` (the told minutes) for this; the strip never shows a name. Header: the logo or
+  the initial, the name, a pulsing *LIVE WAITING LIST* dot, the language chips, Sound, the time with the date. Footer: the host
+  stand line and *Numbers are called here and on your phone*. Checked at 1920×1080 and 1280×720 (the ratios are vw-based; the
+  Next dev badge sits over the footer's first letters in dev only). The feed is `GET /api/screen/[key]/queue`
+  (`screen_queue`; numbers, party sizes and held tables — **no names, no phones**), read every 4 s — 15 s while nobody waits or is called, and straight from the database's API with this route as the fallback (the TV bullet above, 2026-11-10); twelve hours on it reloads
+  itself for a new build; a dead key says *Reconnecting…*. **The voice:** `lib/queueBoard.ts` — `newlyCalled` picks the numbers
+  called since the last poll (oldest first), `boardLine(lang, no, table)` is the sentence in English, Tamil or Hindi, and
+  `boardLangs` says a Tamil or Hindi board's call in that language **and then English**. A browser will not speak before a tap:
+  the header's button reads *Sound off* → *Sound on* (`[data-board-sound]`; remembered per device in `localStorage
+  df-board-audio`, and a board that was on comes back as *Tap once for sound*, amber, until the screen is touched). Each call
+  is a two-note chime, then the sentence(s); calls queue rather than talk over each other. The language chips
+  (`[data-board-pick]`) write `?lang=` into the address so a bookmarked TV keeps it. Tests: `lib/queueBoard.test.ts` (6).
 - **The queue buzzes on every update (2026-10-23, the owner).** Moved up a place → a double pulse and a blue line *You
   moved up — now number n* (*You're next in line* at 1); called → a long triple buzz, the `rush` tone, a green line and the
   tab title *🔔 You're up!*; seated → a double buzz and a chime (`[data-queue-update]`). `[data-queue-alerts]` turns it off
@@ -377,6 +435,36 @@ Confirm by hand: `/legal/terms` and `/get` return 200 with **no** auth round tri
   5 s); back at the table the card says *Paid · thank you!*, and paying frees the table, which opens its cleaning job
   (pay_link_settle / settle_bill, as at the counter). The pay page also shows packing & delivery and, for an aggregator's
   order, "GST paid by the delivery platform (section 9(5))" (`pay_link` gives `charges` and `eco`). `pay152.mjs`.
+- **Loyalty points earned on a storefront order (0184, 2026-11-10 — not yet applied).** When the owner has the loyalty programme
+  on, a delivery / takeaway basket shows "You'll earn N points" (`dine_loyalty`, read beside the menu); the points are awarded to
+  the customer by phone when the counter accepts the order (`acceptOnline` → `dine_award_order_points`, idempotent, delivery /
+  takeaway and the own channel only — dine-in and room earn at the counter). Redeeming points online is deferred (an anon page
+  cannot be shown a phone's balance safely). See data-and-rls.md (0184).
+- **A coupon code box and one-tap repeat (0183, 2026-11-10 — not yet applied).** The order sheet has a **Have a code?** input
+  (`StorefrontClient.tsx`, `applyCode` → `applyCoupon` → `dine_coupon`); a valid code becomes the applied offer when it beats the
+  automatic one, shown as a green "Code X applied" chip with Remove, recomputed as the basket changes and ignored below its
+  minimum. The resolved offer id rides to `dine_order` as `p_offer`, which validates it again. **Order your usual again:** the last
+  order placed from the page is kept in `localStorage` (`df-last:<slug>`, this device) and offered as one button that rebuilds the
+  basket against today's menu (a dish gone or off is dropped, the price is today's). Neither shows at a table or room. Storefront
+  **loyalty points** (earn / redeem) are deferred — they need the owner's points-economics decision. See data-and-rls.md (0183).
+- **Prepay: pay before the order is accepted (0181, 2026-11-10 — not yet applied).** When the owner has switched on prepay and a
+  gateway is connected, a delivery/takeaway order from `/dine/[slug]` is **held**: `placeOrder` comes back with `prepay: true`
+  and a `pay_token`, and the storefront sends the guest to **`/dine/pay/[token]`** (`PrepayClient`) instead of the confirmation.
+  That page draws the dynamic UPI QR (`POST /api/dine/pay/[token]/qr`) and polls `dine_prepay_status` every 5 s; when the webhook
+  settles it the page turns into "Paid — thank you" with the `/track/<token>` link, and the order is now the counter's to accept.
+  No login — the 32-hex token is the key; no secret is ever on the page. Without a gateway the order is not held (storefront
+  behaves as before). See online-and-channels.md, data-and-rls.md (0181).
+- **The menu without a table or room code is kept for 30 s (2026-11-10, `lib/keepFor.ts`).** Every visit to `/dine/[slug]` read
+  the whole menu from the database — twice, because `generateMetadata` called `storefront(slug)` and the page
+  `storefront(slug, null, null)`, which React's `cache` treats as two different calls. Now both pass the same three arguments
+  (a table-QR visit is one read; its tab title is right for an unlisted place too), and the generic answer and today's slots
+  for two are kept in the server's memory for 30 s, **never longer**: visits that arrive together share one read, a place
+  that is not there and a failed read are not kept. `dine_busy` is read live on every visit and its pause overrides the kept
+  menu's `online_paused`. A dish that just ran out can show for up to 30 s; `dine_order` refuses it, and `dine_reserve`
+  re-checks the slot. A table or room visit is never kept. **Not `unstable_cache`:** on a dynamic page it serves the old
+  answer first and refreshes behind it, so the first visitor after a quiet day would read yesterday's menu. Checked on the
+  production build (`tvprobe.mjs`): six visits in a row, 200 each, and the database counted **one** `dine_storefront` call
+  (pg_stat_statements 1654 → 1655); 379 ms for the visit that read, 71–123 ms for the five that did not.
 - **The table's menu reads its three things at once (2026-10-29).** `dine_storefront`, `dine_slots` and `dine_busy` in one
   `Promise.all` — `dine_busy` used to wait for the other two (shell-and-nav.md, speed pass 2026-10-29).
 - **The service worker (v20, 2026-10-30):** a page load with no line gets its last copy only if every script and stylesheet that copy

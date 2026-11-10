@@ -10,7 +10,7 @@ const e = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 /* the pay QR is a data: URL the app builds itself; anything else is dropped rather than trusted */
 const img = (src: string) => (/^data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=]+$/i.test(src) ? src : "");
 export const billHtml = (d: BillData) => { const lab = taxLabels(d.restaurant.stateCode), half = d.gstRate ? d.gstRate / 2 : null, comp = d.restaurant.gstScheme === "composition"; const tn = (k: "central" | "state") => lab[k] + (half !== null ? " @ " + half + "%" : ""); return `
-<h1>${e(d.restaurant.name)}</h1>${d.restaurant.address ? `<div class="c">${e(d.restaurant.address)}</div>` : ""}${d.restaurant.gstin ? `<div class="c">GSTIN ${e(d.restaurant.gstin)}</div>` : ""}
+<h1>${e(d.restaurant.name)}</h1>${d.restaurant.address ? `<div class="c">${e(d.restaurant.address)}</div>` : ""}${d.restaurant.gstin ? `<div class="c">GSTIN ${e(d.restaurant.gstin)}</div>` : ""}${d.title ? `<div class="c b">${e(d.title.toUpperCase())}</div>` : ""}
 <hr><div class="r"><span>${e(d.billNo)}</span><span>${e(d.tableOrType)}</span></div><div class="r"><span>${e(d.when)}</span><span>${d.cashier ? "by " + e(d.cashier) : ""}</span></div>
 ${d.offline ? '<div class="c b">** OFFLINE COPY **</div>' : ""}<hr>
 ${d.items.map((i) => `<div class="r"><span>${e(i.name)}</span><span>${e(i.qty)} x ${m(i.price)}</span><span>${m(i.qty * i.price)}</span></div>${i.note ? `<div style="padding-left:8px">${e(i.note)}</div>` : ""}`).join("")}

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireSession } from "@/lib/auth";
+import { requireSession, featureOn } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScanClient } from "./ScanClient";
 export const metadata = { title: "Scan" };
@@ -15,7 +15,9 @@ export default async function ScanPage() {
   return (
     <>
       <PageHeader eyebrow="Scan anything" title="Smart" accent="scan" sub="Items, IDs, QR labels" />
-      <ScanClient categories={categories ?? []} recent={(recent ?? []) as never} aiEnabled={!!process.env.ANTHROPIC_API_KEY} propertyType={session.restaurant.property_type} />
+      {/* 0175: photos need the server's key and the AI and Photo recognition add-ons; the ID-card path its own (off by default) */}
+      <ScanClient categories={categories ?? []} recent={(recent ?? []) as never} aiEnabled={!!process.env.ANTHROPIC_API_KEY && featureOn(session, "ai") && featureOn(session, "scan-vision")}
+        idScan={featureOn(session, "ai") && featureOn(session, "scan-id")} propertyType={session.restaurant.property_type} />
     </>
   );
 }

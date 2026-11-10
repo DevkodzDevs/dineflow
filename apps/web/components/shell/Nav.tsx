@@ -95,9 +95,9 @@ function useKeepMenuInPlace(path: string) {
   return ref;
 }
 
-type Props = { name: string; role: Role; dept?: string | null; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null; attend?: boolean; grants?: string[] | null };
+type Props = { name: string; role: Role; dept?: string | null; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null; attend?: boolean; grants?: string[] | null; features?: readonly string[] | null };
 
-export function Sidebar({ name, role, dept = null, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref, attend, grants = null }: Props) {
+export function Sidebar({ name, role, dept = null, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref, attend, grants = null, features = null }: Props) {
   const path = useNavPath();   // lights the tapped item at once (useNavPath.ts)
   const navRef = useKeepMenuInPlace(path);
   /* The drawer. On an iPad or a tablet (768–1279) the menu is an icon rail; the hamburger at its
@@ -124,16 +124,16 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
     return () => { window.removeEventListener("resize", sync); window.removeEventListener("df-sidebar", sync); };
   }, []);
   const mods = modulesFor(type, role, enabled, personal);
-  const allowed = rowsFor(mods, role, grants);
-  const unread = useSupportUnread(path, endFor(role).some((i) => i.key === "help"));
+  const allowed = rowsFor(mods, role, grants, features);
+  const unread = useSupportUnread(path, endFor(role, features).some((i) => i.key === "help"));
   /* the menu under its headings (menuGroups, sections.ts — 2026-10-21) */
-  const groups = menuGroups([...allowed, ...freshFor(role, dept)], myDayFor(role) ? [myDayFor(role)!] : []);
+  const groups = menuGroups([...allowed, ...freshFor(role, dept, features)], myDayFor(role) ? [myDayFor(role)!] : []);
   /* the menu's last group (2026-10-20): the property's Settings (the owner), the person's own settings (/me —
      "Settings" for everyone else, "My profile" for the owner), Feedback & complaints (the owner reads it as Staff
      feedback) and, for the owner alone, Help & support — a red dot while a reply from DineFlow is unread */
   const end: NavItem[] = [
     ...allowed.filter((i) => i.key === "settings"),
-    ...endFor(role).map((i): NavItem => i.key === "help" ? { ...i, badge: unread, hint: unread ? `Help & support · ${unread} new repl${unread === 1 ? "y" : "ies"}` : undefined } : i),
+    ...endFor(role, features).map((i): NavItem => i.key === "help" ? { ...i, badge: unread, hint: unread ? `Help & support · ${unread} new repl${unread === 1 ? "y" : "ies"}` : undefined } : i),
   ];
   const who = (
     <>
@@ -202,7 +202,7 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
  *  this person may open are used, and the gaps fill from the menu's own order. */
 const PIN_KEY = "df-bar-pins";
 
-type MoreProps = { role: Role; type: PropertyType; dept?: string | null; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number; attend?: boolean; grants?: string[] | null };
+type MoreProps = { role: Role; type: PropertyType; dept?: string | null; enabled?: string[] | null; allowed?: string[] | null; name: string; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; accountHref?: string | null; lateKots?: number; attend?: boolean; grants?: string[] | null; features?: readonly string[] | null };
 
 /* a count on a tab stays a red pill: a flap tile cannot be read at 18px (2026-10-20, design-system.md "Flap numbers") */
 const count = (n: number) => n > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold grid place-items-center ring-2 ring-[var(--color-bg-2)] num" data-tab-count={n}>{n > 99 ? "99+" : n}</span>;
@@ -229,12 +229,12 @@ function TabIcon({ active, Icon, n }: { active: boolean; Icon: LucideIcon; n: nu
  * phone had no way to sign out at all. More opens every section this person can use, grouped the
  * way the sidebar groups them, with the account, Master control and Sign out at the foot.
  */
-export function BottomNav({ role, type, dept = null, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0, attend, grants = null }: MoreProps) {
+export function BottomNav({ role, type, dept = null, enabled, allowed: personal, name, membership, daysLeft, isAdmin, accountHref, lateKots = 0, attend, grants = null, features = null }: MoreProps) {
   const path = useNavPath();   // lights the tapped item at once (useNavPath.ts)
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [path]);
   const mods = modulesFor(type, role, enabled, personal);
-  const allowed = rowsFor(mods, role, grants);
+  const allowed = rowsFor(mods, role, grants, features);
   /* The bar's four: the person's own pins if they set any on this device (Square lets staff pin the
      applets they use most), else what their role does all day, else the property's default. */
   const [pins, setPins] = useState<string[] | null>(null);
@@ -259,7 +259,7 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
     return () => clearTimeout(t);
   }, [open]);
   const savePins = (v: string[] | null) => { setPins(v); try { if (v) localStorage.setItem(PIN_KEY, JSON.stringify(v)); else localStorage.removeItem(PIN_KEY); } catch { /* fine */ } };
-  const fresh = freshFor(role, dept);
+  const fresh = freshFor(role, dept, features);
   // the Cleaning and Work boards are no modules, but they are the day of the people who clean and fix: the bar may carry them (lib/bar.ts)
   const onBar = [...allowed, ...fresh.filter((i) => i.key === "cleaning" || i.key === "work")];
   /* A screen inside another section (Join by QR, the Order board) goes on the bar only when pinned — it never
@@ -281,12 +281,12 @@ export function BottomNav({ role, type, dept = null, enabled, allowed: personal,
   /* what needs attention, as a count on its section: tickets over 15 minutes in the kitchen */
   const badge = (key: string) => (key === "kitchen" && lateKots > 0 ? lateKots : 0);
   const rest = allowed.filter((i) => !bar.includes(i));
-  const onMore = rest.some((i) => isOn(path, i.href)) || fresh.some((i) => isOn(path, i.href)) || endFor(role).some((i) => isOn(path, i.href));
-  const unread = useSupportUnread(path, endFor(role).some((i) => i.key === "help"));
+  const onMore = rest.some((i) => isOn(path, i.href)) || fresh.some((i) => isOn(path, i.href)) || endFor(role, features).some((i) => isOn(path, i.href));
+  const unread = useSupportUnread(path, endFor(role, features).some((i) => i.key === "help"));
   const owner = role === "owner";
   const moreBadge = rest.reduce((n, i) => n + badge(i.key), 0) + (owner ? unread : 0);
   /* the foot's links: the menu's last group less the one the account row already is (/settings or /me) */
-  const foot = endFor(role).filter((i) => i.href !== accountHref);
+  const foot = endFor(role, features).filter((i) => i.href !== accountHref);
   /* the same headings as the sidebar (menuGroups); a "fresh" link already on the bar is not repeated here */
   const groups = menuGroups([...allowed, ...fresh.filter((i) => !bar.some((p) => p.key === i.key))], myDay ? [myDay] : []);
   /* The bar (2026-10-22, the owner's picture, "exactly"): a floating capsule (`nav.tabbar`, globals.css) of icons only —

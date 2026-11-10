@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
+import { screenKey } from "../../settings/actions";
 import { QrClient } from "./QrClient";
 export const metadata = { title: "Join by QR" };
 export const dynamic = "force-dynamic";
@@ -16,10 +17,12 @@ export const dynamic = "force-dynamic";
  */
 export default async function JoinByQr() {
   const s = await createClient();
-  const [session, , { data: queue }] = await Promise.all([
+  const [session, , { data: queue }, key] = await Promise.all([
     requireSession(),
     s.rpc("walkin_fill").then(() => null, () => null),
-    s.from("walkins").select("id, token, name, phone, party, quoted_min, status, joined_at, called_at, table_id").in("status", ["waiting", "called"]).order("joined_at"),
+    s.from("walkins").select("id, token, token_no, name, phone, party, quoted_min, status, joined_at, called_at, table_id, note, wa_ok").in("status", ["waiting", "called"]).order("joined_at"),
+    // 0179: the waiting-list TV board shares the counter TV's secret key — owner and manager only; anyone else gets no button
+    screenKey(false).then((r) => ("key" in r ? r.key ?? null : null), () => null),
   ]);
   /* The join-the-queue link is handed to a guest, so it needs a whole address: the same variable and fallback as
      the storefront, booking-page and proof links. */
@@ -28,5 +31,5 @@ export default async function JoinByQr() {
   const howHidden = (await cookies()).get("df-joinqr-how")?.value === "hidden";
   const base = process.env.NEXT_PUBLIC_CLOUD_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
   return <QrClient slug={session.restaurant.booking_slug ?? ""} base={base} listed={!!session.restaurant.is_listed} restaurant={session.restaurant.name}
-    queue={(queue ?? []) as never} howHidden={howHidden} />;
+    queue={(queue ?? []) as never} howHidden={howHidden} boardUrl={key ? `${base}/screen/${key}/queue` : null} />;
 }

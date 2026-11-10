@@ -19,7 +19,8 @@ export default async function LockPage() {
   const mods = modulesFor(s.restaurant.property_type, role, s.restaurant.enabled_modules ?? null, s.profile.allowed_modules ?? null);
   if (role !== "owner" && role !== "manager") redirect(`/${landingFor(role, mods, s.profile.position ?? null)}`);
   const dept = deptOf(role, s.profile.department ?? null, s.profile.position ?? null);
-  const rows = [...rowsFor(mods, role, s.profile.grants ?? null), ...freshFor(role, dept)].filter((r) => lockable(r.key));
+  // 0175: only the pages the property has on can be locked to — the menu's own answer
+  const rows = [...rowsFor(mods, role, s.profile.grants ?? null, s.features), ...freshFor(role, dept, s.features)].filter((r) => lockable(r.key));
   const groups: LockGroup[] = menuGroups(rows).map((g) => ({ title: g.title, items: g.items.map((i) => ({ key: i.key, label: i.label, href: i.href })) }));
   return <LockClient groups={groups} setting={s.restaurant.display_lock ?? {}} me={s.profile.full_name} />;
 }

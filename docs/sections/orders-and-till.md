@@ -93,6 +93,11 @@ one), `split_order` (one into two) — all RPCs, all atomic.
 
 ## Before you edit
 
+- **Three of the till's pieces are add-ons (0175, 2026-11-09 — [admin-and-membership.md](admin-and-membership.md)).** *Say the
+  order* (`till-voice`, with *AI help*): `orders/new/page.tsx` passes `ai` only while both are on, and `parseOrder` refuses
+  otherwise — a waiter cannot spend the server's key on a property that has it off. *Goes well with* (`till-pairings`): the
+  page skips the `menu_pairings` call and passes no pairs. *On-time promise* (`promise`): the page passes `promise={null}`
+  however Settings is set, so no new order takes one; a promise already on an order is still honoured on its bill.
 - **Phone orders (0105).** *Phone* on the Orders header → `/orders/phone`: the number first (a keypad on touch
   screens), and at ten digits `phone_order_card` brings the customer (name, visits, spend, notes), the address
   they gave last (customer's, else their last delivery's) and their last five orders. *Delivery* / *Parcel* /

@@ -8,6 +8,26 @@ both `actions.ts`
 **Writes** `accept_online_order`, `push_channel`, `set_rate_inventory`, `set_rates_only`, `availability`
 **Related API** `api/webhooks/aggregator/[token]`, `api/ota/sync`, `api/ical/[token]`
 
+## Prepay on the own storefront (0181, 2026-11-10 — NOT yet applied)
+
+The owner's own channel ('website') can require **UPI payment before the order is accepted** (Settings → Storefront →
+"Ask guests to pay by UPI before the order is accepted"; needs a connected gateway). `dine_order` then holds the order in
+`online_orders` with `pay_status = 'pending'` and returns `{ prepay: true, pay_token }`; the storefront sends the guest to
+`/dine/pay/<token>`, which shows the dynamic UPI QR (`/api/dine/pay/[token]/qr`) and polls `dine_prepay_status` until the
+webhook settles it. A held order is **not** in this screen's New list (`page.tsx` drops `pay_status = 'pending'`); once paid it
+appears like any online order, to accept or reject. Unpaid holds are swept after 20 minutes. Only delivery/takeaway; dine-in and
+room orders are never held. Refund on reject is still manual (Razorpay dashboard). See data-and-rls.md (0181), guest-facing.md.
+
+## WhatsApp order updates (0182, 2026-11-10 — NOT yet applied)
+
+For an **own-storefront** order (the 'website' channel), the counter's own actions tell the guest where it is, through the 0177
+outbox and the property's number: **Accept** → `dineflow_order_accepted` (ready in ~N min), **Food ready** → `dineflow_order_ready`
+(collect, or on its way), **Send out / assign a rider** → `dineflow_order_out` (rider + a `/track/<token>` link). One switch,
+`on_order` (Settings → WhatsApp → Online order updates, on by default). `online-orders/actions.ts` `tellGuestOrder` fetches the
+order, checks the channel is 'website', and calls `queueWhatsApp` with a dedupe key — best effort, never fails the action; an
+aggregator order is left to the aggregator's app, and a takeaway collected (`picked_up`) sends nothing. Owner must create the
+three templates in Meta. See data-and-rls.md (0182).
+
 ## What it is
 
 Two different outside worlds. **Online orders** are food from an aggregator (Swiggy, Zomato) or from
@@ -142,6 +162,11 @@ keeps its own menu and can still send one: a new order's card says *Off online: 
 
 ## Before you edit
 
+- **Push rates, Push menu, the API mode and the partner fields are behind the `ota-push` add-on, off by default (0175,
+  2026-11-09).** `push_channel` answers "Not sent — DineFlow does not connect…" for every kind, so the buttons, the *API
+  (needs credentials)* mode, *Rate offset %*, *API base*, *Property ID* and *API key* only show while Master control turns the
+  add-on on (`useFeature("ota-push")` in `ChannelsClient` and `ConnectionsClient`). iCal import, the export link, Sync, Test
+  order and the webhook are untouched. When a real partner connection is built, turn the add-on on by default.
 - **Payouts (`/online-orders/payouts`, 0105; owner or manager — a *Payouts* button in the header).** Pick the
   channel (website channels are left out: they are paid directly) and the period — last Monday to Sunday by
   default, how Swiggy and Zomato settle. `settlement_expected` adds up that channel's orders (not new, rejected or

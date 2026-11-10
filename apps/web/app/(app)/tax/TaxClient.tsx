@@ -3,11 +3,12 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { csvCell } from "@/lib/csv";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Landmark, Pencil, Plus, Trash2, Undo2, UserRound, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileJson, FileText, Landmark, Mail, Pencil, Plus, Trash2, Undo2, UserRound, X } from "lucide-react";
 import { Button, Card, CardStrip, Field, Pill, Sheet, cn, type StripAction, ask, PhoneInput } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DOC_KINDS, GST_STATES, financialYear, statutoryCalendar, taxLabels, type CalendarItem } from "@dineflow/shared";
-import { saveTaxProfile, saveDoc, deleteDoc, markFiled, unmarkFiled } from "./actions";
+import { saveTaxProfile, saveDoc, deleteDoc, markFiled, unmarkFiled, gstr1Month } from "./actions";
+import type { Gstr1Summary } from "@/lib/gstr1";
 import { Guide } from "./Guide";
 import { TallyTab } from "./TallyTab";
 
@@ -20,6 +21,8 @@ type Totals = { count: number; taxable: number; cgst: number; sgst: number; tota
 type Summary = { from: string; to: string; dining: Row[]; stay: Row[]; b2b: { gstin: string; name: string | null; count: number; taxable: number; cgst: number; sgst: number; total: number }[]; dining_totals: Totals; stay_totals: Totals;
   /* 0146: food sold through Swiggy / Zomato / ONDC (the operator paid the GST, section 9(5)) and credit notes issued */
   eco?: { count: number; total: number }; credit_notes?: Totals } | null;
+/** the GST inside the month's expenses (input credit, an estimate) — null when this login cannot read expenses */
+type Itc = { count: number; gst: number } | null;
 
 const TABS: { key: Tab; label: string }[] = [{ key: "overview", label: "Overview" }, { key: "returns", label: "Returns" }, { key: "calendar", label: "Calendar" }, { key: "documents", label: "Documents" }, { key: "tally", label: "Tally" }, { key: "profile", label: "Profile & CA" }, { key: "guide", label: "Guide" }];
 const day = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -28,8 +31,8 @@ const shiftMonth = (ym: string, by: number) => { const [y, m] = ym.split("-").ma
 const daysBetween = (a: string, b: string) => Math.round((new Date(b + "T00:00:00").getTime() - new Date(a + "T00:00:00").getTime()) / 86400000);
 const n2 = (v: unknown) => Number(v ?? 0).toFixed(2);
 
-export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings, docs, summary, summaryError, staffCount }:
-  { tab: Tab; month: string; fy: string; today: string; restaurant: Rest; role: string; filings: Filing[]; docs: Doc[]; summary: Summary; summaryError: string | null; staffCount: number }) {
+export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings, docs, summary, summaryError, staffCount, itc = null }:
+  { tab: Tab; month: string; fy: string; today: string; restaurant: Rest; role: string; filings: Filing[]; docs: Doc[]; summary: Summary; summaryError: string | null; staffCount: number; itc?: Itc }) {
   const router = useRouter(); const [pending, start] = useTransition(); const [msg, setMsg] = useState<string | null>(null);
   const scheme = r.gst_scheme ?? "regular";
   const lab = taxLabels(r.gst_state_code);
@@ -59,7 +62,7 @@ export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings,
       {msg && <p className={cn("text-sm mb-4", /error|not|fail|cannot/i.test(msg) ? "text-[var(--color-red)]" : "text-[var(--color-green)]")}>{msg}</p>}
 
       {tab === "overview" && <Overview r={r} scheme={scheme} lab={lab} summary={summary} month={month} overdue={overdue} upcoming={upcoming} expiring={expiring} today={today} docsCount={docs.length} />}
-      {tab === "returns" && <Returns r={r} lab={lab} month={month} today={today} summary={summary} error={summaryError} go={go} monthly={monthReturns} status={status} onFile={(c, filedOn, ack) => start(async () => { const x = await markFiled(c.form, c.period, c.due, filedOn, ack); setMsg("error" in x ? x.error! : `${c.form} ${c.period} filed.`); })} pending={pending} />}
+      {tab === "returns" && <Returns r={r} lab={lab} month={month} today={today} summary={summary} error={summaryError} itc={itc} go={go} monthly={monthReturns} status={status} onFile={(c, filedOn, ack) => start(async () => { const x = await markFiled(c.form, c.period, c.due, filedOn, ack); setMsg("error" in x ? x.error! : `${c.form} ${c.period} filed.`); })} pending={pending} />}
       {tab === "calendar" && <Calendar fy={fy} go={go} calendar={calendar} status={status} today={today} pending={pending}
         onFile={(c, filedOn, ack) => start(async () => { const x = await markFiled(c.form, c.period, c.due, filedOn, ack); setMsg("error" in x ? x.error! : `${c.form} ${c.period} filed.`); })}
         onUndo={(c) => start(async () => { const x = await unmarkFiled(c.form, c.period); setMsg("error" in x ? x.error! : `${c.form} ${c.period} reopened.`); })} />}
@@ -134,11 +137,25 @@ function Overview({ r, scheme, lab, summary, month, overdue, upcoming, expiring,
 const Stat = ({ label, value }: { label: string; value: string }) => <div className="min-w-0 rounded-xl bg-[var(--color-fill)] px-3.5 py-3"><div className="text-[10.5px] uppercase tracking-wide text-[var(--color-label-2)] truncate">{label}</div><div className="num text-xl font-semibold mt-1 truncate">{value}</div></div>;
 
 /* ── Returns: the month's figures in GSTR shape ────────────────────────────── */
-function Returns({ r, lab, month, today, summary, error, go, monthly, status, onFile, pending }: { r: Rest; lab: ReturnType<typeof taxLabels>; month: string; today: string; summary: Summary; error: string | null; go: (q: Record<string, string>) => void; monthly: CalendarItem[]; status: (c: CalendarItem) => { kind: string; f?: Filing; days?: number }; onFile: (c: CalendarItem, filedOn: string, ack: string) => void; pending: boolean }) {
+function Returns({ r, lab, month, today, summary, error, itc, go, monthly, status, onFile, pending }: { r: Rest; lab: ReturnType<typeof taxLabels>; month: string; today: string; summary: Summary; error: string | null; itc: Itc; go: (q: Record<string, string>) => void; monthly: CalendarItem[]; status: (c: CalendarItem) => { kind: string; f?: Filing; days?: number }; onFile: (c: CalendarItem, filedOn: string, ack: string) => void; pending: boolean }) {
   const rows = [...(summary?.dining ?? []), ...(summary?.stay ?? [])];
   const t = (k: keyof Totals) => Number(summary?.dining_totals?.[k] ?? 0) + Number(summary?.stay_totals?.[k] ?? 0);
   const cn = { count: Number(summary?.credit_notes?.count ?? 0), taxable: Number(summary?.credit_notes?.taxable ?? 0), cgst: Number(summary?.credit_notes?.cgst ?? 0), sgst: Number(summary?.credit_notes?.sgst ?? 0), total: Number(summary?.credit_notes?.total ?? 0) };
   const eco = { count: Number(summary?.eco?.count ?? 0), total: Number(summary?.eco?.total ?? 0) };
+  // GSTR-1 JSON (2026-11-09): the server action gathers the month (lib/gstr1.ts shapes it); the file is saved here and
+  // the figures it holds are shown under the button so the owner can see them agree with the table above.
+  const [building, setBuilding] = useState(false); const [built, setBuilt] = useState<{ fileName: string; summary: Gstr1Summary } | { error: string } | null>(null);
+  const json = async () => {
+    setBuilding(true); setBuilt(null);
+    const x = await gstr1Month(month);
+    setBuilding(false);
+    if ("error" in x) { setBuilt({ error: x.error! }); return; }
+    const blob = new Blob([JSON.stringify(x.json)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = x.fileName; a.click(); URL.revokeObjectURL(a.href);
+    setBuilt({ fileName: x.fileName, summary: x.summary });
+  };
+  const outputTax = t("cgst") + t("sgst") - cn.cgst - cn.sgst;
+  const mailto = r.ca_email ? `mailto:${r.ca_email}?subject=${encodeURIComponent(`GST ${monthLabel(month)} · ${r.legal_name || r.name}${r.gstin ? ` · ${r.gstin}` : ""}`)}&body=${encodeURIComponent(`Attached: the GSTR-1 JSON and the CSV for ${monthLabel(month)} from DineFlow.\n\nTaxable ₹${n2(t("taxable"))} · ${lab.central} ₹${n2(t("cgst"))} · ${lab.state} ₹${n2(t("sgst"))}${cn.count ? ` · ${cn.count} credit note${cn.count === 1 ? "" : "s"}` : ""}${eco.count ? ` · ${eco.count} platform bill${eco.count === 1 ? "" : "s"} u/s 9(5)` : ""}.\n`)}` : null;
   const csv = () => {
     const lines = [["Period", month], ["GSTIN", r.gstin ?? ""], [], ["SAC", "Supply", "Rate %", "Invoices", "Taxable value", lab.central, lab.state, "Invoice value"],
       ...rows.map((x) => [x.sac, x.kind === "dining" ? "Restaurant service" : "Accommodation", x.rate, x.count, n2(x.taxable), n2(x.cgst), n2(x.sgst), n2(x.total)]),
@@ -159,8 +176,24 @@ function Returns({ r, lab, month, today, summary, error, go, monthly, status, on
           <h3 className="text-xl flex-1 max-sm:text-center sm:min-w-[200px]">{monthLabel(month)}</h3>
           <button className="h-10 w-10 max-sm:h-11 max-sm:w-11 shrink-0 grid place-items-center rounded-xl bg-[var(--color-fill)] max-sm:bg-[var(--color-bg-2)]" onClick={() => go({ month: shiftMonth(month, 1) })} aria-label="Next month"><ChevronRight size={16} /></button>
         </div>
-        <Button variant="outline" className="max-sm:w-full sm:ml-auto" onClick={csv} disabled={!summary}><Download size={15} /> CSV for your CA</Button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:ml-auto">
+          <Button variant="outline" className="max-sm:w-full" onClick={csv} disabled={!summary}><Download size={15} /> CSV for your CA</Button>
+          <Button className="max-sm:w-full" onClick={() => void json()} disabled={!summary || building} loading={building} data-gstr1><FileJson size={15} /> GSTR-1 JSON</Button>
+        </div>
       </div>
+      {/* one file for the CA: where it goes, and (when a CA email is on the profile) a mail with the subject ready */}
+      <p className="footnote -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1" data-gstr1-hint>
+        <span>Import in the GST offline tool or the portal → Returns → GSTR-1 → Import</span>
+        {mailto ? <a href={mailto} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-0 text-[var(--color-tint)] hover:underline" data-send-ca><Mail size={13} /> Send to CA</a>
+          : <Link href={`/tax?tab=profile&month=${month}`} className="inline-flex items-center min-h-[44px] sm:min-h-0 text-[var(--color-label-2)] hover:underline">Add your CA&apos;s email to send</Link>}
+      </p>
+      {built && ("error" in built
+        ? <p className="text-sm text-[var(--color-red)]" data-gstr1-result>Could not build GSTR-1: {built.error}</p>
+        : <p className="text-sm text-[var(--color-label-2)] num" data-gstr1-result>
+            <span className="text-[var(--color-label)]">{built.fileName}</span> · B2B {built.summary.b2b.count} · B2CS ₹{n2(built.summary.b2cs.taxable)}
+            {built.summary.cdnr.count + built.summary.netted.count > 0 && <> · credit notes {built.summary.cdnr.count + built.summary.netted.count}</>} · HSN rows {built.summary.hsnRows}
+            {built.summary.eco.count > 0 && <> · 9(5) ₹{n2(built.summary.eco.value)} kept out — table 14(b) needs the operator&apos;s GSTIN</>}
+          </p>)}
       {error && <p className="text-sm text-[var(--color-red)]">Could not build the summary: {error}</p>}
       <Card>
         <div className="card-title"><h3>Outward supplies</h3><span className="footnote">GSTR-3B 3.1(a) · GSTR-1 tables 4, 7</span></div>
@@ -181,6 +214,19 @@ function Returns({ r, lab, month, today, summary, error, go, monthly, status, on
               {eco.count > 0 && <tr data-gst-eco><td className="py-2">Through Swiggy · Zomato · ONDC</td><td className="py-2 text-right num">{eco.count}</td><td className="py-2 text-right num">—</td><td className="py-2 text-right num">—</td><td className="py-2 text-right num">—</td><td className="py-2 text-right num">{n2(eco.total)}</td></tr>}
             </tbody></table></div>
           <p className="footnote mt-3">Credit notes reduce tax · 9(5) sales: value only</p>
+        </Card>
+      )}
+      {/* input credit (GSTR-3B table 4): the GST inside the month's expenses, set against the output tax above — an
+          estimate, since what is eligible (blocked credits, s.17(5)) is the CA's call; a restaurant at 5% has none */}
+      {itc && summary && (
+        <Card data-gst-itc>
+          <div className="card-title"><h3>Input credit</h3><span className="footnote">GSTR-3B table 4 · estimate</span></div>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2.5">
+            <Stat label="Output tax" value={formatINR(outputTax)} />
+            <Stat label="Input GST · expenses" value={formatINR(itc.gst)} />
+            <Stat label={outputTax - itc.gst < 0 ? "Credit carried" : "Net payable"} value={formatINR(Math.abs(outputTax - itc.gst))} />
+          </div>
+          <p className="footnote mt-3">From {itc.count} expense{itc.count === 1 ? "" : "s"} · estimate — your CA confirms eligibility</p>
         </Card>
       )}
       <Card>

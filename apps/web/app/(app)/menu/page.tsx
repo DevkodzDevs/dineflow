@@ -1,6 +1,6 @@
 import { aiEnabled } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
-import { requireSession } from "@/lib/auth";
+import { requireSession, featureOn } from "@/lib/auth";
 import { optionReads, optionsFor } from "@/lib/scoped";
 import { findStandardRecipe, modulesFor, type StandardRecipe } from "@dineflow/shared";
 import { MenuClient } from "./MenuClient";
@@ -29,7 +29,7 @@ export default async function MenuPage() {
   for (const it of items ?? []) { const r = findStandardRecipe(it.name); if (r) std[it.id] = r; }
   return (
     <>
-      <MenuClient canOnline={canSetOnline(session.profile.role, modulesFor(session.restaurant.property_type, session.profile.role, session.restaurant.enabled_modules ?? null, session.profile.allowed_modules ?? null))} categories={categories ?? []} items={items ?? []} ingredients={ingredients ?? []} recipes={recipes ?? []} std={std} ai={aiEnabled()} stations={session.restaurant.kds_stations ?? []} gstRate={Number(session.restaurant.gst_rate ?? 5)}
+      <MenuClient canOnline={canSetOnline(session.profile.role, modulesFor(session.restaurant.property_type, session.profile.role, session.restaurant.enabled_modules ?? null, session.profile.allowed_modules ?? null))} categories={categories ?? []} items={items ?? []} ingredients={ingredients ?? []} recipes={recipes ?? []} std={std} ai={aiEnabled() && featureOn(session, "ai")} stations={session.restaurant.kds_stations ?? []} gstRate={Number(session.restaurant.gst_rate ?? 5)}
         variants={(variants ?? []) as never} groups={(groups ?? []) as never} links={links ?? []} combos={combos ?? []} />
     </>
   );

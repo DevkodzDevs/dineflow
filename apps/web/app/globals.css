@@ -1677,6 +1677,27 @@ a.svc-table:hover .svc-take, .svc-take:hover { background: var(--color-fill-2); 
 .screen-fresh { animation: screen-fresh 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .screen-fresh { animation: none; outline: .3vw solid var(--color-label); } }
 
+/* ── the waiting-list board (/screen/[key]/queue, 0179) — always on the dark tokens (app/screen/ForceDark.tsx) ──
+   A deep ground with two soft glows (green over the called number, amber under the waiting strip), glass cards, a halo
+   that breathes around the number being called, and a settle-in for a fresh call. Everything is a token or a mix of one. */
+.board {
+  background:
+    radial-gradient(55% 60% at 68% 18%, color-mix(in srgb, var(--color-green) 16%, transparent), transparent 70%),
+    radial-gradient(40% 35% at 10% 100%, color-mix(in srgb, var(--color-orange) 9%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb, var(--color-bg) 92%, var(--color-green)) 100%);
+}
+.board-glass { background: color-mix(in srgb, var(--color-bg-2) 72%, transparent); border: 1px solid var(--color-line-2); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.board-hero { background: linear-gradient(160deg, color-mix(in srgb, var(--color-green) 22%, var(--color-bg-2)) 0%, color-mix(in srgb, var(--color-green) 8%, var(--color-bg-2)) 55%, var(--color-bg-2) 100%); border: 1px solid color-mix(in srgb, var(--color-green) 35%, transparent); box-shadow: 0 40px 120px -60px color-mix(in srgb, var(--color-green) 70%, transparent); }
+.board-qr { box-shadow: 0 0 0 1px var(--color-line-2), 0 30px 80px -40px color-mix(in srgb, var(--color-green) 60%, transparent); }
+@keyframes board-live { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 60%, transparent); } 70% { box-shadow: 0 0 0 .6em color-mix(in srgb, var(--color-green) 0%, transparent); } }
+.board-live { animation: board-live 2s ease-out infinite; }
+@keyframes board-halo { 0%, 100% { box-shadow: 0 0 0 .4vw color-mix(in srgb, var(--color-green) 45%, transparent), 0 0 6vw 1vw color-mix(in srgb, var(--color-green) 25%, transparent); } 50% { box-shadow: 0 0 0 1.1vw color-mix(in srgb, var(--color-green) 0%, transparent), 0 0 8vw 2vw color-mix(in srgb, var(--color-green) 40%, transparent); } }
+.board-halo { box-shadow: 0 0 5vw .5vw color-mix(in srgb, var(--color-green) 18%, transparent); transition: box-shadow .6s; }
+.board-halo.on { animation: board-halo 1.6s ease-in-out infinite; }
+@keyframes board-called-in { 0% { opacity: 0; transform: translateY(1.2vw) scale(.96); } 100% { opacity: 1; transform: none; } }
+.board-called-in { animation: board-called-in .5s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .board-live, .board-halo.on, .board-called-in { animation: none; } .board-halo.on { outline: .3vw solid var(--color-green); } }
+
 /* ═══ COLOURFUL ═══════════════════════════════════════════════════════════
    The look of data-theme="colour" beyond its tokens (which sit with the other themes' at the top).
    Here at the end so it wins on source order where specificity ties. Each rule that paints a surface

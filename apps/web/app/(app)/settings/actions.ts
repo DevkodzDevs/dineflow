@@ -2,6 +2,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { wrote } from "@/lib/wrote";
+import { requireSession } from "@/lib/auth";
+import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
+import { queueWhatsApp, drainOutbox } from "@/lib/whatsapp";
 const bump = () => revalidatePath("/", "layout");
 export async function saveRestaurant(fd: FormData) {
   const s = await createClient();
@@ -146,4 +149,36 @@ export async function saveAttendanceSettings(methods: string[], lat: number | nu
 export async function screenKey(rotate = false) {
   const s = await createClient(); const { data, error } = await s.rpc("my_screen_key", { p_rotate: rotate });
   if (error) return { error: error.message }; return { ok: true, key: data as string };
+}
+
+/** Settings → WhatsApp (0177): the property's Business API credentials and switches, through wa_settings_set — the owner check
+ *  and the add-on check are in the function. A blank token keeps the saved one, 'clear' removes it, a blank phone number id
+ *  removes the row. The token is never read back: the page learns has_token and nothing more. */
+export async function saveWhatsApp(fd: FormData): Promise<{ error: string } | { ok: true; has_token?: boolean; removed?: boolean }> {
+  const s = await createClient();
+  const str = (k: string) => String(fd.get(k) ?? "").trim();
+  const on = (k: string) => fd.get(k) === "on";
+  const lang = ["en", "ta", "hi"].includes(str("lang")) ? str("lang") : "en";
+  const { data, error } = await s.rpc("wa_settings_set", {
+    p_phone_number_id: str("phone_number_id"), p_access_token: str("access_token"), p_lang: lang,
+    p_on_reservation: on("on_reservation"), p_on_booking: on("on_booking"), p_on_bill: on("on_bill"), p_on_day_close: on("on_day_close"),
+    p_on_alert: on("on_alert"), p_on_shift_reminder: on("on_shift_reminder"), p_on_table_ready: on("on_table_ready"), p_on_order: on("on_order"),
+    p_alert_discount_over: Math.max(0, Number(fd.get("alert_discount_over") || 500)),
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/settings"); return { ok: true, ...(data as { has_token?: boolean; removed?: boolean }) };
+}
+/** "Send me a test": queues dineflow_test to the number given (wa_queue — the owner only for a test) and, when this server holds
+ *  the service-role key, runs the sender at once; otherwise the cloud's nightly sweeper does, and the answer says so. */
+export async function sendWaTest(phone: string): Promise<{ error: string } | { ok: true; sent: boolean; note: string }> {
+  const session = await requireSession(); const s = await createClient();
+  if (session.profile.role !== "owner") return { error: "Only the owner can send a test." };
+  const id = await queueWhatsApp(s, session, { kind: "test", to: phone, params: [session.restaurant.name], dedupe: `test:${Date.now()}` });
+  if (!id) return { error: "Nothing was queued — check the number, the phone number id and token, and that the add-on is on." };
+  if (!serviceRoleConfigured()) return { ok: true, sent: false, note: "Queued. This server cannot send it now (no service-role key); the cloud's nightly sweeper will." };
+  const r = await drainOutbox(adminClient(), 20);
+  revalidatePath("/settings");
+  if (r.sent > 0 && !r.errors.length) return { ok: true, sent: true, note: "Sent. Check your phone." };
+  if (r.errors.length) return { ok: true, sent: false, note: `WhatsApp refused it: ${r.errors[0]}` };
+  return { ok: true, sent: false, note: "Queued; the next message from this server, or the nightly sweeper, will try again." };
 }

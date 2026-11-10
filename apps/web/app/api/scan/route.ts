@@ -36,8 +36,15 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "not signed in" }, { status: 401 });
   // every scan is a paid vision call on our key: bounded per person, and bounded in size
   if (!allow(`scan:${user.id}`, 40, 10 * 60_000)) return NextResponse.json({ error: "Too many scans. Wait a moment and try again." }, { status: 429 });
+  // 0175: only while the property has the AI and Photo recognition add-ons; an ID card only with ID card reading (off by
+  // default — it handles personal data). The database answers for the property this login stands in.
+  const { data: feats } = await supabase.rpc("effective_features");
+  const on = (k: string) => Array.isArray(feats) && (feats as string[]).includes(k);
+  if (!on("ai") || !on("scan-vision")) return NextResponse.json({ error: "Photo recognition is not switched on for this property." }, { status: 403 });
+  const idScan = on("scan-id");
   const key = process.env.ANTHROPIC_API_KEY;
-  const { image, hint = "auto" } = await req.json();
+  const { image, hint: hintRaw = "auto" } = await req.json();
+  const hint = hintRaw === "labour" && !idScan ? "auto" : hintRaw;
   if (typeof image !== "string" || image.length > 8_000_000) return NextResponse.json({ error: "That photo is too large — try again closer up." }, { status: 413 });
 
   // No API key? Return a realistic sample so the whole scan → confirm → create flow can be
@@ -66,7 +73,11 @@ export async function POST(req: Request) {
   try {
     const parsed = scanResultSchema.safeParse(JSON.parse(text));
     if (!parsed.success) return NextResponse.json({ error: "could not read the photo, try again closer" }, { status: 422 });
-    await supabase.from("scan_log").insert({ source: "photo", kind: parsed.data.kind, result: parsed.data, created_by: user.id });
-    return NextResponse.json(parsed.data);
+    // without ID card reading, a person or a document comes back as nothing — no name, phone or address is kept or shown
+    const out = !idScan && (parsed.data.kind === "labour" || parsed.data.labour)
+      ? { kind: "unknown" as const, name: "Not read", confidence: 0, notes: "ID cards are not read here. Ask DineFlow to switch on ID card reading." }
+      : parsed.data;
+    await supabase.from("scan_log").insert({ source: "photo", kind: out.kind, result: out, created_by: user.id });
+    return NextResponse.json(out);
   } catch { return NextResponse.json({ error: "could not read the photo, try again closer" }, { status: 422 }); }
 }

@@ -808,6 +808,209 @@ folder. `dine_storefront` is 0076's body plus `image_url` on each dish — nothi
   ledger and tickets unchanged, the exclusions, clean-up previews and minimums; an owner refused 12 ways, anon 3, the service role allowed to
   read and refused settings and restore.
 
+## 0181 — own online ordering: pay by UPI before the counter sees the order (2026-11-10) — written, NOT yet applied; after 0180
+- **The owner:** their own storefront already takes delivery/takeaway with no commission, but a prank or a mis-tap started the
+  kitchen before any money moved. **Prepay** holds the order until the guest pays its UPI QR.
+- **Switch:** `restaurants.online_prepay` (owner-only, guarded by 0084's trigger — it is not in `locked`). A new column, so the
+  migration re-grants `select (online_prepay)` to anon/authenticated (0098 built that grant from the columns then present).
+- **The hold:** `online_orders` gains `pay_status` ('none' | 'pending' | 'paid', check constraint `not valid`), `pay_token`
+  (unique partial index), `pay_qr_id/url/amount`, `paid_at`. `dine_order` enters the prepay branch only for delivery/takeaway,
+  only when `online_prepay` AND a `payment_gateways` row with a secret both exist; it then sets the row 'pending' with a 32-hex
+  `pay_token` and returns `{ prepay: true, pay_token, total }` instead of letting the order reach the counter. The counter's
+  Online screen drops `pay_status = 'pending'` rows (one `.neq` in `online-orders/page.tsx`), so a held order is invisible until paid.
+- **The money (mirror of 0178, same gateway and webhook):** `dine_prepay_gateway`, `dine_prepay_qr_set`, `dine_prepay_settle`
+  (each **service-role only**, revoked from anon/authenticated and checking `auth.role()`); `dine_prepay_status` (anon, the pay
+  page polls it — total and state, no secret). `qr_code.credited` for a code whose notes carry a `prepay_token` → the webhook
+  verifies the property's signature and `dine_prepay_settle` marks the order paid; only then is it an ordinary online order for the
+  counter to accept. `_dine_prepay_sweep(rid)` (called at the top of `dine_order`) rejects holds older than 20 min — no cron.
+- **Checked:** `dry181.mjs` — 0181 applied in one rolled-back transaction on the live schema (manoooo's pending holds set aside
+  inside it): **21 of 21** — the six columns and the switch; every new function pins `search_path`; anon refused on gateway/qr_set/
+  settle/sweep, allowed on status; prepay OFF (or no gateway) places a normal order; prepay ON + a test gateway HOLDS the order
+  pending with a 32-hex token and no kitchen order; the pay poll shows pending + total and no key; the gateway view refuses anon
+  and gives the service role the creds + total; a code is remembered; settle marks it paid and is idempotent; a 30-min-old hold is
+  swept to 'rejected' while a paid order is left alone.
+- **NOT in 0181:** a refund when the counter rejects a PAID order (the owner refunds from the Razorpay dashboard and cancels for
+  now); card on the storefront (UPI QR only); WhatsApp order updates and storefront loyalty/coupon-code (0182 / 0183, planned).
+
+## 0180 — a big party gets two or three tables joined (2026-11-10) — written, NOT yet applied; after 0179
+- **The owner:** "8 to 10 people try to book, but we only have 4- and 6-seat tables — how do you seat all 10?" A walk-in larger
+  than the biggest table read *No table fits · Join two tables*, `quote_wait` answered null and the fill held nothing for them.
+- **Column:** `walkins.table_ids uuid[]` (default `{}`) — the tables joined to `table_id`; the first stays in `table_id` so every
+  reader that knew one table still works. walkins' tenant policy covers it.
+- **Functions:** `_walkin_pick(rid, party)` — the smallest free table that seats them; else the pair in ONE zone whose seats
+  together are the fewest that fit (ties: nearest in the floor order, then by name); else a triple the same way; never more.
+  `_walkin_free_tables` (dropped and re-created with `zone, sort_order` in its row; an extra that is held, or that a walk-in
+  was just seated at, is not free). `_walkin_fill` reads the free tables ONCE and picks from that list in memory
+  (`_walkin_pick_from(free jsonb, party)`, the rule itself; `_walkin_pick` is now a wrapper that reads the list and calls it),
+  crossing off each hold; a hold lapses when someone sits at ANY of its tables.
+  `walkin_hold(id, table, more default '{}')` and `walkin_set(id, status, table default null, more default '{}')` replace the
+  shorter signatures (dropped — a call with the old named arguments would be ambiguous; grants as before: authenticated, and
+  service_role on walkin_set); seating checks every table with `_table_busy` (0166) and marks them all occupied; at most three.
+  `quote_wait(party, rid)` (0098's body): a slot is a single table that seats them OR a same-zone pair, which frees when its
+  later table frees. `table_pulse` / `table_pulse_for` (0164's bodies): an extra a walk-in sits at reads *seated*.
+  `_tables_label(table, more)` → "T4 + T5", used by `walkin_add` (also answers `table_ids`), `queue_status` and `screen_queue`.
+- **Checked:** `dry180.mjs` — 0179 then 0180 applied in one rolled-back transaction on the live schema, manoooo's live
+  walk-ins set aside inside it: 18 of 18 (21 of 21 after the speed change below) — signatures, pinned `search_path`, anon refused on every write and helper;
+  quote_wait(8) and (10) answer numbers (two 4-seaters; 6 + 4 on the Terrace); a party of 8 is held two tables in one zone
+  with enough seats, a party of 10 too; held pairs are not free for anyone else; queue_status and the board read "T1 + T2";
+  seating marks both occupied and table_pulse reads both *seated*; walkin_hold with two more gives three; four refused; a
+  table held as someone's extra refused for another; a one-table label has no plus.
+- **Speed (2026-11-10, before applying — `time180b.mjs`, rolled back).** The first draft asked `_walkin_free_tables` again for every
+  step of the pick (once for a single, twice for a pair, three times for a triple) and the fill asked for every waiting guest.
+  With a line of parties nothing could seat: 14 tables and 12 waiting, **124 ms** an add and 271 ms with the line full; 74 tables
+  and 30 waiting, **541 ms** and 1112 ms. Now the fill reads the floor once; the pick says "nothing fits" at once when no zone's
+  three biggest free tables reach the party (no pairs or triples tried); and inside one fill a party at least as big as one that
+  found nothing is not searched again (the list only shrinks). Same floors: **13 ms** and **12 ms**, line full or not.
+  `dry180.mjs` is now 21 of 21: `_walkin_pick_from` pins `search_path` and is revoked from anon and authenticated; on a hand-made
+  list 2 → the 2-seater, 5 → the 6, 8 → the same-zone pair, 10 and 15 → nothing (never across zones); an empty floor picks
+  nothing; two parties of 40 and 45 at the head of the line hold nothing and the couple behind them still gets a table.
+  **If you change the rule, change `_walkin_pick_from` and `lib/tables.ts` `pickTables` together** — and keep the early "nothing
+  fits" check in step with it (it must never say no where the pair or triple search would say yes).
+- **Not in this file:** the same for *reservations* — `reservation_set` and the 0154 hold still take one table, and the
+  Reservations seat picker offers only tables with capacity ≥ party. A booking for 10 still needs the host to seat them from
+  Pulse. Next piece.
+
+## 0184 — loyalty points earned on an own-storefront order (2026-11-10) — written, NOT yet applied; after 0183
+- **The gap:** the loyalty programme (0072) earns points when a COUNTER bill is paid; a delivery / takeaway on the property's own
+  page never becomes a counter bill, so it earned nothing. 0184 awards points for such an order when the counter accepts it.
+- **`dine_award_order_points(online_order_id)`** (security definer, authenticated + service_role): the own 'website' channel and
+  **delivery / takeaway only** (dine-in and room earn at the counter — awarding here too would double-count, and this path never
+  runs where `generate_bill` does), the property's `loyalty_enabled` on, a phone present. Points = `round(greatest(0, subtotal −
+  discount) × loyalty_earn_pct / 100, 2)` — the same formula `generate_bill` uses. It upserts the customer by phone (inline, so it
+  does not depend on the caller's tenant context), adds an 'earn' row to `loyalty_ledger` and bumps the balance. **Idempotent:** one
+  'earn' row per order (`loyalty_ledger.online_order_id` + a unique partial index), so a re-accept never double-awards. New columns:
+  `online_orders.customer_id`, `loyalty_ledger.online_order_id`. The app calls it from `acceptOnline` (best-effort).
+- **`dine_loyalty(slug)`** (anon): `{ enabled, earn_pct, point_value }` while the programme is on, else null — no balance, no secret;
+  the storefront shows "You'll earn N points" for a delivery / takeaway basket.
+- **Off by default:** `restaurants.loyalty_enabled` is false until the owner switches it on, so applying this changes nothing on its
+  own. **NOT here:** redeeming points on the storefront — an anonymous page cannot be shown a phone's balance without a privacy
+  design the owner must weigh. Redeeming stays the counter's path (0072).
+- **Checked:** `dry184.mjs` — **15 of 15** on the live schema (rolled back): the columns, the unique earn index, both functions pin
+  `search_path`, anon is refused awarding and allowed `dine_loyalty`; a ₹400 delivery earns 20 points at 5%, the balance and a single
+  ledger row record it, a second award is idempotent; a dine-in order, an order with no phone, and the programme being off each earn
+  nothing; `dine_loyalty` is null while off and the rate (no balance) while on.
+
+## 0183 — a coupon code box on the storefront (2026-11-10) — written, NOT yet applied; after 0182
+- **One public resolver:** `dine_coupon(p_slug, p_code, p_subtotal, p_mode)` (anon, volatile security definer, pinned
+  `search_path`). It matches a typed code against `offers.code` (case-insensitive) for this property and, for a flat_pct /
+  flat_amount offer scoped 'delivery' or 'both', returns `{ ok, id, title, code, kind, value, discount, min_order }`; otherwise
+  `{ ok: false, error }` with a friendly reason (unknown, switched off, wrong kind of order, not started / ended / not today /
+  wrong hours, under the minimum). A bucketed `_hit('coupon:'||rid, 60, '1 hour')` stops a code being guessed from the public page.
+- **Nothing new is trusted:** `dine_order` already validates an offer id passed as `p_offer` (scope, days, hours, dates, minimum),
+  so the storefront passes the resolved id and the server checks it again at order time. No till code changes — `coupon_check`
+  (0072, authenticated) stays as the counter's path. Nothing here writes.
+- **Checked:** `dry183.mjs` — **8 of 8** on the live schema (a test coupon set up and torn down inside the rolled-back
+  transaction): the function pins `search_path` and anon may call it; a valid code (any case) returns the id and the money off;
+  under the minimum, an unknown code, a dining-only code online, and a switched-off code each come back refused with a reason;
+  an unknown property is refused, not crashed.
+
+## 0182 — WhatsApp updates for the guest's own online order (2026-11-10) — written, NOT yet applied; after 0181
+- **The owner's storefront tells the guest where the order is:** accepted, ready, out for delivery — through the 0177 outbox and
+  the property's own number. Three templates (`dineflow_order_accepted`, `_order_ready`, `_order_out`) and one switch
+  (`wa_settings.on_order`, default on). Only the 'website' channel (the action checks the channel kind); an aggregator order is
+  left to the aggregator's app.
+- **Changes (additive, 0177 first):** `wa_settings` gains `on_order`; `wa_outbox`'s `kind` check is dropped and re-added with the
+  three kinds; `wa_queue` is re-created with the three kinds in its whitelist, gated on `on_order`; `wa_settings_set` is dropped
+  and re-created with a trailing `p_on_order` (a new parameter is a new identity, so the old 11-arg signature is dropped — the
+  settings action and screen pass the twelfth); `wa_settings_get` reports `on_order`. The app queues from the counter's own
+  actions (`online-orders/actions.ts`: `acceptOnline` → accepted; `setOnlineStatus('ready')` → ready; `assignRider` → out for
+  delivery), each with a `dedupe` key (`order:<id>:accepted|ready|out`); a takeaway's `picked_up` sends nothing.
+- **Checked:** `dry182.mjs` — 0175 + 0177 + 0182 in one rolled-back transaction: **10 of 10** — the column; `wa_queue` knows the
+  three kinds and gates them on `on_order`; `wa_settings_set` has one signature carrying `p_on_order`; on manoooo (whatsapp
+  feature + a wa_settings token set inside the tx) an order_accepted and an order_out queue with the right kind, template and
+  91-prefixed number; `wa_settings_set(..., p_on_order := false)` saves and `wa_settings_get` reports it; with it off an order
+  update is not queued while a reservation still is.
+- **Owner action:** create the three templates in Meta verbatim (Settings → WhatsApp → Template texts lists them). Until then Meta
+  refuses the send and the outbox row fails — the message is best-effort and never blocks the order.
+
+## 0179 — the waiting list at the door: numbers, requests, WhatsApp consent, the TV board (2026-11-10) — written, NOT yet applied
+- **Columns:** `walkins.token_no` (1, 2, 3… per property per IST day, by the `before insert` trigger `walkins_token` →
+  `walkin_token_assign()`, whichever path inserts — Pulse, the QR page, an offline replay; the counter is `walkin_tokens`
+  (restaurant_id, day, last) as 0103's `order_tokens`, RLS on, no policy, revoked from every API role — only the trigger writes
+  it), `walkins.note` (≤140, one line — the trigger folds whitespace and cuts; a check constraint `walkins_note_len` backs it),
+  `walkins.wa_ok` (the guest's WhatsApp tick; a host add with a phone counts as yes). walkins' tenant policy (0016) covers them.
+- **Functions:** `walkin_add(name, phone, party, client_id default null, note default null)` replaces 0168's four-argument one
+  (dropped — a four-named-argument call would otherwise be ambiguous; grants authenticated + service_role, not anon) and answers
+  `token_no`; `queue_join(slug, name, phone, party, note default null, wa_ok default false)` replaces 0164's (dropped; anon +
+  authenticated + service_role as before — the 0016 grant named the old signature); `queue_status` carries `token_no` and `note`;
+  new `screen_queue(key)` for the board, anon-callable like `screen_feed` (0103), keyed by the same `restaurants.screen_key`:
+  name, logo, the slug when Listed publicly, the guests *called* today (no, party, the table held, called_at) and *waiting* (no,
+  party, since, held, quoted — the minutes they were told, for the board's bars) — **never a name or a phone**. `walkin_set`, `walkin_hold`, `_walkin_fill` and the fill triggers untouched.
+- **The database does not send WhatsApp.** The server action behind Table ready / Call next (`pulse/actions.ts setWalkin`) queues
+  0177's `table_ready` kind after a successful `'called'` when `wa_ok` and a phone are there; dedupe `walkin:<id>:ready`.
+- **0177 was edited before it was applied** for this: the switch `wa_settings.on_table_ready` (default true; in the column grant,
+  `wa_settings_set`'s eleventh argument `p_on_table_ready default true`, `wa_settings_get`) and the kind `'table_ready'` in
+  `wa_outbox`'s check and `wa_queue`'s list. `dry177.mjs` re-run after the edit: 24 of 24.
+- **Checked:** `dry179.mjs` in the scratchpad — applied in a rolled-back transaction with a lock timeout on top of the live
+  schema (0175–0178 not yet applied; 0179 does not need them): 21 of 21 — the three columns, RLS on the counter, every function
+  pins `search_path`, one signature each of walkin_add / queue_join, anon may call queue_join / queue_status / screen_queue and
+  not walkin_add; on manoooo as the owner: numbers run 1, 2, 3 for the day, the note is folded to one line, a phone means
+  wa_ok, a 300-character note is cut not refused; as anon: queue_join answers token_no and note, a tick without a phone is not a
+  yes, the counter is unreadable, walkin_add refused; the board feed shows the called guest with number and party and the
+  waiting ones, carries the slug, never a name or digits of a phone; a wrong key answers null.
+- **Apply order:** 0175 → 0177 → 0178 → 0179 → 0180 → 0181 → 0182 → 0183 → 0184, before the code: Pulse calls the five-argument `walkin_add`, the queue page the
+  six-argument `queue_join`, the board `screen_queue`. The old code against the new database keeps working (defaults).
+
+## 0178 — the dynamic UPI QR (2026-11-09)
+- **Columns:** `bills.pay_qr_id`, `pay_qr_url`, `pay_qr_amount` — the Razorpay single-use UPI code issued for the bill and what it
+  asks for. Tenant RLS as the rest of `bills`; the till reads them with the row.
+- **Functions:** `pay_link_gateway` (0022's body + the three fields) and the new `pay_link_qr_set(token, id, url, amount)` — both
+  service role only (revoked from public, anon, authenticated), definer, pinned `search_path`; the set writes only an unpaid bill.
+  No change to `pay_link_settle`: a credited code settles through it, as a card does.
+- **Checked:** `dry178.mjs` in the scratchpad — applied in a rolled-back transaction with a lock timeout; the owner refused both
+  functions (42501), the service role sets and reads the code, a paid bill refuses the set.
+
+## 0177 — WhatsApp (2026-11-10) — written, NOT yet applied
+- **Tables:** `wa_settings` (one row per property: `phone_number_id`, `access_token`, `lang` en|ta|hi, the seven switches
+  `on_reservation` / `on_booking` / `on_bill` / `on_day_close` / `on_alert` / `on_shift_reminder` / `on_table_ready` (0179, added
+  before this file was applied), `alert_discount_over` ₹500) and
+  `wa_outbox` (restaurant_id, to_phone — digits with the country code, kind, template, lang, params jsonb, document_url, status
+  queued|sent|delivered|read|failed, attempts, provider_id = Meta's wamid, error, dedupe_key, created/taken/sent/delivered_at).
+  Unique (restaurant_id, dedupe_key) where not null; unique provider_id where not null.
+- **RLS:** `wa_settings` select for the owner only, and **column-level**: `authenticated` may select every column but
+  `access_token` (0121's rule for a partner key — the token is readable by definer functions and the service role alone).
+  `wa_outbox` select for owner and manager. Neither table has an insert/update/delete policy: rows change only through the
+  functions. `revoke all … from public, anon, authenticated` then the deliberate grants; `service_role` has all.
+- **Functions (definer, pinned search_path, anon none):** `wa_settings_set(phone_id, token, lang, 6 switches, line)` — the
+  owner, `has_feature('whatsapp')` required; blank token keeps the saved one, 'clear' removes it, blank phone id deletes the
+  row. `wa_settings_get()` — owner/manager, never the token (`has_token`). `wa_queue(kind, to, template, params, document_url,
+  dedupe, amount)` — any signed-in person of the property; returns the row id or **null** (never raises for "not now"): add-on
+  off, no settings/token, the kind's switch off, a bad number (10 digits → 91…, 11–15 digits kept, else refused), a template
+  name outside `^dineflow_[a-z_]{2,40}$`, a 'test' from anyone but the owner, an alert whose `amount` is under
+  `alert_discount_over`, a non-https document, over 12 params, or 300 queued this hour; dedupe → `on conflict do nothing`.
+  **Service role only:** `wa_outbox_take(limit)` (claims queued rows — a row taken over 2 min ago unanswered is claimed again,
+  rows whose property lost its token are failed — and returns them WITH `phone_number_id` and `access_token`),
+  `wa_outbox_done(id, provider_id, error)` (sent, or queued again up to 3 attempts, then failed), `wa_outbox_status(provider_id,
+  status, error)` (the webhook; never moves a row backwards). `wa_outbox_list(limit)` — owner/manager, newest first, ≤ 200.
+- **`default_features()`** re-created with 21 keys — 0175's twenty plus `whatsapp`; `features.test.ts` now reads **this** file.
+- **Checked:** typecheck, lint and the unit tests (`lib/whatsapp.test.ts`, 11); `dry177.mjs` in the scratchpad **24/24** — 0175
+  then 0177 applied in one rolled-back transaction with a lock timeout: 21 defaults, RLS on both tables (`pg_class.relrowsecurity`;
+  `row_security_active()` reads false for the bypassing role and is the wrong probe), every function definer and pinned, anon
+  none, `access_token` unreadable by authenticated; as the owner: null before settings, `has_token` without the token, a queue,
+  the same dedupe key once, an alert under the line dropped and over it queued, a bad number and a foreign template dropped,
+  `wa_outbox_list`, the three service-only functions refused (42501), the token column refused; a staff login refused the settings;
+  the add-on off → null; as the service role: take, done → sent, status → delivered, a failure re-queued with one attempt.
+  Not yet applied: `node scripts/migrate.mjs --live` after 0175.
+- **The sender is inline (2026-11-10):** `queueWhatsApp` drains the outbox after the action's response (`after()`) when the server
+  holds the service-role key; the cron is a daily sweeper (Vercel Hobby). **A doc edit by script must not use `$'`/`` $` `` in a
+  `String.replace` replacement** — the first write of this entry spliced a copy of the whole file into it (repaired by hand).
+
+## 0175 — add-ons (2026-11-09)
+- **Columns:** `plans.features text[]` (the add-ons a plan includes; null = the defaults), `restaurants.enabled_features text[]`
+  (the property's own list; null = follow its plan). Both locked in `guard_restaurant_update` (an owner's API write → 42501) and
+  watched by `audit_restaurant`. No new table, so no new policy.
+- **Functions:** `default_features()` (immutable — the `on: true` keys of `packages/shared/src/features.ts`; `features.test.ts`
+  reads this file and checks they agree), `effective_features()` (own list, else the plan's, else the defaults, for
+  `auth_restaurant_id()`), `has_feature(key)`; the master's `master_set_features(rid, list)` and `admin_set_plan_features(key,
+  list)` (`is_master()`, ≤ 64 keys of ≤ 40 chars, `admin_log` `set_features` / `plan.features`). All definer, pinned
+  `search_path`, anon has none. `session_bundle` (0115's body) gains `plan_features`. `run_night_audit` (0067's body) adds
+  `and not is_block` to the no-show sweep — an imported OTA calendar block is no longer marked no-show and its room reopened.
+- **Checked:** `dry175.mjs` in the scratchpad — applied in a rolled-back transaction with a 15 s `lock_timeout`, then the owner
+  refused three ways, the master's plan and property lists read back through `effective_features()`, `has_feature()` and
+  `session_bundle`, NULL falling back, 65 keys refused, three `admin_log` rows. **A dry-run script must do every statement on
+  the transaction's own connection**: the first draft set the JWT claims through the pool (one connection), waited on itself
+  and held `restaurants` under an ACCESS EXCLUSIVE lock on the live database until it was killed.
+
 ## 0173 / 0174 — servers (2026-11-05)
 - **Tables:** `data_servers` (the cloud row `00000000-0000-4000-8000-000000000001` seeded; nodes with `token_hash` = sha256 of a
   `dfn_` + 48-hex token, `token_hint`, keep, nightly, paused, `last_report`), `data_node_commands` (op, args, status queued →

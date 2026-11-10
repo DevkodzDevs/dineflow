@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
+import { pinned } from "@/lib/scoped";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { todayIST } from "@/lib/format";
 import { financialYear } from "@dineflow/shared";
@@ -16,17 +17,23 @@ export default async function TaxPage({ searchParams }: { searchParams: Promise<
   const month = /^\d{4}-\d{2}$/.test(sp.month ?? "") ? sp.month! : today.slice(0, 7);
   const fy = /^\d{4}-\d{2}$/.test(sp.fy ?? "") ? sp.fy! : financialYear(today);
   const tab = (TABS.includes(sp.tab as Tab) ? sp.tab : "overview") as Tab;
-  const [{ data: filings }, { data: docs }, { data: summary, error: sumErr }, { count: staff }] = await Promise.all([
+  // input credit (GSTR-3B table 4, an estimate): the GST inside the month's expenses (0105 gst_amount, voided ones out).
+  // Purchases (0001/0073) record no GST, so this is the expenses alone. Read by the drawer roles' policy; others see "—".
+  const itcRead = (rid?: string) => { const q = s.from("expenses").select("gst_amount").gte("spent_on", `${month}-01`).lte("spent_on", lastDay(month)).is("voided_at", null).limit(1000); return rid ? q.eq("restaurant_id", rid) : q; };
+  const [{ data: filings }, { data: docs }, { data: summary, error: sumErr }, { count: staff }, itcMine] = await Promise.all([
     s.from("compliance_filings").select("*").order("due_on"),
     s.from("compliance_docs").select("*").order("kind").order("expires_on"),
     s.rpc("gst_summary", { p_from: `${month}-01`, p_to: lastDay(month) }),
     s.from("profiles").select("id", { count: "exact", head: true }).eq("restaurant_id", session.profile.restaurant_id),
+    itcRead(),
   ]);
+  const { data: itcRows, error: itcErr } = await pinned(session, itcMine, itcRead);
+  const itc = itcErr ? null : { count: (itcRows ?? []).length, gst: Math.round((itcRows ?? []).reduce((a, e) => a + Number(e.gst_amount ?? 0), 0) * 100) / 100 };
   return (
     <>
       <PageHeader eyebrow="Tax, audit & documents" title="Tax" accent="& GST" sub="What to file, when" />
       <TaxClient tab={tab} month={month} fy={fy} today={today} restaurant={session.restaurant as never} role={session.profile.role}
-        filings={(filings ?? []) as never} docs={(docs ?? []) as never} summary={(summary ?? null) as never} summaryError={sumErr?.message ?? null} staffCount={staff ?? 0} />
+        filings={(filings ?? []) as never} docs={(docs ?? []) as never} summary={(summary ?? null) as never} summaryError={sumErr?.message ?? null} staffCount={staff ?? 0} itc={itc} />
     </>
   );
 }

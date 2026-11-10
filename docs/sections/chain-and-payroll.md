@@ -61,6 +61,9 @@ pay for the people who sign in, from their attendance, with PF and ESI when swit
 
 ## Before you edit
 
+- **Outlets and Payroll are add-ons (`chain`, `payroll`, 0175, 2026-11-09)** — Master control switches each per plan or
+  property; the menu row, the layout's redirect and the page's own guard all read `session.features`
+  ([admin-and-membership.md](admin-and-membership.md)).
 - **`acting_profile()` follows the outlet too (0107).** It returned the home outlet, so the eight staff functions built on
   it (invites, logins, access) acted on — or refused — the wrong outlet when an owner worked in another. Fixed there.
 - **Review fixes (0108).** A new outlet made from a trial ends with that trial, and an outlet whose membership has

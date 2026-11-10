@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "./supabase/server";
-import type { Role, PropertyType, Membership } from "@dineflow/shared";
+import { featuresFor, hasFeature, type Role, type PropertyType, type Membership } from "@dineflow/shared";
 
 export type Session = {
   userId: string;
   isAdmin: boolean;
   actingAs?: string | null;
+  /** the add-ons on for this property (0175): its own list, else its plan's, else the defaults — see features.ts */
+  features: string[];
   /** tickets over 15 minutes old, for the bell badge — carried here so the shell needs no second query */
   lateKots: number;
   membership: Membership | "none";
@@ -28,6 +30,7 @@ type Bundle = {
   user_id: string | null; user_name: string | null; is_admin: boolean; acting_as: string | null;
   profile: Session["profile"] | null; restaurant: Session["restaurant"] | null;
   membership: Membership | "none"; late_kots: number; theme?: "dark" | "paper" | "colour" | "bright" | "royal" | "system" | null; outlets?: Outlet[];
+  plan_features?: string[] | null;   // 0175: the plan's add-ons (null: the defaults)
 };
 
 /**
@@ -80,8 +83,13 @@ export const requireSession = cache(async function requireSession(opts: { allowL
   const membership = b.membership === "none" ? "expired" : b.membership;
   // the master is never locked out of a property it is inspecting
   if (!opts.allowLocked && !b.acting_as && (membership === "expired" || membership === "suspended")) redirect("/membership");
-  return { userId: b.user_id, isAdmin: b.is_admin, membership, profile: prof, restaurant: b.restaurant, actingAs: b.acting_as, lateKots: b.late_kots ?? 0, theme: b.theme ?? null, outlets: b.outlets ?? [] };
+  // the add-ons (0175): the property's own list, else its plan's (both ride in the bundle), else the defaults
+  const features = featuresFor(b.restaurant.property_type, (b.restaurant.enabled_features as string[] | null | undefined) ?? null, b.plan_features ?? null);
+  return { userId: b.user_id, isAdmin: b.is_admin, membership, profile: prof, restaurant: b.restaurant, actingAs: b.acting_as, lateKots: b.late_kots ?? 0, theme: b.theme ?? null, outlets: b.outlets ?? [], features };
 });
+
+/** Is this add-on on for the property the session stands in? (0175 — Master control's switch, per plan and per property.) */
+export const featureOn = (s: Pick<Session, "features">, key: string) => hasFeature(s.features, key);
 
 export async function requireAdmin() {
   const supabase = await createClient();

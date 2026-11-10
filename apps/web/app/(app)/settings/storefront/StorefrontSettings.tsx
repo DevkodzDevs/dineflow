@@ -10,7 +10,7 @@ import { GoogleLinks } from "./GoogleLinks";
 import { saveOffer, deleteOffer } from "../../reservations/actions";
 import { copyText } from "@/lib/clipboard";
 
-type R = { booking_slug: string | null; name: string; property_type?: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; photos: string[]; is_listed: boolean; dining_enabled: boolean; delivery_enabled: boolean; takeaway_enabled: boolean; opens_at: string; closes_at: string; slot_minutes: number; seats_per_slot: number | null; min_order: number; delivery_fee: number; packing_charge: number; delivery_radius_km: number; rating: number | null; rating_count: number };
+type R = { booking_slug: string | null; name: string; property_type?: string; tagline: string | null; cuisines: string[]; price_for_two: number | null; photos: string[]; is_listed: boolean; dining_enabled: boolean; delivery_enabled: boolean; takeaway_enabled: boolean; opens_at: string; closes_at: string; slot_minutes: number; seats_per_slot: number | null; min_order: number; delivery_fee: number; online_prepay?: boolean; packing_charge: number; delivery_radius_km: number; rating: number | null; rating_count: number };
 type O = { id: string; title: string; kind: string; value: number; scope: string; min_order: number; from_time: string | null; to_time: string | null; code: string | null; is_active: boolean };
 
 export function StorefrontSettings({ base, r, offers, ai = false }: { base: string; r: R; offers: O[]; ai?: boolean }) {
@@ -72,6 +72,14 @@ export function StorefrontSettings({ base, r, offers, ai = false }: { base: stri
               <Field label="Packing ₹"><input name="packing_charge" type="number" className="num" defaultValue={r.packing_charge} /></Field>
               <Field label="Radius km"><input name="delivery_radius_km" type="number" className="num" defaultValue={r.delivery_radius_km} /></Field>
             </div>
+            {/* 0181: pay before the kitchen starts. Needs a connected gateway; without one dine_order quietly skips it. */}
+            <label className="mt-4 flex items-start gap-3 cursor-pointer rounded-xl border border-[var(--color-line)] px-4 py-3">
+              <input type="checkbox" name="online_prepay" defaultChecked={!!r.online_prepay} className="mt-0.5 h-4 w-4 accent-[var(--color-tint)]" />
+              <span className="min-w-0">
+                <span className="font-medium">Ask guests to pay by UPI before the order is accepted</span>
+                <span className="block text-xs text-[var(--color-label-2)] mt-0.5">Delivery and takeaway from your own page. The order waits until the money lands, so a prank or a mis-tap never reaches the kitchen. Needs a connected payment gateway (Settings → Pay by scanning the bill); dine-in and room orders are never held.</span>
+              </span>
+            </label>
           </Card>
           <Button size="lg" loading={pending}>Save storefront</Button>
         </form>

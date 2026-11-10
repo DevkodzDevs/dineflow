@@ -1,7 +1,9 @@
 /**
  * Tally Prime / ERP 9 import files (Gateway of Tally → Import → Vouchers / Masters), built from `tally_days`
  * (0105). One Sales voucher a business day for the paid dining bills — debit each way they were paid, credit sales
- * (taxable value), service charge, CGST, SGST, round-off — and one Payment voucher for each expense. Every voucher
+ * (taxable value, with the day's packing & delivery charges — they are part of the taxable supply, 0146), service charge,
+ * CGST, SGST, round-off — one Payment voucher for each expense, and (2026-11-09) one Credit Note voucher for each credit
+ * note (0146): sales, CGST and SGST debited, the money that went back credited to cash, UPI, card or Other. Every voucher
  * balances to the paisa; anything that does not fit a named ledger (a promise fee, an over-payment) goes to
  * "Other income" so the voucher still balances rather than being refused.
  *
@@ -21,7 +23,11 @@ const GROUP: Record<keyof Omit<Ledgers, "expense_prefix">, string> = {
   room_sales: "Sales Accounts", guest_services: "Sales Accounts", discount: "Indirect Expenses", debtors: "Sundry Debtors",
 };
 
-export type SaleDay = { day: string; bills: number; first: number; last: number; taxable: number; service: number; cgst: number; sgst: number; round_off: number; total: number; paid: Record<string, number> };
+export type SaleDay = { day: string; bills: number; first: number; last: number; taxable: number; service: number; cgst: number; sgst: number; round_off: number; total: number; paid: Record<string, number>;
+  /** the day's packing & delivery charges (bills.charges, 0146) — read beside tally_days by the action; part of sales */
+  charges?: number };
+/** A credit note (0146): the refund, its taxable part and tax, and how the money went back. */
+export type CreditVoucher = { id: string; no: number; day: string; amount: number; taxable: number; cgst: number; sgst: number; method: string; bill_no: number | null };
 export type Expense = { id: string; day: string; category: string; payee: string | null; amount: number; gst: number; method: string; ref: string | null };
 type Line = { ledger: string; amount: number };   // + credit, − debit
 
@@ -36,8 +42,9 @@ export function saleLines(d: SaleDay, L: Ledgers): Line[] {
   const pay: Record<string, string> = { cash: L.cash, upi: L.upi, card: L.card, other: L.other };
   for (const [m, a] of Object.entries(d.paid ?? {})) if (r2(a)) lines.push({ ledger: pay[m] ?? L.other, amount: -r2(a) });
   const credit = (ledger: string, a: number) => { if (r2(a)) lines.push({ ledger, amount: r2(a) }); };
-  credit(L.sales, d.taxable); credit(L.service, d.service); credit(L.cgst, d.cgst); credit(L.sgst, d.sgst); credit(L.round_off, d.round_off);
-  credit(L.other_income, r2(d.total) - r2(d.taxable) - r2(d.service) - r2(d.cgst) - r2(d.sgst) - r2(d.round_off));
+  const charges = r2(d.charges ?? 0);   // packing & delivery: a taxable part of the sale, not other income
+  credit(L.sales, r2(d.taxable) + charges); credit(L.service, d.service); credit(L.cgst, d.cgst); credit(L.sgst, d.sgst); credit(L.round_off, d.round_off);
+  credit(L.other_income, r2(d.total) - r2(d.taxable) - charges - r2(d.service) - r2(d.cgst) - r2(d.sgst) - r2(d.round_off));
   const off = r2(lines.reduce((a, l) => a + l.amount, 0));
   if (off) lines.push({ ledger: L.other_income, amount: -off });   // paid ≠ billed: the gap, so it balances
   return merge(lines);
@@ -86,6 +93,21 @@ export function expenseLines(e: Expense, L: Ledgers): Line[] {
   return lines;
 }
 
+/** A credit note's Credit Note voucher lines: sales (the taxable part), CGST and SGST debited — the sale is reversed by
+ *  that much — and the money given back credited to the ledger it left (cash, UPI, card, else Other). taxable + CGST +
+ *  SGST is the amount by construction (0146 issue_credit_note); any paise between go to Round off so it balances. */
+export function creditLines(c: CreditVoucher, L: Ledgers): Line[] {
+  const pay: Record<string, string> = { cash: L.cash, upi: L.upi, card: L.card, other: L.other, bank: L.bank };
+  const lines: Line[] = [];
+  if (r2(c.taxable)) lines.push({ ledger: L.sales, amount: -r2(c.taxable) });
+  if (r2(c.cgst)) lines.push({ ledger: L.cgst, amount: -r2(c.cgst) });
+  if (r2(c.sgst)) lines.push({ ledger: L.sgst, amount: -r2(c.sgst) });
+  lines.push({ ledger: pay[c.method] ?? L.other, amount: r2(c.amount) });
+  const off = r2(lines.reduce((a, l) => a + l.amount, 0));
+  if (off) lines.push({ ledger: L.round_off, amount: -off });
+  return merge(lines);
+}
+
 /** Two lines to the same ledger become one (Tally accepts both, but one reads better). */
 function merge(lines: Line[]) {
   const m = new Map<string, number>(); for (const l of lines) m.set(l.ledger, r2((m.get(l.ledger) ?? 0) + l.amount));
@@ -99,10 +121,11 @@ const envelope = (company: string, report: "Vouchers" | "All Masters", body: str
   `<?xml version="1.0" encoding="UTF-8"?>\n<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>${report}</REPORTNAME>${company ? `<STATICVARIABLES><SVCURRENTCOMPANY>${esc(company)}</SVCURRENTCOMPANY></STATICVARIABLES>` : ""}</REQUESTDESC><REQUESTDATA>${body}</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>\n`;
 
 /** The vouchers file. */
-export function tallyVouchers(company: string, days: SaleDay[], expenses: Expense[], L: Ledgers, stays: StayInvoice[] = []) {
+export function tallyVouchers(company: string, days: SaleDay[], expenses: Expense[], L: Ledgers, stays: StayInvoice[] = [], credits: CreditVoucher[] = []) {
   const v = [
     ...days.filter((d) => r2(d.total)).map((d) => voucher("Sales", `DF-S-${ymd(d.day)}`, d.day, `DineFlow: ${d.bills} dining bill${d.bills === 1 ? "" : "s"}, #${d.first}–#${d.last}`, saleLines(d, L))),
     ...stays.filter((x) => r2(x.total)).map((x) => voucher("Sales", `DF-${x.kind === "facility" ? "F" : "R"}-${x.no}`, x.day, `DineFlow ${x.kind === "facility" ? "facility" : "stay"} invoice #${x.no}${x.guest ? ` · ${x.guest}` : ""}${x.gstin ? ` · GSTIN ${x.gstin}` : ""}`, stayLines(x, L))),
+    ...credits.filter((c) => r2(c.amount)).map((c) => voucher("Credit Note", `DF-CN-${c.no}`, c.day, `DineFlow credit note CN-${String(c.no).padStart(4, "0")}${c.bill_no ? ` · bill #${c.bill_no}` : ""} · refund by ${c.method}`, creditLines(c, L))),
     ...expenses.map((e) => voucher("Payment", `DF-E-${e.id.slice(0, 8)}`, e.day, `DineFlow expense: ${e.category}${e.payee ? ` · ${e.payee}` : ""}${e.ref ? ` · ref ${e.ref}` : ""}`, expenseLines(e, L))),
   ];
   return { xml: envelope(company, "Vouchers", v.join("")), count: v.length };

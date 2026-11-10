@@ -1,12 +1,16 @@
 import { taxLabels, COMPOSITION_NOTE } from "@dineflow/shared";
-/** ESC/POS builder — produces the raw bytes a thermal printer understands (58 mm = 32 chars, 80 mm = 48). */
+import { fold } from "./rasterCore";
+/** ESC/POS builder — produces the raw bytes a thermal printer understands (58 mm = 32 chars, 48 on 80 mm).
+ *  This is the TEXT path: code page 0, so only ASCII prints as written — a Tamil or Hindi name needs the
+ *  raster path (`raster.ts`), which `script.ts` picks when the content asks for it. */
 const enc = new TextEncoder();
 export class Escpos {
   private parts: number[] = [];
   constructor(public width: 58 | 80 = 80) { this.raw(0x1b, 0x40); this.raw(0x1b, 0x74, 0x00); }   // init + codepage
   get cols() { return this.width === 58 ? 32 : 48; }
   raw(...b: number[]) { this.parts.push(...b); return this; }
-  text(s: string) { this.parts.push(...enc.encode(s)); return this; }
+  /* an em dash, a curly quote or "₹" is folded to ASCII — on code page 0 the UTF-8 bytes printed as three symbols */
+  text(s: string) { this.parts.push(...enc.encode(fold(s))); return this; }
   line(s = "") { return this.text(s + "\n"); }
   align(a: "l" | "c" | "r") { return this.raw(0x1b, 0x61, a === "c" ? 1 : a === "r" ? 2 : 0); }
   bold(on: boolean) { return this.raw(0x1b, 0x45, on ? 1 : 0); }
@@ -36,7 +40,7 @@ export class Escpos {
 }
 
 const money = (n: number) => Number(n).toFixed(2);
-export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null; extras?: string[] }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; promiseFee?: number; promiseWaived?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string; loyalty?: string; charges?: number; taxLines?: { rate: number; base: number; cgst: number; sgst: number }[]; operatorNote?: string };   // 0146: packing & delivery; the tax per rate; the 9(5) line   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback
+export type BillData = { restaurant: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; legalName?: string | null; gstScheme?: string | null; stateCode?: string | null }; billNo: string; when: string; tableOrType: string; cashier?: string; items: { name: string; qty: number; price: number; note?: string | null; extras?: string[] }[]; subtotal: number; discount: number; cgst: number; sgst: number; service?: number; promiseFee?: number; promiseWaived?: number; roundOff: number; total: number; payments?: { method: string; amount: number }[]; footer?: string; upiQr?: string; qrPng?: string; offline?: boolean; gstRate?: number; sac?: string; loyalty?: string; charges?: number; taxLines?: { rate: number; base: number; cgst: number; sgst: number }[]; operatorNote?: string; title?: string };   // 0146: packing & delivery; the tax per rate; the 9(5) line   // upiQr: the pay link, drawn by the printer itself; qrPng: the same code pre-drawn, for the browser fallback   // title: "Tax invoice" / "Bill of supply" / "Bill" — billTitle() in @dineflow/shared, the same words as the screen receipt
 
 export function buildBill(d: BillData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
@@ -45,6 +49,7 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   if (d.restaurant.phone) p.line(d.restaurant.phone);
   if (d.restaurant.legalName && d.restaurant.legalName !== d.restaurant.name) p.line(d.restaurant.legalName);
   if (d.restaurant.gstin) p.line("GSTIN " + d.restaurant.gstin);
+  if (d.title) p.bold(true).line(d.title.toUpperCase()).bold(false);   // the legal name of the document, as the screen receipt shows it
   p.rule("=").align("l").row(d.billNo, d.tableOrType).row(d.when, d.cashier ? "by " + d.cashier : "");
   if (d.offline) p.align("c").bold(true).line("** OFFLINE COPY **").bold(false).align("l");
   p.rule();
@@ -74,7 +79,9 @@ export function buildBill(d: BillData, width: 58 | 80 = 80) {
   return p.bytes();
 }
 
-export type KotData = { kotNo: string; when: string; tableOrType: string; waiter?: string; station?: string | null; items: { name: string; qty: number; note?: string | null; extras?: string[]; station?: string | null }[]; reprint?: boolean; heading?: string };
+/* localName: the dish as the kitchen reads it, printed under the name. No menu column carries one yet (2026-11-09), so
+   nothing sets it — the ticket prints the name exactly as the till sent it, which may already be Tamil or Hindi. */
+export type KotData = { kotNo: string; when: string; tableOrType: string; waiter?: string; station?: string | null; items: { name: string; qty: number; note?: string | null; extras?: string[]; station?: string | null; localName?: string | null }[]; reprint?: boolean; heading?: string };
 export function buildKot(d: KotData, width: 58 | 80 = 80) {
   const p = new Escpos(width);
   p.align("c").size(2).bold(true).line(d.reprint ? "KOT (REPRINT)" : "KOT").size(1).line(d.station ?? "").bold(false).rule("=").align("l");
@@ -82,7 +89,7 @@ export function buildKot(d: KotData, width: 58 | 80 = 80) {
   if (d.heading) p.bold(true).line(d.heading).bold(false);
   if (d.waiter) p.line("Waiter: " + d.waiter);
   p.rule();
-  d.items.forEach((i) => { p.size(2).bold(true).line(`${i.qty}  ${i.name}`.slice(0, p.cols)).size(1).bold(false); i.extras?.forEach((x) => p.wrap("   " + x.toUpperCase(), 3)); if (i.note) p.wrap("   > " + i.note.toUpperCase(), 3); });
+  d.items.forEach((i) => { p.size(2).bold(true).line(`${i.qty}  ${i.name}`.slice(0, p.cols)).size(1).bold(false); if (i.localName && i.localName !== i.name) p.bold(true).wrap("   " + i.localName, 3).bold(false); i.extras?.forEach((x) => p.wrap("   " + x.toUpperCase(), 3)); if (i.note) p.wrap("   > " + i.note.toUpperCase(), 3); });
   p.rule().feed(1).cut();
   return p.bytes();
 }

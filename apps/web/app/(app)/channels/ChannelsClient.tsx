@@ -10,6 +10,7 @@ import { saveOta, deleteOta, setRates, setRatesOnly, pushChannel, sendTestOrder 
 import { suggestRate } from "@/lib/rates";
 import { todayIST } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wand2 } from "lucide-react";
+import { useFeature } from "@/components/shell/Features";
 import { Upload, Send, Clock, Link2, Loader2 } from "lucide-react";
 import { saveChannel, deleteChannel } from "../online-orders/actions";
 import { copyText } from "@/lib/clipboard";
@@ -38,6 +39,9 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
   /* which OTA action is running ("sync:all", "sync:<id>", "push:<id>") — its section spins — and which
      card's link was just copied */
   const [busy, setBusy] = useState<string | null>(null); const [copied, setCopied] = useState<string | null>(null);
+  /* 0175: Push rates / Push menu and the partner API fields belong to connections that are not built — push_channel answers
+     "Not sent" — so they show only while Master control has the add-on on (off by default) */
+  const pushOn = useFeature("ota-push");
   /* OTA cards one, two or three across (2026-10-23, the owner); three unless this device keeps another (df-view:ota-cols).
      The room still decides first: a card is never narrower than the card can hold, and a phone is always one. */
   const cols = useViewPref("ota-cols", ["1", "2", "3"] as const); const across = cols.chosen ?? "3";
@@ -102,7 +106,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
           const hue = OC_HUE[c.kind] ?? "--color-blue"; const hook = `${base}/api/webhooks/aggregator/${c.webhook_token}`; const shown = hook.replace(/^https?:\/\//, "");
           const acts: StripAction[] = [
             { key: "test", label: "Test order", icon: <Send />, tone: "go", disabled: pending, aria: `Send a test order · ${c.label}`, onClick: () => start(async () => { const r = await sendTestOrder(c.webhook_token, base); setMsg("error" in r ? r.error! : "Test order sent"); }) },
-            { key: "menu", label: "Push menu", icon: <Upload />, disabled: pending, aria: `Push menu · ${c.label}`, onClick: () => start(async () => { const r = await pushChannel(c.id, "menu"); setMsg("error" in r ? r.error! : r.message!); }) },
+            ...(pushOn ? [{ key: "menu", label: "Push menu", icon: <Upload />, disabled: pending, aria: `Push menu · ${c.label}`, onClick: () => start(async () => { const r = await pushChannel(c.id, "menu"); setMsg("error" in r ? r.error! : r.message!); }) } as StripAction] : []),
             { key: "edit", label: "Edit", icon: <Pencil />, aria: `Edit · ${c.label}`, onClick: () => setEditOc(c) },
             { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", aria: `Remove · ${c.label}`, onClick: async () => { if (await ask({ title: `Remove ${c.label}?`, body: "This channel stops taking orders here.", ok: "Remove", tone: "danger", icon: "trash" })) start(async () => { const r = await deleteChannel(c.id); if ("error" in r) toast(r.error!, "err"); }); } },
           ];
@@ -179,7 +183,7 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             /* the card's footer strip (CardStrip): Sync, the main move, on a soft green; Remove in red */
             const acts: StripAction[] = [
               { key: "sync", label: syncing ? "Syncing…" : "Sync", icon: <RefreshCw className={cn(syncing && "animate-spin")} />, tone: "go", onClick: () => syncNow(c.id), disabled: !!busy, aria: `Sync · ${c.label}` },
-              { key: "push", label: pushing ? "Pushing…" : "Push rates", icon: pushing ? <Loader2 className="animate-spin" /> : <Upload />, onClick: () => pushRates(c.id), disabled: !!busy, aria: `Push rates · ${c.label}` },
+              ...(pushOn ? [{ key: "push", label: pushing ? "Pushing…" : "Push rates", icon: pushing ? <Loader2 className="animate-spin" /> : <Upload />, onClick: () => pushRates(c.id), disabled: !!busy, aria: `Push rates · ${c.label}` } as StripAction] : []),
               { key: "edit", label: "Edit", icon: <Pencil />, onClick: () => setEditOta(c), aria: `Edit · ${c.label}` },
               { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", onClick: async () => { if (await ask({ title: `Remove ${c.label}?`, body: "Rooms stop syncing with it.", ok: "Remove", tone: "danger", icon: "trash" })) start(async () => { const r = await deleteOta(c.id); if ("error" in r) toast(r.error!, "err"); }); }, aria: `Remove · ${c.label}` },
             ];
@@ -247,8 +251,8 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
             <Field label="Outlet ID"><input name="outlet_ref" className="num" defaultValue={editOc?.outlet_ref ?? ""} /></Field>
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOc?.commission_pct ?? 22} /></Field>
             <Field label="Prep time (min)"><input name="prep_minutes" type="number" className="num" defaultValue={editOc?.prep_minutes ?? 20} /></Field></div>
-          <Field label="Partner API base (optional)" hint="Partner accounts only"><input name="api_base" defaultValue={editOc?.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
-          <Field label="API key (optional)" hint={editOc?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOc?.has_api_key ? "Saved" : "••••••"} /></Field>
+          {pushOn && <><Field label="Partner API base (optional)" hint="Partner accounts only"><input name="api_base" defaultValue={editOc?.api_base ?? ""} placeholder="https://api.urbanpiper.com" /></Field>
+          <Field label="API key (optional)" hint={editOc?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOc?.has_api_key ? "Saved" : "••••••"} /></Field></>}
           <div className="flex gap-4 text-sm"><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="auto_accept" defaultChecked={editOc?.auto_accept} /> Auto-accept matched orders</label><label className="flex items-center gap-2 normal-case"><input type="checkbox" name="is_live" defaultChecked={editOc?.is_live} /> Live</label></div>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
       </Sheet>
@@ -257,13 +261,13 @@ export function ChannelsClient({ base, ota, orderChannels, types, log, avail, re
           {editOta?.id && <input type="hidden" name="id" value={editOta.id} />}
           <div className="grid grid-cols-2 gap-3"><Field label="OTA"><select name="kind" defaultValue={editOta?.kind ?? "booking_com"}><option value="booking_com">Booking.com</option><option value="makemytrip">MakeMyTrip / Goibibo</option><option value="airbnb">Airbnb</option><option value="agoda">Agoda</option><option value="expedia">Expedia</option><option value="ical">Any iCal calendar</option><option value="other">Other</option></select></Field>
             <Field label="Label"><input name="label" defaultValue={editOta?.label} required placeholder="Booking.com — Deluxe" /></Field>
-            <Field label="Mode"><select name="mode" defaultValue={editOta?.mode ?? "ical"}><option value="ical">iCal (works today)</option><option value="api">API (needs credentials)</option></select></Field>
+            <Field label="Mode"><select name="mode" defaultValue={editOta?.mode ?? "ical"}><option value="ical">iCal (works today)</option>{pushOn && <option value="api">API (needs credentials)</option>}</select></Field>
             <Field label="Room type"><select name="room_type_id" defaultValue={editOta?.room_type_id ?? ""}><option value="">All types</option>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
             <Field label="Commission %"><input name="commission_pct" type="number" step="0.1" className="num" defaultValue={editOta?.commission_pct ?? 15} /></Field>
-            <Field label="Rate offset %" hint="Higher protects direct rates"><input name="rate_offset_pct" type="number" step="0.1" className="num" defaultValue={editOta?.rate_offset_pct ?? 0} /></Field></div>
+            {pushOn && <Field label="Rate offset %" hint="Higher protects direct rates"><input name="rate_offset_pct" type="number" step="0.1" className="num" defaultValue={editOta?.rate_offset_pct ?? 0} /></Field>}</div>
           <Field label="Their iCal link"><input name="import_url" className="num text-xs min-w-0" defaultValue={editOta?.import_url ?? ""} placeholder="https://ical.booking.com/v1/export?t=..." /></Field>
-          <Field label="API base (API mode)"><input name="api_base" defaultValue={editOta?.api_base ?? ""} /></Field>
-          <div className="grid grid-cols-2 gap-3"><Field label="Property ID"><input name="hotel_ref" className="num" defaultValue={editOta?.hotel_ref ?? ""} /></Field><Field label="API key" hint={editOta?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOta?.has_api_key ? "Saved" : "••••••"} /></Field></div>
+          {pushOn && <><Field label="API base (API mode)"><input name="api_base" defaultValue={editOta?.api_base ?? ""} /></Field>
+          <div className="grid grid-cols-2 gap-3"><Field label="Property ID"><input name="hotel_ref" className="num" defaultValue={editOta?.hotel_ref ?? ""} /></Field><Field label="API key" hint={editOta?.has_api_key ? "Saved. Blank keeps it." : undefined}><input name="api_key" type="password" autoComplete="new-password" placeholder={editOta?.has_api_key ? "Saved" : "••••••"} /></Field></div></>}
           <label className="flex items-center gap-2 text-sm normal-case"><input type="checkbox" name="is_live" defaultChecked={editOta?.is_live} /> Live</label>
           <Button className="w-full" disabled={pending}>Save channel</Button></form>
       </Sheet>

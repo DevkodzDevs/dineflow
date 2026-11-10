@@ -1,5 +1,5 @@
 import { Plug, Armchair, HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck, QrCode, Tv, MessagesSquare, UserRoundCog, LifeBuoy, MonitorSmartphone, type LucideIcon } from "lucide-react";
-import { positionByKey, type Role } from "@dineflow/shared";
+import { positionByKey, featureByKey, hasFeature, type Role } from "@dineflow/shared";
 
 /** A menu row. `key` names it (React, the phone bar's pins); `mod` is the module whose tick opens it when that is
  *  not its own key — Join by QR is a Pulse screen, the Order board a Kitchen one. */
@@ -7,9 +7,13 @@ export type Section = { key: string; href: string; label: string; Icon: LucideIc
 /** `grant` (0140): the row is the owner's, and anyone the owner gave that grant — Connections is no module at all; Reports is a
  *  module *and* needs the grant (the ceilings still apply). `hasGrant` in lib/auth.ts is the same rule. */
 export const grantOpens = (role: string, grants: string[] | null | undefined, g: string) => role === "owner" || (grants ?? []).includes(g);
-/** The module rows this person may open: the module (when the row has one), and the grant (when it needs one). */
-export const rowsFor = (mods: string[], role: string, grants: string[] | null | undefined) =>
-  ITEMS.filter((i) => (i.grant ? grantOpens(role, grants, i.grant) : true) && (i.key === "connections" ? true : mods.includes(modOf(i))));
+/** A row whose key names an add-on (0175) shows only while the property has it on; a row that is no add-on always may.
+ *  `features` undefined or null: nothing is switched off (tests, the flow-test catalogue). */
+export const featureOpens = (key: string, features?: readonly string[] | null) => !featureByKey(key) || hasFeature(features, key);
+/** The module rows this person may open: the module (when the row has one), the grant (when it needs one), and the add-on
+ *  (when the row is one — Connections, the Tables screen). */
+export const rowsFor = (mods: string[], role: string, grants: string[] | null | undefined, features?: readonly string[] | null) =>
+  ITEMS.filter((i) => (i.grant ? grantOpens(role, grants, i.grant) : true) && (i.key === "connections" ? true : mods.includes(modOf(i))) && featureOpens(i.key, features));
 
 /**
  * Every section of the app, in menu order — one list for the sidebar, the phone's More sheet and
@@ -98,10 +102,11 @@ export const deptOf = (role: string, department?: string | null, position?: stri
   department || positionByKey(position)?.dept || ROLE_DEPT[role] || null;
 const sees = (i: Fresh, role: string, dept: string | null) =>
   i.roles.includes(role) && (!i.depts || role === "owner" || role === "manager" || !!i.anyDept?.includes(role) || (dept ? i.depts.includes(dept) : role === "supervisor" || role === "supervisor_2"));
-/** The "Insights & control" links this person sees — by their role, and for the team-bound ones by their team. */
-export const freshFor = (role: Role, dept: string | null = null) => FRESH.filter((i) => sees(i, role, dept));
+/** The "Insights & control" links this person sees — by their role, for the team-bound ones by their team, and (0175) only
+ *  while the property has that add-on on. */
+export const freshFor = (role: Role, dept: string | null = null, features?: readonly string[] | null) => FRESH.filter((i) => sees(i, role, dept) && featureOpens(i.key, features));
 /** May this person open that screen? The page's own guard — the same answer as the link. */
-export const seesFresh = (key: string, role: string, dept: string | null) => { const i = FRESH.find((x) => x.key === key); return !!i && sees(i, role, dept); };
+export const seesFresh = (key: string, role: string, dept: string | null, features?: readonly string[] | null) => { const i = FRESH.find((x) => x.key === key); return !!i && sees(i, role, dept) && featureOpens(key, features); };
 
 /**
  * The menu's last group (2026-10-20). Help & support — talking to DineFlow — is the owner's alone; everyone else has
@@ -114,9 +119,9 @@ const END: Section[] = [
   { key: "voice", href: "/voice", label: "Feedback & complaints", Icon: MessagesSquare },
   { key: "help", href: "/help", label: "Help & support", Icon: LifeBuoy },
 ];
-export const endFor = (role: Role): Section[] => role === "owner"
+export const endFor = (role: Role, features?: readonly string[] | null): Section[] => (role === "owner"
   ? [{ ...END[0], label: "My profile" }, { ...END[1], label: "Staff feedback" }, END[2]]
-  : [END[0], END[1]];
+  : [END[0], END[1]]).filter((i) => featureOpens(i.key, features));   // 0175: Staff feedback is an add-on
 
 /**
  * **My day** (`/home`, 2026-10-20 — the owner: "when a staff member signs in they go straight to their own dashboard"):

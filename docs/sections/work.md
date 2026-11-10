@@ -92,6 +92,8 @@ the raiser told when it is done, recurring rounds.
 
 ## Before you edit
 
+- **Work itself is never switched off; Work records is an add-on (`work-records`, 0175, 2026-11-09)** — off, the row goes and
+  `/work-records` lands on `/work`. `housekeeping/actions.ts` lost `setTask` the same day (nothing imported it).
 - **Keep one shape for a job across tables, rooms and work.** `JobCard`'s `Job` type is the union; `work_board` emits the
   same keys for all three (a room repair fakes `title`, `priority 2`, `due_at = created + 2 h`). A new field goes in the
   function and the type together.

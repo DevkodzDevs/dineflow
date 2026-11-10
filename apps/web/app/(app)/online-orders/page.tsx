@@ -22,7 +22,8 @@ export default async function OnlineOrders() {
   const base = process.env.NEXT_PUBLIC_CLOUD_URL || `${h.get("x-forwarded-proto") ?? "http"}://${host}`;
   const [session, { data: orders }, { data: channels }, { data: menu }, { data: deliveries }, { data: riders }] = await Promise.all([
     requireSession(),
-    s.from("online_orders").select("*, order_channels(kind, label, prep_minutes)").gte("placed_at", new Date(Date.now() - 2 * 86400000).toISOString()).order("placed_at", { ascending: false }),
+    // 0181: a prepaid order the guest has not paid for yet is held (pay_status 'pending') — it is not the counter's until the money lands
+    s.from("online_orders").select("*, order_channels(kind, label, prep_minutes)").neq("pay_status", "pending").gte("placed_at", new Date(Date.now() - 2 * 86400000).toISOString()).order("placed_at", { ascending: false }),
     s.from("order_channels").select("id, kind, label, is_live"),
     // every dish, with both switches: the order cards map names to them, the Dishes online sheet switches them (0132)
     s.from("menu_items").select("id, name, price, is_veg, is_available, online_available, categories(name)").eq("is_active", true).order("name"),

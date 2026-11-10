@@ -40,6 +40,20 @@ a reading pane beside the list; on a phone that pane becomes a sheet.
 
 ## Before you edit
 
+- **UPI that marks the bill paid by itself (0178, 2026-11-09).** With Razorpay connected (Settings → Payments / Connections) the
+  bill screen's *Scan to pay* code is a **dynamic UPI QR Razorpay issues for exactly the UPI amount** — `POST
+  /api/pay/<token>/qr` (service role; `single_use`, `fixed_amount`, closes itself after 2 h; remembered on the bill as
+  `pay_qr_id / pay_qr_url / pay_qr_amount`, 0178) — and the pill reads *UPI · settles by itself*. The guest pays, Razorpay sends
+  **`qr_code.credited`** to `/api/webhooks/razorpay`, `lib/payqr.ts` `qrCredit()` checks the code is the one issued for this
+  bill and captured in full → `pay_link_settle` (the card path); a part payment (a split) becomes the guest's *I've paid* note
+  instead. `useLive(["bills"])` flips the screen to Paid. The amount on this screen changing re-issues the code (the route
+  closes the old one); *Mark paid* at the counter sends `DELETE` so the code cannot be paid as well; a 404 (no gateway, or no
+  service role on the server) keeps the plain `upi://pay` code exactly as before. **The owner must subscribe the webhook to
+  `qr_code.credited` as well as `payment.captured`** — Settings and Connections say so. `payqr.test.ts` (5) covers the decision.
+- **The on-screen receipt reads two add-ons (0175, 2026-11-09).** `Receipt.tsx` asks `useFeature`: *Receipt extras*
+  (`receipt-extras`, on by default) draws the amount in words, the barcode and "goods once sold are not returnable"; *White
+  label* (`white-label`, off by default — a paid thing the master switches) removes "Powered by DineFlow". Outside the
+  `(app)` layout there is no provider and nothing is switched off. The thermal builder (`escpos.ts`) never printed these.
 - **Billing keeps its own design** (owner, 2026-10-15): when the other Dining screens moved to Simple Service
   (see [design-system.md](design-system.md)), Billing was built that way too and then put back exactly as it
   was, at the owner's request — the list with Ready to bill and Today's bills, and the bill page with Discount /
@@ -239,3 +253,53 @@ from the screens (`fence150.mjs`): the kitchen's Start cooking → Ready → Ser
   *INV-00044 is ready to print*, **Print invoice** (`[data-done-print]`, large) and Front desk. After the print dialog closes
   (`afterprint`) it reads *Invoice printed* and **Back to Front desk** becomes the filled key (`[data-done-back]`), Print again beside it.
   The panel is `no-print`. On a 412 phone the Print key is on the first screen. The Guest / GSTIN sheet's phone is the shared `PhoneInput`.
+
+## Tamil on the thermal printer (2026-11-09 — raster printing, the bill's title)
+
+- **Two ways to print, chosen per printer** (`lib/print/script.ts`). The TEXT path (`escpos.ts`) sets code page 0 and
+  writes bytes, so only ASCII prints as written — "மசால் தோசை" or "पनीर टिक्का" came out as symbols on every thermal
+  printer. The RASTER path (`raster.ts`) draws the same bill or KOT onto a canvas with the device's own fonts
+  (`"Noto Sans Tamil", "Noto Sans Devanagari", "Noto Sans", system-ui`; 24 px body on 80 mm, 22 on 58, the name and the
+  total larger and bold, a dashed rule, the pay QR drawn module by module from `qrcode`), thresholds it to black and white
+  (no dithering — text would smear) and sends `GS v 0` bands: `1D 76 30 00 xL xH yL yH <data>`, width in bytes =
+  ceil(px/8) — 72 for 576 px (80 mm), 48 for 384 px (58 mm) — rows MSB first, 1 = ink, **256 rows a band** (a single band
+  may carry 65535, but a cheap printer's buffer is small), then `ESC d 4` and `GS V 66 0` as the text path cuts. The
+  frame is `ESC @`, `ESC a 0`, the bands, feed, cut. `rasterCore.ts` holds the DOM-free parts — `packRow`,
+  `rasterCommand`, `wrapText` (breaks on spaces, a word wider than the paper between graphemes via `Intl.Segmenter`
+  with a fallback, never inside "கொ"), `fold`, `needsRaster`, `thresholdRows`, `trimBlankTail` — and
+  **`lib/print/raster.test.ts` (21)** pins them: a 576-px row packs to 72 bytes MSB first, the header for 576 × 24 is
+  `1D 76 30 00 48 00 18 00`, 300 rows split into two bands (256 + 44), a 255 × 256-row band, wrapping keeps every
+  character and Tamil / Devanagari graphemes whole, auto-detection, the title line, the folded em dash.
+- **`script` on `PrinterCfg`** (`transport.ts`): `auto` (default) · `text` · `raster`. **Auto prints text unless the bill or
+  ticket, serialised (the QR fields left out) and folded, has any character outside Latin-1** (`needsRaster`) — an English
+  place keeps the fast path, a Tamil dish flips to the picture. A browser-dialog printer always takes the text build (its
+  bytes are never sent). The choice is **per device, in localStorage** (`df-print-script:<printer id>`), because the picture
+  depends on this machine's fonts and `printers` has no column for it — no migration. A per-property column is the next
+  step if an owner wants one choice for every till.
+- **The callers moved to `buildBillBytes(d, cfg)` / `buildKotBytes(d, cfg)`** (`script.ts`, async; they `import("./raster")`
+  only when a picture is needed): `usePrinter.ts`'s `printBill` and `printKot` each changed one line; `BillClient`,
+  `PosClient`, `KitchenClient` and `OnlineClient` are untouched beyond the title below.
+- **The text path folds what code page 0 cannot print** (`Escpos.text()` → `fold`): — – → `-`, curly quotes → straight,
+  … → `...`, • → `*`, × → `x`, ₹ → `Rs`. A held course's heading ("HELD — fire from…") used to print three symbols.
+- **The thermal bill carries its legal title** — `BillData.title`, printed bold and centred under the GSTIN on the text,
+  raster and browser-HTML prints: *Tax invoice*, *Bill of supply* (composition) or *Bill*, from `billTitle()` in
+  `@dineflow/shared`, exactly as the screen receipt (`Receipt.tsx`) shows it. `BillClient.billData()` passes it. Before
+  this the paper never said what document it was (the 2026-10-13 review).
+- **Size.** A raster 80 mm bill is ~72 bytes a row at ~35 px a line: 40 item lines with a QR come to roughly 1,800–2,000
+  rows ≈ 130–145 KB. Fine over USB (4 KB transfers) and the LAN bridge (2 MB cap); over Bluetooth `transport.ts` writes 180-byte
+  chunks 20 ms apart, so that bill takes 15–20 s — the Settings hint says so, and *Text only* is one tap away.
+- **Not verified on paper** (2026-11-09): no printer was attached. Verified: 318 unit tests (raster.test.ts 21), typecheck,
+  lint 0 errors, and a Node smoke run of `renderBillRaster` / `renderKotRaster` against a fake canvas (well-formed frame,
+  72- and 48-byte rows, auto picks raster for Tamil and text for English). First thing to do with a real printer: Settings →
+  Printers → **Test print** on Auto and on Text only, 80 and 58 mm.
+
+## 2026-11-10 — WhatsApp after the write (0177)
+- `billing/actions.ts` queues, never sends: **`settleBill`** → `tellCustomerPaid` (the bill's `customer_id` → the customer's phone →
+  `dineflow_bill` with `/pay/<pay_token>` on `NEXT_PUBLIC_CLOUD_URL` (else this request's host), dedupe `bill:<id>:paid`);
+  **`voidBill`** → `alertOwner("void")` (every void, to `restaurants.brief_whatsapp`, dedupe `void:<id>`); **`generateBill`** with a
+  discount or coupon → `alertOwner("discount")` with `amount` = the bill's `discount_amount` — `wa_queue` drops it under the owner's
+  line (Settings → WhatsApp); **`closeDay`** → `tellOwnerDayClosed` (the `day_closes` row's sales, bills and cash; voids counted by
+  `voided_at` on the IST day; cash expected vs counted when `shiftClose` passed them — it now calls
+  `closeDay(date, note, { counted, expected: counted − float − variance })`; dedupe `day_close:<date>:<sales>:<counted|day>`).
+- Every helper reads the rows the RPC just wrote through the caller's own client, checks `featureOn(session, "whatsapp")` first,
+  and swallows its own errors: a bill is paid, a day closed, whether or not the message goes. [api-routes.md](api-routes.md).

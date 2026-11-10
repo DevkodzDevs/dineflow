@@ -5,7 +5,7 @@ import { z } from "zod";
 import { ROLE_LABEL, MODULES_BY_TYPE } from "@dineflow/shared";
 import { allow } from "@/lib/ratelimit";
 import { createClient } from "@/lib/supabase/server";
-import { requireSession, assistAllowed, type Session } from "@/lib/auth";
+import { requireSession, assistAllowed, featureOn, type Session } from "@/lib/auth";
 import { PERIODS, TOPICS, TOPIC_KEYS, topicsFor, modulesOf, reach, range, read, nice, type Period, type Result } from "@/lib/assist/data";
 import { diagnose, type Finding } from "@/lib/assist/diagnose";
 import { intent } from "@/lib/assist/intent";
@@ -114,6 +114,7 @@ export async function POST(req: Request) {
   const { path, messages, mode } = body;
   const session = await requireSession(); const s = await createClient();
   if (!assistAllowed(session.profile)) return NextResponse.json({ error: "Assist is not switched on for you. Ask the owner or a manager." }, { status: 403 });   // 0138
+  if (!featureOn(session, "ai")) return NextResponse.json({ error: "AI help is not switched on for this property." }, { status: 403 });   // 0175: the add-on
   // each chat turn is a paid call on our key: a cap per person, and on what they can send
   if (mode !== "insights" && !allow(`assist:${session.profile.id ?? session.restaurant.id}`, 30, 10 * 60_000)) return NextResponse.json({ error: "Too many questions. Try again in a few minutes." }, { status: 429 });
   const tooLong = (messages ?? []).some((m) => typeof m?.content !== "string" || m.content.length > 2000);

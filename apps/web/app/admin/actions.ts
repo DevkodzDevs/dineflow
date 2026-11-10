@@ -165,6 +165,20 @@ export async function setModules(restaurantId: string, modules: string[] | null)
   if (error) return { error: error.message };
   revalidatePath("/admin"); return { ok: true as const };
 }
+/** 0175, master only: the property's own add-on list. NULL = follow its plan. */
+export async function setFeatures(restaurantId: string, features: string[] | null) {
+  const s = await createClient();
+  const { error } = await s.rpc("master_set_features", { p_restaurant_id: restaurantId, p_features: features });
+  if (error) return { error: error.message };
+  revalidatePath("/admin"); revalidatePath("/", "layout"); return { ok: true as const };   // the property's shell reads the list on its next request
+}
+/** 0175, master only: the add-ons a plan includes. NULL = the defaults (features.ts). */
+export async function setPlanFeatures(key: string, features: string[] | null) {
+  const s = await createClient();
+  const { error } = await s.rpc("admin_set_plan_features", { p_key: key, p_features: features });
+  if (error) return { error: error.message };
+  revalidatePath("/admin"); revalidatePath("/", "layout"); return { ok: true as const };
+}
 /** 0151: a plan's prices (Master control → Keys → Plans & prices). Empty = not sold online for that period. */
 export async function setPlan(key: string, label: string, monthly: number | null, yearly: number | null, active: boolean) {
   const s = await createClient();

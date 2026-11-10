@@ -50,6 +50,8 @@ ticks what they did, with their name and the time, and a missed day shows.
 
 ## Before you edit
 
+- **Expenses and Checklists are add-ons (`expenses`, `tasks`, 0175, 2026-11-09)** — switched in Master control per plan or
+  property; the menu row and the layout's redirect follow `session.features` ([admin-and-membership.md](admin-and-membership.md)).
 - **Ticks are stored by position.** Reordering a list mid-day moves today's ticks onto other duties; the editor
   says so. If this ever matters, key duties by a stable id. Since 0108 a run counts only ticks that are still duties
   (`_checklist_ticked`), and saving a shorter list trims today's ticks beyond its end.

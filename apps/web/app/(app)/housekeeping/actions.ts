@@ -1,13 +1,10 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { wrote } from "@/lib/wrote";
 const bump = () => ["/housekeeping", "/rooms", "/frontdesk", "/dashboard", "/cleaning"].forEach((p) => revalidatePath(p));
 
-export async function setTask(id: string, status: "pending" | "in_progress" | "done") {
-  const s = await createClient(); const bad = wrote(await s.from("housekeeping_tasks").update({ status }).eq("id", id).select("id"), "That task could not be changed.");
-  if (bad) return bad; bump(); return { ok: true };
-}
+// setTask (a direct status write on housekeeping_tasks) left on 2026-11-09: nothing imported it; the boards move a job
+// through the Work and Cleaning RPCs.
 export async function addTask(roomId: string, kind: string, notes: string) { const s = await createClient(); { const { error } = await s.from("housekeeping_tasks").insert({ room_id: roomId, kind, notes }); if (error) return { error: error.message }; } if (kind === "maintenance") await s.from("rooms").update({ status: "maintenance" }).eq("id", roomId).neq("status", "occupied"); bump(); return { ok: true }; }
 
 /** Housekeeping's word from the corridor: dirty, clean, or pickup (a touch-up after a short occupancy). */

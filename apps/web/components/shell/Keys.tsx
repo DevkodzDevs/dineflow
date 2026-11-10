@@ -18,7 +18,7 @@ const typingIn = (t: EventTarget | null) => {
 };
 const visible = (e: Element) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
 
-export function Keys({ modules, role, dept = null, grants = null }: { modules: string[]; role: Role; dept?: string | null; grants?: string[] | null }) {
+export function Keys({ modules, role, dept = null, grants = null, features = null }: { modules: string[]; role: Role; dept?: string | null; grants?: string[] | null; features?: readonly string[] | null }) {
   const path = usePathname(); const router = useRouter();
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
@@ -112,7 +112,7 @@ export function Keys({ modules, role, dept = null, grants = null }: { modules: s
   }, [screen, go, path, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>
-    <GoTo open={palette} onClose={() => setPalette(false)} modules={modules} role={role} dept={dept} grants={grants} onHelp={() => { setPalette(false); setHelp(true); }} />
+    <GoTo open={palette} onClose={() => setPalette(false)} modules={modules} role={role} dept={dept} grants={grants} features={features} onHelp={() => { setPalette(false); setHelp(true); }} />
     <Sheet open={help} onClose={() => setHelp(false)} title="Keyboard shortcuts">
       <div className="space-y-5" data-keys-help>
         {screen?.hints && <KeyList title={`On ${screen.title}`} rows={screen.hints} />}
@@ -140,19 +140,19 @@ function KeyList({ title, rows, cols }: { title: string; rows: [string, string][
 }
 
 /** Ctrl/⌘ K — type a few letters of any section this person can open, ↑ ↓, Enter. */
-function GoTo({ open, onClose, modules, role, dept, grants, onHelp }: { open: boolean; onClose: () => void; modules: string[]; role: Role; dept: string | null; grants: string[] | null; onHelp: () => void }) {
+function GoTo({ open, onClose, modules, role, dept, grants, features, onHelp }: { open: boolean; onClose: () => void; modules: string[]; role: Role; dept: string | null; grants: string[] | null; features: readonly string[] | null; onHelp: () => void }) {
   const router = useRouter();
   const [q, setQ] = useState(""); const [i, setI] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const all = useMemo(() => [
     ...(modules.includes("orders") ? [{ href: "/orders/new", label: "New order", hint: "N" }] : []),
     ...(myDayFor(role) ? [{ href: "/home", label: "My day", hint: "" }] : []),
-    ...rowsFor(modules, role, grants).map((s) => ({ href: s.href, label: s.label, hint: GO.find((g) => g.href === s.href) ? `G ${GO.find((g) => g.href === s.href)!.key.toUpperCase()}` : "" })),
-    ...freshFor(role, dept).map((s) => ({ href: s.href, label: s.label, hint: "" })),
+    ...rowsFor(modules, role, grants, features).map((s) => ({ href: s.href, label: s.label, hint: GO.find((g) => g.href === s.href) ? `G ${GO.find((g) => g.href === s.href)!.key.toUpperCase()}` : "" })),
+    ...freshFor(role, dept, features).map((s) => ({ href: s.href, label: s.label, hint: "" })),
     // the menu's last group: the person's own settings, Feedback & complaints, and the owner's Help & support (2026-10-20)
-    ...endFor(role).map((s) => ({ href: s.href, label: s.label, hint: s.key === "help" ? "G H" : s.key === "voice" ? "G F" : "" })),
+    ...endFor(role, features).map((s) => ({ href: s.href, label: s.label, hint: s.key === "help" ? "G H" : s.key === "voice" ? "G F" : "" })),
     { href: "#keys", label: "Keyboard shortcuts", hint: "?" },
-  ], [modules, role, dept, grants]);
+  ], [modules, role, dept, grants, features]);
   const list = all.filter((x) => { const t = q.trim().toLowerCase(); return !t || x.label.toLowerCase().includes(t) || x.label.toLowerCase().split(/\s+/).map((w) => w[0]).join("").startsWith(t); });
   useEffect(() => { if (open) { setQ(""); setI(0); setTimeout(() => input.current?.focus(), 30); } }, [open]);
   useEffect(() => { setI(0); }, [q]);

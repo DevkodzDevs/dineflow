@@ -27,7 +27,7 @@ type Order = { id: string; order_no: number; status: string; type: string; custo
   /* 0146: what an online order brought — its offer's money off, packing & delivery — and the channel it came through */
   discount_amount?: number | null; extra_charges?: number | null; offer_title?: string | null; channel_id?: string | null; order_channels?: { kind: string } | null };
 type CreditNote = { id: string; cn_no: number; amount: number; taxable: number; cgst: number; sgst: number; refund_method: string; reason: string; created_at: string };
-type Bill = { id: string; bill_no: number; promise_fee?: number; promise_waived?: number; promise_kept?: boolean | null; points_redeemed?: number; points_earned?: number; coupon_code?: string | null; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; payments: { method: string; amount: number; ref: string | null }[];
+type Bill = { id: string; bill_no: number; promise_fee?: number; promise_waived?: number; promise_kept?: boolean | null; points_redeemed?: number; points_earned?: number; coupon_code?: string | null; subtotal: number; discount_pct: number; discount_amount: number; service_charge: number; cgst: number; sgst: number; round_off: number; total: number; status: string; created_at: string; paid_at: string | null; pay_token?: string | null; pay_claim_ref?: string | null; pay_claimed_at?: string | null; pay_qr_id?: string | null; pay_qr_url?: string | null; pay_qr_amount?: number | null; payments: { method: string; amount: number; ref: string | null }[];
   charges?: number | null; service_charge_on?: boolean | null; tax_lines?: TaxLine[] | null; gst_by_operator?: boolean | null; credit_notes?: CreditNote[] } | null;
 type Rest = { name: string; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; legal_name?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; fssai_no?: string | null; loyalty_enabled?: boolean; loyalty_point_value?: number; loyalty_min_redeem?: number; upi_vpa?: string | null; upi_payee?: string | null };
 
@@ -58,6 +58,11 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
   const [qrPng, setQrPng] = useState<string | undefined>(undefined);
   useEffect(() => { let on = true; if (!payUrl) { setQrPng(undefined); return; } qrDataUrl(payUrl, 180).then((png) => { if (on) setQrPng(png); }); return () => { on = false; }; }, [payUrl]);
   useLive(["bills"], 15000);   // flips to Paid by itself when the guest pays by card, or claims a UPI payment
+  /* 0178: with Razorpay connected, the counter's code is a dynamic UPI QR Razorpay issues for exactly this amount — the bill
+     settles by itself when the money lands (qr_code.credited → /api/webhooks/razorpay). 404 from the route means no gateway:
+     the plain upi://pay code stays, as before. The code already issued rides in on the bill row. */
+  const [dyn, setDyn] = useState<{ id: string; url: string; amount: number } | null>(bill?.pay_qr_id && bill.pay_qr_url && bill.pay_qr_amount ? { id: bill.pay_qr_id, url: bill.pay_qr_url, amount: Number(bill.pay_qr_amount) } : null);
+  const [dynOff, setDynOff] = useState(false);
   // what the paper says about the business: the registration it files under, and the words the rules require
   const printRest = { name: restaurant.name, address: restaurant.address, phone: restaurant.phone, gstin: restaurant.gstin, fssai: restaurant.fssai_no ?? null, legalName: restaurant.legal_name ?? null, gstScheme: restaurant.gst_scheme ?? null, stateCode: restaurant.gst_state_code ?? null };
   const receiptData = (): ReceiptData => ({
@@ -80,7 +85,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
     loyalty: bill && Number(bill.points_earned ?? 0) > 0 ? `You earned ${Math.round(Number(bill.points_earned))} points on this visit` : undefined,
     offline: !online,
   });
-  const billData = () => ({ restaurant: printRest, gstRate: printRate, sac: SAC.restaurant, charges: Number(bill?.charges ?? 0), taxLines: shownTax, operatorNote: eco ? OPERATOR_NOTE : undefined, billNo: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL", when: new Date(bill?.created_at ?? Date.now()).toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? `${order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"}${order.token_no ? ` · Token ${order.token_no}` : ""}${order.delivery_address ? ` · ${order.delivery_address}` : ""}`, cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null, extras: lineExtras(i) })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), service: Number(bill?.service_charge ?? 0), promiseFee: Number(bill?.promise_fee ?? 0), promiseWaived: Number(bill?.promise_waived ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng, loyalty: bill && Number(bill.points_earned ?? 0) > 0 ? `You earned ${Math.round(Number(bill.points_earned))} points on this visit` : undefined });
+  const billData = () => ({ restaurant: printRest, title: billTitle(restaurant.gst_scheme, restaurant.gstin, bill?.status === "paid"), gstRate: printRate, sac: SAC.restaurant, charges: Number(bill?.charges ?? 0), taxLines: shownTax, operatorNote: eco ? OPERATOR_NOTE : undefined, billNo: bill ? `BILL-${String(bill.bill_no).padStart(4, "0")}` : "BILL", when: new Date(bill?.created_at ?? Date.now()).toLocaleString("en-IN"), tableOrType: order.dining_tables?.name ?? `${order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery"}${order.token_no ? ` · Token ${order.token_no}` : ""}${order.delivery_address ? ` · ${order.delivery_address}` : ""}`, cashier, items: order.order_items.filter((i) => i.status !== "cancelled").map((i) => ({ name: i.name_snapshot, qty: i.qty, price: Number(i.price_snapshot), note: i.notes ?? null, extras: lineExtras(i) })), subtotal: Number(bill?.subtotal ?? 0), discount: Number(bill?.discount_amount ?? 0), service: Number(bill?.service_charge ?? 0), promiseFee: Number(bill?.promise_fee ?? 0), promiseWaived: Number(bill?.promise_waived ?? 0), cgst: Number(bill?.cgst ?? 0), sgst: Number(bill?.sgst ?? 0), roundOff: Number(bill?.round_off ?? 0), total: Number(bill?.total ?? 0), payments: pays.map((p) => ({ method: p.method, amount: Number(p.amount) })), offline: !online, upiQr: payUrl ?? undefined, qrPng, loyalty: bill && Number(bill.points_earned ?? 0) > 0 ? `You earned ${Math.round(Number(bill.points_earned))} points on this visit` : undefined });
   const router = useRouter(); const [pending, start] = useTransition(); const [err, setErr] = useState<string | null>(null);
   /* A composition dealer or an unregistered business may not collect tax, so the preview must not
      show any — the bill the server raises will not have it either. */
@@ -160,6 +165,24 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
   const upiQr = bill ? upiUri({ vpa: restaurant.upi_vpa, payee: restaurant.upi_payee || restaurant.name, amount: upiAmount, note: `BILL-${String(bill.bill_no).padStart(4, "0")} ${restaurant.name}` }) : null;
   const where = order.dining_tables?.name ?? (order.type === "takeaway" ? "Takeaway" : order.type === "room_service" ? "Room service" : "Delivery");
   const [copied, setCopied] = useState(false);
+  /* the dynamic code follows the UPI amount on this screen: asked for half a second after the rows settle, re-issued when the
+     amount changes (the route closes the old one), left alone once it matches */
+  const upiWanted = pays.some((p) => p.method === "upi");
+  const qrToken = bill && bill.status === "unpaid" ? bill.pay_token ?? null : null;
+  useEffect(() => {
+    if (!qrToken || !online || dynOff || !upiWanted || !(upiAmount > 0)) return;
+    if (dyn && Math.abs(dyn.amount - upiAmount) < 0.005) return;
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/pay/${qrToken}/qr`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount: upiAmount }) });
+        if (r.status === 404 || r.status === 503) { setDynOff(true); return; }   // no gateway on this property, or none on this server
+        const j = (await r.json()) as { id?: string; image_url?: string; amount?: number };
+        if (r.ok && j.id && j.image_url) setDyn({ id: j.id, url: j.image_url, amount: Number(j.amount ?? upiAmount) });
+      } catch { /* the plain code stays */ }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [qrToken, online, dynOff, upiWanted, upiAmount, dyn]);
+  const liveQr = !!dyn && !dynOff && upiWanted && !!qrToken;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
@@ -351,6 +374,8 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
               if (settled.some((p) => p.method === "cash" && p.amount > 0)) { try { await openDrawer(); } catch { /* a drawer that will not open is not a payment problem */ } }
               // offline, or no answer at all: kept on the device and sent later (settle_bill returns at once for a bill already paid)
               const r = await sendOrQueue(() => settleBill(bill.id, settled), () => enqueue("settle_bill", { bill_id: bill.id, payments: settled, client_id: crypto.randomUUID() }, `Payment · ${bill.bill_no}`));
+              // 0178: settled here, so the dynamic UPI code must not stay payable as well
+              if (dyn && bill.pay_token) void fetch(`/api/pay/${bill.pay_token}/qr`, { method: "DELETE" }).catch(() => {});
               if (!r) { router.push("/billing?queued=1"); return; }
               if ("error" in r) setErr(r.error!);   // the action's answer is the re-rendered bill — no second render
             })}>Mark paid{!online && " (offline)"}</Button>
@@ -365,7 +390,7 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
               card or cash chosen it is the bill link instead, which opens this bill on their phone with
               UPI and card. The link's actions sit in a footer strip, edge to edge. */}
           {(upiQr || payUrl) && (() => {
-            const mode = upiQr ? "upi" : "link";
+            const mode = liveQr || upiQr ? "upi" : "link";
             const upiChosen = pays.some((p) => p.method === "upi");
             return (
               <Card className="mt-4 !p-0 overflow-hidden" data-scan-pay data-mode={mode}>
@@ -374,19 +399,27 @@ export function BillClient({ order, bill, restaurant, cashier, inHouse = [], bil
                     <h3 className="text-[15px] font-semibold flex items-center gap-1.5"><QrCode size={16} /> {mode === "upi" ? "Scan to pay" : "Scan the bill"}</h3>
                     <span className="h-6 px-2.5 rounded-full text-[11px] font-semibold inline-flex items-center gap-1.5 shrink-0"
                       style={{ background: mode === "upi" ? "var(--color-green-2)" : "var(--color-fill)", color: mode === "upi" ? "var(--color-tint)" : "var(--color-label-2)" }}>
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />{mode === "upi" ? "UPI · exact amount" : "UPI or card"}
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />{liveQr ? "UPI · settles by itself" : mode === "upi" ? "UPI · exact amount" : "UPI or card"}
                     </span>
                   </div>
-                  {/* the code: a white tile a phone's camera reads at arm's length */}
-                  <div className="mt-5 rounded-[24px] bg-white p-3 ring-1 ring-black/5 shadow-[0_18px_40px_-18px_rgb(0_0_0/.75)]" data-qr>
-                    <QR value={upiQr ?? payUrl!} size={216} />
+                  {/* the code: a white tile a phone's camera reads at arm's length. 0178: Razorpay's own image for the dynamic code. */}
+                  <div className="mt-5 rounded-[24px] bg-white p-3 ring-1 ring-black/5 shadow-[0_18px_40px_-18px_rgb(0_0_0/.75)]" data-qr data-live-qr={liveQr ? dyn!.id : undefined}>
+                    {liveQr
+                      // eslint-disable-next-line @next/next/no-img-element -- Razorpay serves the image; it is not ours to optimise
+                      ? <img src={dyn!.url} alt={`UPI QR for ${formatINR(dyn!.amount)}`} width={216} height={216} className="block h-[216px] w-[216px] object-contain" />
+                      : <QR value={upiQr ?? payUrl!} size={216} />}
                   </div>
                   {mode === "upi" ? (<>
                     <div className="mt-5 text-[11px] font-semibold uppercase tracking-[.16em] text-steel">Any UPI app</div>
                     <div className="font-display num text-[44px] leading-none mt-1.5" data-upi-amount>{formatINR(upiAmount)}</div>
                     {upiAmount + 0.01 < totals.total && <div className="text-xs text-steel mt-1.5 num">UPI part of {formatINR(totals.total)}</div>}
-                    <div className="mt-3 text-[13px] leading-snug max-w-full"><span className="text-steel">To </span><b className="break-words">{restaurant.upi_payee || restaurant.name}</b></div>
-                    <div className="text-xs text-steel num break-all">{restaurant.upi_vpa}</div>
+                    {liveQr ? (<>
+                      <div className="mt-3 text-[13px] leading-snug max-w-full"><span className="text-steel">To </span><b className="break-words">{restaurant.name}</b><span className="text-steel"> · Razorpay</span></div>
+                      <div className="text-xs text-[var(--color-tint)] font-semibold mt-1">Marks itself paid when the money lands</div>
+                    </>) : (<>
+                      <div className="mt-3 text-[13px] leading-snug max-w-full"><span className="text-steel">To </span><b className="break-words">{restaurant.upi_payee || restaurant.name}</b></div>
+                      <div className="text-xs text-steel num break-all">{restaurant.upi_vpa}</div>
+                    </>)}
                     <div className="mt-3.5 flex flex-wrap justify-center gap-1.5 text-[11px] font-semibold">
                       {["Google Pay", "PhonePe", "Paytm", "BHIM"].map((a) => <span key={a} className="h-6 px-2.5 rounded-full bg-[var(--color-fill)] inline-flex items-center">{a}</span>)}
                     </div>

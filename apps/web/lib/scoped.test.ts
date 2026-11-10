@@ -50,6 +50,6 @@ describe("each login loads its own data (2026-10-21)", () => {
   it("the help-desk count is asked only where Help & support is shown", () => {
     const nav = readFileSync(resolve(__dirname, "../components/shell/Nav.tsx"), "utf8");
     expect(nav.match(/useSupportUnread\(path\)/g)).toBeNull();
-    expect(nav.match(/useSupportUnread\(path, endFor\(role\)\.some\(\(i\) => i\.key === "help"\)\)/g)?.length).toBe(2);
+    expect(nav.match(/useSupportUnread\(path, endFor\(role, features\)\.some\(\(i\) => i\.key === "help"\)\)/g)?.length).toBe(2);   // 0175: endFor takes the add-ons
   });
 });

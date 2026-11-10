@@ -1,8 +1,9 @@
 # Tax and compliance (India)
 
 **Route** `/tax`
-**Files** `app/(app)/tax/page.tsx` · `TaxClient.tsx` · `Guide.tsx` · `actions.ts`
-**Reads** `restaurants`, `profiles`, `compliance_filings`, `compliance_docs`
+**Files** `app/(app)/tax/page.tsx` · `TaxClient.tsx` · `Guide.tsx` · `TallyTab.tsx` · `actions.ts` · `lib/gstr1.ts` · `lib/tally.ts`
+**Reads** `restaurants`, `profiles`, `compliance_filings`, `compliance_docs`, `expenses` (input credit); for the GSTR-1 file
+and the Tally credit notes `bills`, `order_items` (+ `menu_items.hsn`), `invoices`, `credit_notes`, `order_channels` (through RLS, pinned for the master)
 **Writes** `gst_summary`, `tally_days`, `tally_settings_save` (0105)
 **Shared** `packages/shared/src/tax.ts`
 
@@ -41,6 +42,59 @@ The property's CA can be recorded (`ca_name`, `ca_firm`, `ca_membership_no`, `ca
   to *Guest services*; CGST, SGST, round-off credited; each payment debited by how it was paid (read from its words —
   UPI, card, cash, else Other), what is still owed to *Sundry debtors*, a discount to *Discount allowed*. Dining invoices
   are their bills and stay in the daily voucher. The day book has a *Stays* sheet.
+
+- **GSTR-1 JSON (2026-11-09, "your CA gets one file on the 1st").** Returns has a *GSTR-1 JSON* button beside the CSV
+  (`[data-gstr1]`, file `GSTR1-<GSTIN>-<MMYYYY>.json`, the offline tool's import format: `gstin`, `fp`, `version`, `hash`
+  "hash", then the sections below). `actions.ts` **gstr1Month(month)** gathers the month — who may ask is whoever may open
+  Tax at all (the layout's `modulesFor` test: owner, manager, supervisor) or the master, whose reads are pinned to the
+  property (`pinTo`, the lib/scoped.ts pattern); PostgREST answers 1,000 rows a call, so every list is paged (`allRows`).
+  **No migration**: bills, invoices, credit notes and order lines are read through their RLS; the figures come from the same
+  columns `gst_summary` reads. `lib/gstr1.ts` **buildGstr1(input)** is pure and shapes it (13 tests in `gstr1.test.ts`:
+  paisa reconciliation, two-decimal amounts, B2B by ctin, HSN by code + rate, document series, DD-MM-YYYY, IST month edges).
+  Under the button a line says where the file goes (*Import in the GST offline tool or the portal → Returns → GSTR-1 →
+  Import*) and, when `restaurants.ca_email` is set, **Send to CA** (`[data-send-ca]`, a `mailto:` with the subject and the
+  month's figures in the body — the files are attached by hand); without an email it links to Profile & CA. After a
+  build, `[data-gstr1-result]` prints the file name and what it holds (B2B count, B2CS value, HSN rows, the 9(5) value kept
+  out) so the owner can see it agree with the table above.
+
+  **One date basis per section — the one gst_summary (0146) already uses, so the file and the screen never disagree:**
+  - *dining bills* → the business day the bill was **paid** (`paid_at`, IST). A dining bill is the tax invoice and is issued
+    when settled; gst_summary's dining rows use the same day.
+  - *stay, facility and B2B tax invoices* → the day **issued** (`issued_at`, IST): a tax invoice's date is its time of
+    supply (CGST Act s.13(2)); gst_summary's stay and B2B rows use it.
+  - *credit notes* → the day issued (`created_at`, IST), as gst_summary's `credit_notes` row.
+
+  **Where each rupee goes:** `b2b` (table 4) every invoice with a buyer GSTIN, grouped by that GSTIN, one `inv` each with
+  items per rate — a dining bill that has such an invoice is here and **not again** in b2cs (the screen's dining rows count
+  it in both places; the file cannot). `b2cs` (table 7, `INTRA`/`OE`, pos = the property's state) the rest per rate: bills by
+  their `tax_lines` (an older bill as one part at its blended rate, exactly as gst_summary) and stay / facility invoices
+  without a GSTIN. `cdnr` (9B, `ntty` "C") credit notes whose bill had a B2B invoice (buyer read from `invoice_id`); a
+  credit note to a walk-in is **netted in b2cs** at its rate — table 7 is net of notes, and an intra-state B2C note has no
+  `cdnur`. `nil` (table 8) anything charged at 0% (composition / unregistered / a 0% dish). `hsn` (table 12, `data[]`):
+  dishes by `menu_items.hsn` (996331 when none) and rate, quantities summed, each bill's per-rate taxable value shared
+  across its dishes of that rate by price × qty (the paise on the largest), so the HSN table adds up to b2b + b2cs to the
+  paisa; `uqc` OTH for a 99… SAC, NOS for goods; a stay's lines by their SAC. `doc_issue` (table 13): `doc_num` 1 holds the
+  month's BILL- series and INV- series (from, to, totnum, cancel = voided + gaps, net), `doc_num` 5 the CN- series.
+  **Section 9(5)** (Swiggy / Zomato / ONDC, `gst_by_operator`): the operator paid the GST, so the value is **kept out of b2cs
+  and hsn** exactly as gst_summary keeps it out, and reported in `summary.eco` for the CA; table 14(b) (`supeco.paytx`) wants
+  the operator's GSTIN, which DineFlow does not hold, so that entry is written only when one is supplied (`operatorGstins`).
+  Facility invoices (`kind = 'facility'`) are in the file though gst_summary's stay rows read only `kind = 'stay'` — none
+  exist yet (no function writes that kind); if one ever does, the screen's total and the file will differ by it.
+  Phase-III of the portal (2025) splits table 12 into B2B and B2C tabs; the file writes the single `data` list the offline
+  tool has always taken — if an import rejects it, that split is the first thing to add.
+
+- **Input credit card (`[data-gst-itc]`, Returns, 2026-11-09).** `page.tsx` sums `expenses.gst_amount` for the month (0105;
+  voided ones out, `pinned` for the master) and the card shows output tax (the month's CGST + SGST less credit notes),
+  input GST from expenses, and the net — "Credit carried" when input exceeds output. Labelled *estimate — your CA confirms
+  eligibility*: a 5% restaurant has no ITC at all, and blocked credits (s.17(5)) are the CA's call. Purchases (0001/0073)
+  record no GST, so there is nothing to add from them. A login whose role cannot read expenses sees no card.
+
+- **Tally: credit notes and charges (2026-11-09).** `tallyDays` reads, beside the RPC, the period's `credit_notes` (with
+  the bill number) and the paid bills with `charges > 0`, pinned for the master; `lib/tally.ts` writes one **Credit Note**
+  voucher a note (DF-CN-n, on its day: sales, CGST, SGST debited; the refund credited to Cash / UPI / Card / Other by
+  `refund_method`; a paisa gap to Round off) and credits the day's packing & delivery `charges` to the **sales** ledger, not
+  Other income (they are part of the taxable supply). `tallyVouchers(…, stays, credits)`; 4 more tests (14 in all). The
+  day book has a *Credit notes* sheet; the totals tile reads *Stays · credit notes*.
 
 - **Overview → Registration is a `dl` with an `auto` label column and short labels** ("GST rates",
   "CA"). The rates are a wrapping row of chips. As one line in the display face they could not
@@ -93,7 +147,7 @@ The property's CA can be recorded (`ca_name`, `ca_firm`, `ca_membership_no`, `ca
 ## Verify
 
 ```
-pnpm --filter @dineflow/web test      # the shared tax maths
+pnpm --filter @dineflow/web test      # the shared tax maths; gstr1.test.ts (13) and tally.test.ts (14)
 pnpm --filter @dineflow/web typecheck
 node diag.mjs "/tax?tab=overview@1194|…"   # all six tabs × 1366/1194/1024/834/412: 0 spill,
                                            # 0 overlapping text, 0 text past its card

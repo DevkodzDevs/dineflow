@@ -3,6 +3,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { bookingSchema, paymentSchema } from "@dineflow/shared";
 import { z } from "zod";
+import { requireSession, featureOn } from "@/lib/auth";
+import { queueWhatsApp } from "@/lib/whatsapp";
+import { waDate, firstName } from "@/lib/wa";
 const bump = () => ["/frontdesk", "/rooms", "/housekeeping", "/guests", "/dashboard"].forEach((p) => revalidatePath(p, "layout"));
 
 export async function createBooking(input: unknown) {
@@ -12,7 +15,21 @@ export async function createBooking(input: unknown) {
   if (error) return { error: error.message };
   // a returning guest: what was asked for because their record lacked it (2026-11-04 — all five are required) is kept on the record
   if (d.guest.id) await s.from("guests").update({ phone: d.guest.phone, email: d.guest.email, id_type: d.guest.id_type, id_last4: d.guest.id_last4 }).eq("id", d.guest.id);
+  await tellGuestBooked(s, data as string);   // 0177: queued, best effort — the booking is made
   bump(); return { ok: true, id: data as string };
+}
+/** 0177: a room booked at the desk → the guest's WhatsApp (dineflow_booking), queued through wa_queue after create_booking. Nothing
+ *  when the add-on, the settings or the switch is off, or the guest has no number; never fails the action. */
+async function tellGuestBooked(s: Awaited<ReturnType<typeof createClient>>, id: string) {
+  try {
+    const session = await requireSession(); if (!featureOn(session, "whatsapp")) return;
+    const { data: b } = await s.from("bookings").select("booking_no, check_in, check_out, rooms(number), guests(full_name, phone)").eq("id", id).maybeSingle();
+    const g = (b?.guests as unknown as { full_name: string; phone: string | null } | null) ?? null;
+    const room = (b?.rooms as unknown as { number: string } | null)?.number;
+    if (!b || !g?.phone) return;
+    await queueWhatsApp(s, session, { kind: "booking", to: g.phone, dedupe: `booking:${id}`,
+      params: [firstName(g.full_name ?? "") || "Guest", session.restaurant.name, room ?? "-", waDate(b.check_in), waDate(b.check_out), String(b.booking_no)] });
+  } catch { /* the booking stands either way */ }
 }
 /** Moves a booking that has not checked in to another room — offered when its own room is not ready. */
 export async function moveRoom(id: string, roomId: string) { const s = await createClient(); const { data, error } = await s.rpc("booking_move_room", { p_booking: id, p_room: roomId }); if (error) return { error: error.message }; bump(); return { ok: true as const, number: data as string }; }

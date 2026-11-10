@@ -44,6 +44,8 @@ thanks**, with or without their name; the owner reads it, answers, and moves it 
 
 ## Before you edit
 
+- **Staff feedback is an add-on (`voice`, 0175, 2026-11-09).** Off, `endFor` drops the row for everyone and the layout
+  redirects `/voice` — [admin-and-membership.md](admin-and-membership.md).
 - **Never put the author on an anonymous row**, not even in a trigger or a view: the owner reads `staff_voice` directly.
 - **The owner cannot send** (`voice_send` refuses: there is no one above them).
 - Times are `clock_timestamp()` — a reply and the status it moves are written in one call (the 0096 lesson).

@@ -6,7 +6,7 @@ import { Card, cn, useToast, ask } from "@/components/ui";
 import { QR } from "@/components/QR";
 import { screenKey } from "../actions";
 
-const SHOW = [["both", "Menu + tokens"], ["menu", "Menu only"], ["tokens", "Tokens only"]] as const;
+const SHOW = [["both", "Menu + tokens"], ["menu", "Menu only"], ["tokens", "Tokens only"], ["queue", "Waiting list board"]] as const;
 
 /**
  * Three self-service pieces (0103). The TV link is a secret: anyone holding it sees the menu and the token numbers,
@@ -16,7 +16,8 @@ const SHOW = [["both", "Menu + tokens"], ["menu", "Menu only"], ["tokens", "Toke
 export function ScreensClient({ base, name, slug, initialKey }: { base: string; name: string; slug: string | null; initialKey: string | null }) {
   const toast = useToast(); const [pending, start] = useTransition();
   const [key, setKey] = useState(initialKey); const [show, setShow] = useState<(typeof SHOW)[number][0]>("both");
-  const tv = key ? `${base}/screen/${key}${show === "both" ? "" : `?show=${show}`}` : null;
+  // 0179: the waiting-list board lives under the same key (/screen/<key>/queue) — rotating the key switches it off too
+  const tv = key ? (show === "queue" ? `${base}/screen/${key}/queue` : `${base}/screen/${key}${show === "both" ? "" : `?show=${show}`}`) : null;
   const fb = slug ? `${base}/feedback/${slug}` : null;
   const copy = (v: string) => { void navigator.clipboard?.writeText(v).then(() => toast("Link copied")); };
 
@@ -40,7 +41,7 @@ export function ScreensClient({ base, name, slug, initialKey }: { base: string; 
               onClick={async () => { if (!(await ask({ title: "Make a new link?", body: "Screens on the old link will stop.", ok: "New link", tone: "danger", icon: "alert" }))) return; start(async () => { const r = await screenKey(true); if ("error" in r) toast(r.error!, "err"); else { setKey(r.key!); toast("New link made"); } }); }}>
               <RefreshCw size={16} aria-hidden /> New link</button>
           </div>
-          <p className="mt-2 text-[12.5px] text-steel">Tokens reset daily</p>
+          <p className="mt-2 text-[12.5px] text-steel">{show === "queue" ? "Numbers only, never names · add ?lang=ta or ?lang=hi for the voice · tap the screen once for sound" : "Tokens reset daily"}</p>
         </>}
       </Card>
 

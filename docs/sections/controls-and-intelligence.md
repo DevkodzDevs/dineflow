@@ -88,6 +88,10 @@ fourth screen: one line in `FRESH`, a role check in its page, and the same check
 
 ## Before you edit
 
+- **All three are add-ons (0175, 2026-11-09).** `intelligence`, `controls` and `audit` in `packages/shared/src/features.ts`:
+  Master control switches each per plan or per property ([admin-and-membership.md](admin-and-membership.md)). The menu row
+  goes with it (`freshFor` / `seesFresh` take `session.features`), the layout redirects the URL (`?locked=<key>`) and each
+  page asks `featureOn` / `seesFresh` itself. The RPCs and RLS behind them are unchanged.
 - **Record cash in / out do not call `router.refresh()`** (2026-10-13). Their actions revalidate, and an action that
   revalidates answers with the re-rendered page — the refresh rendered it a second time. Don't add one back;
   see shell-and-nav.md (speed). `actcheck.mjs`.

@@ -1,7 +1,7 @@
 "use client";
 import { okPhone } from "@/lib/phone";
 import { useState, useTransition, useEffect, type ReactNode } from "react";
-import { type LucideIcon, Phone, Bell, BellRing, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check, Hourglass, Clock, Timer, ArrowRight } from "lucide-react";
+import { type LucideIcon, Phone, Bell, BellRing, Armchair, X, QrCode, UserPlus, MessageCircle, Users, CalendarClock, AlertTriangle, Check, Hourglass, Clock, Timer, ArrowRight, Hash, MessageSquareText } from "lucide-react";
 import Link from "next/link";
 import { waHref, firstName } from "@/lib/wa";
 import { Card, useToast, cn, FlapShuffle, FlapSpell, FlapClock, FlapBreathe, PhoneInput } from "@/components/ui";
@@ -13,12 +13,15 @@ import { useLive } from "@/lib/useLive";
 import { fmtSince } from "@/lib/format";
 import { addWalkin, setWalkin, holdWalkin, quote } from "./actions";
 import { enqueue } from "@/lib/offline/sync";
+import { pickTables, tablesLabel, seatsOf } from "@/lib/tables";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 
 type T = { id: string; name: string; capacity: number; stage: "free" | "seated" | "ordered" | "eating" | "served" | "billed"; age: number; mins_left: number; free_at: string };
 type Pulse = { tables: T[]; free_now: number; seats_free_now: number; next_free_min: number | null; avg_dwell: number; history_days: number };
 type R = { id: string; table_id: string; guest_name: string; party_size: number; at_time: string };
-type W = { id: string; token: string; name: string; phone: string | null; party: number; quoted_min: number | null; status: "waiting" | "called"; joined_at: string; table_id: string | null };
+type W = { id: string; token: string; token_no?: number | null; name: string; phone: string | null; party: number; quoted_min: number | null; status: "waiting" | "called"; joined_at: string; table_id: string | null; table_ids?: string[] | null; note?: string | null; wa_ok?: boolean };
+/** 0180: every table a guest holds — the first and the ones joined to it. */
+const tablesOf = (w: { table_id: string | null; table_ids?: string[] | null }) => [w.table_id, ...(w.table_ids ?? [])].filter((x): x is string => !!x);
 
 /* "seated": a walk-in sat down, nothing ordered yet (table_pulse, 0131). A stage this screen does not know reads as
    "in use" rather than throwing — an older screen met "seated" before it was deployed. */
@@ -60,11 +63,11 @@ function Head({ title, sub, end, icon: I, tone = "var(--color-tint)" }: { title:
    once the card is wide enough to carry it (the card is an @container). */
 const ACT = "h-11 [@media(pointer:coarse)]:h-12 min-w-11 [@media(pointer:coarse)]:min-w-12 px-3 shrink-0 rounded-[14px] inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)] transition-colors";
 
-export function PulseClient({ pulse, queue, booked = [], slug, base, listed, restaurant = "" }: { pulse: Pulse; queue: W[]; booked?: R[]; slug: string; base: string; listed: boolean; restaurant?: string }) {
+export function PulseClient({ pulse, queue, booked = [], slug, base, listed, restaurant = "", floor = [] }: { pulse: Pulse; queue: W[]; booked?: R[]; slug: string; base: string; listed: boolean; restaurant?: string; floor?: { id: string; zone: string | null; sort_order: number | null }[] }) {
   useLive(["orders", "order_items", "bills", "dining_tables", "walkins"]);
   const toast = useToast(); const [pending, start] = useTransition(); const { online } = useOffline();
   const [party, setParty] = useState(2); const [q, setQ] = useState<number | null | undefined>(undefined);
-  const [form, setForm] = useState({ name: "", phone: "" });
+  const [form, setForm] = useState({ name: "", phone: "", note: "" });
   /* the table picker under a guest: "hold" sets the table they will get (0164, kept in walkins.table_id — a refresh no
      longer loses it); "seat" seats a called guest who has none */
   const [seat, setSeat] = useState<{ id: string; mode: "hold" | "seat" } | null>(null);
@@ -72,29 +75,34 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
   /* What the host just did shows at once (2026-10-21, the owner: "Seat now, Table ready — nothing shows until I refresh"):
      the card leaves on Seat or Left, turns Called on Table ready, and the table reads "just seated" — before the
      write comes back through useLive. A write that fails puts it back. */
-  const [mine, setMine] = useState<{ gone: Record<string, true>; called: Record<string, true>; sat: Record<string, true>; held: Record<string, string> }>({ gone: {}, called: {}, sat: {}, held: {} });
+  const [mine, setMine] = useState<{ gone: Record<string, true>; called: Record<string, true>; sat: Record<string, true>; held: Record<string, string[]> }>({ gone: {}, called: {}, sat: {}, held: {} });
   const mark = (k: "gone" | "called" | "sat", id: string, on = true) => setMine((m) => { const x = { ...m[k] }; if (on) x[id] = true; else delete x[id]; return { ...m, [k]: x }; });
-  const markHeld = (id: string, table: string | null) => setMine((m) => { const x = { ...m.held }; if (table) x[id] = table; else delete x[id]; return { ...m, held: x }; });
+  const markHeld = (id: string, tables: string[] | null) => setMine((m) => { const x = { ...m.held }; if (tables && tables.length) x[id] = tables; else delete x[id]; return { ...m, held: x }; });
+  /* 0180: the zone and floor order of each table, for picking two or three that sit together */
+  const floorOf = new Map(floor.map((f) => [f.id, f]));
+  const withFloor = (t: T) => ({ ...t, zone: floorOf.get(t.id)?.zone ?? "", sort_order: floorOf.get(t.id)?.sort_order ?? 0 });
   const tables: T[] = pulse.tables.map((t) => mine.sat[t.id] && t.stage === "free" ? { ...t, stage: "seated", age: 0, mins_left: Math.max(15, pulse.avg_dwell) } : t);
-  const live: W[] = queue.filter((w) => !mine.gone[w.id]).map((w) => ({ ...w, status: mine.called[w.id] && w.status === "waiting" ? "called" : w.status, table_id: mine.held[w.id] ?? w.table_id }));
+  const live: W[] = queue.filter((w) => !mine.gone[w.id]).map((w) => ({ ...w, status: mine.called[w.id] && w.status === "waiting" ? "called" : w.status,
+    table_id: mine.held[w.id] ? mine.held[w.id][0] : w.table_id, table_ids: mine.held[w.id] ? mine.held[w.id].slice(1) : (w.table_ids ?? []) }));
   /* A table held for a waiting guest (0164: given by itself when a table that fits is free, or set by hand). It is not
      Free — it shows under Reserved as "Held · name" and is never offered to another party. */
-  const heldBy = new Map(live.filter((w) => w.table_id).map((w) => [w.table_id as string, w]));
-  const hold = (w: W, t: T) => {
-    const was = w.table_id; markHeld(w.id, t.id); setSeat(null);
-    if (!online) { void enqueue("walkin_hold", { id: w.id, table: t.id }, `Queue · ${w.name} ${t.name}`); toast(`${t.name} set for ${w.name}`); return; }
+  const heldBy = new Map(live.flatMap((w) => tablesOf(w).map((id) => [id, w] as const)));
+  /* 0180: one table, or two or three joined — the first is walkins.table_id, the rest table_ids */
+  const hold = (w: W, ts: T[]) => {
+    const was = tablesOf(w); const label = tablesLabel(ts.map((t) => t.name)); markHeld(w.id, ts.map((t) => t.id)); setSeat(null);
+    if (!online) { void enqueue("walkin_hold", { id: w.id, table: ts[0].id, more: ts.slice(1).map((t) => t.id) }, `Queue · ${w.name} ${label}`); toast(`${label} set for ${w.name}`); return; }
     start(async () => {
-      const r = await holdWalkin(w.id, t.id);
-      if ("error" in r && r.error) { toast(r.error, "err"); markHeld(w.id, was); } else toast(`${t.name} set for ${w.name}`);
+      const r = await holdWalkin(w.id, ts[0].id, ts.slice(1).map((t) => t.id));
+      if ("error" in r && r.error) { toast(r.error, "err"); markHeld(w.id, was.length ? was : null); } else toast(`${label} set for ${w.name}`);
     });
   };
-  const act = (w: W, status: "called" | "seated" | "left", table?: T) => {
+  const act = (w: W, status: "called" | "seated" | "left", tables?: T[]) => {
     if (status === "called") mark("called", w.id); else mark("gone", w.id);
-    if (table) mark("sat", table.id);
-    if (!online) { void enqueue("walkin_set", { id: w.id, status, ...(table ? { table: table.id } : {}) }, `Queue · ${w.name} ${status}`); return; }
+    tables?.forEach((t) => mark("sat", t.id));
+    if (!online) { void enqueue("walkin_set", { id: w.id, status, ...(tables?.length ? { table: tables[0].id, more: tables.slice(1).map((t) => t.id) } : {}) }, `Queue · ${w.name} ${status}`); return; }
     start(async () => {
-      const r = await setWalkin(w.id, status, table?.id);
-      if ("error" in r && r.error) { toast(r.error, "err"); if (status === "called") mark("called", w.id, false); else mark("gone", w.id, false); if (table) mark("sat", table.id, false); }
+      const r = await setWalkin(w.id, status, tables?.[0]?.id, tables?.slice(1).map((t) => t.id) ?? []);
+      if ("error" in r && r.error) { toast(r.error, "err"); if (status === "called") mark("called", w.id, false); else mark("gone", w.id, false); tables?.forEach((t) => mark("sat", t.id, false)); }
     });
   };
   useEffect(() => { let on = true; quote(party).then((m) => { if (on) setQ(m); }); return () => { on = false; }; }, [party, pulse]);
@@ -117,13 +125,15 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
   /* The answer to "how long?", in words a host can say at the door: the free table that fits (the smallest
      one, never one held for a booking), or the wait, or why there is no figure. quote_wait answers null when
      no table seats the party, or when more parties of that size are waiting than there are tables for them. */
-  const fit = tables.filter((t) => kindOf(t) === "free" && t.capacity >= party).sort((a, b) => a.capacity - b.capacity)[0];
-  const bigEnough = tables.some((t) => t.capacity >= party);
+  /* 0180: the smallest free table that seats them, else two or three joined in one zone (lib/tables.ts — the database picks the same way) */
+  const fitTs = pickTables(tables.filter((t) => kindOf(t) === "free").map(withFloor), party);
+  const fit = fitTs[0];
+  const bigEnough = tables.some((t) => t.capacity >= party) || pickTables(tables.map(withFloor), party).length > 0;
   const wait = q === undefined ? { tone: "st-new", big: "…", small: "Working out the wait" }
-    : q === 0 ? { tone: "st-ready", big: "Seat now", small: fit ? `${fit.name} free · seats ${fit.capacity}` : "A table is free" }
-      : q === null ? { tone: "st-cook", big: bigEnough ? "Long wait" : "No table fits", small: bigEnough ? "Many parties this size" : "Join two tables" }
-        : { tone: "st-new", big: `About ${dur(q)}`, small: `for a table of ${party}` };
-  const add = () => { if (!online) { void enqueue("walkin_add", { name: form.name, phone: form.phone, party, client_id: crypto.randomUUID() }, `Queue · ${form.name}`); toast(`${form.name} added · syncs later`); setForm({ name: "", phone: "" }); return; } start(async () => { const r = await addWalkin(form.name, form.phone, party); if ("error" in r) toast(r.error ?? "Could not add", "err"); else { toast(r.table ? `${form.name} added · ${r.table} held` : `${form.name} added · ~${r.quoted_min ?? "?"} min`); setForm({ name: "", phone: "" }); } }); };
+    : q === 0 ? { tone: "st-ready", big: "Seat now", small: fitTs.length ? `${tablesLabel(fitTs.map((t) => t.name))} free · seats ${seatsOf(fitTs)}` : "A table is free" }
+      : q === null ? { tone: "st-cook", big: bigEnough ? "Long wait" : "No table fits", small: bigEnough ? "Many parties this size" : "Not even three joined" }
+        : { tone: "st-new", big: `About ${dur(q)}`, small: fitTs.length > 1 || party > Math.max(0, ...tables.map((t) => t.capacity)) ? `for ${party} across joined tables` : `for a table of ${party}` };
+  const add = () => { if (!online) { void enqueue("walkin_add", { name: form.name, phone: form.phone, party, client_id: crypto.randomUUID(), note: form.note.trim() || null }, `Queue · ${form.name}`); toast(`${form.name} added · syncs later`); setForm({ name: "", phone: "", note: "" }); return; } start(async () => { const r = await addWalkin(form.name, form.phone, party, form.note); if ("error" in r) toast(r.error ?? "Could not add", "err"); else { const no = r.token_no != null ? ` · No. ${r.token_no}` : ""; toast(r.table ? `${form.name} added${no} · ${r.table} held` : `${form.name} added${no} · ~${r.quoted_min ?? "?"} min`); setForm({ name: "", phone: "", note: "" }); } }); };
   const callNow = (w: W) => act(w, "called");
   const glance = [
     { k: "free", Icon: Armchair, n: String(counts.free), of: `of ${tables.length}`, label: "Tables free to seat", tone: "var(--color-green)" },
@@ -196,7 +206,7 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             <div className="min-w-0 flex-1">
               <div className="text-[12.5px] font-bold" style={{ color: "var(--st-ink)" }}>For <span className="num">{party}</span> {party === 1 ? "person" : "people"}</div>
               {/* the table to seat is spelled on the flaps ("T4"); a quoted wait counts its minutes on them */}
-              {q === 0 && fit ? <div className="flex items-center gap-3 mt-1 flex-wrap"><span className="font-display num text-[28px] @[28rem]:text-[34px] leading-none" style={{ color: "var(--st-ink)" }}>{wait.big}</span><FlapSpell text={fit.name.slice(0, 5)} size="xs" tile="40px" bare tone="live" say={`table ${fit.name}`} /></div>
+              {q === 0 && fit ? <div className="flex items-center gap-3 mt-1 flex-wrap"><span className="font-display num text-[28px] @[28rem]:text-[34px] leading-none" style={{ color: "var(--st-ink)" }}>{wait.big}</span><FlapSpell text={fitTs.map((t) => t.name).join("+").slice(0, 8)} size="xs" tile="40px" bare tone="live" say={`table ${tablesLabel(fitTs.map((t) => t.name))}`} /></div>
                 : typeof q === "number" && q > 0 && q < 100 ? <div className="flex items-end gap-2 mt-1"><span className="font-display text-[22px] leading-none pb-1" style={{ color: "var(--st-ink)" }}>About</span><FlapShuffle value={q} pad={0} size="xs" tile="40px" bare say={`about ${q} minutes`} /><span className="font-display text-[22px] leading-none pb-1" style={{ color: "var(--st-ink)" }}>min</span></div>
                 : <div className="font-display num text-[28px] @[28rem]:text-[34px] leading-none mt-1" style={{ color: "var(--st-ink)" }}>{wait.big}</div>}
               <div className="text-[13px] font-semibold mt-1.5 leading-snug" style={{ color: "var(--st-ink)" }}>{wait.small}</div>
@@ -209,6 +219,8 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             <PhoneInput placeholder="Phone (optional)" aria-label="Guest's phone (optional)" className="!h-12" value={form.phone} onValue={(v) => setForm({ ...form, phone: v })} autoComplete="off" />
           </div>
           <p className="mt-1.5 text-[12px] text-steel">Phone for WhatsApp alert</p>
+          {/* 0179: one line — a pram, a wheelchair, a birthday — shown on their row and on Join by QR's list */}
+          <input placeholder="Special request (optional) — pram, wheelchair, birthday" aria-label="Special request (optional)" value={form.note} maxLength={140} onChange={(e) => setForm({ ...form, note: e.target.value })} className="!h-12 mt-2" autoComplete="off" data-walkin-note />
 
           <div className="mt-5"><Step n={3}>Add to list</Step></div>
           <button type="button" className="svc-btn go xl w-full" disabled={!form.name.trim() || pending || !okPhone(form.phone)} onClick={add} data-add-walkin><UserPlus size={21} aria-hidden /><Say w="add_waiting" /></button>
@@ -230,8 +242,12 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
             {live.map((w, i) => {
               const wa = waHref(w.phone, `Hi ${firstName(w.name)}, your table at ${restaurant} is ready. Please come to the host stand.${slug ? ` ${base}/queue/${slug}?t=${w.token}` : ""}`);
               // the tables this guest could have: free, big enough, not held for anyone else (theirs first)
-              const fits = tables.filter((t) => t.stage === "free" && t.capacity >= w.party && (!heldBy.has(t.id) || heldBy.get(t.id)!.id === w.id)).sort((a, b) => a.capacity - b.capacity);
-              const mineT = w.table_id ? tables.find((t) => t.id === w.table_id) ?? null : null;
+              const avail = tables.filter((t) => t.stage === "free" && (!heldBy.has(t.id) || heldBy.get(t.id)!.id === w.id)).map(withFloor);
+              const fits = avail.filter((t) => t.capacity >= w.party).sort((a, b) => a.capacity - b.capacity);
+              // 0180: no single table seats them → the best two or three joined in one zone, offered as one button
+              const combo = fits.length ? [] : pickTables(avail, w.party);
+              const mineTs = tablesOf(w).map((id) => tables.find((t) => t.id === id)).filter((t): t is T => !!t);
+              const mineT = mineTs[0] ?? null; const mineLabel = tablesLabel(mineTs.map((t) => t.name));
               const called = w.status === "called";
               const open = seat?.id === w.id ? seat.mode : null;
               /* one guest (2026-10-21, the owner: "messy"): their place and name with the state on the right; the party,
@@ -242,6 +258,8 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={cn("h-9 w-9 shrink-0 rounded-full grid place-items-center font-display num text-[16px]", called ? "bg-[var(--color-green)] text-[var(--color-on-tint)]" : "bg-[var(--color-fill-2)]")} aria-label={`Number ${i + 1} in line`}>{i + 1}</span>
                     <span className="font-extrabold text-[17px] truncate min-w-0 flex-1" data-walkin-name>{w.name}</span>
+                    {/* 0179: the number of the day — what the board at the door shows and the voice calls */}
+                    {w.token_no != null && <span className="shrink-0 inline-flex items-center gap-0.5 h-7 px-2 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] text-[12.5px] font-bold num" title="Their number on the board" data-walkin-no={w.token_no}><Hash size={12} aria-hidden />{w.token_no}</span>}
                     <span className={cn("shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-bold", called ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")} data-walkin-state>
                       {called ? <><BellRing size={13} aria-hidden /> Called</> : <><Hourglass size={13} aria-hidden /> Waiting</>}
                     </span>
@@ -250,15 +268,16 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                     <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-fill)]"><Users size={14} aria-hidden /><span className="num">{w.party}</span> {w.party === 1 ? "guest" : "guests"}</span>
                     <span className="inline-flex items-center gap-1.5 h-8 pl-2.5 pr-1 rounded-full bg-[var(--color-fill)] num"><Clock size={14} aria-hidden /><span className="sr-only" suppressHydrationWarning>waiting {fmtSince(w.joined_at)}</span><FlapClock since={w.joined_at} hurry={w.quoted_min} late={w.quoted_min != null ? w.quoted_min + 10 : null} size="xs" tile="24px" bare /></span>
                     {w.quoted_min != null && w.quoted_min > 0 && !mineT && <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-fill)]"><Timer size={14} aria-hidden />told <span className="num">{w.quoted_min}</span> min</span>}
+                    {w.note && <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-orange-2)] text-[var(--color-orange)] max-w-full min-w-0" title={w.note} data-walkin-note><MessageSquareText size={14} aria-hidden className="shrink-0" /><span className="truncate">{w.note}</span></span>}
                     {/* their table: held for them (green), or none free that fits yet */}
                     {mineT
-                      ? <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-green-2)] text-[var(--color-green)] font-bold" data-walkin-table={mineT.name}><Armchair size={14} aria-hidden />Table <span className="font-display text-[15px] leading-none">{mineT.name}</span></span>
+                      ? <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-green-2)] text-[var(--color-green)] font-bold" data-walkin-table={mineLabel}><Armchair size={14} aria-hidden />{mineTs.length > 1 ? "Tables" : "Table"} <span className="font-display text-[15px] leading-none">{mineLabel}</span></span>
                       : <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-[var(--color-fill)] text-steel" data-walkin-table=""><Hourglass size={14} aria-hidden />No table yet</span>}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
                     {/* called with a table: one tap seats them there; called with none: pick one and seat */}
                     {called && mineT
-                      ? <button type="button" className="svc-btn go sm flex-1 min-w-0 !px-3 !min-h-11" onClick={() => { setSeat(null); act(w, "seated", mineT); toast(`${w.name} seated at ${mineT.name}`); }} data-seat-walkin={mineT.name}><Armchair size={18} aria-hidden className="shrink-0" /><span className="truncate">Seat at {mineT.name}</span></button>
+                      ? <button type="button" className="svc-btn go sm flex-1 min-w-0 !px-3 !min-h-11" onClick={() => { setSeat(null); act(w, "seated", mineTs); toast(`${w.name} seated at ${mineLabel}`); }} data-seat-walkin={mineLabel}><Armchair size={18} aria-hidden className="shrink-0" /><span className="truncate">Seat at {mineLabel}</span></button>
                       : called
                         ? <button type="button" className="svc-btn go sm flex-1 !px-3 !min-h-11" onClick={() => pick(w, "seat")} aria-expanded={open === "seat"} data-seat-walkin=""><Armchair size={18} aria-hidden /><Say w="seat_now" /></button>
                         : <button type="button" className="svc-btn go sm flex-1 !px-3 !min-h-11" onClick={() => callNow(w)} data-table-ready><Bell size={18} aria-hidden /><Say w="table_ready" /></button>}
@@ -277,14 +296,23 @@ export function PulseClient({ pulse, queue, booked = [], slug, base, listed, res
                         const r = nextBooking(t.id);
                         return (
                           <button key={t.id} type="button" aria-pressed={t.id === w.table_id} className={cn("min-h-14 px-2 py-1.5 rounded-[14px] flex flex-col items-center justify-center leading-tight transition-colors", t.id === w.table_id ? "bg-[var(--color-green-2)] text-[var(--color-green)] ring-2 ring-[var(--color-green)]" : r ? "bg-[var(--color-orange-2)] hover:brightness-105" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-seat-table={t.name}
-                            onClick={() => { if (open === "seat") { setSeat(null); act(w, "seated", t); toast(`${w.name} seated at ${t.name}`); } else if (t.id !== w.table_id) hold(w, t); else setSeat(null); }}>
+                            onClick={() => { if (open === "seat") { setSeat(null); act(w, "seated", [t]); toast(`${w.name} seated at ${t.name}`); } else if (t.id !== w.table_id || mineTs.length > 1) hold(w, [t]); else setSeat(null); }}>
                             <span className="font-display text-[20px]">{t.name}</span>
                             <span className={cn("text-[11.5px] font-semibold", r ? "text-[var(--color-orange)]" : "text-steel")}>{r ? `booked ${clock(r.at_time)}` : `seats ${t.capacity}`}</span>
                           </button>
                         );
                       })}
+                      {/* 0180: the joined pair or triple, one button — "T1 + T2 · seats 8" */}
+                      {combo.length > 1 && (
+                        <button type="button" aria-pressed={combo.every((t) => mineTs.some((m) => m.id === t.id)) && mineTs.length === combo.length}
+                          className={cn("col-span-2 min-h-14 px-3 py-1.5 rounded-[14px] flex flex-col items-center justify-center leading-tight transition-colors", combo.every((t) => mineTs.some((m) => m.id === t.id)) && mineTs.length === combo.length ? "bg-[var(--color-green-2)] text-[var(--color-green)] ring-2 ring-[var(--color-green)]" : "bg-[var(--color-fill)] hover:bg-[var(--color-fill-2)]")} data-seat-table={tablesLabel(combo.map((t) => t.name))}
+                          onClick={() => { if (open === "seat") { setSeat(null); act(w, "seated", combo as T[]); toast(`${w.name} seated at ${tablesLabel(combo.map((t) => t.name))}`); } else hold(w, combo as T[]); }}>
+                          <span className="font-display text-[20px]">{tablesLabel(combo.map((t) => t.name))}</span>
+                          <span className="text-[11.5px] font-semibold text-steel">joined · seats {seatsOf(combo)}</span>
+                        </button>
+                      )}
                     </div>
-                    {fits.length === 0 && <p className="text-[13px] text-steel">No table fits yet</p>}
+                    {fits.length === 0 && combo.length === 0 && <p className="text-[13px] text-steel">No table fits yet — not even joined</p>}
                   </div>}
                 </div>
               );

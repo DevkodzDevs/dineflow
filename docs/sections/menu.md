@@ -1,11 +1,13 @@
 # Menu
 
 **Route** `/menu`
-**Files** `app/(app)/menu/page.tsx` · `MenuClient.tsx` · `Options.tsx` · `actions.ts`
+**Files** `app/(app)/menu/page.tsx` · `MenuClient.tsx` · `Options.tsx` · `MenuImport.tsx` · `actions.ts` ·
+`lib/menuImport.ts` (the photo import's pure parts)
 **Reads** `menu_items`, `categories`, `menu_variants`, `addon_groups`, `addons`,
 `menu_item_addon_groups`, `combo_items`, `recipe_items`, `ingredients`
 **Writes** `saveMenuItem`, `saveCategory`, `deleteCategory`, `toggleAvailable`, `deleteMenuItem`,
-`saveRecipe`, `applyStandardRecipe`, `setCategoryStation`, `suggestDish`, `suggestRecipe`
+`saveRecipe`, `applyStandardRecipe`, `autoRecipes`, `setCategoryStation`, `suggestDish`, `suggestRecipe`,
+`importDishes` (`readMenuPhoto` only reads)
 
 ## What it is
 
@@ -44,14 +46,59 @@ known plate for common Indian dishes; `applyStandardRecipe` maps it and creates 
 lines. With `ANTHROPIC_API_KEY` set, `suggestDish` and `suggestRecipe` propose values the person then
 checks and saves — the server throws away any ingredient id the model invents.
 
-**From photo** (`MenuImport.tsx`, a toolbar button after *Add-ons*). `readMenuPhoto` reads a
-photographed printed or handwritten menu into dishes — name, section, price, veg — and writes
-nothing. The owner ticks what to keep, fixes a name or price, toggles veg, and *Add N dishes* →
-`importDishes` is the only write: it matches a section by name or creates it (`sort_order` 100+),
-validates every row with `menuItemSchema` (prep 15 min, available) and inserts in one go. **A dish
-whose name is already on the menu starts unticked**, so a second photo of the same page does not
-double the menu. Without the key it returns a three-dish sample (Ghee roast dosa, Mutton chukka,
-Jigarthanda) — on manoooo, Mutton chukka already exists and shows as *already on menu*.
+**From photo — "menu photo to a working POS in two minutes"** (`MenuImport.tsx`, a *More tools* tile; rewritten
+2026-11-09, the pure parts in `lib/menuImport.ts`). The owner photographs the whole menu card — **Take a photo**
+(`capture`, one page a shot, repeatable) or **Choose photos** (`multiple`: front, back, every page) — and every photo
+is read **in parallel**, one `readMenuPhoto` call each (a 2000 px JPEG, under the 2 MB action limit), with a pill per
+page: *reading… / N dishes / could not read* (`[data-import-pages] [data-page-status]`). The pages are merged
+(`mergePhotos`): the same dish on two pages, or twice on one, is one row by normalised name (`normName` — case,
+punctuation, brackets and a veg/non-veg suffix ignored); the **surer reading keeps the price and sizes**, blanks are
+filled from the other, and a row the owner has edited counts as sure (confidence 1), so a later page cannot undo a fix.
+
+*What the model returns, per dish* (`menuPhotoSchema`, Zod, enforced by the API — never free text): `name` (English),
+`name_local` (as printed when it was in Tamil, Hindi or another script), `category` (the section heading), `prices[]`
+(`{label, price}` — one entry a printed price, so Half/Full, Quarter/Half/Full, S/M/L come back as one dish with sizes),
+`is_veg`, `packaged_goods` (a sealed product sold as bought), `description` (one line, printed only), `spicy`, `jain`,
+`confidence` 0–1. **Tax is not asked of the model.** `taxFor` derives it: everything cooked or poured here stays on the
+property's rate (`gst_rate` null, `hsn` null → SAC 996331 at bill time, 0146); on the **regular scheme only**, packaged
+water is 18% / HSN 2201 and an aerated drink (Coke, Pepsi, Thums Up, Sprite…) 40% / HSN 2202 — a fresh lime soda or a
+masala soda is made here and stays on the property's rate. `pricesToVariants` turns the price list into `price` (the
+lowest) + `variants[]`, and `parseVariants` reads a raw price cell ("120/220" → Half/Full; three unlabelled → S/M/L;
+"Half ₹90 Full ₹160", "S 80 M 110 L 150", "Qtr 90 / Half 160 / Full 300").
+
+*The tick-and-fix pass* (`[data-import-row]`): tick, veg/non-veg, the name (the printed name and description under
+it), the price — or **N sizes · from ₹X** (`[data-sizes]`, tap to edit each size, *+ Sizes* on a single-price dish);
+the second line a **section** select (existing categories matched case/space-insensitively by `matchCategory` — "Mains"
+→ "Main course", "Rice and Biryani" → "Rice & Biryani" — else the heading proposed *(new)*), **GST** (the property's,
+or 0 · 5 · 12 · 18 · 28 · 40 with an HSN box once a rate is chosen), **Spicy** and **Jain**. All boxes are 40px, 44 on
+touch; the second line wraps at 412. **A dish already on the menu** (`findExisting`: same normalised name, the same
+section when it sits in several) **starts unticked and says *Already on menu at ₹X · skipped*; ticked, it reads
+*price will update*** — that is the update-price / skip choice.
+
+*The write* — **Add N dishes · update M** → `importDishes(rows: ImportRow[])`, the only write: `requireSession`, GST
+and HSN checked (`gstRateOk`, `hsnOk`), missing sections created first (`newCategories`, `sort_order` 100+), then the
+dishes with `menuItemSchema` (prep 15 min, available, `gst_rate`/`hsn` per dish) in one insert, then the sizes into
+`menu_variants` (lowest the default) matched back by name. **Idempotent on the server too**: a dish whose normalised
+name is on the menu is skipped unless its row says `update` — then only its price and sizes change (`saveVariants`) —
+and a name twice in one batch is written once; a re-import of the same photo adds nothing. It answers
+`{added, updated, skipped}`. `name_local` is shown in the form but **not stored** — `menu_items` has no column for it
+(a migration to add one is the next step).
+
+*After the import* (`[data-import-result]`): what was added / updated / skipped, one button **Attach standard
+recipes** (`[data-attach-recipes]` → `autoRecipes()`, the library's plate for every dish it knows, at most 60) with
+its answer under it, and *Done*. Food cost exists from day one without a second screen.
+
+*An empty menu* shows a prominent **Photograph your menu card** card (`[data-import-card]`) above *No dishes yet* —
+only when the import is available.
+
+*Gating* — a paid call. The tile, the empty-menu card and `readMenuPhoto` all need **`aiEnabled()` (the server's key)
+and the property's `ai` add-on (`featureOn(session, "ai")`, 0175)**; `page.tsx` passes `ai` as that conjunction, so the
+other AI buttons on Menu (Fill the rest, Propose) follow the add-on as well. Off, the tile is not drawn and the action
+answers one sentence ("AI help is not switched on for this property — Master control → Access → Add-ons turns it
+on."). **The three-dish sample without a key is gone**: with four tiles the *More tools* panel still fills its rows.
+
+`lib/menuImport.test.ts` (14): sizes from a price cell, the model's price list → price + sizes, category matching and
+the new-section list, the merge of pages, *already on the menu*, tax, and the schema refusing an empty price list.
 
 **A dish with no recipe does not move stock**, and the card says so in red.
 
@@ -101,9 +148,10 @@ See online-and-channels.md, *Dishes online*.
   read `menu_items.price` as the sell price without checking `menu_variants`.
 - **`is_available` is the sold-out switch, not stock.** See [orders-and-till.md](orders-and-till.md).
 - **Deleting a category does not delete its dishes**; they fall back to uncategorised.
-- **The AI buttons only appear when `ai` is true** (the key is set). Everything must work without
-  them. *From photo* is the exception — it always shows, and runs a labelled sample without the key,
-  the same way Scan does.
+- **The AI buttons only appear when `ai` is true** — since 2026-11-09 that is the key **and** the property's `ai`
+  add-on (`aiEnabled() && featureOn(session, "ai")` in `page.tsx`). Everything must work without them. *From photo*
+  used to be the exception (always shown, a three-dish sample without the key); it is a paid call and is gated like
+  the rest now — the tile and the empty-menu card disappear, `readMenuPhoto` answers one sentence.
 - **The dish form is uncontrolled** (`defaultValue`). The model fills it by writing onto the inputs —
   the same thing a person would type — so nothing about how the form saves changes.
 
@@ -112,7 +160,7 @@ See online-and-channels.md, *Dishes online*.
 ```
 node toolbars.mjs        # 24 checks; menu is the hardest rail in the app
 node responsive.mjs      # the add-ons dialog at 5 widths
-pnpm --filter @dineflow/web test    # lib/options.test.ts — 7 tests on the option maths
+pnpm --filter @dineflow/web test    # lib/options.test.ts — 7 tests on the option maths; lib/menuImport.test.ts — 14 on the photo import
 ```
 
 ## See also
@@ -198,7 +246,9 @@ A new place that shows a dish photo uses `DishImage`, not a bare `<img src={imag
 
 - **More tools is a panel of five even tiles** (`[data-tools]`, `[data-tool]`, 2026-10-21): icon in its colour, name, one
   line on what it is for (wraps, never cut) — two across on a phone, three on a tablet, five on a desktop. Were five
-  outline buttons wrapping into uneven rows. `[data-recipes]` and `[data-find-photos]` are kept on their tiles.
+  outline buttons wrapping into uneven rows. `[data-recipes]` and `[data-find-photos]` are kept on their tiles. **Four
+  tiles when the AI add-on is off** (the *From photo* tile is gated, 2026-11-09) — `toolbars.mjs` counts tiles, so
+  check which property it ran on before changing the screen.
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
 - **More tools fills its last row** (`.fill-tiles`, 2026-10-24): 2 + 2 + Find photos across the row on a phone, 3 + two
   halves from 640px, 5 in a row from 1024px. "Find photos" sat alone beside a hole. See design-system.md.

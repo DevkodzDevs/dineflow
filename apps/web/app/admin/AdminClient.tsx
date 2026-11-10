@@ -18,9 +18,12 @@ import { Plus, UtensilsCrossed as UC, Building2 as B2, Palmtree as PT } from "lu
 import { useRouter } from "next/navigation";
 import { KeyRound as KeyIcon, X, Rows3, LayoutGrid } from "lucide-react";
 import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
-import { MODULES_BY_TYPE, MODULE_GROUPS, ALWAYS_ON, PLAN_PRESETS, PROPERTY_FILTERS, type PlanPreset } from "@dineflow/shared";
+import { MODULES_BY_TYPE, MODULE_GROUPS, ALWAYS_ON, PLAN_PRESETS, PROPERTY_FILTERS, FEATURE_GROUPS, featuresForType, featuresFor, type PlanPreset } from "@dineflow/shared";
 import { DataTable } from "@/components/ui/DataTable";
-import { setModules } from "./actions";
+import { setModules, setFeatures } from "./actions";
+
+/** A plan as the Access sheet needs it (0175): which kinds it covers and the add-ons it includes (null: the defaults). */
+export type PlanLite = { key: string; label: string; property_types: string[]; is_active: boolean; features: string[] | null };
 import styles from "./AdminToolbar.module.css";
 import { copyText } from "@/lib/clipboard";
 
@@ -43,7 +46,7 @@ const shut = (e: { currentTarget: HTMLElement }) => { const d = e.currentTarget.
 
 const Icon = ({ t }: { t: PropertyType }) => (t === "hotel" ? <Building2 size={16} /> : t === "resort" ? <Palmtree size={16} /> : <UtensilsCrossed size={16} />);
 
-export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [], chains = [], openError = null, defaultPassword = false }: { openError?: string | null; defaultPassword?: boolean; tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null }[]; codes?: { id: string; code: string | null }[]; chains?: { id: string; head: string }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[] }) {
+export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [], chains = [], openError = null, defaultPassword = false, plans = [] }: { openError?: string | null; defaultPassword?: boolean; tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null; enabled_features?: string[] | null }[]; codes?: { id: string; code: string | null }[]; chains?: { id: string; head: string }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[]; plans?: PlanLite[] }) {
   const codeOf = (id: string) => codes.find((c) => c.id === id)?.code ?? null;
   const [q, setQ] = useState(""); const [filter, setFilter] = useState("all");
   const [sel, setSel] = useState<T | null>(null); const [issued, setIssued] = useState<string | null>(null); const [err, setErr] = useState<string | null>(openError);  // /admin/open sends a refusal back as ?error=
@@ -51,6 +54,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
   const [sheet, setSheetState] = useState<"tenant" | "key" | "password" | "new" | "estate" | "access" | "delete" | "detail" | null>(null);
   const router = useRouter();
   const [mods, setMods] = useState<string[] | null>(null);   // the set being edited in the Access sheet
+  const [feats, setFeats] = useState<string[] | null>(null);   // 0175: the add-ons being edited there (null: follow the plan)
   const [pw, setPw] = useState("");
   // off by default: a new property should open empty unless sample data is asked for
   const [np, setNp] = useState({ name: "", type: "resort" as "restaurant" | "hotel" | "resort", demo: false, email: "", owner: "", contact: "" });
@@ -103,7 +107,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
       name={t.name} code={codeOf(t.id)} pending={pending}
       openId={t.id} fill={fill}
       onDetails={() => openDetail(t)}
-      onAccess={() => { setSel(t); setMods(access.find((x) => x.id === t.id)?.enabled_modules ?? null); setErr(null); setSheet("access"); }}
+      onAccess={() => { setSel(t); const a = access.find((x) => x.id === t.id); setMods(a?.enabled_modules ?? null); setFeats(a?.enabled_features ?? null); setErr(null); setSheet("access"); }}
       onManage={() => { setSel(t); setIssued(null); setErr(null); setSheet("tenant"); }}
       onDelete={() => { setSel(t); setErr(null); setDelText(""); setDel(null); setSheet("delete"); start(async () => { const p = await deletePreview(t.id); if ("error" in p) setErr(p.error!); else setDel({ ...(p as DeletePreview), id: t.id }); }); }}
     />);
@@ -214,8 +218,13 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
       )}
 
       <Sheet open={sheet === "access" && !!sel} onClose={() => setSheet(null)} title={sel ? `Access · ${sel.name}` : ""} wide>
-        {sel && <AccessPanel sel={sel} mods={mods} setMods={setMods} pending={pending} err={err}
-          onSave={() => start(async () => { const r = await setModules(sel.id, mods); if ("error" in r) setErr(r.error!); else { setSheet(null); router.refresh(); } })}
+        {sel && <AccessPanel sel={sel} mods={mods} setMods={setMods} feats={feats} setFeats={setFeats} planRow={plans.find((p) => p.is_active && p.property_types.includes(sel.property_type)) ?? null} pending={pending} err={err}
+          onSave={() => start(async () => {
+            // modules and add-ons are two columns and two master-only calls; either refusal is shown, nothing closes on an error
+            const [m, f] = await Promise.all([setModules(sel.id, mods), setFeatures(sel.id, feats)]);
+            const bad = ("error" in m && m.error) || ("error" in f && f.error);
+            if (bad) setErr(bad); else { setSheet(null); router.refresh(); }
+          })}
           onCancel={() => setSheet(null)} access={access} />}
       </Sheet>
       <Sheet open={sheet === "tenant" && !!sel} onClose={() => { setSheet(null); setCreds(null); setDel(null); setDelText(""); setErr(null); }} title={sel?.name ?? ""}>
@@ -432,11 +441,12 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
   }
 }
 
-/* ── Access panel: plan presets + per-module toggles ──────────────────────── */
-function AccessPanel({ sel, mods, setMods, pending, err, onSave, onCancel }: {
+/* ── Access panel: plan presets + per-module toggles, then the add-ons (0175) ──────────────────────── */
+function AccessPanel({ sel, mods, setMods, feats, setFeats, planRow, pending, err, onSave, onCancel }: {
   sel: T; mods: string[] | null; setMods: (v: string[] | null) => void;
+  feats: string[] | null; setFeats: (v: string[] | null) => void; planRow: PlanLite | null;
   pending: boolean; err: string | null; onSave: () => void; onCancel: () => void;
-  access: { id: string; enabled_modules: string[] | null }[];
+  access: { id: string; enabled_modules: string[] | null; enabled_features?: string[] | null }[];
 }) {
   const [plan, setPlan] = useState<PlanPreset | "custom">(mods === null ? "all" : "custom");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -538,12 +548,69 @@ function AccessPanel({ sel, mods, setMods, pending, err, onSave, onCancel }: {
         </div>
       ))}
 
+      {/* the add-ons (0175): the property's own list, or its plan's */}
+      <AddonsPanel type={sel.property_type} feats={feats} setFeats={setFeats} plan={planRow} />
+
       {/* actions */}
       {err && <p className="text-sm text-chili">{err}</p>}
       <div className="flex gap-2 sticky bottom-0 py-3 bg-[var(--color-bg-2)]">
         <Button className="flex-1" disabled={pending} onClick={onSave}>Save access</Button>
         <Button variant="gray" onClick={onCancel}>Cancel</Button>
       </div>
+    </div>
+  );
+}
+
+/* ── Add-ons (0175): everything the 2026-11-09 review called unwanted, each a switch ─────────────────────────────────────
+   "Follow plan" is NULL in restaurants.enabled_features: the property gets its plan's list (or the defaults) and picks up
+   new add-ons as they are added. "Custom" saves an explicit list for this property alone. The rows are the same toggles
+   as the modules above, under the groups features.ts names; a sensitive one (ID card reading) says so. */
+function AddonsPanel({ type, feats, setFeats, plan }: { type: PropertyType; feats: string[] | null; setFeats: (v: string[] | null) => void; plan: PlanLite | null }) {
+  const all = featuresForType(type);
+  const planList = featuresFor(type, null, plan?.features ?? null);   // what following the plan gives this kind of property
+  const follow = feats === null;
+  const current = follow ? planList : feats;
+  const on = (k: string) => current.includes(k);
+  const toggle = (k: string) => setFeats(current.includes(k) ? current.filter((x) => x !== k) : [...current, k]);
+  const groups = FEATURE_GROUPS.map((g) => ({ title: g, items: all.filter((f) => f.group === g) })).filter((g) => g.items.length);
+  const planName = plan ? plan.label : "the defaults";
+  return (
+    <div className="space-y-4 pt-2 border-t border-[var(--color-separator)]" data-addons>
+      <div className="flex items-center gap-3 flex-wrap">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-steel">Add-ons</div>
+          <div className="text-xs text-steel mt-0.5">{follow ? `Following ${planName}${plan && !plan.features ? " (the defaults)" : ""}` : "This property's own list"}</div>
+        </div>
+        <div className="flex gap-1 p-1 bg-[var(--color-fill)] rounded-xl ml-auto">
+          <button type="button" onClick={() => setFeats(null)} data-addons-follow
+            className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-colors", follow ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-steel hover:text-[var(--color-label)]")}>Follow plan</button>
+          <button type="button" onClick={() => { if (follow) setFeats(planList); }} data-addons-custom
+            className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-colors", !follow ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-steel hover:text-[var(--color-label)]")}>Custom</button>
+        </div>
+        <span className="text-xs text-steel num w-full sm:w-auto sm:ml-2">{current.filter((k) => all.some((f) => f.key === k)).length} of {all.length} on</span>
+      </div>
+      {groups.map((g) => (
+        <div key={g.title}>
+          <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">{g.title}</div>
+          <div className="rounded-2xl border border-[var(--color-separator)] divide-y divide-[var(--color-separator)]">
+            {g.items.map((f) => {
+              const isOn = on(f.key);
+              return (
+                <button key={f.key} type="button" onClick={() => toggle(f.key)} data-addon={f.key} aria-pressed={isOn}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--color-fill)]/50 cursor-pointer min-h-11">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium flex items-center gap-2 flex-wrap">{f.label}{f.sensitive && <Pill tone="gold">Personal data</Pill>}{f.kind === "screen" && <span className="text-[11px] text-steel font-normal">screen</span>}</div>
+                    <div className="text-xs text-steel mt-0.5">{f.hint}</div>
+                  </div>
+                  <span className={cn("shrink-0 h-6 w-11 rounded-full relative transition-colors", isOn ? "bg-[var(--color-tint)]" : "bg-[var(--color-fill-2)]")}>
+                    <span className={cn("absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform", isOn ? "translate-x-[22px]" : "translate-x-1")} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

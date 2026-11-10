@@ -7,7 +7,7 @@ import { Star, MapPin, Phone, Clock, Percent, Check, ChevronLeft, ChevronRight, 
 import { Button, Field, Segmented, Sheet, Select, cn, PhoneInput } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DishImage } from "@/components/menu/DishImage";
-import { slots as fetchSlots, reserve, placeOrder, trackToken } from "../actions";
+import { slots as fetchSlots, reserve, placeOrder, trackToken, applyCoupon } from "../actions";
 import { OptionChooser } from "@/components/OptionChooser";
 import { hasOptions, linePrice, lineKey, lineName, lineExtras, tilePrice, billTax, type Variant, type Addon, type AddonGroup } from "@dineflow/shared";
 import { GuestNotice } from "@/components/legal/GuestNotice";
@@ -38,7 +38,7 @@ const nice = (m: string) => /operator|function|relation|column|syntax|violates|n
 /* the kitchen notes a guest reaches for most — one tap puts it in, a second takes it out */
 const QUICK_NOTES = ["Less spicy", "Extra spicy", "No onion", "No garlic", "Jain"];
 
-export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null, roomToken = null, busy = null }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order"; tableToken?: string | null; roomToken?: string | null; busy?: { paused_until: string | null; extra_min: number } | null }) {
+export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null, roomToken = null, busy = null, loyalty = null }: { slug: string; d: D; initialSlots: Slot[]; tab: "book" | "order"; tableToken?: string | null; roomToken?: string | null; busy?: { paused_until: string | null; extra_min: number } | null; loyalty?: { enabled: boolean; earn_pct: number; point_value: number } | null }) {
   /* Reached from the code on a table: the menu is for ordering at that table and nothing else — no booking tab, no delivery, no address. */
   const atTable = !!(tableToken && d.table);
   /* 0170: reached from the code in a room — room service, on the guest's room bill. Priced like the table (the in-house menu,
@@ -70,6 +70,11 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
   const [chooser, setChooser] = useState<Item | null>(null);
   const [omode, setOmode] = useState<"delivery" | "takeaway" | "dine_in">(inPlace ? "dine_in" : d.delivery ? "delivery" : "takeaway");
   const [addr, setAddr] = useState(""); const [cartOpen, setCartOpen] = useState(false);
+  /* 0183: a coupon code the guest typed. dine_coupon resolved it; dine_order validates it again at order time. */
+  const [coupon, setCoupon] = useState<{ id: string; title: string; code: string; kind: string; value: number; min: number } | null>(null);
+  const [codeInput, setCodeInput] = useState(""); const [couponErr, setCouponErr] = useState<string | null>(null);
+  /* 0183: the last order placed from this page, for a one-tap repeat (per place, this device; never for a table or room). */
+  const [lastRaw, setLastRaw] = useState<{ id: string; v: string | null; a: string[]; q: number }[] | null>(null);
   /* The groups arrive once; a dish names the ones it offers. Rebuilt here, so everything below —
      the tiles, the chooser, the pricing — sees a dish with its add-ons on it, as it always did. */
   const menu = useMemo(() => {
@@ -91,8 +96,14 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
   const offOf = (o: Offer) => (o.kind === "flat_pct" ? r2((sub * Number(o.value)) / 100) : Math.min(Number(o.value), sub));
   const ist = new Date(Date.now() + 5.5 * 3600e3); const dow = ist.getUTCDay(); const hms = ist.toISOString().slice(11, 19);
   const onNow = (o: Offer) => (o.kind === "flat_pct" || o.kind === "flat_amount") && (!o.days?.length || o.days.includes(dow) || (dow === 0 && o.days.includes(7))) && (!o.from_time || !o.to_time || (hms >= o.from_time && hms <= o.to_time));
-  const bestOffer = d.offers.filter((o) => [omode === "dine_in" ? "dining" : "delivery", "both"].includes(o.scope) && sub >= Number(o.min_order) && onNow(o)).sort((a, b) => offOf(b) - offOf(a))[0];
-  const disc = bestOffer ? offOf(bestOffer) : 0;
+  const autoOffer = d.offers.filter((o) => [omode === "dine_in" ? "dining" : "delivery", "both"].includes(o.scope) && sub >= Number(o.min_order) && onNow(o)).sort((a, b) => offOf(b) - offOf(a))[0];
+  const autoDisc = autoOffer ? offOf(autoOffer) : 0;
+  /* 0183: the typed code's money off, recomputed as the basket changes; it counts only once the basket clears its minimum */
+  const couponDisc = coupon && sub >= coupon.min ? (coupon.kind === "flat_pct" ? r2((sub * Number(coupon.value)) / 100) : Math.min(Number(coupon.value), sub)) : 0;
+  const useCoupon = !!coupon && couponDisc >= autoDisc && couponDisc > 0;
+  /* the bill line and the order carry the better of the automatic offer and the typed code */
+  const bestOffer: { id: string; title: string } | undefined = useCoupon ? { id: coupon!.id, title: `${coupon!.title} (${coupon!.code})` } : autoOffer;
+  const disc = useCoupon ? couponDisc : autoDisc;
   const fee = omode === "dine_in" ? 0 : (omode === "delivery" ? Number(d.delivery_fee) : 0) + Number(d.packing_charge);
   /* 0146/0147: the bill's own sum (billTax = the database's bill_tax) — each dish at its own GST rate, packing and delivery
      taxed with the food, no GST where the property may not collect it — so the basket is the quote and the quote the bill */
@@ -100,6 +111,8 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
   const gst = r2(tax.cgst + tax.sgst);
   const gstRates = [...new Set(tax.lines.map((t) => t.rate))];
   const total = Math.round(sub - disc + fee + gst);
+  /* 0184: what this order earns — only delivery/takeaway from the own page earn (dine-in and room earn at the counter) */
+  const earnPoints = loyalty?.enabled && !inPlace && (omode === "delivery" || omode === "takeaway") ? Math.round(Math.max(0, sub - disc) * Number(loyalty.earn_pct) / 100) : 0;
   const count = lines.reduce((t, l) => t + l.qty, 0);
   const qtyOf = (id: string) => cart.filter((l) => l.item.id === id).reduce((t, l) => t + l.qty, 0);
   const put = (item: Item, variant: Variant | null, addons: Addon[], n: number) => setCart((c) => {
@@ -114,6 +127,20 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
     if (n > 0) { if (hasOptions(item)) setChooser(item); else put(item, null, [], n); }
     else { const last = [...cart].reverse().find((l) => l.item.id === id); if (last) bumpLine(last.key, n); }
   };
+
+  /* 0183: the saved last order, rebuilt against today's menu — a dish gone or off is dropped, a price is today's. */
+  const lastKey = `df-last:${slug}`;
+  const lastLines = useMemo((): CartLine[] | null => {
+    if (!lastRaw || inPlace) return null;
+    const built = lastRaw.flatMap((l): CartLine[] => {
+      const item = flat.find((i) => i.id === l.id); if (!item || !sells(item) || !(l.q > 0)) return [];
+      const variant = item.variants?.find((x) => x.id === l.v) ?? null;
+      const addons = (item.addon_groups ?? []).flatMap((g) => g.addons).filter((a) => l.a.includes(a.id));
+      return [{ key: lineKey(item.id, variant?.id, addons.map((a) => a.id)), item, variant, addons, qty: Math.min(99, l.q) }];
+    });
+    return built.length ? built : null;
+  }, [lastRaw, flat, omode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const reorder = () => { if (lastLines) { setCart(lastLines); setCartOpen(true); } };
 
   /* The basket survives a trip away and back (2026-10-27: the privacy link, the browser's Back, a reload): this tab only,
      per place and table — the lines by id, the name, phone and note, and whether the sheet was open. */
@@ -135,6 +162,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
       }
     } catch { /* nothing kept, or a private window */ }
     restored.current = true;
+    if (!inPlace) try { const s = localStorage.getItem(`df-last:${slug}`); if (s) setLastRaw(JSON.parse(s)); } catch { /* private window */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!restored.current) return;
@@ -145,6 +173,12 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
 
   /* at a table the guest stays on the menu: the basket empties and the order's live card takes the top (TableOrders);
      anywhere else the confirmation page, with its tracking link */
+  const applyCode = () => start(async () => {
+    setCouponErr(null);
+    const r = await reach(() => applyCoupon(slug, codeInput.trim(), sub, omode));
+    if (!("ok" in r) || !r.ok) { setCouponErr(("error" in r ? r.error : null) ?? "That code is not valid."); return; }
+    setCoupon({ id: r.id, title: r.title, code: r.code, kind: r.kind, value: r.value, min: r.min });
+  });
   const placeNow = () => start(async () => {
     setErr(null);
     const items = lines.map((l) => ({ id: l.item.id, qty: l.qty, variant_id: l.variant?.id ?? null, addon_ids: l.addons.map((a) => a.id) }));
@@ -158,7 +192,10 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
       setErr(nice(r.error!)); return;
     }
     const o = r.order as Record<string, unknown>;
+    if (!atTable && !atRoom) try { localStorage.setItem(lastKey, JSON.stringify(lines.map((l) => ({ id: l.item.id, v: l.variant?.id ?? null, a: l.addons.map((a) => a.id), q: l.qty })))); setLastRaw(null); } catch { /* private window */ }
     if (atRoom && typeof o.pass === "string") { try { localStorage.setItem(passKey, o.pass); } catch { /* private window */ } setPass(o.pass); setDigits(""); }
+    // 0181: a prepaid order is held until the guest pays — take them to its UPI pay page rather than a confirmation
+    if (o.prepay && typeof o.pay_token === "string") { setCart([]); setNote(""); try { sessionStorage.removeItem(bk); } catch { /* private window */ } window.location.href = `/dine/pay/${o.pay_token}`; return; }
     if (atTable) { keepTableOrder(slug, tableToken!, String(o.id)); setCart([]); setNote(""); setCartOpen(false); }
     else { if (atRoom) { setCart([]); setNote(""); } setCartOpen(false); setDone({ kind: "order", data: o }); }
   });
@@ -314,6 +351,12 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
             {atTable && <TableCalls slug={slug} token={tableToken!} table={d.table!.name} />}
             {!inPlace && busy?.paused_until && <div className="mb-5 rounded-2xl bg-[var(--color-red-2)] text-[var(--color-red)] px-4 py-3 text-sm"><b>Not taking online orders right now.</b> Back at {new Date(busy.paused_until).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })} — the menu is here to look at.</div>}
             {!inPlace && !busy?.paused_until && (busy?.extra_min ?? 0) > 0 && <div className="mb-5 rounded-2xl bg-[rgb(255_179_64/.14)] text-[var(--color-orange)] px-4 py-3 text-sm"><b>The kitchen is busy.</b> Orders are taking about {busy!.extra_min} minutes longer than usual.</div>}
+            {!inPlace && lines.length === 0 && lastLines && (
+              <button type="button" onClick={reorder} className="mb-6 w-full flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-tint)] bg-[var(--color-green-2)] px-4 py-3 text-left" data-order-again>
+                <span className="min-w-0"><span className="block font-semibold text-[var(--color-tint)]">Order your usual again</span><span className="block text-[12.5px] text-[var(--color-label-2)] truncate">{lastLines.reduce((t, l) => t + l.qty, 0)} item{lastLines.reduce((t, l) => t + l.qty, 0) === 1 ? "" : "s"} from last time</span></span>
+                <span className="h-9 px-3 rounded-xl bg-[var(--color-tint)] text-[var(--color-on-tint)] grid place-items-center font-semibold text-[13px] shrink-0">Add all</span>
+              </button>
+            )}
             {menu.map((c) => c.items.length > 0 && (
               <section key={c.id} className="mb-7">
                 <div className="flex items-baseline gap-2 mb-3"><h2 className="text-xl">{c.name}</h2><span className="text-[12.5px] font-semibold text-[var(--color-label-3)] num">{c.items.length} {c.items.length === 1 ? "dish" : "dishes"}</span></div>
@@ -408,6 +451,22 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
               {fee > 0 && <Row k={omode === "delivery" ? "Delivery & packing" : "Packing"} v={fee} />}
               {gst > 0 && <Row k={gstRates.length === 1 ? `GST ${gstRates[0]}%` : "GST"} v={gst} />}
             </div>
+            {/* 0183: a coupon code box — not at a room's menu (room service goes on the stay bill) */}
+            {!atRoom && (coupon ? (
+              <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--color-green-2)] px-3 py-2 text-[13px]" data-coupon-on>
+                <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--color-green)] min-w-0"><Percent size={13} aria-hidden /><span className="truncate">Code {coupon.code} applied{sub < coupon.min ? " — add more to use it" : ""}</span></span>
+                <button type="button" className="text-[var(--color-label-2)] underline shrink-0" onClick={() => { setCoupon(null); setCodeInput(""); setCouponErr(null); }}>Remove</button>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <div className="flex gap-2">
+                  <input value={codeInput} onChange={(e) => { setCodeInput(e.target.value); setCouponErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCode(); } }} placeholder="Have a code?" aria-label="Coupon code" maxLength={24}
+                    className="flex-1 min-w-0 h-11 rounded-xl border border-[var(--color-line)] bg-[var(--color-bg-2)] px-3 text-[14px] uppercase placeholder:normal-case placeholder:text-[var(--color-label-3)]" />
+                  <button type="button" disabled={pending || codeInput.trim().length < 2} onClick={applyCode} className="h-11 px-4 rounded-xl bg-[var(--color-fill)] text-[var(--color-label)] font-semibold text-[14px] disabled:opacity-50">Apply</button>
+                </div>
+                {couponErr && <p className="mt-1.5 text-[12px] text-[var(--color-red)]" data-coupon-err>{couponErr}</p>}
+              </div>
+            ))}
             <div className="mt-3 pt-3 border-t border-dashed border-[var(--color-line-2)] flex items-end justify-between gap-3">
               <span className="min-w-0">
                 <span className="block text-[12px] font-extrabold uppercase tracking-[.1em] text-[var(--color-label-2)]">{atRoom ? "On your room bill" : "To pay"}</span>
@@ -415,6 +474,7 @@ export function StorefrontClient({ slug, d, initialSlots, tab, tableToken = null
               </span>
               <span className="font-display num text-[30px] leading-none" data-sheet-total>{formatINR(total)}</span>
             </div>
+            {earnPoints > 0 && <p className="mt-2.5 text-[12.5px] text-[var(--color-tint)] font-semibold" data-earn-points>You’ll earn {earnPoints} point{earnPoints === 1 ? "" : "s"} on this order.</p>}
           </section>
           {!inPlace && sub < Number(d.min_order) && <p className="text-sm text-[var(--color-red)]">Add {formatINR(Number(d.min_order) - sub)} more — the minimum order here is {formatINR(d.min_order)}.</p>}
 

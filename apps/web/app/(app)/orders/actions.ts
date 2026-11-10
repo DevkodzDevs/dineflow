@@ -5,6 +5,7 @@ import { wrote } from "@/lib/wrote";
 import { newOrderSchema } from "@dineflow/shared";
 import { z } from "zod/v4";
 import { askJson } from "@/lib/ai";
+import { requireSession, featureOn } from "@/lib/auth";
 
 const bump = () => ["/orders", "/kitchen", "/billing", "/dashboard", "/inventory"].forEach((p) => revalidatePath(p));
 
@@ -124,6 +125,9 @@ const spokenOrder = z.object({
 export async function parseOrder(text: string) {
   const said = text.trim().slice(0, 600);
   if (!said) return { error: "Say or type the order first." };
+  // 0175: a paid call on the server's key — only while the property has the AI and "Say the order" add-ons
+  const session = await requireSession();
+  if (!featureOn(session, "ai") || !featureOn(session, "till-voice")) return { error: "Say the order is not switched on for this property." };
   const s = await createClient();
   const [{ data: menu }, { data: tables }] = await Promise.all([
     s.from("menu_items").select("id, name, price, is_veg, is_available, categories(name)").eq("is_active", true).order("name"),

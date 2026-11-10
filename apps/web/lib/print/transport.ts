@@ -1,7 +1,9 @@
 "use client";
 /** Sends ESC/POS bytes to a printer over Bluetooth, USB, the network bridge, or the browser dialog. */
 export type Transport = "bluetooth" | "usb" | "network" | "browser";
-export type PrinterCfg = { id: string; name: string; transport: Transport; width: number; address?: string | null; copies?: number };
+/** auto: text unless the content has a script the text path cannot print; text: always ESC/POS text; raster: always a picture. */
+export type Script = "auto" | "text" | "raster";
+export type PrinterCfg = { id: string; name: string; transport: Transport; width: number; address?: string | null; copies?: number; script?: Script };
 
 const chunk = (b: Uint8Array, n = 180) => { const out: Uint8Array[] = []; for (let i = 0; i < b.length; i += n) out.push(b.slice(i, i + n)); return out; };
 const btCache = new Map<string, BluetoothRemoteGATTCharacteristic>();

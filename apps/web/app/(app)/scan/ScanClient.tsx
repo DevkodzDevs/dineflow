@@ -11,7 +11,7 @@ import { lookupCode, createProductFromScan, stockFromScan, createDishFromScan, c
 type Mode = "idle" | "camera" | "result";
 type Found = Awaited<ReturnType<typeof lookupCode>>;
 
-export function ScanClient({ categories, recent, aiEnabled, propertyType }: { categories: { id: string; name: string }[]; recent: { id: string; source: string; kind: string | null; action: string | null; created_at: string; result: ScanResult | null }[]; aiEnabled: boolean; propertyType: string }) {
+export function ScanClient({ categories, recent, aiEnabled, idScan = false, propertyType }: { categories: { id: string; name: string }[]; recent: { id: string; source: string; kind: string | null; action: string | null; created_at: string; result: ScanResult | null }[]; aiEnabled: boolean; idScan?: boolean; propertyType: string }) {
   const videoRef = useRef<HTMLVideoElement>(null); const readerRef = useRef<{ stop: () => void } | null>(null);
   const [mode, setMode] = useState<Mode>("idle"); const [hint, setHint] = useState<"auto" | "ingredient" | "dish" | "room" | "labour">("auto");
   const [busy, setBusy] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export function ScanClient({ categories, recent, aiEnabled, propertyType }: { ca
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-4">
-        <div className="chip-rail"><Hint k="auto" label="Auto" Icon={Zap} /><Hint k="ingredient" label="Vegetable / product" Icon={Boxes} /><Hint k="dish" label="Dish" Icon={UtensilsCrossed} />{propertyType !== "restaurant" && <Hint k="room" label="Room" Icon={BedDouble} />}<Hint k="labour" label="Labour / ID" Icon={HardHat} /></div>
+        <div className="chip-rail"><Hint k="auto" label="Auto" Icon={Zap} /><Hint k="ingredient" label="Vegetable / product" Icon={Boxes} /><Hint k="dish" label="Dish" Icon={UtensilsCrossed} />{propertyType !== "restaurant" && <Hint k="room" label="Room" Icon={BedDouble} />}{idScan && <Hint k="labour" label="Labour / ID" Icon={HardHat} />}</div>
 
         <div className="glass overflow-hidden">
           <div className="relative aspect-[4/3] md:aspect-video bg-[var(--color-bezel)]">

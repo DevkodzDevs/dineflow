@@ -52,3 +52,13 @@ export async function tableCalls(slug: string, table: string) {
   const { data, error } = await anon().rpc("dine_call_status", { p_slug: slug, p_table: table });
   if (error) return { error: error.message }; return { ok: true, calls: (data ?? []) as { kind: string; status: string; at: string; done_at: string | null }[] };
 }
+
+/** 0183: resolve a coupon CODE the guest typed, for an online order. Returns the offer to apply, or a friendly reason.
+ *  dine_order validates the id again at order time, so this is only for the basket's running total. */
+export async function applyCoupon(slug: string, code: string, subtotal: number, mode: string) {
+  const { data, error } = await anon().rpc("dine_coupon", { p_slug: slug, p_code: code, p_subtotal: subtotal, p_mode: mode });
+  if (error) return { ok: false as const, error: "Could not check that code." };
+  const d = data as { ok: boolean; error?: string; id?: string; title?: string; code?: string; kind?: string; value?: number; discount?: number } | null;
+  if (!d?.ok) return { ok: false as const, error: d?.error ?? "That code is not valid." };
+  return { ok: true as const, id: d.id!, title: d.title ?? "Coupon", code: d.code ?? code, kind: d.kind ?? "flat_pct", value: Number(d.value ?? 0), discount: Number(d.discount ?? 0), min: Number((d as { min_order?: number }).min_order ?? 0) };
+}

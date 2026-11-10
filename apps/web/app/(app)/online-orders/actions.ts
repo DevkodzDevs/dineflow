@@ -4,8 +4,37 @@ import { createClient } from "@/lib/supabase/server";
 import { wrote } from "@/lib/wrote";
 import { z } from "zod/v4";
 import { askJson } from "@/lib/ai";
+import { requireSession, featureOn } from "@/lib/auth";
+import { queueWhatsApp, publicBase } from "@/lib/whatsapp";
+import { firstName } from "@/lib/wa";
+import type { SupabaseClient } from "@supabase/supabase-js";
 const bump = () => ["/online-orders", "/kitchen", "/orders", "/dashboard"].forEach((p) => revalidatePath(p));
-export async function acceptOnline(id: string) { const s = await createClient(); const { data, error } = await s.rpc("accept_online_order", { p_id: id }); if (error) return { error: error.message }; bump(); return { ok: true, orderId: data as string }; }
+
+/** 0182: tell the guest where their OWN-STOREFRONT order is (accepted / ready / out for delivery), through the 0177 outbox.
+ *  Best effort — nothing when the add-on, the number or the on_order switch is off, or it is an aggregator order (that app
+ *  messages its own guests); never fails the action. */
+async function tellGuestOrder(s: SupabaseClient, kind: "order_accepted" | "order_ready" | "order_out", id: string, extra?: { rider?: string | null; eta?: number | null }) {
+  try {
+    const session = await requireSession(); if (!featureOn(session, "whatsapp")) return;
+    const { data: o } = await s.from("online_orders").select("customer_name, customer_phone, display_id, address, track_token, order_channels(kind, prep_minutes)").eq("id", id).maybeSingle();
+    const ch = (o as { order_channels?: { kind?: string; prep_minutes?: number } | null } | null)?.order_channels ?? null;
+    if (!o?.customer_phone || ch?.kind !== "website") return;
+    const name = firstName((o.customer_name as string) ?? "") || "there";
+    const prop = session.restaurant.name; const ref = String(o.display_id ?? "");
+    if (kind === "order_accepted") {
+      const eta = extra?.eta ?? ch?.prep_minutes ?? 25;
+      await queueWhatsApp(s, session, { kind, to: o.customer_phone as string, dedupe: `order:${id}:accepted`, params: [name, prop, ref, String(eta)] });
+    } else if (kind === "order_ready") {
+      const note = o.address ? "We will send it out shortly." : "Please collect it at the counter.";
+      await queueWhatsApp(s, session, { kind, to: o.customer_phone as string, dedupe: `order:${id}:ready`, params: [name, prop, ref, note] });
+    } else {
+      const base = await publicBase();
+      const track = o.track_token ? `${base}/track/${o.track_token}` : base;
+      await queueWhatsApp(s, session, { kind, to: o.customer_phone as string, dedupe: `order:${id}:out`, params: [name, prop, ref, extra?.rider || "our delivery team", track] });
+    }
+  } catch { /* the order moves on regardless */ }
+}
+export async function acceptOnline(id: string) { const s = await createClient(); const { data, error } = await s.rpc("accept_online_order", { p_id: id }); if (error) return { error: error.message }; try { await s.rpc("dine_award_order_points", { p_online_order_id: id }); } catch { /* loyalty is best-effort */ } await tellGuestOrder(s, "order_accepted", id); bump(); return { ok: true, orderId: data as string }; }
 /** Reject with a reason. The reason is added to what the aggregator sent, never written over it — `raw` was
  *  replaced with `{ reason }`, losing the guest's note, the fee and the discount. */
 export async function rejectOnline(id: string, reason: string) {
@@ -16,7 +45,9 @@ export async function rejectOnline(id: string, reason: string) {
   if (error) return { error: error.message }; if (!data?.length) return { error: "That order could not be changed." }; bump(); return { ok: true }; }
 export async function setOnlineStatus(id: string, status: string) {
   const s = await createClient(); const { data, error } = await s.from("online_orders").update({ status }).eq("id", id).select("id");
-  if (error) return { error: error.message }; if (!data?.length) return { error: "That order could not be changed." }; bump(); return { ok: true };
+  if (error) return { error: error.message }; if (!data?.length) return { error: "That order could not be changed." };
+  if (status === "ready") await tellGuestOrder(s, "order_ready", id);   // 0182: picked_up (a takeaway collected) needs no message — the guest is here
+  bump(); return { ok: true };
 }
 /** Map an unrecognised aggregator line to one of your dishes, so it matches from now on. */
 export async function mapDish(menuItemId: string, channelKind: string, ref: string) {
@@ -112,6 +143,9 @@ export async function assignRider(onlineOrderId: string, riderId: string | null,
   const s = await createClient();
   const { data, error } = await s.rpc("delivery_assign", { p_online_order: onlineOrderId, p_order: null, p_rider: riderId, p_rider_name: name, p_rider_phone: phone, p_eta: eta });
   if (error) return { error: error.message };
+  const d = data as { id: string; track_token: string; rider_token: string; rider_name: string | null; rider_phone: string | null; status: string };
+  // 0182: a rider was assigned — the order is on its way; tell the guest with the rider and the tracking link
+  await tellGuestOrder(s, "order_out", onlineOrderId, { rider: [d.rider_name, d.rider_phone].filter(Boolean).join(" ") || null });
   revalidatePath("/online-orders");
-  return { ok: true as const, ...(data as { id: string; track_token: string; rider_token: string; rider_name: string | null; rider_phone: string | null; status: string }) };
+  return { ok: true as const, ...d };
 }

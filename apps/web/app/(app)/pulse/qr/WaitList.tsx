@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Users, Clock, Megaphone, Volume2, Bell, BellRing, Hourglass, X, QrCode, Share2, UserPlus } from "lucide-react";
+import { Users, Clock, Megaphone, Volume2, Bell, BellRing, Hourglass, X, QrCode, Share2, UserPlus, Hash, MessageSquareText } from "lucide-react";
 import { Card, useToast, cn, ask, useNow } from "@/components/ui";
 import { useLang } from "@/components/ui/Say";
 import { scriptOf } from "@/lib/say";
@@ -10,7 +10,7 @@ import { enqueue } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
 import { setWalkin } from "../actions";
 
-export type W = { id: string; token: string; name: string; phone: string | null; party: number; quoted_min: number | null; status: "waiting" | "called"; joined_at: string; called_at: string | null; table_id: string | null };
+export type W = { id: string; token: string; token_no?: number | null; name: string; phone: string | null; party: number; quoted_min: number | null; status: "waiting" | "called"; joined_at: string; called_at: string | null; table_id: string | null; note?: string | null; wa_ok?: boolean };
 
 /* ───────── the voice at the host stand ─────────
    "Ravi, party of 4, your table is ready." in the device's language (the df-lang cookie, through useLang): Tamil and
@@ -139,6 +139,7 @@ export function WaitList({ queue, listed, onShare, fill = false }: { queue: W[];
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-extrabold text-[16px] leading-tight truncate min-w-0" data-wait-name>{w.name}</span>
+                      {w.token_no != null && <span className="shrink-0 inline-flex items-center gap-0.5 h-6 px-1.5 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] text-[11.5px] font-bold num" title="Their number on the board" data-wait-no={w.token_no}><Hash size={11} aria-hidden />{w.token_no}</span>}
                       <span className={cn("shrink-0 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11.5px] font-bold", called ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-orange-2)] text-[var(--color-orange)]")} data-wait-state>
                         {called ? <><BellRing size={12} aria-hidden /> Called</> : <><Hourglass size={12} aria-hidden /> Waiting</>}
                       </span>
@@ -148,6 +149,7 @@ export function WaitList({ queue, listed, onShare, fill = false }: { queue: W[];
                       <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-fill)] num shrink-0" style={tone ? { color: tone } : undefined} title={w.quoted_min != null ? `Told ${w.quoted_min} min` : "Waiting"} data-wait-time>
                         <Clock size={13} aria-hidden />{m == null ? "…" : waited(m)}
                       </span>
+                      {w.note && <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[var(--color-orange-2)] text-[var(--color-orange)] min-w-0" title={w.note} data-wait-note><MessageSquareText size={12} aria-hidden className="shrink-0" /><span className="truncate">{w.note}</span></span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">

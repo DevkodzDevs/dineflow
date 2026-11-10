@@ -1,11 +1,12 @@
 "use client";
 import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing, Receipt, BedDouble, ChefHat, Timer, Sunrise, Mail, Crown, Check, AlertTriangle, Loader2, Fingerprint } from "lucide-react";
+import { Plus, Trash2, Sparkles, KeyRound, Server, Palette, Building2, CreditCard, LayoutGrid, ChevronRight, Shield, Wifi, Download, ExternalLink, MonitorSmartphone, HeartHandshake, QrCode, BellRing, Receipt, BedDouble, ChefHat, Timer, Sunrise, Mail, Crown, Check, AlertTriangle, Loader2, Fingerprint, MessageCircle } from "lucide-react";
 import { NotificationSettings } from "@/components/shell/Notifier";
 import { LogoUpload } from "./LogoUpload";
 import { AttendanceSettings } from "./AttendanceSettings";
 import { LateCheckoutRule } from "./LateCheckoutRule";
+import { WhatsAppSettings, type WaProps } from "./WhatsAppSettings";
 import { Button, Card, Field, Switch, cn, ask, PhoneInput } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
@@ -17,11 +18,12 @@ import { copyText } from "@/lib/clipboard";
 
 type Rest = { id: string; name: string; stock_block?: boolean; booking_slug?: string | null; loyalty_enabled?: boolean; loyalty_earn_pct?: number; loyalty_point_value?: number; loyalty_min_redeem?: number; kds_stations?: string[] | null; kds_warn_minutes?: number; kds_target_minutes?: number; hk_inspect_required?: boolean; late_checkout_on?: boolean; late_half_after_min?: number; late_full_after_min?: number; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; promise_enabled?: boolean; promise_minutes?: number; promise_pct?: number; upi_vpa?: string | null; upi_payee?: string | null; logo_url?: string | null; brand_colour?: string | null; gstin: string | null; address: string | null; phone: string | null; gst_rate: number; service_charge_pct: number; plan: string; property_type: string; room_gst_rate: number; check_in_time: string; check_out_time: string; membership: string; membership_plan: string | null; membership_ends_at: string | null; trial_ends_at: string; prep_buffer_pct: number; brief_whatsapp: string | null; runs_on_box?: boolean; box_last_seen?: string | null; attendance_methods?: string[]; attend_lat?: number | null; attend_lng?: number | null; attend_radius_m?: number; stock_draw?: "ticket" | "cook" };
 type Table = { id: string; name: string; capacity: number; zone: string; sort_order: number; qr_token?: string | null };
-type Tab = "general" | "payments" | "tables" | "attendance" | "advanced";
+type Tab = "general" | "payments" | "whatsapp" | "tables" | "attendance" | "advanced";
 
 const TABS: { key: Tab; label: string; icon: typeof Building2 }[] = [
   { key: "general", label: "General", icon: Building2 },
   { key: "payments", label: "Payments", icon: CreditCard },
+  { key: "whatsapp", label: "WhatsApp", icon: MessageCircle },   // 0177: the owner, with the add-on on
   { key: "tables", label: "Tables", icon: LayoutGrid },
   { key: "attendance", label: "Attendance", icon: Fingerprint },
   { key: "advanced", label: "Advanced", icon: Server },
@@ -55,9 +57,9 @@ function QuickLink({ href, icon, label, hint }: { href: string; icon: React.Reac
   );
 }
 
-export function SettingsClient({ restaurant, tables, gateway, signInId, contactEmail, owner = false, phoneReady = true }:
+export function SettingsClient({ restaurant, tables, gateway, signInId, contactEmail, owner = false, phoneReady = true, wa = null }:
   { restaurant: Rest; tables: Table[]; gateway: { key_id: string; hasSecret: boolean; hasWebhook: boolean };
-    signInId: string; contactEmail: string | null; owner?: boolean; phoneReady?: boolean }) {
+    signInId: string; contactEmail: string | null; owner?: boolean; phoneReady?: boolean; wa?: WaProps | null }) {
   const [promise, setPromise] = useState<boolean>(restaurant.promise_enabled ?? false);
   const [gstinOn, setGstinOn] = useState<boolean>(!!restaurant.gstin?.trim());
   const [msg, setMsg] = useState<string | null>(null);
@@ -70,13 +72,14 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
   const barEnd = useRef<HTMLDivElement>(null);
   const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
   const [tab, setTab] = useState<Tab>("general");
+  const hasWa = !!wa; const tabs = hasWa ? TABS : TABS.filter((t) => t.key !== "whatsapp");
   /* A link may name the section: /settings#tables opens Tables (2026-10-23, the owner: "Set up tables goes to Settings
      with Tables already chosen"). Read after mount and on every hash change; a choice here writes it back, so Back and a
      shared link land on the same section. */
   useEffect(() => {
-    const read = () => { const h = window.location.hash.slice(1) as Tab; if (TABS.some((t) => t.key === h)) setTab(h); };
+    const read = () => { const h = window.location.hash.slice(1) as Tab; if (TABS.some((t) => t.key === h) && (h !== "whatsapp" || hasWa)) setTab(h); };
     read(); window.addEventListener("hashchange", read); return () => window.removeEventListener("hashchange", read);
-  }, []);
+  }, [hasWa]);
   useEffect(() => { if (window.location.hash.slice(1) !== tab && (tab !== "general" || window.location.hash)) history.replaceState(history.state, "", `#${tab}`); }, [tab]);
   useEffect(() => {
     const el = barEnd.current; if (!el || typeof IntersectionObserver === "undefined") return;
@@ -90,7 +93,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
     <div className="space-y-6">
       {/* tab bar */}
       <div className="flex gap-1 p-1 bg-[var(--color-fill)] rounded-2xl w-fit max-w-full overflow-x-auto">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t.key} onClick={(e) => { setTab(t.key); setMsg(null); e.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" }); }}
             className={cn("shrink-0 h-9 px-4 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors",
               tab === t.key ? "bg-[var(--color-label)] text-[var(--color-on-label)]" : "text-[var(--color-label-2)] hover:text-[var(--color-label)]")}>
@@ -403,7 +406,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
                     <PasswordInput name="razorpay_key_secret" autoComplete="new-password" placeholder={gateway.hasSecret ? "••••••••" : ""} />
                   </Field>
                 </div>
-                <Field label="Webhook secret" hint={`payment.captured → ${origin || "https://…"}/api/webhooks/razorpay${gateway.hasWebhook ? " · Saved" : ""}`}>
+                <Field label="Webhook secret" hint={`payment.captured + qr_code.credited → ${origin || "https://…"}/api/webhooks/razorpay${gateway.hasWebhook ? " · Saved" : ""}`}>
                   <PasswordInput name="razorpay_webhook_secret" autoComplete="new-password" placeholder={gateway.hasWebhook ? "••••••••" : ""} />
                 </Field>
               </div>
@@ -433,6 +436,9 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           </Section>
         </Card>
       )}
+
+      {/* ═══════ WHATSAPP (0177) ═══════ */}
+      {tab === "whatsapp" && wa && <WhatsAppSettings {...wa} />}
 
       {/* ═══════ TABLES ═══════ */}
       {tab === "tables" && (

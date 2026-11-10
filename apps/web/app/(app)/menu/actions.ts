@@ -5,7 +5,8 @@ import { wrote } from "@/lib/wrote";
 import { menuItemSchema, findStandardRecipe } from "@dineflow/shared";
 import { z } from "zod/v4";
 import { askJson, aiEnabled, VOICE } from "@/lib/ai";
-import { requireSession } from "@/lib/auth";
+import { requireSession, featureOn } from "@/lib/auth";
+import { menuPhotoSchema, toImportDishes, newCategories, matchCategory, normCategory, normName, findExisting, gstRateOk, hsnOk, type ImportDish, type ImportVariant, type ExistingDish } from "@/lib/menuImport";
 
 const ok = () => { revalidatePath("/menu"); revalidatePath("/orders"); return { ok: true }; };
 
@@ -231,59 +232,81 @@ export async function suggestRecipe(dishName: string) {
 }
 
 /* ── AI: a printed menu, photographed, into dishes ────────────────────────────────────────── */
-const menuPhotoSchema = z.object({
-  dishes: z.array(z.object({
-    name: z.string().max(80),
-    category: z.string().max(40).describe("The section heading the dish sits under on the menu, or empty"),
-    price: z.number().nonnegative().describe("The printed price in rupees; 0 when none is printed"),
-    is_veg: z.boolean().describe("true when the dish has no meat, fish or egg"),
-    description: z.string().max(140).describe("What is printed under the dish, or empty"),
-  })).max(150),
-});
-export type ImportDish = { name: string; category: string; price: number; is_veg: boolean; description: string };
+// (ImportDish is imported from "@/lib/menuImport" where it is needed: a "use server" file may export only async functions —
+//  Turbopack refuses even a type re-export here, though the webpack production build let it through, 2026-11-10)
+const AI_OFF = "AI help is not switched on for this property — Master control → Access → Add-ons turns it on.";
 
 /**
- * Reads a photo of a printed or handwritten menu into a list of dishes to review — Lightspeed's
- * "set up a menu from a photo". Nothing is written here; the owner ticks what to keep and
- * importDishes() adds them. Without an AI key it returns a short sample.
+ * Reads one photo of a printed or handwritten menu into dishes to review — "menu photo to a working POS in two
+ * minutes" (2026-11-09). The schema and everything derived from it live in lib/menuImport.ts; the client calls
+ * this once per photo, in parallel, and merges the pages. Nothing is written here; importDishes() writes.
+ * A paid call: it needs the server's key (`aiEnabled`) and the property's `ai` add-on (0175).
  */
-export async function readMenuPhoto(image: string): Promise<{ ok: true; dishes: ImportDish[]; sample?: boolean } | { error: string }> {
+export async function readMenuPhoto(image: string): Promise<{ ok: true; dishes: ImportDish[] } | { error: string }> {
   if (!/^data:image\//.test(image)) return { error: "That file is not a photo." };
-  if (!aiEnabled()) return { ok: true, sample: true, dishes: [
-    { name: "Ghee roast dosa", category: "Tiffin", price: 120, is_veg: true, description: "Crisp dosa roasted in ghee, with chutney and sambar" },
-    { name: "Mutton chukka", category: "Starters", price: 320, is_veg: false, description: "Dry-roasted mutton with pepper and curry leaves" },
-    { name: "Jigarthanda", category: "Drinks", price: 90, is_veg: true, description: "" },
-  ] };
-  const r = await askJson({ schema: menuPhotoSchema, effort: "low", images: [image], maxTokens: 12000,
-    system: "You read a photographed restaurant menu from India and list every dish exactly as printed. Never invent a dish or a price. Keep the menu's own section headings as categories. A dish sold in sizes is one dish at its lowest printed price.",
-    user: "List the dishes on this menu." });
-  return r.ok ? { ok: true, dishes: r.data.dishes } : { error: r.error };
+  const session = await requireSession();
+  if (!aiEnabled() || !featureOn(session, "ai")) return { error: AI_OFF };
+  const r = await askJson({ schema: menuPhotoSchema, effort: "low", images: [image], maxTokens: 16000,
+    system: `You read a photographed restaurant menu from India and list every dish exactly as printed. Never invent a dish, a price or a description. Keep the menu's own section headings as categories. A dish printed with several prices (Half/Full, Quarter/Half/Full, S/M/L, 250 ml/500 ml) is ONE dish with one price entry per size, lowest first, each labelled as printed. A menu in Tamil, Hindi or another script: give the English name a waiter would use and keep the printed name in name_local. Veg from the green square or the dish; mark non-veg when it has meat, fish or egg. packaged_goods is only a sealed product sold as bought — bottled water, a canned or bottled soft drink — never a juice, lassi, lime soda or tea made here.`,
+    user: `List every dish on this photo of the menu at ${session.restaurant.name}.` });
+  if (!r.ok) return { error: r.error };
+  return { ok: true, dishes: toImportDishes(r.data, { gst_rate: Number(session.restaurant.gst_rate ?? 5), gst_scheme: session.restaurant.gst_scheme ?? null }) };
 }
 
-/** Adds the dishes the owner kept from a menu photo. A category is matched by name, or created. */
-export async function importDishes(rows: ImportDish[]) {
-  const s = await createClient();
+export type ImportRow = ImportDish & { mode: "add" | "update" };
+/**
+ * Adds the dishes the owner kept from the photos. Missing sections first (`sort_order` 100+), then the dishes —
+ * available, prep 15 min, the dish's GST rate and HSN when the reading set one (0146) — then the sizes
+ * (`menu_variants`, the lowest the default) for a dish read in sizes. Idempotent: a dish already on the menu
+ * (normalised name, same section) is **skipped** unless the row says `update` — then its price and sizes change and
+ * nothing else — so a second photo of the same page never doubles the menu.
+ */
+export async function importDishes(rows: ImportRow[]) {
+  const s = await createClient(); await requireSession();
   const clean = rows.filter((r) => r.name.trim()).slice(0, 150);
   if (!clean.length) return { error: "Tick at least one dish." };
-  const { data: cats } = await s.from("categories").select("id, name");
-  const byName = new Map((cats ?? []).map((c) => [String(c.name).trim().toLowerCase(), c.id as string]));
-  for (const name of [...new Set(clean.map((r) => r.category.trim()).filter(Boolean))]) {
-    if (byName.has(name.toLowerCase())) continue;
-    const { data, error } = await s.from("categories").insert({ name, sort_order: 100 + byName.size }).select("id").single();
-    if (error) return { error: error.message };
-    byName.set(name.toLowerCase(), data.id as string);
-  }
-  const items = [];
   for (const r of clean) {
-    const parsed = menuItemSchema.safeParse({ name: r.name.trim(), category_id: byName.get(r.category.trim().toLowerCase()) ?? null, price: r.price,
-      is_veg: r.is_veg, is_available: true, prep_minutes: 15, description: r.description || null, station: null, is_combo: false });
-    if (!parsed.success) return { error: `${r.name}: ${parsed.error.issues[0].message}` };
-    items.push(parsed.data);
+    if (!gstRateOk(r.gst_rate ?? null)) return { error: `${r.name}: GST is 0, 5, 12, 18, 28 or 40%` };
+    if (!hsnOk(r.hsn ?? null)) return { error: `${r.name}: HSN / SAC is 4 to 8 digits` };
   }
-  const { error } = await s.from("menu_items").insert(items);
-  if (error) return { error: error.message };
+  const [{ data: cats }, { data: have }] = await Promise.all([s.from("categories").select("id, name"), s.from("menu_items").select("id, name, category_id, price")]);
+  const catId = new Map((cats ?? []).map((c) => [normCategory(String(c.name)), c.id as string]));
+  const catName = new Map((cats ?? []).map((c) => [c.id as string, String(c.name)]));
+  // sections the menu lacks, created first
+  for (const name of newCategories(clean, [...catName.values()])) {
+    const { data, error } = await s.from("categories").insert({ name, sort_order: 100 + catId.size }).select("id").single();
+    if (error) return { error: error.message };
+    catId.set(normCategory(name), data.id as string); catName.set(data.id as string, name);
+  }
+  const idFor = (category: string) => { const m = matchCategory(category, [...catName.values()]); return m ? catId.get(normCategory(m)) ?? null : null; };
+  const existing: ExistingDish[] = (have ?? []).map((i) => ({ id: i.id as string, name: String(i.name), category: i.category_id ? catName.get(i.category_id as string) ?? null : null, price: Number(i.price) }));
+  const toAdd: { row: Record<string, unknown>; variants: ImportVariant[] }[] = []; let updated = 0, skipped = 0; const added = new Set<string>();
+  for (const r of clean) {
+    const dup = findExisting(r, existing);
+    const price = r.variants.length >= 2 ? Math.min(...r.variants.map((v) => v.price)) : r.price;
+    if (dup) {
+      if (r.mode !== "update") { skipped++; continue; }
+      const { error } = await s.from("menu_items").update({ price }).eq("id", dup.id); if (error) return { error: error.message };
+      if (r.variants.length >= 2) { const v = await saveVariants(dup.id, r.variants.map((x, i) => ({ name: x.name, price: x.price, is_default: i === 0 }))); if ("error" in v) return v; }
+      updated++; continue;
+    }
+    if (added.has(normName(r.name))) { skipped++; continue; }   // the same dish twice in one batch
+    const parsed = menuItemSchema.safeParse({ name: r.name.trim(), category_id: idFor(r.category), price,
+      is_veg: r.is_veg, is_available: true, prep_minutes: 15, description: r.description.trim() || null, station: null, is_combo: false });
+    if (!parsed.success) return { error: `${r.name}: ${parsed.error.issues[0].message}` };
+    added.add(normName(r.name));
+    toAdd.push({ row: { ...parsed.data, gst_rate: r.gst_rate ?? null, hsn: r.hsn ?? null }, variants: r.variants.length >= 2 ? r.variants : [] });
+  }
+  if (toAdd.length) {
+    const { data, error } = await s.from("menu_items").insert(toAdd.map((t) => t.row)).select("id, name");
+    if (error) return { error: error.message };
+    // the sizes, matched back to their dish by name (insert keeps the order, but the name is the safer key)
+    const idByName = new Map((data ?? []).map((d) => [normName(String(d.name)), d.id as string]));
+    const sizes = toAdd.flatMap((t) => { const id = idByName.get(normName(String(t.row.name))); return id ? t.variants.map((v, i) => ({ menu_item_id: id, name: v.name.trim().slice(0, 40), price: Math.max(0, Number(v.price) || 0), is_default: i === 0, sort_order: i, is_active: true })) : []; });
+    if (sizes.length) { const { error: ve } = await s.from("menu_variants").insert(sizes); if (ve) return { error: ve.message }; }
+  }
   ok();
-  return { ok: true as const, added: items.length };
+  return { ok: true as const, added: toAdd.length, updated, skipped };
 }
 
 /* ── dish photos (0088) ─────────────────────────────────────────────────────────────────── */

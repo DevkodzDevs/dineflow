@@ -15,17 +15,19 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     s.rpc("admin_overview"),
     s.from("membership_keys").select("*").order("created_at", { ascending: false }).limit(50),
     s.from("admin_log").select("*").order("created_at", { ascending: false }).limit(30),
-    // real properties only — demo sandboxes are excluded
-    s.from("restaurants").select("id, enabled_modules, code, chain_id").is("demo_expires_at", null),
+    // real properties only — demo sandboxes are excluded; 0175: the property's own add-on list rides along
+    s.from("restaurants").select("id, enabled_modules, enabled_features, code, chain_id").is("demo_expires_at", null),
     s.rpc("admin_box_status"),
     // 0098: true while this login still signs in with the password migration 0011 shipped with
     s.rpc("master_password_is_default"),
-    // 0151: the plans and their prices (Keys tab)
-    tab === "keys" ? s.from("plans").select("key, label, monthly, yearly, is_active, updated_at").order("key", { ascending: false }) : Promise.resolve({ data: null }),
+    // 0151: the plans and their prices (Keys tab); 0175: and their add-ons — read on every tab, the Access sheet says which
+    // plan a property follows (two rows)
+    s.from("plans").select("key, label, property_types, monthly, yearly, is_active, updated_at, features").order("key", { ascending: false }),
   ]);
-  const rows = (access ?? []) as { id: string; enabled_modules: string[] | null; code: string | null; chain_id: string | null }[];
+  const rows = (access ?? []) as { id: string; enabled_modules: string[] | null; enabled_features: string[] | null; code: string | null; chain_id: string | null }[];
   return (<>
-    <AdminClient tenants={(tenants ?? []) as never} keys={(keys ?? []) as never} log={(log ?? []) as never} tab={tab === "keys" ? "keys" : "properties"} boxes={(boxes ?? []) as never} access={rows} codes={rows.map((r) => ({ id: r.id, code: r.code }))} chains={rows.filter((r) => r.chain_id && r.chain_id !== r.id).map((r) => ({ id: r.id, head: r.chain_id! }))} openError={error ?? null} defaultPassword={defaultPassword === true} />
+    <AdminClient tenants={(tenants ?? []) as never} keys={(keys ?? []) as never} log={(log ?? []) as never} tab={tab === "keys" ? "keys" : "properties"} boxes={(boxes ?? []) as never} access={rows} codes={rows.map((r) => ({ id: r.id, code: r.code }))} chains={rows.filter((r) => r.chain_id && r.chain_id !== r.id).map((r) => ({ id: r.id, head: r.chain_id! }))} openError={error ?? null} defaultPassword={defaultPassword === true}
+      plans={((plans ?? []) as PlanRow[]).map((p) => ({ key: p.key, label: p.label, property_types: p.property_types, is_active: p.is_active, features: p.features }))} />
     {tab === "keys" && <div className="px-4 sm:px-6 pb-10 max-w-6xl mx-auto"><PlansCard plans={(plans ?? []) as PlanRow[]} online={platformReady()} /></div>}
   </>);
 }

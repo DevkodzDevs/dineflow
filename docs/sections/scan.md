@@ -32,6 +32,12 @@ Barcode reading uses `@zxing/browser`.
 
 ## Before you edit
 
+- **Photos are two add-ons (0175, 2026-11-09).** *Photo recognition* (`scan-vision`, with *AI help*) is what `aiEnabled` means
+  to `ScanClient` now — without it the page is sample mode and `/api/scan` answers 403. *ID card reading* (`scan-id`, **off by
+  default**: it sends an Aadhaar or voter ID to the model and keeps a name, phone and address) shows the *Labour / ID* chip
+  (`idScan`); without it the route turns a "labour" hint into "auto" and a person or document the model still recognises
+  comes back as `unknown` — nothing personal is logged or shown. The route asks the database (`effective_features()`), so the
+  phone app is held to the same switch. Barcodes, QR punches and the bill QR need no model and no add-on.
 - **The viewfinder is `--color-bezel`, dark in both themes.** It was `bg-ink`, which is near-white
   in the dark theme, so "Ready to scan" printed white on white.
 - **On a phone the type-a-code field takes its own full-width line** under Open camera / Upload.

@@ -51,6 +51,9 @@ Go to and `G X` all follow the same rule. The owner switches it in **Staff → A
 
 ## Before you edit
 
+- **Connections is an add-on (0175, 2026-11-09).** It is the same cards as Channels; Master control can switch the page off per
+  plan or property (`connections` in features.ts — the layout redirects, `rowsFor` drops the row). The push buttons and API
+  fields inside it follow the `ota-push` add-on, off by default — [online-and-channels.md](online-and-channels.md).
 - **The forms and actions are the ones Channels, Online orders and Settings use.** A field added to a channel belongs in
   both sheets, or they drift. `keyOf` (both actions files) keeps a saved API key on a blank field.
 - **Nothing secret reaches the browser**: `has_api_key`, `hasSecret`, `hasWebhook`. Keep it so.

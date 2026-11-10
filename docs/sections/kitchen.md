@@ -94,6 +94,13 @@ Then open `/kitchen/board` at 1920 and stand back from it.
   this no screen passed a station, so a station-bound printer never received a ticket. The till's
   menu query now selects `station, categories(station)` and each printed line carries it; the kitchen
   Reprint passes `stationOf(i)`. Online orders carry no station and still go to station-less printers.
+- **The ticket prints the dish as the kitchen reads it (2026-11-09).** `printKot` builds with `buildKotBytes(ticket, printer)`
+  (`lib/print/script.ts`): a printer on *Auto* prints a picture (`raster.ts`, this device's fonts) when any line is in Tamil,
+  Hindi or another script, text otherwise — so "மசால் தோசை" from the till no longer comes out as symbols. The line prints
+  **exactly what the till sent** (`name_snapshot`), which may already be in Tamil. `KotData.items[].localName` is in place —
+  printed bold under the name on both paths when set — but **no menu column carries a per-dish local name yet**
+  (`menu_items` has `name` only), so nothing sets it; a `name_local` column and the dish editor field are the next step, a
+  migration. The script choice is in Settings → Printers ([settings.md](settings.md)).
 - **The board is never held while an answer is on its way** (2026-10-18). Every button disabled itself on the screen's
   one `pending`, so one tap greyed the whole board for the 0.4–1.8 s the server took. Start cooking, Food ready, Served,
   Fire and Recall show at once (optimistic) and hold nothing; only the station view's two buttons, which wait for the

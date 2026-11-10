@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requireSession } from "@/lib/auth";
+import { requireSession, featureOn } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { AuditClient, type Event } from "./AuditClient";
 export const metadata = { title: "Audit trail" };
@@ -13,7 +13,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   const { days: d, before } = await searchParams;
   const days = [1, 7, 30, 90].includes(Number(d)) ? Number(d) : 7;
   const session = await requireSession();
-  if (!SEES.includes(session.profile.role)) redirect("/dashboard?locked=audit");
+  if (!SEES.includes(session.profile.role) || !featureOn(session, "audit")) redirect("/dashboard?locked=audit");   // 0175: an add-on
   const s = await createClient();
   // IST days: "today" starts at midnight in Kolkata, not in UTC
   const ist = new Date(Date.now() + 330 * 60000); ist.setUTCHours(0, 0, 0, 0);

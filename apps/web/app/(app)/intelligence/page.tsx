@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requireSession } from "@/lib/auth";
+import { requireSession, featureOn } from "@/lib/auth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { IntelligenceClient, type Compare, type Engineering, type Exceptions } from "./IntelligenceClient";
 export const metadata = { title: "Intelligence" };
@@ -20,7 +20,7 @@ export default async function IntelligencePage({ searchParams }: { searchParams:
     s.rpc("exceptions_summary", { p_days: days }),
     s.rpc("day_compare"),
   ])]);
-  if (!SEES.includes(session.profile.role)) redirect("/dashboard?locked=intelligence");
+  if (!SEES.includes(session.profile.role) || !featureOn(session, "intelligence")) redirect("/dashboard?locked=intelligence");   // 0175: an add-on
   const error = e1?.message ?? e2?.message ?? e3?.message ?? null;
   return (
     <>

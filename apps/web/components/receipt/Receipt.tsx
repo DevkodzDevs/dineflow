@@ -3,6 +3,7 @@ import { forwardRef } from "react";
 import { formatINR } from "@/lib/format";
 import { QR } from "@/components/QR";
 import { taxLabels, COMPOSITION_NOTE } from "@dineflow/shared";
+import { useFeature } from "@/components/shell/Features";
 
 export type ReceiptLine = { name: string; qty: number; price: number; note?: string | null; gstRate?: number; extras?: string[] };
 export type ReceiptData = {
@@ -44,6 +45,9 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
   const w = d.width ?? 80;
   const small = w === 58;
   const qtyTotal = d.lines.reduce((t, l) => t + l.qty, 0);
+  /* 0175 add-ons: the amount in words, the barcode and the "goods once sold" line are Receipt extras; "Powered by DineFlow"
+     leaves on White label. Outside the app (a legal page's sample) nothing is switched off. */
+  const extras = useFeature("receipt-extras"), whiteLabel = useFeature("white-label");
   // Indian GST prints as two named halves. A composition dealer may not collect tax and must say so.
   const lab = taxLabels(d.restaurant.stateCode);
   const composition = d.restaurant.gstScheme === "composition";
@@ -110,7 +114,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         {!!d.roundOff && <div className="paper-row"><span className="opacity-80">Round off</span><span>{m(d.roundOff)}</span></div>}
         <div className="paper-hr-solid" />
         <div className="paper-row paper-total" style={{ fontSize: small ? 15 : 17 }}><span>TOTAL</span><span>{formatINR(d.total)}</span></div>
-        <div className="text-[10px] italic opacity-75 leading-snug mt-0.5">Rupees {words(d.total)} only</div>
+        {extras && <div className="text-[10px] italic opacity-75 leading-snug mt-0.5">Rupees {words(d.total)} only</div>}
 
         {/* ── payment ── */}
         {!!d.payments?.length && (<>
@@ -143,7 +147,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
         <div className="text-center leading-snug">
           <div className="text-[11px] font-bold tracking-[0.12em]">{d.footer ?? "THANK YOU · VISIT AGAIN"}</div>
           {d.restaurant.fssai && <div className="text-[9.5px] opacity-75 mt-0.5">FSSAI Lic. {d.restaurant.fssai}</div>}
-          <div className="text-[9.5px] opacity-75">{d.copyLabel ?? "Customer copy"} · goods once sold are not returnable</div>
+          <div className="text-[9.5px] opacity-75">{d.copyLabel ?? "Customer copy"}{extras && " · goods once sold are not returnable"}</div>
         </div>
         {d.qr && (
           <div className="flex items-center justify-center gap-3 mt-2.5">
@@ -151,8 +155,8 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData; className
             <div className="text-[9.5px] leading-tight opacity-80 text-left">Scan to pay<br />UPI · card<br />& your e-bill</div>
           </div>
         )}
-        <div className="mt-3"><div className="barcode" aria-hidden /><div className="text-center text-[9.5px] tracking-[0.3em] mt-1 opacity-80">{d.no.replace(/\D/g, "").padStart(10, "0").slice(-10)}</div></div>
-        <div className="text-center text-[9px] tracking-[0.22em] uppercase opacity-55 mt-2">Powered by DineFlow</div>
+        {extras && <div className="mt-3"><div className="barcode" aria-hidden /><div className="text-center text-[9.5px] tracking-[0.3em] mt-1 opacity-80">{d.no.replace(/\D/g, "").padStart(10, "0").slice(-10)}</div></div>}
+        {!whiteLabel && <div className="text-center text-[9px] tracking-[0.22em] uppercase opacity-55 mt-2">Powered by DineFlow</div>}
       </div>
       <div className="tear-strip tear-bottom" aria-hidden />
     </div>

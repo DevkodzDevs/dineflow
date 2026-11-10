@@ -5,6 +5,7 @@ import { ChefHat, BellRing, UtensilsCrossed } from "lucide-react";
 import { clsx } from "clsx";
 import { formatINR } from "@/lib/format";
 import { menuPages, freshTokens } from "@/lib/screen";
+import { useScreenFeed } from "../useScreenFeed";
 
 export type Show = "menu" | "tokens" | "both";
 type Dish = { name: string; is_veg: boolean | null; image: string | null; description: string | null; price: number; from: boolean };
@@ -29,35 +30,29 @@ function Veg({ v }: { v: boolean | null }) {
 }
 
 /**
- * The TV. It asks for fresh numbers every 8 seconds and turns the menu every 12. A token that has just become
+ * The TV. It asks for fresh numbers every 8 seconds (every 15 while no token is up — lib/screenFeed.ts) and turns the menu every 12. A token that has just become
  * ready glows for half a minute, so the eye finds it from across the room. If the link stops working (the key was
  * rotated, or the membership ended) the screen says so instead of freezing on old numbers.
  */
 export function ScreenClient({ k, initial, show }: { k: string; initial: Feed; show: Show }) {
-  const [feed, setFeed] = useState<Feed>(initial); const [lost, setLost] = useState(false);
+  const [feed, setFeed] = useState<Feed>(initial);
   const [fresh, setFresh] = useState<Set<number>>(new Set()); const seen = useRef(new Set(initial.tokens.ready));
-  useEffect(() => {
-    // a plain GET (app/api/screen): a server action's id changes with each build and a TV left on for days would
-    // freeze after a deploy. Twelve hours on it reloads itself — only when the server answers — for the new build.
-    const born = Date.now();
-    const t = setInterval(() => {
-      void fetch(`/api/screen/${encodeURIComponent(k)}`, { cache: "no-store" }).then(async (res) => {
-        if (res.ok && Date.now() - born > 12 * 3600e3) { location.reload(); return; }
-        if (!res.ok) { setLost(true); return; }
-        const f = (await res.json()) as Feed | null;
-        if (!f) { setLost(true); return; }
-        setLost(false);
-        const now = freshTokens(seen.current, f.tokens.ready);
-        if (now.length) {
-          setFresh((s) => new Set([...s, ...now]));
-          setTimeout(() => setFresh((s) => { const n = new Set(s); now.forEach((x) => n.delete(x)); return n; }), 30000);
-        }
-        seen.current = new Set(f.tokens.ready);
-        setFeed(f);
-      }).catch(() => setLost(true));
-    }, POLL);
-    return () => clearInterval(t);
-  }, [k]);
+  /* lib/screenFeed.ts: the feed comes from the database's API; the app's GET route (app/api/screen) is the fallback — never
+     a server action, whose id changes with each build and froze a TV left on for days. Every 8 s while a token is up,
+     every 15 s while the counter is empty. Twelve hours on it reloads itself — only when the server answers — for the new build. */
+  const lost = useScreenFeed<Feed>({
+    fn: "screen_feed", k, route: `/api/screen/${encodeURIComponent(k)}`, fast: POLL, initial,
+    busy: (f) => f.tokens.preparing.length + f.tokens.ready.length > 0,
+    onFeed: (f) => {
+      const now = freshTokens(seen.current, f.tokens.ready);
+      if (now.length) {
+        setFresh((s) => new Set([...s, ...now]));
+        setTimeout(() => setFresh((s) => { const n = new Set(s); now.forEach((x) => n.delete(x)); return n; }), 30000);
+      }
+      seen.current = new Set(f.tokens.ready);
+      setFeed(f);
+    },
+  });
 
   // a page is always the same number of rows, so a dish is the same size on every page
   const cols = show === "menu" ? 5 : 4, rows = 2;

@@ -47,7 +47,12 @@ menu-engineering classes, exceptions against a 28-day baseline and the owner's b
 **Table ready on WhatsApp.** A queued guest with a phone gets a green WhatsApp button beside the
 ring button: "Hi Ravi, your table at … is ready. Please come to the host stand." plus their own
 `/queue/<slug>?t=<token>` link. Pressing it also marks a waiting guest *called* — sending the
-message is calling them. `waHref` in `lib/wa.ts` builds the link (ten digits get 91 in front; null without a usable number,
+message is calling them. Since 0179 the call itself also sends: `setWalkin(…, "called")` (Pulse's
+Table ready, Join by QR's Call next) queues `dineflow_table_ready` through the Business API (0177) to a
+guest whose `wa_ok` is set — the QR page's tick, or a host add with a phone — with the add-on, the
+property's WhatsApp and the *Table ready* switch on; dedupe `walkin:<id>:ready`, so calling twice sends once.
+An offline Table ready (the outbox's `walkin_set`) does not send. The green button stays for a guest who
+did not tick, and as the fallback. `waHref` in `lib/wa.ts` builds the link (ten digits get 91 in front; null without a usable number,
 so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "8:30 pm".
 
 ## Before you edit
@@ -143,6 +148,27 @@ so the button simply is not drawn); `waDate` / `waTime` write "Fri, 9 Oct" and "
   ≥90%, red <70%). The Rooms tiles use the same `Mini` in whole rupees, two by two until the card
   is 30rem, then four across. "1 ticket", "1 recall". Probe: `speed.mjs`.
 
+- **A big party gets tables joined (0180, 2026-11-10 — the owner: "8 to 10 people, we only have 4- and 6-seaters").**
+  `lib/tables.ts` `pickTables(free, party)` is the screen's copy of the database's `_walkin_pick`: the smallest single table that
+  seats them, else two in one zone with the fewest seats that fit (nearest first), else three; `tablesLabel` writes "T1 + T2";
+  tests in `lib/tables.test.ts` (6). `page.tsx` also reads `dining_tables(id, zone, sort_order)` (`floor`) and `walkins.table_ids`.
+  On the client every guest's tables are `tablesOf(w)` (first + joined); `heldBy` covers all of them, so each reads *Held* on
+  the floor. **Add waiting guest:** the answer line's *Seat now* spells the pair on the flaps ("T1+T2") and reads "T1 + T2 free ·
+  seats 8"; a quoted wait for a party past the biggest table reads "for 8 across joined tables"; null with nothing joinable
+  reads *No table fits · Not even three joined*. **Each row:** the chip reads *Tables T1 + T2*; *Seat at T1 + T2* seats them all;
+  the picker lists single tables that fit and, when none does, **one button for the best pair or triple** ("T1 + T2 · joined ·
+  seats 8", `data-seat-table="T1 + T2"`) which holds or seats them; nothing at all reads *No table fits yet — not even joined*.
+  `holdWalkin(id, table, more)` / `setWalkin(id, status, table, more)` carry the joined ids; the offline jobs carry `more` too.
+  Reservations are not in this change (data-and-rls.md, 0180).
+- **A number for every guest, their request, and the TV at the door (0179, 2026-11-10).** Each waiting row on Pulse
+  (`[data-walkin-no]`) and on Join by QR's list (`[data-wait-no]`) carries the guest's **number of the day** in a black
+  pill — `walkins.token_no`, what the board shows and the voice calls; the place in line (1, 2, 3 by arrival) stays the
+  disc. A **request** (`walkins.note`: pram, wheelchair, birthday — from the QR page or Pulse's own *Special request*
+  input under the phone, `[data-walkin-note]`, ≤140) shows as an amber chip on both lists (`[data-walkin-note]` /
+  `[data-wait-note]`). Pulse's Add toast says the number ("Ravi added · No. 12 · ~20 min"). Both pages select
+  `token_no, note, wa_ok` with the row. Join by QR's head gains **TV board** (`[data-board-link]`) for the owner and
+  managers — `qr/page.tsx` asks `screenKey(false)` and passes `boardUrl`; staff see no button. The board itself is
+  guest-facing.md (`/screen/[key]/queue`). The offline Add (`walkin_add` through the outbox) sends the note too.
 - **Join by QR is its own screen, `/pulse/qr` (2026-10-20 — it was a card at the foot of Pulse).** `qr/page.tsx`
   reads the session (slug, Listed publicly, name), the base address (`NEXT_PUBLIC_CLOUD_URL` or the request's
   host, as Pulse did) and, since 2026-10-31, the waiting list (`walkins`, `table_pulse`, today's table bookings). Gated like Pulse — the app layout maps the first segment, `pulse`, to the pulse module — and a
