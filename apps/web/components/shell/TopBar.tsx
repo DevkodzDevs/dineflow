@@ -12,12 +12,18 @@ import { InstallButton } from "./InstallSheet";
 import { OutletSwitcher } from "./OutletSwitcher";
 import { BackButton } from "./BackButton";
 import { ProfileCard } from "./ProfileCard";
+import { useEmber } from "./useEmber";
+import { ROLE_LABEL, type Role } from "@dineflow/shared";
 import type { Outlet } from "@/lib/auth";
 
-export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHref, outlets = [], home = "/dashboard" }: { home?: string; membership: string; daysLeft: number; alerts: number; name: string; boxSync?: { cursor: string | null; note: string | null } | null; accountHref?: string | null; outlets?: Outlet[] }) {
+export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHref, outlets = [], home = "/dashboard", role, ember: emberAtFirst = false }: { home?: string; membership: string; daysLeft: number; alerts: number; name: string; boxSync?: { cursor: string | null; note: string | null } | null; accountHref?: string | null; outlets?: Outlet[]; role?: Role; ember?: boolean }) {
   // on a phone, Back and the wordmark do not both fit beside the icons (they overlapped at 360–412, 2026-10-22): where Back
   // shows the wordmark steps aside and its space stays; on home, where Back is not drawn, the wordmark is back
   const path = usePathname(); const backShown = !(path === home || path === "/");
+  /* Ember (0186): a greeting at the left of the bar and the avatar in a pill with the name and position — the owner's
+     picture. Only this theme draws them; the server passes the cookie's answer so the first paint has the right shape. */
+  const ember = useEmber(emberAtFirst);
+  const first = name.trim().split(/\s+/)[0] || name;
   const stale = boxSync?.cursor ? Date.now() - new Date(boxSync.cursor).getTime() > 10 * 60 * 1000 : true;
   const trialSoon = membership === "trial" && daysLeft <= 3;
   /* Pinned, the bar runs edge to edge — from the sidebar to the right of the screen, square, a
@@ -37,6 +43,7 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
     <motion.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} data-stuck={stuck ? "" : undefined} className="topbar material sticky top-[env(safe-area-inset-top,0px)] z-20 mb-8 flex items-center gap-3 px-4 py-2 rounded-[20px] max-[400px]:gap-1 max-[400px]:px-3">
       {/* Back, first, on every screen but home (BackButton.tsx, 2026-10-22) */}
       <Suspense fallback={null}><BackButton home={home} /></Suspense>
+      {ember && <div className="ember-greet" data-ember-greet><b>Hi, {first}! Welcome back.</b><span>Everything about today, in one place.</span></div>}
       {/* Go to (components/shell/Keys.tsx): the hint said ⌘K for months and nothing answered it */}
       <button type="button" onClick={() => dispatchEvent(new Event("df-palette"))} data-goto-open className="hidden sm:flex items-center gap-2 text-steel text-sm flex-1 min-w-0 h-10 -my-1 px-1 rounded-xl text-left hover:text-[var(--color-label)] transition-colors"><Search size={18} className="shrink-0" /><span className="text-xs truncate">Go to a section…</span><kbd className="kbd ml-auto max-lg:!hidden">{mac ? "⌘" : "Ctrl"} K</kbd></button>
       {/* the wordmark goes home, like the sidebar's: /dashboard, or the first section this person holds */}
@@ -62,8 +69,12 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
           Edit my profile, and Settings for whoever may. It went straight to Settings (or /me) before. */}
       {/* below md the bottom bar ends in the same circle, so this one steps aside there (2026-10-23, the owner: "why two
           profile icons — one is enough") */}
-      <button type="button" onClick={() => setCard(true)} title={`${name} · your profile`} aria-label={`${name} · your profile`} aria-haspopup="dialog" data-my-profile
-        className="max-md:!hidden tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</button>
+      {(() => {
+        const me = <button type="button" onClick={() => setCard(true)} title={`${name} · your profile`} aria-label={`${name} · your profile`} aria-haspopup="dialog" data-my-profile
+          className="max-md:!hidden tap-square h-9 w-9 rounded-full bg-[var(--color-label)] text-[var(--color-on-label)] grid place-items-center font-display text-base transition hover:opacity-80">{name.slice(0, 1)}</button>;
+        /* Ember: the same button, in a pill with the name and the position beside it */
+        return ember ? <div className="ember-who max-md:!hidden" data-ember-who>{me}<span><b>{name}</b>{role && <i>{ROLE_LABEL[role]}</i>}</span></div> : me;
+      })()}
     </motion.header>
     <ProfileCard open={card} onClose={() => setCard(false)} accountHref={accountHref} />
     </>

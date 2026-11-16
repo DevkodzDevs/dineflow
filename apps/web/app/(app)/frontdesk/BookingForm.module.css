@@ -117,3 +117,29 @@
 .total small { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-label-2); }
 .total b { font-size: 24px; line-height: 1.1; font-weight: 700; color: var(--color-label); }
 .err { font-size: 13px; font-weight: 600; color: var(--color-red); }
+
+/* the stitched seam (2026-11-16): the four steps as dots on a dashed line; the thread is sewn up to the step being filled, the
+   needle sits at its end, a done step is a tick in the tint; tap a dot to go to that step. Sticky under the sheet's head, with
+   the same frosted backing the foot has, so it stays while the sheet scrolls. */
+.seam { position: sticky; top: 0; z-index: 4; isolation: isolate; padding: 6px 0 8px; }
+.seam::before { content: ""; position: absolute; z-index: -1; pointer-events: none; top: -16px; bottom: 0; left: calc(-1 * var(--sheet-sx, 20px)); right: calc(-1 * var(--sheet-sx, 20px));
+  background: color-mix(in srgb, var(--color-bg-2) 92%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.seamSteps { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.seamTrack { position: absolute; left: 12.5%; right: 12.5%; top: 21px; height: 2px; pointer-events: none; }
+.seamBase { position: absolute; inset: 0; border-top: 2px dashed var(--color-label-3); opacity: .45; }
+.seamSewn { position: absolute; left: 0; top: 0; height: 0; border-top: 2px dashed var(--color-tint); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-tint) 70%, transparent)); transition: width .55s var(--ease-out); }
+.needle { position: absolute; top: -13px; width: 3px; height: 26px; margin-left: -2px; border-radius: 2px; background: var(--color-label-2); transform: rotate(28deg); transform-origin: 50% 90%;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-label) 35%, transparent); transition: left .55s var(--ease-out); }
+.needle::before { content: ""; position: absolute; top: 3px; left: -1px; width: 5px; height: 6px; border: 1px solid var(--color-label-3); border-radius: 50%; background: var(--color-bg-2); }
+.seamStep { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 44px; padding: 4px 0 0; background: none; border: 0; color: var(--color-label-2); font: 700 12px/1.1 var(--font-sans); cursor: pointer; min-width: 0; }
+.seamStep span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seamStep i { width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; font-style: normal; font-size: 13px; font-weight: 800; color: var(--color-label-2); background: var(--color-bg-2); border: 2px solid var(--color-separator); transition: background .2s, color .2s, border-color .2s, box-shadow .2s; }
+.seamStep[data-done="true"] i { background: var(--color-tint); border-color: var(--color-tint); color: var(--color-on-tint); }
+.seamStep[data-now="true"] i { border-color: var(--color-tint); color: var(--color-tint); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-tint) 22%, transparent); }
+.seamStep[data-done="true"][data-now="true"] i { color: var(--color-on-tint); }
+.seamStep[data-done="true"], .seamStep[data-now="true"] { color: var(--color-label); }
+.seamFoot { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--color-label-2); min-width: 0; }
+.seamFoot span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step { scroll-margin-top: 104px; }
+@media (max-width: 420px) { .seamStep { font-size: 11px; } .seamStep i { width: 30px; height: 30px; } .seamTrack { top: 19px; } .seam::before { left: -16px; right: -16px; } }
+@media (prefers-reduced-motion: reduce) { .seamSewn, .needle, .seamStep i { transition: none; } }

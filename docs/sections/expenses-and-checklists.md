@@ -138,3 +138,8 @@ node batch2.mjs     # 40 checks on a throwaway demo — see testing-and-gates.md
   big, the weekday) — the date had been a 56px column of "Mon, 2 / Nov" wrapping — the head's icon, what and who to, the details as
   chips (how paid, the bill, GST, by whom, the note, struck out), the amount with small paise, Strike out a round key. shots49:
   4 rows inside the card at 1920/1440/1194/834, each with its tile.
+
+- **A ticked duty burns (2026-11-16)** — design-system.md, *The six touches*. `[data-duty][data-burning]` for 1.3 s after a tick (an
+  untick does not burn): the words go grey behind an ember crossing them, sparks beside it; the card that just became all done flares
+  once (`[data-cleared]`) and stays ringed in green while it is (`[data-clear]`). The tick itself, `checklist_tick`, is untouched.
+  `pw/touch-probe.mjs` ticks the first duty in every theme and width, sees the burn and its end, and unticks it.

@@ -43,7 +43,7 @@ transaction you roll back, then apply with `node scripts/migrate.mjs` — agains
 ```
 pnpm lint        # 0 errors (13 warnings are known)
 pnpm typecheck
-pnpm test        # 373 unit tests in 52 files (2026-11-10)
+pnpm test        # 411 unit tests in 54 files (2026-11-16)
 pnpm build       # note: this clobbers .next and kills a running `next dev`
 ```
 
@@ -60,8 +60,9 @@ a substitute for the four gates and the session probes. [admin-and-membership.md
 **Tests restore what they touch.** `guests-test.mjs` prints
 `put back: "…" restored to how it was found`. Match that.
 
-**Check both property kinds and all five themes.** A resort and a restaurant get different modules,
-different tile counts and different flip tiles. Dark, paper, colourful dark, colourful light and royal classic are all real themes.
+**Check both property kinds and all four themes.** A resort and a restaurant get different modules,
+different tile counts and different flip tiles. Dark, paper, royal classic and ember are all real themes (the two colourful
+themes were retired 2026-11-16).
 
 **Check five widths**: 1920, 1440, 1194, 834, 412 — and 44px touch targets on the touch ones.
 

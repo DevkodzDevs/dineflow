@@ -10,12 +10,13 @@
 ## What it is
 
 One language: a split-flap clock on a graphite wall. Dark by default (`data-theme="dark"`), with a
-light "paper" theme that is a full re-skin, not an inversion, and since 2026-10-18 three more:
-**Colourful dark** (`data-theme="colour"`, 0117) — bright hues on deep indigo — **Colourful light**
-(`data-theme="paper"` + `data-palette="bright"`, 0118) — bright hues on a light page — and **Royal classic**
-(`data-theme="paper"` + `data-palette="royal"`, 0119) — navy, burgundy and gold on ivory, no gradients. All five are
-real and **all must be checked** — a colour that reads on graphite can vanish on paper, and a graphite hex left in a rule shows as a
-grey patch on indigo.
+light "paper" theme that is a full re-skin, not an inversion, and two more worn as a palette on one of those:
+**Royal classic** (`data-theme="paper"` + `data-palette="royal"`, 0119) — navy, burgundy and gold on ivory, no
+gradients — and since 2026-11-16 **Ember** (`data-theme="dark"` + `data-palette="ember"`, 0186) — a walnut side menu
+with gold chips and bevelled pills, an LED clock, orange light on graphite. **Four themes; all four must be checked** — a
+colour that reads on graphite can vanish on paper. (The two colourful themes of 2026-10-18 — `data-theme="colour"`, 0117,
+and `data-palette="bright"`, 0118 — were retired on 2026-11-16 by the owner's "keep these four only"; their tokens and
+blocks are gone from `globals.css`, 0186 moves any saved row to dark / paper, and an old cookie reads as follow-device.)
 
 `globals.css` is written in labelled blocks. Find yours before you add anything:
 
@@ -104,60 +105,21 @@ from 100 minutes, a room number over four characters). CSS: the FLAP NUMBERS blo
 not columns), Front desk's occupancy % (a caption under In house — the Control room carries it), Reports targets
 (none exist).
 
-## The colourful theme (2026-10-18)
+## The two colourful themes — retired (2026-10-18 → 2026-11-16)
 
-The owner's "one more theme — colourful". **Built on dark, not on paper**: its text is light on dark surfaces, so
-every rule written for the dark theme (fills of `rgb(255 255 255 / .07)`, light-on-dark pills, the Assist panel)
-stays right without a single override. What it changes:
-
-- **Tokens** (`[data-theme="colour"]` beside paper's at the top of `globals.css`): `--color-bg` #160f33, `-bg-2`
-  #211650 (cards), `-bg-3` #2d2069, bezel #0c0624; label #fbf8ff / label-2 #c9bdf2 / label-3 #9387c9; **tint
-  magenta #ff5ca8** (on-tint #2a0019); every hue a step brighter (green #2ee6a0, red #ff5d73, blue #5cb4ff, orange
-  #ffb547, violet #c79bff, cyan #2fe1f5). The aliases (saffron, mint, chili, sky) are set explicitly — saffron is the
-  magenta tint here, as it is the green tint in dark. Contrast on a card: label 15.6, label-2 9.4, label-3 4.9.
-- **The COLOURFUL block at the end of the file**: the frame (`.deck`, `body:has(.deck-card)`) is three soft lights —
-  violet, magenta, cyan — on indigo; the screen's card carries the same lights, quieter; the side menu
-  (`aside.ink-panel`) is a solid violet-to-plum band (solid, because at tablet width it opens over the page); cards
-  get a faint top sheen; **`.btn-filled` and `.svc-btn.go` are a magenta-to-orange gradient** with dark ink (6.4:1 on
-  the magenta end); a figure's icon square with no state to show takes violet, cyan, magenta, orange in turn; the flip
-  tiles are violet plates; focus ring and selection follow the tint.
-- **Every surface rule skips `[data-theme="paper"] *`** — a guest page forces paper on its own box, and a staff
-  phone on the colourful theme must not repaint a guest's booking page.
-- **`system` never resolves to it** — Follow device is dark or paper; colourful is always a choice. The top-bar
-  theme button is now a menu of four (`ThemeButton`, `data-theme-menu`, `data-theme-option`) and Settings shows four
-  cards with a swatch each (`ThemePicker`, `data-theme-picker`). The phone's bar colour is #0c0624.
-- Measured by `langtheme.mjs`: every section, both property kinds, 1440 / 834 / 412 — no sideways scroll, no text
-  under 3:1. Check it when you add a rule with a raw colour: a graphite hex (#1c1d24, #0a0a0d…) is the usual culprit.
-
-## Colourful light (2026-10-18, 0118)
-
-The owner's "one more colourful theme, light-background based". **Worn as paper plus a palette** —
-`<html data-theme="paper" data-palette="bright">` — so all of paper's ~75 light-surface rules apply untouched and
-nothing is duplicated; `lookFor()` in `lib/themeLook.ts` (3 tests) maps a choice to the two attributes, and
-`ThemeKeeper` holds both (React re-applies the server's `<html>` attributes when it rebuilds a page).
-
-- **Tokens** (`html[data-palette="bright"]`, beside the others at the top of `globals.css` — more specific than
-  paper's, so they win wherever both apply): page #f6f3ff, cards white, `-bg-3` #efe9fc; ink #1d1537, label-2 #5a5078,
-  label-3 #8a80a8; **tint pink #db2777 with white on it (4.6)**; hues deepened for light ground — green #0e9f5e, red
-  #e11d48, blue #2563eb, **orange #b45309** (#d97706 measured 2.9:1 on the lavender page), violet #7c3aed, cyan #0891b2.
-- **The BRIGHT block at the end of the file**: the frame and the side menu are a jewel-toned band (violet #4c1d95 →
-  plum #831843, warm glows) with the menu's white text unchanged; the screen's card is lavender with pink, cyan and
-  sunshine lights; cards get a violet hairline; **`.btn-filled` / `.svc-btn.go` are pink → rose → burnt orange with
-  white ink** (4.6 / 5.2); every figure tile has a 3px top edge and icon square in its own colour (violet, cyan, pink,
-  orange in turn, or its state's); flip tiles are violet plates with white figures; fields, chips and table heads take
-  a faint violet.
-- **Trap met:** the chip rule outranked `.chip.on` (the chosen chip — label colour, white ink), leaving white text on
-  near-white on eight screens; it is `.chip:not(.on)` now. Any rule here that repaints a control must leave its
-  chosen/active state alone.
-- Surface rules skip `div[data-theme] *` (not `[data-theme="paper"] *` as the dark colourful block does — here
-  `<html>` itself is paper): a guest page's own paper box stays plain paper.
-- The top-bar menu and Settings have five choices (Dark, Light, Colourful dark, Colourful light, Follow device); the
-  menu's icon for this one is Sparkles; the phone's bar colour is #4c1d95.
+**Colourful dark** (`data-theme="colour"`, 0117 — magenta on deep indigo, built on dark) and **Colourful light**
+(`data-theme="paper"` + `data-palette="bright"`, 0118 — pink and violet on lavender, built on paper) were removed on
+2026-11-16 when the owner chose the four above ("keep these only, remove the rest"). Gone with them: their token blocks at
+the top of `globals.css`, the COLOURFUL and BRIGHT look blocks at its end, their picker cards, swatches, icons and bar
+colours; `lookFor()`, `THEME_BOOT`, the cookie regex and the type unions no longer know the names. What stays true from
+them: a surface rule in a palette block skips `div[data-theme] *` (a guest page's own paper box), `.chip:not(.on)` leaves
+the chosen chip alone, and `system` never resolves to a palette. Their migrations stand (never edit an applied one);
+0186 tightens the check back and moves a saved `colour` to dark and `bright` to paper (the live table had neither).
 
 ## Royal classic (2026-10-18, 0119)
 
 The owner's "rich royal colour base with classic feel … don't use multi-gradient … light background based". Worn
-like Colourful light — `<html data-theme="paper" data-palette="royal">`, `lookFor()` maps it — so paper's rules apply.
+as paper plus a palette — `<html data-theme="paper" data-palette="royal">`, `lookFor()` maps it — so paper's rules apply.
 
 - **Tokens** (`html[data-palette="royal"]`): page ivory #faf6ee, cards #fffdf8, `-bg-3` #f2ebdc; ink navy #1a2340,
   label-2 #4b5069, label-3 #847f70; **tint royal navy #1e3a8a with ivory on it (10.3)**; green emerald #15803d, red
@@ -652,6 +614,97 @@ Then look at it, in both themes, at 1440 and 412.
 ## See also
 
 [testing-and-gates.md](testing-and-gates.md) · [shell-and-nav.md](shell-and-nav.md) ·
+## Ember (2026-11-16, 0186)
+
+The owner's "one more theme, exactly like this video" — the Mercato commerce console: a wood-panel menu with a gold chip over
+each group and a dark tray under it, bevelled grey pills with a thin left marker and a chevron, a drop-down of mono capitals
+under the open row, an LED clock; near-black cards with a glossy icon square; a greeting and an avatar pill in the top bar.
+Worn like Royal, but on dark — `<html data-theme="dark" data-palette="ember">` — so dark's rules apply and the
+palette repaints them; `lookFor()` maps it (6 tests), `THEME_BOOT`, the cookie regex, `lib/auth.ts` and `themeAction.ts`
+know the name, and 0186 resets `user_prefs_theme_check` and `set_my_theme` to the four themes (dry-run `dry186.mjs`, 8 checks rolled back;
+**applied to the live database on 2026-11-17** — data-and-rls.md; before that the live write was refused to the session). Until it was
+applied a person's Ember choice holds on the device (the cookie) but cannot be saved to their login, and a login whose saved
+theme is another one is put back to that one on the next page.
+
+- **Tokens** (`html[data-palette="ember"]`, beside the others at the top of `globals.css`): page #111216, cards #1b1c22,
+  `-bg-3` #25262e, bezel #0a0a0c; label #f4f2ee / label-2 #a9a8a3 / label-3 #74736e; **tint orange #f07b1d with dark ink on it
+  (6.9)**; green #2fcf7f, red #ff6b61, blue #6ea0ff, orange (amber, a step off the tint) #f4a63a, violet #a78bfa, cyan
+  #22d3ee; saffron is the orange tint. On a card: label 15.2, label-2 7.1, label-3 3.6, the tint 6.1, every hue 6.1–9.4.
+  The white initial on the orange logo key and avatar is 2.8 — it is a mark, not reading text, as in the picture.
+- **The EMBER block at the end of the file** is the look; **the shape is React's**: `useEmber(initial)`
+  (`components/shell/useEmber.ts`) reads `<html data-palette>` and follows it live, and the app layout passes the cookie's
+  (or the login's saved) answer so the first paint already has the right shape. Under it:
+  - **The menu** (`Nav.tsx`): the `.deck > aside.ink-panel` is walnut — an inline SVG `feTurbulence` grain, vertical
+    streaks, a bronze rim — on a 28px radius with a 10px margin; the property is a dark card with a 44px orange key; each
+    `.nav-group` is a dark tray and its `.nav-head` a gold chip sitting on the wood 28px above it; every row a 46px
+    bevelled pill (`::before` the left marker, orange and glowing when current; `::after` a chevron). **Rows fold**
+    (`subLinksFor`, `sections.ts`): a row that lives inside another's module (Join by QR, the Order board, the Tables
+    screen) leaves its place and hangs under that row, and a row with pages under its route carries them (Orders: All
+    orders, New order, Phone order; Pantry: Leaks; Online orders: Payouts for the owner and a manager; Front desk: Night
+    audit when the add-on is on; Settings: Printers, Screens, Table QR / Room QR + Booking page by the rows the property
+    has, Storefront). A folded row's chevron is a `button` beside the link (never inside it); the row you are on opens by
+    itself (`subOn` — the deepest sub-link the path is under is lit), a tap on the chevron opens or closes by hand, and a
+    new screen folds the rest back. The `.nav-sub` tray is black and inset, its rows Oswald capitals at .2em.
+    **Every other theme renders the flat menu exactly as before** — `fold()` is the identity when `ember` is false.
+  - **The clock** (`EmberClock.tsx`): between the menu and the foot, only on Ember; the device's time in orange LED
+    digits, the date, and `navigator.onLine` as ● Online / ● Offline. Time arrives after mount (the server cannot know
+    the device's clock).
+  - **The top bar** (`TopBar.tsx`): "Hi, <first name>! Welcome back." on the left from 1024px, the search as a 44px inset
+    pill, the round keys graphite, and the avatar in a pill with the name and the position (`role` is a new prop) from 1280.
+  - Cards are a graphite gradient with a black edge and a line of light (`.filled`, `.picked` and `.stat` keep their own);
+    a stat's label is plain and its icon square sits top-right in its own colour (orange, violet, green, blue in turn);
+    the flip tiles in `main` are black glass with orange digits (`.live`, `.alert` and the loader keep theirs);
+    `.btn-filled` / `.svc-btn.go` an orange gradient with dark ink; the chosen chip orange; the phone bar's pill orange.
+- **The icon looks keep their widths and `!important` padding**; Ember only dresses what they leave, cut to the rail’s 52px
+  column (dock 80px): a 38px letter key in a 48px card, 44 × 44 pills in trays of 4px padding, trays 10px apart with no
+  hairlines, the foot’s avatar centred in a 3px card; no chips, no markers, no chevrons; the drop-downs and the clock
+  `rail-hide` (they come back in the drawer). The open row carries an orange bar under it. Compact (212px) tightens the pills
+  (22px marker inset, a 30px fold button) and the brand (38px key, 15px name). Measured by `rail-shot.mjs` (scratchpad): rail
+  at 1194 and 834, float-rail, dock and compact — the hamburger, the key, every pill and the avatar on one centre line (0px
+  spread), pills square and 4px from both tray edges, nothing clipped, no sideways overflow. **The brand key is `.ember-key`**
+  (Nav.tsx swaps the class under Ember): the usual `!min-w-9 !h-9` utilities are important inside Tailwind’s layer, and an
+  important rule outside a layer loses to them, so the key could not be resized by CSS alone. The fold button is 44px on a coarse
+  pointer.
+
+## The six touches (2026-11-16)
+
+The owner's six short videos (kodehelix UI pieces), each placed on the screen it belongs to, approved from mock-ups injected
+into the real screens first ("show images, I approve, then apply") and then built. One CSS block, **SIX TOUCHES**, before
+EMBER in `globals.css`; the pure parts in `lib/touches.ts` (8 tests: the flow's layout and till slots, the star tone, the seam's
+needle, the bell's rule, the import's progress). Tokens throughout; the two night skies (the stars, the orbit) are illustrations
+and carry their own blues, as the walnut carries its browns; Royal's solid-colour rule has its overrides at the end of the block.
+
+- **Reports — Where the money went** (`reports/MoneyFlow.tsx`, `[data-money-flow]`): ribbons from how the money came in (by
+  order type, `sales_breakdown.by_type`) through the till to how it was paid (`report_summary.payments`), hand-drawn SVG, no
+  library; beside it *Spend by head* (`report_extra.expenses`, whoever may see expenses). `sankeyLayout` scales each side to its
+  own total (a pending bill is on one side only), biggest first, a 2px floor so a sliver still shows. **Under 40rem of card the
+  ribbons would be hairlines, so the same numbers become two lists of bars** (`[data-flow-bars]`; a container query, as the
+  Speed-of-service card does). Empty window → the dashed `[data-empty-chart]` box the other charts use. Sits under the
+  departments' three cards, above the four KPI tiles. **StatTile gained `spark?: number[]`** (`Spark`, `.stat-spark`): a thin line
+  of the figure's days beside the number, the tint going up and amber going down — the Sales tile draws `by_day`.
+- **The guest's stars draw a constellation** (`feedback/FeedbackClient.tsx`, `[data-feedback-sky]`): a night-sky strip in the
+  white card, five stars that join up as they light, coral to two stars, amber at three, blue from four (`starTone`), the word and
+  the score under them; a mouse resting on a star lights the sky up to it. The taps are the same five radios, laid over the sky
+  (`.fb-taps`), a fifth of it each and never under 44px (`[data-star]` kept for the probes).
+- **Book a room's stitched seam** (`frontdesk/BookingForm.tsx`, `[data-booking-seam]`, styles in its module): the four steps as
+  dots on a dashed line across the top of the sheet, sticky under the head with the foot's frosted backing; the thread sewn (a
+  dashed line in the tint, no gradient) up to the step being filled, the needle 20px before it, a done step a tick; a tap on a dot
+  scrolls that step up under the seam (`scroll-margin-top`); the foot line says *Step 3 of 4 · 2 nights · Room 204 Deluxe*.
+- **A ticked duty burns** (`tasks/TasksClient.tsx`, `[data-duty][data-burning]` for 1.3 s): the words go grey behind an ember that
+  crosses them (a 300%-wide text gradient sliding, no custom-property animation, so every browser draws it), sparks as box-shadows;
+  the card that just became all done flares orange once (`[data-cleared]`, 2.4 s) and stays ringed in green (`[data-clear]`).
+  Reduced motion: grey at once, no ember.
+- **The menu import's orbit** (`menu/MenuImport.tsx`, `[data-orbit]`): the drop zone is a small planet — the ring is how far along
+  the import is (`importProgress`: finished pages over pages asked for), every page still being read a moon on its own orbit (three
+  at most), the two ways in (camera / gallery) the same 44px labels inside the zone, and a desktop may drop photos on it. The
+  page pills became rows (`[data-import-pages] [data-page-status]` kept): a scanning bar while reading, green with the dish count,
+  red *could not read*.
+- **The bell rings for real** (`shell/Notifier.tsx`, `.bell-key[data-ringing]` for 1.8 s): a damped swing (`rotate` keyframes from
+  the bell's crown), two sound-wave arcs either side, the badge pops; the panel's head says *n new*. **It follows the provider's
+  count of live arrivals (`arrived` in the context), not the unread total** — that total also rises when the feed is read back from
+  sessionStorage a beat after paint, and a reload must not ring (the first probe run caught exactly that).
+- Measured by `pw/touch-probe.mjs` (266 of 266) and `pw/orbit-probe.mjs` (39 of 39) — testing-and-gates.md.
+
 [dashboard.md](dashboard.md)
 
 - **`.ci-form`** (end of `globals.css`) — the online check-in form's field border, 16% ink, tint on

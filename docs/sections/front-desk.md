@@ -336,3 +336,14 @@ and further on the same way."
   `guests(full_name, phone)`) and queues `dineflow_booking` to the guest (dedupe `booking:<id>`) through `wa_queue`, after
   `create_booking` — the RPC is untouched; nothing when the add-on, the settings or the switch is off or the guest has no number;
   never fails the action. Online bookings (`/book`) and OTA imports are not messaged in this tier.
+
+## 2026-11-16 — the stitched seam on Book a room
+
+The owner's "form stepper that sews every step" video, placed on the sheet that already had four numbered steps. A strip across
+the top of `[data-booking-form]` (`[data-booking-seam]`, `data-seam-step` = the step being filled): the four steps as dots on a
+dashed line, the thread sewn in the tint up to the current step with the needle at its end, a done step a tick (`[data-seam-go=k]`,
+44px, a tap scrolls that step up under the seam — `.step { scroll-margin-top }`), and under it *Step 3 of 4 · 1 night · Room 102
+Standard*. Sticky under the sheet's head with the foot's frosted backing. Done = When always, Room when a room is picked and can
+take the dates, Guest when all five details pass, Payment when the room and a rate are there (`seamStep`, lib/touches.ts, tested).
+Nothing else on the sheet moved. Measured in `pw/touch-probe.mjs`: present at 1920/1440/1194/834/412 in all four themes, the needle
+on Room until a room is picked then on Guest, Payment (the last step) scrolled as high as the sheet allows.

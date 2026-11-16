@@ -66,8 +66,13 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
   const doneOf = (l: List) => mine[l.id] ?? runs.find((r) => r.checklist_id === l.id && r.run_date === today)?.done ?? {};
   const week = Array.from({ length: 7 }, (_, i) => new Date(Date.parse(today) - (6 - i) * 86400000).toISOString().slice(0, 10));
 
+  // a ticked duty burns away (2026-11-16): the row carries data-burning for a second while CSS sweeps an ember across the words;
+  // the card that just became all done flares once (data-cleared) and stays lit (data-clear) while it is
+  const [burning, setBurning] = useState<string | null>(null); const [cleared, setCleared] = useState<string | null>(null);
   const toggle = (l: List, i: number) => {
     const was = doneOf(l); const on = !was[String(i)];
+    if (on) { const key = `${l.id}:${i}`; setBurning(key); setTimeout(() => setBurning((b) => (b === key ? null : b)), 1300); }
+    if (on && Object.keys(was).length + 1 >= l.items.length) { setCleared(l.id); setTimeout(() => setCleared((c) => (c === l.id ? null : c)), 2400); }
     setMine((m) => ({ ...m, [l.id]: on ? { ...was, [String(i)]: { name: "You", at: new Date().toISOString() } } : Object.fromEntries(Object.entries(was).filter(([k]) => k !== String(i))) }));
     start(async () => {
       const r = await tick(l.id, i, on);
@@ -109,7 +114,7 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
               /* A checklist card (2026-10-23, the owner: "one card to another not aligned"): every card in a row is the row's
                  height and keeps its week at the foot; the head is the shift's icon, the name (two lines before it cuts),
                  the shift and the count, and one ring for how far along — it replaced the flap % and the bar under it. */
-              <Card key={l.id} className="min-w-0 !p-0 overflow-hidden flex flex-col h-full" data-list={l.name}>
+              <Card key={l.id} className="min-w-0 !p-0 overflow-hidden flex flex-col h-full" data-list={l.name} data-clear={all || undefined} data-cleared={cleared === l.id || undefined}>
                 <div className="px-4 pt-4 pb-3.5">
                   <div className="flex items-start gap-3">
                     <span className={cn("h-11 w-11 shrink-0 rounded-[14px] grid place-items-center", all ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}>{all ? <Check size={20} strokeWidth={3} aria-hidden /> : <Icon size={19} aria-hidden />}</span>
@@ -139,10 +144,10 @@ export function TasksClient({ lists, runs, today, editor, teams, jobs, positions
                 </div>
                 <ul className="flex-1 border-t border-[var(--color-separator)]">
                   {l.items.map((it, i) => { const d = done[String(i)]; return (
-                    <li key={i}><button type="button" onClick={() => toggle(l, i)} aria-pressed={!!d} data-duty
+                    <li key={i}><button type="button" onClick={() => toggle(l, i)} aria-pressed={!!d} data-duty data-burning={burning === `${l.id}:${i}` || undefined}
                       className="!min-h-14 w-full flex items-center gap-3 px-4 py-2 text-left border-b border-[var(--color-separator)] last:border-b-0 hover:bg-[var(--color-fill)]">
                       <span className={cn("h-7 w-7 shrink-0 rounded-lg grid place-items-center border-2 transition-colors", d ? "bg-[var(--color-green)] border-[var(--color-green)] text-[var(--color-bezel)]" : "border-[var(--color-label-3)]")}>{d && <Check size={16} strokeWidth={3.5} aria-hidden />}</span>
-                      <span className="min-w-0 flex-1"><span className={cn("block text-[15px] font-semibold leading-snug", d && "text-steel line-through decoration-2")}>{it}</span>
+                      <span className="min-w-0 flex-1"><span className={cn("duty-text block text-[15px] font-semibold leading-snug", d && "text-steel line-through decoration-2")}>{it}</span>
                         {d && <span className="block text-[12px] text-steel">{d.name} · {hhmm(d.at)}</span>}</span>
                     </button></li>); })}
                 </ul>

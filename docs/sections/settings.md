@@ -58,9 +58,10 @@ never be reachable on a real one.
   button. See [design-system.md](design-system.md) (Simple Service). Since 2026-10-18 a second group, *The whole
   app*: தமிழ் and हिन्दी — every screen in that language (`ta-all` / `hi-all`; design-system.md, *The whole app in
   Tamil or Hindi*). The picker and the top-bar menu are `translate="no"`: each choice shows in its own script.
-- **Appearance has six themes** (2026-10-18, `ThemePicker`): Dark, Light, **Colourful dark** (0117), **Colourful
-  light** (0118), **Royal classic** (0119) and Follow device, each card with a swatch of the theme, three to a row
-  from `xl`. The top bar's theme button is a menu of the same six (it was a dark/light toggle). The label above the language picker reads *Language*; the picker names its
+- **Appearance has four themes and Follow device** (`ThemePicker`; 2026-11-16): Dark, Light, **Royal classic** (0119), **Ember**
+  (0186 — walnut menu, graphite, orange) and Follow device, each card with a swatch of the theme, three to a row from `xl`.
+  The top bar's theme button is a menu of the same five (it was a dark/light toggle). The two colourful themes of 2026-10-18
+  were retired the same day Ember came (design-system.md). The label above the language picker reads *Language*; the picker names its
   own two groups.
 
 - **Room GST falls back to 5%**, not 12: a restaurant's Settings form has no room-rate field and saved 12

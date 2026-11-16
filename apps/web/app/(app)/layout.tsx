@@ -96,6 +96,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const dl = s.membership === "trial" ? daysLeft(s.restaurant.trial_ends_at) : daysLeft(s.restaurant.membership_ends_at);
   const jar = await cookies();
   const lang = readLang(jar.get(LANG_COOKIE)?.value);
+  /* Ember (0186) changes the menu's shape (drop-downs, a clock, a greeting), which React draws — so the first paint needs
+     the cookie's answer here; the saved login theme (ThemeSync) or the theme menu correct it on the client (useEmber) */
+  const ember = (s.theme ?? jar.get("df-theme")?.value) === "ember";
   /* Display lock (0141): this device pinned to one page. The lock holds only while the property still allows that page in
      that kind; otherwise it is stale — forgotten by StaleLock, and the device carries on unlocked. */
   const held = parseLock(jar.get(LOCK_COOKIE)?.value);
@@ -121,14 +124,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {/* the theme saved on this person's login wins over whatever this device last used */}
     <ThemeSync pref={s.theme} />
     <div className="flex min-h-dvh deck" style={s.restaurant.brand_colour ? { ["--color-tint" as string]: s.restaurant.brand_colour } : undefined}>
-      {!lock && <Sidebar name={s.profile.full_name} role={s.profile.role} dept={dept} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} grants={s.profile.grants ?? null} features={s.features} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} />}
+      {!lock && <Sidebar name={s.profile.full_name} role={s.profile.role} dept={dept} restaurant={s.restaurant.name} type={s.restaurant.property_type} membership={s.membership} daysLeft={dl} isAdmin={s.isAdmin} grants={s.profile.grants ?? null} features={s.features} enabled={s.restaurant.enabled_modules ?? null} allowed={s.profile.allowed_modules ?? null} logo={s.restaurant.logo_url ?? null} accountHref={accountHref} attend={attend} ember={ember} />}
       <main className="deck-card flex-1 min-w-0 px-4 md:px-8 2xl:px-12 pt-4 pb-[calc(var(--tabbar)+28px)] md:pb-10 md:my-3 md:mr-3"><div className="mx-auto max-w-[var(--page-max)]">
         {/* Master mode is for Master control credentials only: the person must be a platform
             admin AND be standing inside a property they opened from Master control. */}
         {/* one head: Master mode's band over the top bar — on a phone they stay at the top together (.app-head, globals.css) */}
         <div className="app-head">
         {s.isAdmin && s.actingAs && <MasterBanner property={s.restaurant.name} />}
-        {!lock && <TopBar home={`/${landingFor(s.profile.role, mods, s.profile.position ?? null)}`} membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} outlets={s.outlets} />}
+        {!lock && <TopBar home={`/${landingFor(s.profile.role, mods, s.profile.position ?? null)}`} membership={s.membership} daysLeft={dl} alerts={count} name={s.profile.full_name} accountHref={accountHref} boxSync={boxSync} outlets={s.outlets} role={s.profile.role} ember={ember} />}
         </div>
         {lock ? <div data-lock-area={lock.mode}>{children}</div> : children}
       </div></main>

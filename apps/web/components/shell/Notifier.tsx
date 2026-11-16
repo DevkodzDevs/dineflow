@@ -12,11 +12,12 @@ import { waDate } from "@/lib/wa";
 import { cn, Sheet, Switch, useToast } from "@/components/ui";
 import { KINDS, STATIONS, TONES, kindsFor, deptSees, loadPrefs, savePrefs, playTone, unlockAudio, armAudioUnlock, stationPrefs, type NotifyKind, type NotifyPrefs, type StationId, type ToneId } from "@/lib/notify";
 import { buzz } from "@/lib/buzz";
+import { shouldRing } from "@/lib/touches";
 import { CallAlert, type LiveCall } from "./CallAlert";
 
 type Item = { id: string; kind: NotifyKind; title: string; sub: string; href: string; at: number; read: boolean };
 type Ctx = {
-  feed: Item[]; unread: number; markAllRead: () => void; prefs: NotifyPrefs | null; setPrefs: (p: NotifyPrefs) => void;
+  feed: Item[]; unread: number; arrived: number; markAllRead: () => void; prefs: NotifyPrefs | null; setPrefs: (p: NotifyPrefs) => void;
   kinds: NotifyKind[]; propertyType: string; openSettings: () => void;
 };
 const NotifyCtx = createContext<Ctx | null>(null);
@@ -108,6 +109,7 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
      moment later and pushing every card below it down (Settings measured CLS 0.148). */
   const [prefs, setPrefsState] = useState<NotifyPrefs | null>(() => stationPrefs("phone"));
   const [feed, setFeed] = useState<Item[]>([]);
+  const [arrived, setArrived] = useState(0);   // counts live events as they land (not the feed read back from sessionStorage) — the bell rings on it
   const [settings, setSettings] = useState(false);
   /* Keyed by what the list holds, not by the array: every refresh renders the layout again and hands over a new
      `modules` array, which re-made `kinds`, which tore the channel down and joined it again — an event arriving in
@@ -157,7 +159,7 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
     // a Work job given to you opens Work; a table or a room, the Cleaning board
     const href = kind === "assigned" && row.title ? "/work" : KINDS.find((k) => k.kind === kind)!.href;
     const item: Item = { id: key, kind, title, sub, href, at: Date.now(), read: false };
-    setFeed((f) => [item, ...f].slice(0, 40));
+    setFeed((f) => [item, ...f].slice(0, 40)); setArrived((a) => a + 1);
     if (p.on) playTone(p.tone, p.volume);
     if (JOB_ALERT.includes(kind)) {
       setJobAlerts((a) => [item, ...a.filter((i) => i.id !== key)].slice(0, 3));
@@ -336,7 +338,7 @@ export function NotifierProvider({ modules, propertyType, me, role = "", dept = 
   }, [hearsCalls, tableOf]);
 
   const markAllRead = useCallback(() => setFeed((f) => f.map((i) => ({ ...i, read: true }))), []);
-  const value: Ctx = { feed, unread: feed.filter((i) => !i.read).length, markAllRead, prefs, setPrefs, kinds, propertyType, openSettings: () => setSettings(true) };
+  const value: Ctx = { feed, unread: feed.filter((i) => !i.read).length, arrived, markAllRead, prefs, setPrefs, kinds, propertyType, openSettings: () => setSettings(true) };
   return (
     <NotifyCtx.Provider value={value}>
       {children}
@@ -390,13 +392,18 @@ export function NotificationBell({ lateKots }: { lateKots: number }) {
   }, [open]);
   const unread = n?.unread ?? 0; const badge = unread + lateKots;
   const toggle = () => setOpen((o) => !o);
+  // the bell rings for real (2026-11-16): when something new lands it swings, damped, with its sound waves. It follows the
+  // provider's count of live arrivals, not the unread total — that total also rises when the feed is read back from
+  // sessionStorage a beat after paint, and a reload must not ring. The motion is CSS (`[data-ringing]`; reduced motion keeps it still).
+  const arrived = n?.arrived ?? 0; const seen = useRef<number | null>(null); const [ringing, setRinging] = useState(false);
+  useEffect(() => { const ring = shouldRing(seen.current, arrived); seen.current = arrived; if (!ring) return; setRinging(true); const t = setTimeout(() => setRinging(false), 1800); return () => clearTimeout(t); }, [arrived]);
   // whatever closes the panel — the bell, a tap outside, Escape, a link — what was listed has been seen
   const wasOpen = useRef(false); const markRead = n?.markAllRead;
   useEffect(() => { if (wasOpen.current && !open) markRead?.(); wasOpen.current = open; }, [open, markRead]);
   return (
     <div ref={box} className="relative">
-      <button type="button" onClick={toggle} aria-expanded={open} aria-haspopup="dialog" aria-label={badge ? `Notifications, ${badge} new` : "Notifications"}
-        className={cn("relative h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)]", open && "bg-[var(--color-fill)]")}>
+      <button type="button" onClick={toggle} aria-expanded={open} aria-haspopup="dialog" aria-label={badge ? `Notifications, ${badge} new` : "Notifications"} data-ringing={ringing || undefined}
+        className={cn("bell-key relative h-11 w-11 grid place-items-center rounded-full hover:bg-[var(--color-fill)]", open && "bg-[var(--color-fill)]", badge > 0 && "has-new")}>
         {n?.prefs && !n.prefs.on ? <BellOff size={17} /> : unread ? <BellRing size={17} /> : <Bell size={17} />}
         {badge > 0 && <span className="absolute -top-0.5 -right-0.5 num h-4 min-w-4 px-1 rounded-full bg-chili text-white text-[10px] grid place-items-center" data-bell-count={badge}>{badge > 99 ? "99+" : badge}</span>}
       </button>
@@ -404,7 +411,9 @@ export function NotificationBell({ lateKots }: { lateKots: number }) {
         <div role="dialog" aria-label="Notifications" data-no-gesture
           className="notify-panel material-thick fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-[76px] sm:top-[calc(100%+10px)] sm:w-[23rem] z-50 rounded-[22px] border border-[var(--color-separator)] shadow-[var(--shadow-pop)] overflow-hidden">
           <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-            <span className="text-[15px] font-semibold flex-1">Notifications</span>
+            <span className="text-[15px] font-semibold">Notifications</span>
+            {unread > 0 && <span className="bell-new num" data-bell-new={unread}>{unread} new</span>}
+            <span className="flex-1" />
             {unread > 0 && <button type="button" onClick={() => n?.markAllRead()} className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-tint)] !min-h-8 px-2 rounded-full hover:bg-[var(--color-fill)]"><CheckCheck size={14} /> Mark read</button>}
           </div>
           <div className="max-h-[min(26rem,60dvh)] overflow-y-auto overscroll-contain px-2 pb-2">

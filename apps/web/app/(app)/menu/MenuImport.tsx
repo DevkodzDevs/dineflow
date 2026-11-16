@@ -6,6 +6,7 @@ import { formatINR } from "@/lib/format";
 import { photoToDataUrl } from "@/lib/photo";
 import { mergePhotos, findExisting, newCategories, normName, GST_RATES, type ImportDish, type ImportVariant, type ExistingDish } from "@/lib/menuImport";
 import { readMenuPhoto, importDishes, autoRecipes } from "./actions";
+import { importProgress } from "@/lib/touches";
 
 type Row = ImportDish & { keep: boolean; dup: ExistingDish | null; open: boolean };
 type Page = { id: number; label: string; status: "reading" | "done" | "error"; n?: number; error?: string };
@@ -29,6 +30,9 @@ export function MenuImport({ existing, categories, gstRate, onDone }: { existing
   const [recipes, setRecipes] = useState<{ busy: boolean; done?: number; created?: number; unknown?: number } | null>(null);
   const [pending, start] = useTransition();
   const reading = pages.some((p) => p.status === "reading");
+  const [drag, setDrag] = useState(false);   // a desktop dragging photos over the zone
+  const moons = pages.filter((p) => p.status === "reading").slice(0, 3);
+  const progress = importProgress(pages); const RING = 2 * Math.PI * 35;
 
   const mark = (id: number, patch: Partial<Page>) => setPages((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   /** Every photo at once, each its own call; the pages are merged into the rows already read, keeping the owner's ticks and edits. */
@@ -95,28 +99,42 @@ export function MenuImport({ existing, categories, gstRate, onDone }: { existing
 
   return (
     <div className="space-y-4" data-menu-import>
-      {/* the two ways in: the camera one page at a time, the gallery several at once — 44px targets, two across on a phone */}
-      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-        {([{ k: "camera", Icon: Camera, label: rows ? "Another page" : "Take a photo", sub: "One page at a time", multiple: false },
-           { k: "gallery", Icon: Images, label: "Choose photos", sub: "Front, back, every page", multiple: true }] as const).map(({ k, Icon, label, sub, multiple }) => (
-          <label key={k} data-import-pick={k} className={cn("min-w-0 flex items-center gap-2.5 rounded-2xl border border-dashed p-3 cursor-pointer transition-colors min-h-[4rem]", reading ? "border-[var(--color-tint)] bg-[var(--color-green-2)]" : "border-[var(--color-label-3)] hover:bg-[var(--color-fill)]", pending && "opacity-50 pointer-events-none")}>
-            <span className="h-11 w-11 rounded-xl grid place-items-center shrink-0 bg-[var(--color-fill)] text-[var(--color-tint)]">{reading && k === "camera" ? <Loader2 size={18} className="animate-spin" /> : <Icon size={18} />}</span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-[14px] font-semibold truncate">{label}</span>
-              <span className="block text-[11.5px] text-[var(--color-label-2)] truncate">{sub}</span>
-            </span>
-            <input type="file" accept="image/*" multiple={multiple} {...(multiple ? {} : { capture: "environment" as const })} className="sr-only !w-px !h-px !min-w-0 !p-0 !border-0" disabled={pending}
-              onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; void read(fs); }} />
-          </label>
-        ))}
+      {/* the drop zone is a small planet (2026-11-16, the owner's video): every page still being read is a moon in orbit, the ring
+          is how far along the import is; the two ways in — the camera one page at a time, the gallery several at once — are the
+          same 44px targets, two across on a phone; a desktop can also drop the photos on the zone */}
+      <div className={cn("orbit-zone", drag && "is-drag", reading && "is-reading")} data-orbit data-drag={drag || undefined}
+        onDragOver={(e) => { e.preventDefault(); if (!pending) setDrag(true); }} onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); if (pending) return; void read(Array.from(e.dataTransfer.files ?? []).filter((f) => f.type.startsWith("image/"))); }}>
+        <div className="orbit-dust" aria-hidden>{Array.from({ length: 36 }, (_, i) => <i key={i} style={{ left: `${(i * 53) % 100}%`, top: `${(i * 29) % 100}%`, opacity: 0.2 + (i % 4) * 0.15 }} />)}</div>
+        <div className="orbit-sys" aria-hidden>
+          <span className="orbit-ring r3" /><span className="orbit-ring r2" /><span className="orbit-ring r1" />
+          {moons.map((m, i) => <span key={m.id} className={cn("orbit-moon", `m${i}`)} style={{ "--hue": ["var(--color-orange)", "var(--color-blue)", "var(--color-green)"][i] } as React.CSSProperties} />)}
+          <div className="orbit-core">
+            <svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="35" className="orbit-track" /><circle cx="38" cy="38" r="35" className="orbit-fill" style={{ strokeDasharray: RING, strokeDashoffset: RING * (1 - progress) }} /></svg>
+            {pages.length ? <b className="num" data-orbit-pct={Math.round(progress * 100)}>{Math.round(progress * 100)}<small>%</small></b> : <Camera size={24} />}
+          </div>
+        </div>
+        <div className="orbit-title" aria-live="polite">{reading ? `Reading ${pages.filter((p) => p.status === "reading").length} of ${pages.length} ${pages.length === 1 ? "page" : "pages"}…` : pages.length ? `${pages.filter((p) => p.status === "done").length} of ${pages.length} ${pages.length === 1 ? "page" : "pages"} read` : "Photograph the menu card, or drop the photos here"}</div>
+        <div className="orbit-picks">
+          {([{ k: "camera", Icon: Camera, label: rows ? "Another page" : "Take a photo", sub: "One page at a time", multiple: false },
+             { k: "gallery", Icon: Images, label: "Choose photos", sub: "Front, back, every page", multiple: true }] as const).map(({ k, Icon, label, sub, multiple }) => (
+            <label key={k} data-import-pick={k} className={cn("orbit-pick", pending && "is-off")}>
+              <span className="orbit-pick-ic">{reading && k === "camera" ? <Loader2 size={18} className="animate-spin" /> : <Icon size={18} />}</span>
+              <span className="flex-1 min-w-0"><b>{label}</b><small>{sub}</small></span>
+              <input type="file" accept="image/*" multiple={multiple} {...(multiple ? {} : { capture: "environment" as const })} className="sr-only !w-px !h-px !min-w-0 !p-0 !border-0" disabled={pending}
+                onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; void read(fs); }} />
+            </label>
+          ))}
+        </div>
+        <p className="orbit-sub">JPG or PNG · front, back, every page · read together</p>
       </div>
-      {/* progress, one line a photo */}
+      {/* one row a photo: reading (a scanning bar), read (how many dishes), or could not read */}
       {pages.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5" aria-live="polite" data-import-pages>
+        <ul className="orbit-files" aria-live="polite" data-import-pages>
           {pages.map((p) => (
-            <li key={p.id} className={cn("inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-[12px] font-semibold", p.status === "error" ? "bg-[var(--color-red-2)] text-[var(--color-red)]" : p.status === "done" ? "bg-[var(--color-green-2)] text-[var(--color-green)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")} data-page-status={p.status} title={p.error}>
-              {p.status === "reading" ? <Loader2 size={13} className="animate-spin" /> : p.status === "done" ? <Check size={13} /> : <X size={13} />}
-              {p.label}{p.status === "done" ? ` · ${p.n} dish${p.n === 1 ? "" : "es"}` : p.status === "error" ? " · could not read" : "…"}
+            <li key={p.id} className="orbit-file" data-page-status={p.status} title={p.error}>
+              <i className="orbit-file-ic">{p.status === "reading" ? <Loader2 size={14} className="animate-spin" /> : p.status === "done" ? <Check size={14} strokeWidth={3} /> : <X size={14} />}</i>
+              <span className="flex-1 min-w-0"><b>{p.label}</b><small>{p.status === "done" ? `${p.n} ${p.n === 1 ? "dish" : "dishes"} found` : p.status === "error" ? "could not read" : "reading…"}</small><span className="orbit-bar"><span /></span></span>
             </li>
           ))}
         </ul>

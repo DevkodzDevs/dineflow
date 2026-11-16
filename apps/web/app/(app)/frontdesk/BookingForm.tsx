@@ -7,6 +7,7 @@ import { isMobile } from "@/lib/phone";
 import { formatINR } from "@/lib/format";
 import { createBooking } from "./actions";
 import s from "./BookingForm.module.css";
+import { seamStep } from "@/lib/touches";
 
 export type Room = { id: string; number: string; floor: number; status: string; condition?: string | null; room_type_id: string | null; room_types: { name: string; base_rate: number; capacity: number } | null };
 export type RT = { id: string; name: string; base_rate: number; capacity: number };
@@ -115,6 +116,12 @@ export function BookingForm({ today, rooms, types, guests, bookings = [], inspec
   const total = room + gst;
   const due = Math.max(0, total - (f.advance || 0));
 
+  /* the stitched seam (2026-11-16, the owner's video): the four steps as dots on a dashed line across the top of the sheet, the
+     thread sewn up to the step being filled and the needle at its end; a done step is a tick. Tap a dot to go to that step. */
+  const STEPS: [string, string][] = [["when", "When"], ["room", "Room"], ["guest", "Guest"], ["pay", "Payment"]];
+  const stepsDone = [true, !!picked && !pickedWhy, guestOk, !!picked && !pickedWhy && f.rate > 0];
+  const seam = seamStep(stepsDone);
+  const jump = (k: string) => document.querySelector(`[data-booking-form] [data-step="${k}"]`)?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   const missing = !picked ? "Pick a room" : pickedWhy ? `Room ${picked.number}: ${pickedWhy.toLowerCase()} — pick another` : !okName ? "Add the guest's name" : !okPhone ? "Add a 10-digit mobile number" : !okEmail ? "Add the guest's email" : !okIdType ? "Choose the ID type" : !okId4 ? "Add the ID's last 4" : null;
   const save = () => start(async () => {
     setErr(null);
@@ -124,6 +131,16 @@ export function BookingForm({ today, rooms, types, guests, bookings = [], inspec
 
   return (
     <div className={s.form} data-booking-form>
+      <div className={s.seam} data-booking-seam data-seam-step={STEPS[seam.current][0]}>
+        <div className={s.seamSteps}>
+          <div className={s.seamTrack} aria-hidden><span className={s.seamBase} /><span className={s.seamSewn} style={{ width: `${seam.pct * 100}%` }} /><span className={s.needle} style={{ left: `calc(${seam.pct * 100}% - 20px)` }} /></div>
+          {STEPS.map(([k, label], i) => (
+            <button key={k} type="button" className={s.seamStep} data-done={stepsDone[i]} data-now={i === seam.current} aria-current={i === seam.current ? "step" : undefined} onClick={() => jump(k)} data-seam-go={k}>
+              <i aria-hidden>{stepsDone[i] ? <Check size={14} strokeWidth={3} /> : i + 1}</i><span>{label}</span>
+            </button>))}
+        </div>
+        <div className={s.seamFoot} data-seam-foot><span>Step {seam.current + 1} of {STEPS.length} · {nights} {nights === 1 ? "night" : "nights"}{picked ? ` · Room ${picked.number}${picked.room_types?.name ? ` ${picked.room_types.name}` : ""}` : " · no room yet"}</span></div>
+      </div>
       {/* 1 · When */}
       <section className={s.step} data-step="when">
         <StepHead n={1} done title="When" aside={`${longDate(f.check_in)} → ${longDate(f.check_out)}`} />

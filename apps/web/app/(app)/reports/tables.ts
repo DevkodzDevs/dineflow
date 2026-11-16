@@ -21,7 +21,7 @@ export type Extra = {
 
 const n = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100;
 export const METHOD: Record<string, string> = { cash: "Cash", upi: "UPI", card: "Card", other: "Other" };
-const TYPE: Record<string, string> = { dine_in: "Dine-in", takeaway: "Takeaway", delivery: "Delivery", room_service: "Room service" };
+export const TYPE: Record<string, string> = { dine_in: "Dine-in", takeaway: "Takeaway", delivery: "Delivery", room_service: "Room service" };
 
 export function reportTables(summary: Summary, breakdown: Breakdown | null, extra: Extra | null, dept: Dept | null = null, lodging = false): Table[] {
   const t: Table[] = [];

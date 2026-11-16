@@ -38,7 +38,10 @@ honest the model has been. `buy_purchase_list` turns a forecast into a basket fo
 dead immediately. The reader's view is `/record/[token]` — see [guest-facing.md](guest-facing.md).
 
 **Charts on /reports are recharts** (`Charts.tsx` imports `BarChart`); the dashboard's `Gauge` and
-`Week` are hand-drawn SVG. The note used to say no plotting library anywhere — it was wrong.
+`Week` are hand-drawn SVG, and so is **Where the money went** (`MoneyFlow.tsx`, 2026-11-16: ribbons from order type through the
+till to payment method, with the spend by head beside it; bars instead of ribbons under 40rem of card; `sankeyLayout` in
+`lib/touches.ts`) — design-system.md, *The six touches*. The Sales KPI tile carries a sparkline of `by_day` (`StatTile spark`).
+The note used to say no plotting library anywhere — it was wrong.
 
 **Intelligence** (`/intelligence`, 0087) sits beside Reports: plate cost and margin per dish,
 menu-engineering classes, exceptions against a 28-day baseline and the owner's briefing. See

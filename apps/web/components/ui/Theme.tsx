@@ -1,20 +1,22 @@
 "use client";
-import { Moon, Sun, MonitorSmartphone, Palette, Sparkles, Crown, Check } from "lucide-react";
+import { Moon, Sun, MonitorSmartphone, Crown, Flame, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn, tap } from "./index";
 import { saveTheme } from "@/lib/themeAction";
 import { lookFor, readThemeCookie, type ThemeChoice } from "@/lib/themeLook";
 
-/** "dark" (the board), "paper" (a bright room), "colour" (bright colours on deep indigo, 0117), "bright"
- *  (bright colours on a light page, 0118), "royal" (navy, burgundy and gold on ivory, solid colours, 0119) or "system" (follow the device — dark or paper, whichever it asks
- *  for). The choice is kept in a cookie on the device and on the person's login (user_prefs, 0078); until
- *  someone chooses, the app follows the device.
+/** Four themes: "dark" (the board), "paper" (a bright room), "royal" (navy, burgundy and gold on ivory, solid colours,
+ *  0119), "ember" (a walnut side menu, graphite cards and orange light, 0186) — or "system" (follow the device — dark or
+ *  paper, whichever it asks for). The choice is kept in a cookie on the device and on the person's login (user_prefs,
+ *  0078); until someone chooses, the app follows the device. The two colourful themes of 0117/0118 were retired on
+ *  2026-11-16 (0186): an old cookie or saved value carrying one reads as "system".
  *
- *  "bright" is drawn as the paper theme with a palette on top — <html data-theme="paper" data-palette="bright">
- *  — so every rule written for dark text on a light surface stays right without being repeated. */
+ *  "royal" is drawn as the paper theme with a palette on top — <html data-theme="paper" data-palette="royal">
+ *  — so every rule written for dark text on a light surface stays right without being repeated; "ember" the same way
+ *  on dark — <html data-theme="dark" data-palette="ember">. */
 export type ThemeMode = ThemeChoice;
 /** The bar colour a phone draws above the page, per theme. */
-const BAR: Record<string, string> = { dark: "#0a0a0d", paper: "#1b1d23", colour: "#0c0624", bright: "#4c1d95", royal: "#14213d" };
+const BAR: Record<string, string> = { dark: "#0a0a0d", paper: "#1b1d23", royal: "#14213d", ember: "#0a0a0c" };
 const KEY = "df-theme";
 /** What <html> wears for a choice: its data-theme, and its data-palette (or none) — lib/themeLook.ts, tested. */
 const look = (mode: ThemeMode) => lookFor(mode, matchMedia("(prefers-color-scheme: light)").matches);
@@ -31,7 +33,7 @@ export function applyTheme(mode: ThemeMode) {
 }
 export function readTheme(): ThemeMode { return readThemeCookie(document.cookie); }
 /** Runs before paint so a light-mode user never sees a dark flash (and vice versa). */
-export const THEME_BOOT = `(function(){try{var m=(document.cookie.match(/(?:^|; )df-theme=(dark|paper|colour|bright|royal|system)/)||[])[1]||"system";var h=document.documentElement;var p=m==="bright"||m==="royal";var r=m==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"paper":"dark"):p?"paper":m;h.setAttribute("data-theme",r);if(p)h.setAttribute("data-palette",m);}catch(e){}})();`;
+export const THEME_BOOT = `(function(){try{var m=(document.cookie.match(/(?:^|; )df-theme=(dark|paper|royal|ember|system)/)||[])[1]||"system";var h=document.documentElement;var p=m==="royal";var k=m==="ember";var r=m==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"paper":"dark"):p?"paper":k?"dark":m;h.setAttribute("data-theme",r);if(p||k)h.setAttribute("data-palette",m);}catch(e){}})();`;
 
 export function useTheme() {
   const [mode, setMode] = useState<ThemeMode>("system");
@@ -43,22 +45,20 @@ export function useTheme() {
 const OPTIONS: { v: ThemeMode; label: string; Icon: typeof Moon; hint: string }[] = [
   { v: "dark", label: "Dark", Icon: Moon, hint: "Kitchen or night" },
   { v: "paper", label: "Light", Icon: Sun, hint: "Daylight counters" },
-  { v: "colour", label: "Colourful dark", Icon: Palette, hint: "Bright on deep blue" },
-  { v: "bright", label: "Colourful light", Icon: Sparkles, hint: "Bright on light" },
   { v: "royal", label: "Royal classic", Icon: Crown, hint: "Navy, maroon, gold" },
+  { v: "ember", label: "Ember", Icon: Flame, hint: "Walnut, graphite, orange" },
   { v: "system", label: "Follow device", Icon: MonitorSmartphone, hint: "Matches your device" },
 ];
 /** A small swatch of each theme, so the choice is seen before it is made. */
 const SWATCH: Record<ThemeMode, string> = {
   dark: "linear-gradient(135deg, #15161b 0 55%, #3fbe7c 55% 70%, #1d1f26 70%)",
   paper: "linear-gradient(135deg, #efece5 0 55%, #17794a 55% 70%, #fffdf9 70%)",
-  colour: "linear-gradient(135deg, #2a1166 0 30%, #ff5ca8 30% 50%, #ffb547 50% 62%, #2fe1f5 62% 76%, #2ee6a0 76%)",
-  bright: "linear-gradient(135deg, #f6f1ff 0 34%, #ec4899 34% 50%, #f97316 50% 62%, #06b6d4 62% 76%, #8b5cf6 76%)",
   royal: "linear-gradient(135deg, #faf6ee 0 40%, #1e3a8a 40% 62%, #8b1d3b 62% 80%, #b8913a 80%)",
+  ember: "linear-gradient(135deg, #553319 0 34%, #1b1c22 34% 62%, #f07b1d 62% 78%, #d2a63c 78%)",
   system: "linear-gradient(135deg, #15161b 0 50%, #efece5 50%)",
 };
 
-/** The Settings screen's six choices, as cards. */
+/** The Settings screen's five choices (four themes and Follow device), as cards. */
 export function ThemePicker() {
   const { mode, set } = useTheme();
   return (
@@ -73,7 +73,7 @@ export function ThemePicker() {
   );
 }
 
-/** The top bar's theme button: a small menu of the six choices, showing the one in use. */
+/** The top bar's theme button: a small menu of the five choices, showing the one in use. */
 export function ThemeButton() {
   const { mode, set } = useTheme();
   const [open, setOpen] = useState(false); const box = useRef<HTMLDivElement>(null);
@@ -86,7 +86,7 @@ export function ThemeButton() {
     document.addEventListener("pointerdown", off); document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("pointerdown", off); document.removeEventListener("keydown", esc); };
   }, [open]);
-  const Cur = now === "royal" ? Crown : now === "bright" ? Sparkles : now === "paper" ? Sun : now === "colour" ? Palette : Moon;
+  const Cur = now === "ember" ? Flame : now === "royal" ? Crown : now === "paper" ? Sun : Moon;
   const cur = OPTIONS.find((o) => o.v === mode) ?? OPTIONS[OPTIONS.length - 1];
   return (
     <div ref={box} className="relative" data-theme-menu>

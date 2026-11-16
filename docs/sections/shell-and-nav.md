@@ -289,8 +289,8 @@ follows; More opens the sheet).
 - **`MasterBanner`** — the amber "viewing X as its owner" strip when a master is acting as a
   property. Real changes, logged.
 - **`PageHeader`** — the title block each screen passes its own copy into.
-- **`Theme`** — `dark` | `paper` | `colour` (0117) | `bright` (0118) | `royal` (0119) — the last two worn as `data-theme="paper"` +
-  `data-palette="bright" | "royal"` (`lib/themeLook.ts`) | `system`. `THEME_BOOT` and `ThemeKeeper` set and hold both attributes. Until a person chooses, the app follows the device
+- **`Theme`** — `dark` | `paper` | `royal` (0119, worn as `data-theme="paper"` + `data-palette="royal"`) | `ember` (0186, worn as
+  `data-theme="dark"` + `data-palette="ember"`) (`lib/themeLook.ts`) | `system`; `colour` and `bright` were retired 2026-11-16. `THEME_BOOT` and `ThemeKeeper` set and hold both attributes. Until a person chooses, the app follows the device
   (`system` is the default when there is no cookie). A choice (top-bar switch or Settings) is applied
   at once, written to the `df-theme` cookie, and saved to their login through `set_my_theme`
   (`user_prefs`, migration 0078). `session_bundle` returns it as `theme`; `ThemeSync` in the app
@@ -568,7 +568,10 @@ board counts as pinned in Edit bar (it was filtered by modules and dropped).
   password is old — the probe opens the app's own grace window (`profiles.temp_access_until`) for 15 minutes and puts
   it back, never the password.
 - **The bell** (`NotificationBell`) replaced the link to /kitchen. Its count is unread events + late
-  KOTs; the panel lists late tickets first, then events; closing it any way marks them read. Its
+  KOTs; the panel lists late tickets first, then events; closing it any way marks them read. **Since 2026-11-16 it rings for real**
+  (`.bell-key[data-ringing]`, design-system.md *The six touches*): a damped swing with two sound-wave arcs and a badge pop when a
+  live event lands — on the provider's `arrived` count, not on `unread`, which also rises when the feed comes back from
+  sessionStorage after paint; the panel's head carries an *n new* pill (`[data-bell-new]`). Its
   footer, *Sound & alerts*, opens the device settings as a sheet — so a waiter or cook without
   Settings can still choose their tone.
 - **Settings are per machine** (`lib/notify.ts`, `localStorage["df-notify"]`): a station (Front desk ·

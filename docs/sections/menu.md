@@ -50,7 +50,10 @@ checks and saves — the server throws away any ingredient id the model invents.
 2026-11-09, the pure parts in `lib/menuImport.ts`). The owner photographs the whole menu card — **Take a photo**
 (`capture`, one page a shot, repeatable) or **Choose photos** (`multiple`: front, back, every page) — and every photo
 is read **in parallel**, one `readMenuPhoto` call each (a 2000 px JPEG, under the 2 MB action limit), with a pill per
-page: *reading… / N dishes / could not read* (`[data-import-pages] [data-page-status]`). The pages are merged
+page: *reading… / N dishes / could not read* (`[data-import-pages] [data-page-status]`; since 2026-11-16 rows with a scanning bar, under
+**the orbit** — the drop zone is a small planet whose ring is the import's progress and every page still being read a moon, `[data-orbit]`,
+the two pickers inside it, photos may be dropped on it; design-system.md *The six touches*; `pw/orbit-probe.mjs` on a temporary
+harness page, since no local AI key opens the real sheet). The pages are merged
 (`mergePhotos`): the same dish on two pages, or twice on one, is one row by normalised name (`normName` — case,
 punctuation, brackets and a veg/non-veg suffix ignored); the **surer reading keeps the price and sizes**, blanks are
 filled from the other, and a row the owner has edited counts as sure (confidence 1), so a later page cannot undo a fix.

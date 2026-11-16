@@ -86,7 +86,9 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
   green **On the way** once a waiter taps the badge on their floor; it asks `dine_call_status` every 15 s. Its
   messages are inline (`data-call-msg`): **public pages have no `ToastProvider`, so `useToast()` is a silent no-op
   here.** Under it, *How was your meal? Rate us* → `/feedback/[slug]?t=…`. The plain storefront has none of this.
-- **`/feedback/[slug]`** (paper): five 64px stars first — one tap is an answer — then tags that follow the score
+- **`/feedback/[slug]`** (paper): five stars first — since 2026-11-16 **a constellation** (`[data-feedback-sky]`, design-system.md *The six
+  touches*): a night-sky strip in the card, the stars joining up as they light, coral / amber / blue by the score, the word and
+  `n.0 / 5` under them; the taps are the same five radios over the sky, ≥ 44px each — one tap is an answer — then tags that follow the score
   (good ones from 4★, problems below), a note, name and phone (optional) and `GuestNotice`. Only the property reads
   it; 3★ or less raises the floor alert. **One visitor, five notes an hour (0109):** the server action
   (`app/feedback/actions.ts`) sends an HMAC-SHA256 of the visitor's address and today's IST date, keyed with

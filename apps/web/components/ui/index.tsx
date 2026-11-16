@@ -341,7 +341,19 @@ const figureSize = (v: string) =>
 /** A percentage ("15%", "72%") — the card's foot rule fills to it, so the figure is also a meter. */
 const percentOf = (v: string) => { const m = /^(\d{1,3})%$/.exec(v); return m ? Math.min(100, Number(m[1])) : null; };
 
-export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string; value: string; sub?: string; tone?: "alert" | "good"; delay?: number }) {
+/** A figure's last days as one thin line, scaled to its own range; flat days draw a level line. Sits beside a StatTile's number. */
+export function Spark({ values, className }: { values: number[]; className?: string }) {
+  const max = Math.max(...values), min = Math.min(...values), span = max - min || 1;
+  const pts = values.map((v, i) => `${(i / (values.length - 1)) * 100},${28 - ((v - min) / span) * 24 - 2}`).join(" ");
+  const up = values[values.length - 1] >= values[0];
+  return (
+    <svg viewBox="0 0 100 28" preserveAspectRatio="none" className={cn("stat-spark ml-3 h-7 flex-1 min-w-[48px] max-w-[120px] self-center", className)} aria-hidden data-spark={up ? "up" : "down"}>
+      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+export function StatTile({ label, value, sub, tone, delay = 0, spark }: { label: string; value: string; sub?: string; tone?: "alert" | "good"; delay?: number; spark?: number[] }) {
   const pct = percentOf(value);
   return (
     <Reveal delay={delay}>
@@ -382,6 +394,8 @@ export function StatTile({ label, value, sub, tone, delay = 0 }: { label: string
                counted or priced */
             : <div className="stat-fig shrink-0 flex items-center leading-none font-display num count-up tabular-nums"
                 style={{ fontVariationSettings: '"opsz" 72', "--fig-narrow": figureSize(value) } as React.CSSProperties}>{value}</div>}
+          {/* a sparkline of the figure's days beside it (2026-11-16): the trend at a glance, the number still the headline */}
+          {spark && spark.length > 1 && <Spark values={spark} />}
         </div>
         {/* The foot: a hairline rule and the caption under it, pushed to the card's bottom edge so
             every card in a row ends the same way. A percentage fills the rule to its value — the

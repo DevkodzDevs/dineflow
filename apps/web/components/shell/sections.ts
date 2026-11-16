@@ -179,3 +179,37 @@ const under = (path: string, href: string) => path === href || path.startsWith(h
  * `startsWith` lit both).
  */
 export const isOn = (path: string, href: string) => under(path, href) && !HREFS.some((h) => h !== href && h.startsWith(href + "/") && under(path, h));
+
+/**
+ * Ember's drop-downs (0186, 2026-11-16 — the owner's picture: a row opens and its screens hang under it in mono capitals).
+ * A row's screens are the rows that live in its module (`mod`: Join by QR under Pulse, the Order board under Kitchen, the
+ * Tables screen under Orders) and the pages under its route that have no row of their own. Only the Ember theme draws them
+ * (Nav.tsx, `useEmber`); every other theme keeps the flat menu exactly as it was. Each page keeps its own gate: Night
+ * audit is its add-on (featureOpens), Payouts the owner's and a manager's (the page sends anyone else back), the QR and
+ * booking pages follow the rows the property has (Rooms → Room QR and the booking page; Orders → Table QR).
+ */
+export type SubLink = { key: string; href: string; label: string };
+/** The first row of a drop-down names the section's own screen: "All orders", not "Orders" twice. */
+const SUB_FIRST: Record<string, string> = { orders: "All orders", kitchen: "Tickets", pulse: "Waiting list", inventory: "Stock", "online-orders": "All orders", frontdesk: "Desk", settings: "General" };
+export const subLinksFor = (parent: Section, rows: Section[], ctx: { role: string; features?: readonly string[] | null }): SubLink[] => {
+  const has = (k: string) => rows.some((r) => r.key === k);
+  const own: SubLink[] = ({
+    orders: [{ key: "orders-new", href: "/orders/new", label: "New order" }, { key: "orders-phone", href: "/orders/phone", label: "Phone order" }],
+    inventory: [{ key: "inventory-leaks", href: "/inventory/leaks", label: "Leaks" }],
+    "online-orders": ["owner", "manager"].includes(ctx.role) ? [{ key: "payouts", href: "/online-orders/payouts", label: "Payouts" }] : [],
+    frontdesk: featureOpens("night-audit", ctx.features) ? [{ key: "night-audit", href: "/frontdesk/night-audit", label: "Night audit" }] : [],
+    settings: [
+      { key: "settings-printers", href: "/settings/printers", label: "Printers" },
+      { key: "settings-screens", href: "/settings/screens", label: "Screens" },
+      ...(has("orders") ? [{ key: "settings-table-qr", href: "/settings/table-qr", label: "Table QR" }] : []),
+      ...(has("rooms") ? [{ key: "settings-room-qr", href: "/settings/room-qr", label: "Room QR" }, { key: "settings-booking", href: "/settings/booking-page", label: "Booking page" }] : []),
+      { key: "settings-storefront", href: "/settings/storefront", label: "Storefront" },
+    ],
+  } as Record<string, SubLink[]>)[parent.key] ?? [];
+  const inside = rows.filter((r) => r.mod === parent.key).map((r) => ({ key: r.key, href: r.href, label: r.label }));
+  const all = [...inside, ...own];
+  return all.length ? [{ key: `${parent.key}-all`, href: parent.href, label: SUB_FIRST[parent.key] ?? parent.label }, ...all] : [];
+};
+/** Which of a drop-down's rows is the screen you are on: the deepest one whose path this is under. */
+export const subOn = (path: string, subs: SubLink[]): string | null =>
+  subs.filter((s) => path === s.href || path.startsWith(s.href + "/")).sort((a, b) => b.href.length - a.href.length)[0]?.key ?? null;

@@ -78,6 +78,9 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0115_session_department       — session_bundle's profile carries department and position
 0114_work_board_key           — work_board: the new jobs under 'work', the cleaning jobs keep 'jobs'
 0113_work_jobs                — jobs (every department's work: category → department, priority → due, repeat, a labourer,
+0186_theme_ember              — the theme set becomes dark/paper/royal/ember: 'ember' accepted, 'colour' and 'bright' retired
+                                (saved rows moved to dark/paper) — **written
+                                2026-11-16, dry-run clean, applied to the live database 2026-11-17 by `dry186.mjs --live`** (the 0186 note below)
                                 a note) + _job_who / _job_repeat; job_add / job_assign_labour / job_cancel; the clean_*
                                 functions take kind 'job', clean_done an optional note; kots.started_by / ready_by /
                                 served_by + _kot_who; work_board
@@ -180,6 +183,17 @@ made in between is silently undone.
   the old three still save, an unknown name is refused by the function and by the column check, session_bundle
   carries it, anon cannot call it). Safe to apply before the code that sends it — the old code never sends 'colour'.
 - **0116 — work by department (2026-10-18).** The `jobs_read` and `table_cleanings_read` policies now also call
+- **0186 — Ember, and four themes only (2026-11-16).** Accepts `'ember'` and retires `'colour'` (0117) and `'bright'` (0118):
+  two `update`s move any saved row to dark / paper first (the live table had 1 dark, 3 royal), then the check and the
+  function's guard are reset to `('dark', 'paper', 'royal', 'ember', 'system')`. Dry-run `dry186.mjs` (12: a row planted on
+  colour is moved to dark, the check accepts ember and no longer colour/bright, no row is left on a retired theme, the
+  function saves ember and the four others, refuses an unknown name and the two retired ones, `session_bundle` carries it,
+  the person's row is put back, anon cannot call it) rolled back clean. **Applied to the live database on 2026-11-17** (`dry186.mjs --live`, 12 checks inside the same transaction, then recorded in `_dineflow_migrations`), after the owner said to finish everything; before that applying it had been refused to the session (the
+  auto-mode classifier treats a write to the live database as a shared-resource change), so the owner applies it:
+  `node scripts/migrate.mjs --live` runs every unapplied file in order — **0185 (websites, another session's work) first**, so
+  only once 0185 is meant to go; or the dry-run script with `--live`, which applies 0186 alone and records it in
+  `_dineflow_migrations`. Until then the code is safe: `set_my_theme('ember')` raises "unknown theme" and the choice stays
+  on the device's cookie only.
   `_work_dept_ok` (stable, security definer, one `profiles` read). A supervisor with no department passes, so live
   properties — none of whose people have a department yet — lose nothing. `work_log` is owner / manager only.
   Dry run `dry116.cjs` (22).

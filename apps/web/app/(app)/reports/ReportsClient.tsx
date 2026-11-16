@@ -5,11 +5,12 @@ import dynamic from "next/dynamic";
 const SalesChart = dynamic(() => import("./Charts").then((m) => m.SalesChart), { ssr: false, loading: () => <div className="h-56 shimmer rounded-2xl" /> });
 import { Card, StatTile, cn } from "@/components/ui";
 import { BreakdownView, type Breakdown } from "./Breakdown";
-import { formatINR } from "@/lib/format";
+import { formatINR, todayIST } from "@/lib/format";
 import { useState } from "react";
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import { MoreReports } from "./MoreReports";
-import { reportTables, toSheet, type Extra } from "./tables";
+import { reportTables, toSheet, METHOD, TYPE, type Extra } from "./tables";
+import { MoneyFlow } from "./MoneyFlow";
 import { Departments } from "./Departments";
 import type { Dept } from "./deptSpec";
 
@@ -46,6 +47,9 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
     } finally { setBusy(null); }
   };
   const { sales, bills: billCount, by_day: byDay, top, consumption, cogs, waste_cost: wasteCost } = summary;
+  // the Sales tile's sparkline (2026-11-16): one point a day across the whole window, a day with no bills a zero — report_summary
+  // lists only the days that had sales, and a line needs the quiet days too; a one-day window has no line
+  const sparkDays = days > 1 ? Array.from({ length: days }, (_, i) => { const d = new Date(Date.parse(todayIST()) - (days - 1 - i) * 86400000).toISOString().slice(0, 10); return Number((byDay ?? []).find((x) => String(x.day).slice(0, 10) === d)?.total ?? 0); }) : [];
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">{[1, 7, 30, 90].map((d) => <Link key={d} href={`/reports?days=${d}`} className={cn("rounded-full px-4 h-9 [@media(pointer:coarse)]:h-11 grid place-items-center text-sm font-semibold", days === d ? "bg-ink text-on-label" : "bg-card border border-line")}>{d === 1 ? "Today" : `${d} days`}</Link>)}
@@ -53,12 +57,17 @@ export function ReportsClient({ days, summary, closes, kitchen = null, hotel = n
         <button type="button" disabled={!!busy} onClick={() => void exportAs("xlsx")} className="svc-btn quiet sm !px-4" data-export-xlsx>{busy === "xlsx" ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <FileSpreadsheet size={16} aria-hidden />} Excel</button>
         <button type="button" disabled={!!busy} onClick={() => void exportAs("pdf")} className="svc-btn quiet sm !px-4" data-export-pdf>{busy === "pdf" ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <FileText size={16} aria-hidden />} PDF</button>
       </div>
+      {/* where the money went (2026-11-16): from order type through the till to how it was paid, and the spend by head for
+          whoever may see expenses — MoneyFlow.tsx, drawn from the breakdown, the summary's payments and report_extra */}
+      <MoneyFlow period={period} sources={(breakdown?.by_type ?? []).map((t) => ({ name: TYPE[t.type] ?? t.type, amount: Number(t.rev) }))}
+        ways={(summary.payments ?? []).map((p) => ({ name: METHOD[p.method] ?? p.method, amount: Number(p.amount) }))}
+        heads={(extra?.expenses ?? []).map((e) => ({ name: e.category, amount: Number(e.amount) }))} />
       {/* every department (0140): in and out by day, the shares, then a table each with its own Excel and PDF */}
       {dept && <Departments d={dept} lodging={lodging} property={property} fileBase={fileBase} period={period} />}
       {/* four money figures, never a flap, so the row is .stat-flat: no band to line up with a
           flap tile, the number sits under its label and the tile is as tall as its words */}
       <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3 stat-flat" data-kpis>
-        <StatTile label="Sales" value={formatINR(sales)} sub={`${billCount} bills`} />
+        <StatTile label="Sales" value={formatINR(sales)} sub={`${billCount} bills`} spark={sparkDays} />
         <StatTile label="Avg bill" value={formatINR(billCount ? sales / billCount : 0)} delay={0.05} />
         <StatTile label="Ingredient cost (est.)" value={formatINR(cogs)} sub={sales ? `${((cogs / sales) * 100).toFixed(0)}% of sales` : undefined} delay={0.1} />
         <StatTile label="Wastage cost" value={formatINR(wasteCost)} tone={wasteCost > 0 ? "alert" : "good"} delay={0.15} />

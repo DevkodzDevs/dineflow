@@ -3,17 +3,22 @@ import Link from "next/link";
 import { useNavPath } from "./useNavPath";
 import { ProfileCard } from "./ProfileCard";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LogOut, ShieldCheck, Menu, Fingerprint, type LucideIcon } from "lucide-react";
+import { LogOut, ShieldCheck, Menu, Fingerprint, ChevronDown, type LucideIcon } from "lucide-react";
 import { ICON_LOOKS, chosenSidebar, currentSidebar, defaultSidebar } from "@/lib/sidebar";
 import { cn, Sheet, FlapMini } from "../ui";
 import type { Role, PropertyType, Membership } from "@dineflow/shared";
 import { ROLE_LABEL, PROPERTY_LABEL, modulesFor } from "@dineflow/shared";
 import { barFor } from "@/lib/bar";
-import { rowsFor, freshFor, endFor, myDayFor, isOn, menuGroups, type Section } from "./sections";
+import { rowsFor, freshFor, endFor, myDayFor, isOn, menuGroups, subLinksFor, subOn, type Section, type SubLink } from "./sections";
 import { useSupportUnread } from "@/components/support/useUnread";
+import { useEmber } from "./useEmber";
+import { EmberClock } from "./EmberClock";
 
-/** A menu row; `badge` is a count that wants attention (a red dot on the icon, the number beside the label). */
-type NavItem = Section & { badge?: number; hint?: string };
+/** A menu row; `badge` is a count that wants attention (a red dot on the icon, the number beside the label);
+ *  `subs` (Ember only, 0186) the screens that hang under it as a drop-down. */
+type NavItem = Section & { badge?: number; hint?: string; subs?: SubLink[] };
+/** Ember's drop-downs: which rows the person opened or closed by hand (the row you are on opens by itself). */
+type Folds = { opened: Record<string, boolean>; toggle: (key: string, open: boolean) => void };
 
 /** One titled block of the menu. Declared here, not inside Sidebar: a component created during
  *  render is a new type every time, which unmounts and rebuilds the whole menu on each pass. */
@@ -21,23 +26,41 @@ type NavItem = Section & { badge?: number; hint?: string };
    loaded — ~18 requests at once, each a server render and database reads, and for these per-request screens they
    fetch nothing the tap can use (see the loading.tsx note). IntentPrefetch takes the real prefetch: a finger touching
    a link, a mouse resting on one, and the warm-up of the main screens once the page is idle. */
-function Group({ title, items, path, className }: { title?: string; items: NavItem[]; path: string; className?: string }) {
+function Group({ title, items, path, className, folds }: { title?: string; items: NavItem[]; path: string; className?: string; folds?: Folds }) {
   if (!items.length) return null;
   return (
     /* .nav-group under its .nav-head: the heading carries the group's dividing line, running to the right (globals.css,
        the sidebar block); on the icon looks the heading is hidden and a hairline under the group says where it ends */
     <div className={cn("nav-group", className)}>
       {title && <div className="nav-head rail-hide" data-nav-head><span className="min-w-0 truncate">{title}</span></div>}
-      {items.map(({ key, href, label, Icon, badge, hint }) => {
+      {items.map(({ key, href, label, Icon, badge, hint, subs }) => {
         const active = isOn(path, href);
-        return (
-          <Link prefetch={false} key={key} href={href} title={hint ?? label} data-active={active ? "true" : undefined} data-help={key === "help" ? "" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] [@media(pointer:coarse)]:h-11 rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white")}>
+        const row = (
+          <Link prefetch={false} key={key} href={href} title={hint ?? label} data-active={active ? "true" : undefined} data-help={key === "help" ? "" : undefined} className={cn("relative flex items-center gap-3 px-3 h-[42px] [@media(pointer:coarse)]:h-11 rounded-[12px] text-[14px] font-medium transition-colors", active ? "text-white" : "text-white/60 hover:bg-white/[.06] hover:text-white", subs && "nav-fold-link")}>
             {active && <span className="absolute inset-0 rounded-[10px] bg-white/[.12] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/.12)]" />}
             {active && <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-[var(--color-tint)] shadow-[0_0_14px_color-mix(in_srgb,var(--color-tint)_80%,transparent)]" />}
             <span className="relative shrink-0"><Icon size={17} strokeWidth={active ? 2.2 : 1.8} />{badge ? <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-red)] ring-2 ring-[#121216]" aria-hidden /> : null}</span>
             <span className="relative rail-hide nav-label flex-1 min-w-0 truncate">{label}</span>
             {badge ? <span className="relative rail-hide shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--color-red)] text-white text-[11px] font-bold grid place-items-center num">{badge}</span> : null}
           </Link>
+        );
+        if (!subs || !folds) return row;
+        /* Ember (0186): the row folds — its screens hang under it in a dark tray. It opens by itself while you are on one of
+           them, and the chevron (a button beside the link, never inside it) opens or closes it by hand. */
+        const on = subOn(path, subs);
+        const open = folds.opened[key] ?? (active || on !== null);
+        return (
+          <div key={key} className="nav-fold" data-open={open ? "" : undefined} data-fold={key}>
+            <div className="nav-fold-row relative">
+              {row}
+              <button type="button" className="nav-fold-btn rail-hide" aria-expanded={open} aria-label={`${open ? "Hide" : "Show"} ${label} screens`} onClick={() => folds.toggle(key, !open)}><ChevronDown size={14} /></button>
+            </div>
+            {open && (
+              <div className="nav-sub rail-hide" data-nav-sub>
+                {subs.map((s) => <Link prefetch={false} key={s.key} href={s.href} className="nav-sub-row" data-active={on === s.key ? "true" : undefined} aria-current={on === s.key ? "page" : undefined}>{s.label}</Link>)}
+              </div>
+            )}
+          </div>
         );
       })}
     </div>
@@ -95,11 +118,18 @@ function useKeepMenuInPlace(path: string) {
   return ref;
 }
 
-type Props = { name: string; role: Role; dept?: string | null; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null; attend?: boolean; grants?: string[] | null; features?: readonly string[] | null };
+type Props = { name: string; role: Role; dept?: string | null; restaurant: string; type: PropertyType; membership: Membership | "none"; daysLeft: number; isAdmin: boolean; enabled?: string[] | null; allowed?: string[] | null; logo?: string | null; accountHref?: string | null; attend?: boolean; grants?: string[] | null; features?: readonly string[] | null; ember?: boolean };
 
-export function Sidebar({ name, role, dept = null, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref, attend, grants = null, features = null }: Props) {
+export function Sidebar({ name, role, dept = null, restaurant, type, membership, daysLeft, isAdmin, enabled, allowed: personal, logo, accountHref, attend, grants = null, features = null, ember: emberAtFirst = false }: Props) {
   const path = useNavPath();   // lights the tapped item at once (useNavPath.ts)
   const navRef = useKeepMenuInPlace(path);
+  /* Ember (0186): the menu changes shape — rows with screens of their own fold into drop-downs, the rows that lived inside
+     another's module (Join by QR, the Order board, the Tables screen) move under it, and a clock sits under the menu. The
+     server passes the cookie's answer so the first paint is right; useEmber follows the theme menu after that. */
+  const ember = useEmber(emberAtFirst);
+  const [opened, setOpened] = useState<Record<string, boolean>>({});
+  useEffect(() => { setOpened({}); }, [path]);   // a new screen: the row you are on opens, the rest fold back
+  const folds: Folds = { opened, toggle: (key, open) => setOpened((o) => ({ ...o, [key]: open })) };
   /* The drawer. On an iPad or a tablet (768–1279) the menu is an icon rail; the hamburger at its
      top opens the whole menu over the page, labels and all, without moving the page underneath.
      Picking a screen, the scrim, or Escape closes it. Above 1279 the full menu is always out and
@@ -135,6 +165,13 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
     ...allowed.filter((i) => i.key === "settings"),
     ...endFor(role, features).map((i): NavItem => i.key === "help" ? { ...i, badge: unread, hint: unread ? `Help & support · ${unread} new repl${unread === 1 ? "y" : "ies"}` : undefined } : i),
   ];
+  /* Ember's drop-downs (sections.ts, subLinksFor): a row that lives inside another's module leaves its own place and hangs
+     under that row; a row with screens under its route carries them. Any other theme: the groups exactly as before. */
+  const fold = (items: NavItem[]): NavItem[] => {
+    if (!ember) return items;
+    const parents = new Set([...groups.flatMap((g) => g.items), ...end].map((i) => i.key));
+    return items.filter((i) => !(i.mod && parents.has(i.mod))).map((i) => { const subs = subLinksFor(i, allowed, { role, features }); return subs.length ? { ...i, subs } : i; });
+  };
   const who = (
     <>
       <span className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-tint)] text-white grid place-items-center font-display text-[17px] leading-none">{name.slice(0, 1)}</span>
@@ -162,17 +199,21 @@ export function Sidebar({ name, role, dept = null, restaurant, type, membership,
         </span>
       </button>
       <Link prefetch={false} href={myDayFor(role) ? "/home" : "/dashboard"} className={cn("px-2 flex items-center gap-2.5 min-w-0 min-h-10 [@media(pointer:coarse)]:min-h-11", open && "pr-14")}>
-        {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 object-contain" /> : <span className="flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px] shrink-0"><span className="flip-face">{restaurant.slice(0, 1)}</span></span>}
+        {/* Ember (0186): the letter is a bigger orange key, sized by the theme's CSS (.ember-key), so it carries none of the
+            !important utilities — an important utility in Tailwind's layer outranks an important rule outside it */}
+        {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 object-contain" /> : <span className={ember ? "flip xs ember-key shrink-0" : "flip xs !min-w-9 !h-9 !text-[19px] !rounded-[10px] shrink-0"}><span className="flip-face">{restaurant.slice(0, 1)}</span></span>}
         <div className="min-w-0"><div className="font-display text-[17px] leading-tight text-white tracking-wide rail-hide truncate">{restaurant}</div><div className="rail-hide text-[11px] text-white/45 mt-0.5 truncate">{PROPERTY_LABEL[type]}</div></div>
       </Link>
       <nav ref={navRef} className="mt-7 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] -mx-1 px-1 sidebar-scroll">
         {/* staff: My day first (their landing); the owner and managers: the control room */}
         {/* every group under a heading (2026-10-28, the owner: "proper headings and proper separation") — the first group
             (My day / Control room, Tomorrow, Scan) and the last had none */}
-        {groups.map((g, i) => <Group key={g.title ?? `top-${i}`} title={g.title ?? (i === 0 ? "Overview" : undefined)} items={g.items} path={path} />)}
+        {groups.map((g, i) => <Group key={g.title ?? `top-${i}`} title={g.title ?? (i === 0 ? "Overview" : undefined)} items={fold(g.items)} path={path} folds={ember ? folds : undefined} />)}
         {/* the last group: Settings, the person's own settings, Feedback & complaints (and the owner's Help & support), straight after the rest and scrolling with them */}
-        <Group title="Account & help" items={end} path={path} />
+        <Group title="Account & help" items={fold(end)} path={path} folds={ember ? folds : undefined} />
       </nav>
+      {/* Ember (0186): the LED clock between the menu and the foot — only this theme draws it */}
+      {ember && <EmberClock />}
       {/* the foot: who you are, and the way out — kept short (owner, 2026-10-13). Settings and Help & support
           are the menu's last group above; installing is the top bar's download button. */}
       <div className="mt-auto pt-3">
