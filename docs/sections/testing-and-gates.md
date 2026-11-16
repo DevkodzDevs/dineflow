@@ -36,6 +36,7 @@ a property.
 | `pw/ember-probe.mjs` | 121 + 121 | The Ember theme (0186, 2026-11-16) on a private dev server (`NEXT_DIST_DIR=.next-dev-<session>`, its own port): Try Demo as a resort and again as a restaurant (`node ember-probe.mjs resort login`), the `df-theme=ember` cookie, then `/dashboard`, `/orders`, `/frontdesk` (restaurant: `/kitchen`) and `/settings` at 1920 / 1440 / 1194 / 834 / 412 (touch from 1194 down): `<html data-theme=dark data-palette=ember>`, no sideways scroll; from 1280 the walnut menu (`.deck > aside` with the SVG grain), a gold chip over every tray, rows that fold (Tables no longer standalone), 46px pills, the clock reading HH:MMss, the greeting and the avatar pill; at 1194 / 834 the rail with no chips and no clock, and at 834 the drawer with chips, folds and a 44px fold button on a coarse pointer; at 412 the tab bar and no menu. On the dashboard: Orders’ chevron opens the tray (All orders, Tables, New order, Phone order at 40px), a sub row navigates and stays lit, Settings shows five cards with Ember pressed and the menu five choices (seven before the two colourful themes went the same day). Last — because it writes the login’s saved theme — Dark from the menu takes the shape away at once (flat menu, no clock, no greeting), Ember brings it back, and a fresh page is still Ember; **that last check needs 0186 applied** (`set_my_theme` refuses the name until then, so the earlier Dark save wins). Screenshots per width and screen, the drop-down, the sub page, the theme menu, the drawer. Run 2026-11-16 against `next start` of a private build (a `next dev` in the shared tree reloads open pages on other sessions’ saves and wedges Playwright): resort 120 of 121, restaurant 120 of 121 — the one failure each time is that last check, because 0186 was not applied. |
 | `dashcheck.mjs` | 6 | the control room at 1920/1440/1194/834/412 |
 | `board.mjs` | — | prints every dashboard band's top/height; `RAGGED` = misaligned |
+| `statflap.mjs` | 3630 | the control room's stat tiles on flaps (2026-11-16), on a temporary `/dine-probe` page that renders `Overview` with made-up numbers inside a stand-in shell (256px rail, the real `main` padding) — no sign-in. 6 themes × 4 sets (resort, restaurant, a busy day, a ₹12 lakh floor) × 1920/1440/1280/1194/834/768/412: no figure wider than its card, one tile height per row within 30–52px, each figure on flaps or in plain type (never both, never neither), cards in a row end level, the page does not spill. `bump` (652 with three sets × three widths × two themes) changes the numbers and checks the flaps shuffle, stop, and read what the screen reader is told; `cal` prints each part's real width in tile-heights beside `figure()`'s estimate |
 | `harness34.mjs` | 309 | the `StatTile` card (2026-11-11) on a **temporary harness page** — `apps/web/app/dine-probe34/page.tsx`, a client page under the `/dine` public prefix so it needs no sign-in and no database, **deleted before the commit** — Tomorrow's 2×2 drivers (one "15%"), a five-across front-desk row (counts, a good and an alert tone, a captionless card, "6/14") and a four-across reports row (three figures up to "₹1,23,45,678.90" and a "92%"), at 1920/1440/1194/834/412 in dark, paper, colour, bright and royal: in every row the number bands and the numbers start on one pixel, the cards end on one pixel, the foot rules sit on one line and the captions end together; nothing past a card, no caption clipped, no sideways scroll; the percentage cards' rule is filled to the value. Shoots the page and a 2× crop of the drivers. **Why a harness:** the master's shipped password was refused on 2026-11-11 (presumably changed, as Master control asks), and a throwaway demo is refused by the auto-mode permission classifier as a write to the shared database; the component is the same code on all twelve screens. |
 | `cal.mjs` | 6 | the month grid at 4 widths + an empty month |
 | `toolbars.mjs` | 24 | six chip rails × four widths |
@@ -671,3 +672,76 @@ of a second." Measured first, on the live site and on a local production build (
 | `pw/node173.mjs` | 18 | the real node (`public/data-node`) against the live cloud with a real server row: poll, backup (52 566 rows, 3.53 MB, 9 s), verify, report, a demo's export, restore preview and restore of a deleted row from the node's own file, prune to 1, delete (a `..` name ignored), a wrong token over HTTPS. Put back: the server (cascade), its records forgotten, the demo swept, the scratch folder removed. |
 | `lib/backup/advisor.test.ts` (committed) | 11 | the findings over a healthy set-up, no backup, stale + keys + download, an offline/paused/full node, space and clean-up thresholds, ordering; the rule answers for the six questions, with the real figures. |
 | `pw/shots173.mjs` | 30 shots | every Data screen from a figure-driven preview page (deleted after) at 1440/412 dark, 834 paper, 1920 royal, 1194 colour, 834 bright — no sideways scroll, no key under 44px on touch. The screens as the real master are still unverified (no master sign-in available to the probes). |
+
+## 2026-11-14 — a property's website (0185)
+- **`dry185.mjs`** (35, the migration in a transaction that is always rolled back): two demo sandboxes made inside it; identities by
+  `set_config('request.jwt.claims', …)` + `set local role` inside a savepoint, so a refusal is undone and counted. Owner creates;
+  sections come back in the page's order; a restaurant cannot tick rooms; anon reads only a published site and no ids; anon and
+  the owner cannot touch the table; another property sees no row; a waiter cannot save; unpublish; add-on off; membership ended;
+  a resort; a property with no public name gets one from its name. Ends by checking the table and function are absent.
+- **`site-probe.mjs site`** (106) / **`card`** (61): **fixtures on a temporary page**, because the migration was not applied —
+  `SiteView` under `/site/zz-probe?kind=` and `WebsiteCard` under `/pay/zz-card?state=` (outside `/site`, whose layout is always
+  paper; the theme is set by the `df-theme` cookie). Both pages were deleted afterwards. Site: three kinds × five widths — 200, no
+  sideways scroll, 44px targets on touch widths, blocks in order, search data, the phone's bottom bar vs the cover's buttons, no
+  console errors; *Show more*; the nav jump (measured on Menu — Contact is last and cannot reach the top); a bare property; photos;
+  two 404s. Card: the checklist's order, default ticks, empty and off rows with their links, the count, untick, nothing ticked, the
+  three card states, Edit, a manager, the not-on-this-database note; the dialog fits and is 44px in five themes.
+- **2026-11-16, the redrawn site — `site-probe.mjs site` is 168.** The fixture now carries real Wikimedia dish photos. Added per
+  kind and width: the night palette (`.site` background), nothing in the first screen hidden while the rest waits, the signature
+  plates and their credits, one plate in the first screen below 1024 and three from it, the name inside the screen, and — after
+  walking the page to its end — no `rv-wait` left, every `[data-rv]` at opacity 1, the menu marking Contact. Once: reduced motion
+  (nothing hidden, no running animation, no progress line) and JavaScript off (seven blocks, nothing hidden, the photos there).
+  **A full-page screenshot must walk the page first** — what is below the screen is waiting to be revealed. The first run failed
+  15 honestly: cards off to the right of the signature rail were waiting for a scroll that never brings them (fixed in `SiteFx`).
+  **Second pass: 213** — added per kind and width: the curtain has lifted (`visibility: hidden`), the badge and two ribbons are
+  there, a mouse gets the pinned rail and the cursor ring while a touch screen gets neither, and the counted figures end on
+  exactly what the server wrote; reduced motion also draws no curtain. (15 failed once on the probe's own regex, not the page.)
+  **Third pass (the showcase, `SiteShow`): `shoot5.mjs all` 228**, and the 213 again, both on a production build — per kind and
+  width the dish in front is full size, upright and centred; its word is in and fits the screen; the third small plate brings
+  its dish, word and stage colour; the arrow (or a swipe on touch) moves on one; left alone it moves on by itself; every
+  control ≥ 44px; no sideways scroll; reduced motion (it stays, the small plates still work); JavaScript off (first dish drawn).
+  **The 44px check now measures `offsetHeight`, not `getBoundingClientRect`**: a room card still tipped back below the screen
+  draws its button shorter than it is — six false failures once. **Under `next dev` the long run was flaky** (a page lost to a
+  reload, one hydration error that four single runs and the build never repeated): run the long suites on `next start`.
+  **Fourth pass: `shoot6.mjs all` 167** — the glass card (floating on its lead from 1100, in the flow below), the story pinned
+  with one line on screen at a time, the fan with a mouse and the list without. The pin moved from the rail to the story, so
+  the 213's pin check now expects the rail static and the story sticky.
+  **Fifth pass: `shoot7.mjs all` 305** — the three paper sheets (light, rounded, inset; ink, eyebrow and notes pass contrast
+  on paper; serif headings; 44px; the rail on the heading's edge; a signature card's price still bright), the two callouts
+  clear of the card, the price row and the other plates, the closing photo and its iris fully open on screen.
+  **Sixth pass: `shoot8.mjs all` 242** — a row and a card open their own dish, the photo in flight (`document.getAnimations()`
+  names a `::view-transition-*(site-dish)` pseudo-element), Escape / close button / backdrop, focus back on the row, parts
+  resting at the top and the foot. **A probe that opens a row with `element.click()` never focuses it** — two failures that
+  were also true of Safari, so the page now hands the focus back itself. `perf.mjs` gives LCP, CLS and frame times over a
+  full scroll with the processor slowed 4×; its frame figures swing between runs (one page 4 % and 17 %), so compare
+  the middle of three and trust only large differences.
+- **Not done:** the real path against the database (Settings → Create → the live page), and Lighthouse or timing numbers.
+
+  **Seventh pass: `shoot9.mjs all` 398** and **`card9probe.mjs` 103** (2026-11-16). The fixture is now three files
+  (`zz-probe/page.tsx`, `fixture.ts`, `opengraph-image.tsx` — `fix9.mjs` puts them in, `fix9.mjs off` takes them out) because
+  a page file may export nothing but the page: the head is tested through `siteMeta` and the share card through `siteCard`,
+  the same two functions the real route calls. The card harness is `app/pay/zz-card/page.tsx` (scratch copy
+  `zz-card-page.tsx`). What the probes got wrong before the screen did: a resort named "… Resort …" is *meant* to get
+  *Rooms & rates*, not "Resort in"; a 3D transform that has landed is `matrix3d` with the perspective still in it, not the
+  identity; a switch inside a row is not its own 44px target (the row is). What they caught that was real: the browser
+  fetching Google's directions page ahead of a tap on a phone (the fetch-ahead rule matched the Directions button), a map
+  drawn for a place with no address, a 927 kB share card, and `_website_links` raising on a list instead of dropping it.
+  **The themes are four now** — the other session's 0186 retired `colour` and `bright` (`lib/themeLook.ts`); a probe that
+  sets those cookies gets `paper`, so `site-probe.mjs card` (61, five themes) no longer passes as written.
+  **Eighth pass: `shoot10.mjs all` 259** and **`card10probe.mjs` 97** (the extras a client switches on). The count's requests
+  are answered inside the probe (`page.route`) and written down, so "one view, then a kind per tap, and nothing when it is off"
+  is checked without a database row. `window.open` is replaced before the page loads, so the WhatsApp address the enquiry
+  builds is read, not opened. What a probe got wrong: `[data-site-review]` is a review *card* — the button is
+  `[data-site-rate]`. What a unit test caught: a date pattern that had lost its backslashes on the way through a shell
+  heredoc (`/^d{4}-d{2}/`) — an announcement would never have ended.
+  **A second page load in one browser profile that carries a theme cookie throws React #418 on `<html>` now and then — on
+  `/login` too (`hyd3.mjs`: 1 in 6; more often after a dialog was opened on the first page).** It is the root layout's, not
+  the website card's; `card10probe.mjs` therefore opens each page in a fresh profile and says so. Not fixed here: the theme
+  files are another session's work in progress.
+  **Ninth pass: `shoot11.mjs all`** and **`card11probe.mjs` 79**. The probe answers the fixture's 3D address with **a real
+  one-triangle `.glb` it builds itself** (`page.route`), so "the model loads and is shown" is checked for real; a second
+  page without that answer checks the sheet says the file could not be loaded. What the probes got wrong: React 19 sets a
+  custom element's `src` as a property, so `getAttribute("src")` is null; `.site-btn` must not be in a "is the text cut
+  off" check — its shine is a pseudo-element sliding inside `overflow: hidden` and `scrollWidth` grows while it passes.
+  **Run the long suites with nothing else running**: with a typecheck and a second script alongside, four timing checks
+  failed that pass alone (a photo in flight measured at 160 ms, a photo not yet loaded).

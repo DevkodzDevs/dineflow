@@ -48,16 +48,53 @@ const TONE: Record<Tone, string> = { mint: "stat-good", amber: "stat-warn", chil
  * The tracks are chosen per count, and where a count will not divide them the last tile takes the
  * slack instead of leaving a gap beside it.
  */
+/* --stat-cols says the same thing as grid-cols-N, as a number the flap tiles can do arithmetic with: a tile's height comes
+   from the width of one card (.stat-grid in globals.css), and CSS cannot read a column count back out of a grid. Keep the
+   two in step — a count without its --stat-cols sizes the flaps for the wrong card. */
 const TRACKS: Record<number, string> = {
-  4: "grid-cols-2 xl:grid-cols-4",
-  5: "grid-cols-2 md:grid-cols-3 xl:grid-cols-5 [&>:last-child]:col-span-2 xl:[&>:last-child]:col-span-1",
-  6: "grid-cols-2 md:grid-cols-3 xl:grid-cols-6",
-  7: "grid-cols-2 md:grid-cols-4 [&>:last-child]:col-span-2",
+  4: "grid-cols-2 [--stat-cols:2] xl:grid-cols-4 xl:[--stat-cols:4]",
+  5: "grid-cols-2 [--stat-cols:2] md:grid-cols-3 md:[--stat-cols:3] xl:grid-cols-5 xl:[--stat-cols:5] [&>:last-child]:col-span-2 xl:[&>:last-child]:col-span-1",
+  6: "grid-cols-2 [--stat-cols:2] md:grid-cols-3 md:[--stat-cols:3] xl:grid-cols-6 xl:[--stat-cols:6]",
+  7: "grid-cols-2 [--stat-cols:2] md:grid-cols-4 md:[--stat-cols:4] [&>:last-child]:col-span-2",
 };
+const TRACKS_OTHER = "grid-cols-2 [--stat-cols:2] md:grid-cols-3 md:[--stat-cols:3] xl:grid-cols-4 xl:[--stat-cols:4]";
 
 /** One colour per source, shared by the arc and the dot in its key so they can never disagree. */
 const ARC: Record<Tone, string> = { mint: "var(--color-tint)", amber: "var(--color-orange)", sky: "var(--color-blue)",
   chili: "var(--color-red)", plain: "var(--color-label-3)" };
+
+/* ── a tile's figure, cut into what goes on flaps and what stays beside them ──────────────────────────
+   "₹2,155.00" → ₹ · [2] · , · [155] · .00     "1 in · 5 out" → [1] · in · · [5] · out     "21%" → [21] · %     "8" → [08]
+   A lone count is padded to a pair of cards, as every other flap in the app is; a figure of several runs is not, or
+   "1 in · 5 out" would read "01 in · 05 out".
+
+   The widths are in tile-heights, because the tile's height is the one thing CSS is solving for. They were measured,
+   not reasoned (2026-11-16, statflap.mjs `cal` — testing-and-gates.md): a housing of n cards is .098 + .562n of its
+   height plus a 3px rim (a tenth of a 30px tile, where it matters), and never under .8; the words are set at .36 of the
+   tile (globals.css, .stat-unit), " out" 1.85em of that, ".00" 1.57em. Each runs a hair generous on purpose — an
+   estimate that comes up short pushes the last card under the edge of the tile, one that runs long costs a pixel of
+   height. */
+type Part = { text: string; digits: boolean; paise: boolean };
+const CARD = 0.562, HOUSING = 0.098, RIM = 0.1, GAP = 0.07, WORD = 0.36, SLACK = 1.02;
+/** The widest figure, in tile-heights, that any card here can show on flaps: the roomiest card is ~263px and the
+ *  smallest tile 30px. Past this a figure is plain type on every screen. */
+const FLAP_MOST = 8;
+const group = (n: number) => Math.max(0.8, n * CARD + HOUSING + RIM);
+const glyph = (c: string) => (c === " " ? 0.25 : /[,.:]/.test(c) ? 0.3 : c === "·" ? 0.25 : c === "/" ? 0.42 : c === "%" ? 0.9 : c === "₹" ? 0.62 : /\d/.test(c) ? 0.64 : /[il]/.test(c) ? 0.28 : 0.56);
+const word = (s: string) => [...s].reduce((w, c) => w + glyph(c), 0) * WORD;
+function figure(value: string | number) {
+  const raw = String(value);
+  const money = raw.startsWith("₹");
+  const parts: Part[] = (raw.match(/(\.\d+|\d+|[^\d.]+|\.)/g) ?? [raw]).map((text) => ({ text, digits: /^\d+$/.test(text), paise: money && /^\.\d+$/.test(text) }));
+  const pad = /^\d+%?$/.test(raw) ? 2 : 0;
+  const wide = (keepPaise: boolean) => {
+    const shown = parts.filter((p) => keepPaise || !p.paise);
+    return (shown.reduce((w, p) => w + (p.digits ? group(Math.max(p.text.length, pad)) : word(p.text)), 0) + Math.max(0, shown.length - 1) * GAP) * SLACK;
+  };
+  /* the plain figure, in ems of its own type: a digit of the display face measured .5em, the words sit at .4em */
+  const em = parts.reduce((w, p) => w + (p.digits ? p.text.length * 0.53 : word(p.text) / WORD * 0.4), 0) * 1.05;
+  return { parts, pad, full: wide(true), own: wide(false), em };
+}
 
 /**
  * A headline figure in its own tile, with a way through to the screen behind it.
@@ -68,9 +105,7 @@ const ARC: Record<Tone, string> = { mint: "var(--color-tint)", amber: "var(--col
  */
 function Stat({ icon, label, value, sub, tone = "plain", href }: Tile) {
   const Icon = ICON[icon];
-  // the figure reads at one size across the whole row: each run of digits stays big, and the unit or the words beside it
-  // (%, "in", "out", "·", "₹", the ".00" paise) sit small — so "21%", "₹2,155.00" and "1 in · 5 out" all line up as one figure.
-  const parts = String(value).match(/(\.\d+|\d[\d,]*|[^\d.]+|\.)/g) ?? [String(value)];
+  const fig = figure(value);
   return (
     <Link href={href} className={cn("feather feather-lift stat", TONE[tone])}>
       <span className="stat-head">
@@ -78,9 +113,25 @@ function Stat({ icon, label, value, sub, tone = "plain", href }: Tile) {
         <span className="stat-label">{label}</span>
         <ArrowUpRight size={14} className="stat-go" />
       </span>
-      <span className="stat-value num font-semibold">
-        {parts.map((p, i) => (/^\d/.test(p) ? <span key={i}>{p}</span> : <span key={i} className="stat-unit">{p}</span>))}
-      </span>
+      {/* 2026-11-16, the owner: "make this the time-flap design". The number was a pale pill with a 1px line drawn
+          across it — a picture of a hinge, which on a light theme read as a figure struck through. It is the real
+          split-flap tile now (FlapShuffle, the same one the row above and every other counter wears): each run of
+          digits is its own housing of cards, like the hours and minutes of a flip clock, and the words between them
+          ("₹", ",", "%", "in · out", the paise) stay small text beside the cards. It shuffles and settles on a change.
+          Two copies are drawn and the card's own width picks one (globals.css, .stat-value): the flaps, or — when
+          even a 30px tile would not fit, a six-figure sum in a 114px card — the plain figure. A screen reader gets
+          the value once, as written. */}
+      <div className="stat-value" style={{ "--stat-own": fig.own, "--stat-em": fig.em } as React.CSSProperties}>
+        <span className="sr-only">{String(value)}</span>
+        <div className="stat-flaps" aria-hidden>
+          {fig.parts.map((p, i) => p.digits
+            ? <FlapShuffle key={i} value={p.text} pad={fig.pad} tile="var(--stat-tile)" bare tone={tone === "chili" ? "alert" : undefined} />
+            : <span key={i} className={cn("stat-unit", p.paise && "stat-paise")}>{p.text}</span>)}
+        </div>
+        <div className="stat-plain num font-semibold" aria-hidden>
+          {fig.parts.map((p, i) => (p.digits ? <span key={i}>{p.text}</span> : <span key={i} className="stat-unit">{p.text}</span>))}
+        </div>
+      </div>
       {sub && (
         <span className="stat-base">
           <span className="stat-foot" title={sub}>{tone !== "plain" && <span className="stat-dot" />}<span className="stat-sub">{sub}</span></span>
@@ -247,7 +298,15 @@ export function Overview({
     { icon: "Wallet", label: "On the floor", value: formatINR(onFloor), sub: onFloor ? "not yet billed" : "everything is billed", tone: onFloor ? "amber" : "plain", href: "/orders" },
     ...tiles.slice(2),
   ];
-  const tracks = TRACKS[all.length] ?? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4";
+  const tracks = TRACKS[all.length] ?? TRACKS_OTHER;
+  /* One tile height for the whole row, set by its widest figure — a row where "08" stood at 52px beside a sum at 36px
+     read as two designs. Two widths, because the paise are the first thing to go when a card is narrow: with them, and
+     without. A figure too wide for flaps at any size (it falls back to plain type, see Stat) does not get a vote — past
+     FLAP_MOST tile-heights no card in this grid fits it, and counting it would shrink every other tile for nothing. */
+  const figs = all.map((t) => figure(t.value));
+  const votes = figs.filter((f) => f.own <= FLAP_MOST);
+  const widest = (pick: (f: (typeof figs)[number]) => number) => Math.max(2.2, ...votes.map(pick));
+  const row = { "--stat-w": widest((f) => (f.full <= FLAP_MOST ? f.full : f.own)), "--stat-w-np": widest((f) => f.own) } as React.CSSProperties;
 
   return (
     <div className="space-y-4">
@@ -277,7 +336,7 @@ export function Overview({
         ))}
       </div>
 
-      <div className={cn("stat-grid", tracks)}>{all.map((t) => <Stat key={t.label} {...t} />)}</div>
+      <div className={cn("stat-grid", tracks)} style={row}>{all.map((t) => <Stat key={t.label} {...t} />)}</div>
 
       {/* ── band: what is happening now, beside where today's money came from ──
          Three columns needed about 1280px to breathe and an iPad in landscape is 1194, which used

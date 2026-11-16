@@ -158,6 +158,8 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
 - **Party-size chips are at least 44px wide** (`min-w-11`) — "1" was 34px. **The phone number under
   the address is a 44px target** (`py-3 -my-3`), the row's height unchanged; it was 20px tall.
 
+- **`/site/[slug]` — a property's own website (0185, 2026-11-14)** is a guest page too (in both route lists, English-only; its own night palette since 2026-11-16, not paper);
+  its buttons open `/dine`, `/queue` and `/book`. It has its own note: [website.md](website.md).
 - **Adding a route here means adding it to both `SESSION_FREE` and `PUBLIC_PREFIX`.** Miss the first
   and it works but is slow for the guest; miss the second and it redirects to `/login`.
 - **Nothing on these pages may need JavaScript to read the essentials.** A guest on a bad connection

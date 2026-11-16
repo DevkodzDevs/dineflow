@@ -13,9 +13,11 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [{
       userAgent: "*",
-      allow: ["/", "/for/", "/blog", "/login", "/signup", "/legal/"],
+      // 0185: /site/<slug> is a property's own website — the one property page that is meant to be found
+      allow: ["/", "/for/", "/blog", "/site/", "/login", "/signup", "/legal/"],
       disallow: ["/api/", "/admin", "/pay/", "/record/", "/queue/", "/dine", "/book/", "/account/", "/get"],
     }],
-    sitemap: `${base}/sitemap.xml`,
+    // the second list is the properties' own websites, read from the database (app/site/sitemap.ts)
+    sitemap: [`${base}/sitemap.xml`, `${base}/site/sitemap.xml`],
   };
 }

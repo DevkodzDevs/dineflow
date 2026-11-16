@@ -98,7 +98,10 @@ until then (the server cannot know the second). One shared 1-second ticker (`use
 a fixed `at` time never subscribes. A screen reader hears `say` — the settled value — never a shuffle frame, and a
 ticking clock is `quiet`. Reduce-motion: values swap without flipping, the rings stand still. Tiles stay the dark plate
 in every theme (royal's solid overrides for `.flip` / `.flap-*` still apply; `.flap-bar` and the rings are solid). **Money
-is never a flap** — amounts stay figures. A value too long for its place falls back to plain text (Pulse's quoted wait
+is never a flap** — amounts stay figures — **with one exception since 2026-11-16: the Control room's stat tiles**, where the
+owner asked for the flap design on every number, "On the floor ₹2,155.00" included. There the digits stand on cards in
+groups and the ₹, the commas and the paise stay small text beside them, and the figure goes back to plain type by itself
+when its card is too narrow (dashboard.md). A value too long for its place falls back to plain text (Pulse's quoted wait
 from 100 minutes, a room number over four characters). CSS: the FLAP NUMBERS block at the end of `globals.css`
 (`.flip.fast`, `.flip.warn`, `.flip.bare`, `.flap-bar`, `.flap-ap`, `.flap-breathe`, `.qty.qty-flap`).
 **Skipped on purpose:** the till's order-line item counts (text in a 60px rail card), kitchen station names (a filter,
@@ -611,9 +614,6 @@ pnpm lint && pnpm typecheck && pnpm build
 
 Then look at it, in both themes, at 1440 and 412.
 
-## See also
-
-[testing-and-gates.md](testing-and-gates.md) · [shell-and-nav.md](shell-and-nav.md) ·
 ## Ember (2026-11-16, 0186)
 
 The owner's "one more theme, exactly like this video" — the Mercato commerce console: a wood-panel menu with a gold chip over
@@ -705,6 +705,9 @@ and carry their own blues, as the walnut carries its browns; Royal's solid-colou
   sessionStorage a beat after paint, and a reload must not ring (the first probe run caught exactly that).
 - Measured by `pw/touch-probe.mjs` (266 of 266) and `pw/orbit-probe.mjs` (39 of 39) — testing-and-gates.md.
 
+## See also
+
+[testing-and-gates.md](testing-and-gates.md) · [shell-and-nav.md](shell-and-nav.md) ·
 [dashboard.md](dashboard.md)
 
 - **`.ci-form`** (end of `globals.css`) — the online check-in form's field border, 16% ink, tint on

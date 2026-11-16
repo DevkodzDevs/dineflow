@@ -1,11 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { lockRedirect, LOCK_COOKIE } from "@/lib/displayLock";
 import { NextResponse, type NextRequest } from "next/server";
+import { isOwnHost, siteForHost, domainRewrite } from "@/lib/siteDomain";
 
 const PUBLIC = ["/", "/login", "/signup", "/join", "/forgot", "/membership", "/offline", "/get"];
 /* The legal pages must answer a stranger. A payment gateway's reviewer, a regulator and someone
    deciding whether to sign up all read them before there is any session to check. */
 const PUBLIC_PREFIX = ["/for/", "/blog", "/legal", "/queue/", "/checkin/", "/dine", "/book/", "/record/", "/pay/", "/track/", "/ride/", "/api/webhooks/", "/api/ical/", "/api/ota/", "/api/box/", "/attend/", "/screen/", "/feedback/", "/api/screen/",
+  // 0185: a property's own website (/site/<slug>) — a stranger's page, like the storefront
+  "/site/",
   // 0172: the nightly backup — the scheduler has no sign-in; the route checks CRON_SECRET itself and fails closed
   "/api/cron/"];
 /** Pages a signed-in user must always be able to reach, even with must_change_password set. Without
@@ -36,6 +39,14 @@ const ALIASES: Record<string, string> = {
 
 export async function middleware(req: NextRequest) {
   req.headers.set("x-pathname", req.nextUrl.pathname);
+  /* A client's own web address (0185 websites.domain — lib/siteDomain.ts): on www.anjappar.com the front door is that
+     client's website. Asked only for a host that is not one of ours, kept a minute per host, and never a reason to fail:
+     a lookup that does not answer serves the app as usual. Every other path on that host is this app's own. */
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
+  if (!isOwnHost(host)) {
+    const slug = await siteForHost(host), to = slug ? domainRewrite(req.nextUrl.pathname, slug) : null;
+    if (to) { const url = req.nextUrl.clone(); url.pathname = to; return NextResponse.rewrite(url, { request: req }); }
+  }
   const alias = ALIASES[req.nextUrl.pathname.replace(/\/+$/, "").toLowerCase()];
   if (alias) return NextResponse.redirect(new URL(alias, req.url));
   const path = req.nextUrl.pathname;
@@ -54,7 +65,7 @@ export async function middleware(req: NextRequest) {
    * /login, /signup, / and /membership stay out of it — each one does read the session, to send a
    * signed-in person where they belong.
    */
-  const SESSION_FREE = ["/for/", "/blog", "/legal", "/dine", "/book/", "/queue/", "/checkin/", "/record/", "/pay/", "/track/", "/ride/", "/get", "/offline", "/attend/", "/screen/", "/feedback/", "/api/screen/"];
+  const SESSION_FREE = ["/for/", "/blog", "/legal", "/dine", "/book/", "/queue/", "/checkin/", "/record/", "/pay/", "/track/", "/ride/", "/get", "/offline", "/attend/", "/screen/", "/feedback/", "/api/screen/", "/site/"];
   if (SESSION_FREE.some((x) => path === x || path.startsWith(x))) return NextResponse.next({ request: req });
 
   /* Display lock (0141): a device pinned to one page goes back to it from anywhere else — a typed address, a bookmark,

@@ -80,7 +80,22 @@ API is refused too. Probe `ctl.mjs` (26), dry run `dry117.cjs` (11).
 - **The tile count decides the grid.** `TRACKS` in `Overview.tsx` maps 4/5/6/7 tiles to column
   classes, with `[&>:last-child]:col-span-2` where the count will not divide. Add or remove a tile
   and you must check `TRACKS` has an entry for the new count, or the row gets a hole. A restaurant
-  shows 5, a resort 6.
+  shows 5, a resort 6. **Every `grid-cols-N` in `TRACKS` carries a matching `[--stat-cols:N]`** — the
+  flap tiles size themselves from one card's width and CSS cannot read a column count out of a grid.
+- **The stat tiles' numbers are real flaps (2026-11-16, the owner: "make this the time-flap design").**
+  The number was a pale pill with a 1px line drawn across it; on a light theme "21%" read as struck
+  through. `Stat` now cuts the figure up (`figure()`): each run of digits is a `FlapShuffle` housing
+  (compact, pinless), the words between — `₹`, `,`, `%`, `in ·`, `out`, the paise — small text beside
+  the cards. "₹2,155.00" is ₹ [2] , [155] .00; a lone count is padded to a pair ("08"), a figure of
+  several runs is not. **One tile height for the whole row**, 30–52px, solved in CSS from the card's
+  width over the row's widest figure (`--stat-w` / `--stat-w-np`, set on `.stat-grid` by `Overview`;
+  the arithmetic is commented at `.stat-value` in globals.css). A narrow card gives things up in order,
+  with no breakpoints: the paise fold away, then a figure that still cannot fit on 30px tiles is drawn
+  as plain type (both copies are in the page; the card's width gives exactly one a height). A screen
+  reader gets the value once, from an `sr-only` span. The widths in `figure()` are **measured**, in
+  tile-heights — change the tile's proportions (`.flip.compact`) or the word size (`.stat-unit`) and
+  re-measure with `statflap.mjs cal`, or the last card slides under the edge. This is the one place
+  money stands on flaps (design-system.md, *Flap numbers*).
 - **Do not duplicate a flap.** The flip row already carries occupancy / orders / in-kitchen. A stat
   tile showing the same number in smaller type is noise — an "In the kitchen" tile was removed for
   exactly this.
@@ -97,6 +112,11 @@ node dashcheck.mjs       # 6 checks at 1920/1440/1194/834/412 — no overlap, no
                          # 0 touch targets under 44px, gauge + week present, tabs present
 node board.mjs <tag>     # prints every band's top/height — a RAGGED line means two panels
                          # in one band do not end on the same pixel
+node statflap.mjs        # the stat tiles on flaps: 6 themes × 4 sets of numbers × 7 widths, 3630
+                         # checks — nothing wider than its card, one tile height per row, 30–52px,
+                         # flaps or plain (never both, never neither), rows end level. `bump` changes
+                         # the numbers and checks the flaps shuffle and land on them; `cal` prints the
+                         # real widths beside the estimate; `shots` writes pictures
 ```
 
 Run `board.mjs` against **both** a resort (`Tan Resort`) and a restaurant (`Tanvi's`) — the tile

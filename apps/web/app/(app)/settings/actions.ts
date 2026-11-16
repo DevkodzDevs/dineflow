@@ -5,6 +5,7 @@ import { wrote } from "@/lib/wrote";
 import { requireSession } from "@/lib/auth";
 import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
 import { queueWhatsApp, drainOutbox } from "@/lib/whatsapp";
+import { websiteLinks, websiteOptions, WEBSITE_LINK, WEBSITE_LINK_KEYS, WEBSITE_EXTRAS, type WebsiteLinkKey, type WebsiteLinks, type WebsiteOptions } from "@dineflow/shared";
 const bump = () => revalidatePath("/", "layout");
 export async function saveRestaurant(fd: FormData) {
   const s = await createClient();
@@ -181,4 +182,63 @@ export async function sendWaTest(phone: string): Promise<{ error: string } | { o
   if (r.sent > 0 && !r.errors.length) return { ok: true, sent: true, note: "Sent. Check your phone." };
   if (r.errors.length) return { ok: true, sent: false, note: `WhatsApp refused it: ${r.errors[0]}` };
   return { ok: true, sent: false, note: "Queued; the next message from this server, or the nightly sweeper, will try again." };
+}
+
+/** 0185: create or change the property's own website from the checklist (Settings → Website). The owner check, the
+ *  add-on check and which sections this kind of property may have are all in `website_save` — this only carries the ticks. */
+export async function saveWebsite(sections: string[], headline: string, about: string, published: boolean, email = "", typed: Partial<Record<WebsiteLinkKey, string>> = {}, extras: Parameters<typeof websiteOptions>[0] = {}, domain = "") {
+  /* the public email and the links (Instagram, Facebook, YouTube, Google Maps, WhatsApp): a name becomes its address, and
+     anything that is not that service's own address is refused here with the reason — the database drops it regardless */
+  const tidy = websiteLinks(typed), wrong = WEBSITE_LINK_KEYS.find((k) => tidy.errors[k]);
+  if (wrong) return { error: `${WEBSITE_LINK[wrong].label}: ${tidy.errors[wrong]}.` };
+  /* the extras this client switched on (websites.options): tidied here, refused with the reason, filtered again in the database */
+  const chosen = websiteOptions(extras ?? {}), off = WEBSITE_EXTRAS.find((x) => chosen.errors[x.key]);
+  if (off) return { error: `${off.label}: ${chosen.errors[off.key]}.` };
+  if (chosen.options.enquiry && !tidy.links.whatsapp) return { error: "Enquiry form: add your WhatsApp number — that is where enquiries arrive." };
+  const mail = String(email).trim().toLowerCase().slice(0, 120);
+  if (mail && !/^[^@\s<>"']+@[^@\s<>"']+\.[a-z]{2,}$/.test(mail)) return { error: "That email address does not look right." };
+  const s = await createClient();
+  const { data, error } = await s.rpc("website_save", {
+    p_sections: sections.slice(0, 20).map(String), p_headline: headline.slice(0, 120) || null, p_about: about.slice(0, 1500) || null, p_published: !!published,
+    p_email: mail || null, p_links: tidy.links, p_options: chosen.options, p_domain: String(domain ?? "").trim().slice(0, 160) || null,
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/settings");
+  return { ok: true as const, ...(data as { slug: string; sections: string[]; published: boolean; email: string | null; links: WebsiteLinks; options: WebsiteOptions; domain: string | null }) };
+}
+
+/* ── the website's own files (0185 bucket `site`; ninth pass) ─────────────────────────────────────────────────────
+ * A photo, a film or a 3D file goes from the browser straight to storage, on an address signed here for this property's
+ * own folder: a server action's body stops at 1 MB. The bucket's policies are the wall (owner and managers, their own
+ * folder, the listed kinds, 12 MB); this only names the file and says no early, with a reason. */
+const SITE_EXT: Record<string, Record<string, string>> = {
+  photo: { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" }, room: { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" },
+  video: { "video/mp4": "mp4", "video/webm": "webm" }, model: { "model/gltf-binary": "glb" },
+};
+export async function siteUploadUrl(kind: "photo" | "room" | "video" | "model", type: string): Promise<{ path: string; token: string; url: string } | { error: string }> {
+  const session = await requireSession();
+  if (!["owner", "manager"].includes(session.profile.role)) return { error: "Only the owner or a manager can add files to the website." };
+  const ext = SITE_EXT[kind]?.[type]; if (!ext) return { error: "That kind of file cannot be used here." };
+  const s = await createClient();
+  const path = `${session.restaurant.id}/${kind}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const signed = await s.storage.from("site").createSignedUploadUrl(path);
+  if (signed.error || !signed.data) return { error: /not found|bucket/i.test(signed.error?.message ?? "") ? "The website's file storage is not on this database yet. It arrives with the next update." : signed.error?.message ?? "The file could not be sent." };
+  return { path, token: signed.data.token, url: s.storage.from("site").getPublicUrl(path).data.publicUrl };
+}
+/** The gallery and / or room photos, as lists of addresses. The database keeps only this property's own files (and what the gallery already had). */
+export async function saveSiteMedia(photos: string[] | null, rooms: Record<string, string[]> | null): Promise<{ ok: true; photos?: string[] } | { error: string }> {
+  const s = await createClient();
+  const { data, error } = await s.rpc("website_media_save", { p_photos: photos ? photos.slice(0, 20).map(String) : null, p_rooms: rooms });
+  if (error) return { error: /website_media_save|schema cache/i.test(error.message) ? "The website's photo storage is not on this database yet. It arrives with the next update." : error.message };
+  revalidatePath("/settings");
+  return { ok: true, photos: (data as { photos?: string[] } | null)?.photos };
+}
+/** A file that is no longer used is taken out of storage — only ever from this property's own folder. Best effort. */
+export async function removeSiteFile(url: string): Promise<void> {
+  try {
+    const session = await requireSession(); const at = String(url).indexOf("/storage/v1/object/public/site/"); if (at < 0) return;
+    const path = String(url).slice(at + "/storage/v1/object/public/site/".length);
+    if (!path.startsWith(`${session.restaurant.id}/`) || path.includes("..")) return;
+    await (await createClient()).storage.from("site").remove([path]);
+  } catch { /* an orphan file costs a few hundred kB; a failed clean-up must never fail a save */ }
 }

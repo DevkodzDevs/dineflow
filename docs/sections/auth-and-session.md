@@ -234,3 +234,11 @@ pnpm --filter @dineflow/web build
 
 - **`/api/cron/` is public (2026-11-05, 0172).** Added to `PUBLIC_PREFIX` (not `SESSION_FREE`) for the nightly backup — Vercel Cron has no
   session. The route itself refuses without `CRON_SECRET` (api-routes.md).
+
+- **A client's own domain (2026-11-17, 0185 `websites.domain`).** The first thing `middleware.ts` does, before the aliases:
+  for a host that is **not one of ours** (`lib/siteDomain.ts` `isOwnHost` — dineflow.cloud and its subdomains, dineflow.in,
+  `*.vercel.app`, localhost, an IP address, `NEXT_PUBLIC_CLOUD_URL`'s host) it asks `website_by_domain(host)` (one fetch,
+  2.5 s at most, kept a minute per host on a server; a failure means "not a client's domain") and rewrites **only `/`** to
+  `/site/<slug>`. Every other path on that host goes on through this middleware exactly as before — so `/login` on a
+  client's domain is still DineFlow's sign-in page, and nothing about sessions changes. On our own hosts the branch is a
+  string test and nothing more. website.md, *Ninth pass*.

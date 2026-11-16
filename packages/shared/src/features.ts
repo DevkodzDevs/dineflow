@@ -15,7 +15,7 @@ import type { PropertyType } from "./constants";
  *   3. else the defaults below   — `on: true`
  * and an add-on marked for some property kinds only (`types`) is never on for the others.
  *
- * The database says the same: default_features(), effective_features(rid) and has_feature(key) in migration 0175 (0177 re-creates default_features with 'whatsapp'). **The list
+ * The database says the same: default_features(), effective_features(rid) and has_feature(key) in migration 0175 (0177 re-creates default_features with 'whatsapp', 0185 with 'website'). **The list
  * of `on: true` keys here and default_features() there must agree** — features.test.ts reads the migration and checks.
  *
  * A saved list is explicit: an add-on added here later is off for a plan or property that already saved a list until the
@@ -66,6 +66,7 @@ export const FEATURES: Feature[] = [
   { key: "scan-id", label: "ID card reading", hint: "Read a labourer's name, phone and address off an Aadhaar or voter ID photo", group: "AI & scanning", kind: "feature", on: false, sensitive: true },
   { key: "ota-push", label: "Push rates & menu", hint: "Push buttons and API fields for partner connections that are not built yet", group: "Channels", kind: "feature", on: false },
   { key: "whatsapp", label: "WhatsApp messages", hint: "Confirmations, e-bills, the day close and alerts through the Business API", group: "Channels", kind: "feature", on: true },
+  { key: "website", label: "Website", hint: "The property's own public website, made from its menu, rooms and photos (Settings → Create website)", group: "Channels", kind: "feature", on: true },
 ];
 
 export const FEATURE_KEYS: string[] = FEATURES.map((f) => f.key);

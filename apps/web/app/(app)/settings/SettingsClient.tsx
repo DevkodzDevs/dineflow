@@ -7,6 +7,7 @@ import { LogoUpload } from "./LogoUpload";
 import { AttendanceSettings } from "./AttendanceSettings";
 import { LateCheckoutRule } from "./LateCheckoutRule";
 import { WhatsAppSettings, type WaProps } from "./WhatsAppSettings";
+import { WebsiteCard, type WebsiteProps } from "./WebsiteCard";
 import { Button, Card, Field, Switch, cn, ask, PhoneInput } from "@/components/ui";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ThemePicker } from "@/components/ui/Theme";
@@ -57,9 +58,9 @@ function QuickLink({ href, icon, label, hint }: { href: string; icon: React.Reac
   );
 }
 
-export function SettingsClient({ restaurant, tables, gateway, signInId, contactEmail, owner = false, phoneReady = true, wa = null }:
+export function SettingsClient({ restaurant, tables, gateway, signInId, contactEmail, owner = false, phoneReady = true, wa = null, website = null }:
   { restaurant: Rest; tables: Table[]; gateway: { key_id: string; hasSecret: boolean; hasWebhook: boolean };
-    signInId: string; contactEmail: string | null; owner?: boolean; phoneReady?: boolean; wa?: WaProps | null }) {
+    signInId: string; contactEmail: string | null; owner?: boolean; phoneReady?: boolean; wa?: WaProps | null; website?: WebsiteProps | null }) {
   const [promise, setPromise] = useState<boolean>(restaurant.promise_enabled ?? false);
   const [gstinOn, setGstinOn] = useState<boolean>(!!restaurant.gstin?.trim());
   const [msg, setMsg] = useState<string | null>(null);
@@ -367,6 +368,9 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
               </div>
             </Section>
           </Card>
+
+          {/* 0185: the property's own website — Create website opens the checklist */}
+          {website && <WebsiteCard {...website} owner={owner} />}
 
           {/* quick links */}
           <div className="grid sm:grid-cols-2 2xl:grid-cols-3 gap-3">

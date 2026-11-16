@@ -37,6 +37,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(app)/scan/**` | [scan.md](scan.md) |
 | `app/(app)/neighbours/**` | [neighbours.md](neighbours.md) |
 | `app/dine/**`, `app/book/**`, `app/queue/**`, `app/checkin/**`, `app/pay/**`, `app/record/**`, `app/feedback/**`, `app/screen/**`, `app/get`, `app/offline` | [guest-facing.md](guest-facing.md) |
+| `app/site/**`, `lib/website.ts`, `settings/WebsiteCard.tsx`, `packages/shared/src/website.ts` — a property's own public website, made from a checklist | [website.md](website.md) |
 | `app/(auth)/**`, `app/account/**`, `middleware.ts`, `lib/auth.ts` | [auth-and-session.md](auth-and-session.md) |
 | `app/page.tsx` (the public front page), `app/for/**`, `app/blog/**`, `components/site/**`, `lib/site/**` | [site.md](site.md) |
 | `app/admin/**`, `app/membership/**`, `app/(app)/about/**`; Data — `lib/backup/**`, `app/api/admin/data`, `app/api/cron/**` | [admin-and-membership.md](admin-and-membership.md) |

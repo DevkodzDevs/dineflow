@@ -15,10 +15,10 @@ describe("add-ons (0175)", () => {
     expect(DEFAULT_FEATURES).not.toContain("white-label");   // a paid thing: the master turns it on
   });
 
-  it("the database's default_features() (0177, the latest to define it) names exactly the keys features.ts marks on", () => {
-    const sql = readFileSync(resolve(__dirname, "../../../supabase/migrations/0177_whatsapp.sql"), "utf8");
+  it("the database's default_features() (0185, the latest to define it) names exactly the keys features.ts marks on", () => {
+    const sql = readFileSync(resolve(__dirname, "../../../supabase/migrations/0185_websites.sql"), "utf8");
     const body = /function public\.default_features\(\)[\s\S]*?select array\[([\s\S]*?)\]::text\[\]/.exec(sql);
-    expect(body, "default_features() found in 0177").toBeTruthy();
+    expect(body, "default_features() found in 0185").toBeTruthy();
     const inSql = [...body![1].matchAll(/'([a-z-]+)'/g)].map((m) => m[1]).sort();
     expect(inSql).toEqual([...DEFAULT_FEATURES].sort());
   });

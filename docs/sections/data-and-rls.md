@@ -36,6 +36,17 @@ round trip should answer a whole screen.
 Numbered, additive, applied in order. Recent ones give the flavour:
 
 ```
+0185_websites                 — websites (one row per property, RLS read, no write policy), _website_sections, _features_of,
+                                website_setup / website_save (owner) / website_public (anon); default_features + 'website';
+                                since 2026-11-16 (edited before it was ever applied): websites.email + links (jsonb),
+                                _website_links (the hosts a link may be on), website_index (anon — the sitemap's list);
+                                website_public also answers pincode, fssai_no and the pin: lat/lng, else attend_lat/lng;
+                                websites.options + _website_options (the extras a client chose: short keys, yes/no, a number
+                                or a short plain line); website_hits (a tally per day and kind, RLS read, no write policy),
+                                website_hit (anon; counts only where options.stats is on), website_stats (owner, manager);
+                                storage bucket `site` (public, 12 MB; the logo bucket's four policies) + _site_file,
+                                room_types.photos (default '{}'), website_media_save (owner, manager: gallery + room photos,
+                                own files only), websites.domain + website_by_domain (anon — the middleware's lookup)
 0070_menu_options_variants_addons_combos
 0071_tables_move_merge_split_and_courses
 0072_customers_loyalty_coupons
@@ -70,6 +81,9 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0105_expenses_checklists_payouts_phone_tally — Batch 2: expenses (+ cash_movements link), checklists +
                                 checklist_runs, channel_settlements, orders.delivery_address + customers.address,
                                 phone_order_card / order_delivery, report_extra, tally_company / tally_ledgers + tally_days
+0186_theme_ember              — the theme set becomes dark/paper/royal/ember: 'ember' accepted, 'colour' and 'bright' retired
+                                (saved rows moved to dark/paper) — **written
+                                2026-11-16, dry-run clean, applied to the live database 2026-11-17 by `dry186.mjs --live`** (the 0186 note below)
 0119_theme_royal              — user_prefs.theme and set_my_theme accept 'royal' (royal classic); nothing else
 0118_theme_bright             — user_prefs.theme and set_my_theme accept 'bright' (colourful light); nothing else
 0117_theme_colour             — user_prefs.theme and set_my_theme accept 'colour' (the colourful theme); nothing else
@@ -78,9 +92,6 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0115_session_department       — session_bundle's profile carries department and position
 0114_work_board_key           — work_board: the new jobs under 'work', the cleaning jobs keep 'jobs'
 0113_work_jobs                — jobs (every department's work: category → department, priority → due, repeat, a labourer,
-0186_theme_ember              — the theme set becomes dark/paper/royal/ember: 'ember' accepted, 'colour' and 'bright' retired
-                                (saved rows moved to dark/paper) — **written
-                                2026-11-16, dry-run clean, applied to the live database 2026-11-17 by `dry186.mjs --live`** (the 0186 note below)
                                 a note) + _job_who / _job_repeat; job_add / job_assign_labour / job_cancel; the clean_*
                                 functions take kind 'job', clean_done an optional note; kots.started_by / ready_by /
                                 served_by + _kot_who; work_board
@@ -175,14 +186,6 @@ made in between is silently undone.
   `departments = '{}'` (everyone), so the deployed screens see exactly what they saw; the old five-argument
   `checklist_save` is untouched (the new one has a sixth, `p_departments`, with no default — so PostgREST's named-argument
   call with five keys can only match the old one, and six only the new). Dry run `dry122.cjs` (23, rolled back).
-- **0119 — royal classic (2026-10-18).** The same widening for `'royal'`; dry-run `dry119.cjs` (6, the same checks).
-- **0118 — colourful light (2026-10-18).** The same widening as 0117 for `'bright'`; dry-run `dry118.cjs` (6, the
-  same checks). Applied before its code, safely — old code never sends it.
-- **0117 — the colourful theme (2026-10-18).** Widens `user_prefs_theme_check` and `set_my_theme`'s guard to
-  `('dark', 'paper', 'colour', 'system')`; the policy and grants are 0078's. Dry-run `dry117t.cjs` (6: saves colour,
-  the old three still save, an unknown name is refused by the function and by the column check, session_bundle
-  carries it, anon cannot call it). Safe to apply before the code that sends it — the old code never sends 'colour'.
-- **0116 — work by department (2026-10-18).** The `jobs_read` and `table_cleanings_read` policies now also call
 - **0186 — Ember, and four themes only (2026-11-16).** Accepts `'ember'` and retires `'colour'` (0117) and `'bright'` (0118):
   two `update`s move any saved row to dark / paper first (the live table had 1 dark, 3 royal), then the check and the
   function's guard are reset to `('dark', 'paper', 'royal', 'ember', 'system')`. Dry-run `dry186.mjs` (12: a row planted on
@@ -194,6 +197,14 @@ made in between is silently undone.
   only once 0185 is meant to go; or the dry-run script with `--live`, which applies 0186 alone and records it in
   `_dineflow_migrations`. Until then the code is safe: `set_my_theme('ember')` raises "unknown theme" and the choice stays
   on the device's cookie only.
+- **0119 — royal classic (2026-10-18).** The same widening for `'royal'`; dry-run `dry119.cjs` (6, the same checks).
+- **0118 — colourful light (2026-10-18).** The same widening as 0117 for `'bright'`; dry-run `dry118.cjs` (6, the
+  same checks). Applied before its code, safely — old code never sends it.
+- **0117 — the colourful theme (2026-10-18).** Widens `user_prefs_theme_check` and `set_my_theme`'s guard to
+  `('dark', 'paper', 'colour', 'system')`; the policy and grants are 0078's. Dry-run `dry117t.cjs` (6: saves colour,
+  the old three still save, an unknown name is refused by the function and by the column check, session_bundle
+  carries it, anon cannot call it). Safe to apply before the code that sends it — the old code never sends 'colour'.
+- **0116 — work by department (2026-10-18).** The `jobs_read` and `table_cleanings_read` policies now also call
   `_work_dept_ok` (stable, security definer, one `profiles` read). A supervisor with no department passes, so live
   properties — none of whose people have a department yet — lose nothing. `work_log` is owner / manager only.
   Dry run `dry116.cjs` (22).

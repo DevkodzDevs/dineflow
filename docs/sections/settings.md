@@ -200,6 +200,37 @@ pnpm --filter @dineflow/web typecheck
   never before half. Switched off, the boxes are disabled and the saved hours ride along as hidden fields. What it charges:
   front-desk.md, 2026-11-04.
 
+## 2026-11-14 — Website card (0185, an add-on)
+- **General → Website** (`WebsiteCard.tsx`, above the quick links; owner and managers, with the `website` add-on on). No site:
+  **Create website** (the owner; a manager reads *Owner only*). It opens the checklist dialog for this kind of property and
+  `saveWebsite` → `website_save`. With a site: the address, *Live* / *Hidden*, Copy link, Open, Edit. Before 0185 is on the
+  database the owner sees an orange note and no button. All of it: [website.md](website.md).
+- **2026-11-16 — the card's *Search & social* row** (`[data-website-reach]`, shown once a site exists; owner and managers): a
+  bar and a count (`12/20`) of what this **kind** of property needs to be found and shared (`websiteReach`, shared). It opens a
+  sheet in three groups — Search (SEO), Social media, Marketing & trust: rows the website does by itself are marked **Auto**;
+  a gap links to the screen that holds it (logo → `/settings`, town and pincode → `/neighbours`, map pin →
+  `/settings#attendance`, cuisines / hours / photos / offers → Storefront, FSSAI → `/tax`); a link (Instagram, Facebook,
+  WhatsApp, Google Maps) has an **Add** button that opens the website's dialog, for the owner only. Under them, three ready
+  posts and the town's hashtags, each with Copy — nothing is posted for the owner. The dialog gained **Contact & social**:
+  *Email for guests* and five link boxes; `saveWebsite` tidies them (`websiteLinks`: "@name" → its address, a phone → digits
+  with 91) and refuses another site's address with the reason. Strings are English only, like the rest of the card.
+- **2026-11-16 — Extras, the client's own choices** (`[data-website-extras]` in the dialog, under Contact & social): three
+  switch rows — *Enquiry form*, *Offer pop-up*, *Visitor count* (the loyalty pattern: a `card` row, a `Switch` named after
+  the row; the row is the tap target) — and three boxes: *Google review link*, *Announcement* and *Show till*. A row's hint turns
+  orange and names what it is waiting for ("Needs your WhatsApp number, above"); `saveWebsite` refuses an enquiry form with no
+  number, a review link that is not Google's and a date that is not a date, each with the reason. The card's line says how many
+  extras are on, and — with *Visitor count* on — **Last 30 days: 1,412 opens · 9 order taps · 23 calls…** (`[data-website-stats]`,
+  from `website_stats(30)`, read by `page.tsx` only when the count is on), or "No visits counted yet". Reach gains a
+  *Google review button* row and, once the link is there, its QR to screenshot for a table card. website.md, *Eighth pass*.
+- **2026-11-17 — Photos & files, and five more choices** (`WebsiteMedia.tsx`, `[data-website-media]`, in the same dialog above
+  Extras): a strip for the **gallery** (n/12) and one for **each room type** (n/6, hotels and resorts) — thumbnails with a 44px
+  remove and a dashed **add** tile; photos are shrunk on the device and **save themselves**. Two file cards, *First-screen video*
+  and *A dish in 3D* (Choose file / Replace / Remove), whose addresses ride with the website's Save; a file of the wrong kind or
+  over 12 MB is refused there with the reason, before anything is sent. Extras gained **Look** (Night · Calm · Day, three radio
+  cards), **Also in** தமிழ் / हिन्दी (two switch rows), **Instagram posts** (three boxes) and **Your own web address** (the
+  hint says DineFlow support connects it). File inputs are `hidden` + inline `display:none` (design-system.md).
+  Before 0185 is on the database an upload answers "not on this database yet". website.md, *Ninth pass*.
+
 ## 2026-11-10 — WhatsApp tab (0177, an add-on)
 - **`/settings#whatsapp`** (`WhatsAppSettings.tsx`, the owner only, and only with the `whatsapp` add-on on — the tab is not drawn
   otherwise, and the hash is ignored). Beside Payments because it is the same shape of thing: the property's **own** Meta WhatsApp
