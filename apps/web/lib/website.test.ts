@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { WEBSITE_SECTIONS, WEBSITE_SECTION, websiteChecklist, websiteSectionsFor, websitePath, websiteLinks, websiteReach, websitePosts, websiteOptions, websiteExtrasOn, isReviewUrl, WEBSITE_EXTRAS, WEBSITE_HIT_KINDS, PROPERTY_TYPES, type WebsiteSetup } from "@dineflow/shared";
+import { WEBSITE_SECTIONS, WEBSITE_SECTION, websiteChecklist, websiteSectionsFor, websitePath, websiteLinks, websiteReach, websitePosts, websiteOptions, websiteExtrasOn, isReviewUrl, websiteCan, websitePlanWith, websitePlanLabel, websitePlanPrice, WEBSITE_EXTRAS, WEBSITE_HIT_KINDS, WEBSITE_PLAN_KEYS, WEBSITE_PLAN_FEATURES, WEBSITE_PLAN_DEFAULTS, PROPERTY_TYPES, type WebsitePlan, type WebsiteSetup } from "@dineflow/shared";
 import { openNow, clock, telHref, mapsUrl, sitePhotos, siteBlocks, siteActions, siteSignature, siteShowWord, siteDescription, websiteLd, siteTitle, siteKeywords, siteFaq, siteGraph, siteAddress, sitePin, pinLabel, mapEmbedUrl, directionsUrl, placeUrl, waHref, siteBanner, reviewUrl, istDay, type SiteData } from "./website";
 
 /** A website for every property (0185): the checklist behind Settings → Create website, and what the page is drawn from. */
@@ -316,5 +316,51 @@ describe("extras the client chose (eighth pass)", () => {
   it("reach counts the review button once the link is there", () => {
     const row = (o: object) => websiteReach(setup({ site: { sections: ["about"], headline: null, about: null, email: null, links: {}, options: o, published: true, created_at: "", updated_at: "" } })).find((r) => r.key === "review")!;
     expect(row({}).done).toBe(false); expect(row({ review_url: "https://g.page/r/abc/review" }).done).toBe(true); expect(row({ review_url: "https://evil.test/x" }).done).toBe(false);
+  });
+});
+
+describe("website plans (tenth pass)", () => {
+  const sql = readFileSync(resolve(__dirname, "../../../supabase/migrations/0185_websites.sql"), "utf8");
+  const plans: WebsitePlan[] = WEBSITE_PLAN_KEYS.map((key) => ({ key, label: WEBSITE_PLAN_DEFAULTS[key].label, price_month: null, price_year: null, features: [...WEBSITE_PLAN_DEFAULTS[key].features] }));
+
+  it("the thirteen extras are the database's thirteen, in every place it names them", () => {
+    const keys = WEBSITE_PLAN_FEATURES.map((f) => f.key);
+    expect(new Set(keys).size).toBe(13);
+    const lists = [...sql.matchAll(/<@ array\[([^\]]*)\]::text\[\]/g)].map((m) => [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1])).filter((l) => l.includes("review"));
+    expect(lists.length).toBe(2);                                                   // the table's constraint and admin_set_website_plan
+    for (const l of lists) expect([...l].sort()).toEqual([...keys].sort());
+  });
+
+  it("the four plans are seeded as the app describes them, each including the one below it", () => {
+    for (const key of WEBSITE_PLAN_KEYS) {
+      const row = new RegExp(`\\('${key}',\\s*'([A-Za-z]+)',\\s*array\\[([^\\]]*)\\]`).exec(sql);
+      expect(row, key).toBeTruthy();
+      expect(row![1]).toBe(WEBSITE_PLAN_DEFAULTS[key].label);
+      expect([...row![2].matchAll(/'([a-z_]+)'/g)].map((x) => x[1])).toEqual(WEBSITE_PLAN_DEFAULTS[key].features);
+    }
+    const [b, s, p, e] = WEBSITE_PLAN_KEYS.map((k) => WEBSITE_PLAN_DEFAULTS[k].features);
+    expect(b).toEqual([]); expect(s.every((f) => p.includes(f))).toBe(true); expect(p.every((f) => e.includes(f))).toBe(true); expect(e).toHaveLength(13);
+  });
+
+  it("every option the page can carry belongs to one extra in the database's filter, so a plan can hold it back", () => {
+    const body = /function public\._website_options_for[\s\S]*?\$\$;/.exec(sql)![0];
+    for (const key of ["review_url", "enquiry", "banner_text", "banner_until", "stats", "offer_popup", "look", "lang_ta", "lang_hi", "insta_1", "insta_2", "insta_3", "video_url", "model_url", "model_name"]) expect(body, key).toContain(`'${key}'`);
+  });
+
+  it("an extra is open only on a plan that includes it; a locked one names the plan it starts in", () => {
+    const on = (plan: "basic" | "standard" | "premium" | "elite") => ({ plan, plans, can: [...WEBSITE_PLAN_DEFAULTS[plan].features] });
+    expect(websiteCan(on("basic"), "review")).toBe(false); expect(websiteCan(on("standard"), "review")).toBe(true); expect(websiteCan(on("standard"), "look")).toBe(false);
+    expect(websiteCan(on("premium"), "lang")).toBe(true); expect(websiteCan(on("premium"), "video")).toBe(false); expect(websiteCan(on("elite"), "domain")).toBe(true);
+    expect(websiteCan({}, "review")).toBe(false);                                   // nothing answered = nothing open
+    expect(websitePlanWith({ plans }, "review")).toBe("Standard"); expect(websitePlanWith({ plans }, "insta")).toBe("Premium"); expect(websitePlanWith({ plans }, "model")).toBe("Elite");
+    expect(websitePlanWith({ plans: plans.map((p) => ({ ...p, features: [] })) }, "model")).toBeNull(); expect(websitePlanWith({}, "model")).toBeNull();
+    expect(websitePlanLabel(on("premium"))).toBe("Premium"); expect(websitePlanLabel({})).toBe("Basic");
+    expect(websitePlanLabel({ plan: "standard", plans: plans.map((p) => (p.key === "standard" ? { ...p, label: "Starter" } : p)) })).toBe("Starter");   // the master renamed it
+  });
+
+  it("a price reads as the list shows it", () => {
+    expect(websitePlanPrice({ price_month: 499, price_year: 4999 })).toBe("₹499 / month · ₹4,999 / year");
+    expect(websitePlanPrice({ price_month: 1499, price_year: null })).toBe("₹1,499 / month"); expect(websitePlanPrice({ price_month: null, price_year: 12000 })).toBe("₹12,000 / year");
+    expect(websitePlanPrice({ price_month: null, price_year: null })).toBe("Ask us"); expect(websitePlanPrice({ price_month: 0, price_year: null })).toBe("Free");
   });
 });

@@ -185,3 +185,18 @@ export async function setPlan(key: string, label: string, monthly: number | null
   const { error } = await s.rpc("admin_set_plan", { p_key: key, p_label: label, p_monthly: monthly, p_yearly: yearly, p_active: active });
   if (error) return { error: error.message }; bump(); revalidatePath("/membership"); revalidatePath("/"); return { ok: true };   // "/": the front page's pricing
 }
+
+/** 0185, master only: a website plan's name, prices and the extras it includes (Keys → Website plans). Empty price = "ask us". */
+export async function setWebsitePlanDef(key: string, label: string, month: number | null, year: number | null, features: string[]) {
+  const s = await createClient();
+  const { error } = await s.rpc("admin_set_website_plan", { p_key: key, p_label: label, p_month: month, p_year: year, p_features: features });
+  if (error) return { error: error.message };
+  revalidatePath("/admin"); revalidatePath("/settings"); return { ok: true as const };
+}
+/** 0185, master only: put a property on a website plan. Takes effect at once — its page and its Settings follow the plan. */
+export async function setWebsitePlan(restaurantId: string, plan: string) {
+  const s = await createClient();
+  const { error } = await s.rpc("master_set_website_plan", { p_restaurant_id: restaurantId, p_plan: plan });
+  if (error) return { error: error.message };
+  revalidatePath("/admin"); revalidatePath("/settings"); return { ok: true as const };
+}

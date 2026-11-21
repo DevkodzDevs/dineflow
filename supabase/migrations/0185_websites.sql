@@ -23,6 +23,12 @@
 --   room_types.photos         a room type's own photos (up to six), set by website_media_save
 --   website_media_save(…)     the gallery (restaurants.photos) and each room type's photos, in one call (owner, manager)
 --   websites.domain           the client's own web address (www.anjappar.com); website_by_domain(host) answers its slug
+--   website_plans             the four website plans (basic · standard · premium · elite): a name, a monthly and a yearly price,
+--                             and which extras the plan includes — set in Master control → Keys → Website plans
+--   website_subscriptions     which plan a property is on (no row = basic); written only by master_set_website_plan
+--   _website_can(rid)         the extras that property's plan includes; website_save, website_public, website_hit,
+--                             website_media_save and website_by_domain all ask it, so a plan change takes effect at once
+--                             and nothing a plan does not include can be switched on through the API
 --   website_index()           the published websites, for the sitemap (anon): an address and a date, nothing else
 --   website_setup()           the checklist: what is ready, what is switched off, and the saved website (owner, manager)
 --   website_save(…)           create or change it (the owner; the add-on must be on); also the public email and the links
@@ -116,6 +122,106 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public._features_of(uuid) from public, anon, authenticated;
 
+-- ── website plans (the owner, 2026-11-17: "the website's options follow the client's website subscription — four plans,
+--    set in Master control; the client chooses among what its plan includes") ─────────────────────────────────────────
+-- An extra is one of thirteen keys (packages/shared/src/website.ts WEBSITE_PLAN_FEATURES says the same; a unit test reads
+-- this file and checks). What every plan has, and so is not a key: the page itself, its sections, the contact card and
+-- map, the links, the logo, the search data, the share card and the sitemap.
+create table if not exists public.website_plans (
+  key         text primary key check (key in ('basic', 'standard', 'premium', 'elite')),
+  label       text not null check (length(btrim(label)) between 1 and 40),
+  price_month numeric(10,2) check (price_month is null or price_month >= 0),
+  price_year  numeric(10,2) check (price_year is null or price_year >= 0),
+  features    text[] not null default '{}',
+  sort        integer not null,
+  updated_at  timestamptz not null default now(),
+  updated_by  uuid,
+  constraint website_plans_features check (features <@ array['review','enquiry','banner','stats','upload','offer_popup','look','lang','insta','rooms','video','model','domain']::text[])
+);
+comment on table public.website_plans is 'The four website plans (0185): name, prices, the extras each includes. Written only by admin_set_website_plan().';
+insert into public.website_plans(key, label, features, sort) values
+  ('basic',    'Basic',    array[]::text[], 1),
+  ('standard', 'Standard', array['review','enquiry','banner','stats','upload'], 2),
+  ('premium',  'Premium',  array['review','enquiry','banner','stats','upload','offer_popup','look','lang','insta','rooms'], 3),
+  ('elite',    'Elite',    array['review','enquiry','banner','stats','upload','offer_popup','look','lang','insta','rooms','video','model','domain'], 4)
+on conflict (key) do nothing;
+alter table public.website_plans enable row level security;
+drop policy if exists website_plans_read on public.website_plans;
+create policy website_plans_read on public.website_plans for select to authenticated using (true);   -- a price list: every signed-in owner may read it
+revoke all on public.website_plans from public, anon;
+revoke insert, update, delete, truncate, references, trigger on public.website_plans from authenticated;
+grant select on public.website_plans to authenticated;
+
+create table if not exists public.website_subscriptions (
+  restaurant_id uuid primary key references public.restaurants(id) on delete cascade,
+  plan          text not null references public.website_plans(key),
+  since         timestamptz not null default now(),
+  set_by        uuid
+);
+comment on table public.website_subscriptions is 'Which website plan a property is on (0185). No row = basic. Written only by master_set_website_plan().';
+alter table public.website_subscriptions enable row level security;
+drop policy if exists website_subscriptions_read on public.website_subscriptions;
+create policy website_subscriptions_read on public.website_subscriptions for select to authenticated using (restaurant_id = auth_restaurant_id() or is_platform_admin());
+revoke all on public.website_subscriptions from public, anon;
+revoke insert, update, delete, truncate, references, trigger on public.website_subscriptions from authenticated;
+grant select on public.website_subscriptions to authenticated;
+
+/** The plan a property is on: its row, else basic. */
+create or replace function public._website_plan_of(p_rid uuid) returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce((select s.plan from website_subscriptions s where s.restaurant_id = p_rid), 'basic');
+$$;
+revoke all on function public._website_plan_of(uuid) from public, anon, authenticated;
+
+/** The extras that property's plan includes. */
+create or replace function public._website_can(p_rid uuid) returns text[]
+language sql stable security definer set search_path = public as $$
+  select coalesce((select p.features from website_plans p where p.key = _website_plan_of(p_rid)), '{}'::text[]);
+$$;
+revoke all on function public._website_can(uuid) from public, anon, authenticated;
+
+/** A website's choices, cut down to what a plan includes: each option key belongs to one extra. */
+create or replace function public._website_options_for(p jsonb, p_can text[]) returns jsonb
+language sql immutable set search_path = public as $$
+  select coalesce(jsonb_object_agg(e.key, e.value), '{}'::jsonb) from jsonb_each(coalesce(p, '{}'::jsonb)) e
+  where (case
+    when e.key = 'review_url' then 'review' when e.key = 'enquiry' then 'enquiry' when e.key in ('banner_text', 'banner_until') then 'banner'
+    when e.key = 'stats' then 'stats' when e.key = 'offer_popup' then 'offer_popup' when e.key = 'look' then 'look' when e.key in ('lang_ta', 'lang_hi') then 'lang'
+    when e.key in ('insta_1', 'insta_2', 'insta_3') then 'insta' when e.key = 'video_url' then 'video' when e.key in ('model_url', 'model_name') then 'model'
+    else null end) = any(p_can);
+$$;
+revoke all on function public._website_options_for(jsonb, text[]) from public, anon, authenticated;
+
+/** Master only: a website plan's name, prices and the extras it includes. An empty price = "ask us". */
+create or replace function public.admin_set_website_plan(p_key text, p_label text, p_month numeric, p_year numeric, p_features text[]) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_master() then raise exception 'only Master control sets website plans' using errcode = '42501'; end if;
+  if p_features is null or not (p_features <@ array['review','enquiry','banner','stats','upload','offer_popup','look','lang','insta','rooms','video','model','domain']::text[]) then raise exception 'that is not a website extra'; end if;
+  update website_plans set label = left(btrim(coalesce(p_label, '')), 40), price_month = p_month, price_year = p_year,
+         features = (select coalesce(array_agg(distinct x), '{}'::text[]) from unnest(p_features) x), updated_at = now(), updated_by = auth.uid()
+   where key = p_key;
+  if not found then raise exception 'no such website plan'; end if;
+  insert into admin_log(actor, action, meta) values (auth.uid(), 'website_plan.set', jsonb_build_object('plan', p_key, 'label', p_label, 'month', p_month, 'year', p_year, 'features', p_features));
+end $$;
+revoke all on function public.admin_set_website_plan(text, text, numeric, numeric, text[]) from public, anon;
+grant execute on function public.admin_set_website_plan(text, text, numeric, numeric, text[]) to authenticated;
+
+/** Master only: put a property on a website plan. */
+create or replace function public.master_set_website_plan(p_restaurant_id uuid, p_plan text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_master() then raise exception 'master only' using errcode = '42501'; end if;
+  if not exists (select 1 from website_plans where key = p_plan) then raise exception 'no such website plan'; end if;
+  if not exists (select 1 from restaurants where id = p_restaurant_id) then raise exception 'no such property'; end if;
+  insert into website_subscriptions(restaurant_id, plan, set_by) values (p_restaurant_id, p_plan, auth.uid())
+  on conflict (restaurant_id) do update set plan = excluded.plan, since = now(), set_by = excluded.set_by;
+  update websites set updated_at = now() where restaurant_id = p_restaurant_id;
+  insert into admin_log(actor, action, target, meta) values (auth.uid(), 'website_plan.assign', p_restaurant_id, jsonb_build_object('plan', p_plan));
+end $$;
+revoke all on function public.master_set_website_plan(uuid, text) from public, anon;
+grant execute on function public.master_set_website_plan(uuid, text) to authenticated;
+
 -- ── the website's own files ──────────────────────────────────────────────────────────────────────────────────────
 -- Public, because a website's photos are public; 12 MB, because a short first-screen video and a 3D dish live here too.
 -- The policies are the logo bucket's (0083): the owner and managers, in their own property's folder, and nowhere else.
@@ -156,6 +262,8 @@ declare rid uuid := auth_restaurant_id(); had text[]; keep text[]; k text; v jso
 begin
   if rid is null then raise exception 'sign in to a property first' using errcode = '42501'; end if;
   if auth_role() not in ('owner', 'manager') then raise exception 'only the owner or a manager can change the website''s photos' using errcode = '42501'; end if;
+  if p_photos is not null and not ('upload' = any(_website_can(rid))) then raise exception 'your website plan does not include photo upload — ask DineFlow to upgrade it'; end if;
+  if p_rooms is not null and jsonb_typeof(p_rooms) = 'object' and p_rooms <> '{}'::jsonb and not ('rooms' = any(_website_can(rid))) then raise exception 'your website plan does not include room photos — ask DineFlow to upgrade it'; end if;
   if p_photos is not null then
     select coalesce(photos, '{}'::text[]) into had from restaurants where id = rid;
     select coalesce(array_agg(x.u order by x.ord), '{}'::text[]) into keep from (
@@ -181,7 +289,7 @@ grant execute on function public.website_media_save(text[], jsonb) to authentica
 create or replace function public.website_by_domain(p_host text) returns text
 language sql stable security definer set search_path = public as $$
   select r.booking_slug from websites w join restaurants r on r.id = w.restaurant_id
-   where w.domain is not null and w.published and r.booking_slug is not null
+   where w.domain is not null and w.published and r.booking_slug is not null and 'domain' = any(_website_can(r.id))
      and regexp_replace(w.domain, '^www[.]', '') = regexp_replace(lower(btrim(coalesce(p_host, ''))), '^www[.]', '')
      and membership_state_for(r.id) in ('trial', 'active') and coalesce('website' = any(_features_of(r.id)), false)
    limit 1;
@@ -217,6 +325,8 @@ language sql stable security definer set search_path = public as $$
       'offers', (select count(*) from offers o where o.restaurant_id = r.id and o.is_active
                    and (o.starts_on is null or o.starts_on <= current_date) and (o.ends_on is null or o.ends_on >= current_date)),
       'reviews', (select count(*) from reviews v where v.restaurant_id = r.id),
+      'plan', _website_plan_of(r.id), 'can', to_jsonb(_website_can(r.id)),
+      'plans', (select jsonb_agg(jsonb_build_object('key', p.key, 'label', p.label, 'price_month', p.price_month, 'price_year', p.price_year, 'features', to_jsonb(p.features)) order by p.sort) from website_plans p),
       'site', (select jsonb_build_object('sections', to_jsonb(w.sections), 'headline', w.headline, 'about', w.about,
                                          'email', w.email, 'links', w.links, 'options', w.options, 'domain', w.domain,
                                          'published', w.published, 'created_at', w.created_at, 'updated_at', w.updated_at)
@@ -233,7 +343,7 @@ create or replace function public.website_save(p_sections text[], p_headline tex
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare rid uuid := auth_restaurant_id(); r restaurants%rowtype; secs text[]; base text; s text; n int := 1;
   head text := nullif(btrim(left(coalesce(p_headline, ''), 120)), ''); body text := nullif(btrim(left(coalesce(p_about, ''), 1500)), '');
-  mail text := nullif(lower(btrim(coalesce(p_email, ''))), ''); lnk jsonb := _website_links(p_links); opt jsonb := _website_options(p_options);
+  mail text := nullif(lower(btrim(coalesce(p_email, ''))), ''); lnk jsonb := _website_links(p_links); opt jsonb := _website_options(p_options); can text[];
   dom text := nullif(regexp_replace(regexp_replace(lower(btrim(coalesce(p_domain, ''))), '^https?://', ''), '[/:].*$', ''), '');
 begin
   if rid is null then raise exception 'sign in to a property first' using errcode = '42501'; end if;
@@ -247,6 +357,9 @@ begin
   if mail is not null and (length(mail) > 120 or mail !~ '^[^@[:space:]<>"'']+@[^@[:space:]<>"'']+[.][a-z]{2,}$') then
     raise exception 'that email address does not look right';
   end if;
+  can := _website_can(rid);
+  opt := _website_options_for(opt, can);          -- an extra the plan does not include cannot be switched on, whatever was sent
+  if dom is not null and not ('domain' = any(can)) then raise exception 'your website plan does not include your own web address — ask DineFlow to upgrade it'; end if;
   if dom is not null then
     if length(dom) > 120 or dom !~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]{2,24}$' then raise exception 'that web address does not look right — type it like www.yourplace.com'; end if;
     if dom ~ '(^|[.])(dineflow[.]cloud|dineflow[.]in|vercel[.]app|localhost)$' then raise exception 'that address is ours, not yours — type the domain you bought'; end if;
@@ -286,7 +399,8 @@ language sql stable security definer set search_path = public as $$
     'cuisines', to_jsonb(r.cuisines), 'price_for_two', r.price_for_two, 'rating', r.rating, 'rating_count', r.rating_count,
     'address', r.address, 'district', r.district, 'phone', r.phone, 'photos', to_jsonb(r.photos),
     'pincode', nullif(btrim(r.pincode), ''), 'lat', coalesce(r.lat, r.attend_lat), 'lng', coalesce(r.lng, r.attend_lng),
-    'fssai_no', nullif(btrim(r.fssai_no), ''), 'email', w.email, 'links', w.links, 'options', w.options, 'domain', w.domain,
+    'fssai_no', nullif(btrim(r.fssai_no), ''), 'email', w.email, 'links', w.links,
+    'options', _website_options_for(w.options, _website_can(r.id)), 'domain', case when 'domain' = any(_website_can(r.id)) then w.domain end,
     'opens_at', r.opens_at, 'closes_at', r.closes_at, 'check_in_time', r.check_in_time, 'check_out_time', r.check_out_time,
     'sections', to_jsonb(w.sections), 'updated_at', w.updated_at,
     'can', jsonb_build_object(
@@ -306,7 +420,7 @@ language sql stable security definer set search_path = public as $$
                 from categories c where c.restaurant_id = r.id) c
         where c.items is not null), '[]'::jsonb) else '[]'::jsonb end,
     'rooms', case when 'rooms' = any(w.sections) then coalesce((
-        select jsonb_agg(jsonb_build_object('name', t.name, 'base_rate', t.base_rate, 'capacity', t.capacity, 'amenities', t.amenities, 'photos', to_jsonb(t.photos)) order by t.base_rate, t.name)
+        select jsonb_agg(jsonb_build_object('name', t.name, 'base_rate', t.base_rate, 'capacity', t.capacity, 'amenities', t.amenities, 'photos', case when 'rooms' = any(_website_can(r.id)) then to_jsonb(t.photos) else '[]'::jsonb end) order by t.base_rate, t.name)
         from room_types t where t.restaurant_id = r.id and t.is_active), '[]'::jsonb) else '[]'::jsonb end,
     'facilities', case when 'facilities' = any(w.sections) then coalesce((
         select jsonb_agg(jsonb_build_object('name', f.name, 'kind', f.kind, 'rate', f.rate, 'minutes', f.duration_minutes) order by f.name)
@@ -366,7 +480,7 @@ declare rid uuid; today date := (now() at time zone 'Asia/Kolkata')::date;
 begin
   if p_kind is null or p_kind not in ('view', 'order', 'reserve', 'queue', 'book', 'call', 'whatsapp', 'directions', 'map', 'share', 'enquiry', 'review', 'dish') then return; end if;
   select r.id into rid from restaurants r join websites w on w.restaurant_id = r.id
-   where r.booking_slug = p_slug and w.published and coalesce((w.options ->> 'stats')::boolean, false)
+   where r.booking_slug = p_slug and w.published and coalesce((w.options ->> 'stats')::boolean, false) and 'stats' = any(_website_can(r.id))
      and coalesce('website' = any(_features_of(r.id)), false);
   if rid is null then return; end if;
   insert into website_hits(restaurant_id, day, kind, n) values (rid, today, p_kind, 1)

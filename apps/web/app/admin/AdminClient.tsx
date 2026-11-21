@@ -21,6 +21,8 @@ import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { MODULES_BY_TYPE, MODULE_GROUPS, ALWAYS_ON, PLAN_PRESETS, PROPERTY_FILTERS, FEATURE_GROUPS, featuresForType, featuresFor, type PlanPreset } from "@dineflow/shared";
 import { DataTable } from "@/components/ui/DataTable";
 import { setModules, setFeatures } from "./actions";
+import { WebsitePlanPick } from "./WebsitePlans";
+import type { WebsitePlan } from "@dineflow/shared";
 
 /** A plan as the Access sheet needs it (0175): which kinds it covers and the add-ons it includes (null: the defaults). */
 export type PlanLite = { key: string; label: string; property_types: string[]; is_active: boolean; features: string[] | null };
@@ -46,7 +48,7 @@ const shut = (e: { currentTarget: HTMLElement }) => { const d = e.currentTarget.
 
 const Icon = ({ t }: { t: PropertyType }) => (t === "hotel" ? <Building2 size={16} /> : t === "resort" ? <Palmtree size={16} /> : <UtensilsCrossed size={16} />);
 
-export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [], chains = [], openError = null, defaultPassword = false, plans = [] }: { openError?: string | null; defaultPassword?: boolean; tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null; enabled_features?: string[] | null }[]; codes?: { id: string; code: string | null }[]; chains?: { id: string; head: string }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[]; plans?: PlanLite[] }) {
+export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], codes = [], chains = [], openError = null, defaultPassword = false, plans = [], websitePlans = [], websiteSubs = {} }: { websitePlans?: WebsitePlan[]; websiteSubs?: Record<string, string>; openError?: string | null; defaultPassword?: boolean; tenants: T[]; keys: K[]; log: L[]; tab: "properties" | "keys"; access?: { id: string; enabled_modules: string[] | null; enabled_features?: string[] | null }[]; codes?: { id: string; code: string | null }[]; chains?: { id: string; head: string }[]; boxes?: { restaurant_id: string; runs_on_box: boolean; last_seen: string | null; sales_today: number | null }[]; plans?: PlanLite[] }) {
   const codeOf = (id: string) => codes.find((c) => c.id === id)?.code ?? null;
   const [q, setQ] = useState(""); const [filter, setFilter] = useState("all");
   const [sel, setSel] = useState<T | null>(null); const [issued, setIssued] = useState<string | null>(null); const [err, setErr] = useState<string | null>(openError);  // /admin/open sends a refusal back as ?error=
@@ -231,6 +233,8 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
         {sel && (
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-3 text-sm"><div className="feather p-3"><div className="text-xs text-steel">Type</div><div className="font-semibold">{PROPERTY_LABEL[sel.property_type]}</div></div><div className="feather p-3"><div className="text-xs text-steel">Status</div><Pill tone={tone(sel.membership)}>{sel.membership}</Pill></div><div className="feather p-3"><div className="text-xs text-steel">30-day sales</div><div className="num font-semibold">{formatINR(Number(sel.sales_30d))}</div></div><div className="feather p-3"><div className="text-xs text-steel">Team</div><div className="num font-semibold">{sel.users} users</div></div></div>
+            {/* 0185: which of the four website plans this property is on — it decides what its website can switch on */}
+            {websitePlans.length > 0 && <WebsitePlanPick key={sel.id} restaurantId={sel.id} current={websiteSubs[sel.id] ?? "basic"} plans={websitePlans} />}
             <div className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-steel">Membership control</div>
               <div className="grid grid-cols-2 gap-2">

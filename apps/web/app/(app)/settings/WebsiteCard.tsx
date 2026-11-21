@@ -1,9 +1,9 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Globe, Check, Copy, ExternalLink, Pencil, Lock, AlertTriangle, ArrowUpRight, UtensilsCrossed, Building2, TreePalm, Sparkles, Megaphone, CircleDashed, Search, Eye } from "lucide-react";
+import { Globe, Check, Copy, ExternalLink, Pencil, Lock, AlertTriangle, ArrowUpRight, UtensilsCrossed, Building2, TreePalm, Sparkles, Megaphone, CircleDashed, Search, Eye, Crown } from "lucide-react";
 import { Button, Card, Sheet, Switch, cn } from "@/components/ui";
-import { websiteChecklist, websitePath, websiteReach, websitePosts, websiteExtrasOn, isReviewUrl, WEBSITE_KIND, WEBSITE_EXTRAS, WEBSITE_LOOKS, WEBSITE_LINK, WEBSITE_LINK_KEYS, WEBSITE_REACH_GROUP, type WebsiteSetup, type WebsiteCheck, type WebsiteSectionKey, type WebsiteLinkKey, type WebsiteLinks, type WebsiteReachItem, type WebsiteOptions, type WebsiteStats } from "@dineflow/shared";
+import { websiteChecklist, websitePath, websiteReach, websitePosts, websiteExtrasOn, isReviewUrl, websiteCan, websitePlanWith, websitePlanLabel, websitePlanPrice, WEBSITE_KIND, WEBSITE_EXTRAS, WEBSITE_LOOKS, WEBSITE_PLAN_FEATURES, WEBSITE_PLAN_ALWAYS, type WebsitePlanFeature, WEBSITE_LINK, WEBSITE_LINK_KEYS, WEBSITE_REACH_GROUP, type WebsiteSetup, type WebsiteCheck, type WebsiteSectionKey, type WebsiteLinkKey, type WebsiteLinks, type WebsiteReachItem, type WebsiteOptions, type WebsiteStats } from "@dineflow/shared";
 import { QR } from "@/components/QR";
 import { copyText } from "@/lib/clipboard";
 import { saveWebsite } from "./actions";
@@ -37,6 +37,7 @@ export function WebsiteCard({ setup, available, base, owner, stats = null }: Web
   const [slug, setSlug] = useState(setup?.slug ?? null);
   const [open, setOpen] = useState(false);
   const [reachOpen, setReachOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   if (!available) return owner ? (
     <Card data-website-card data-website-unavailable>
@@ -90,6 +91,15 @@ export function WebsiteCard({ setup, available, base, owner, stats = null }: Web
           <span className="text-[13px] text-steel">From your menu, rooms and photos</span>
         </div>
       ) : <p className="mt-4 text-[14px] text-steel flex items-center gap-2"><Lock size={15} aria-hidden /> Owner only.</p>}
+      {/* the website plan this property is on (Master control assigns it): what it includes is open below, the rest is locked */}
+      {(setup.plans?.length ?? 0) > 0 && (<>
+        <button type="button" onClick={() => setPlansOpen(true)} className="mt-3 w-full min-h-[56px] rounded-2xl border border-[var(--color-separator)] px-4 py-2.5 flex items-center gap-3 text-left hover:bg-[var(--color-fill)] transition-colors" data-website-plan={setup.plan ?? "basic"}>
+          <span className="h-10 w-10 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)] text-[var(--color-tint)]"><Crown size={18} aria-hidden /></span>
+          <span className="flex-1 min-w-0"><span className="block text-[14.5px] font-bold leading-tight">{websitePlanLabel(setup)} plan</span><span className="block text-[12.5px] text-steel mt-0.5">{(setup.can ?? []).length} of {WEBSITE_PLAN_FEATURES.length} extras included</span></span>
+          <span className="shrink-0 text-[13px] font-semibold text-[var(--color-tint)]">See plans</span>
+        </button>
+        <PlansSheet open={plansOpen} onClose={() => setPlansOpen(false)} setup={setup} />
+      </>)}
       {owner && <WebsiteDialog open={open} onClose={() => setOpen(false)} setup={now} base={base}
         onSaved={(r, text) => { setSlug(r.slug); setSaved({ sections: r.sections, headline: text.headline || null, about: text.about || null, email: r.email ?? null, links: r.links ?? {}, options: r.options ?? {}, domain: r.domain ?? null, published: r.published, created_at: site?.created_at ?? new Date().toISOString(), updated_at: new Date().toISOString() }); }} />}
     </Card>
@@ -102,6 +112,45 @@ function Head({ right, sub = "Your own public website" }: { right?: React.ReactN
       <span className="h-11 w-11 shrink-0 rounded-xl grid place-items-center bg-[var(--color-fill)]"><Globe size={20} aria-hidden /></span>
       <div className="min-w-0 flex-1"><div className="text-[17px] font-extrabold">Website</div><p className="text-[13.5px] text-steel mt-0.5">{sub}</p></div>
       {right}
+    </div>
+  );
+}
+
+/** The four website plans side by side: the price, what each includes, which one this property is on. The plan is
+ *  changed in Master control, so the sheet says who to ask rather than offering a button that cannot work. */
+function PlansSheet({ open, onClose, setup }: { open: boolean; onClose: () => void; setup: WebsiteSetup }) {
+  const mine = setup.plan ?? "basic";
+  return (
+    <Sheet open={open} onClose={onClose} title="Website plans" wide>
+      <div data-website-plans>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(setup.plans ?? []).map((p) => (
+            <div key={p.key} className={cn("rounded-2xl border-2 p-4 min-w-0", p.key === mine ? "border-[var(--color-tint)] bg-[var(--color-fill)]" : "border-[var(--color-separator)]")} data-website-plan-card={p.key} data-mine={p.key === mine ? "1" : "0"}>
+              <div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="text-[18px] font-extrabold leading-tight">{p.label}</div><div className="text-[13px] text-steel mt-0.5 num">{websitePlanPrice(p)}</div></div>
+                {p.key === mine && <span className="shrink-0 h-7 px-2.5 rounded-full grid place-items-center text-[11.5px] font-bold uppercase tracking-wide bg-[var(--color-green-2)] text-[var(--color-green)]">Your plan</span>}</div>
+              <ul className="mt-3 grid gap-1.5 text-[13.5px]">
+                {WEBSITE_PLAN_FEATURES.map((f) => { const has = p.features.includes(f.key); return (
+                  <li key={f.key} className={cn("flex items-center gap-2", !has && "text-[var(--color-label-3)]")} data-has={has ? "1" : "0"}>
+                    {has ? <Check size={15} strokeWidth={3} className="shrink-0 text-[var(--color-green)]" aria-hidden /> : <Lock size={13} className="shrink-0" aria-hidden />}<span className="min-w-0">{f.label}</span><span className="sr-only">{has ? " — included" : " — not included"}</span>
+                  </li>); })}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 rounded-2xl bg-[var(--color-fill)] px-4 py-3 text-[13.5px] leading-snug"><b>Every plan has:</b> {WEBSITE_PLAN_ALWAYS.join(" · ")}.</p>
+        <p className="mt-3 text-[13.5px] text-steel">To change your plan, ask DineFlow — <Link href="/help" className="font-semibold text-[var(--color-tint)] inline-flex items-center min-h-11">Help &amp; support</Link></p>
+        <div className="mt-3 flex"><Button onClick={onClose} className="!h-12 flex-1">Done</Button></div>
+      </div>
+    </Sheet>
+  );
+}
+/** An extra this plan does not include: its name, and the plan it starts in. Nothing to tap but the plans. */
+function Locked({ feature, setup }: { feature: WebsitePlanFeature; setup: WebsiteSetup }) {
+  const f = WEBSITE_PLAN_FEATURES.find((x) => x.key === feature)!, from = websitePlanWith(setup, feature);
+  return (
+    <div className="rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-3 flex items-center gap-3 min-h-[60px]" data-website-locked={feature}>
+      <span className="flex-1 min-w-0"><span className="block text-[15px] font-semibold text-[var(--color-label-2)]">{f.label}</span><span className="block text-[12.5px] text-steel mt-0.5">{f.hint}</span></span>
+      <span className="shrink-0 h-7 px-2.5 rounded-full inline-flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-wide bg-[var(--color-fill)] text-[var(--color-label-2)]"><Lock size={12} aria-hidden /> {from ?? "Not in a plan"}</span>
     </div>
   );
 }
@@ -191,6 +240,7 @@ function WebsiteDialog({ open, onClose, setup, base, onSaved }: { open: boolean;
       look: (o.look ?? "night") as string, lang_ta: !!o.lang_ta, lang_hi: !!o.lang_hi, video_url: o.video_url ?? "", model_url: o.model_url ?? "", model_name: o.model_name ?? "", insta: [o.insta_1 ?? "", o.insta_2 ?? "", o.insta_3 ?? ""] }; });
   const [domain, setDomain] = useState(setup.site?.domain ?? "");
   const flip = (k: "enquiry" | "offer_popup" | "stats") => (on: boolean) => setExtras((x) => ({ ...x, [k]: on }));
+  const can = (f: WebsitePlanFeature) => websiteCan(setup, f);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Saved | null>(null);
   const [copied, setCopied] = useState(false);
@@ -272,19 +322,21 @@ function WebsiteDialog({ open, onClose, setup, base, onSaved }: { open: boolean;
             {/* the client's own choices: each is off, and costs the page nothing, until it is switched on */}
             <div data-website-extras>
               <div className="text-[12px] font-bold uppercase tracking-[.12em] text-steel">Extras</div>
-              <p className="footnote mt-1">Your choice. Each is off until you switch it on.</p>
+              <p className="footnote mt-1">Your choice. Each is off until you switch it on. <span data-website-plan-note>On the {websitePlanLabel(setup)} plan.</span></p>
               <div className="mt-2.5 grid gap-2.5">
-                {WEBSITE_EXTRAS.filter((x) => x.kind === "switch").map((x) => { const k = x.key as "enquiry" | "offer_popup" | "stats"; const need = k === "enquiry" && !(links.whatsapp ?? "").trim() ? "Needs your WhatsApp number, above" : k === "offer_popup" && setup.offers === 0 ? "Shows once you have an offer running" : x.hint; return (
+                {WEBSITE_EXTRAS.filter((x) => x.kind === "switch").map((x) => { const k = x.key as "enquiry" | "offer_popup" | "stats"; if (!can(k)) return <Locked key={k} feature={k} setup={setup} />; const need = k === "enquiry" && !(links.whatsapp ?? "").trim() ? "Needs your WhatsApp number, above" : k === "offer_popup" && setup.offers === 0 ? "Shows once you have an offer running" : x.hint; return (
                   <label key={k} className="card !p-4 flex items-center gap-3 cursor-pointer" data-website-extra={k}>
                     <span className="flex-1 min-w-0"><span className="block text-[15px] font-semibold">{x.label}</span><span className={cn("block text-[12.5px] mt-0.5", need === x.hint ? "text-steel" : "text-[var(--color-orange)]")}>{need}</span></span>
                     <Switch on={extras[k]} onChange={flip(k)} name={x.label} />
                   </label>
                 ); })}
+                {!can("review") ? <Locked feature="review" setup={setup} /> : (
                 <div className="space-y-1.5 min-w-0" data-website-extra="review">
                   <label htmlFor="ws-review">Google review link</label>
                   <input id="ws-review" inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false} value={extras.review_url} maxLength={240} onChange={(e) => setExtras((x) => ({ ...x, review_url: e.target.value }))} placeholder="https://g.page/r/…/review" data-website-review />
                   <p className="footnote">Adds a “Review us on Google” button. Google Business Profile → Ask for reviews.</p>
-                </div>
+                </div>)}
+                {!can("banner") ? <Locked feature="banner" setup={setup} /> : (
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]" data-website-extra="banner">
                   <div className="space-y-1.5 min-w-0">
                     <label htmlFor="ws-banner">Announcement</label>
@@ -294,7 +346,8 @@ function WebsiteDialog({ open, onClose, setup, base, onSaved }: { open: boolean;
                     <label htmlFor="ws-banner-until">Show till</label>
                     <input id="ws-banner-until" type="date" className="num" value={extras.banner_until} onChange={(e) => setExtras((x) => ({ ...x, banner_until: e.target.value }))} data-website-banner-until />
                   </div>
-                </div>
+                </div>)}
+                {!can("look") ? <Locked feature="look" setup={setup} /> : (
                 <div data-website-extra="look">
                   <div className="text-[14px] font-semibold" id="ws-look">Look</div>
                   <div className="mt-1.5 grid grid-cols-3 gap-2" role="radiogroup" aria-labelledby="ws-look">
@@ -305,7 +358,8 @@ function WebsiteDialog({ open, onClose, setup, base, onSaved }: { open: boolean;
                       </button>
                     ))}
                   </div>
-                </div>
+                </div>)}
+                {!can("lang") ? <Locked feature="lang" setup={setup} /> : (
                 <div data-website-extra="lang">
                   <div className="text-[14px] font-semibold">Also in</div>
                   <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -317,18 +371,20 @@ function WebsiteDialog({ open, onClose, setup, base, onSaved }: { open: boolean;
                     ))}
                   </div>
                   <p className="footnote mt-1.5">Buttons and headings change. Your dish names and text stay as you typed them.</p>
-                </div>
+                </div>)}
+                {!can("insta") ? <Locked feature="insta" setup={setup} /> : (
                 <div className="space-y-1.5" data-website-extra="insta">
                   <label htmlFor="ws-insta-1">Instagram posts</label>
                   {[0, 1, 2].map((i) => <input key={i} id={`ws-insta-${i + 1}`} aria-label={`Instagram post ${i + 1}`} inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false} value={extras.insta[i]} maxLength={200}
                     onChange={(e) => setExtras((x) => ({ ...x, insta: x.insta.map((v, j) => (j === i ? e.target.value : v)) }))} placeholder="https://www.instagram.com/p/…" data-website-insta={i + 1} />)}
                   <p className="footnote">Up to three posts or reels. A post loads only when a guest taps it.</p>
-                </div>
+                </div>)}
+                {!can("domain") ? <Locked feature="domain" setup={setup} /> : (
                 <div className="space-y-1.5" data-website-extra="domain">
                   <label htmlFor="ws-domain">Your own web address</label>
                   <input id="ws-domain" inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false} value={domain} maxLength={160} onChange={(e) => setDomain(e.target.value)} placeholder="www.yourplace.com" data-website-domain />
                   <p className="footnote">A domain you bought. After saving, DineFlow support connects it — it works once they confirm.</p>
-                </div>
+                </div>)}
               </div>
             </div>
             {editing && (

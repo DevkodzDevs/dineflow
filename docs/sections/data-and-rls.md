@@ -46,7 +46,11 @@ Numbered, additive, applied in order. Recent ones give the flavour:
                                 website_hit (anon; counts only where options.stats is on), website_stats (owner, manager);
                                 storage bucket `site` (public, 12 MB; the logo bucket's four policies) + _site_file,
                                 room_types.photos (default '{}'), website_media_save (owner, manager: gallery + room photos,
-                                own files only), websites.domain + website_by_domain (anon — the middleware's lookup)
+                                own files only), websites.domain + website_by_domain (anon — the middleware's lookup);
+                                website_plans (four rows, read by any signed-in user, no write policy) and
+                                website_subscriptions (own row or master, no write policy; no row = basic) with
+                                _website_can / _website_options_for (asked on every save and read), admin_set_website_plan
+                                and master_set_website_plan (is_master, logged)
 0070_menu_options_variants_addons_combos
 0071_tables_move_merge_split_and_courses
 0072_customers_loyalty_coupons
@@ -81,15 +85,15 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0105_expenses_checklists_payouts_phone_tally — Batch 2: expenses (+ cash_movements link), checklists +
                                 checklist_runs, channel_settlements, orders.delivery_address + customers.address,
                                 phone_order_card / order_delivery, report_extra, tally_company / tally_ledgers + tally_days
-0186_theme_ember              — the theme set becomes dark/paper/royal/ember: 'ember' accepted, 'colour' and 'bright' retired
-                                (saved rows moved to dark/paper) — **written
-                                2026-11-16, dry-run clean, applied to the live database 2026-11-17 by `dry186.mjs --live`** (the 0186 note below)
-0119_theme_royal              — user_prefs.theme and set_my_theme accept 'royal' (royal classic); nothing else
 0188_no_double_booking_no_replay — btree_gist + an exclusion constraint on bookings (one live booking per room per night) and
                                 ingest_online_order that no longer rewrites an order once it has left 'new' — written 2026-11-17, dry-run
                                 clean (9), **applied 2026-11-22** by `dry188.mjs --live`
 0187_revoke_truncate          — TRUNCATE, REFERENCES and TRIGGER taken from anon and authenticated on every table in public, and
                                 from the default privileges for new tables (RLS never governed them) — applied 2026-11-17
+0186_theme_ember              — the theme set becomes dark/paper/royal/ember: 'ember' accepted, 'colour' and 'bright' retired
+                                (saved rows moved to dark/paper) — **written
+                                2026-11-16, dry-run clean, applied to the live database 2026-11-17 by `dry186.mjs --live`** (the 0186 note below)
+0119_theme_royal              — user_prefs.theme and set_my_theme accept 'royal' (royal classic); nothing else
 0118_theme_bright             — user_prefs.theme and set_my_theme accept 'bright' (colourful light); nothing else
 0117_theme_colour             — user_prefs.theme and set_my_theme accept 'colour' (the colourful theme); nothing else
 0116_work_by_department       — _my_dept, _work_dept_ok, _work_board_sees; jobs and table_cleanings RLS by department;
@@ -199,9 +203,8 @@ made in between is silently undone.
   `ingest_online_order`: the 0005 upsert overwrote items/gross/raw on every repeat of an external id; it now updates only while
   the order is `new` and answers a later repeat with the existing id and `replay: true`. Dry-run `dry188.mjs` (9: refused overlap,
   adjacent nights allowed, free again after check-out, another room fine, a repeat while new updates, a repeat after acceptance
-  changes nothing, anon may still call it, an unknown token refused) rolled back clean. **Applying it was refused to the session**
-  (a schema constraint on live data) — the owner runs `node <scratchpad>dry188.mjs --live`, or `scripts/migrate.mjs --live`
-  once 0185 is meant to go.
+  changes nothing, anon may still call it, an unknown token refused) rolled back clean on 2026-11-17; the live write was refused
+  to the session that day and went through on 2026-11-22 (`dry188.mjs --live`, the same nine checks inside the transaction).
 - **0187 — no TRUNCATE through the API roles (2026-11-17).** The security sweep (read-only SQL over pg_class / pg_policies /
   information_schema, scratchpad `security-sweep*.mjs`) found every table under RLS and no definer function without a pinned
   search_path, but Supabase's default grants had left TRUNCATE / REFERENCES / TRIGGER with anon and authenticated on eight
@@ -212,6 +215,10 @@ made in between is silently undone.
   for authenticated, and 113 server actions write tables straight through the person's own session (fenced by tenant only,
   not by role) — the 0150 fence covers bills, invoices, invites, day_closes, business_periods; widening it is the next piece
   of security work (full-review memory, 2026-11-09).
+- **0186 — Ember, and four themes only (2026-11-16).** Accepts `'ember'` and retires `'colour'` (0117) and `'bright'` (0118):
+  two `update`s move any saved row to dark / paper first (the live table had 1 dark, 3 royal), then the check and the
+  function's guard are reset to `('dark', 'paper', 'royal', 'ember', 'system')`. Dry-run `dry186.mjs` (12: a row planted on
+  colour is moved to dark, the check accepts ember and no longer colour/bright, no row is left on a retired theme, the
   function saves ember and the four others, refuses an unknown name and the two retired ones, `session_bundle` carries it,
   the person's row is put back, anon cannot call it) rolled back clean. **Applied to the live database on 2026-11-17** (`dry186.mjs --live`, 12 checks inside the same transaction, then recorded in `_dineflow_migrations`), after the owner said to finish everything; before that applying it had been refused to the session (the
   auto-mode classifier treats a write to the live database as a shared-resource change), so the owner applies it:

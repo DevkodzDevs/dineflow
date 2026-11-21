@@ -48,6 +48,8 @@ export type WebsiteSetup = {
   district: string | null; cuisines: string[]; has_pincode: boolean; has_pin: boolean; has_hours: boolean; has_stay_times: boolean; has_fssai: boolean;
   /** the gallery's addresses and each room type with its photos, so the dialog can show and change them (ninth pass) */
   photo_list?: string[]; room_list?: { id: string; name: string; photos: string[] }[];
+  /** the website plan this property is on, the extras it includes, and the price list (tenth pass) */
+  plan?: WebsitePlanKey; can?: string[]; plans?: WebsitePlan[];
   photos: number; dishes: number; room_types: number; facilities: number; offers: number; reviews: number;
   site: { sections: string[]; headline: string | null; about: string | null; email: string | null; links: WebsiteLinks; options?: WebsiteOptions; domain?: string | null; published: boolean; created_at: string; updated_at: string } | null;
 };
@@ -351,3 +353,55 @@ export const websiteExtrasOn = (o: WebsiteOptions | null | undefined): number =>
 export type WebsiteStats = { days: number; total: Partial<Record<string, number>>; views: { day: string; n: number }[] };
 export const WEBSITE_HIT_KINDS = ["view", "order", "reserve", "queue", "book", "call", "whatsapp", "directions", "map", "share", "enquiry", "review", "dish"] as const;
 export type WebsiteHitKind = (typeof WEBSITE_HIT_KINDS)[number];
+
+/* ───────────────────────── website plans (tenth pass) ─────────────────────────
+ * The owner: "the website follows the client's website subscription — four plans, kept in Master control; the client
+ * chooses among what its plan includes". A plan is a name, two prices and a list of extras (0185 `website_plans`); a
+ * property is on one of the four (`website_subscriptions`; no row = basic). **The database decides** — `_website_can()`
+ * is asked by every function that saves or serves an extra — and the screens only show it: an extra a plan does not
+ * include is drawn locked, with the plan it starts in.
+ */
+export type WebsitePlanKey = "basic" | "standard" | "premium" | "elite";
+export const WEBSITE_PLAN_KEYS: WebsitePlanKey[] = ["basic", "standard", "premium", "elite"];
+export type WebsitePlanFeature = "review" | "enquiry" | "banner" | "stats" | "upload" | "offer_popup" | "look" | "lang" | "insta" | "rooms" | "video" | "model" | "domain";
+/** The thirteen extras a plan can include, in the order every list shows them (the same names as 0185's constraint — a unit test checks). */
+export const WEBSITE_PLAN_FEATURES: { key: WebsitePlanFeature; label: string; hint: string }[] = [
+  { key: "review", label: "Google review button", hint: "And its QR for a table card" },
+  { key: "enquiry", label: "Enquiry form", hint: "Arrives on WhatsApp" },
+  { key: "banner", label: "Announcement", hint: "One line on top, till a date" },
+  { key: "stats", label: "Visitor count", hint: "Opens and taps, 30 days" },
+  { key: "upload", label: "Photo upload", hint: "Gallery, from the phone" },
+  { key: "offer_popup", label: "Offer pop-up", hint: "The first offer, once a visit" },
+  { key: "look", label: "Looks", hint: "Night, calm or day" },
+  { key: "lang", label: "Tamil / Hindi", hint: "A language button" },
+  { key: "insta", label: "Instagram posts", hint: "Up to three, on a tap" },
+  { key: "rooms", label: "Room photos", hint: "Each room type's own" },
+  { key: "video", label: "First-screen video", hint: "Wide screens only" },
+  { key: "model", label: "A dish in 3D", hint: "From a .glb file" },
+  { key: "domain", label: "Own web address", hint: "www.yourplace.com" },
+];
+/** What every plan has, and so is not a switch. */
+export const WEBSITE_PLAN_ALWAYS = ["Your page and its sections", "Contact card and map", "Search data, share card, sitemap", "Your logo and social links"];
+/** The plans as 0185 seeds them (the master may rename, price and re-tick them). */
+export const WEBSITE_PLAN_DEFAULTS: Record<WebsitePlanKey, { label: string; features: WebsitePlanFeature[] }> = {
+  basic: { label: "Basic", features: [] },
+  standard: { label: "Standard", features: ["review", "enquiry", "banner", "stats", "upload"] },
+  premium: { label: "Premium", features: ["review", "enquiry", "banner", "stats", "upload", "offer_popup", "look", "lang", "insta", "rooms"] },
+  elite: { label: "Elite", features: ["review", "enquiry", "banner", "stats", "upload", "offer_popup", "look", "lang", "insta", "rooms", "video", "model", "domain"] },
+};
+export type WebsitePlan = { key: WebsitePlanKey; label: string; price_month: number | null; price_year: number | null; features: string[] };
+
+/** Does this property's plan include the extra? (What `website_setup()` answered; nothing answered = no.) */
+export const websiteCan = (s: Pick<WebsiteSetup, "can">, f: WebsitePlanFeature): boolean => (s.can ?? []).includes(f);
+/** The first plan, cheapest first, that includes the extra — the name a locked row shows. */
+export const websitePlanWith = (s: Pick<WebsiteSetup, "plans">, f: WebsitePlanFeature): string | null =>
+  WEBSITE_PLAN_KEYS.map((k) => (s.plans ?? []).find((p) => p.key === k)).find((p) => p?.features.includes(f))?.label ?? null;
+/** The plan the property is on, by name. */
+export const websitePlanLabel = (s: Pick<WebsiteSetup, "plan" | "plans">): string => (s.plans ?? []).find((p) => p.key === (s.plan ?? "basic"))?.label ?? WEBSITE_PLAN_DEFAULTS[s.plan ?? "basic"].label;
+/** A price as the list shows it: ₹499 / month, else "Ask us". */
+export const websitePlanPrice = (p: Pick<WebsitePlan, "price_month" | "price_year">): string => {
+  const inr = (n: number) => `₹${new Intl.NumberFormat("en-IN").format(Math.round(n))}`;
+  const m = p.price_month != null && Number(p.price_month) > 0 ? `${inr(Number(p.price_month))} / month` : null, y = p.price_year != null && Number(p.price_year) > 0 ? `${inr(Number(p.price_year))} / year` : null;
+  const free = (p.price_month != null && Number(p.price_month) === 0) || (p.price_year != null && Number(p.price_year) === 0);
+  return m && y ? `${m} · ${y}` : m ?? y ?? (free ? "Free" : "Ask us");
+};

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { AdminClient } from "./AdminClient";
 import { PlansCard, type PlanRow } from "./PlansCard";
+import { WebsitePlansCard } from "./WebsitePlans";
+import type { WebsitePlan } from "@dineflow/shared";
 import { platformReady } from "@/lib/platformPay";
 export const metadata = { title: "Master control" };
 export const dynamic = "force-dynamic";
@@ -11,7 +13,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   try { await s.rpc("sweep_expired_demos"); } catch { /* best effort */ }
   // the names follow the order of the reads — access and boxes used to be the other way round, so the
   // property codes, the Access sheet's current modules and the "On a Box" filter each got the other's rows
-  const [{ data: tenants }, { data: keys }, { data: log }, { data: access }, { data: boxes }, { data: defaultPassword }, { data: plans }] = await Promise.all([
+  const [{ data: tenants }, { data: keys }, { data: log }, { data: access }, { data: boxes }, { data: defaultPassword }, { data: plans }, { data: webPlans }, { data: webSubs }] = await Promise.all([
     s.rpc("admin_overview"),
     s.from("membership_keys").select("*").order("created_at", { ascending: false }).limit(50),
     s.from("admin_log").select("*").order("created_at", { ascending: false }).limit(30),
@@ -23,11 +25,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     // 0151: the plans and their prices (Keys tab); 0175: and their add-ons — read on every tab, the Access sheet says which
     // plan a property follows (two rows)
     s.from("plans").select("key, label, property_types, monthly, yearly, is_active, updated_at, features").order("key", { ascending: false }),
+    // 0185: the four website plans, and which one each property is on (no row = basic). Before 0185 both answer nothing
+    // and neither the card nor the picker is drawn.
+    s.from("website_plans").select("key, label, price_month, price_year, features").order("sort"),
+    s.from("website_subscriptions").select("restaurant_id, plan"),
   ]);
+  const websitePlans = (webPlans ?? []) as WebsitePlan[];
+  const websiteSubs = Object.fromEntries(((webSubs ?? []) as { restaurant_id: string; plan: string }[]).map((r) => [r.restaurant_id, r.plan]));
   const rows = (access ?? []) as { id: string; enabled_modules: string[] | null; enabled_features: string[] | null; code: string | null; chain_id: string | null }[];
   return (<>
     <AdminClient tenants={(tenants ?? []) as never} keys={(keys ?? []) as never} log={(log ?? []) as never} tab={tab === "keys" ? "keys" : "properties"} boxes={(boxes ?? []) as never} access={rows} codes={rows.map((r) => ({ id: r.id, code: r.code }))} chains={rows.filter((r) => r.chain_id && r.chain_id !== r.id).map((r) => ({ id: r.id, head: r.chain_id! }))} openError={error ?? null} defaultPassword={defaultPassword === true}
-      plans={((plans ?? []) as PlanRow[]).map((p) => ({ key: p.key, label: p.label, property_types: p.property_types, is_active: p.is_active, features: p.features }))} />
-    {tab === "keys" && <div className="px-4 sm:px-6 pb-10 max-w-6xl mx-auto"><PlansCard plans={(plans ?? []) as PlanRow[]} online={platformReady()} /></div>}
+      plans={((plans ?? []) as PlanRow[]).map((p) => ({ key: p.key, label: p.label, property_types: p.property_types, is_active: p.is_active, features: p.features }))} websitePlans={websitePlans} websiteSubs={websiteSubs} />
+    {tab === "keys" && <div className="px-4 sm:px-6 pb-10 max-w-6xl mx-auto"><PlansCard plans={(plans ?? []) as PlanRow[]} online={platformReady()} />{websitePlans.length > 0 && <WebsitePlansCard plans={websitePlans} />}</div>}
   </>);
 }

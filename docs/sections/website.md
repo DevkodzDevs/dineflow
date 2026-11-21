@@ -9,10 +9,11 @@ the Website card on `/settings` (General)
 `app/(app)/settings/WebsiteMedia.tsx` (photos, film, 3D file) — `lib/website.ts` · `app/(app)/settings/WebsiteCard.tsx` ·
 `app/(app)/settings/actions.ts` (`saveWebsite`) · `packages/shared/src/website.ts` · `app/robots.ts`
 **Reads** `website_setup()` (owner, manager) · `website_public(slug)` (anon) · `website_index()` (anon, the sitemap) ·
-`website_stats(days)` (owner, manager) · `website_by_domain(host)` (anon, the middleware)
+`website_stats(days)` (owner, manager) · `website_by_domain(host)` (anon, the middleware) · tables `website_plans`,
+`website_subscriptions` (Master control)
 **Writes** `website_save(sections, headline, about, published, email, links, options, domain)` — table `websites` (0185) ·
 `website_hit(slug, kind)` (anon) — table `website_hits` (0185) · `website_media_save(photos, rooms)` (owner, manager) —
-`restaurants.photos`, `room_types.photos` · storage bucket `site` (0185)
+`restaurants.photos`, `room_types.photos` · storage bucket `site` (0185) · `admin_set_website_plan(…)`, `master_set_website_plan(rid, plan)` (master)
 
 ## What it is
 
@@ -361,6 +362,42 @@ The owner: "complete all twelve". The eight that were left, each a choice (`webs
 - **Not exercised end to end:** uploads (the bucket is in 0185, which is not applied — the dialog was driven on a
   harness, where the upload answers "not on this database yet"); a real client domain; a real `.glb`.
 
+### Tenth pass, 2026-11-17 — website plans
+
+The owner: "the website a client can make follows the client's **website subscription** — four plans, like Basic; the
+plans are kept in Master control, a client is put on one there, and in the client's own Settings the website's options
+are chosen from what that plan includes."
+
+- **Four plans, fixed in number** (`website_plans`, 0185): `basic` · `standard` · `premium` · `elite`. Each has a
+  name, a monthly and a yearly price (empty = "Ask us", 0 = "Free") and a list of the **thirteen extras** it includes
+  (`WEBSITE_PLAN_FEATURES`, shared — the same names as the table's constraint; a unit test reads the SQL). Seeded so each
+  includes the one below: Basic none · Standard *review, enquiry, banner, stats, upload* · Premium + *offer pop-up, looks,
+  Tamil / Hindi, Instagram, room photos* · Elite + *video, 3D, own domain*. **What every plan has is not a switch**: the
+  page and its sections, the contact card and map, the links and logo, the search data, share card and sitemap.
+- **A property is on one plan** (`website_subscriptions`; **no row = basic**). It is a table of its own, not a column on
+  `restaurants`, so the big `guard_restaurant_update` did not have to be re-created: it has no write policy at all.
+- **The database decides, the screens only show it.** `_website_can(rid)` is asked by `website_save` (an option the plan
+  does not include is not kept — `_website_options_for`; a domain is refused with the reason), `website_public` (the
+  options and the domain are cut to the plan **at read**, and room photos only on a plan with them), `website_hit`,
+  `website_media_save` (photo upload and room photos refused with the reason) and `website_by_domain`. So **a plan
+  change takes effect at once, both ways, with nothing re-saved**: down to Basic and the extras leave the page while the
+  owner's choices stay in the row; back up and they return.
+- **Because of that filter, a new extra now does need the migration's help**: its option key must be mapped to an extra in
+  `_website_options_for`, or it is dropped (an unmapped key belongs to no plan). The eighth pass's "the list grows in the
+  app, not in the database" stopped being true here.
+- **Master control → Keys → Website plans** (`admin/WebsitePlans.tsx` `WebsitePlansCard`, under Plans & prices): four
+  editors — Name, Monthly ₹, Yearly ₹, thirteen ticks, Save (`admin_set_website_plan`, master only, logged).
+  **A property's own sheet → Website plan** (`WebsitePlanPick`, above Membership control): four radio cards, saved on the
+  tap (`master_set_website_plan`, logged as `website_plan.assign`); a refusal leaves the old plan marked and says why.
+  Before 0185 neither is drawn (`admin/page.tsx` reads both tables and tolerates nothing coming back).
+- **The client's Settings** (`WebsiteCard.tsx`, `WebsiteMedia.tsx`): the card says *Standard plan · 5 of 13 extras included*
+  and opens a sheet of the four plans — price, the thirteen with a tick or a lock, *Your plan*, what every plan has, and
+  **who to ask** (Help & support): the owner cannot change a plan, so there is no button that pretends to. In the dialog
+  every extra is either open or a **locked row** (`[data-website-locked]`: its name, and the plan it starts in —
+  `websitePlanWith`) with nothing to press.
+- **Not built:** paying for a website plan online (the plan is assigned by hand in Master control; Razorpay checkout exists
+  only for the membership), a trial of a higher plan, a per-property override of one extra.
+
 ## Before you edit
 
 - **A new fixed line on the page goes through `t("…")` (server) or `w("…")` (a client piece) and gets an entry in
@@ -381,16 +418,19 @@ The owner: "complete all twelve". The eight that were left, each a choice (`webs
 ## Verify
 
 ```
-pnpm test                      # lib/website.test.ts 27 · lib/siteWords.test.ts 8 · lib/siteDomain.test.ts 3 (sections = the SQL, the checklist, the page's pieces; the title,
+pnpm test                      # lib/website.test.ts 32 · lib/siteWords.test.ts 8 · lib/siteDomain.test.ts 3 (sections = the SQL, the checklist, the page's pieces; the title,
                                #       search words, questions, address lines, map links, search graph, links, reach, ready posts;
                                #       the extras: choices tidied, the review link's hosts, the announcement's last day, the count's kinds = the SQL)
-node dry185.mjs                # 83 checks, rolled back: owner / waiter / anon / another property / add-on off / lapsed; the email
+node dry185.mjs                # 105 checks, rolled back: owner / waiter / anon / another property / add-on off / lapsed; the email
                                #       and links (tidy kept; another host, a script address, an unknown key dropped), the pin,
                                #       pincode and licence in the public answer, the sitemap list (no demo, no hidden site); the choices
                                #       (yes/no, numbers, short plain lines kept; markup, quotes, lists, odd keys dropped), the count
                                #       (off until switched on, tallied by kind, capped, read by its owner only); the site bucket and its
                                #       policies, gallery and room photos (own files only, 12 and 6), the domain (bare host kept, ours
-                               #       and a taken one refused, the lookup with and without www, a hidden site answers nothing)
+                               #       and a taken one refused, the lookup with and without www, a hidden site answers nothing); the plans
+                               #       (four seeded, an owner cannot change one or assign itself, the master renames / prices /
+                               #       re-ticks and assigns; down to basic → the extras, the domain, the count and uploads stop at
+                               #       once; premium keeps exactly its own; no row = basic)
 node shoot5.mjs all            # 228 — the showcase, three kinds × five widths: upright and centred, word fits, a small plate brings
                                #       its dish / word / colour, arrow or swipe, moves on by itself, 44px; reduced motion; JS off
 node shoot6.mjs all            # 167 — glass card (floating + lead from 1100, in flow below), the story pinned and one line
@@ -417,6 +457,11 @@ node shoot11.mjs all           # the ninth pass: a room opens (its own photos, a
                                #       tap), looks calm and day × three kinds (ink against paper in every section), Tamil and Hindi ×
                                #       three kinds (menu, headings, questions, buttons, the enquiry sheet; the owner's words untouched;
                                #       nothing cut; hreflang), nothing chosen → none of it on the page
+node card13probe.mjs           # 211 — website plans: the client's card and dialog on each of the four plans (exactly that plan's
+                               #       extras open, every other one locked and naming the plan it starts in, nothing to press), the
+                               #       plans sheet (four plans, thirteen rows each, prices as typed, this one marked, who to ask);
+                               #       Master control's four editors (name, prices, thirteen ticks, Save) and a property's plan
+                               #       picker; a refusal leaves the old plan marked; four themes × widths
 node card11probe.mjs           # 79 — Settings → Website: Photos & files (gallery, each room type, the film, the 3D dish), a file of the
                                #       wrong kind refused with the reason, the look, languages, Instagram posts and the domain as saved
 node shoot10.mjs all           # 259 — the extras, three kinds × five widths: the announcement under the menu and clear of the name; the

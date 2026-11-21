@@ -2,8 +2,8 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Trash2, Film, Box, Loader2 } from "lucide-react";
 import { cn } from "@/components/ui";
-import { createClient } from "@/lib/supabase/client";
-import type { WebsiteSetup } from "@dineflow/shared";
+import { websiteCan, websitePlanWith, type WebsiteSetup, type WebsitePlanFeature } from "@dineflow/shared";
+import { Lock } from "lucide-react";
 import { siteUploadUrl, saveSiteMedia, removeSiteFile } from "./actions";
 
 /**
@@ -36,6 +36,8 @@ async function shrink(file: File): Promise<Blob> {
 async function send(kind: "photo" | "room" | "video" | "model", blob: Blob, type: string): Promise<string> {
   const a = await siteUploadUrl(kind, type);
   if ("error" in a) throw new Error(a.error);
+  // the storage client is fetched here, when a file is actually being sent — Settings must not carry it for everyone who opens the page
+  const { createClient } = await import("@/lib/supabase/client");
   const up = await createClient().storage.from("site").uploadToSignedUrl(a.path, a.token, blob, { contentType: type, cacheControl: "31536000" });
   if (up.error) throw new Error(up.error.message);
   return a.url;
@@ -49,6 +51,13 @@ export function WebsiteMedia({ setup, extras, onExtras }: { setup: WebsiteSetup;
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const stay = setup.type !== "restaurant" && (setup.room_list?.length ?? 0) > 0;
+  /* what the property's website plan includes: a file kind it does not include is shown locked, with the plan it starts in */
+  const can = (f: WebsitePlanFeature) => websiteCan(setup, f);
+  const locked = (f: WebsitePlanFeature, title: string, hint: string) => (
+    <div key={f} className="mt-3 rounded-2xl border border-dashed border-[var(--color-separator)] px-4 py-3 flex items-center gap-3 min-h-[60px]" data-website-locked={f}>
+      <span className="flex-1 min-w-0"><span className="block text-[15px] font-semibold text-[var(--color-label-2)]">{title}</span><span className="block text-[12.5px] text-steel mt-0.5">{hint}</span></span>
+      <span className="shrink-0 h-7 px-2.5 rounded-full inline-flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-wide bg-[var(--color-fill)] text-[var(--color-label-2)]"><Lock size={12} aria-hidden /> {websitePlanWith(setup, f) ?? "Not in a plan"}</span>
+    </div>);
 
   /* photos: shrink, send, then save the new list at once */
   const addPhotos = async (files: FileList | null, room?: string) => {
@@ -91,13 +100,14 @@ export function WebsiteMedia({ setup, extras, onExtras }: { setup: WebsiteSetup;
     <div data-website-media>
       <div className="text-[12px] font-bold uppercase tracking-[.12em] text-steel">Photos &amp; files</div>
       <p className="footnote mt-1">Photos save as you add them. Shrunk on this device first.</p>
-      <Strip title="Gallery" count={`${photos.length}/${PHOTO_MAX}`} list={photos} busy={busy === "photos"} full={photos.length >= PHOTO_MAX} onAdd={(f) => addPhotos(f)} onDrop={(u) => dropPhoto(u)} name="gallery" />
-      {stay && (setup.room_list ?? []).map((r) => (
+      {!can("upload") ? locked("upload", "Photo upload", "Gallery photos from this device") : <Strip title="Gallery" count={`${photos.length}/${PHOTO_MAX}`} list={photos} busy={busy === "photos"} full={photos.length >= PHOTO_MAX} onAdd={(f) => addPhotos(f)} onDrop={(u) => dropPhoto(u)} name="gallery" />}
+      {stay && !can("rooms") && locked("rooms", "Room photos", "Each room type's own photos")}
+      {stay && can("rooms") && (setup.room_list ?? []).map((r) => (
         <Strip key={r.id} title={r.name} count={`${(rooms[r.id] ?? []).length}/${ROOM_MAX}`} list={rooms[r.id] ?? []} busy={busy === r.id} full={(rooms[r.id] ?? []).length >= ROOM_MAX} onAdd={(f) => addPhotos(f, r.id)} onDrop={(u) => dropPhoto(u, r.id)} name={`room-${r.id}`} />
       ))}
       <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-        <Big icon={<Film size={18} aria-hidden />} title="First-screen video" hint="MP4, silent, 10–15 s, up to 12 MB. Wide screens only." has={!!extras.video_url} busy={busy === "video"} accept="video/mp4,video/webm" onPick={(f) => addBig(f, "video")} onClear={() => { const u = extras.video_url; onExtras({ video_url: "" }); if (u) void removeSiteFile(u); }} name="video" />
-        <Big icon={<Box size={18} aria-hidden />} title="A dish in 3D" hint=".glb file, up to 12 MB. Opens when a guest taps." has={!!extras.model_url} busy={busy === "model"} accept=".glb,model/gltf-binary" onPick={(f) => addBig(f, "model")} onClear={() => { const u = extras.model_url; onExtras({ model_url: "", model_name: "" }); if (u) void removeSiteFile(u); }} name="model" />
+        {!can("video") ? <div className="-mt-3">{locked("video", "First-screen video", "Short, silent; wide screens only")}</div> : <Big icon={<Film size={18} aria-hidden />} title="First-screen video" hint="MP4, silent, 10–15 s, up to 12 MB. Wide screens only." has={!!extras.video_url} busy={busy === "video"} accept="video/mp4,video/webm" onPick={(f) => addBig(f, "video")} onClear={() => { const u = extras.video_url; onExtras({ video_url: "" }); if (u) void removeSiteFile(u); }} name="video" />}
+        {!can("model") ? <div className="-mt-3">{locked("model", "A dish in 3D", "From a .glb file; opens on a tap")}</div> : <Big icon={<Box size={18} aria-hidden />} title="A dish in 3D" hint=".glb file, up to 12 MB. Opens when a guest taps." has={!!extras.model_url} busy={busy === "model"} accept=".glb,model/gltf-binary" onPick={(f) => addBig(f, "model")} onClear={() => { const u = extras.model_url; onExtras({ model_url: "", model_name: "" }); if (u) void removeSiteFile(u); }} name="model" />}
       </div>
       {extras.model_url && (
         <div className="mt-2.5 space-y-1.5"><label htmlFor="ws-model-name">Which dish is it?</label>

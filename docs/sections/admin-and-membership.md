@@ -490,3 +490,16 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
 - **0177 (2026-11-10):** a 24th add-on, `whatsapp` ("WhatsApp messages", Channels, on by default) — Settings → WhatsApp and every
   queued message follow it (`featureOn` in the actions, `has_feature('whatsapp')` inside `wa_queue`). `default_features()` is
   re-created in 0177 with 21 keys; `features.test.ts` reads 0177 now. [settings.md](settings.md), [api-routes.md](api-routes.md).
+
+## Website plans (2026-11-17, 0185)
+- **Keys → Website plans** (`WebsitePlans.tsx` `WebsitePlansCard`, `[data-website-plans-admin]`, under Plans & prices): the
+  four plans a property's **website** can be on — Basic, Standard, Premium, Elite. Each editor (`[data-website-plan-editor]`):
+  Name, Monthly ₹ and Yearly ₹ (empty = "Ask us"), a tick for each of the thirteen extras (`role=checkbox`; 44px on touch
+  widths, 40 with a mouse), Save → `setWebsitePlanDef` → `admin_set_website_plan` (master only; `admin_log`
+  `website_plan.set`). There are four and only four: the key is checked in the table.
+- **A property's sheet → Website plan** (`WebsitePlanPick`, `[data-website-plan-pick]`, above Membership control): four radio
+  cards with their extras and price; a tap saves (`setWebsitePlan` → `master_set_website_plan`; `website_plan.assign` in
+  the log). No row = Basic. **It takes effect at once**: the property's page and Settings ask the database what the plan
+  includes on every read. This is separate from the membership plan and from the `website` add-on (which says whether a
+  property may have a website at all).
+- Not billed: a website plan is assigned by hand; nothing charges for it. [website.md](website.md), *Tenth pass*.

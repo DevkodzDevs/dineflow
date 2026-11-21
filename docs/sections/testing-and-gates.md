@@ -747,3 +747,9 @@ of a second." Measured first, on the live site and on a local production build (
   off" check — its shine is a pseudo-element sliding inside `overflow: hidden` and `scrollWidth` grows while it passes.
   **Run the long suites with nothing else running**: with a typecheck and a second script alongside, four timing checks
   failed that pass alone (a photo in flight measured at 160 ms, a photo not yet loaded).
+  **Tenth pass: `card13probe.mjs` 211** (website plans). Two harness pages now: `app/pay/zz-card/page.tsx` takes
+  `?plan=basic|standard|premium|elite` (elite unless asked, so the earlier card probes see everything open), and
+  `app/pay/zz-plans/page.tsx` renders Master control's two plan pieces. **Saving there is expected to be refused** — no
+  master is signed in on a harness — and the probe checks the screen says so and changes nothing; the acceptance path is
+  `dry185.mjs`'s (a master made inside the rolled-back transaction). A tick row is 44px on touch widths and 40 with a
+  mouse: a 44px check must follow the width.

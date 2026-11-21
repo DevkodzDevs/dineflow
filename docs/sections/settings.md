@@ -230,6 +230,11 @@ pnpm --filter @dineflow/web typecheck
   cards), **Also in** தமிழ் / हिन्दी (two switch rows), **Instagram posts** (three boxes) and **Your own web address** (the
   hint says DineFlow support connects it). File inputs are `hidden` + inline `display:none` (design-system.md).
   Before 0185 is on the database an upload answers "not on this database yet". website.md, *Ninth pass*.
+- **2026-11-17 — the website follows the property's website plan** (`[data-website-plan]` on the card: *Standard plan · 5 of 13
+  extras included*, opening a sheet of the four plans with prices, ticks and locks, *Your plan*, and Help & support as the
+  way to change it). In the dialog an extra the plan does not include is a **locked row** (`[data-website-locked=<extra>]`:
+  its name and the plan it starts in, nothing to press) in place of its switch, box or upload strip. The plan is assigned in
+  Master control; the database enforces it whatever the screen shows. website.md, *Tenth pass*.
 
 ## 2026-11-10 — WhatsApp tab (0177, an add-on)
 - **`/settings#whatsapp`** (`WhatsAppSettings.tsx`, the owner only, and only with the `whatsapp` add-on on — the tab is not drawn
