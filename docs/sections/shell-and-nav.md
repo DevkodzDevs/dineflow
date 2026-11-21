@@ -275,7 +275,7 @@ follows; More opens the sheet).
 
 ### The rest of the shell
 
-- **`TopBar`** — search, theme switch, the bell (count comes from `session.lateKots`, already in
+- **`TopBar`** — **its entrance is a CSS animation since 2026-11-17** (`.topbar-in`, globals.css): framer-motion's `initial`/`animate` pair wrote opacity 0 / translateY(-8px) into the server HTML and, whenever hydration came late, the client's first paint already had the animated values — React logged an attribute mismatch on whichever screen was open (seen on /work, /controls, /dashboard at 412 in the 2026-11-17 walk, never twice in a row). Search, theme switch, the bell (count comes from `session.lateKots`, already in
   the session bundle — no second query), the avatar.
   **Pinned, it runs edge to edge** (2026-10-12): `sticky top-[env(safe-area-inset-top)]`; a 1px marker
   above it and an IntersectionObserver set `data-stuck` once it reaches the top, and

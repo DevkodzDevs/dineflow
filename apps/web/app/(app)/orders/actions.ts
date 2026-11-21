@@ -15,10 +15,16 @@ export async function placeOrder(input: unknown) {
   const s = await createClient();
   const d = parsed.data;
   const raw = input as { client_id?: string; placed_at?: string };
+  // placed_at is the offline outbox's own clock, kept so a bill replayed after a dead hour carries the time the guest ordered
+  // (0166/0167 let such a replay through the busy-table and pantry checks). It is believed only with the outbox's client_id,
+  // only as a real moment, only in the past, and only within three days (2026-11-17 security review): a fresh order that
+  // merely names a time is an ordinary order and gets every check.
+  const at = raw.placed_at ? Date.parse(raw.placed_at) : NaN;
+  const placedAt = raw.client_id && Number.isFinite(at) && at <= Date.now() + 60_000 && at >= Date.now() - 3 * 86_400_000 ? new Date(at).toISOString() : null;
   const { data, error } = await s.rpc("place_order", {
     p_type: d.type, p_table_id: d.table_id ?? null, p_items: d.items,
     p_customer: { name: d.customer_name ?? null, phone: d.customer_phone ?? null },
-    p_note: d.note || null, p_client_id: raw.client_id ?? null, p_placed_at: raw.placed_at ?? null,
+    p_note: d.note || null, p_client_id: raw.client_id ?? null, p_placed_at: placedAt,
     p_promise: d.promise ?? false,
   });
   if (error) return { error: error.message };

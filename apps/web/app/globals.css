@@ -2267,6 +2267,14 @@ a.fdt:hover .fdt-go { background: var(--hue); color: var(--color-bezel); }
 html[data-palette="royal"] .scan-view::before { background: none; -webkit-mask-image: none; mask-image: none; }
 html[data-palette="royal"] .scan-sweep { background: var(--hue); }
 
+/* the top bar's entrance (2026-11-17): a CSS fade-and-drop instead of framer-motion's initial/animate pair — that pair put
+   opacity 0 / translateY(-8px) into the server's HTML and, when hydration came late (a slow device, a first compile), the
+   client's first paint already carried the animated values, and React reported an attribute mismatch on whatever screen was
+   open. The same motion, deterministic HTML. */
+.topbar-in { animation: topbar-in var(--dur) var(--ease-out) both; }
+@keyframes topbar-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .topbar-in { animation: none; } }
+
 /* ═══ SIX TOUCHES (2026-11-16) — the owner's six videos, each placed on the screen it belongs to ════════════════════
    Reports' money flow (reports/MoneyFlow.tsx), the guest page's constellation stars (feedback/FeedbackClient.tsx), the
    booking sheet's stitched seam (its own BookingForm.module.css), the checklist burn (tasks/TasksClient.tsx), the menu

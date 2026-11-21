@@ -10,6 +10,7 @@ deployed, the keys are set, and the owner switches each feature on.
 | --- | --- | --- |
 | 1 | Apply the 9 migrations to live | `node scripts/migrate.mjs --live` (refuses the live DB without `--live`) |
 | 2 | Deploy the committed code | `vercel --prod` from the working folder |
+|   | *(since 2026-11-17)* | `.vercelignore` now skips every `.env*` and `.dineflow.env` outright — the CLI only skipped `.env.local` on its own, and the direct database URL lives in `.dineflow.env` at the repo root |
 | 3 | Set the env vars on Vercel, then redeploy | Vercel → Settings → Environment Variables |
 | 4 | Create the Meta WhatsApp templates | WhatsApp Manager, per property that uses WhatsApp |
 | 5 | Flip the in-app switches | the Settings screens below, per property |

@@ -375,7 +375,11 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
 - **A dish the pantry cannot make cannot be ordered** (0137, 2026-10-24, the owner: "most important"). `place_order` refuses a
   ticket asking more of a dish than `menu_stock()` says its recipe and the pantry can make ("Not enough in the pantry: Chicken
   biryani (0 left — Basmati rice is out)"), when `restaurants.stock_block` is on (default; Settings → Kitchen). Never an order
-  synced from offline (placed_at set), never a dish with no recipe, never an aggregator's accepted order. The till: such a
+  synced from offline (placed_at set — **the spoken-order mic button (`canHear`) is decided in an effect since 2026-11-17: read in
+  render it was false on the server and true in Chrome, so the till hydrated with a different button and React redrew the whole
+  screen on every open** — **since 2026-11-17 `placeOrder` believes a browser's placed_at only with the outbox's
+  client_id, as a real moment, not in the future and not older than three days; anything else is null and gets every check**),
+  never a dish with no recipe, never an aggregator's accepted order. The till: such a
   card greys with **Out of stock** (`[data-out]`), a tap is refused with the reason, one more than is left says "Only N left",
   and Send stays off while anything on the ticket is short — no "Send anyway" (that remains when the owner turns the switch off).
 - **Choose is a round options key** (2026-10-24, the owner: "an icon only"): the sliders in the tint on a ring, the same circle as

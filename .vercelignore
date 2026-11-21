@@ -48,3 +48,11 @@ box
 *.bat
 *.command
 start.sh
+
+# ── secrets never travel with a deploy (2026-11-17): the CLI skips .env.local on its own, but not .env, .env.production,
+# or the repo's own .dineflow.env (the direct database URL); said outright so a rename never reopens it ──
+.env
+.env.*
+**/.env
+**/.env.*
+.dineflow.env

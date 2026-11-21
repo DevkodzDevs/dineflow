@@ -230,7 +230,11 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   const [said, setSaid] = useState(""); const [hearing, setHearing] = useState(false); const [reading, setReading] = useState(false);
   const [unresolved, setUnresolved] = useState<string[]>([]);
   const rec = useRef<SpeechRecognition | null>(null);
-  const canHear = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  // whether the device can listen is learnt after mount, never during render: read in render it is false on the server and true
+  // in Chrome, so the button after the spoken-order box hydrated as a different element (type, disabled, aria-label all
+  // differed) and React threw the whole till away and drew it again (2026-11-17 walk, every width)
+  const [canHear, setCanHear] = useState(false);
+  useEffect(() => { setCanHear("SpeechRecognition" in window || "webkitSpeechRecognition" in window); }, []);
   const takeOrder = async (text: string) => {
     if (!text.trim() || reading) return;
     setReading(true); setUnresolved([]);

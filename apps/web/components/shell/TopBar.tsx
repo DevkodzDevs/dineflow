@@ -3,7 +3,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { Search, Crown, Server } from "lucide-react";
-import { motion } from "framer-motion";
 import { cn } from "../ui";
 import { ThemeButton } from "../ui/Theme";
 import { LangButton } from "../ui/Say";
@@ -40,7 +39,7 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
   return (
     <>
     <div ref={mark} aria-hidden className="h-px -mb-px" />
-    <motion.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} data-stuck={stuck ? "" : undefined} className="topbar material sticky top-[env(safe-area-inset-top,0px)] z-20 mb-8 flex items-center gap-3 px-4 py-2 rounded-[20px] max-[400px]:gap-1 max-[400px]:px-3">
+    <header data-stuck={stuck ? "" : undefined} className="topbar topbar-in material sticky top-[env(safe-area-inset-top,0px)] z-20 mb-8 flex items-center gap-3 px-4 py-2 rounded-[20px] max-[400px]:gap-1 max-[400px]:px-3">
       {/* Back, first, on every screen but home (BackButton.tsx, 2026-10-22) */}
       <Suspense fallback={null}><BackButton home={home} /></Suspense>
       {ember && <div className="ember-greet" data-ember-greet><b>Hi, {first}! Welcome back.</b><span>Everything about today, in one place.</span></div>}
@@ -75,7 +74,7 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
         /* Ember: the same button, in a pill with the name and the position beside it */
         return ember ? <div className="ember-who max-md:!hidden" data-ember-who>{me}<span><b>{name}</b>{role && <i>{ROLE_LABEL[role]}</i>}</span></div> : me;
       })()}
-    </motion.header>
+    </header>
     <ProfileCard open={card} onClose={() => setCard(false)} accountHref={accountHref} />
     </>
   );

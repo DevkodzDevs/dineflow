@@ -287,7 +287,7 @@ who rides (`rider_id`, a staff member, or `rider_name` / `rider_phone`), where t
   cards, in one place for the owner; the forms and actions are shared.
 
 - **The test order goes straight to the database (2026-10-25 audit).** `sendTestOrder` (channels/actions.ts) calls
-  `ingest_online_order` with the channel's token, as the webhook route does. It used to fetch this server's own webhook URL
+  `ingest_online_order` with the channel's token, as the webhook route does. **Since 0188 (2026-11-17, applied 2026-11-22 — data-and-rls.md) a repeat of an external id updates the order only while it is still `new`; once accepted, ready or picked up, the repeat is answered with the same id and `replay: true` and the row is left alone** — 0005 overwrote items, gross and raw on every delivery, so a late duplicate (or anyone with the token) could rewrite a taken order. It used to fetch this server's own webhook URL
   built from the `Host` / `X-Forwarded-*` headers, which a caller sets: on a self-hosted (standalone / Box) build that pointed
   the server at any address and returned the reply (SSRF).
 - **Accepting an order carries its money (2026-10-29, 0146).** A website/QR order's offer discount and packing/delivery fee
