@@ -1,4 +1,5 @@
 "use client";
+import { keepDownload } from "@/lib/files/keep";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Camera, Check, ChevronLeft, ChevronRight, ClipboardCheck, Download, Fingerprint, Plane, QrCode, Square, Columns2, Columns3, CalendarRange } from "lucide-react";
 import { Button, Sheet, cn, useToast } from "@/components/ui";
@@ -115,7 +116,9 @@ function Register({ today, people }: { today: string; people: Person[] }) {
   const csv = () => {
     if (!grid) return;
     const rows = [["Name", ...days.map((d) => d.slice(8)), "Present", "Leave", "Absent"], ...grid.map((g) => [g.p.full_name, ...g.marks.map((x) => (x === "-" ? "" : x)), g.P, g.L, g.A])];
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.map((r) => r.map(csvCell).join(",")).join("\n")], { type: "text/csv" })); a.download = `attendance-${month}.csv`; a.click();
+    const blob = new Blob([rows.map((r) => r.map(csvCell).join(",")).join("\n")], { type: "text/csv" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `attendance-${month}.csv`; a.click();
+    keepDownload(a.download, blob);
   };
   const tone: Record<Mark, string> = { P: "bg-[var(--color-green)] text-[var(--color-on-tint)]", L: "bg-[color-mix(in_srgb,var(--color-violet)_26%,transparent)] text-[var(--color-violet)]", A: "bg-[color-mix(in_srgb,var(--color-red)_16%,transparent)] text-[var(--color-red)]", "": "", "-": "" };
   const label = new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });

@@ -1,4 +1,5 @@
 "use client";
+import { keepDownload } from "@/lib/files/keep";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { csvCell } from "@/lib/csv";
@@ -48,7 +49,9 @@ export function CustomersClient({ overview: ov, customers, loyalty, restaurant, 
   const exportCsv = () => {
     const rows = [["name", "phone", "email", "visits", "total_spend", "points", "last_visit", "birthday", "anniversary", "tags"], ...list.map((c) => [c.name ?? "", c.phone, c.email ?? "", c.visits, c.total_spend, c.points, c.last_visit_at ?? "", c.birthday ?? "", c.anniversary ?? "", c.tags.join(" ")])];
     const csv = rows.map((r) => r.map(csvCell).join(",")).join("\n");
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    keepDownload(a.download, blob);
   };
 
   const [more, setMore] = useState(60);

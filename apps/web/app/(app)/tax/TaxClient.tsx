@@ -1,4 +1,5 @@
 "use client";
+import { keepDownload } from "@/lib/files/keep";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { csvCell } from "@/lib/csv";
@@ -155,6 +156,7 @@ function Returns({ r, lab, month, today, summary, error, itc, go, monthly, statu
     if ("error" in x) { setBuilt({ error: x.error! }); return; }
     const blob = new Blob([JSON.stringify(x.json)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = x.fileName; a.click(); URL.revokeObjectURL(a.href);
+    keepDownload(x.fileName, blob);
     setBuilt({ fileName: x.fileName, summary: x.summary });
   };
   const outputTax = t("cgst") + t("sgst") - cn.cgst - cn.sgst;
@@ -168,6 +170,7 @@ function Returns({ r, lab, month, today, summary, error, itc, go, monthly, statu
       ["Through an e-commerce operator, u/s 9(5)", "", "", eco.count, "", "", "", n2(eco.total)]];
     const blob = new Blob([lines.map((l) => l.map(csvCell).join(",")).join("\n")], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `gst-${month}-${(r.gstin ?? r.name).replace(/\W+/g, "")}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    keepDownload(a.download, blob);
   };
   return (
     <div className="space-y-4">

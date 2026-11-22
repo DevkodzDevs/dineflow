@@ -1,9 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { ArrowLeft, ChevronDown, ChevronRight, Download, File, FileArchive, FileCode, FileImage, FilePlus2, FileSpreadsheet, FileText, Film, Folder, FolderInput, FolderOpen, FolderPlus, Home, LayoutGrid, List, Lock, MoreHorizontal, Music, Pencil, RefreshCw, Save, Search, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, ChevronDown, ChevronRight, Download, File, FileArchive, FileCode, FileImage, FilePlus2, FileSpreadsheet, FileText, Film, Folder, FolderInput, FolderOpen, FolderPlus, Home, LayoutGrid, List, Lock, MoreHorizontal, Music, Pencil, RefreshCw, Save, Search, Trash2, Upload, X } from "lucide-react";
 import { Button, Sheet, ask, cn } from "@/components/ui";
 import { fmtBytes } from "@/lib/backup/bytes";
-import { filesDelete, filesFolders, filesList, filesMkdir, filesMove, filesNewText, filesPut, filesRename, filesSaveText, filesText, filesUploadUrl, filesUrl, type FileNode, type Folder as FolderRow, type Listing } from "@/lib/files/actions";
+import { filesDelete, filesFolders, filesList, filesMkdir, filesMove, filesNewText, filesPut, filesRename, filesSaveText, filesSyncUploads, filesText, filesUploadUrl, filesUrl, type FileNode, type Folder as FolderRow, type Listing } from "@/lib/files/actions";
 import { isTextFile, FILE_MAX } from "@/lib/files/shared";
 import s from "./FileManager.module.css";
 
@@ -41,7 +41,9 @@ const Icon = ({ n, open }: { n: FileNode; open?: boolean }) => {
   const I = k === "folder" ? (open ? FolderOpen : Folder) : k === "image" ? FileImage : k === "pdf" ? FileText : k === "video" ? Film : k === "audio" ? Music : k === "sheet" ? FileSpreadsheet : k === "archive" ? FileArchive : k === "code" ? FileCode : k === "text" ? FileText : File;
   return <span className={cn(s.ico, k === "folder" && s.folder, k === "image" && s.image, (k === "pdf" || k === "text" || k === "sheet") && s.doc, n.locked && s.lock)}>{n.locked && n.kind === "folder" ? <Lock size={16} /> : <I size={17} />}</span>;
 };
-const typeWord = (n: FileNode) => n.kind === "folder" ? (n.locked ? "Kept folder" : "Folder") : ({ image: "Image", pdf: "PDF", video: "Video", audio: "Sound", sheet: "Sheet", archive: "Archive", code: "Code", text: "Text", file: "File", folder: "Folder" } as const)[kindOf(n)];
+/** An upload made elsewhere in the app (0194): which screen it belongs to — it is changed there, not here. */
+const UPLOAD_WORD: Record<string, string> = { menu: "Menu photo", brand: "Logo", site: "Website", compliance: "Tax document", attendance: "Punch photo", support: "Help request" };
+const typeWord = (n: FileNode) => n.kind === "folder" ? (n.locked ? "Kept folder" : "Folder") : n.bucket && n.bucket !== "files" ? UPLOAD_WORD[n.bucket] ?? "Upload" : ({ image: "Image", pdf: "PDF", video: "Video", audio: "Sound", sheet: "Sheet", archive: "Archive", code: "Code", text: "Text", file: "File", folder: "Folder" } as const)[kindOf(n)];
 
 export function FileManager({ master, initial }: FileManagerProps) {
   const [listing, setListing] = useState<Listing | null>(initial.listing);
@@ -50,6 +52,8 @@ export function FileManager({ master, initial }: FileManagerProps) {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [view, setView] = useState<"list" | "grid">("list");
   const [q, setQ] = useState("");
+  const [sort, setSort] = useState<"name" | "newest" | "size">("name");
+  const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -77,7 +81,21 @@ export function FileManager({ master, initial }: FileManagerProps) {
   const go = (parent: string | null) => { setQ(""); void load(parent); };
   useEffect(() => { const close = () => setMenu(null); window.addEventListener("click", close); window.addEventListener("scroll", close, true); return () => { window.removeEventListener("click", close); window.removeEventListener("scroll", close, true); }; }, []);
 
-  const items = useMemo(() => { const all = listing?.items ?? []; const k = q.trim().toLowerCase(); return k ? all.filter((n) => n.name.toLowerCase().includes(k)) : all; }, [listing, q]);
+  const items = useMemo(() => {
+    const all = listing?.items ?? []; const k = q.trim().toLowerCase();
+    const hit = k ? all.filter((n) => n.name.toLowerCase().includes(k)) : [...all];
+    const by = sort === "newest" ? (a: FileNode, b: FileNode) => b.updated_at.localeCompare(a.updated_at) : sort === "size" ? (a: FileNode, b: FileNode) => Number(b.bytes) - Number(a.bytes) : (a: FileNode, b: FileNode) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+    return hit.sort((a, b) => (a.kind === b.kind ? by(a, b) : a.kind === "folder" ? -1 : 1));   // folders first, always
+  }, [listing, q, sort]);
+  /* the grid shows a picture's own thumbnail: one signed address per picture, fetched when the grid is open, kept for the visit */
+  useEffect(() => {
+    if (view !== "grid") return;
+    const want = (listing?.items ?? []).filter((n) => n.kind === "file" && kindOf(n) === "image" && !thumbs[n.id]).slice(0, 40);
+    if (!want.length) return;
+    let gone = false;
+    (async () => { for (const n of want) { const r = await filesUrl(master, n.id, false); if (gone) return; if (!("error" in r)) setThumbs((t) => ({ ...t, [n.id]: r.url })); } })();
+    return () => { gone = true; };
+  }, [view, listing, master, thumbs]);
   const byId = useMemo(() => new Map((listing?.items ?? []).map((n) => [n.id, n])), [listing]);
   const selected = [...sel].map((id) => byId.get(id)).filter(Boolean) as FileNode[];
   const children = useMemo(() => { const m = new Map<string | null, FolderRow[]>(); for (const f of folders) { const a = m.get(f.parent_id) ?? []; a.push(f); m.set(f.parent_id, a); } return m; }, [folders]);
@@ -190,15 +208,19 @@ export function FileManager({ master, initial }: FileManagerProps) {
     <div className={s.fm} data-file-manager={master ? "master" : "property"} data-busy={busy ? "1" : "0"}>
       {/* toolbar */}
       <div className={s.bar}>
-        <button type="button" className={cn(s.tool, s.primary)} onClick={() => { setName(""); setDialog({ kind: "mkdir" }); }} data-fm-new-folder><FolderPlus size={17} /> New folder</button>
-        <button type="button" className={s.tool} onClick={() => { setName(""); setDialog({ kind: "newtext" }); }} data-fm-new-text><FilePlus2 size={17} /> New text</button>
-        <button type="button" className={s.tool} onClick={() => fileInput.current?.click()} data-fm-upload><Upload size={17} /> Upload</button>
-        <input ref={fileInput} type="file" multiple hidden style={{ display: "none" }} onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} data-fm-file-input />
-        <span className={s.grow} />
-        <label className={s.search}><Search size={16} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search this folder" aria-label="Search this folder" data-fm-search /></label>
-        <button type="button" className={cn(s.tool, s.icon)} aria-pressed={view === "list"} aria-label="List" onClick={() => setView("list")}><List size={17} /></button>
-        <button type="button" className={cn(s.tool, s.icon)} aria-pressed={view === "grid"} aria-label="Grid" onClick={() => setView("grid")}><LayoutGrid size={17} /></button>
-        <button type="button" className={cn(s.tool, s.icon)} aria-label="Refresh" onClick={() => void load(cur, true)}><RefreshCw size={16} className={busy ? "animate-spin" : undefined} /></button>
+        <div className={s.actions}>
+          <button type="button" className={cn(s.tool, s.primary)} onClick={() => fileInput.current?.click()} data-fm-upload><Upload size={17} /> Upload</button>
+          <button type="button" className={s.tool} onClick={() => { setName(""); setDialog({ kind: "mkdir" }); }} data-fm-new-folder><FolderPlus size={17} /> New folder</button>
+          <button type="button" className={s.tool} onClick={() => { setName(""); setDialog({ kind: "newtext" }); }} data-fm-new-text><FilePlus2 size={17} /> New text</button>
+          <input ref={fileInput} type="file" multiple hidden style={{ display: "none" }} onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} data-fm-file-input />
+        </div>
+        <div className={s.finder}>
+          <label className={s.search}><Search size={16} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search this folder" aria-label="Search this folder" data-fm-search /></label>
+          <span className={s.sort}><select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Sort by" data-fm-sort><option value="name">Name</option><option value="newest">Newest</option><option value="size">Largest</option></select><ArrowUpDown size={14} /></span>
+          <button type="button" className={cn(s.tool, s.icon)} aria-pressed={view === "list"} aria-label="List" onClick={() => setView("list")}><List size={17} /></button>
+          <button type="button" className={cn(s.tool, s.icon)} aria-pressed={view === "grid"} aria-label="Grid" onClick={() => setView("grid")}><LayoutGrid size={17} /></button>
+          <button type="button" className={cn(s.tool, s.icon)} aria-label="Refresh" onClick={() => void (async () => { if (!master) { setBusy(true); await filesSyncUploads(); } await load(cur, true); })()} data-fm-refresh><RefreshCw size={16} className={busy ? "animate-spin" : undefined} /></button>
+        </div>
       </div>
       {sel.size > 0 && (
         <div className={s.sel} data-fm-selection>
@@ -224,9 +246,16 @@ export function FileManager({ master, initial }: FileManagerProps) {
       <div className={s.shell}>
         {/* the tree */}
         <nav className={s.tree} aria-label="Folders" data-fm-tree>
+          <div className={s.treeHead}><span>Folders</span><b>{listing?.folders ?? 0}</b></div>
+          <div className={s.treeBody}>
           <div className={s.node}><span className={cn(s.twist, s.none)} /><button type="button" className={cn(s.leaf, over === "" && s.over)} aria-current={cur === null ? "true" : undefined} onClick={() => go(null)} data-tree-folder="top"
             onDragOver={(e) => { if (canDropOn(e)) { e.preventDefault(); setOver(""); } }} onDragLeave={() => setOver((o) => (o === "" ? null : o))} onDrop={(e) => void dropOn(e, null)}><Home size={15} /><span>{title}</span></button></div>
           <Tree parent={null} depth={0} />
+          </div>
+          <div className={s.treeFoot}>
+            <span><b>{fmtBytes(listing?.used ?? 0)}</b>{listing?.cap ? ` of ${fmtBytes(listing.cap)}` : " in use"} · {listing?.files ?? 0} file{listing?.files === 1 ? "" : "s"}</span>
+            {listing?.cap ? <span className={s.meter}><i style={{ width: `${Math.min(100, (100 * (listing.used ?? 0)) / listing.cap)}%` }} /></span> : null}
+          </div>
         </nav>
 
         <div className={s.main}>
@@ -234,6 +263,7 @@ export function FileManager({ master, initial }: FileManagerProps) {
             {cur !== null && <button type="button" className={cn(s.tool, s.icon)} aria-label="Up one folder" onClick={() => go(listing?.path.at(-2)?.id ?? null)} data-fm-up><ArrowLeft size={17} /></button>}
             <button type="button" className={s.crumb} aria-current={cur === null ? "page" : undefined} onClick={() => go(null)}><Home size={15} /><span>{title}</span></button>
             {(listing?.path ?? []).map((c, i, a) => (<span key={c.id} className="inline-flex items-center"><ChevronRight size={14} className={s.sep} /><button type="button" className={s.crumb} aria-current={i === a.length - 1 ? "page" : undefined} onClick={() => go(c.id)}><span>{c.name}</span></button></span>))}
+            <span className={s.count} data-fm-count>{items.length} item{items.length === 1 ? "" : "s"}{q ? " found" : ""}</span>
           </div>
 
           <div className={cn(s.pane, drop && s.drop)} data-fm-pane
@@ -255,7 +285,7 @@ export function FileManager({ master, initial }: FileManagerProps) {
                 {items.map((n) => (
                   <div key={n.id} className={cn(s.row, over === n.id && s.over)} role="row" aria-selected={sel.has(n.id)} data-fm-row={n.id} data-kind={n.kind} data-name={n.name} {...dragProps(n)}>
                     {checkBtn(n)}
-                    <button type="button" className={s.name} onClick={() => void openNode(n)} data-fm-open><Icon n={n} /><span>{n.name}{n.kind === "folder" && <small>{n.children ?? 0} item{n.children === 1 ? "" : "s"}</small>}</span></button>
+                    <button type="button" className={s.name} onClick={() => void openNode(n)} data-fm-open><Icon n={n} /><span>{n.name}{n.kind === "folder" ? <small>{n.children ?? 0} item{n.children === 1 ? "" : "s"}</small> : <small className={s.meta}>{fmtBytes(n.bytes)} · {typeWord(n)} · {whenIST(n.updated_at)}</small>}</span></button>
                     <span className={cn(s.dim, s.num, s.hide)}>{n.kind === "file" ? fmtBytes(n.bytes) : "—"}</span>
                     <span className={cn(s.dim, s.hide, s.type)}>{typeWord(n)}</span>
                     <span className={cn(s.dim, s.num, s.hide)}>{whenIST(n.updated_at)}</span>
@@ -268,19 +298,21 @@ export function FileManager({ master, initial }: FileManagerProps) {
                   <div key={n.id} className={cn(s.tile, over === n.id && s.over)} role="row" aria-selected={sel.has(n.id)} data-fm-row={n.id} data-kind={n.kind} data-name={n.name} {...dragProps(n)}>
                     {checkBtn(n)}{moreBtn(n)}
                     <button type="button" className="grid justify-items-center gap-1.5 min-w-0 w-full" onClick={() => void openNode(n)} data-fm-open>
-                      <Icon n={n} /><span className={s.t}>{n.name}</span><span className={s.dim}>{n.kind === "file" ? fmtBytes(n.bytes) : `${n.children ?? 0} item${n.children === 1 ? "" : "s"}`}</span>
+                      {thumbs[n.id] ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- a signed, short-lived address of a private file
+                        <img src={thumbs[n.id]} alt="" className={s.thumb} loading="lazy" />) : <Icon n={n} />}<span className={s.t}>{n.name}</span><span className={s.dim}>{n.kind === "file" ? fmtBytes(n.bytes) : `${n.children ?? 0} item${n.children === 1 ? "" : "s"}`}</span>
                     </button>
                   </div>))}
               </div>
             )}
             {menu && byId.get(menu.id) && rowMenu(byId.get(menu.id)!)}
-          </div>
-
-          <div className={s.status} data-fm-status>
-            <span>{listing?.folders ?? 0} folder{listing?.folders === 1 ? "" : "s"} · {listing?.files ?? 0} file{listing?.files === 1 ? "" : "s"}</span>
-            <span className={s.num}>{fmtBytes(listing?.used ?? 0)}{listing?.cap ? ` of ${fmtBytes(listing.cap)}` : ""}</span>
-            {listing?.cap ? <span className={s.meter}><i style={{ width: `${Math.min(100, (100 * (listing.used ?? 0)) / listing.cap)}%` }} /></span> : null}
-            <span>Up to {fmtBytes(FILE_MAX)} a file</span>
+            <div className={s.status} data-fm-status>
+              <span>{listing?.folders ?? 0} folder{listing?.folders === 1 ? "" : "s"} · {listing?.files ?? 0} file{listing?.files === 1 ? "" : "s"}</span>
+              <span className={s.num}>{fmtBytes(listing?.used ?? 0)}{listing?.cap ? ` of ${fmtBytes(listing.cap)}` : ""}</span>
+              {listing?.cap ? <span className={s.meter}><i style={{ width: `${Math.min(100, (100 * (listing.used ?? 0)) / listing.cap)}%` }} /></span> : null}
+              <span className={s.grow} />
+              <span>Up to {fmtBytes(FILE_MAX)} a file<span className={s.dropHint}> · drop files here</span></span>
+            </div>
           </div>
         </div>
       </div>

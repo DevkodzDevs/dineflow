@@ -3,6 +3,7 @@
  * widths, numbers as numbers) packed into a stored (uncompressed) zip. Excel, LibreOffice, Google Sheets and Numbers
  * all open it. Kept small on purpose — Reports and Tax are the only callers.
  */
+import { keepDownload } from "./files/keep";
 export type Cell = string | number | null | undefined;
 export type Sheet = { name: string; rows: Cell[][]; widths?: number[] };
 
@@ -83,5 +84,6 @@ export function download(name: string, bytes: Uint8Array | string, type: string)
   const blob = new Blob([typeof bytes === "string" ? bytes : bytes.slice().buffer], { type });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  keepDownload(name, blob);                                  // a copy in the File Manager's Downloads folder (0194, lib/files/keep.ts)
 }
 export const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

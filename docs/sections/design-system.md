@@ -617,7 +617,7 @@ Then look at it, in both themes, at 1440 and 412.
 ## Ember (2026-11-16, 0186)
 
 The owner's "one more theme, exactly like this video" — the Mercato commerce console: a wood-panel menu with a gold chip over
-each group and a dark tray under it, bevelled grey pills with a thin left marker and a chevron, a drop-down of mono capitals
+each group and a dark tray under it, bevelled grey pills with a thin left marker (and an arrow only on the rows that open), a drop-down of mono capitals
 under the open row, an LED clock; near-black cards with a glossy icon square; a greeting and an avatar pill in the top bar.
 Worn like Royal, but on dark — `<html data-theme="dark" data-palette="ember">` — so dark's rules apply and the
 palette repaints them; `lookFor()` maps it (6 tests), `THEME_BOOT`, the cookie regex, `lib/auth.ts` and `themeAction.ts`
@@ -637,7 +637,9 @@ theme is another one is put back to that one on the next page.
   - **The menu** (`Nav.tsx`): the `.deck > aside.ink-panel` is walnut — an inline SVG `feTurbulence` grain, vertical
     streaks, a bronze rim — on a 28px radius with a 10px margin; the property is a dark card with a 44px orange key; each
     `.nav-group` is a dark tray and its `.nav-head` a gold chip sitting on the wood 28px above it; every row a 46px
-    bevelled pill (`::before` the left marker, orange and glowing when current; `::after` a chevron). **Rows fold**
+    bevelled pill (`::before` the left marker, orange and glowing when current). **No arrow on a row that does not open** (2026-11-23, the owner: "the drop-down icon only
+    where a drop-down is"): every plain row used to draw a down-arrow in `::after`, which read as a drop-down that was not
+    there; the only arrow now is a folding row's own button. `navarrow.mjs` checks it. **Rows fold**
     (`subLinksFor`, `sections.ts`): a row that lives inside another's module (Join by QR, the Order board, the Tables
     screen) leaves its place and hangs under that row, and a row with pages under its route carries them (Orders: All
     orders, New order, Phone order; Pantry: Leaks; Online orders: Payouts for the owner and a manager; Front desk: Night

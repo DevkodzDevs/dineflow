@@ -4,7 +4,7 @@ import { modulesFor, landingFor } from "@dineflow/shared";
 import { seesFresh } from "@/components/shell/sections";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { FileManager } from "@/components/files/FileManager";
-import { filesFolders, filesList } from "@/lib/files/actions";
+import { filesFolders, filesList, filesSyncUploads } from "@/lib/files/actions";
 export const metadata = { title: "File Manager" };
 export const dynamic = "force-dynamic";
 
@@ -20,10 +20,11 @@ export default async function FilesPage() {
     const mods = modulesFor(s.restaurant.property_type, role, s.restaurant.enabled_modules ?? null, s.profile.allowed_modules ?? null);
     redirect(`/${landingFor(role, mods, s.profile.position ?? null)}`);
   }
+  await filesSyncUploads();            // 0194: the Uploads folder is brought up to date before the first listing (quiet if it cannot)
   const [l, f] = await Promise.all([filesList(false, null), filesFolders(false)]);
   return (
     <>
-      <PageHeader eyebrow="Your property" title="File" accent="Manager" sub="Licences, agreements, menus, photos — kept in your own folders" />
+      <PageHeader eyebrow="Your property" title="File" accent="Manager" sub="Your own folders, everything you have uploaded, and every file you have downloaded" />
       <FileManager master={false} initial={{ listing: "error" in l ? null : l.listing, folders: "error" in f ? [] : f.folders, error: "error" in l ? l.error : null }} />
     </>
   );

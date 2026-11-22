@@ -85,6 +85,11 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0105_expenses_checklists_payouts_phone_tally — Batch 2: expenses (+ cash_movements link), checklists +
                                 checklist_runs, channel_settlements, orders.delivery_address + customers.address,
                                 phone_order_card / order_delivery, report_extra, tally_company / tally_ledgers + tally_days
+0194_files_uploads_and_downloads — file_nodes.bucket; files_sync_uploads() (the locked Uploads folder: a locked row for every object
+                                the property has in menu / brand / site / compliance / attendance / support — nothing copied);
+                                files_keep_download() (Downloads → section → file); files_list / files_put count only the File
+                                Manager's own files toward the 500 MB — dry-run clean (`dry194.mjs`, 31), **applied 2026-11-23**
+                                alone by `apply194.mjs` (migrate.mjs would have applied 0191 too). [files.md](files.md)
 0191_module_walls_remaining   — has_any_module(text[]) + module_wall_insert/update/delete (restrictive) on the 32 tables that had
                                 only the tenant wall — written 2026-11-22, dry-run clean (`dry191.mjs`, 119 checks, 15 skipped on
                                 empty tables), **not applied yet**

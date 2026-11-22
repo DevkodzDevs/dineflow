@@ -1,4 +1,5 @@
 "use client";
+import { keepDownload } from "@/lib/files/keep";
 import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Database, FunctionSquare, Plug, ShieldCheck, Gauge, Code2, MonitorSmartphone, Play, ChevronDown, Check, AlertTriangle, X, Minus, Loader2, FileDown, Activity,
@@ -201,6 +202,7 @@ export function TestingClient({ last, prev: prevIn = {}, history = [], propertie
   const doJson = () => {
     const blob = new Blob([JSON.stringify({ generated_at: new Date().toISOString(), score, totals: { pass: count("pass"), warn: count("warn"), fail: count("fail"), skip: count("skip") }, runs: all }, null, 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `dineflow-self-test-${new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 16).replace("T", "-").replace(":", "")}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    keepDownload(a.download, blob);
   };
   const jump = (suite: string, onlyIssues: boolean) => { setOpen(suite); setIssuesOnly(onlyIssues); setTimeout(() => document.querySelector(`[data-suite="${suite}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); };
 

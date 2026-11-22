@@ -1,4 +1,5 @@
 "use client";
+import { keepDownload } from "@/lib/files/keep";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, Download, Check, X, Archive, Moon, Building2, History, ChevronRight } from "lucide-react";
@@ -31,6 +32,7 @@ export function RecordsClient({ records, activity, servers, at }: { records: Rec
     const body = rows.map((r) => [r.started_at, r.kind, r.status, r.server, r.server_kind, r.label, r.restaurant, r.size_bytes, r.rows_total, r.tables, r.files, r.verify_ok, r.on_disk, r.sha256, r.file_path].map(esc).join(","));
     const blob = new Blob(["﻿" + [head.join(","), ...body].join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `dineflow-backup-records-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    keepDownload(a.download, blob);
   };
   return (
     <>
