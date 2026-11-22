@@ -3,11 +3,12 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { csvCell } from "@/lib/csv";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileJson, FileText, Landmark, Mail, Pencil, Plus, Trash2, Undo2, UserRound, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileJson, FileText, HardDrive, Landmark, Mail, Paperclip, Pencil, Plus, Trash2, Undo2, UserRound, X } from "lucide-react";
+import { createClient as browserClient } from "@/lib/supabase/client";
 import { Button, Card, CardStrip, Field, Pill, Sheet, cn, type StripAction, ask, PhoneInput } from "@/components/ui";
 import { formatINR } from "@/lib/format";
 import { DOC_KINDS, GST_STATES, financialYear, statutoryCalendar, taxLabels, type CalendarItem } from "@dineflow/shared";
-import { saveTaxProfile, saveDoc, deleteDoc, markFiled, unmarkFiled, gstr1Month } from "./actions";
+import { saveTaxProfile, saveDoc, deleteDoc, docFileUrl, markFiled, unmarkFiled, gstr1Month } from "./actions";
 import type { Gstr1Summary } from "@/lib/gstr1";
 import { Guide } from "./Guide";
 import { TallyTab } from "./TallyTab";
@@ -15,7 +16,9 @@ import { TallyTab } from "./TallyTab";
 export type Tab = "overview" | "returns" | "calendar" | "documents" | "tally" | "profile" | "guide";
 type Rest = { id: string; name: string; property_type: string; room_gst_rate_high?: number; room_gst_threshold?: number; facility_gst_rate?: number; gstin: string | null; legal_name?: string | null; pan?: string | null; gst_scheme?: string | null; gst_state_code?: string | null; gst_monthly?: boolean | null; fssai_no?: string | null; gst_rate: number; room_gst_rate?: number; ca_name?: string | null; ca_firm?: string | null; ca_membership_no?: string | null; ca_email?: string | null; ca_phone?: string | null };
 type Filing = { id: string; form: string; period: string; due_on: string; filed_on: string | null; ack_no: string | null };
-type Doc = { id: string; kind: string; title: string; number: string | null; issuer: string | null; issued_on: string | null; expires_on: string | null; period: string | null; url: string | null; notes: string | null };
+type Doc = { id: string; kind: string; title: string; number: string | null; issuer: string | null; issued_on: string | null; expires_on: string | null; period: string | null; url: string | null; notes: string | null;
+  /* 0189: the stored copy, in the private compliance bucket under this property's folder */
+  file_path?: string | null; file_name?: string | null; file_bytes?: number | null; file_mime?: string | null };
 type Row = { sac: string; kind: string; rate: number; count: number; taxable: number; cgst: number; sgst: number; total: number };
 type Totals = { count: number; taxable: number; cgst: number; sgst: number; total: number };
 type Summary = { from: string; to: string; dining: Row[]; stay: Row[]; b2b: { gstin: string; name: string | null; count: number; taxable: number; cgst: number; sgst: number; total: number }[]; dining_totals: Totals; stay_totals: Totals;
@@ -31,8 +34,8 @@ const shiftMonth = (ym: string, by: number) => { const [y, m] = ym.split("-").ma
 const daysBetween = (a: string, b: string) => Math.round((new Date(b + "T00:00:00").getTime() - new Date(a + "T00:00:00").getTime()) / 86400000);
 const n2 = (v: unknown) => Number(v ?? 0).toFixed(2);
 
-export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings, docs, summary, summaryError, staffCount, itc = null }:
-  { tab: Tab; month: string; fy: string; today: string; restaurant: Rest; role: string; filings: Filing[]; docs: Doc[]; summary: Summary; summaryError: string | null; staffCount: number; itc?: Itc }) {
+export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings, docs, summary, summaryError, staffCount, itc = null, nasKept = false }:
+  { tab: Tab; month: string; fy: string; today: string; restaurant: Rest; role: string; filings: Filing[]; docs: Doc[]; summary: Summary; summaryError: string | null; staffCount: number; itc?: Itc; nasKept?: boolean }) {
   const router = useRouter(); const [pending, start] = useTransition(); const [msg, setMsg] = useState<string | null>(null);
   const scheme = r.gst_scheme ?? "regular";
   const lab = taxLabels(r.gst_state_code);
@@ -66,7 +69,7 @@ export function TaxClient({ tab, month, fy, today, restaurant: r, role, filings,
       {tab === "calendar" && <Calendar fy={fy} go={go} calendar={calendar} status={status} today={today} pending={pending}
         onFile={(c, filedOn, ack) => start(async () => { const x = await markFiled(c.form, c.period, c.due, filedOn, ack); setMsg("error" in x ? x.error! : `${c.form} ${c.period} filed.`); })}
         onUndo={(c) => start(async () => { const x = await unmarkFiled(c.form, c.period); setMsg("error" in x ? x.error! : `${c.form} ${c.period} reopened.`); })} />}
-      {tab === "documents" && <Documents docs={docs} today={today} pending={pending} onSave={(fd) => start(async () => { const x = await saveDoc(fd); setMsg("error" in x ? x.error! : "Document saved."); })} onDelete={(id) => start(async () => { const x = await deleteDoc(id); setMsg("error" in x ? x.error! : "Document removed."); })} />}
+      {tab === "documents" && <Documents docs={docs} today={today} pending={pending} restaurantId={r.id} nasKept={nasKept} canFile={["owner", "manager"].includes(role)} onSave={(fd) => start(async () => { const x = await saveDoc(fd); setMsg("error" in x ? x.error! : "Document saved."); })} onDelete={(id) => start(async () => { const x = await deleteDoc(id); setMsg("error" in x ? x.error! : "Document removed."); })} />}
       {tab === "profile" && <Profile r={r} role={role} pending={pending} onSave={(fd) => start(async () => { const x = await saveTaxProfile(fd); setMsg("error" in x ? x.error! : "Profile saved."); })} />}
       {tab === "tally" && <TallyTab month={month} company={(r as { tally_company?: string | null }).tally_company ?? ""} ledgers={((r as { tally_ledgers?: Record<string, string> }).tally_ledgers ?? {}) as never} canEdit={role === "owner" || role === "manager"} />}
       {tab === "guide" && <Guide propertyType={r.property_type} />}
@@ -312,7 +315,29 @@ function Calendar({ fy, go, calendar, status, today, onFile, onUndo, pending }: 
 }
 
 /* ── Documents: the register of certificates and filings ─────────────────── */
-function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; today: string; pending: boolean; onSave: (fd: FormData) => void; onDelete: (id: string) => void }) {
+/** The stored copy is a PDF or a photo up to 20 MB (the bucket's own limit). It goes from the browser straight into the private
+ *  `compliance` bucket under this property's folder — storage RLS lets only the owner or a manager write there — and saveDoc records
+ *  the path. A server action would cap it at 2 MB. The file's kind is read from its first bytes, not its name. */
+const FILE_MAX = 20 * 1024 * 1024;
+const fileKind = (b: Uint8Array): { mime: string; ext: string } | null =>
+  b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46 ? { mime: "application/pdf", ext: "pdf" }
+  : b[0] === 0xff && b[1] === 0xd8 ? { mime: "image/jpeg", ext: "jpg" } : b[0] === 0x89 && b[1] === 0x50 ? { mime: "image/png", ext: "png" }
+  : b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50 ? { mime: "image/webp", ext: "webp" } : null;
+const fmtMB = (n: number) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+async function putDocFile(restaurantId: string, file: File): Promise<{ path?: string; mime?: string; error?: string }> {
+  if (file.size > FILE_MAX) return { error: "The copy is over 20 MB — scan it smaller." };
+  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer()); const kind = fileKind(head);
+  if (!kind) return { error: "Attach a PDF or a JPG, PNG or WebP photo." };
+  const stem = file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "copy";
+  const path = `${restaurantId}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}/${stem}.${kind.ext}`;
+  const up = await browserClient().storage.from("compliance").upload(path, file, { contentType: kind.mime, upsert: false });
+  if (up.error) return { error: /row-level security|unauthori[sz]ed|403|policy/i.test(up.error.message) ? "Only the owner or a manager can store documents." : up.error.message };
+  return { path, mime: kind.mime };
+}
+
+function Documents({ docs, today, pending, onSave, onDelete, restaurantId, nasKept, canFile }: { docs: Doc[]; today: string; pending: boolean; onSave: (fd: FormData) => void; onDelete: (id: string) => void; restaurantId: string; nasKept: boolean; canFile: boolean }) {
+  const [fileMsg, setFileMsg] = useState<string | null>(null); const [uploading, setUploading] = useState(false); const [dropFile, setDropFile] = useState(false);
+  const openCopy = async (d: Doc) => { const r = await docFileUrl(d.id); if (r.url) window.open(r.url, "_blank", "noopener"); else setFileMsg(r.error ?? "The copy could not be opened."); };
   const [edit, setEdit] = useState<Partial<Doc> | null>(null);
   const kindOf = (k: string) => DOC_KINDS.find((x) => x.key === k);
   const held = new Set(docs.map((d) => d.kind));
@@ -334,27 +359,43 @@ function Documents({ docs, today, pending, onSave, onDelete }: { docs: Doc[]; to
                 <div className="text-xs text-[var(--color-label-2)] mt-0.5 break-words">{k?.label ?? d.kind}{d.number && <> · <span className="num text-[var(--color-label)] break-all">{d.number}</span></>}{d.period && ` · ${d.period}`}</div>
                 <div className="text-xs text-[var(--color-label-2)] mt-1">{d.issuer && `${d.issuer} · `}{d.issued_on && `issued ${day(d.issued_on)}`}{d.expires_on && ` · expires ${day(d.expires_on)}`}</div>
                 {d.notes && <div className="text-xs mt-1">{d.notes}</div>}
+                {d.file_path && <div className="text-xs mt-1.5 flex items-center gap-1.5 flex-wrap text-[var(--color-label-2)]" data-doc-file><Paperclip size={12} aria-hidden /><span className="truncate max-w-[220px]">{d.file_name ?? "copy"}</span>{d.file_bytes ? <span className="num">· {fmtMB(d.file_bytes)}</span> : null}{nasKept && <span className="chip !py-0 !px-1.5 !text-[11px] inline-flex items-center gap-1" title="A copy is also on the NAS set up in Master control"><HardDrive size={10} aria-hidden /> on the NAS</span>}</div>}
               </div>
               {left !== null && <Pill tone={left < 0 ? "alert" : left <= 30 ? "preparing" : "ready"}>{left < 0 ? "expired" : left <= 60 ? `${left}d` : "valid"}</Pill>}
             </div>
             <CardStrip data-doc-actions actions={[
-              ...(d.url ? [{ key: "open", label: "Open copy", icon: <ExternalLink />, tone: "go", href: d.url, external: true, aria: `Open the copy of ${d.title}` } satisfies StripAction] : []),
+              ...(d.file_path ? [{ key: "download", label: "Download", icon: <Download />, tone: "go", disabled: !canFile, onClick: () => void openCopy(d), aria: `Download the stored copy of ${d.title}` } satisfies StripAction] : []),
+              ...(d.url ? [{ key: "open", label: d.file_path ? "Open link" : "Open copy", icon: <ExternalLink />, tone: d.file_path ? undefined : "go", href: d.url, external: true, aria: `Open the copy of ${d.title}` } satisfies StripAction] : []),
               { key: "edit", label: "Edit", icon: <Pencil />, onClick: () => setEdit(d), aria: `Edit ${d.title}` },
               { key: "remove", label: "Remove", icon: <Trash2 />, tone: "red", disabled: pending, onClick: async () => { if (await ask({ title: "Remove from register?", body: `"${d.title}" leaves the register.`, ok: "Remove", tone: "danger", icon: "trash" })) onDelete(d.id); }, aria: `Remove ${d.title}` },
             ]} />
           </Card>); })}</div>
       )}
-      <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Edit document" : "Add a document"}>
-        <form className="space-y-4" action={(fd) => { onSave(fd); setEdit(null); }}>
+      <Sheet open={!!edit} onClose={() => { setEdit(null); setDropFile(false); setFileMsg(null); }} title={edit?.id ? "Edit document" : "Add a document"}>
+        <form className="space-y-4" action={async (fd) => {
+          const f = fd.get("file"); fd.delete("file");
+          if (f instanceof File && f.size > 0) {
+            setUploading(true); const r = await putDocFile(restaurantId, f); setUploading(false);
+            if (r.error || !r.path) { setFileMsg(r.error ?? "The copy could not be stored."); return; }
+            fd.set("file_path", r.path); fd.set("file_name", f.name.slice(0, 160)); fd.set("file_bytes", String(f.size)); fd.set("file_mime", r.mime ?? "");
+          } else if (dropFile) fd.set("remove_file", "1");
+          setFileMsg(null); setDropFile(false); onSave(fd); setEdit(null); }}>
           {edit?.id && <input type="hidden" name="id" value={edit.id} />}
           <Field label="What is it" hint={kindOf(edit?.kind ?? "other")?.hint}><select name="kind" defaultValue={edit?.kind ?? "gst_reg"} onChange={(e) => setEdit({ ...edit, kind: e.target.value, title: edit?.title || kindOf(e.target.value)?.label })}>{DOC_KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}</select></Field>
           <Field label="Title"><input name="title" value={edit?.title ?? ""} onChange={(e) => setEdit({ ...edit, title: e.target.value })} required placeholder="e.g. FSSAI licence" /></Field>
           <div className="grid grid-cols-2 gap-3"><Field label="Number"><input name="number" className="num" defaultValue={edit?.number ?? ""} /></Field><Field label="Issued by"><input name="issuer" defaultValue={edit?.issuer ?? ""} placeholder="e.g. FSSAI" /></Field></div>
           <div className="grid grid-cols-2 gap-3"><Field label="Issued on"><input name="issued_on" type="date" className="num" defaultValue={edit?.issued_on ?? ""} /></Field><Field label="Expires on" hint="Blank = never expires"><input name="expires_on" type="date" className="num" defaultValue={edit?.expires_on ?? ""} /></Field></div>
           <Field label="Period" hint="Returns, e.g. 2026-08"><input name="period" className="num" defaultValue={edit?.period ?? ""} /></Field>
+          {canFile && <Field label="Stored copy" hint={nasKept ? "PDF or photo, up to 20 MB — kept with your data and copied to the NAS" : "PDF or photo, up to 20 MB — kept with your data"}>
+            {edit?.file_path && !dropFile ? <div className="flex items-center gap-2 text-sm flex-wrap" data-doc-file-current><Paperclip size={14} aria-hidden /><span className="truncate max-w-[240px]">{edit.file_name ?? "copy"}</span>{edit.file_bytes ? <span className="num text-[var(--color-label-2)]">{fmtMB(edit.file_bytes)}</span> : null}
+              <button type="button" className="chip ml-auto" onClick={() => setDropFile(true)}>Replace or remove</button></div>
+            : <input type="file" name="file" accept="application/pdf,image/png,image/jpeg,image/webp" data-doc-file-input />}
+            {dropFile && edit?.file_path && <p className="text-xs text-[var(--color-label-2)] mt-1">Choose a new file, or save to remove the stored copy.</p>}
+          </Field>}
           <Field label="Copy link" hint="DigiLocker, Drive…"><input name="url" defaultValue={edit?.url ?? ""} placeholder="https://…" /></Field>
           <Field label="Notes"><input name="notes" defaultValue={edit?.notes ?? ""} /></Field>
-          <Button className="w-full" disabled={pending}>Save</Button>
+          {fileMsg && <p className="text-sm text-[var(--color-red)]" role="alert">{fileMsg}</p>}
+          <Button className="w-full" disabled={pending || uploading}>{uploading ? "Storing the copy…" : "Save"}</Button>
         </form>
       </Sheet>
     </div>

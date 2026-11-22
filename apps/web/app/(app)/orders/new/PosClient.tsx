@@ -15,22 +15,25 @@ import { DishImage } from "@/components/menu/DishImage";
 import { Rail } from "@/components/ui/Rail";
 import { placeOrder, addItems, parseOrder, phoneCard, setDelivery } from "../actions";
 import { lookupCustomer } from "../../billing/actions";
-import { enqueue, sendOrQueue } from "@/lib/offline/sync";
+import { enqueue, sendOrQueue, fromDeviceCopy } from "@/lib/offline/sync";
 import { useOffline } from "@/lib/offline/OfflineProvider";
+import { allJobs, cacheGet } from "@/lib/offline/db";
+import { localOrders, LOCAL, FLOOR_SNAP, type FloorSnap, type OrderShow } from "@/lib/offline/local";
 import { usePrinters } from "@/lib/print/usePrinter";
 import { OptionChooser } from "@/components/OptionChooser";
 import { hasOptions, defaultVariant, linePrice, lineKey, lineName, lineExtras, optionProblem, tilePrice, type Optioned, type Variant, type Addon } from "@dineflow/shared";
 import Link from "next/link";
 
 type Cat = { id: string; name: string };
-type Item = Optioned & { prep_minutes?: number | null; is_veg: boolean; category_id: string | null; is_available: boolean; image_url: string | null; station?: string | null; categories?: { station: string | null } | null };
+type Item = Optioned & { gst_rate?: number | null; prep_minutes?: number | null; is_veg: boolean; category_id: string | null; is_available: boolean; image_url: string | null; station?: string | null; categories?: { station: string | null } | null };
 type Table = { id: string; name: string; status: string };
 type Guest = { id: string; booking_no: number; rooms: { number: string } | null; guests: { full_name: string } | null };
 /** What the pantry can still cover, keyed by dish. A dish that is absent has no recipe: it moves no
  *  stock, so there is nothing true to say about it, and it is always sellable. */
 type Cover = { portions: number; short: { name: string; unit: string; per: number; stock: number }[] };
 /** the open order *Add items* came from (0165): what is sent joins it as a new kitchen ticket, not a second order */
-type AddTo = { id: string; order_no: number; table_id: string | null; type: "dine_in" | "takeaway" | "delivery" | "room_service" };
+/** `local` (2026-11-22): the order is itself still on this device — its outbox client id; the dishes are queued behind it */
+type AddTo = { id: string; order_no: number; table_id: string | null; type: "dine_in" | "takeaway" | "delivery" | "room_service"; local?: string };
 type Running = { id: string; order_no: number; table_id: string | null; type?: string; token_no?: number | null; customer_name?: string | null; created_at: string; order_items: { qty: number; status: string }[]; dining_tables: { name: string } | null; bills?: { status: string }[] | null };
 
 /** One line of the ticket: a dish with the size and extras it was chosen with. The same dish as
@@ -52,6 +55,32 @@ export function PosClient({ categories, items, tables, initialTable, initialType
   const [adding, setAdding] = useState<AddTo | null>(addTo);
   const [room, setRoom] = useState("");
   const [tableId, setTableId] = useState<string | null>(initialTable);
+  /* With no line this page is the device's copy of the till, drawn for no table and no order (sw.js serves the copy of the
+     path, whatever the query) — so what the address asks for is read here, after mount (2026-11-22, offline Step 2):
+       ?local=<client id>  more dishes for an order that is itself still on this device (any time — online it is seconds from going)
+       ?add=<order id>     more dishes for an open order, found in the device's copy of the floor  (offline only: online the
+       ?table= / ?type=    the table or the kind of order                                           server has already decided) */
+  useEffect(() => {
+    const q = new URLSearchParams(location.search); const local = q.get("local"); let on = true;
+    void (async () => {
+      if (local) {
+        const o = localOrders(await allJobs()).find((x) => x.id === LOCAL + local); if (!on || !o) return;
+        setType(o.type as AddTo["type"]); setTableId(o.table_id); setAdding({ id: o.id, order_no: 0, table_id: o.table_id, type: o.type as AddTo["type"], local });
+        return;
+      }
+      // the device's copy, not the server's page for this address: Wi-Fi with no internet still reads "online" (fromDeviceCopy)
+      if (navigator.onLine && !fromDeviceCopy()) return;
+      const t = q.get("table"), ty = q.get("type"), add = q.get("add");
+      if (add) {
+        const o = (await cacheGet<FloorSnap>(FLOOR_SNAP))?.v.orders.find((x) => x.id === add); if (!on) return;
+        if (o && !(o.bills ?? []).some((b) => b.status === "unpaid" || b.status === "paid")) { setType(o.type as AddTo["type"]); setTableId(o.table_id); setAdding({ id: o.id, order_no: o.order_no, table_id: o.table_id, type: o.type as AddTo["type"] }); return; }
+      }
+      if (ty === "takeaway" || ty === "delivery") setType(ty);
+      else if (t && tables.some((x) => x.id === t)) { setType("dine_in"); setTableId(t); }
+    })();
+    return () => { on = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival
+  }, []);
   const [cat, setCat] = useState("all"); const [q, setQ] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   /* The question a dish asks before it goes on the ticket. `replace` is the line being answered
@@ -353,9 +382,18 @@ export function PosClient({ categories, items, tables, initialTable, initialType
        ticket and says so. */
     const clientId = crypto.randomUUID();
     const savedHere = () => { dropDraft(); clearTicket(); toast("Saved on this device · sends when online"); };
+    /* what the floor and the offline bill draw for this ticket while it waits on the device (lib/offline/local.ts): the dishes
+       by name, at the price the till showed, with the dish's own GST rate — never sent */
+    const show: OrderShow = { type, table_id: payload.table_id, where: label ?? "", customer: customer.name || null,
+      lines: lines.map((l) => ({ name: lineName(l.item, l.variant), qty: l.qty, price: unit(l), gstRate: l.item.gst_rate ?? null, note: l.note || null, extras: lineExtras({ addons: l.addons, components: l.item.components }) })) };
+    // more dishes for an order that is still on this device: queued behind it — the outbox sends the order first, then these
+    if (adding?.local) {
+      await enqueue("place_order", { ...payload, add_to_client: adding.local, client_id: clientId, placed_at: new Date().toISOString() }, `Add to ${label} · ${count} items`, show);
+      return savedHere();
+    }
     if (adding) {
       const r = await sendOrQueue(() => addItems({ ...payload, add_to: adding.id, client_id: clientId }),
-        () => enqueue("place_order", { ...payload, add_to: adding.id, client_id: clientId, placed_at: new Date().toISOString() }, `Add to #${adding.order_no} · ${count} items`));
+        () => enqueue("place_order", { ...payload, add_to: adding.id, client_id: clientId, placed_at: new Date().toISOString() }, `Add to #${adding.order_no} · ${count} items`, show));
       if (!r) return savedHere();
       if ("error" in r) return setErr(r.error!);
       dropDraft();
@@ -364,7 +402,7 @@ export function PosClient({ categories, items, tables, initialTable, initialType
     }
     // the delivery address goes with a queued order, and is written onto it as soon as it lands (0109)
     const r = await sendOrQueue(() => placeOrder({ ...payload, client_id: clientId }),
-      () => enqueue("place_order", { ...payload, client_id: clientId, placed_at: new Date().toISOString(), delivery_address: type === "delivery" ? address.trim() || null : null }, `Order · ${label} · ${count} items`));
+      () => enqueue("place_order", { ...payload, client_id: clientId, placed_at: new Date().toISOString(), delivery_address: type === "delivery" ? address.trim() || null : null }, `Order · ${label} · ${count} items`, show));
     if (!r) return savedHere();
     if ("error" in r) return setErr(r.error!);
     dropDraft();
@@ -509,8 +547,8 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         <div className="mt-3 flex items-center gap-2.5 rounded-[14px] pl-3 pr-1.5 py-1.5 bg-[color-mix(in_srgb,var(--color-tint)_12%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-tint)_30%,transparent)]" data-adding={adding.order_no}>
           <span aria-hidden className="grid place-items-center h-8 w-8 shrink-0 rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)]"><Plus size={16} strokeWidth={2.6} /></span>
           <span className="min-w-0 flex-1 leading-tight">
-            <span className="block text-[14px] font-extrabold truncate">Adding to #{adding.order_no}</span>
-            <span className="block text-[12px] text-[var(--color-label-2)] truncate">Same bill</span>
+            <span className="block text-[14px] font-extrabold truncate">{adding.local ? "Adding to this table's order" : <>Adding to #{adding.order_no}</>}</span>
+            <span className="block text-[12px] text-[var(--color-label-2)] truncate">{adding.local ? "On this device · same bill" : "Same bill"}</span>
           </span>
           {/* 0166: a table takes one open order — at a table there is no separate order to fall back to */}
           {!(adding.type === "dine_in" && adding.table_id) && <button type="button" onClick={() => setAdding(null)} className="shrink-0 min-h-11 px-3 rounded-full text-[12.5px] font-bold text-[var(--color-label-2)] hover:bg-[var(--color-fill-2)]" data-adding-off>Separate order</button>}

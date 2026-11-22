@@ -20,7 +20,7 @@ export default async function OrdersPage() {
     requireSession(),
     s.from("dining_tables").select("*").order("sort_order"),
     // a printed, unpaid bill turns the table violet ("Bill"); each dish's own time decides LATE
-    s.from("orders").select("id, order_no, type, table_id, customer_name, status, created_at, token_no, bills(status), order_items(id, name_snapshot, qty, price_snapshot, status, created_at)").eq("status", "open").order("created_at"),
+    s.from("orders").select("id, order_no, type, table_id, customer_name, status, created_at, token_no, bills(status), order_items(id, name_snapshot, qty, price_snapshot, status, created_at, gst_rate, notes)").eq("status", "open").order("created_at"),
     // tables calling from their QR in the last half hour (0103) — a badge on the card until someone answers
     s.from("service_calls").select("id, table_id, kind, created_at").eq("status", "open").gte("created_at", new Date(Date.now() - 30 * 60000).toISOString()).order("created_at"),
     // tables paid and left, not yet cleaned (0111) — and the names of whoever has them

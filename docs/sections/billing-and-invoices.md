@@ -303,3 +303,19 @@ from the screens (`fence150.mjs`): the kitchen's Start cooking → Ready → Ser
   `closeDay(date, note, { counted, expected: counted − float − variance })`; dedupe `day_close:<date>:<sales>:<counted|day>`).
 - Every helper reads the rows the RPC just wrote through the caller's own client, checks `featureOn(session, "whatsapp")` first,
   and swallows its own errors: a bill is paid, a day closed, whether or not the message goes. [api-routes.md](api-routes.md).
+
+## 2026-11-22 — the bill with no line (`/billing/local`, offline Step 2)
+`app/(app)/billing/local` — one page for every order (`?c=` an order still on this device, `?o=` an open server order from the
+device's copy of the floor), so the one copy the service worker keeps serves them all. `computeBill` on the device, the same
+call the live preview makes: GST per dish, the service-charge switch, a discount, split payments, cash keys, change.
+- **Provisional, always.** No bill number on the screen or the paper: "PROVISIONAL", "** OFFLINE COPY **", and a footer saying
+  the number is given on sync. The outbox's `bill_settle` job (lib/offline/sync.ts) calls the server's `generate_bill` when the
+  line returns — **the number comes from the one sequence, in order** (the owner's rule, 2026-11-03) — then `settle_bill`.
+- **Never settled short.** If the server's total is more than what was taken (a dish added from another device, a price
+  changed), the bill is left unpaid and the job is held with "short by …" for a person. Cash over the server's total is change.
+- **Not offline:** coupons, loyalty points, the on-time promise, charge to a room, the tax invoice, the pay link / dynamic QR —
+  each needs the server. An order that already has a bill out is not billed again here; the page points at that bill.
+- **Dated on sync:** the bill's `created_at` is when it synced. A sale at 23:55 that syncs after midnight is on the next
+  business day's cash-up. Changing that means a `p_at` on `generate_bill` — a migration, not done.
+- Online, a server order's link goes to its live bill (the page redirects). The billing board's *Ready to bill* links here
+  when there is no line and drops an order already paid on the device.

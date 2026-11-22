@@ -47,14 +47,36 @@ export async function saveDoc(fd: FormData) {
     url: str(fd, "url") || null, notes: str(fd, "notes") || null,
   };
   if (!row.title) return { error: "Give the document a title." };
+  // 0189: the signed copy itself. The browser put it in the private `compliance` bucket under this property's folder (storage RLS:
+  // owner or manager, own folder only); here only a path inside that folder is recorded, and a replaced or removed copy is deleted.
+  const session = await requireSession(); const folder = `${session.restaurant.id}/`;
+  const filePath = str(fd, "file_path"), dropFile = str(fd, "remove_file") === "1";
+  if (filePath && (!filePath.startsWith(folder) || filePath.includes(".."))) return { error: "That file is not in this property's folder." };
+  const file = filePath ? { file_path: filePath, file_name: str(fd, "file_name").slice(0, 160) || filePath.split("/").pop()!, file_bytes: Math.max(0, Number(str(fd, "file_bytes")) || 0), file_mime: str(fd, "file_mime").slice(0, 80) || null }
+    : dropFile ? { file_path: null, file_name: null, file_bytes: null, file_mime: null } : {};
+  const old = id && (filePath || dropFile) ? (await s.from("compliance_docs").select("file_path").eq("id", id).maybeSingle()).data?.file_path : null;
   if (row.url && !/^https?:\/\//i.test(row.url)) return { error: "The link should start with http:// or https://." };
-  const { error } = await (id ? s.from("compliance_docs").update(row).eq("id", id) : s.from("compliance_docs").insert(row));
+  const { error } = await (id ? s.from("compliance_docs").update({ ...row, ...file }).eq("id", id) : s.from("compliance_docs").insert({ ...row, ...file }));
   if (error) return { error: error.message };
+  if (old && old !== filePath && old.startsWith(folder)) await s.storage.from("compliance").remove([old]);
   bump(); return { ok: true };
 }
 export async function deleteDoc(id: string) {
-  const s = await createClient(); const { error } = await s.from("compliance_docs").delete().eq("id", id);
-  if (error) return { error: error.message }; bump(); return { ok: true };
+  const s = await createClient();
+  const was = (await s.from("compliance_docs").select("file_path").eq("id", id).maybeSingle()).data?.file_path;
+  const { error } = await s.from("compliance_docs").delete().eq("id", id);
+  if (error) return { error: error.message };
+  if (was) await s.storage.from("compliance").remove([was]);   // 0189: the stored copy goes with the entry
+  bump(); return { ok: true };
+}
+/** A five-minute link to the stored copy of a document (0189) — the bucket is private, so the browser never has a lasting address. */
+export async function docFileUrl(id: string): Promise<{ url?: string; error?: string }> {
+  const s = await createClient();
+  const { data: d } = await s.from("compliance_docs").select("file_path").eq("id", id).maybeSingle();
+  if (!d?.file_path) return { error: "No copy is stored for this document." };
+  const { data, error } = await s.storage.from("compliance").createSignedUrl(d.file_path, 300, { download: true });
+  if (error || !data?.signedUrl) return { error: /unauthori[sz]ed|403|not allowed|security/i.test(error?.message ?? "") ? "Only the owner or a manager can open stored documents." : error?.message ?? "The copy could not be opened." };
+  return { url: data.signedUrl };
 }
 
 /** Records that a return was filed: the date and the acknowledgement number from the portal. */

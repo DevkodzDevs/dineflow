@@ -20,9 +20,10 @@ export default async function TaxPage({ searchParams }: { searchParams: Promise<
   // input credit (GSTR-3B table 4, an estimate): the GST inside the month's expenses (0105 gst_amount, voided ones out).
   // Purchases (0001/0073) record no GST, so this is the expenses alone. Read by the drawer roles' policy; others see "—".
   const itcRead = (rid?: string) => { const q = s.from("expenses").select("gst_amount").gte("spent_on", `${month}-01`).lte("spent_on", lastDay(month)).is("voided_at", null).limit(1000); return rid ? q.eq("restaurant_id", rid) : q; };
-  const [{ data: filings }, { data: docs }, { data: summary, error: sumErr }, { count: staff }, itcMine] = await Promise.all([
+  const [{ data: filings }, { data: docs }, { data: nasKept }, { data: summary, error: sumErr }, { count: staff }, itcMine] = await Promise.all([
     s.from("compliance_filings").select("*").order("due_on"),
     s.from("compliance_docs").select("*").order("kind").order("expires_on"),
+    s.rpc("nas_keeps_files"),   // 0190: is a NAS keeping a copy of the documents? (a yes/no, nothing about the NAS itself)
     s.rpc("gst_summary", { p_from: `${month}-01`, p_to: lastDay(month) }),
     s.from("profiles").select("id", { count: "exact", head: true }).eq("restaurant_id", session.profile.restaurant_id),
     itcRead(),
@@ -33,7 +34,7 @@ export default async function TaxPage({ searchParams }: { searchParams: Promise<
     <>
       <PageHeader eyebrow="Tax, audit & documents" title="Tax" accent="& GST" sub="What to file, when" />
       <TaxClient tab={tab} month={month} fy={fy} today={today} restaurant={session.restaurant as never} role={session.profile.role}
-        filings={(filings ?? []) as never} docs={(docs ?? []) as never} summary={(summary ?? null) as never} summaryError={sumErr?.message ?? null} staffCount={staff ?? 0} itc={itc} />
+        filings={(filings ?? []) as never} docs={(docs ?? []) as never} summary={(summary ?? null) as never} summaryError={sumErr?.message ?? null} staffCount={staff ?? 0} itc={itc} nasKept={nasKept === true} />
     </>
   );
 }

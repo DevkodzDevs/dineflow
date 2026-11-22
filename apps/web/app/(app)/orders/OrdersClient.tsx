@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone, Receipt, GlassWater, QrCode, UserPlus, Search, Link2 } from "lucide-react";
+import { Users, Clock, ChevronRight, Armchair, ShoppingBag, BedDouble, Bike, CalendarClock, CalendarX, Plus, LayoutGrid, List, HandPlatter, Check, Sparkles, Phone, Receipt, GlassWater, QrCode, UserPlus, Search, Link2, CloudOff } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLive } from "@/lib/useLive";
 import { cn, Empty, Sheet, useToast } from "@/components/ui";
@@ -15,6 +15,10 @@ import { orderState, isLate, SVC_WORD, type Svc } from "@/lib/service";
 import { setTableStatus, answerCall } from "./actions";
 import { acceptOnline } from "../online-orders/actions";
 import { takeJob, finishJob, assignJob } from "../cleaning/actions";
+import { useOffline } from "@/lib/offline/OfflineProvider";
+import { useJobs } from "@/lib/offline/useJobs";
+import { cacheSet } from "@/lib/offline/db";
+import { floorWith, isLocal, cidOf, FLOOR_SNAP, type FloorSnap } from "@/lib/offline/local";
 
 type Table = { id: string; name: string; capacity: number; zone: string; status: "free" | "occupied" | "reserved" };
 type Item = { id: string; name_snapshot: string; qty: number; price_snapshot: number; status: string; created_at?: string | null };
@@ -50,11 +54,22 @@ const PLATE: Record<string, { word: "ordered" | "cooking" | "food_ready" | "eati
 /** Someone a table can be given to (page.tsx: on duty first, then the cleaners). */
 export type Crew = { id: string; name: string; title: string | null; on_duty: boolean; cleans: boolean };
 
-export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt = 15, cleaning = [], me = "", boss = false, cleaner = false, crew = [], merged = {} }: { tables: Table[]; orders: Order[]; calls?: Call[]; qrOrders?: QrOrder[]; lateAt?: number; cleaning?: Clean[]; me?: string; boss?: boolean; cleaner?: boolean; crew?: Crew[]; merged?: Record<string, string[]> }) {
+export function OrdersClient({ tables, orders: fromServer, calls = [], qrOrders = [], lateAt = 15, cleaning = [], me = "", boss = false, cleaner = false, crew = [], merged = {} }: { tables: Table[]; orders: Order[]; calls?: Call[]; qrOrders?: QrOrder[]; lateAt?: number; cleaning?: Clean[]; me?: string; boss?: boolean; cleaner?: boolean; crew?: Crew[]; merged?: Record<string, string[]> }) {
   /* the table an owner, manager or supervisor is giving to someone (2026-10-30): a sheet of the crew, on duty first */
   const [giving, setGiving] = useState<{ table: Table; job: Clean } | null>(null); const [find, setFind] = useState("");
   const [pending, start] = useTransition(); const toast = useToast();
   const [, tick] = useState(0);
+  /* This device's own work, on the floor (2026-11-22, offline Step 2 — lib/offline/local.ts). An order taken with no line is
+     in the outbox, not on the server: until now its table still read Free and it could not be opened. `orders` is the
+     server's open orders plus the dishes queued for them, plus the orders that exist only here, less any paid here. An
+     order that is only here has no number yet (`noOf`) and opens on the offline bill; with no line every order does —
+     the order page (/orders/<id>) is one per order and is not kept on the device. The floor as the server last gave it is
+     kept (`snap:floor`) for that screen to read. */
+  const { online } = useOffline(); const jobs = useJobs();
+  const orders = floorWith(fromServer, jobs) as Order[];
+  useEffect(() => { if (typeof navigator !== "undefined" && navigator.onLine) void cacheSet(FLOOR_SNAP, { orders: fromServer, tables: tables.map((t) => ({ id: t.id, name: t.name })) } satisfies FloorSnap); }, [fromServer, tables]);
+  const hrefOf = (o: Order) => isLocal(o.id) ? `/billing/local?c=${cidOf(o.id)}` : online ? `/orders/${o.id}` : `/billing/local?o=${o.id}`;
+  const noOf = (o: Order) => (isLocal(o.id) ? "Offline" : `#${o.order_no}`);
   useLive(["orders", "order_items", "dining_tables", "bills", "service_calls", "table_cleanings", "online_orders"], 30000);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
   /* Tables · List as the app's one view switch (2026-10-25, the owner: "this design, everywhere it is needed"): a tap shows
@@ -198,11 +213,13 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
     return (
       <motion.div key={t.id} {...motionProps} className="min-w-0 flex relative">
         {al?.el}
-        <Link href={o ? `/orders/${o.id}` : `/orders/new?table=${t.id}`} className={cn("svc-table flex-1", stClass(s), al?.cls)} style={al?.pad} data-table-card={t.name} data-state={s} data-late={late || undefined}>
+        <Link href={o ? hrefOf(o) : `/orders/new?table=${t.id}`} className={cn("svc-table flex-1", stClass(s), al?.cls)} style={al?.pad} data-table-card={t.name} data-state={s} data-late={late || undefined} data-local={o && isLocal(o.id) ? "" : undefined}>
           <div className="flex items-center gap-2 min-w-0"><span className="tname">{t.name}</span>{seats}</div>
           <div className="tstate"><I size={19} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={o ? SVC_WORD[s] : "at_table"} start /></div>
           {(joined || others.length > 0) && <div className="mt-1.5 self-start max-w-full h-7 px-2.5 rounded-full inline-flex items-center gap-1 text-[12.5px] font-bold num bg-[color-mix(in_srgb,var(--st)_18%,transparent)] text-[var(--st-ink)]" data-merged={joined ? "joined" : "into"} title={joined ? `Merged with ${joined}` : `Merged with ${others.join(", ")}`}>
             <Link2 size={13} strokeWidth={2.4} aria-hidden className="shrink-0" /><span className="truncate">{joined ? `With ${joined}` : `+ ${others.join(" + ")}`}</span></div>}
+          {/* taken on this device and not sent yet (2026-11-22): said on the card, in the label colours that read in every theme */}
+          {o && isLocal(o.id) && <div className="mt-1.5 self-start max-w-full h-7 px-2.5 rounded-full inline-flex items-center gap-1 text-[12.5px] font-bold bg-[var(--color-label)] text-[var(--color-on-label)]" data-local-tag title="Taken on this device · sends when online"><CloudOff size={13} aria-hidden className="shrink-0" /><span className="truncate">On this device</span></div>}
           <div className="mt-auto pt-2 flex items-end gap-2 font-bold min-w-0">
             {o ? <><span className={cn("flex items-center gap-1 text-[14px] shrink-0", Date.now() - new Date(o.created_at).getTime() > STALE_MS ? "text-[var(--color-orange)]" : "text-[var(--color-label-2)]")}><Clock size={15} aria-hidden />{fmtSince(o.created_at)}</span>
               <span className="ml-auto font-display num text-[21px] leading-none truncate">{formatINR(totalOf(o), { whole: true })}</span></>
@@ -219,8 +236,8 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
     const s = stateOf(o); const late = lateOf(o); const k = KIND[o.type] ?? KIND.takeaway; const I = SVC_ICON[s];
     return (
       <motion.div key={o.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.012 }} className="min-w-0 flex">
-        <Link href={`/orders/${o.id}`} className={cn("svc-table flex-1", stClass(s))} data-table-card={`#${o.order_no}`} data-state={s} data-late={late || undefined}>
-          <div className="flex items-center gap-2 min-w-0"><k.Icon size={22} aria-hidden className="shrink-0" /><span className="tname !text-[28px]">{o.token_no ? <>Token {o.token_no}</> : <>#{o.order_no}</>}</span></div>
+        <Link href={hrefOf(o)} className={cn("svc-table flex-1", stClass(s))} data-table-card={noOf(o)} data-state={s} data-late={late || undefined} data-local={isLocal(o.id) ? "" : undefined}>
+          <div className="flex items-center gap-2 min-w-0"><k.Icon size={22} aria-hidden className="shrink-0" /><span className="tname !text-[28px]">{o.token_no ? <>Token {o.token_no}</> : <>{noOf(o)}</>}</span></div>
           <div className="mt-1 text-[13px] font-semibold text-[var(--color-label-2)] truncate"><Say w={k.word} start />{o.customer_name ? ` · ${o.customer_name}` : ""}</div>
           <div className="tstate"><I size={19} aria-hidden className={cn(s === "ready" && "animate-pulse")} /><Say w={SVC_WORD[s]} start /></div>
           <div className="mt-auto pt-2 flex items-end gap-2 font-bold"><span className="flex items-center gap-1 text-[14px] text-[var(--color-label-2)] shrink-0"><Clock size={15} aria-hidden />{fmtSince(o.created_at)}</span>
@@ -286,7 +303,7 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
                 /* one card per order: where and its state on top, the kitchen's progress plate by plate,
                    the first dishes, and the total in a footer strip edge to edge */
                 <motion.div key={o.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.02 }} className="min-w-0">
-                  <Link href={`/orders/${o.id}`} data-order={o.order_no} data-state={s} className={cn("feather feather-lift group relative overflow-hidden h-full flex flex-col", stClass(s))}
+                  <Link href={hrefOf(o)} data-order={o.order_no} data-state={s} className={cn("feather feather-lift group relative overflow-hidden h-full flex flex-col", stClass(s))}
                     style={{ borderColor: s === "ready" || late ? `color-mix(in srgb, var(${late ? "--color-red" : "--color-green"}) 45%, transparent)` : undefined }}>
                     <span aria-hidden className="absolute inset-y-0 left-0 w-[4px]" style={{ background: late ? "var(--color-red)" : "var(--st)" }} />
                     <div className="p-4 pl-5 flex flex-col gap-3 flex-1 min-w-0">
@@ -297,7 +314,7 @@ export function OrdersClient({ tables, orders, calls = [], qrOrders = [], lateAt
                         <div className="min-w-0 flex-1">
                           <div className="text-[16px] font-bold truncate" data-title>{tbl ? `Table ${[tbl.name, ...mergedNames(o)].join(" + ")}` : <Say w={k.word} start />}</div>
                           <div className="mt-0.5 flex items-center gap-1.5 text-[13px] text-steel num min-w-0">
-                            <span className="shrink-0">#{o.order_no}</span><span aria-hidden>·</span><span className="shrink-0">{plates} item{plates === 1 ? "" : "s"}</span><span aria-hidden>·</span>
+                            <span className="shrink-0">{noOf(o)}</span><span aria-hidden>·</span><span className="shrink-0">{plates} item{plates === 1 ? "" : "s"}</span><span aria-hidden>·</span>
                             <span className={cn("inline-flex items-center gap-1 shrink-0", Date.now() - new Date(o.created_at).getTime() > STALE_MS && "text-[var(--color-orange)] font-semibold")} data-age><Clock size={12} />{fmtSince(o.created_at)}</span>
                           </div>
                           {o.customer_name && <div className="mt-0.5 text-[13px] truncate">{o.customer_name}</div>}

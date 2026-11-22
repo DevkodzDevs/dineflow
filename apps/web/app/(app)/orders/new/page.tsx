@@ -16,7 +16,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const [session, { data: categories }, { data: items }, { data: tables }, { data: inHouse }, { data: stock }, { data: running }, v0, g0, l0, c0, { data: pairings }, { data: sold }, { data: booked }, { data: cleans }, { data: addRow }] = await Promise.all([
     requireSession(),
     s.from("categories").select("id, name").order("sort_order"),
-    s.from("menu_items").select("id, name, price, is_veg, category_id, is_available, is_combo, image_url, station, prep_minutes, categories(station)").order("name"),
+    s.from("menu_items").select("id, name, price, gst_rate, is_veg, category_id, is_available, is_combo, image_url, station, prep_minutes, categories(station)").order("name"),
     s.from("dining_tables").select("id, name, status").order("sort_order"),
     s.from("bookings").select("id, booking_no, rooms(number), guests(full_name)").eq("status", "checked_in"),
     // how many portions of each dish the pantry can still cover, so the till can say so before a

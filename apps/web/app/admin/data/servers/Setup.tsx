@@ -22,7 +22,7 @@ export function Setup({ kind, name, token, setup }: { kind: ServerKind; name: st
   const base = setup.base || (typeof window !== "undefined" ? window.location.origin : "");
   const win = kind === "laptop";
   const [os, setOs] = useState<"windows" | "linux">(win ? "windows" : "linux");
-  const envText = `DINEFLOW_URL=${setup.url}\nDINEFLOW_ANON_KEY=${setup.anonKey}\nDINEFLOW_NODE_TOKEN=${token ?? "<the token shown when the server was added — Rotate token makes a new one>"}\n# where backups go on this machine (optional)\n# DINEFLOW_NODE_DIR=${os === "windows" ? "D:\\DineFlow-Backups" : "/srv/dineflow-backups"}\n`;
+  const envText = `DINEFLOW_URL=${setup.url}\nDINEFLOW_ANON_KEY=${setup.anonKey}\nDINEFLOW_NODE_TOKEN=${token ?? "<the token shown when the server was added — Rotate token makes a new one>"}\n# where backups go on this machine (optional)\n# DINEFLOW_NODE_DIR=${os === "windows" ? "D:\\DineFlow-Backups" : "/srv/dineflow-backups"}\n# where copied photos & documents go when that switch is on for this server (optional, 0189)\n# DINEFLOW_FILES_DIR=${os === "windows" ? "D:\\DineFlow-Files" : "/srv/dineflow-files"}\n# the app's own address — private documents come through it\n# DINEFLOW_CLOUD_URL=${base}\n`;
   return (
     <div className="grid gap-4" data-setup={kind}>
       {token ? <Note tone="warn" data-setup-token>This token is shown <b>once</b>. Copy the .env below now — if it is lost, use Rotate token for a new one.</Note>

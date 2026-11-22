@@ -85,6 +85,14 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0105_expenses_checklists_payouts_phone_tally — Batch 2: expenses (+ cash_movements link), checklists +
                                 checklist_runs, channel_settlements, orders.delivery_address + customers.address,
                                 phone_order_card / order_delivery, report_extra, tally_company / tally_ledgers + tally_days
+0191_module_walls_remaining   — has_any_module(text[]) + module_wall_insert/update/delete (restrictive) on the 32 tables that had
+                                only the tenant wall — written 2026-11-22, dry-run clean (`dry191.mjs`, 119 checks, 15 skipped on
+                                empty tables), **not applied yet**
+0190_nas_keeps_files          — nas_keeps_files(): one boolean for any signed-in login (a NAS holds a finished copy of the
+                                documents) — dry-run clean (5), **applied 2026-11-22** by `dry190.mjs --live`
+0189_nas_and_compliance_files — a NAS as a server (kind nas, brand, mirror_files, mirror_buckets, mirror_at/report; the mirror op;
+                                data_node_call auth + mirror_list), the private compliance bucket + 4 policies, compliance_docs
+                                file_* — dry-run clean (17), **applied 2026-11-22** by `dry189.mjs --live`
 0188_no_double_booking_no_replay — btree_gist + an exclusion constraint on bookings (one live booking per room per night) and
                                 ingest_online_order that no longer rewrites an order once it has left 'new' — written 2026-11-17, dry-run
                                 clean (9), **applied 2026-11-22** by `dry188.mjs --live`
@@ -195,6 +203,47 @@ made in between is silently undone.
   `departments = '{}'` (everyone), so the deployed screens see exactly what they saw; the old five-argument
   `checklist_save` is untouched (the new one has a sixth, `p_departments`, with no default — so PostgREST's named-argument
   call with five keys can only match the old one, and six only the new). Dry run `dry122.cjs` (23, rolled back).
+- **0191 — module walls on the rest (2026-11-22; written and dry-run, not applied yet).** The "~100 tables" in the 0187 entry
+  below was an old count: a read-only sweep on 2026-11-22 found **35** tables writable by a signed-in login with nothing but
+  `tenant_all` (three of them already narrow: `admin_context` self, `payment_gateways` owner_only, `selftest_runs` admin_only).
+  0191 gives the other 32 the `module_wall_*` restrictive policies 0084 gave the menu tables, through
+  `has_any_module(text[])` (definer, `effective_modules(auth.uid()) && p`; false for a stranger):
+  - **No direct writes at all** (only definer functions write them): `forecast_runs`, `labour_standby`, `loyalty_ledger`,
+    `network_settings`, `ota_sync_log`, `print_jobs`, `proof_links`, `purchase_orders`, `purchase_order_items`,
+    `rate_inventory`, `surplus_listings`, `walkins`.
+  - **Added by a screen, never edited or deleted directly**: `stock_ledger` (inventory / scan / kitchen), `purchases` and
+    `purchase_items` (inventory), `labour_payments` (labour), `scan_log` (scan), `reservations` (reservations).
+  - **Updated only**: `guests` (frontdesk / guests), `kots` (kitchen / orders), `online_orders` (online-orders), `reviews`
+    (reservations).
+  - **By the screen that owns them**: `compliance_docs`, `compliance_filings` (tax); `facilities` (facilities);
+    `facility_bookings` (facilities / frontdesk); `suppliers` (inventory); `labourers` (insert labour / scan, update labour);
+    `ingredients` (insert inventory / scan, update + kitchen); `room_types` (rooms); `rooms` (insert and delete rooms; update
+    rooms / frontdesk / housekeeping / scan); `dining_tables` (insert and delete settings; update settings / orders / billing /
+    reservations). No delete on facilities, facility_bookings, suppliers, labourers, ingredients, room_types.
+  - `apply_ledger` (the trigger on `stock_ledger`) runs as the caller and updates `ingredients` — whoever may add a ledger
+    line must be able to update an ingredient, or stock-in from the kitchen breaks.
+  - **A new direct write from a screen to one of these tables is refused** unless that screen's module is in the list: an
+    insert raises 42501, an update or delete changes 0 rows *silently* — use `wrote()` or check the count. Widen the wall in
+    a new migration, or write through an RPC.
+  - Still true after 0191: a wall is by module, not by column — anyone holding Rooms (a housekeeping login does) can change
+    a room type's `base_rate`, as the Rooms screen itself lets them; anyone holding Online orders can edit an online order's
+    amounts. Column fences like 0150's are the next step there.
+  - Dry run `dry191.mjs` (rolled back): 96 policies added; for each table and each kind of write, a real login that holds
+    the screen passes the wall and one that does not is refused (28 live profiles, 8 roles); anon updates no room; the walls
+    name the API roles only. 119 passed, 15 skipped (five tables have no rows).
+- **0189 / 0190 — a NAS as a server, the files mirror, the documents' stored copy (2026-11-22; applied the same day).**
+  `data_servers` takes kind `nas` with a `brand` (synology / qnap / docker / linux / windows — required for a NAS, ignored
+  otherwise), `mirror_files`, `mirror_buckets text[]` (default brand, menu, site, compliance; filtered to `_mirror_buckets()` on
+  set), `mirror_at`, `mirror_report`. `data_server_add(p_kind, p_name, p_brand)` replaces the two-argument form (dropped).
+  `data_node_commands.op` takes `mirror`, allowed by `data_server_command` only while the switch is on. `data_node_call` gains
+  **`auth`** (the route asks whose token this is — id, mirror_files, mirror_buckets) and **`mirror_list {bucket, after}`** (one
+  page of 1 000 `storage.objects` of a bucket that server was set to copy, with `public` and `exists`; another bucket is
+  refused 42501 even when it does not exist); `done` of a mirror writes `mirror_report` / `mirror_at`. The **`compliance`**
+  bucket is private, 20 MB, PDF/PNG/JPEG/WebP, with `compliance_select/insert/update/delete` on storage.objects for owner or
+  manager inside `auth_restaurant_id()`'s folder. `compliance_docs` gains `file_path, file_name, file_bytes, file_mime`. 0190
+  `nas_keeps_files()` (security definer, stable, authenticated only) is the only thing of `data_servers` a tenant can learn.
+  Dry runs `dry189.mjs` (17) and `dry190.mjs` (5), rolled back; both applied with `--live`. The storage policy was also proved
+  from a signed-in owner (`nas-e2e.mjs`: own folder accepted, another property's folder refused).
 - **0188 — no double booking, no webhook replay (2026-11-17; applied 2026-11-22).** Two of the 2026-11-09 review's open
   defects. `bookings_no_double_booking`: `exclude using gist (room_id with =, daterange(check_in, check_out, '[)') with &&) where
   room_id is not null and status in ('reserved','checked_in')` — the race between `create_booking`, `public_book` and
@@ -215,6 +264,19 @@ made in between is silently undone.
   for authenticated, and 113 server actions write tables straight through the person's own session (fenced by tenant only,
   not by role) — the 0150 fence covers bills, invoices, invites, day_closes, business_periods; widening it is the next piece
   of security work (full-review memory, 2026-11-09).
+- **0185 — websites: applied to the live database on 2026-11-22, not before.** 0186–0190 had each gone on by their own
+  dry-run script, and nobody ran the all-pending `migrate.mjs --live`, so the ledger had a hole under them: no `websites`
+  table, no `website_*` function, no `site` bucket, `default_features()` without `website` — Settings → Website said "not
+  on this database yet" on the live site. `dry185.mjs` (23 rolled back; `--live` 24, recorded): the four tables with no
+  write grant for the API roles (0187's rule holds for tables made after it), the bucket and its four policies,
+  `room_types.photos`, the four plans; as a demo owner — the checklist, a save (links kept, options cut to Basic, a domain
+  refused with the reason), anon's public read with no id and nothing for an unknown slug, no count on Basic, a demo kept
+  out of the sitemap, `website_setup` refused to anon, an owner refused a plan; as the master — a plan assigned and one
+  renamed (both logged); back as the owner — the extras kept on Premium, the count on, stats, another host's photo dropped,
+  a hidden site answering nothing; the dry rows removed and Standard put back in the `--live` run. **A gap in the ledger is
+  invisible from the file numbers** — `select name from _dineflow_migrations` before calling a section broken. Another
+  session's untracked 0191 was in the folder that day: `migrate.mjs --live` would have applied it too, so one file by its
+  own script.
 - **0186 — Ember, and four themes only (2026-11-16).** Accepts `'ember'` and retires `'colour'` (0117) and `'bright'` (0118):
   two `update`s move any saved row to dark / paper first (the live table had 1 dark, 3 royal), then the check and the
   function's guard are reset to `('dark', 'paper', 'royal', 'ember', 'system')`. Dry-run `dry186.mjs` (12: a row planted on

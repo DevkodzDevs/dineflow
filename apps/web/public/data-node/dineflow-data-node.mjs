@@ -15,6 +15,8 @@
  *   DINEFLOW_NODE_DIR       where backups go (default: ./dineflow-backups beside this file)
  *   DINEFLOW_POLL_SECONDS   how often to ask the cloud (default 60)
  *   DINEFLOW_NIGHTLY_HOUR   the hour (this machine's clock) for the nightly backup (default 2)
+ *   DINEFLOW_FILES_DIR      where the copied photos and documents go when that switch is on for this server (0189; default ./dineflow-files)
+ *   DINEFLOW_CLOUD_URL      the app's own address, e.g. https://www.dineflow.cloud — private files (documents, attendance) come through it (0189)
  * Run:  node dineflow-data-node.mjs            Check:  node dineflow-data-node.mjs --check
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync, renameSync, appendFileSync } from "node:fs";
@@ -25,7 +27,7 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import path from "node:path";
 
-export const VERSION = "1.0.0";
+export const VERSION = "1.2.0";
 const FORMAT = "dineflow-backup", FORMAT_VERSION = 1, PAGE = 2000, CHUNK = 2000, RESTORE_CHUNK = 500;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -40,6 +42,7 @@ function loadEnv() {
   return {
     url: (e.DINEFLOW_URL ?? "").replace(/\/$/, ""), anon: e.DINEFLOW_ANON_KEY ?? "", token: e.DINEFLOW_NODE_TOKEN ?? "",
     dir: path.resolve(e.DINEFLOW_NODE_DIR || path.join(HERE, "dineflow-backups")),
+    filesDir: path.resolve(e.DINEFLOW_FILES_DIR || path.join(HERE, "dineflow-files")), cloud: String(e.DINEFLOW_CLOUD_URL ?? "").replace(/\/$/, ""),
     poll: Math.max(15, Number(e.DINEFLOW_POLL_SECONDS) || 60), nightlyHour: Math.min(23, Math.max(0, Number(e.DINEFLOW_NIGHTLY_HOUR ?? 2))),
   };
 }
@@ -127,7 +130,7 @@ export function backupName(kind, at, slug) {
 const META = () => path.join(cfg.dir, "inventory.json");
 let meta = { files: {}, lastNightlyDay: null };
 function loadMeta() { try { meta = { files: {}, lastNightlyDay: null, ...JSON.parse(readFileSync(META(), "utf8")) }; } catch { meta = { files: {}, lastNightlyDay: null }; } }
-function saveMeta() { try { writeFileSync(META(), JSON.stringify(meta, null, 1)); } catch (e) { log("could not save inventory.json:", e.message); } }
+function saveMeta() { try { mkdirSync(cfg.dir, { recursive: true }); writeFileSync(META(), JSON.stringify(meta, null, 1)); } catch (e) { log("could not save inventory.json:", e.message); } }
 function walk(dir, base = dir, out = []) {
   if (!existsSync(dir)) return out;
   for (const n of readdirSync(dir)) {
@@ -162,16 +165,28 @@ async function report() {
   return {
     host: os.hostname(), platform: process.platform, os: `${os.type()} ${os.release()}`, arch: os.arch(), node: process.version, cpus: os.cpus().length,
     load: os.loadavg().map((x) => Math.round(x * 100) / 100), mem_total: os.totalmem(), mem_free: os.freemem(), uptime_s: Math.round(os.uptime()),
-    dir: cfg.dir, started_at: STARTED, poll_seconds: cfg.poll, nightly_hour: cfg.nightlyHour, last_error: lastError, ...disk,
+    dir: cfg.dir, files_dir: cfg.filesDir, mirrored: mirrorStats(loadFilesIndex()), mirror_last: lastMirror,
+    started_at: STARTED, poll_seconds: cfg.poll, nightly_hour: cfg.nightlyHour, last_error: lastError, ...disk,
   };
 }
-const STARTED = new Date().toISOString(); let lastError = null;
+const STARTED = new Date().toISOString(); let lastError = null, lastMirror = null;
 
 // ── the jobs ──
+// A page that hits the database's statement timeout (the node reads as anon: 3 s) is fetched again in two halves, down to 250 rows —
+// a big table on a slow moment then costs a few more calls instead of a failed backup (seen once from a container, 2026-11-22).
+async function rowsPage(table, offset, limit, restaurant) {
+  try { return await call("rows", { table, offset, limit, restaurant }); }
+  catch (e) {
+    if (!/timeout/i.test(e.message) || limit <= 250) throw e;
+    const half = limit / 2; log(`${table}: a page of ${limit} timed out — trying ${half}`);
+    const a = await rowsPage(table, offset, half, restaurant); if (a.length < half) return a;
+    return a.concat(await rowsPage(table, offset + half, half, restaurant));
+  }
+}
 async function readTable(t, restaurant) {
   const rows = [];
   for (let off = 0; ; off += PAGE) {
-    const page = await call("rows", { table: t.name, offset: off, limit: PAGE, restaurant });
+    const page = await rowsPage(t.name, off, PAGE, restaurant);
     rows.push(...page); if (page.length < PAGE) return rows;
   }
 }
@@ -269,8 +284,77 @@ async function runCommand(cmd, server, settings) {
     case "prune": return prune(cmd.args.keep ?? server.keep_count);
     case "restore": case "restore_preview": return restore(cmd);
     case "report": return { report: await report(), files: inventory().length };
+    case "mirror": return runMirror(server);   // 0189: copy the chosen buckets' files to this server
     default: throw new Error(`unknown job ${cmd.op}`);
   }
+}
+
+// ── the mirror (0189): this server's copy of every stored file in the buckets it was set to keep ──
+// index.json remembers what was copied (the cloud's size and updated_at); a changed file is fetched again, one that left the cloud stays
+// here (a copy is a copy) and is only no longer counted as the cloud's. Public buckets come straight from storage; private ones through
+// the app's own route with this node's token — it answers 503 until the service-role key is on Vercel, and those files wait.
+const FILES_INDEX = () => path.join(cfg.filesDir, "index.json");
+let filesIndex = null;
+export function loadFilesIndex() {
+  if (filesIndex) return filesIndex;
+  try { filesIndex = JSON.parse(readFileSync(FILES_INDEX(), "utf8")); if (!filesIndex || typeof filesIndex !== "object") filesIndex = {}; } catch { filesIndex = {}; }
+  return filesIndex;
+}
+function saveFilesIndex() { try { mkdirSync(cfg.filesDir, { recursive: true }); writeFileSync(FILES_INDEX(), JSON.stringify(filesIndex, null, 1)); } catch (e) { log("could not save the files index:", e.message); } }
+/** Which of the cloud's files this server does not have yet, or holds an older copy of. Pure — tested from apps/web. */
+export function mirrorPlan(list, index) { return list.filter((f) => { const m = index?.[f.key]; return !m || m.size !== f.size || m.updated_at !== f.updated_at; }); }
+/** What this server holds: copied files and their bytes. */
+export function mirrorStats(index) { let files = 0, bytes = 0; for (const m of Object.values(index ?? {})) { files++; bytes += Number(m.size) || 0; } return { files, bytes }; }
+/** A safe place under the files folder for a cloud object: never a step outside it, however the name is spelt. */
+export function mirrorPath(root, bucket, name) {
+  const parts = String(name).split("/").filter((x) => x && x !== "." && x !== "..");
+  if (!parts.length) throw new Error("empty name");
+  const base = path.join(root, bucket), dest = path.join(base, ...parts);
+  if (dest !== base && !dest.startsWith(base + path.sep)) throw new Error("bad name " + name);
+  return dest;
+}
+async function fetchObject(f) {
+  if (!f.public && !cfg.cloud) return { skipped: "DINEFLOW_CLOUD_URL is not set beside this node" };
+  const url = f.public ? `${cfg.url}/storage/v1/object/public/${f.bucket}/${f.name.split("/").map(encodeURIComponent).join("/")}`
+    : `${cfg.cloud}/api/data-node/object?bucket=${encodeURIComponent(f.bucket)}&name=${encodeURIComponent(f.name)}`;
+  const r = await fetch(url, { headers: f.public ? {} : { "x-dineflow-node": cfg.token }, signal: AbortSignal.timeout(120_000) });
+  if (r.status === 503 && !f.public) { const j = await r.json().catch(() => ({})); return { skipped: j?.error || "the cloud cannot hand out private files yet" }; }
+  if (!r.ok) throw new Error(`${f.bucket}/${f.name}: the cloud answered ${r.status}`);
+  return { bytes: Buffer.from(await r.arrayBuffer()) };
+}
+export async function runMirror(server) {
+  const buckets = Array.isArray(server?.mirror_buckets) ? server.mirror_buckets : [];
+  loadFilesIndex(); mkdirSync(cfg.filesDir, { recursive: true });
+  const out = { at: new Date().toISOString(), files: 0, bytes: 0, copied: 0, copied_bytes: 0, skipped_private: 0, failed: 0, note: null, buckets: {} };
+  let privateNote = null;
+  for (const bucket of buckets) {
+    const seen = []; let after = "", exists = true;
+    for (;;) {
+      const page = await call("mirror_list", { bucket, after });
+      if (!page?.exists) { exists = false; break; }
+      for (const f of page.files) seen.push({ key: `${bucket}/${f.name}`, bucket, name: f.name, size: Number(f.size) || 0, updated_at: f.updated_at, public: !!page.public });
+      if (page.files.length < 1000) break;
+      after = page.files[page.files.length - 1].name;
+    }
+    let copied = 0;
+    for (const f of mirrorPlan(seen, filesIndex)) {
+      if (!f.public && privateNote) { out.skipped_private++; continue; }
+      try {
+        const r = await fetchObject(f);
+        if (r.skipped) { privateNote = r.skipped; out.skipped_private++; continue; }
+        const dest = mirrorPath(cfg.filesDir, f.bucket, f.name); mkdirSync(path.dirname(dest), { recursive: true }); writeFileSync(dest, r.bytes);
+        filesIndex[f.key] = { size: f.size, updated_at: f.updated_at, copied_at: new Date().toISOString() };
+        copied++; out.copied++; out.copied_bytes += r.bytes.length;
+      } catch (e) { out.failed++; log(`mirror ${f.key} failed:`, e.message); }
+    }
+    out.buckets[bucket] = { exists, in_cloud: seen.length, copied_now: copied };
+    saveFilesIndex();
+  }
+  const st = mirrorStats(filesIndex); out.files = st.files; out.bytes = st.bytes;
+  if (out.skipped_private) out.note = `${out.skipped_private} private file${out.skipped_private === 1 ? "" : "s"} waiting: ${privateNote}`;
+  log(`mirror: ${out.copied} copied (${out.copied_bytes} bytes), ${out.skipped_private} waiting, ${out.failed} failed — ${out.files} files on this server`);
+  lastMirror = out;
+  return out;
 }
 
 // ── the loop ──
@@ -296,6 +380,8 @@ export async function tick() {
     meta.lastNightlyDay = day; saveMeta();
     try { await runBackup({ kind: "nightly", settings }); const pr = prune(server.keep_count); deletedSinceLastPoll.push(...pr.deleted); if (pr.deleted.length) log(`pruned ${pr.deleted.length} to keep ${server.keep_count}`); }
     catch { /* logged inside */ }
+    // 0189: the files follow the nightly backup when that switch is on; the result rides along in the next poll's report
+    if (server.mirror_files) { try { await runMirror(server); } catch (e) { lastError = `${new Date().toISOString()} mirror: ${e.message}`; log("nightly mirror failed:", e.message); } }
   }
   return r;
 }
@@ -308,7 +394,7 @@ async function main() {
     try { const r = await call("poll", { version: VERSION, report: await report(), files: inventory() }); console.log(`Connected as "${r.server.name}" (${r.server.kind}). Backups go to ${cfg.dir}. ${r.commands.length} job(s) waiting.`); process.exit(0); }
     catch (e) { console.error("Not connected:", e.message); process.exit(1); }
   }
-  log(`DineFlow data node ${VERSION} on ${os.hostname()} — backups in ${cfg.dir}, asking the cloud every ${cfg.poll}s`);
+  log(`DineFlow data node ${VERSION} on ${os.hostname()} — backups in ${cfg.dir}, files in ${cfg.filesDir}, asking the cloud every ${cfg.poll}s`);
   for (;;) {
     try { const r = await tick(); if (r?.server?.paused) log("paused in Master control — waiting"); lastError = lastError && Date.now() - Date.parse(lastError.slice(0, 24)) > 3600_000 ? null : lastError; }
     catch (e) { lastError = `${new Date().toISOString()} poll: ${e.message}`; log("poll failed:", e.message); }

@@ -6,8 +6,8 @@
  *   everything else GET → stale-while-revalidate
  * Writes are never touched here; they go through the IndexedDB outbox so they survive a reload.
  */
-const V = "dineflow-v22";   // v22 (2026-11-03) an offline page with a query falls back to its page without one (copy); v21 (2026-11-02) the launch loader's sky reaches the foot of an installed iPad (no band); v17 dropped redirected copies; v18 kept /login and the reconnect page; v19 adds the launch loader (boot); v20 serves a kept page only with its build (whole) and drops every older copy
-const SHELL = ["/", "/icon-192.png", "/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/scan", "/tomorrow", "/inventory", "/menu", "/login", "/offline"];
+const V = "dineflow-v23";   // v23 (2026-11-22) keeps /billing/local, the bill with no line (one copy serves every order: the order is in the query); v22 (2026-11-03) an offline page with a query falls back to its page without one (copy); v21 (2026-11-02) the launch loader's sky reaches the foot of an installed iPad (no band); v17 dropped redirected copies; v18 kept /login and the reconnect page; v19 adds the launch loader (boot); v20 serves a kept page only with its build (whole) and drops every older copy
+const SHELL = ["/", "/icon-192.png", "/dashboard", "/orders", "/orders/new", "/kitchen", "/billing", "/billing/local", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/scan", "/tomorrow", "/inventory", "/menu", "/login", "/offline"];
 
 /* Install and activate never fail on storage. When the browser cannot open its cache (low space,
    private mode, a damaged profile — Chrome reports "Failed to execute 'open' on 'CacheStorage'") the
@@ -18,8 +18,14 @@ const SHELL = ["/", "/icon-192.png", "/dashboard", "/orders", "/orders/new", "/k
    that login page under each name, marked redirected, and Safari's engine (every browser on an iPhone) refuses a
    redirected answer from a worker for a navigation — the first network blip then showed "This site can't be reached —
    ERR_FAILED" instead of the page or /offline (2026-10-24). */
-const keep = async (c, path) => { try { const r = await fetch(path, { credentials: "same-origin" }); if (r.ok && !r.redirected) await c.put(path, r); } catch { /* offline or quota */ } };
-self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => Promise.all(SHELL.map((p) => keep(c, p)))).catch(() => {}).then(() => self.skipWaiting())); });
+/* An answer that is not kept is let go (v23, 2026-11-22). A restaurant has no /rooms, /frontdesk or /housekeeping — they
+   redirect, as / and /login do when signed in — and each of those answers was dropped with its body unread. Over HTTP/1.1
+   (the box, a self-hosted server, `next start`) an unread body holds its connection, the browser allows six per host, and
+   after five of them the rest of the list never got a connection: the install never finished, so the worker never took
+   charge and nothing at all was kept on the device (offline.mjs: "installing" for minutes, 8 of 18 copies). Vercel's HTTP/2
+   hid it. And the install no longer waits on the list for ever: after 20 s the worker takes charge with what it has. */
+const keep = async (c, path) => { try { const r = await fetch(path, { credentials: "same-origin" }); if (r.ok && !r.redirected) await c.put(path, r); else if (r.body) await r.body.cancel().catch(() => {}); } catch { /* offline or quota */ } };
+self.addEventListener("install", (e) => { e.waitUntil(Promise.race([caches.open(V).then((c) => Promise.all(SHELL.map((p) => keep(c, p)))).catch(() => {}), new Promise((ok) => setTimeout(ok, 20000))]).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => { e.waitUntil((async () => {
   try { const keys = await caches.keys(); await Promise.all(keys.filter((k) => k !== V).map((k) => caches.delete(k))); } catch { /* storage unavailable */ }
   /* navigation preload off (v19): the launch loader holds a page's answer past its own event, and Safari's engine cancels
@@ -56,7 +62,10 @@ const copy = async (req) => {
    it runs offline whole; else the reconnect page, which opens the live page the moment the server answers. */
 const whole = async (res) => {
   try {
-    const files = [...new Set((await res.clone().text()).match(/\/_next\/static\/[^"'\s<>()\\]+\.(?:js|css)/g) || [])];
+    /* v23: a route group's own files live under `app/(app)/…` — the brackets were excluded (so a path in `url(…)` would not
+       run on), which left out every screen's page and layout script: a screen that had only ever been warmed, never opened,
+       was judged whole and then failed on its own script (ChunkLoadError) with no line. A whole `(name)` segment is allowed. */
+    const files = [...new Set((await res.clone().text()).match(/\/_next\/static\/(?:[^"'\s<>()\\]|\([^"'\s<>()\\/]*\))+\.(?:js|css)/g) || [])];
     for (const f of files) if (!(await caches.match(f, { ignoreSearch: true }))) return false;   // a ?dpl= tail does not matter
     return true;
   } catch { return false; }
@@ -180,6 +189,10 @@ const ready = async (u) => {
   if (!h) return say("gone");
   return say(await Promise.race([h.p.then(() => "ok", () => "fail"), new Promise((ok) => setTimeout(() => ok("wait"), 20000))]));
 };
+/* v23: a page answered from the device's copy says so (Server-Timing: df-copy — the one response header a page can read
+   about itself, through its navigation timing). The server did not answer, whatever the browser thinks of the Wi-Fi: the
+   app starts in offline mode at once (lib/offline/sync.ts startSync) instead of waiting for the first write to fail. */
+const kept = (c) => { try { const h = new Headers(c.headers); h.set("Server-Timing", "df-copy"); return new Response(c.body, { status: c.status, statusText: c.statusText, headers: h }); } catch { return c; } };
 /* the loader is for pages, not a file someone is downloading */
 const bootable = (url) => !/\.[a-z0-9]{2,5}$/i.test(url.pathname) && !url.pathname.startsWith("/get/") && !url.pathname.startsWith("/__df");
 /* a page's answer as the browser gets it: the host's 502/503/504 become the reconnect page */
@@ -231,7 +244,7 @@ self.addEventListener("fetch", (e) => {
         }
         if (r === "late") return reconnect("slow");
         return finish(e.request, r);
-      } catch { const c = await copy(e.request); return c && (await whole(c)) ? c : reconnect("offline"); }
+      } catch { const c = await copy(e.request); return c && (await whole(c)) ? kept(c) : reconnect("offline"); }
       finally { clearTimeout(timer); clearTimeout(bootT); }
     })());
     return;

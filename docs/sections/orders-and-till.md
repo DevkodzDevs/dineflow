@@ -557,3 +557,12 @@ The owner: "Choose and Add — compact and modern; even card heights; the select
   - **The order page:** the head reads **T3 + T5** with *Merged · 2 tables* (`[data-merged-head]`).
   - `merge_orders` still sets the joined table free in `dining_tables` (unchanged); the screens show it as part of the merged order until
     that order closes or someone seats a new order there.
+
+- **With no line (2026-11-22, offline Step 2 — shell-and-nav.md has the whole account).** The floor draws this device's own
+  queued work (`floorWith`, `lib/offline/local.ts`): an order taken offline is on its table in the "ordered" colour with an *On
+  this device* pill (`[data-local-tag]`, `a[data-table-card][data-local]`), has no number yet ("Offline" where `#n` goes), and
+  an order paid on the device frees its table. Offline every order opens on `/billing/local` (`hrefOf`) — `/orders/<id>` is not
+  on the device. The till queues `Job.show` with each ticket (names, the prices it showed, the dish's GST rate), reads
+  `?local=` / `?add=` / `?table=` / `?type=` after mount when it is the device's copy, and adds to an order that is itself still
+  on the device (`AddTo.local` → `add_to_client`). The floor's order read carries `gst_rate, notes` per line for the offline
+  bill. Do not thread a server lookup into any of this: these paths run with no server.

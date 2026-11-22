@@ -949,7 +949,63 @@ offline bills numbered on sync**). Step 1:
 - Kept on purpose: the sign-in screen still clears saved pages (`SignedOutCleanup` — a shared till must not leak the last shift).
 - Pulse: `walkin_add` replays with `client_id` (0168, dineflow-55); the stock count sends `counted_at` (0169, inventory.md).
 - Not yet (Step 2/3): screens read their data from the device; generate bill offline (provisional); tables, cleaning, housekeeping,
-  front desk, attendance offline; queued orders drawn on the floor and the till's strip.
+  front desk, attendance offline; queued orders drawn on the floor and the till's strip. *(2026-11-22: the queued orders on the
+  floor and the provisional bill are done — next section.)*
+
+## 2026-11-22 — offline, Step 2 (first half): one till keeps working — order, add dishes, bill, payment (the owner: "the application must work offline too")
+Step 1 kept a write and sent it later, but the device could not *see* its own work: an order taken with no line was a count on
+the pill, its table still read Free, it could not be added to and could not be billed until the line came back. Now:
+- **`lib/offline/local.ts`** (pure, tested) turns the outbox into the floor's own shape. A queued `place_order` is an order with
+  the id `local:<client_id>`; a queued add is more dishes on its order; a queued `bill_settle` takes the order off the floor.
+  The till puts **`Job.show`** on what it queues (the dishes by name, at the price it showed, the dish's GST rate, where) —
+  drawn, never sent. `useJobs()` keeps a screen current with the outbox.
+- **Orders** (`OrdersClient`) draws `floorWith(serverOrders, jobs)`: the table is occupied in the "ordered" colour with an *On
+  this device* pill (`[data-local-tag]`, `--color-label` / `--color-on-label`), totals include queued dishes, and an order paid
+  on the device frees its table. With no line every order opens on **`/billing/local`** (`?c=` an order still here, `?o=` a
+  server order) — `/orders/<id>` is one page per order and is never on the device. The floor as the server last gave it is kept
+  in IndexedDB (`snap:floor`, `cache` store) for that screen and the till. The billing board's *Ready to bill* does the same.
+- **`/billing/local`** (`app/(app)/billing/local`): one page for every order — the order is in the query and read in the browser,
+  so the single copy the worker keeps (path fallback, v22) serves them all. `computeBill` on the device: GST per dish, the
+  service-charge switch, a discount, split payments, cash keys and change. It is **provisional** — no bill number on the screen
+  or the paper ("PROVISIONAL", "** OFFLINE COPY **", a footer saying the number comes on sync). No coupon, points, on-time
+  promise or charge-to-room offline: each needs the server. Online, a server order's link goes to its live bill instead.
+- **The till** reads its address after mount when it is the device's copy (the copy is drawn for no table): `?local=` adds to an
+  order still on the device (strip: "Adding to this table's order"), and offline `?add=` / `?table=` / `?type=` are honoured
+  from the floor copy. `menu_items.gst_rate` now rides in the till's menu read.
+- **The outbox** (`sync.ts`): `place_order` with `add_to_client` and the new **`bill_settle`** hang on an order that has no id
+  yet — `waitsOn()`; `flush` skips them while that order's own job is still in the store (not counted as a try), and `orderOf`
+  finds the id by `orders.client_id` once it has landed. `bill_settle` = the server's `generate_bill` (so **the bill takes its
+  number from the sequence on sync** — the owner's rule) then `settle_bill`, replay-safe at each step (a bill already there is
+  used; a paid one ends the job). `fitPayments`: cash over the server's total is change; **short is never settled** — the bill
+  stays unpaid and the job is held with "short by …" (`permanent` now includes it). No migration: orders.client_id is 0004.
+- **Wi-Fi with no internet, from the first paint**: a page the worker answers from its copy carries `Server-Timing: df-copy`
+  (sw.js `kept`, **v23**); `startSync` reads it from the navigation timing and starts offline, instead of believing
+  `navigator.onLine` until the first write failed (the floor then linked to pages that are not on the device).
+- **The warm-up keeps a screen only when it is *whole*** (`OfflineProvider`): "warmed in the last half hour" was believed
+  whenever the first screen had a copy at all — but the worker's own install keeps every screen's HTML with none of its build
+  files. So on a device's first visit (the warm-up ran before the worker controlled the page, its fetches passed the worker by)
+  and after **every worker update** (the cache is emptied) no screen opened offline for the next half hour unless someone had
+  visited it. Found by `offline.mjs` on its first run: 30 of 30 files missing for `/orders`, `/orders/new`, `/billing/local`.
+  Now each screen is checked the way sw.js `whole` checks it, a screen that is not whole is warmed whatever the clock says,
+  nothing is warmed until the worker is in charge, and `controllerchange` warms at once.
+- **The worker's install could never finish on HTTP/1.1** (the box, a self-hosted server, `next start`). A restaurant has no
+  /rooms, /frontdesk or /housekeeping — they redirect, as / and /login do when signed in — and each such answer was dropped
+  with its body unread. An unread body holds its connection, the browser allows six per host, and after five the rest of the
+  list never got one: `installing` for minutes, 8 of 18 copies, the worker never in charge, **nothing kept at all**. Vercel's
+  HTTP/2 hid it. `keep` now cancels a body it does not keep, and the install takes charge after 20 s with what it has.
+- **A screen's own page script was never counted** — sw.js `whole` and the warm-up's `files()` matched
+  `/_next/static/[^"'\s<>()\\]+`, and every staff screen's script is under `app/(app)/…`. A screen that had only been warmed,
+  never opened, was judged whole and then died on its own script with no line (`ChunkLoadError` — exactly what v20 was written
+  to stop). The pattern now allows a whole `(name)` segment; a path in `url(…)` or `a.js),(b.js` still does not run on.
+- **`fromDeviceCopy()`** (sync.ts) is the test for "this page is the device's copy" — the till uses it, not `navigator.onLine`,
+  to decide whether to read its table from the address (Wi-Fi with no internet reads online, and the till sent "Pick a table").
+- **What this does not do** (say so when asked): two devices cannot see each other's work with no line — a waiter's phone and a
+  kitchen screen need the server between them (the box, `docker-compose.box.yml`, is the answer for a site with poor internet);
+  the kitchen screen does not draw this device's queued orders; a bill raised offline is dated when it syncs, so a sale at 23:55
+  synced after midnight lands on the next business day; the hotel side (front desk, housekeeping, cleaning, attendance) is Step 3.
+- Verify: `local.test.ts` (21); `offline.mjs` **35 passed · 0 failed** and `offline-look.mjs` **264 passed · 0 failed** on
+  2026-11-22 against `next start` of a private build (testing-and-gates.md says what each checks). The first three runs of
+  `offline.mjs` failed, and each failure was one of the three faults above — none of them was in the new code.
 
 - **A second cron (2026-11-05, 0172):** `apps/web/vercel.json` also runs `/api/cron/backup` at `30 20 * * *` (02:00 IST). admin-and-membership.md → Data.
 

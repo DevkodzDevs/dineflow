@@ -14,6 +14,7 @@ import s from "../Data.module.css";
 const KIND_INTRO: Record<ServerKind, { title: string; sub: string; cost: string }> = {
   own: { title: "Own server", sub: "A machine you own that stays on — a mini PC, a Raspberry Pi, an old PC with a big disk. Backups live on its disk, away from the cloud.", cost: "Free · the machine and its power" },
   laptop: { title: "Laptop", sub: "Your laptop keeps the backups while it is on. It catches up with the nightly when it comes back.", cost: "Free" },
+  nas: { title: "NAS", sub: "A Synology, QNAP or other NAS at the property. Set up from Data → NAS: backups and a copy of every photo and document, on your own LAN.", cost: "Free · the NAS and its power" },
   cloud: { title: "Outside · Supabase", sub: "The live database's own storage. Backups here are quick but sit beside the data they protect — keep a copy elsewhere too.", cost: "Free to 1 GB · Pro $25 a month" },
 };
 

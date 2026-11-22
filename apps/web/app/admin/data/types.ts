@@ -30,27 +30,35 @@ export type Backup = {
 };
 export type Env = { cron: boolean; serviceRole: boolean; region: string | null; ref: string | null; roundTrip: number; anonKey: string; url: string };
 
-export type ServerKind = "cloud" | "own" | "laptop";
+export type ServerKind = "cloud" | "own" | "laptop" | "nas";
+/** 0189: where a NAS node lives — a Docker brand runs the compose file, a box beside the NAS runs the installer with the NAS share as its folder. */
+export type NasBrand = "synology" | "qnap" | "docker" | "linux" | "windows";
 export type Report = {
   host?: string; platform?: string; os?: string; arch?: string; node?: string; cpus?: number; load?: number[]; mem_total?: number; mem_free?: number;
   uptime_s?: number; dir?: string; started_at?: string; poll_seconds?: number; nightly_hour?: number; last_error?: string | null; disk_total?: number; disk_free?: number;
+  /* 0189, node 1.2: the files folder, what it holds, and the nightly mirror's last result (a manual Copy now lands in mirror_report instead) */
+  files_dir?: string; mirrored?: { files: number; bytes: number }; mirror_last?: MirrorReport | null;
 };
+export type MirrorReport = { at?: string; copied?: number; copied_bytes?: number; bytes?: number; files?: number; skipped_private?: number; failed?: number; note?: string | null };
 export type DataServer = {
   id: string; kind: ServerKind; name: string; token_hint: string | null; keep_count: number; nightly: boolean; paused: boolean; note: string | null; version: string | null;
   created_at: string; last_seen_at: string | null; last_report: Report | null; online: boolean; files: number; files_bytes: number; queued: number; failed_24h: number;
   backups: number; last_backup: { id: string; at: string; size_bytes: number | null; rows_total: number | null; verify_ok: boolean | null; kind: string } | null; active: boolean;
+  // 0189 — a NAS: its brand and the two switches; the mirror report is the node's last word on the copied files
+  brand?: NasBrand | null; mirror_files?: boolean; mirror_buckets?: string[]; mirror_at?: string | null;
+  mirror_report?: { files?: number; bytes?: number; copied?: number; skipped_private?: number; failed?: number; note?: string | null } | null;
 };
 export type NodeFile = {
   name: string; size_bytes: number | null; sha256: string | null; stored_at: string | null; verified_at: string | null; verify_ok: boolean | null; verify_note: string | null;
   seen_at: string; backup_id: string | null; kind: string | null; rows_total: number | null; tables: number | null; label: string | null; restaurant_id: string | null;
 };
 export type Command = {
-  id: string; server_id: string; op: "backup" | "verify" | "delete" | "prune" | "restore" | "restore_preview" | "report"; args: Record<string, unknown>;
+  id: string; server_id: string; op: "backup" | "verify" | "delete" | "prune" | "restore" | "restore_preview" | "report" | "mirror"; args: Record<string, unknown>;
   status: "queued" | "taken" | "done" | "failed"; created_at: string; taken_at: string | null; done_at: string | null; result: Record<string, unknown> | null; error: string | null;
 };
 export type RecordRow = Backup & { restaurant: string | null; server: string; server_kind: ServerKind; on_disk: boolean | null };
 export type Activity = { id: string; at: string; action: string; target: string | null; meta: Record<string, unknown> | null; by: string | null };
 
 export const CLOUD_ID = "00000000-0000-4000-8000-000000000001";
-export const KIND_LABEL: Record<ServerKind, string> = { cloud: "Outside · Supabase", own: "Own server", laptop: "Laptop" };
-export const KIND_SHORT: Record<ServerKind, string> = { cloud: "Cloud", own: "Own server", laptop: "Laptop" };
+export const KIND_LABEL: Record<ServerKind, string> = { cloud: "Outside · Supabase", own: "Own server", laptop: "Laptop", nas: "NAS" };
+export const KIND_SHORT: Record<ServerKind, string> = { cloud: "Cloud", own: "Own server", laptop: "Laptop", nas: "NAS" };

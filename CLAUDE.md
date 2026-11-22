@@ -43,7 +43,7 @@ transaction you roll back, then apply with `node scripts/migrate.mjs` — agains
 ```
 pnpm lint        # 0 errors (13 warnings are known)
 pnpm typecheck
-pnpm test        # 411 unit tests in 54 files (2026-11-16)
+pnpm test        # 453 unit tests in 58 files (2026-11-22)
 pnpm build       # note: this clobbers .next and kills a running `next dev`
 ```
 
@@ -102,6 +102,10 @@ PR descriptions end with:
 
 ## Known open items
 
+- **NAS (0189/0190, 2026-11-22):** Master control → Data → NAS is built and proved with the node run locally and in Docker; the owner
+  has no NAS yet — only the connection step is left. Private files (documents, attendance, support) copy only once
+  `SUPABASE_SERVICE_ROLE_KEY` is on Vercel; public buckets copy today. Running DineFlow on the NAS is the next phase.
+  [admin-and-membership.md](docs/sections/admin-and-membership.md)
 - Seven legal facts in `lib/company.ts` are still `null` — blocks launch and blocks subscription
   checkout. [legal.md](docs/sections/legal.md)
 - Razorpay subscription checkout is built (0151) and **off until** `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,

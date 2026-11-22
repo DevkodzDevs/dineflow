@@ -95,9 +95,10 @@ export async function POST(req: Request) {
       // ── 0173: servers ──
       case "servers": { const { data, error } = await db.rpc("data_servers_get"); if (error) return bad(error.message, 500); return NextResponse.json({ servers: data }); }
       case "server-add": {
-        const kind = body.kind === "own" || body.kind === "laptop" ? body.kind : null; const name = typeof body.name === "string" ? body.name.trim().slice(0, 60) : "";
-        if (!kind) return bad("A server is your own server or a laptop."); if (name.length < 2) return bad("Give the server a name.");
-        const { data, error } = await db.rpc("data_server_add", { p_kind: kind, p_name: name }); if (error) return bad(error.message, 400);
+        const kind = body.kind === "own" || body.kind === "laptop" || body.kind === "nas" ? body.kind : null; const name = typeof body.name === "string" ? body.name.trim().slice(0, 60) : "";
+        const brand = kind === "nas" && typeof body.brand === "string" && ["synology", "qnap", "docker", "linux", "windows"].includes(body.brand) ? body.brand : null;   // 0189
+        if (!kind) return bad("A server is your own server, a laptop or a NAS."); if (name.length < 2) return bad("Give the server a name."); if (kind === "nas" && !brand) return bad("Which NAS is it?");
+        const { data, error } = await db.rpc("data_server_add", { p_kind: kind, p_name: name, p_brand: brand }); if (error) return bad(error.message, 400);
         return NextResponse.json(data);
       }
       case "server-set": { if (!id) return bad("Which server?"); const { data, error } = await db.rpc("data_server_set", { p_id: id, p: body.p ?? {} }); if (error) return bad(error.message, 400); return NextResponse.json({ servers: data }); }

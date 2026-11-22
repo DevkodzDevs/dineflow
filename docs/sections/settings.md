@@ -204,7 +204,8 @@ pnpm --filter @dineflow/web typecheck
 - **General → Website** (`WebsiteCard.tsx`, above the quick links; owner and managers, with the `website` add-on on). No site:
   **Create website** (the owner; a manager reads *Owner only*). It opens the checklist dialog for this kind of property and
   `saveWebsite` → `website_save`. With a site: the address, *Live* / *Hidden*, Copy link, Open, Edit. Before 0185 is on the
-  database the owner sees an orange note and no button. All of it: [website.md](website.md).
+  database the owner sees an orange note and no button — **which is what the live site showed until 2026-11-22: 0185 had
+  never been applied there** (website.md, *On the real database*). All of it: [website.md](website.md).
 - **2026-11-16 — the card's *Search & social* row** (`[data-website-reach]`, shown once a site exists; owner and managers): a
   bar and a count (`12/20`) of what this **kind** of property needs to be found and shared (`websiteReach`, shared). It opens a
   sheet in three groups — Search (SEO), Social media, Marketing & trust: rows the website does by itself are marked **Auto**;
@@ -229,7 +230,8 @@ pnpm --filter @dineflow/web typecheck
   over 12 MB is refused there with the reason, before anything is sent. Extras gained **Look** (Night · Calm · Day, three radio
   cards), **Also in** தமிழ் / हिन्दी (two switch rows), **Instagram posts** (three boxes) and **Your own web address** (the
   hint says DineFlow support connects it). File inputs are `hidden` + inline `display:none` (design-system.md).
-  Before 0185 is on the database an upload answers "not on this database yet". website.md, *Ninth pass*.
+  Before 0185 is on the database an upload answers "not on this database yet" (it is, since 2026-11-22; the upload was
+  clicked through on the real database that day — `website-upload.mjs`, 8). website.md, *Ninth pass*.
 - **2026-11-17 — the website follows the property's website plan** (`[data-website-plan]` on the card: *Standard plan · 5 of 13
   extras included*, opening a sheet of the four plans with prices, ticks and locks, *Your plan*, and Help & support as the
   way to change it). In the dialog an extra the plan does not include is a **locked row** (`[data-website-locked=<extra>]`:

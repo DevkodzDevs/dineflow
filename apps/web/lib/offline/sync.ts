@@ -34,8 +34,8 @@ export async function discardJob(id: string) { await delJob(id); await pushQueue
  *  sent only while the device is in that outlet again — never into the outlet it happens to be in when the line returns. */
 let currentOutlet: string | null = null;
 export const setOfflineOutlet = (id: string | null) => { currentOutlet = id; };
-export async function enqueue(kind: JobKind, args: Record<string, unknown>, label: string) {
-  const job: Job = { id: crypto.randomUUID(), kind, args, at: Date.now(), tries: 0, label, outlet: currentOutlet ?? undefined };
+export async function enqueue(kind: JobKind, args: Record<string, unknown>, label: string, show?: unknown) {
+  const job: Job = { id: crypto.randomUUID(), kind, args, at: Date.now(), tries: 0, label, outlet: currentOutlet ?? undefined, ...(show === undefined ? {} : { show }) };
   await putJob(job); await pushQueue(); void flush();
   return job.id;
 }
@@ -61,6 +61,36 @@ export async function sendOrQueue<T>(send: () => Promise<T>, queue: () => Promis
   catch (e) { if (!isNetworkError(e)) throw e; markUnreachable(); await queue(); return null; }
 }
 
+/** Payments taken on the device, fitted to what the bill came to on the server. They match unless the order changed between
+ *  the provisional bill and the sync; cash given over the total is change, never takings. Short is the caller's to refuse. */
+export function fitPayments<P extends { method: string; amount: number }>(pays: P[], total: number): { pays: P[]; short: number } {
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  let over = r2(pays.reduce((t, p) => t + Number(p.amount || 0), 0) - total);
+  if (over < -0.01) return { pays, short: r2(-over) };
+  const out = pays.map((p) => ({ ...p }));
+  // cash first (it is change), then whatever else was typed over
+  for (const cash of [true, false]) for (let i = out.length - 1; i >= 0 && over > 0.005; i--) {
+    if ((out[i].method === "cash") !== cash) continue;
+    const cut = Math.min(over, Number(out[i].amount)); out[i].amount = r2(Number(out[i].amount) - cut); over = r2(over - cut);
+  }
+  return { pays: out.filter((p) => Number(p.amount) > 0), short: 0 };
+}
+/** The order a job was taken on. An order placed offline has no id yet — only the `client_id` its place_order job carries
+ *  (orders.client_id, 0004); once that job has landed, the id is one read away. */
+type Db = Awaited<ReturnType<typeof getClient>>;
+async function orderOf(s: Db, a: { order_id?: string | null; order_client?: string | null }): Promise<string> {
+  if (a.order_id) return a.order_id;
+  const { data, error } = await s.from("orders").select("id").eq("client_id", a.order_client as string).limit(1).maybeSingle();
+  if (error) throw error;
+  if (!data?.id) throw new Error("order not found — the order this belongs to never reached the server");
+  return data.id as string;
+}
+/** The order placed offline that a later job hangs on (more dishes for it, its bill and payment). */
+export const waitsOn = (j: Job): string | null => {
+  const a = j.args as { add_to_client?: string; order_client?: string };
+  return j.kind === "place_order" ? a.add_to_client ?? null : j.kind === "bill_settle" ? a.order_client ?? null : null;
+};
+
 async function run(job: Job) {
   // only reached when there is a queued write to send, which is long after the screen has painted
   const s = await getClient();
@@ -69,6 +99,8 @@ async function run(job: Job) {
     case "place_order": {
       // the till queues the order as it would send it online: customer_name / customer_phone, and a delivery address
       const a = job.args as Record<string, never>;
+      // 2026-11-22: more dishes for an order that was itself placed offline — it has an id by now (flush sends its order first)
+      if (a.add_to_client) { fail((await s.rpc("order_add_items", { p_order_id: await orderOf(s, { order_client: a.add_to_client }), p_items: a.items, p_note: a.note, p_client_id: a.client_id, p_placed_at: a.placed_at })).error); break; }
       // 0165: Add items on an open order — a new kitchen ticket on it; client_id makes a replay a no-op
       if (a.add_to) { fail((await s.rpc("order_add_items", { p_order_id: a.add_to, p_items: a.items, p_note: a.note, p_client_id: a.client_id, p_placed_at: a.placed_at })).error); break; }
       const { data: id, error } = await s.rpc("place_order", { p_table_id: a.table_id, p_type: a.type, p_items: a.items, p_customer: a.customer ?? { name: a.customer_name ?? null, phone: a.customer_phone ?? null }, p_note: a.note, p_client_id: a.client_id, p_placed_at: a.placed_at, p_promise: a.promise ?? false });
@@ -78,6 +110,30 @@ async function run(job: Job) {
       break;
     }
     case "generate_bill": { const a = job.args as Record<string, never>; fail((await s.rpc("generate_bill", { p_order_id: a.order_id, p_discount_pct: a.disc_pct, p_discount_amount: a.disc_amt })).error); break; }
+    /* 2026-11-22, offline Step 2 — a bill raised and paid with no line. The device showed a provisional bill (computeBill, no
+       number); here the server raises the real one, so **the bill takes its number in the sequence when it syncs** (the owner's
+       rule: GST wants an unbroken run) — then the payment taken at the table settles it. Replay-safe at every step: a bill the
+       order already has is used, a paid one ends the job, settle_bill carries the client id. If the server's total is more
+       than what was taken (a dish added from another device, a price changed), the bill stays unpaid and the job is held
+       with the difference — never settled short, never quietly topped up. */
+    case "bill_settle": {
+      const a = job.args as { order_id?: string; order_client?: string; disc_pct?: number; disc_amt?: number; service_on?: boolean; payments: { method: string; amount: number; ref?: string | null }[]; client_id: string };
+      const oid = await orderOf(s, a);
+      const last = async () => { const r = await s.from("bills").select("id, total, status").eq("order_id", oid).neq("status", "void").order("created_at", { ascending: false }).limit(1).maybeSingle(); fail(r.error); return r.data as { id: string; total: number; status: string } | null; };
+      let bill = await last();
+      if (!bill) {
+        const g = await s.rpc("generate_bill", { p_order_id: oid, p_discount_pct: a.disc_pct ?? 0, p_discount_amount: a.disc_amt ?? 0, ...(a.service_on === undefined ? {} : { p_service_charge: a.service_on }) });
+        // "bill already exists": another till raised it between the read and the call — use that one
+        if (g.error && !/bill already exists/i.test(g.error.message ?? "")) throw g.error;
+        bill = await last();
+        if (!bill) throw new Error("bill not found after it was raised");
+      }
+      if (bill.status === "paid") break;
+      const fit = fitPayments(a.payments, Number(bill.total));
+      if (fit.short > 0) throw new Error(`short by ${fit.short.toFixed(2)} — the bill came to ${Number(bill.total).toFixed(2)} when it synced; take the rest on the bill`);
+      fail((await s.rpc("settle_bill", { p_bill_id: bill.id, p_payments: fit.pays, p_client_id: a.client_id })).error);
+      break;
+    }
     case "settle_bill": { const a = job.args as Record<string, never>; fail((await s.rpc("settle_bill", { p_bill_id: a.bill_id, p_payments: a.payments, p_client_id: a.client_id })).error); break; }
     case "item_status": { const a = job.args as { ids: string[]; status: string }; fail((await s.from("order_items").update({ status: a.status }).in("id", a.ids)).error); break; }
     // a bump moves the ticket's lines, as the online path does (setKotStatus): stock is drawn from the line
@@ -106,7 +162,8 @@ async function run(job: Job) {
    and those jobs were deleted as if they had landed. */
 const alreadyDone = (msg: string) => /duplicate key|already exists|already paid|already settled|already accepted|already recorded/i.test(msg);
 /** A rejection that will never succeed however many times we try — bad data, not a bad connection. */
-const permanent = (msg: string) => /violates|not found|permission|invalid input|malformed|syntax/i.test(msg);
+/* "short by" (2026-11-22): a payment that does not cover the bill will not cover it on the sixth try either */
+const permanent = (msg: string) => /violates|not found|permission|invalid input|malformed|syntax|short by/i.test(msg);
 
 let running = false;
 export async function flush(): Promise<number> {
@@ -121,6 +178,10 @@ export async function flush(): Promise<number> {
         set({ lastError: `"${j.label}" waits until this device is back in the outlet it was taken in` }); continue;
       }
       if (j.nextTry && Date.now() < j.nextTry) continue;                 // still backing off
+      /* more dishes, or the bill, for an order placed offline: not before that order has gone. Read fresh — it may have
+         gone a moment ago in this same pass. A held order holds what hangs on it; nothing is lost, both wait for a person. */
+      const dep = waitsOn(j);
+      if (dep && (await allJobs()).some((x) => x.id !== j.id && x.kind === "place_order" && !(x.args as { add_to_client?: string }).add_to_client && (x.args as { client_id?: string }).client_id === dep)) continue;
       try { await run(j); await delJob(j.id); sent++; set({ lastError: null }); await pushQueue(); }
       catch (e) {
         const msg = (e as { message?: string }).message ?? "failed";
@@ -152,6 +213,12 @@ export async function flush(): Promise<number> {
   return sent;
 }
 
+/** Was this page answered from the device's copy (sw.js `kept`)? Then it was drawn for whatever address the copy was made
+ *  at, not this one, and the server did not answer — whatever `navigator.onLine` says. */
+export const fromDeviceCopy = () => {
+  try { return !!(performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.serverTiming?.some((t) => t.name === "df-copy"); } catch { return false; }
+};
+
 export function startSync() {
   if (typeof window === "undefined") return;
   const on = () => { set({ online: true }); void flush(); };
@@ -160,7 +227,9 @@ export function startSync() {
   // a connection can come back without the browser noticing; a quiet ping every 20 s catches it
   const probe = async () => { if (state.online) return; try { const r = await fetch("/api/health", { cache: "no-store" }); if (r.ok) on(); } catch { /* still out */ } };
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void flush(); });
-  set({ online: navigator.onLine }); void pushQueue();
+  /* A page the service worker answered from the device's copy (sw.js `kept`, Server-Timing: df-copy) means the server did
+     not answer — Wi-Fi with no internet reads "online" to the browser. Start offline; the probe below brings it back. */
+  set({ online: navigator.onLine && !fromDeviceCopy() }); void pushQueue();
   const t = setInterval(() => { void flush(); void probe(); }, 15000);
   return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); clearInterval(t); };
 }

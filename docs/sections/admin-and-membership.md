@@ -491,7 +491,56 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
   queued message follow it (`featureOn` in the actions, `has_feature('whatsapp')` inside `wa_queue`). `default_features()` is
   re-created in 0177 with 21 keys; `features.test.ts` reads 0177 now. [settings.md](settings.md), [api-routes.md](api-routes.md).
 
-## Website plans (2026-11-17, 0185)
+## Data → NAS (2026-11-22, 0189 / 0190 — the owner: "a NAS section, perfect; backups and photos & documents now, running DineFlow on the NAS next phase; all brands; build the whole process so only the connection step is left when the NAS arrives")
+- **The idea.** A NAS at the property (Synology, QNAP, any box that runs Docker, or a Linux / Windows machine with the NAS
+  share mounted) is a server of kind `nas` (0173's table, `brand` added) with **two switches of its own**: *Backups on this NAS*
+  (0173's nightly + keep count, unchanged) and *Photos & documents on this NAS* (`mirror_files`) — a copy of every stored file
+  of the buckets ticked in `mirror_buckets` (Logos `brand`, Dish photos `menu`, Website images `site`, Documents `compliance`,
+  Attendance photos `attendance`, Support files `support`; the first four on by default). *Run DineFlow on this NAS when the
+  internet is down* is shown as **next phase** — a row with a chip, not a switch. The owner has no NAS yet: everything was
+  built and proved with the node run from this machine and inside Docker; only the real box is left.
+- **Where:** Data rail → **NAS** (`/admin/data/nas`, `NasClient.tsx`, `NasSetup.tsx`): hero (how many online, last backup,
+  files copied), four tiles (backups, files copied, disk free, private files *copy* / *wait*), one panel per NAS (facts, the two
+  switches, the bucket chips, the next-phase row, **Back up now** / **Copy files now** (`server-command` op `mirror`) / Connect /
+  Dashboard & job log), an empty state that says what a NAS does here, and **Add a NAS** (`?add=1`): brand → name →
+  `server-add {kind:"nas", brand}` → the token once + the setup for that brand. Synology / QNAP / Docker get a
+  **docker-compose.yml** (`composeFor`: `node:20-alpine`, `wget` of the node from the site, the `.env` as `environment`,
+  `<NAS path>:/data` — `/volume1/DineFlow`, `/share/DineFlow`, `/mnt/DineFlow`) and four steps in that NAS's own words
+  (Container Manager / Container Station); Linux and Windows get 0173's `Setup` with `DINEFLOW_NODE_DIR` / `DINEFLOW_FILES_DIR`
+  pointed at the share. `KIND_ICON.nas` is HardDrive; Servers' Add dialog names the NAS and points here.
+- **The node is 1.2.0** (`public/data-node/dineflow-data-node.mjs`): two new settings — `DINEFLOW_FILES_DIR` (default
+  `./dineflow-files`) and `DINEFLOW_CLOUD_URL` (the app's own address) — and a **mirror** job: for each bucket in
+  `server.mirror_buckets` it pages `data_node_call(token, 'mirror_list', {bucket, after})` (1 000 `storage.objects` a page, only
+  a bucket that server was set to copy, `.emptyFolderPlaceholder` skipped), keeps `index.json` (size + updated_at of each copy),
+  fetches what is new or changed — a **public** bucket straight from `/storage/v1/object/public/…`, a **private** one through
+  **`/api/data-node/object?bucket&name`** with the token in `x-dineflow-node` — writes `files/<bucket>/<name>` (`mirrorPath`
+  drops any `..`), and reports `{files, bytes, copied, copied_bytes, skipped_private, failed, note, buckets}`. A file that left
+  the cloud stays on the NAS. The nightly runs the mirror after its backup when the switch is on; that result rides in the next
+  poll's report as `mirror_last` (there is no job to `done`), a *Copy now* lands in `data_servers.mirror_report` / `mirror_at`
+  through `done`; the page shows whichever is newer (`mirrorOf`). `mirrorPlan` / `mirrorPath` / `mirrorStats` are pure and
+  tested (`lib/backup/mirror.test.ts`, 6).
+- **The private route** (`app/api/data-node/object/route.ts`, GET only): the token is checked by the database
+  (`data_node_call … 'auth'` — a wrong one counts against the node throttle), the bucket must be in that server's
+  `mirror_buckets`, then the bytes come down with the service role. **Without `SUPABASE_SERVICE_ROLE_KEY` on Vercel it answers
+  503** and the node counts the file as waiting (`skipped_private`, the reason in `note`; the NAS page's fourth tile says *wait*).
+  Public buckets copy regardless. On 2026-11-22 the key is not set, so documents, attendance and support files wait — like the
+  cloud's nightly does.
+- **The documents themselves** (0189): a private bucket `compliance` (20 MB, PDF / PNG / JPEG / WebP) with four storage policies
+  (owner or manager, own folder `<restaurant_id>/…`), and `compliance_docs.file_path / file_name / file_bytes / file_mime`.
+  Tax & compliance → Documents attaches the copy — see [tax-and-compliance.md](tax-and-compliance.md). **0190**
+  `nas_keeps_files()` is the one fact a tenant may ask: is a NAS keeping a copy of the documents (kind nas, switch on,
+  `compliance` ticked, a finished copy) — the card then says *on the NAS*. Nothing else of `data_servers` reaches a tenant.
+- **Before you edit:**
+  - `data_server_add` is now three arguments (`p_kind, p_name, p_brand`); the two-argument form was dropped. A NAS without a
+    brand is refused; a brand on another kind is ignored.
+  - `data_server_command(…, 'mirror')` is refused while `mirror_files` is off. `data_server_set` filters `mirror_buckets` to
+    `_mirror_buckets()` — add a bucket there and in `BUCKETS` (NasClient) together.
+  - The node polls as **anon**, whose `statement_timeout` is **3 s**: a 2 000-row page of a big table can hit it on a slow moment
+    (one container run did, once in two). The node now retries such a page in halves (1.2.0); a job that still fails shows in the
+    job log and the next nightly tries again.
+  - The compose `wget`s the node from the site at start: deploy the node file with the app, and bump `VERSION` when it changes.
+
+
 - **Keys → Website plans** (`WebsitePlans.tsx` `WebsitePlansCard`, `[data-website-plans-admin]`, under Plans & prices): the
   four plans a property's **website** can be on — Basic, Standard, Premium, Elite. Each editor (`[data-website-plan-editor]`):
   Name, Monthly ₹ and Yearly ₹ (empty = "Ask us"), a tick for each of the thirteen extras (`role=checkbox`; 44px on touch

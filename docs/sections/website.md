@@ -241,7 +241,8 @@ contact details from Settings; the map from the address, in an ultra-modern loca
   fetches any address it is given can be aimed at what a browser cannot reach — any other host means a card with no
   photo. The card's font is Latin: a name in Tamil is not drawn as boxes, the kind and the town carry the card.
 - **The sitemap** (`app/site/sitemap.ts` → `/site/sitemap.xml`, read from `website_index()` an hour at a time, named in
-  `robots.ts`): published, not a demo, membership alive, the add-on on. Before 0185 is applied it is an empty list.
+  `robots.ts`): published, not a demo, membership alive, the add-on on. (It was an empty list on the live site until 0185 was
+  applied there on 2026-11-22 — see *On the real database* at the end.)
 - **The client's own mark** (`Mark`): the logo — else the initial on the accent — on the curtain, over the first screen's
   kicker (`.site-crest`), in the map's pin, on the contact card and in the foot. It was only in the floating menu.
 - **Where it is** (`#contact` is now this section; the closing band follows it and keeps the invitation and the
@@ -359,8 +360,11 @@ The owner: "complete all twelve". The eight that were left, each a choice (`webs
 - **Cost, measured on the build:** first load 118 kB (115 before): the room sheet, the Instagram card and the 3D
   button's shell. The viewer, the film and Instagram's frame are fetched only when asked — `shoot11.mjs` loads the page
   and requires that none of the three was requested.
-- **Not exercised end to end:** uploads (the bucket is in 0185, which is not applied — the dialog was driven on a
-  harness, where the upload answers "not on this database yet"); a real client domain; a real `.glb`.
+- **Exercised on the real database on 2026-11-22** (`website-upload.mjs`, 8 — the bucket arrived with 0185 that day): on Basic
+  the gallery is a locked row; on Standard an 800 px PNG is shrunk on the device, lands in `site/<property>/photo-….webp`,
+  is kept in `restaurants.photos`, shows on the public page, and Remove takes it out of the row and the bucket (the file
+  removal is not awaited by the dialog — it was gone within a second). A photo under 400 px is refused with the reason.
+  **Still not exercised:** a real client domain; a real `.glb`.
 
 ### Tenth pass, 2026-11-17 — website plans
 
@@ -483,8 +487,28 @@ node site-probe.mjs site       # 213 — three kinds × five widths: no sideways
 node site-probe.mjs card       # 61 — the card's states and the dialog in five themes
 ```
 
-The browser probe ran on fixtures, on a temporary page, **before 0185 was applied**: the real path (Settings → Create →
-the live page reading the database) has not been clicked through yet.
+The browser probes of 2026-11-14 to 2026-11-17 ran on fixtures, on a temporary page, because 0185 was not on the database.
+
+## On the real database (2026-11-22)
+
+**0185 had never been applied to the live database.** 0186–0190 were applied around it (each by its own dry-run script with
+`--live`, which records one file), so the live site served the whole website code against a database with no `websites`
+table, no `website_*` function, no `site` bucket and a `default_features()` without `website`: Settings → Website showed
+*Not on this database yet. It arrives with the next update.* and `/site/sitemap.xml` was an empty list. The owner reported
+"the client website section does not work". Found by listing `_dineflow_migrations`; applied with `dry185.mjs --live`
+(24 checks inside the same transaction — a dry run of 23 first). Nothing in 0186–0190 re-creates a function 0185 defines,
+so applying it after them changes nothing else; `default_features()` now carries `website` as `features.ts` says.
+
+Then the real path, on a private dev server against the live database (`website-e2e.mjs`, 27; `website-upload.mjs`, 8;
+the demo properties removed afterwards): a restaurant at 1440 dark and a resort at 412 paper — the card with *Create
+website* and the *Basic plan · 0 of 13 extras* row, the plans sheet (four, this one marked), the checklist (9 rows / 3
+ready for the restaurant, 11 / 6 with rooms for the resort, the ready ones ticked), Create → *Website ready* with the
+address, the card *Live* with Copy / Open / Edit, the row in `websites`, a stranger's `/site/<slug>` at 200 with the name
+and the sections, `noindex` for a demo, the share card as a JPEG, no errors and no sideways scroll on either page; *Show
+to the public* off → *Hidden*, and the public page a 404 **after the 30 s keep** (`lib/keepFor.ts` — a probe that reads
+it at once still gets the old answer; that is the documented half-minute, not a bug). Uploads: the bullet under the ninth
+pass. The live Vercel deployment of 2026-11-22 predates the tenth pass (plans); the plan row and the two Master control
+editors reach the live site with the next deploy — the functions are already there.
 
 ## See also
 

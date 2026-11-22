@@ -4,6 +4,9 @@ import { useMemo, useState } from "react";
 import { Banknote, Smartphone, CreditCard, Receipt, Search, Clock3, ChevronRight, UserRound, Wallet, TrendingUp, AlertCircle, ShoppingBag, Bike, Armchair, BedDouble } from "lucide-react";
 import { cn } from "@/components/ui";
 import { formatINR, fmtTime } from "@/lib/format";
+import { useOffline } from "@/lib/offline/OfflineProvider";
+import { useJobs } from "@/lib/offline/useJobs";
+import { paidHere } from "@/lib/offline/local";
 
 type Line = { qty: number; price_snapshot: number; status: string };
 export type OpenOrder = { id: string; order_no: number; type: string; token_no: number | null; customer_name: string | null; created_at: string; dining_tables: { name: string } | null; order_items: Line[] };
@@ -43,7 +46,10 @@ export function BillingBoard({ open, bills, names, cashier, me }: { open: OpenOr
 
   const totalOf = (o: OpenOrder) => o.order_items.filter((i) => i.status !== "cancelled").reduce((t, i) => t + i.qty * Number(i.price_snapshot), 0);
   const kinds = useMemo(() => { const c: Record<string, number> = {}; for (const o of open) c[o.type] = (c[o.type] ?? 0) + 1; return c; }, [open]);
-  const ready = open.filter((o) => kind === "all" || o.type === kind).sort((a, b) => sort === "biggest" ? totalOf(b) - totalOf(a) : +new Date(a.created_at) - +new Date(b.created_at));
+  /* With no line (2026-11-22, offline Step 2): an order opens on the offline bill — its own page is one per order and is not
+     kept on the device — and an order already paid on this device is no longer waiting to be billed. */
+  const { online } = useOffline(); const paidOnDevice = paidHere(useJobs());
+  const ready = open.filter((o) => !paidOnDevice.has(o.id) && (kind === "all" || o.type === kind)).sort((a, b) => sort === "biggest" ? totalOf(b) - totalOf(a) : +new Date(a.created_at) - +new Date(b.created_at));
   const needle = q.trim().toLowerCase();
   const shown = bills.filter((b) => (state === "all" || b.status === state) && (!needle || [`#${b.bill_no}`, String(b.bill_no), `${b.orders?.order_no ?? ""}`, whereOf(b.orders), b.orders?.customer_name ?? "", names[b.created_by ?? ""] ?? ""].some((x) => x.toLowerCase().includes(needle))));
 
@@ -101,7 +107,7 @@ export function BillingBoard({ open, bills, names, cashier, me }: { open: OpenOr
             <ul className="divide-y divide-[var(--color-separator)]">
               {ready.map((o) => { const m = mins(o.created_at); const t = totalOf(o); const K = KIND[o.type] ?? KIND.dine_in; const n = o.order_items.filter((i) => i.status !== "cancelled").reduce((a, i) => a + i.qty, 0); return (
                 <li key={o.id}>
-                  <Link href={`/billing/${o.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-fill)] transition-colors min-w-0" data-bill-order={o.order_no}>
+                  <Link href={online ? `/billing/${o.id}` : `/billing/local?o=${o.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-fill)] transition-colors min-w-0" data-bill-order={o.order_no}>
                     <span className="h-12 min-w-12 px-2 shrink-0 rounded-[14px] grid place-items-center bg-[var(--color-fill)] font-display text-[18px] leading-none">{o.dining_tables?.name ?? (o.token_no ? `#${o.token_no}` : <K.Icon size={20} aria-hidden />)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold truncate">{whereOf(o)}{o.customer_name && o.dining_tables ? ` · ${o.customer_name}` : ""}</span>

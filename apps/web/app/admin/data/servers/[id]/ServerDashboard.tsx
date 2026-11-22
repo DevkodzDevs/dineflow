@@ -12,7 +12,7 @@ import { Setup, type SetupInfo } from "../Setup";
 import { type DataServer, type NodeFile, type Command, type Settings, type Env, KIND_LABEL, KIND_SHORT, CLOUD_ID } from "../../types";
 import s from "../../Data.module.css";
 
-const OP_LABEL: Record<Command["op"], string> = { backup: "Backup", verify: "Check files", delete: "Delete files", prune: "Keep the newest", restore: "Restore", restore_preview: "Restore preview", report: "Report" };
+const OP_LABEL: Record<Command["op"], string> = { backup: "Backup", verify: "Check files", delete: "Delete files", prune: "Keep the newest", restore: "Restore", restore_preview: "Restore preview", report: "Report", mirror: "Copy files" };
 
 export function ServerDashboard({ server: x, servers, files, commands, settings, at, setup, env, cloudHealth }: { server: DataServer; servers: DataServer[]; files: NodeFile[]; commands: Command[]; settings: Settings; at: string; setup: SetupInfo; env: Env; cloudHealth?: React.ReactNode }) {
   const router = useRouter(); const now = useNow(Date.parse(at)); const [pending, start] = useTransition();

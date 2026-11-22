@@ -2,16 +2,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Cloud, Server as ServerIcon, Laptop, Check, Loader2, Plug, ChevronRight, Plus } from "lucide-react";
+import { Cloud, Server as ServerIcon, Laptop, Check, Loader2, Plug, ChevronRight, Plus, HardDrive } from "lucide-react";
 import { Sheet, ask, cn } from "@/components/ui";
 import { fmtBytes } from "@/lib/backup/bytes";
 import { api, ago, Note } from "./bits";
 import { type DataServer, type ServerKind, KIND_LABEL, CLOUD_ID } from "./types";
 import s from "./Data.module.css";
 
-export const KIND_ICON = { cloud: Cloud, own: ServerIcon, laptop: Laptop } as const;
+export const KIND_ICON = { cloud: Cloud, own: ServerIcon, laptop: Laptop, nas: HardDrive } as const;
 const KIND_BLURB: Record<ServerKind, string> = {
   cloud: "Supabase's storage, where the live database is. Backups sit beside the data — quick, but in the same place.",
+  nas: "A NAS at the property — Synology, QNAP or any box that runs Docker. Backups and a copy of every photo and document sit on its disks, on your own LAN (0189).",
   own: "A machine you own that stays on. Backups are kept on its disk, away from the cloud.",
   laptop: "Your laptop keeps the backups while it is on; it catches up when it comes back.",
 };

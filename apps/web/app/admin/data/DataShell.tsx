@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ServerCog, Archive, ListChecks, RotateCcw, HeartPulse, Eraser, Sparkles, CloudUpload } from "lucide-react";
+import { LayoutDashboard, ServerCog, Archive, ListChecks, RotateCcw, HeartPulse, Eraser, Sparkles, CloudUpload, HardDrive } from "lucide-react";
 import { ServerConnection } from "./ServerConnection";
 import { useNow } from "./bits";
 import type { DataServer } from "./types";
@@ -10,6 +10,7 @@ import s from "./Data.module.css";
 const ITEMS = [
   { href: "/admin/data", label: "Overview", Icon: LayoutDashboard },
   { href: "/admin/data/servers", label: "Servers", Icon: ServerCog },
+  { href: "/admin/data/nas", label: "NAS", Icon: HardDrive },
   { href: "/admin/data/backups", label: "Backups", Icon: Archive },
   { href: "/admin/data/records", label: "Records", Icon: ListChecks },
   { href: "/admin/data/restore", label: "Restore", Icon: RotateCcw },

@@ -12,7 +12,7 @@ const Ctx = createContext<S>({ online: true, pending: 0, held: 0, syncing: false
 export const useOffline = () => useContext(Ctx);
 
 /** Screens worth having on the device when the line drops, in the order they matter to a service. */
-const OFFLINE_SCREENS = ["/orders", "/orders/new", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/inventory", "/tomorrow", "/scan"];
+const OFFLINE_SCREENS = ["/orders", "/orders/new", "/billing/local", "/kitchen", "/billing", "/pulse", "/rooms", "/frontdesk", "/housekeeping", "/inventory", "/tomorrow", "/scan"];
 
 export function OfflineProvider({ children, modules, outlet = null }: { children: React.ReactNode; modules?: string[]; outlet?: string | null }) {
   // queued writes remember the outlet they were made in (0106)
@@ -79,16 +79,30 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
        the files the page names are fetched too — the worker keeps them, cache first. And a worker update empties the cache,
        so "warmed in the last half hour" is only believed while the first screen's copy is really there. */
     const files = (html: string) => [...new Set([
-      ...(html.match(/\/_next\/static\/[^"'\s<>()\\]+\.(?:js|css)/g) ?? []),
-      ...(html.match(/static\/chunks\/[^"'\s<>()\\]+\.js/g) ?? []).map((f) => `/_next/${f}`),
+      // a whole `(name)` path segment is part of the name — `app/(app)/orders/page-….js` (2026-11-22; sw.js `whole` reads the same)
+      ...(html.match(/\/_next\/static\/(?:[^"'\s<>()\\]|\([^"'\s<>()\\/]*\))+\.(?:js|css)/g) ?? []),
+      ...(html.match(/static\/chunks\/(?:[^"'\s<>()\\]|\([^"'\s<>()\\/]*\))+\.js/g) ?? []).map((f) => `/_next/${f}`),
     ])];
-    const kept = async (u: string) => { try { return typeof caches !== "undefined" && !!(await caches.match(u)); } catch { return false; } };
+    const kept = async (u: string) => { try { return typeof caches !== "undefined" && !!(await caches.match(u, { ignoreSearch: true })); } catch { return false; } };
+    /* Is this screen really on the device — its copy *and* every build file the copy names (what sw.js `whole` asks before it
+       serves one)? 2026-11-22: "warmed in the last half hour" was believed whenever the first screen had a copy at all. But
+       the worker's own install keeps every screen's HTML with none of its files, so (a) on a device's first visit the warm-up
+       ran before the worker controlled the page — its fetches passed the worker by and nothing was kept — and (b) after
+       every worker update (the cache is emptied) the HTML came back and the files did not; either way no screen opened
+       offline for the next half hour unless someone had happened to visit it. Now a screen that is not whole is warmed
+       whatever the clock says, and nothing is warmed until the worker is in charge of this page. */
+    const whole = async (u: string) => {
+      try { const r = await caches.match(u, { ignoreVary: true }); if (!r) return false; for (const f of files(await r.text())) if (!(await kept(f))) return false; return true; } catch { return false; }
+    };
     const warm = async () => {
       if (cancelled || !list.length || !navigator.onLine || tooSlow()) return;   // a role with no offline screen warms nothing
-      if (!due() && (await kept(list[0]))) return;
-      try { localStorage.setItem(WARMED, String(Date.now())); } catch { /* private window: warm anyway */ }
+      if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;   // not in charge yet: `controllerchange` below comes back
+      const stale = due();
+      const todo: string[] = []; for (const u of list) if (stale || !(await whole(u))) todo.push(u);
+      if (!todo.length) return;
+      if (stale) { try { localStorage.setItem(WARMED, String(Date.now())); } catch { /* private window: warm anyway */ } }
       // the screens, one at a time, into the service worker's cache — each with its scripts and styles
-      for (const u of list) {
+      for (const u of todo) {
         if (cancelled || !navigator.onLine || document.visibilityState !== "visible") return;
         try {
           const r = await fetch(u, { credentials: "include" });
@@ -100,7 +114,10 @@ export function OfflineProvider({ children, modules, outlet = null }: { children
 
     whenIdle(() => { void warm(); });
     const t = setInterval(() => whenIdle(() => { void warm(); }), 30 * 60 * 1000);
-    return () => { cancelled = true; clearInterval(t); };
+    // the worker has just taken this page (a first visit, or an update that emptied the cache): warm now, not in half an hour
+    const taken = () => whenIdle(() => { void warm(); });
+    if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("controllerchange", taken);
+    return () => { cancelled = true; clearInterval(t); if ("serviceWorker" in navigator) navigator.serviceWorker.removeEventListener("controllerchange", taken); };
   }, [screenKey]);
   /* How long until the outbox tries again. The queue only tells us when it changes, so the seconds
      are ticked here — a number frozen at "45s" for a minute is worse than no number at all. The sort

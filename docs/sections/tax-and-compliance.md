@@ -22,12 +22,27 @@ it. The rates come from the property: `gst_rate` (dining), `room_gst_rate` /
 whether returns are monthly or quarterly. `gst_state_code` drives CGST+SGST vs IGST.
 
 **`compliance_filings`** is the calendar: what is due, when, and whether it is done.
-**`compliance_docs`** is where the filing paperwork is meant to live.
+**`compliance_docs`** is where the filing paperwork lives — the entry, a link, and since 0189 the **stored copy itself**
+(`file_path` in the private `compliance` bucket, `file_name`, `file_bytes`, `file_mime`).
 
 The property's CA can be recorded (`ca_name`, `ca_firm`, `ca_membership_no`, `ca_email`,
 `ca_phone`) so the screen can hand them a pack.
 
 ## Before you edit
+
+- **The stored copy (0189, 2026-11-22 — part of the NAS work; the owner: "tax docs too").** Documents' form has *Stored copy*
+  (`[data-doc-file-input]`, PDF or a JPG/PNG/WebP photo, up to 20 MB — the bucket's own limit) beside *Copy link*. The file goes
+  **from the browser straight into the private `compliance` bucket** (`putDocFile` in TaxClient: kind read from the first bytes,
+  path `<restaurant_id>/<stamp>/<slug>.<ext>`) — storage RLS lets only the owner or a manager write their own folder, and a
+  server action would cap it at 2 MB — then `saveDoc` records `file_*` after checking the path is inside this property's folder.
+  The card shows a paper-clip chip (`[data-doc-file]`: name, size, and *on the NAS* when Master control's NAS has a finished
+  copy — `nas_keeps_files()`, 0190) and **Download** (`docFileUrl`: a five-minute signed link, `download: true`, opened in a new
+  tab; the link is never kept). Editing shows the current copy (`[data-doc-file-current]`) with *Replace or remove*; saving with
+  no file then clears `file_*` and deletes the object; replacing deletes the old one; **Remove** on the entry deletes its object
+  too. Staff who may open Tax but are not owner/manager see the chip but no file field and a disabled Download. The NAS copies
+  the bucket when *Photos & documents* is on and `SUPABASE_SERVICE_ROLE_KEY` is on Vercel —
+  [admin-and-membership.md](admin-and-membership.md), Data → NAS.
+
 
 - **Tally (tab `?tab=tally`, 0105).** No connector: `TallyTab.tsx` asks `tally_days(from, to)` (≤ 92 days, owner
   or manager) and writes Tally import XML in the browser with `lib/tally.ts` (6 tests): one **Sales** voucher a
@@ -154,6 +169,10 @@ node diag.mjs "/tax?tab=overview@1194|…"   # all six tabs × 1366/1194/1024/83
 ```
 
 Then reconcile `gst_summary` for a demo month by hand against the bills for that month.
+
+`pw/tax-docs.mjs` (scratchpad, 2026-11-22, 24 checks at dark 1440 and paper 412): a throwaway owner signs in, attaches a PDF,
+the chip, the row's `file_*`, the object in the bucket, Download's signed link serves `%PDF`, replace/remove clears both, removing
+the entry removes the object; the demo property and its objects are deleted after. See testing-and-gates.md, 2026-11-22.
 
 - **Short copy** (2026-10-23): subtitles and hints cut to a few words.
 
