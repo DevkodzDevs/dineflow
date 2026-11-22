@@ -552,3 +552,18 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
   includes on every read. This is separate from the membership plan and from the `website` add-on (which says whether a
   property may have a website at all).
 - Not billed: a website plan is assigned by hand; nothing charges for it. [website.md](website.md), *Tenth pass*.
+
+## File Manager, and a property's backup before it is deleted (2026-11-23, 0192 / 0193 — the owner: "when Master control deletes a property, back up its important data first, then delete it completely, carefully; a File Manager in Master control holds that backup; new folder, delete, rename, edit, folders inside folders; the File Manager in the owner's section too")
+- **Where:** the rail's **Files** (`/admin/files`, `AdminNav` — nine tabs now, three to a row on a phone) is Master control's own
+  space of the private `files` bucket; the owner's is `/files`. One component draws both. All of it: [files.md](files.md).
+- **The delete** (`deleteProperty`, from Manage → Danger zone or the row's ⋯ → Delete property) now **backs up first**: the
+  property's export (Data → Backups, kind *property*, labelled *Before delete: name*) is written to the `backups` bucket, read
+  back and copied into File Manager → **Deleted properties** → *name · when*, with an `about.md` (who, when, the counts, how to
+  bring it back). If the export, the copy or the folder fails, **nothing is deleted** and the sheet says why. The button reads
+  *Back up, then delete*; the sheet ends on *Deleted, backup kept* with the folder's name, the counts and *Open File Manager*.
+  The record in Data → Backups outlives the property (`data_backups.restaurant_id` is `on delete set null`), so Restore can
+  bring the rows back from either copy.
+- **Before you edit:** the *Deleted properties* folder is locked (no rename, move or delete) but **a subfolder inside it is
+  not** — the master may remove one old backup on purpose; that removes its rows and objects, not the Data → Backups record.
+  A probe cannot sign in as the master — the **throwaway master** recipe is in [testing-and-gates.md](testing-and-gates.md)
+  (2026-11-23).

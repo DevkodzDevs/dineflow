@@ -5,7 +5,7 @@ import { Building2, Palmtree, UtensilsCrossed, KeyRound, Copy, Pause, Play, Cloc
 import { Button, Sheet, Field, StatTile, cn, Pill, Waiting, ask } from "@/components/ui";
 import { formatINR, PROPERTY_LABEL, type PropertyType } from "@dineflow/shared";
 import { daysLeft } from "@/lib/format";
-import { issueKey, setMembership, matchChain, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type PropertyDetail } from "./actions";
+import { issueKey, setMembership, matchChain, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type DeleteResult, type PropertyDetail } from "./actions";
 import { Trash2 } from "lucide-react";
 import { PropertyDetailView, CopyBtn } from "./PropertyDetail";
 import { RowActions } from "./RowActions";
@@ -66,6 +66,7 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
   // the delete confirmation: what would be destroyed, and the name the operator has to type back
   const [del, setDel] = useState<(DeletePreview & { id: string }) | null>(null);
   const [delText, setDelText] = useState("");
+  const [delDone, setDelDone] = useState<DeleteResult | null>(null);   // 0192: where the backup went, shown after the delete
   const [detail, setDetail] = useState<PropertyDetail | null>(null);   // the full-record dialog
   const [contact, setContact] = useState("");                          // editing where codes are sent
   const find = useRef<HTMLInputElement>(null);
@@ -313,10 +314,26 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
       {/* One confirmation, reached either from the Delete button on the row or from Manage.
           The name has to be typed back: this wipes trading history, invoices and tax filings, and
           a mis-aimed click should not be able to do that. */}
-      <Sheet open={sheet === "delete" && !!sel} onClose={() => { setSheet(null); setDel(null); setDelText(""); setErr(null); }} title={sel ? `Delete ${sel.name}?` : "Delete"}>
-        {sel && (
+      <Sheet open={sheet === "delete" && (!!sel || !!delDone)} onClose={() => { setSheet(null); setDel(null); setDelText(""); setErr(null); setDelDone(null); }} title={delDone ? "Deleted, backup kept" : sel ? `Delete ${sel.name}?` : "Delete"}>
+        {delDone && (
+          <div className="space-y-4" data-delete-done>
+            <p className="text-sm"><b>{delDone.name}</b> is gone — its data and logins. Before it went, a backup was kept:</p>
+            <div className="feather p-4 space-y-1 text-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-steel">File Manager → Deleted properties</div>
+              <div className="font-semibold break-words" data-delete-folder>{delDone.backup.folder}</div>
+              <div className="text-steel"><span className="num">{delDone.backup.tables}</span> tables · <span className="num">{delDone.backup.rows.toLocaleString("en-IN")}</span> rows · <span className="num">{delDone.backup.files}</span> stored file{delDone.backup.files === 1 ? "" : "s"} · <span className="num">{(delDone.backup.bytes / 1048576).toFixed(2)}</span> MB{delDone.backup.skipped ? ` · ${delDone.backup.skipped} file${delDone.backup.skipped === 1 ? "" : "s"} skipped` : ""}</div>
+              <div className="text-steel">The same file is in Data → Backups as “Before delete”, where Restore can bring the rows back.</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Link href="/admin/files" className="btn btn-gray !h-12 inline-flex items-center justify-center gap-2">Open File Manager</Link>
+              <Button onClick={() => { setSheet(null); setDelDone(null); }}>Done</Button>
+            </div>
+          </div>
+        )}
+        {sel && !delDone && (
           <div className="space-y-4">
             <p className="text-sm">Deletes <b>{sel.name}</b>, its data and logins. <b>Cannot be undone.</b></p>
+            <p className="text-sm text-steel">First, a backup of every row and its stored files is kept in <b>File Manager → Deleted properties</b> (and listed in Data → Backups). If that backup cannot be made, nothing is deleted.</p>
             {!del ? <p className="text-sm text-steel">Counting…</p> : (<>
               <div className="feather p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-steel mb-2">What goes with it</div>
@@ -343,8 +360,8 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
                   setErr(null);
                   const r = await deleteProperty(sel.id, delText);
                   if ("error" in r) setErr(r.error!);
-                  else { setDel(null); setDelText(""); setSel(null); setSheet(null); router.refresh(); }
-                })}><Trash2 size={15} /> Delete for good</Button>
+                  else { setDel(null); setDelText(""); setSel(null); setDelDone(r); router.refresh(); }
+                })}><Trash2 size={15} /> Back up, then delete</Button>
             </div>
           </div>
         )}

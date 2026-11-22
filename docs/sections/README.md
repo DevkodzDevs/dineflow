@@ -34,6 +34,7 @@ note is a bug: fix the note in the same commit as the change that outdated it.
 | `app/(app)/chain/**`, `app/(app)/payroll/**`, `components/shell/OutletSwitcher.tsx` | [chain-and-payroll.md](chain-and-payroll.md) |
 | `app/(app)/controls/**`, `app/(app)/audit/**`, `app/(app)/intelligence/**`, `components/ui/ReasonDialog.tsx` — the "Insights & control" | [controls-and-intelligence.md](controls-and-intelligence.md) |
 | `app/(app)/tax/**` | [tax-and-compliance.md](tax-and-compliance.md) |
+| `app/(app)/files/**`, `app/admin/files/**`, `components/files/**`, `lib/files/**`; the delete of a property | [files.md](files.md) |
 | `app/(app)/scan/**` | [scan.md](scan.md) |
 | `app/(app)/neighbours/**` | [neighbours.md](neighbours.md) |
 | `app/dine/**`, `app/book/**`, `app/queue/**`, `app/checkin/**`, `app/pay/**`, `app/record/**`, `app/feedback/**`, `app/screen/**`, `app/get`, `app/offline` | [guest-facing.md](guest-facing.md) |

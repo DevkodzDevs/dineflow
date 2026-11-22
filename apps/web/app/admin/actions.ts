@@ -1,6 +1,9 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
+import { runBackup } from "@/lib/backup/run";
+import { fmtBytes } from "@/lib/backup/bytes";
 const bump = () => revalidatePath("/admin", "layout");
 export async function issueKey(plan: "monthly" | "yearly", restaurantId: string | null) {
   const s = await createClient();
@@ -126,17 +129,50 @@ export async function deletePreview(restaurantId: string) {
 }
 
 /**
- * Delete a property, everything it holds and the logins that belong to it. Irreversible.
+ * Delete a property, everything it holds and the logins that belong to it. Irreversible — so (0192, 2026-11-22, the owner:
+ * "take a backup of its important data first, then delete it completely, carefully") the backup comes first: the same
+ * export Data → Backups makes for one property (every row of its tables with secrets left out, its own stored files up to
+ * the files cap), written to the backups bucket and recorded there as "Before delete", then copied into File Manager →
+ * Deleted properties → "<name> · <when>" with an about.md beside it. If any of that fails, nothing is deleted.
  * The name has to be passed back, so the database refuses a delete aimed at the wrong id.
  */
-export async function deleteProperty(restaurantId: string, confirmName: string) {
+export type DeleteResult = { ok: true; name: string; backup: { folder: string; bytes: number; rows: number; tables: number; files: number; skipped: number } };
+export async function deleteProperty(restaurantId: string, confirmName: string): Promise<DeleteResult | { error: string }> {
+  const admin = await requireAdmin();
   const s = await createClient();
-  const { data, error } = await s.rpc("admin_delete_property", {
-    p_restaurant_id: restaurantId, p_confirm_name: confirmName,
-  });
-  if (error) return { error: error.message };
-  revalidatePath("/", "layout");
-  return { ok: true, ...(data as { name: string }) };
+  const { data: r } = await s.from("restaurants").select("id, name, slug, property_type, created_at").eq("id", restaurantId).maybeSingle();
+  if (!r) return { error: "No such property." };
+  if (r.name.trim().toLowerCase() !== confirmName.trim().toLowerCase()) return { error: "The name typed does not match the property." };
+  const { data: settings } = await s.rpc("data_settings_get");
+  const st = (settings ?? {}) as { include_files?: boolean; files_cap_mb?: number };
+  const out = await runBackup(s, { kind: "property", restaurant: { id: r.id, name: r.name, slug: r.slug }, includeFiles: st.include_files ?? true, filesCapMb: st.files_cap_mb ?? 40, label: `Before delete: ${r.name}` });
+  if (!out.ok) return { error: `Nothing was deleted — the backup failed first: ${out.error}` };
+  const dl = await s.storage.from("backups").download(out.path);
+  if (dl.error || !dl.data) return { error: `Nothing was deleted — the backup could not be read back: ${dl.error?.message ?? "no file"}` };
+  const buf = Buffer.from(await dl.data.arrayBuffer());
+  const counts = await deletePreview(r.id);
+  const stamp = Date.now().toString(36); const slug = (r.slug || "property").replace(/[^a-z0-9-]+/gi, "-").toLowerCase();
+  const bpath = `master/deleted-${stamp}-${slug}.json.gz`, apath = `master/deleted-${stamp}-${slug}-about.md`;
+  const when = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "long", timeStyle: "short" }).format(new Date());
+  const lines = "error" in counts ? [] : ([["logins", counts.logins], ["menu items", counts.menu_items], ["orders", counts.orders], ["bills", counts.bills], ["invoices", counts.invoices], ["bookings", counts.bookings], ["guests", counts.guests], ["rooms", counts.rooms], ["staff records", counts.staff], ["tax documents", counts.tax_docs], ["tax filings", counts.tax_filings], ["sealed months", counts.sealed_months]] as const).map(([k, n]) => `- ${n} ${k}`);
+  const about = [`# ${r.name}`, "", `Deleted from Master control on ${when} (India) by ${admin.email || admin.label || "the master"}.`, "",
+    `- Kind: ${r.property_type}`, `- Property id: ${r.id}`, `- Joined: ${String(r.created_at).slice(0, 10)}`,
+    `- Backup: ${slug}-backup.json.gz — ${out.tables} tables, ${out.rows.toLocaleString("en-IN")} rows, ${out.files} stored file${out.files === 1 ? "" : "s"} (${fmtBytes(out.size)})${out.skipped ? `; ${out.skipped} file${out.skipped === 1 ? "" : "s"} skipped (over the files cap, or not readable from Master control)` : ""}`,
+    "", "## What went with it", ...lines, "",
+    "## Bringing it back", "The same backup is listed in Master control → Data → Backups as \"Before delete\". Open it there and Restore brings back the rows that are missing — the property row first, then everything that hangs off it. Keys, tokens, passwords and codes were left out of the export, so the owner signs in on a fresh password.", ""].join("\n");
+  const up1 = await s.storage.from("files").upload(bpath, buf, { contentType: "application/gzip", upsert: false });
+  if (up1.error) return { error: `Nothing was deleted — the backup could not be kept in File Manager: ${/not found|bucket/i.test(up1.error.message) ? "apply migration 0192 first" : up1.error.message}` };
+  const aboutBuf = Buffer.from(about, "utf8");
+  const up2 = await s.storage.from("files").upload(apath, aboutBuf, { contentType: "text/markdown; charset=utf-8", upsert: false });
+  if (up2.error) { await s.storage.from("files").remove([bpath]).catch(() => null); return { error: `Nothing was deleted — about.md could not be written: ${up2.error.message}` }; }
+  const kept = await s.rpc("files_keep_deleted_property", { p_restaurant_id: r.id, p_name: r.name, p_type: r.property_type, p_backup_path: bpath, p_backup_bytes: buf.length, p_about_path: apath, p_about_bytes: aboutBuf.length,
+    p_summary: { backup_id: out.id, tables: out.tables, rows: out.rows, files: out.files, skipped: out.skipped } });
+  if (kept.error) { await s.storage.from("files").remove([bpath, apath]).catch(() => null); return { error: `Nothing was deleted — File Manager refused the backup: ${kept.error.message}` }; }
+  const folder = (kept.data as { folder_name: string }).folder_name;
+  const { data, error } = await s.rpc("admin_delete_property", { p_restaurant_id: restaurantId, p_confirm_name: confirmName });
+  if (error) return { error: `${error.message} — the backup is kept in File Manager → Deleted properties → ${folder}` };
+  revalidatePath("/", "layout"); revalidatePath("/admin/files");
+  return { ok: true, name: (data as { name: string }).name, backup: { folder, bytes: buf.length, rows: out.rows, tables: out.tables, files: out.files, skipped: out.skipped } };
 }
 
 /** A fresh temporary password for a property whose owner is locked out. Shown once, like the first. */

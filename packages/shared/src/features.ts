@@ -15,7 +15,7 @@ import type { PropertyType } from "./constants";
  *   3. else the defaults below   — `on: true`
  * and an add-on marked for some property kinds only (`types`) is never on for the others.
  *
- * The database says the same: default_features(), effective_features(rid) and has_feature(key) in migration 0175 (0177 re-creates default_features with 'whatsapp', 0185 with 'website'). **The list
+ * The database says the same: default_features(), effective_features(rid) and has_feature(key) in migration 0175 (0177 re-creates default_features with 'whatsapp', 0185 with 'website', 0192 with 'files'). **The list
  * of `on: true` keys here and default_features() there must agree** — features.test.ts reads the migration and checks.
  *
  * A saved list is explicit: an add-on added here later is off for a plan or property that already saved a list until the
@@ -53,6 +53,7 @@ export const FEATURES: Feature[] = [
   { key: "cleaning", label: "Cleaning board", hint: "Tables and rooms after every guest. Off, the jobs stay on Work", group: "Floor screens", kind: "screen", on: true },
   { key: "tables", label: "Tables screen", hint: "Every table in detail. Orders keeps its own Tables view", group: "Floor screens", kind: "screen", on: true },
   { key: "lock", label: "Display lock", hint: "Pin a device to one page", group: "Floor screens", kind: "screen", on: true },
+  { key: "files", label: "File Manager", hint: "The property's own folders and files — licences, agreements, menus, photos; 500 MB", group: "Team screens", kind: "screen", on: true },
   { key: "connections", label: "Connections", hint: "Every outside link on one page. Channels has the same cards", group: "Channels", kind: "screen", on: true },
   { key: "night-audit", label: "Night audit", hint: "The rooms side's daily close", group: "Hotel screens", kind: "screen", on: true, types: ["hotel", "resort"] },
   // ── pieces inside a screen ────────────────────────────────────────────────────────────────────────────────────────
@@ -90,7 +91,7 @@ export const hasFeature = (features: readonly string[] | null | undefined, key: 
 /** A screen add-on's key is the menu row's key; a route's first segment(s) → the add-on that gates it. */
 export const FEATURE_ROUTES: Record<string, string> = {
   intelligence: "intelligence", controls: "controls", audit: "audit", chain: "chain", payroll: "payroll", expenses: "expenses",
-  tasks: "tasks", "work-records": "work-records", voice: "voice", cleaning: "cleaning", tables: "tables", lock: "lock",
+  tasks: "tasks", "work-records": "work-records", voice: "voice", cleaning: "cleaning", tables: "tables", lock: "lock", files: "files",
   connections: "connections", "frontdesk/night-audit": "night-audit",
 };
 /** The add-on a path needs, if any: the longest listed prefix wins ("/frontdesk/night-audit" before "/frontdesk"). */

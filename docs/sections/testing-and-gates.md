@@ -690,6 +690,32 @@ of a second." Measured first, on the live site and on a local production build (
 
 Gates on the result: lint 0 errors, typecheck clean, **433 unit tests in 57 files**, build clean (into a private dist).
 
+## 2026-11-23 — File Manager, and a property's backup before it is deleted (0192 / 0193)
+- **`dry192.mjs`** (26 rolled back; `--live` 27) and **`dry193.mjs`** (5): [data-and-rls.md](data-and-rls.md). 0193 is the lesson:
+  **a dry run as `postgres` passes a bare `DELETE`; the API roles do not** — a probe that exercises a write should also run it
+  under `set role authenticated`, which `dry193.mjs` does.
+- **`pw/files-owner.mjs` (27)** on a private dev server against the live database, a demo owner at `/files`: 1440 dark, 834
+  ember, 412 paper. The page and the menu row; the tree beside the list from 1024 and folded away below; every visible control
+  ≥ 36px; a folder inside a folder with the crumbs and the tree agreeing; the same name refused with the reason; *New text* →
+  the editor → Save → reopened with the words, the row's size and object in the property's folder; a PNG from the desk listed
+  with its size and kind, the preview showing it from a signed address; Rename; Move to the top (wait for the row to leave,
+  not a fixed 1.5 s); grid tiles; search; the status line against 500 MB; on the phone, Delete from the row menu through the
+  in-app `ask` dialog (`[data-ask] button` — `getByRole("button", {name: /delete/})` also matched the selection bar), then
+  the folder tree in one go, rows and bucket objects checked; no errors, no sideways scroll. Two probe lessons that cost
+  runs: `innerText` of the tree looked clipped because the probe's own `/\s+/g` had lost its backslash in a shell quote and
+  was stripping every "s"; and the first "Delete does nothing" was real (0193).
+- **`pw/files-master.mjs` (15)** — **the throwaway master**: a demo owner given a `platform_admins` row for the run, and a
+  second demo property renamed *E2E Victim Café* with `demo_expires_at` nulled (the Properties list hides demos). Find →
+  ⋯ (`role=menuitem`) → Manage → *Delete this property…* → the sheet counts and says a backup is kept first → the name typed →
+  *Back up, then delete* → **5.6 s** → *Deleted, backup kept* naming the folder; the property, its logins and rows gone;
+  Data → Backups holds *Before delete* (property, done, 105 tables, 118 rows); File Manager → *Deleted properties* (locked:
+  no Rename, Move or Delete offered) → the folder → `about.md` (opens in the editor, tells the story) and the `.json.gz`
+  (an Archive with its size); the master's own folder made, renamed, a note inside; the deleted property's subfolder
+  removed on purpose (rows and objects gone); the *Before delete* record removed through `/api/admin/data` `{op:"delete"}`;
+  at 412 the page fits with no tree. **Put back:** the locked root by SQL (`delete from file_nodes where restaurant_id is
+  null`), the `platform_admins` row, both demo logins and properties — the run ends `left: {nodes:0, admins:0, backups:0,
+  objects:0}`. Shots in the scratchpad (`theme/files/*`), sent to the owner.
+
 ## 2026-11-14 — a property's website (0185)
 - **2026-11-22 — on the real database at last.** 0185 had never been applied live (data-and-rls.md); after `dry185.mjs --live`
   (24) the real path was clicked through on a private dev server (`NEXT_DIST_DIR=.next-dev-<session>`, port 3147) against

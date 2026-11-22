@@ -25,7 +25,7 @@ export const LOCK_PAGES: Record<string, string> = {
   labour: "/labour", proof: "/proof", neighbours: "/neighbours", channels: "/channels", reports: "/reports", tax: "/tax",
   staff: "/staff", tables: "/tables", intelligence: "/intelligence", controls: "/controls", audit: "/audit", chain: "/chain",
   payroll: "/payroll", expenses: "/expenses", tasks: "/tasks", cleaning: "/cleaning", work: "/work", "work-records": "/work-records",
-  home: "/home",
+  home: "/home", files: "/files",   // 0192: the File Manager — a reception screen may be pinned to the property's folders
 };
 /** Never lockable: where the lock is set and released, the settings, the account. */
 export const NEVER_LOCK = ["settings", "lock", "me", "voice", "help", "connections"];

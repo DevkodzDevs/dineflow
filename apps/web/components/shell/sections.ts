@@ -1,4 +1,4 @@
-import { Plug, Armchair, HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck, QrCode, Tv, MessagesSquare, UserRoundCog, LifeBuoy, MonitorSmartphone, type LucideIcon } from "lucide-react";
+import { Plug, Armchair, HeartHandshake, Landmark, LayoutDashboard, ClipboardList, Flame, Receipt, UtensilsCrossed, Boxes, BarChart3, Users, Settings, BedDouble, ConciergeBell, Sparkles, Contact, Waves, ScanLine, FileText, HardHat, Bike, Radio, Sun, Users2, BadgeCheck, CalendarCheck, Activity, BrainCircuit, Wallet, ScrollText, IndianRupee, ListChecks, Store, HandCoins, SprayCan, ListTodo, ClipboardCheck, QrCode, Tv, MessagesSquare, UserRoundCog, LifeBuoy, MonitorSmartphone, FolderOpen, type LucideIcon } from "lucide-react";
 import { positionByKey, featureByKey, hasFeature, type Role } from "@dineflow/shared";
 
 /** A menu row. `key` names it (React, the phone bar's pins); `mod` is the module whose tick opens it when that is
@@ -94,6 +94,8 @@ const FRESH: Fresh[] = [
   { key: "work-records", href: "/work-records", label: "Work records", Icon: ClipboardCheck, roles: ["owner", "manager"] },
   // 0141: pin a device to one page — a static display, or one page and its own steps (the owner, a general manager, a manager)
   { key: "lock", href: "/lock", label: "Display lock", Icon: MonitorSmartphone, roles: ["owner", "manager"] },
+  // 0192: the property's own folders and files (licences, agreements, menus) — the owner and managers; an add-on, on by default
+  { key: "files", href: "/files", label: "File Manager", Icon: FolderOpen, roles: ["owner", "manager"] },
 ];
 /** A person's team: the one set on their profile, else their position's, else their role's — the database's
  *  _my_dept() (0116) plus the position, so a cleaner whose profile carries no team still reads as Housekeeping. */
@@ -148,7 +150,7 @@ export const MENU_GROUPS: { title: string | null; keys: string[] }[] = [
   { title: "Team & work", keys: ["staff", "tasks", "cleaning", "work", "work-records", "labour", "payroll"] },
   { title: "Money", keys: ["invoices", "expenses", "controls", "tax"] },
   { title: "Reports & insights", keys: ["reports", "intelligence", "audit"] },
-  { title: "Business & growth", keys: ["chain", "connections", "channels", "proof", "neighbours"] },
+  { title: "Business & growth", keys: ["chain", "connections", "channels", "proof", "neighbours", "files"] },
   { title: "Devices", keys: ["lock"] },
 ];
 /** The rows this person may open, under their headings: `rows` is everything they hold (modules and "fresh" links,

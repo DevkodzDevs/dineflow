@@ -264,6 +264,17 @@ made in between is silently undone.
   for authenticated, and 113 server actions write tables straight through the person's own session (fenced by tenant only,
   not by role) — the 0150 fence covers bills, invoices, invites, day_closes, business_periods; widening it is the next piece
   of security work (full-review memory, 2026-11-09).
+- **0192 — File Manager (2026-11-22) and 0193 — `files_delete` without the temp table (2026-11-23).** `file_nodes` (a
+  folder or file in Master control's space, `restaurant_id` null, or a property's; names unique in a folder, case blind;
+  RLS read for the space's own people, no write policy), the private bucket `files` (50 MB a file; policies: `master/…`
+  for `is_master()`, `<id>/…` for the owner and managers), `files_folders` / `files_list` / `files_mkdir` / `files_rename`
+  / `files_move` / `files_put` (the object must be in the space's top folder; 500 MB a property) / `files_delete` (the
+  subtree in one statement, the object paths answered; a locked node refuses) / `files_keep_deleted_property` (master;
+  the locked *Deleted properties* folder, a subfolder per delete, logged `delete_property.backup`); `default_features()`
+  + `'files'`. Dry runs `dry192.mjs` (26; `--live` 27) and `dry193.mjs` (5), both applied live the same day. **0193 exists
+  because 0192's `files_delete` emptied a temp table with a bare `delete from …` and the live database's safeupdate guard
+  refused it ("DELETE requires a WHERE clause") — a dry run as `postgres` did not catch it, the browser did.** The
+  function was re-made (same signature) rather than 0192 edited. [files.md](files.md).
 - **0185 — websites: applied to the live database on 2026-11-22, not before.** 0186–0190 had each gone on by their own
   dry-run script, and nobody ran the all-pending `migrate.mjs --live`, so the ledger had a hole under them: no `websites`
   table, no `website_*` function, no `site` bucket, `default_features()` without `website` — Settings → Website said "not
