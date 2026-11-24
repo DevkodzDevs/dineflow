@@ -12,6 +12,7 @@ import { RowActions } from "./RowActions";
 import { PropertyCards } from "./PropertyCards";
 import cardStyles from "./PropertyCards.module.css";
 import { LoginIdField } from "./LoginIdField";
+import { OwnerEmailVerify, sameEmail } from "./OwnerEmailVerify";
 import { loginAddressProblem } from "@dineflow/shared";
 import { Boxes } from "lucide-react";
 import { Plus, UtensilsCrossed as UC, Building2 as B2, Palmtree as PT } from "lucide-react";
@@ -60,6 +61,9 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
   const [pw, setPw] = useState("");
   // off by default: a new property should open empty unless sample data is asked for
   const [np, setNp] = useState({ name: "", type: "resort" as "restaurant" | "hotel" | "resort", demo: false, email: "", owner: "", contact: "" });
+  // 0195: the owner-email code that was verified, and for which address — Create property needs it for np.contact exactly
+  const [ownerOk, setOwnerOk] = useState<{ id: string; email: string } | null>(null);
+  const ownerVerified = !!ownerOk && sameEmail(ownerOk.email, np.contact);
   const [estate, setEstate] = useState<{ name: string; type: string; email: string; password: string | null }[] | null>(null);
   // shown once, straight after creating a property or resetting a password. Never readable again.
   const [creds, setCreds] = useState<{ title: string; email: string; password: string; code?: string | null } | null>(null);
@@ -406,9 +410,8 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
             </div></Field>
             <Field label="Owner's name" hint="Optional · shown on bill"><input value={np.owner} onChange={(e) => setNp({ ...np, owner: e.target.value })} placeholder="Priya Kumar" /></Field>
             <LoginIdField value={np.email} onChange={(v) => setNp({ ...np, email: v })} name={np.name} type={np.type} ownerName={np.owner} />
-            <Field label="Owner's real email *" hint="For password resets only">
-              <input value={np.contact} onChange={(e) => setNp({ ...np, contact: e.target.value })} type="email" required placeholder="owner@gmail.com" className={cn(!np.contact.trim() && np.name && "!border-[var(--color-orange)]")} />
-            </Field>
+            {/* 0195: the owner's real email is proved by an emailed code before the property can be created */}
+            <OwnerEmailVerify email={np.contact} onEmail={(v) => setNp({ ...np, contact: v })} propertyName={np.name} verified={ownerOk} onVerified={setOwnerOk} />
             {/* sample data toggle — a proper switch instead of a bare checkbox */}
             <button type="button" onClick={() => setNp({ ...np, demo: !np.demo })}
               className={cn("w-full rounded-2xl border p-4 text-left transition-colors",
@@ -426,12 +429,14 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
               </div>
             </button>
             {err && <p className="text-sm text-chili">{err}</p>}
-            <Button className="w-full" disabled={pending || !np.name || !np.contact.trim() || !!loginAddressProblem(np.email)} onClick={() => start(async () => {
+            <Button className="w-full" data-create-property disabled={pending || !np.name || !ownerVerified || !!loginAddressProblem(np.email)} onClick={() => start(async () => {
+              if (!ownerOk || !ownerVerified) return;
               setErr(null);
-              const r = await createProperty(np.name, np.type, np.demo, np.email, np.owner, np.contact);
+              const r = await createProperty(np.name, np.type, np.demo, np.email, np.owner, np.contact, ownerOk.id);
               if ("error" in r) setErr(r.error!);
-              else { setCreds({ title: `${np.name} is ready.`, email: r.login_email, password: r.temp_password, code: r.code }); setNp({ name: "", type: "resort", demo: false, email: "", owner: "", contact: "" }); }
+              else { setCreds({ title: `${np.name} is ready.`, email: r.login_email, password: r.temp_password, code: r.code }); setNp({ name: "", type: "resort", demo: false, email: "", owner: "", contact: "" }); setOwnerOk(null); }
             })}>Create property and login</Button>
+            {!ownerVerified && np.name && <p className="text-xs text-steel text-center -mt-1" data-create-blocked>Verify the owner&apos;s email to create the property</p>}
           </>)}
         </div>
       </Sheet>

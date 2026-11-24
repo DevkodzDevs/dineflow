@@ -3,7 +3,8 @@
 **Routes** `/admin` · `/admin/compliance` · `/membership` · `/about`
 **Files** `app/admin/**` (~1386 lines) · `app/membership/**` · `app/(app)/about/AboutBody.tsx`
 **Reads** `restaurants`, `membership_keys`, `admin_log`
-**Writes** `admin_overview`, `admin_property_detail`, `admin_create_property`,
+**Writes** `admin_overview`, `admin_property_detail`, `admin_create_property` (since 0195 only through
+`admin_owner_email_code` → `admin_owner_email_verify` → `admin_create_property_verified`),
 `admin_update_property`, `admin_delete_preview`, `admin_delete_property`, `admin_act_as`,
 `admin_stop_acting`, `admin_issue_key`, `admin_set_membership`, `admin_set_contact_email`,
 `admin_reset_property_password`, `admin_login_id_available`, `admin_box_status`,
@@ -567,3 +568,38 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
   not** — the master may remove one old backup on purpose; that removes its rows and objects, not the Data → Backups record.
   A probe cannot sign in as the master — the **throwaway master** recipe is in [testing-and-gates.md](testing-and-gates.md)
   (2026-11-23).
+
+## A new property needs the owner's real email, proved by a code (2026-11-25, 0195 — the owner: "when I create a new property, the owner's real email goes in, a code is emailed to it at once, I type the code here, and only when it verifies is the property created — otherwise no property account")
+- **Create a property → "Owner's real email *"** is `OwnerEmailVerify` (`app/admin/OwnerEmailVerify.tsx`): *Send code to this
+  email* → `sendOwnerCode` (actions.ts) → `admin_owner_email_code(email)` mints a 6-digit code (bcrypt in
+  `property_email_otps`; 1 a minute and 5 an hour per address, 30 an hour per master; not a `@dineflow.local` id) and
+  `sendOwnerEmailCode` (lib/email.ts) posts it. The code is **never shown on screen** — the owner reads it out or forwards it.
+  Type it → *Verify* → `admin_owner_email_verify(id, code)` (10 minutes, 5 tries; a wrong code is an answer, not a throw).
+  Verified, the field locks with *Email verified · Change*; *Create property and login* lights only then
+  (`[data-create-property]`, "Verify the owner's email to create the property" under it until then).
+- **The database enforces it too:** `createProperty` calls `admin_create_property_verified(otp, …)`, which refuses an
+  unverified, used, other-master's, older-than-30-minutes code, or a contact email different from the verified one;
+  marks the code used (tied to the property), sets the owner's `profiles.contact_verified_at`, and logs
+  `owner_email_verified`. Editing the email after verifying drops the proof; going back to the same address with the same
+  code re-confirms it (the code box is kept).
+- **No mail, no property.** If `RESEND_API_KEY` + `EMAIL_FROM` are not set, *Send code* answers "Email is off on this
+  server…" and nothing can be created — by design (the owner: "otherwise the property account must not be created").
+  **Or Gmail** (same day, the owner): `GMAIL_USER` + `GMAIL_APP_PASSWORD` (an App Password — 2-Step Verification on,
+  myaccount.google.com/apppasswords) send through smtp.gmail.com:465 with nodemailer; the sender is the Gmail address, ~500 a
+  day; Resend wins when both are set (`emailVia()`, `email.test.ts` 5). Gmail errors are named: a refused sign-in (a new
+  App Password is needed after the Gmail password changes), a refused address, the daily limit.
+  **Neither was set on Vercel on 2026-11-25 (checked with `vercel env ls`).** Resend needs the sending domain verified
+  (DNS records) before it delivers to anyone. On a development server only, `DINEFLOW_OTP_ECHO=1` shows the code under
+  the box (orange) instead of emailing it — a production build ignores it.
+- **After the deploy:** `supabase/pending/after_deploy_property_otp.sql` revokes the old one-call `admin_create_property`
+  from signed-in callers, so the verified path is the only way in. Before the deploy the live Master control still calls
+  the old one, so it stays callable until then.
+- **Not changed:** the public `/signup` (an owner opening their own property) — its email is the Supabase login and
+  Supabase's own *Confirm email* setting governs it. *Sample estate* (`install_sample_estate`) makes demo properties with
+  no owner email and is unchanged.
+- Trust: these RPCs are master-only; a master's own session could read the code from `admin_owner_email_code` directly.
+  The step proves the address is real and reachable (no typo, no made-up address), not that the master is honest.
+- Probes (session scratchpad): `dry195.mjs` — 26 checks, rolled back (every branch, owner/anon refused, RLS, the
+  after-deploy revoke); `otp-ui.mjs` — 24, as a throwaway master on a dev server with the echo: Create off → wrong code
+  refused → right code → Create on → Change/back → created; database shows the contact verified; the sheet at 1920 /
+  1440 / 1194 / 834 / 412 with no overflow and every control ≥ 44px; put back what it made.

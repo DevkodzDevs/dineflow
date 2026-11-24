@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { runBackup } from "@/lib/backup/run";
 import { fmtBytes } from "@/lib/backup/bytes";
+import { sendOwnerEmailCode } from "@/lib/email";
 const bump = () => revalidatePath("/admin", "layout");
 export async function issueKey(plan: "monthly" | "yearly", restaurantId: string | null) {
   const s = await createClient();
@@ -35,20 +36,49 @@ export async function setMasterPassword(pw: string) {
 export type NewProperty = { id: string; slug: string; code: string; login_email: string; temp_password: string; owner_name: string; contact_email: string | null; demo_seeded: boolean };
 
 /**
+ * Step 1 of a new property (0195, 2026-11-25 — the owner: "the owner's real email gets a code; only when it verifies is
+ * the property created"): mint a code for the owner's address and email it. The plain code never reaches the browser —
+ * except on a development server with DINEFLOW_OTP_ECHO=1 (lib/email.ts), for testing without a mail account.
+ * If the mail cannot be sent, the answer is an error: no code arrives, so no property can be made.
+ */
+export async function sendOwnerCode(email: string, propertyName: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("admin_owner_email_code", { p_email: email });
+  if (error) return { error: error.message };
+  const d = data as { id: string; code: string; email: string; expires_in_minutes: number };
+  const sent = await sendOwnerEmailCode(d.email, d.code, propertyName);
+  if (!sent.ok) return { error: sent.error };
+  return { ok: true as const, id: d.id, email: d.email, minutes: d.expires_in_minutes, echoed: sent.echoed ?? null };
+}
+
+/** Step 2: the code the owner received, typed back. A wrong code is an answer ({ ok: false, error }), not a throw. */
+export async function verifyOwnerCode(id: string, code: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("admin_owner_email_verify", { p_id: id, p_code: code });
+  if (error) return { error: error.message };
+  const d = data as { ok: boolean; error?: string; email?: string };
+  return d.ok ? { ok: true as const, email: d.email! } : { error: d.error ?? "That code is not right." };
+}
+
+/**
  * Master control can create a property itself — no public sign-up needed. It comes with its own
  * owner login, so the property can be signed into as itself rather than only through Master control.
  * The temporary password comes back exactly once; it is stored only as a hash and cannot be read
  * again. If it is lost, issue a new one with resetPropertyPassword.
+ *
+ * Since 0195 only with a verified owner-email code (`otpId`, from sendOwnerCode + verifyOwnerCode) for the same address
+ * as `contactEmail`: admin_create_property_verified refuses anything else, and marks the owner's contact confirmed.
  */
 export async function createProperty(
   name: string, type: "restaurant" | "hotel" | "resort", demo: boolean,
-  ownerEmail?: string, ownerName?: string, contactEmail?: string,
+  ownerEmail: string | undefined, ownerName: string | undefined, contactEmail: string, otpId: string,
 ) {
+  if (!otpId) return { error: "Verify the owner's email first: send the code, then type the code they received." };
   const s = await createClient();
-  const { data, error } = await s.rpc("admin_create_property", {
-    p_name: name, p_type: type, p_demo: demo,
+  const { data, error } = await s.rpc("admin_create_property_verified", {
+    p_otp: otpId, p_name: name, p_type: type, p_demo: demo,
     p_owner_email: ownerEmail?.trim() || null, p_owner_name: ownerName?.trim() || null,
-    p_contact_email: contactEmail?.trim() || null,
+    p_contact_email: contactEmail.trim(),
   });
   if (error) return { error: error.message };
   revalidatePath("/", "layout");

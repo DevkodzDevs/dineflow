@@ -295,6 +295,7 @@ export function FileManager({ master, initial }: FileManagerProps) {
 
       <div className={s.shell}>
         {/* the sidebar: the tree, and the space's storage */}
+        <div className={s.side}>
         <nav className={s.tree} aria-label="Folders" data-fm-tree>
           <div className={s.treeHead}><span>Folders</span><b>{listing?.folders ?? 0}</b></div>
           <div className={s.treeBody}>
@@ -309,6 +310,7 @@ export function FileManager({ master, initial }: FileManagerProps) {
             <small>{plural(listing?.files ?? 0, "file")} · {plural(listing?.folders ?? 0, "folder")}</small>
           </div>
         </nav>
+        </div>
 
         <div ref={paneRef} className={cn(s.pane, drop && s.drop)} data-fm-pane
           onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDrop(true); } else if (canDropOn(e)) e.preventDefault(); }}

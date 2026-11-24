@@ -85,6 +85,11 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0105_expenses_checklists_payouts_phone_tally — Batch 2: expenses (+ cash_movements link), checklists +
                                 checklist_runs, channel_settlements, orders.delivery_address + customers.address,
                                 phone_order_card / order_delivery, report_extra, tally_company / tally_ledgers + tally_days
+0195_property_owner_email_otp — property_email_otps (RLS: master reads, nobody writes directly) + admin_owner_email_code /
+                                admin_owner_email_verify / admin_create_property_verified: a new property only with a verified
+                                owner-email code — dry-run clean (`dry195.mjs`, 26), **applied 2026-11-25** alone by `apply195.mjs
+                                --live`; supabase/pending/after_deploy_property_otp.sql (revoke the old admin_create_property) waits for
+                                the deploy. [admin-and-membership.md](admin-and-membership.md)
 0194_files_uploads_and_downloads — file_nodes.bucket; files_sync_uploads() (the locked Uploads folder: a locked row for every object
                                 the property has in menu / brand / site / compliance / attendance / support — nothing copied);
                                 files_keep_download() (Downloads → section → file); files_list / files_put count only the File

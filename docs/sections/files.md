@@ -89,8 +89,10 @@ saved in folders". Two kept (locked) folders at the top of a property's space, b
 ## Before you edit
 
 - **The look (2026-11-25, the owner: "ultra modern — refer the main applications' file managers").** Drive / Dropbox /
-  Finder, on the app's tokens. One window: a **sidebar** from 1024px (the *Folders* tree — the current folder a tint wash
-  with a 3px bar — and a **Storage** card: the size in Oswald, the percentage and a meter only when the space has a cap;
+  Finder, on the app's tokens. One window: a **sidebar** from 1024px that **runs the pane's full height** (`.side` is the
+  stretched grid item, the tree inside it `height: 100%`, capped at the screen and sticky 12px down — so a long folder
+  keeps it in view and its foot meets the pane's at the end; it was `align-items: start`, only as tall as its folders) —
+  the *Folders* tree (the current folder a tint wash with a 3px bar) and, pinned to its foot, a **Storage** card: the size in Oswald, the percentage and a meter only when the space has a cap;
   Master control has none, and a full bar read as "full"); a **toolbar** — `.actions` (Upload, primary; **New ▾**, a menu:
   Folder · Text file · Upload files — `data-fm-new` opens it, `data-fm-new-folder` / `data-fm-new-text` are inside it) and
   `.finder` (search with a `/` key hint and a clear ×, the sort select, a list / grid segment, refresh); a **pane** with its
@@ -148,6 +150,9 @@ node fm14.mjs <base>            # 29 — the 2026-11-25 look on a harness page (
                                 #      themes and five widths, no sideways scroll, 44px on touch, the row menu under its ⋯,
                                 #      / Esc Ctrl+A, search, the kind hues = the tokens
 node fm14-hover.mjs <base>      # 4  — a real mouse: the quick keys hidden, then shown on hover (ember, paper)
+node fm14-side.mjs <base>       # 45 — the sidebar = the pane's top and foot (empty, one, list) at 1440 / 1920 / 1194 / 1024
+                                #      in the four themes; the storage card at its foot; a 48-row folder: stuck 12px down
+                                #      and screen-tall mid-scroll, foot on the pane's at the end; none under 1024
 ```
 
 ## See also

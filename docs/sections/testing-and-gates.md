@@ -705,6 +705,10 @@ Gates on the result: lint 0 errors, typecheck clean, **433 unit tests in 57 file
   `window`** — the first run's keys went to `window`, which has no `closest()`, and the handler threw.
 - **`fm14-hover.mjs <base>` (4)**, a fresh Chrome (touch emulation outlives `setTouchEmulationEnabled(false)` in the same
   page): `Input.dispatchMouseEvent` over a row — the quick keys go from opacity 0 to 1 with 4 buttons, the row's box shows.
+- **`fm14-side.mjs <base>` (45)** — the sidebar running the pane's full height (the harness's `?v=empty|one|many`): top and
+  foot equal to the pane's at 1440 ember, 1920 dark, 1194 paper, 1024 royal; the storage card 11px from its foot; a 48-row
+  folder: 12px down and screen-tall mid-scroll, its foot on the pane's at the end; nothing in its place at 834. **Scroll with
+  `behavior: "instant"`** — globals.css scrolls smoothly, and the first run read the page 173px short of the end.
 - Gates: lint 0 errors (13 warnings), typecheck clean, **457 unit tests in 59 files**, build clean (into a private dist).
 
 ## 2026-11-23 — Uploads and Downloads in the File Manager (0194)

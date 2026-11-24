@@ -12,14 +12,66 @@ import "server-only";
  *   RESEND_API_KEY   from resend.com → API keys
  *   EMAIL_FROM       a verified sender, e.g. "DineFlow <no-reply@yourdomain.in>"
  *
+ * Or Gmail (2026-11-25 — the owner: "can the codes go from Gmail?"): a Gmail account with 2-Step Verification and an
+ * App Password (myaccount.google.com/apppasswords), sent through smtp.gmail.com:465 with nodemailer. ~500 emails a day on
+ * a free account. The sender is the Gmail address itself (Gmail rewrites any other From).
+ *
+ *   GMAIL_USER          the account, e.g. dineflow.otp@gmail.com
+ *   GMAIL_APP_PASSWORD  the 16-letter App Password (not the Gmail password; spaces are fine)
+ *   EMAIL_FROM          optional, e.g. "DineFlow <dineflow.otp@gmail.com>" — only its display name is used
+ *
+ * With both set, Resend is used (a domain sender looks more professional); with neither, every send fails loudly.
+ *
  * DINEFLOW_OTP_ECHO=1 skips sending and returns the code to the screen instead. That is for local
  * testing on a machine with no mail account; it puts the code in the browser, so it must never be
  * set on anything reachable from outside.
  */
+import nodemailer, { type Transporter } from "nodemailer";
 
 export type SendResult = { ok: true; echoed?: string } | { ok: false; error: string };
 
-export const emailConfigured = () => Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+const resendOn = () => Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+const gmailOn = () => Boolean(process.env.GMAIL_USER?.trim() && process.env.GMAIL_APP_PASSWORD?.trim());
+export const emailConfigured = () => resendOn() || gmailOn();
+/** Which way the codes go out: "resend", "gmail" or null (off). */
+export const emailVia = (): "resend" | "gmail" | null => (resendOn() ? "resend" : gmailOn() ? "gmail" : null);
+
+let gmail: Transporter | null = null;
+/** One connection setup per server instance; a hung Gmail must not hold the screen open. */
+function gmailTransport(): Transporter {
+  gmail ??= nodemailer.createTransport({
+    host: "smtp.gmail.com", port: 465, secure: true,
+    auth: { user: process.env.GMAIL_USER!.trim(), pass: process.env.GMAIL_APP_PASSWORD!.replace(/\s+/g, "") },
+    connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 15_000,
+  });
+  return gmail;
+}
+
+/** "DineFlow <the gmail address>": the display name from EMAIL_FROM when there is one, the address always the account's. */
+export function gmailFrom(user: string, emailFrom?: string): string {
+  const name = emailFrom?.match(/^\s*"?([^"<]+?)"?\s*</)?.[1]?.trim() || "DineFlow";
+  return `${name.replace(/[<>"\r\n]/g, "")} <${user.trim()}>`;
+}
+
+async function sendGmail(to: string, subject: string, text: string): Promise<SendResult> {
+  try {
+    await gmailTransport().sendMail({ from: gmailFrom(process.env.GMAIL_USER!, process.env.EMAIL_FROM), to, subject, text });
+    return { ok: true };
+  } catch (e) {
+    const err = e as { code?: string; responseCode?: number; message?: string };
+    gmail = null;   // a fresh connection next time
+    if (err.code === "EAUTH" || err.responseCode === 535 || err.responseCode === 534) {
+      return { ok: false, error: "Gmail refused the sign-in, so no code was sent. Check GMAIL_USER and GMAIL_APP_PASSWORD — after the Gmail password changes, a new App Password is needed." };
+    }
+    if (err.responseCode === 550 || err.responseCode === 553) {
+      return { ok: false, error: `Gmail would not deliver to ${to}. Check the address. (${err.message?.slice(0, 160) ?? ""})` };
+    }
+    if (err.responseCode === 421 || err.responseCode === 454 || /limit/i.test(err.message ?? "")) {
+      return { ok: false, error: "Gmail's daily sending limit was reached, so no code was sent. Try again later." };
+    }
+    return { ok: false, error: `The code could not be sent through Gmail: ${err.message ?? String(e)}` };
+  }
+}
 /* Honoured only by a development server (`next dev`, which is what the launcher's local mode runs).
    A production build ignores it — on Vercel, on a Box in the building, anywhere — because a reset code
    on screen lets anyone who knows a login id take that account. */
@@ -45,6 +97,25 @@ export async function sendContactVerification(to: string, code: string, name: st
   ].join("\n");
   return send(to, `${code} is your DineFlow confirmation code`, text, code,
     "Email is off, so no code was sent. Their sign-in works; only the address is unconfirmed.");
+}
+
+/**
+ * The code that proves a NEW property's owner email before Master control may create the property (0195, 2026-11-25).
+ * The owner reads it out (or forwards it) to whoever is setting the property up; nothing exists until it is typed back.
+ */
+export async function sendOwnerEmailCode(to: string, code: string, propertyName: string): Promise<SendResult> {
+  const name = propertyName.trim() || "your property";
+  const text = [
+    `Your DineFlow code is ${code}`,
+    "",
+    `DineFlow is setting up ${name}, and this address was given as the owner's email.`,
+    "Give this code to the person setting it up. It expires in 10 minutes and works once.",
+    "Once confirmed, your password reset codes will come here.",
+    "",
+    `If you have no connection to ${name}, ignore this message; nothing is created without the code.`,
+  ].join("\n");
+  return send(to, `${code} is your DineFlow code to confirm ${name}`, text, code,
+    "Email is off on this server, so no code could be sent — and a property cannot be created without it. Set GMAIL_USER + GMAIL_APP_PASSWORD (or RESEND_API_KEY + EMAIL_FROM) in Vercel → Settings → Environment Variables, redeploy, then send the code again.");
 }
 
 export async function sendPasswordCode(to: string, code: string, propertyName: string): Promise<SendResult> {
@@ -74,6 +145,8 @@ async function send(to: string, subject: string, text: string, code: string, unc
       error: unconfigured ?? "Email is off, so no code was sent. Ask Master control to change your password.",
     };
   }
+
+  if (emailVia() === "gmail") return sendGmail(to, subject, text);
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
