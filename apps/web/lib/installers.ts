@@ -57,7 +57,9 @@ export function resolveFile(key: string) {
 }
 
 export type Download = { url: string; size: number | null; version: string | null; file: string };
-export type Downloads = { android: Download | null; windows: Download | null };
+/** `ios` is not a file — Apple allows no file install on an iPhone or iPad — but DineFlow's App Store (or TestFlight)
+ *  link when there is one: NEXT_PUBLIC_IOS_URL (2026-11-25). Unset, Apple devices get Add to Home Screen / Add to Dock. */
+export type Downloads = { android: Download | null; windows: Download | null; ios: Download | null };
 
 type Release = { platform: "android" | "windows"; version: string; file_path: string | null; external_url?: string | null; file_name: string; size_bytes: number | null };
 let releases: { at: number; rows: Release[] } | null = null;
@@ -97,5 +99,17 @@ export async function availableDownloads(): Promise<Downloads> {
   return {
     android: pick("android", process.env.NEXT_PUBLIC_APK_URL || process.env.NEXT_PUBLIC_DOWNLOAD_ANDROID, process.env.NEXT_PUBLIC_APK_VERSION, "DineFlow.apk"),
     windows: pick("windows", process.env.NEXT_PUBLIC_EXE_URL || process.env.NEXT_PUBLIC_DOWNLOAD_WINDOWS, process.env.NEXT_PUBLIC_EXE_VERSION, "DineFlow-Setup.exe"),
+    ios: appStore(process.env.NEXT_PUBLIC_IOS_URL, process.env.NEXT_PUBLIC_IOS_VERSION),
   };
+}
+
+/** DineFlow on the App Store or TestFlight. Only an https address on Apple's own hosts is believed, so a typo never
+ *  sends an iPhone somewhere else. */
+export function appStore(url: string | undefined, version?: string): Download | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" || !/(^|\.)(apps\.apple\.com|testflight\.apple\.com)$/.test(u.hostname)) return null;
+    return { url: u.toString(), size: null, version: version || null, file: "App Store" };
+  } catch { return null; }
 }

@@ -22,7 +22,7 @@ export function useDownloads() {
     // after the screen has settled (lib/idle.ts, 2026-10-23): the top bar's install key asked on every first load
     const cancel = whenSettled(() => {
       asked ??= fetch("/api/download", { cache: "no-store" }).then((r) => (r.ok ? (r.json() as Promise<Downloads>) : null)).catch(() => null);
-      void asked.then((d) => { if (alive) setFiles(d ?? { android: null, windows: null }); });
+      void asked.then((d) => { if (alive) setFiles(d ? { ...d, ios: d.ios ?? null } : { android: null, windows: null, ios: null }); });
     }, 1500);
     return () => { alive = false; cancel(); };
   }, []);

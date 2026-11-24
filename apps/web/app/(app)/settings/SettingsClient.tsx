@@ -140,7 +140,7 @@ export function SettingsClient({ restaurant, tables, gateway, signInId, contactE
           {/* install — sits beside Appearance because it is the other thing that belongs to the
               device in front of you rather than to the property */}
           <Card>
-            <Section icon={<MonitorSmartphone size={16} />} title="Install on this device" description="Phones and tills">
+            <Section icon={<MonitorSmartphone size={16} />} title="Install on this device" description="Windows · Android · iPhone, iPad, Mac">
               <InstallApp />
               {/* one row to /get for the staff's devices is part of InstallApp now (installPlanFor, 2026-10-20) */}
             </Section>

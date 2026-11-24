@@ -656,6 +656,9 @@ theme is another one is put back to that one on the next page.
   - Cards are a graphite gradient with a black edge and a line of light (`.filled`, `.picked` and `.stat` keep their own);
     a stat's label is plain and its icon square sits top-right in its own colour (orange, violet, green, blue in turn);
     the flip tiles in `main` are black glass with orange digits (`.live`, `.alert` and the loader keep theirs);
+    **the digits' glow is in `em`** (`.05em` at .38, `.14em` at .12 — 2026-11-25, the owner: "too much blur, worst on
+    iPad"): it was a fixed 12px + 26px at .7/.3, which on a 76px iPad stat tile was nearly twice the glow per digit a
+    136px desktop tile got, and haloed the numbers. In `em` it is the same weight at every tile size;
     `.btn-filled` / `.svc-btn.go` an orange gradient with dark ink; the chosen chip orange; the phone bar's pill orange.
 - **The icon looks keep their widths and `!important` padding**; Ember only dresses what they leave, cut to the rail’s 52px
   column (dock 80px): a 38px letter key in a 48px card, 44 × 44 pills in trays of 4px padding, trays 10px apart with no

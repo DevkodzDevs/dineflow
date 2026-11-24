@@ -614,7 +614,8 @@ board counts as pinned in Edit bar (it was filtered by modules and dropped).
 
 - **Flap numbers (2026-10-20)** — design-system.md, *Flap numbers*. The More sheet's Help count is a mini flap tile; tab-bar counts (`[data-tab-count]`) and the bell's count (`[data-bell-count]`) stay red pills — a flap is unreadable at badge size.
 
-- **One install option per device (2026-10-20 — the owner: "proper install option for all devices, don't show
+- **(Partly superseded 2026-11-25 by *Three platforms only*, below: the device's own way is unchanged, but every
+  install screen now also lists the other two platforms.)** **One install option per device (2026-10-20 — the owner: "proper install option for all devices, don't show
   unwanted install options").** `installPlanFor(env, state, files)` in `lib/install.ts` (7 tests) decides the ONE way,
   and every surface draws only it — the top bar's icon (`InstallButton`), the sign-in row (`InstallRow`), the install
   sheet, Settings → Install on this device (`InstallApp`) and /get:
@@ -1021,3 +1022,25 @@ four 4 → 6 ms, the floor 5 → 6 ms with 0179 + 0180 — nothing a host would 
   (guest-facing.md; `lib/keepFor.ts`).
 Still the owner's call, unchanged: the database is Supabase Micro; check the Vercel plan's function allowance and that Fluid
 compute is on.
+
+## 2026-11-25 — Three platforms only: Windows (.exe), Android (.apk), Apple (iPhone · iPad · Mac)
+- **The owner: "only these three in the installation process — Windows .exe, Android .apk, Apple iPhone, iPad and Mac —
+  the same in every install section, single install."** `InstallPanel` now draws, on every surface (the top bar's sheet,
+  the sign-in row's sheet, Settings → Install on this device, /get): **this device's platform first and big** (the .exe,
+  the .apk, or Apple's way), then **"Other devices" — the other two, one row each** (`[data-platforms]`,
+  `[data-platform=windows|android|ios]`; the file is a one-click `<a download>` when it exists, else the one line that
+  installs it from that device's browser). A Linux PC or Chromebook (`kind: desktop`) gets the three rows under
+  "Choose your device" and no browser plan. The old compact "Install on another device → /get" row and /get's
+  `OtherDevices` list are gone (the `others` prop with them); the sheet keeps "Send to another device → QR & link".
+- **A Mac is Apple now:** `kindFor("mac")` is `ios` (it was `desktop`), so `data-install-plan="ios"` on a Mac. Its way is
+  unchanged — Safari → Add to Dock, Chrome/Edge's install. `offersInstall` keeps the Mac rule (Firefox on a Mac: no icon).
+- **Apple has no file.** iOS allows no install from a downloaded file; one tap on an iPhone/iPad needs the App Store (or
+  TestFlight). `NEXT_PUBLIC_IOS_URL` (an https `apps.apple.com` / `testflight.apple.com` address only — `appStore()` in
+  `lib/installers.ts`; optional `NEXT_PUBLIC_IOS_VERSION`) turns it on: `/api/download` answers `ios`, an iPhone or iPad gets
+  primary `store` ("Get it on the App Store", `[data-app-store]`), every other device an App Store row. Unset — today —
+  Apple devices get the drawn Share → Add to Home Screen (IosGuide), and others the line "Open …/get in Safari → Share →
+  Add to Home Screen". The Mac keeps its browser's way even with the link.
+- Tests: `install.test.ts` 18 (Mac is `ios`, Linux is `desktop`, the store case). Probe `install3.mjs` (session scratchpad):
+  /get as Windows 1920/1440, Android 412, iPhone 412, iPad 834/1194, Mac 1440, Linux 1440 — own platform first, exactly the
+  other platforms as rows, no overflow, rows ≥ 44px, no page errors — 64/64; `themes.mjs` all four themes; `sheet.mjs` the
+  sign-in row's sheet on Android, iPhone and Windows 1194.

@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
-import { AppWindow, Check, ChevronRight, Compass, Copy, Download, Globe, Menu, MonitorDown, MoreHorizontal, MoreVertical, Share, Smartphone, SquarePlus } from "lucide-react";
-import Link from "next/link";
+import { Apple, AppWindow, Check, ChevronRight, Compass, Copy, Download, Globe, Menu, Monitor, MonitorDown, MoreHorizontal, MoreVertical, Share, Smartphone, SquarePlus } from "lucide-react";
 import { Loader, cn } from "../ui";
 import { copyText } from "@/lib/clipboard";
-import { browserName, chromeHref, deviceName, edgeHref, iconHome, stepsPlan, type Env, type Plan } from "@/lib/install";
+import { browserName, chromeHref, deviceName, edgeHref, iconHome, PLATFORMS, stepsPlan, type Env, type Plan, type Platform } from "@/lib/install";
+import type { Downloads } from "@/lib/installers";
 import { IosGuide } from "./IosGuide";
 import { FileButton } from "./DownloadFiles";
 import { useInstallOffer } from "./useInstall";
@@ -22,14 +22,18 @@ import { useInstallOffer } from "./useInstall";
  *
  * ONE way per device (installPlanFor, 2026-10-20 — the owner: "don't show unwanted install options"): an Android
  * phone with the .apk available gets only "Download for Android (.apk)", a Windows PC with the .exe only "Download for
- * Windows (.exe)" — no browser install beside them; an iPhone, iPad, Mac, Linux PC or Chromebook only its browser's
- * way, never a file. Other devices are one compact row to /get (`others="row"`), or nothing where the screen already
- * has its own (`others="none"`: /get, the install sheet). Running as the app: nothing but "You're in the app".
+ * Windows (.exe)" — no browser install beside them; an iPhone or iPad gets the App Store when NEXT_PUBLIC_IOS_URL is
+ * set, else Add to Home Screen; a Mac its browser's way, never a file.
+ *
+ * THREE platforms only, the same on every screen (2026-11-25 — the owner: "only Windows .exe, Android .apk and Apple
+ * iPhone · iPad · Mac in the installation process, all the same"): this device's platform first and big, then the
+ * other two under "Other devices", one row each (`[data-platform=windows|android|ios]`) — the file in one click when
+ * it exists. A Linux PC or Chromebook gets the three rows only. Running as the app: "You're in the app".
  *
  * `url` is where "open in Edge / Chrome" and "copy" send the person: the install page, so they land on
  * the button.
  */
-export function InstallPanel({ size = "md", url, others = "row" }: { size?: "md" | "lg"; url?: string; others?: "row" | "none" }) {
+export function InstallPanel({ size = "md", url }: { size?: "md" | "lg"; url?: string }) {
   const { env, plan, busy, install, files, offer } = useInstallOffer();
   const [again, setAgain] = useState(false);
   const [origin, setOrigin] = useState("");
@@ -133,21 +137,63 @@ export function InstallPanel({ size = "md", url, others = "row" }: { size?: "md"
       </Card>;
   }
 
-  // one way only: the device's own file when it exists, else the browser's way — never both, never another
-  // platform's file (installPlanFor). "Install it again" on an installed-here device follows the same rule.
-  const primary = offer.primary === "installed-here" && again ? (offer.kind === "android" && files?.android ? "apk" : offer.kind === "windows" && files?.windows ? "exe" : "browser") : offer.primary;
-  const testPlan = primary === "installed" || primary === "installed-here" ? "installed" : offer.kind;
+  // one way only: the device's own file (or App Store link) when it exists, else the browser's way — never both
+  // (installPlanFor). "Install it again" on an installed-here device follows the same rule.
+  const primary = offer.primary === "installed-here" && again
+    ? (offer.kind === "android" && files?.android ? "apk" : offer.kind === "windows" && files?.windows ? "exe"
+      : offer.kind === "ios" && files?.ios && (d === "iphone" || d === "ipad") ? "store" : "browser")
+    : offer.primary;
+  const installed = primary === "installed" || primary === "installed-here";
+  const testPlan = installed ? "installed" : offer.kind;
+  // the THREE platforms (2026-11-25 — the owner: "only Windows .exe, Android .apk and Apple iPhone · iPad · Mac"):
+  // this device's own one first and big, the other two as one row each. A Linux PC or Chromebook has no platform of
+  // its own: it gets the three rows only.
+  const own: Platform | null = offer.kind === "desktop" ? null : offer.kind;
+  const mine = primary === "apk" ? <FileButton kind="android" file={files!.android} big />
+    : primary === "exe" ? <FileButton kind="windows" file={files!.windows} big />
+    : primary === "store" ? <Cta size={size} href={files!.ios!.url} icon={<Apple size={size === "lg" ? 22 : 20} />} title="Get it on the App Store"
+      sub={`One tap${files!.ios!.version ? ` · v${files!.ios!.version}` : ""}`} data-app-store />
+    : own || installed ? body : null;
+  const rest = PLATFORMS.filter((p) => p !== own);
   return (
     <div className="space-y-3" data-install-panel data-install-plan={testPlan} data-install-primary={primary} data-steps={shown} data-device={d} data-browser={b}>
-      {primary === "apk" ? <FileButton kind="android" file={files!.android} big />
-        : primary === "exe" ? <FileButton kind="windows" file={files!.windows} big />
-        : body}
-      {others === "row" && primary !== "installed" && <Link href="/get" data-install-other
-        className="flex items-center gap-2.5 rounded-2xl bg-[var(--color-fill)] px-3.5 min-h-12 text-[13px] font-semibold hover:bg-[var(--color-fill-2)] transition-colors">
-        <Smartphone size={16} className="text-[var(--color-label-2)] shrink-0" aria-hidden /> Install on another device<span className="ml-auto text-[var(--color-label-2)] font-normal">QR & link →</span>
-      </Link>}
+      {mine}
+      {primary !== "installed" && <div className={cn("space-y-2", mine && "pt-2")} data-platforms>
+        <div className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[var(--color-label-2)] px-1">{mine ? "Other devices" : "Choose your device"}</div>
+        {rest.map((p) => <PlatformRow key={p} p={p} files={files} address={address} />)}
+      </div>}
     </div>
   );
+}
+
+const PLATFORM: Record<Platform, { title: string; tag: string; Icon: typeof Smartphone; how: string }> = {
+  windows: { title: "Windows PC · laptop", tag: ".exe", Icon: Monitor, how: "in Edge → Install" },
+  android: { title: "Android phone · tablet", tag: ".apk", Icon: Smartphone, how: "in Chrome → Install" },
+  ios: { title: "iPhone · iPad · Mac", tag: "Apple", Icon: Apple, how: "in Safari → Share → Add to Home Screen" },
+};
+
+/** One of the other platforms, one row: its file (or App Store link) to download in one click when it exists, else the
+ *  one line that installs it from the browser on that device. */
+function PlatformRow({ p, files, address }: { p: Platform; files: Downloads | null; address: string }) {
+  const m = PLATFORM[p];
+  const f = files?.[p] ?? null;
+  const mb = f?.size ? `${(f.size / 1048576).toFixed(f.size > 10485760 ? 0 : 1)} MB` : null;
+  const sub = f
+    ? [p === "ios" ? "App Store · one tap" : "One-click install", f.version && `v${f.version}`, mb].filter(Boolean).join(" · ")
+    : `Open ${address.replace(/^https?:\/\//, "")} ${m.how}`;
+  const inner = <>
+    <span className={cn("h-10 w-10 rounded-xl grid place-items-center shrink-0", f ? "bg-[var(--color-fill)] text-[var(--color-tint)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><m.Icon size={18} aria-hidden /></span>
+    <span className="flex-1 min-w-0">
+      <span className="block text-[14.5px] font-semibold leading-tight">{m.title} <span className="text-[var(--color-label-2)] font-medium">({m.tag})</span></span>
+      <span className="block text-[12px] text-[var(--color-label-2)] mt-1 leading-snug break-words">{sub}</span>
+    </span>
+    {f && (p === "ios" ? <ChevronRight size={17} className="shrink-0 text-[var(--color-label-2)]" aria-hidden /> : <Download size={17} className="shrink-0 text-[var(--color-label-2)]" aria-hidden />)}
+  </>;
+  const cls = "w-full flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] bg-[var(--color-bg-2)] px-3.5 py-3 min-h-14 text-left";
+  if (!f) return <div className={cls} data-platform={p}>{inner}</div>;
+  return p === "ios"
+    ? <a href={f.url} target="_blank" rel="noopener" className={cn(cls, "hover:bg-[var(--color-fill)] transition-colors")} data-platform={p} data-app-store>{inner}</a>
+    : <a href={f.url} download={f.file} rel="noopener" className={cn(cls, "hover:bg-[var(--color-fill)] transition-colors")} data-platform={p} data-download={p}>{inner}</a>;
 }
 
 /** Chrome / Edge / Samsung Internet that has not offered its one-tap install (yet): its own menu. */

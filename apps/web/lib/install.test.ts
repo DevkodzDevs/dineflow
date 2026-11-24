@@ -115,7 +115,7 @@ describe("install — the links that move to a browser that can", () => {
 describe("install — one way per device (installPlanFor, 2026-10-20)", () => {
   const S = { canPrompt: false, standalone: false, here: false };
   const both = { android: true, windows: true }, nofiles = { android: false, windows: false };
-  const plan4 = (ua: string, s = S, f: { android: boolean; windows: boolean } | null = both, touch = 0) => installPlanFor(detect(ua, touch), s, f);
+  const plan4 = (ua: string, s = S, f: { android: boolean; windows: boolean; ios?: boolean } | null = both, touch = 0) => installPlanFor(detect(ua, touch), s, f);
   it("Android with the .apk: the file only, even when the browser offers its install", () => {
     expect(plan4(UA.androidChrome).primary).toBe("apk");
     expect(plan4(UA.androidChrome, { ...S, canPrompt: true }).primary).toBe("apk");
@@ -133,7 +133,15 @@ describe("install — one way per device (installPlanFor, 2026-10-20)", () => {
   it("iPhone, iPad, Mac, Linux and Chromebook never get a file", () => {
     for (const ua of [UA.iphoneSafari, UA.iphoneChrome, UA.ipadMobile, UA.macSafari, UA.macChrome, UA.linuxChrome, UA.chromebook]) expect(plan4(ua).primary).toBe("browser");
     expect(plan4(UA.ipadDesktop, S, both, 5)).toMatchObject({ kind: "ios", primary: "browser", plan: "ios" });
-    expect(plan4(UA.macSafari).kind).toBe("desktop");
+    expect(plan4(UA.macSafari).kind).toBe("ios");          // Apple: iPhone, iPad and Mac are one platform (2026-11-25)
+    expect(plan4(UA.linuxChrome).kind).toBe("desktop");
+  });
+  it("Apple with the App Store link: one tap to the store on an iPhone or iPad; a Mac keeps its browser's way", () => {
+    const store = { ...both, ios: true };
+    expect(plan4(UA.iphoneSafari, S, store).primary).toBe("store");
+    expect(plan4(UA.ipadDesktop, S, store, 5).primary).toBe("store");
+    expect(plan4(UA.macSafari, S, store)).toMatchObject({ kind: "ios", primary: "browser", plan: "mac-safari" });
+    expect(offersInstall(plan4(UA.iphoneSafari, S, store))).toBe(true);
   });
   it("running as the app, or installed here before: nothing to install", () => {
     expect(plan4(UA.androidChrome, { ...S, standalone: true }).primary).toBe("installed");

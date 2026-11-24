@@ -691,6 +691,22 @@ of a second." Measured first, on the live site and on a local production build (
 
 Gates on the result: lint 0 errors, typecheck clean, **433 unit tests in 57 files**, build clean (into a private dist).
 
+## 2026-11-25 — the File Manager's new look (files.md, *The look*)
+- **Harness:** `app/dine-fm14/page.tsx` (deleted before commit) drew the real `FileManager` with sample data — 4 folders
+  (one kept), 8 files of every kind, a cap for `?master=0`, the empty kept *Deleted properties* for `?v=empty`. No session,
+  no database. A private dev server (`NEXT_DIST_DIR=.next-dev-14`, port 3214), then `tsconfig.json` / `next-env.d.ts` put back.
+- **`fm14.mjs <base>` (29)**, headless Chrome over CDP (Node's own `WebSocket`, no Puppeteer): list, empty, grid, two
+  picked, the New menu, the row menu at 1440 ember; 1920 dark (a property); 1194 paper and 834 royal / ember with touch;
+  412 ember / dark / paper / empty with touch — no sideways scroll in any, every visible button ≥ 44 on touch (first run:
+  the *Size* head 41px and the folder card's box 36px — fixed); the row menu's right edge on its ⋯'s and its top 6px under
+  (first run: 12px off — it was sized by its content and placed by its left); Ctrl+A picks all 12 and the dock shows, Esc
+  clears, `/` focuses the search; a search narrows to one and a miss shows "Nothing matches"; a PDF / sheet / folder icon's
+  computed colour is `--color-red` / `--color-green` / `--color-orange`. **Send the keys to an element, or guard for
+  `window`** — the first run's keys went to `window`, which has no `closest()`, and the handler threw.
+- **`fm14-hover.mjs <base>` (4)**, a fresh Chrome (touch emulation outlives `setTouchEmulationEnabled(false)` in the same
+  page): `Input.dispatchMouseEvent` over a row — the quick keys go from opacity 0 to 1 with 4 buttons, the row's box shows.
+- Gates: lint 0 errors (13 warnings), typecheck clean, **457 unit tests in 59 files**, build clean (into a private dist).
+
 ## 2026-11-23 — Uploads and Downloads in the File Manager (0194)
 - **`dry194.mjs` (31, rolled back)** as real logins under `set role authenticated`: the first sync finds the logo already in
   `brand`; ten rows are then put in `storage.objects` inside the transaction (one for another property) and nine appear; two

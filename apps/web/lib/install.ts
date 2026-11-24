@@ -102,10 +102,17 @@ export function stepsPlan({ device, browser, ios, safari }: Env): Plan {
   return "other";
 }
 
-/** Which family of install a device belongs to: its own app file (Android, Windows), Apple's Add to Home Screen,
- *  or the browser's own install on every other computer. */
+/** Which of the THREE install platforms a device belongs to (2026-11-25 — the owner: "only three in the installation
+ *  process: Windows .exe, Android .apk, and Apple — iPhone, iPad and Mac"): its own app file (Android, Windows), or
+ *  Apple (`ios` — iPhone, iPad AND Mac: the App Store link when there is one, else Add to Home Screen / Add to Dock).
+ *  `desktop` is only a Linux PC, a Chromebook or something unrecognised: it has no platform of its own and is shown
+ *  the three. */
 export type InstallKind = "android" | "windows" | "ios" | "desktop";
-export const kindFor = (d: Device): InstallKind => (d === "android" ? "android" : d === "windows" ? "windows" : d === "iphone" || d === "ipad" ? "ios" : "desktop");
+export const kindFor = (d: Device): InstallKind => (d === "android" ? "android" : d === "windows" ? "windows" : d === "iphone" || d === "ipad" || d === "mac" ? "ios" : "desktop");
+
+/** The three platforms, in the order every install screen lists them. */
+export const PLATFORMS = ["windows", "android", "ios"] as const;
+export type Platform = (typeof PLATFORMS)[number];
 
 /** Running inside DineFlow's own app already: the Windows app (Electron — its user agent carries `Electron/` and,
  *  from 1.1.1, `DineFlowDesktop/`) or the Android app (a Trusted Web Activity — its first page's referrer is
@@ -127,15 +134,18 @@ export function inAppShell(ua: string, referrer = ""): boolean {
  *
  * `files` is what /api/download answered (null while it is still being asked).
  */
-export type Primary = "installed" | "installed-here" | "apk" | "exe" | "browser";
+export type Primary = "installed" | "installed-here" | "apk" | "exe" | "store" | "browser";
 export type InstallOffer = { kind: InstallKind; primary: Primary; plan: Plan };
-export function installPlanFor(env: Env, s: InstallState, files: { android: boolean; windows: boolean } | null): InstallOffer {
+export function installPlanFor(env: Env, s: InstallState, files: { android: boolean; windows: boolean; ios?: boolean } | null): InstallOffer {
   const kind = kindFor(env.device);
   const plan = installPlan(env, s);
   if (plan === "installed") return { kind, primary: "installed", plan };
   if (plan === "installed-here") return { kind, primary: "installed-here", plan };
   if (kind === "android" && files?.android) return { kind, primary: "apk", plan };
   if (kind === "windows" && files?.windows) return { kind, primary: "exe", plan };
+  // an iPhone or iPad with DineFlow on the App Store (or TestFlight, NEXT_PUBLIC_IOS_URL): one tap there. A Mac keeps
+  // its browser's way (Add to Dock, or Chrome/Edge's install).
+  if (kind === "ios" && files?.ios && (env.device === "iphone" || env.device === "ipad")) return { kind, primary: "store", plan };
   return { kind, primary: "browser", plan };
 }
 
@@ -144,8 +154,9 @@ export function installPlanFor(env: Env, s: InstallState, files: { android: bool
  *  menu, Safari's Add to Dock) — a Firefox or unknown desktop browser gets nothing rather than advice. */
 export function offersInstall(o: InstallOffer): boolean {
   if (o.primary === "installed" || o.primary === "installed-here") return false;
-  if (o.kind !== "desktop") return true;
-  return o.plan === "prompt" || o.plan === "menu" || o.plan === "mac-safari";
+  if (o.kind === "android" || o.kind === "windows" || o.primary === "store") return true;
+  if (o.plan === "ios" || o.plan === "ios-safari-only" || o.plan === "inapp") return true;   // an iPhone or iPad
+  return o.plan === "prompt" || o.plan === "menu" || o.plan === "mac-safari";             // a Mac or other computer
 }
 
 /** "this iPhone" — what the screens call the device in hand. */

@@ -88,15 +88,30 @@ saved in folders". Two kept (locked) folders at the top of a property's space, b
 
 ## Before you edit
 
-- **The design pass (2026-11-23, the owner: "check the page design properly and design it perfectly").** The toolbar is two
-  groups — `.actions` (Upload first and primary, New folder, New text) and `.finder` (search, a sort select Name /
-  Newest / Largest, list / grid, refresh); under 640px the actions share one row and the finder wraps with the search on
-  its own line. The tree pane has a *Folders* head with the count and a foot with the space's size and meter; the status
-  line sits inside the pane's foot ("drop files here" hidden on a phone); a phone row shows *size · type · changed* under
-  the name; grid tiles are 150px, `align-content: start` (they stretched to the pane's height once), and a picture shows
-  its own thumbnail (one signed address per picture, fetched when the grid opens, kept for the visit). Tree rows and
-  crumbs are 44px. `.search > input` carries `!important` on its padding — globals.css's input rule won otherwise and the
-  magnifier sat on the placeholder.
+- **The look (2026-11-25, the owner: "ultra modern — refer the main applications' file managers").** Drive / Dropbox /
+  Finder, on the app's tokens. One window: a **sidebar** from 1024px (the *Folders* tree — the current folder a tint wash
+  with a 3px bar — and a **Storage** card: the size in Oswald, the percentage and a meter only when the space has a cap;
+  Master control has none, and a full bar read as "full"); a **toolbar** — `.actions` (Upload, primary; **New ▾**, a menu:
+  Folder · Text file · Upload files — `data-fm-new` opens it, `data-fm-new-folder` / `data-fm-new-text` are inside it) and
+  `.finder` (search with a `/` key hint and a clear ×, the sort select, a list / grid segment, refresh); a **pane** with its
+  own path bar (back, crumbs that scroll sideways, the item count) and its foot. **List:** rounded rows with no rules between
+  them, the column heads sort (Name ↑, Size ↓, Changed ↓), each kind's icon and Type chip in its own hue (`data-k` → `--k`:
+  folder and archive amber, picture violet, PDF and video red, sound and code teal, sheet green, text blue — washes are
+  `color-mix` of the token, solid, so Royal keeps its rule), a lock badge on a kept node; on a desk a row's box and ⋯ show on
+  hover (always on touch) and **hover shows the quick keys** — Download, Rename, Move, Delete — over the Changed column.
+  **Grid:** *Folders* as cards, then *Files* as preview cards (the picture's thumbnail, or the kind's icon on its hue). The
+  **empty view is a drop zone** with Upload files / New folder (none in a kept folder: *Deleted properties* says "Backups of
+  deleted properties"). The **selection and the uploads float** in a sticky dock at the window's foot, above the phone's tab
+  bar (`--tabbar`); the selection's words go under 640px, its keys stay 44px. **Keys:** `/` search, Esc clears, Delete
+  deletes the selection (through `ask`), Ctrl+A picks the folder — never while a field, a sheet or `ask` has the keys.
+  The selected wash is `color-mix(tint)`, not `--color-green-2`: on Ember that put orange words on a green wash.
+- **The row menu hangs in the pane in the pane's own coordinates, anchored by its right edge** under its ⋯. Before
+  2026-11-25 it was given the screen's coordinates while positioned inside the pane, so it opened offset by the pane's corner.
+  The pane is `overflow: visible` (the menu near the foot was cut off); the path bar and the foot round their own corners.
+- **The view segment is `data-no-busy`** — switching to grid starts the thumbnails' signed-address calls, and the app's tap
+  loader (`Busy.tsx`) rang the grid button for them.
+- `.search > input`, `.fm .sort select`, `.field .input` and the editor carry `!important` / a second class — globals.css's
+  unlayered `input:not(…)` rule (0,3,1) wins otherwise (the magnifier once sat on the placeholder).
 - **A probe's clean-up must be scoped to its own rows.** `files-master.mjs` once ran `delete from file_nodes where
   restaurant_id is null` — the whole Master control space — and removed the kept backup folder of a real delete
   ("Mass · 2026-11-23 01.00", made at 01:00 IST by someone else's run of this very flow). The bytes were safe (the two
@@ -129,6 +144,10 @@ node dry194.mjs                 # 31 — Uploads: six kept folders, a row per ob
                                 #      properties out; Downloads: kept, replaced, a folder per section, the master's own
 node fm194.mjs <base>           # 27 — real objects in the buckets → /files at 1440 dark, 834 ember, 412 paper; a dish
                                 #      photo previews from the menu bucket; Reports' .xlsx lands in Downloads / Reports
+node fm14.mjs <base>            # 29 — the 2026-11-25 look on a harness page (testing-and-gates.md): 14 states × the four
+                                #      themes and five widths, no sideways scroll, 44px on touch, the row menu under its ⋯,
+                                #      / Esc Ctrl+A, search, the kind hues = the tokens
+node fm14-hover.mjs <base>      # 4  — a real mouse: the quick keys hidden, then shown on hover (ember, paper)
 ```
 
 ## See also

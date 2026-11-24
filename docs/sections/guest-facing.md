@@ -221,7 +221,10 @@ paused. The banner is a courtesy; `dine_order` enforces the pause itself. See
   mode, a damaged profile) the precache rejected and the whole worker was discarded: no offline copy,
   no notification taps. A failed precache now only means nothing is cached yet. `pwa.mjs` asserts the
   worker reaches `active`.
-- **/get shows this device's one way, then the others collapsed (2026-10-20).** The left half is InstallPanel with
+- **/get: three platforms only (2026-11-25).** The left half is InstallPanel: this device's platform big, then the
+  other two of Windows (.exe) · Android (.apk) · Apple (iPhone · iPad · Mac) as one row each; the right half the QR,
+  Share/WhatsApp/Copy and the manual. The *Other devices* `<details>` below is gone — see shell-and-nav.md, 2026-11-25.
+- **(Superseded 2026-11-25.)** **/get shows this device's one way, then the others collapsed (2026-10-20).** The left half is InstallPanel with
   `others="none"`: only this device's way (installPlanFor — the .apk on an Android phone, the .exe on a Windows PC, Add
   to Home Screen on an iPhone/iPad, the browser's install on a Mac or other computer; never another platform's file).
   The right half keeps the QR and the WhatsApp link (SendInstallLink) and an **Other devices** `<details>`
