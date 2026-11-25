@@ -134,14 +134,16 @@ export function inAppShell(ua: string, referrer = ""): boolean {
  *
  * `files` is what /api/download answered (null while it is still being asked).
  */
-export type Primary = "installed" | "installed-here" | "apk" | "exe" | "store" | "browser";
+export type Primary = "installed" | "installed-here" | "apk" | "exe" | "msstore" | "store" | "browser";
 export type InstallOffer = { kind: InstallKind; primary: Primary; plan: Plan };
-export function installPlanFor(env: Env, s: InstallState, files: { android: boolean; windows: boolean; ios?: boolean } | null): InstallOffer {
+export function installPlanFor(env: Env, s: InstallState, files: { android: boolean; windows: boolean; ios?: boolean; msstore?: boolean } | null): InstallOffer {
   const kind = kindFor(env.device);
   const plan = installPlan(env, s);
   if (plan === "installed") return { kind, primary: "installed", plan };
   if (plan === "installed-here") return { kind, primary: "installed-here", plan };
   if (kind === "android" && files?.android) return { kind, primary: "apk", plan };
+  // a Windows PC: the Microsoft Store when DineFlow is listed there (signed by Microsoft — no SmartScreen warning), else the .exe
+  if (kind === "windows" && files?.msstore) return { kind, primary: "msstore", plan };
   if (kind === "windows" && files?.windows) return { kind, primary: "exe", plan };
   // an iPhone or iPad with DineFlow on the App Store (or TestFlight, NEXT_PUBLIC_IOS_URL): one tap there. A Mac keeps
   // its browser's way (Add to Dock, or Chrome/Edge's install).
@@ -176,6 +178,12 @@ export function iconHome(d: Device): string {
 
 export function browserName(b: Browser): string {
   return { safari: "Safari", chrome: "Chrome", edge: "Edge", samsung: "Samsung Internet", firefox: "Firefox", opera: "Opera", inapp: "this app", other: "this browser" }[b];
+}
+
+/** The Microsoft Store app's own small install window for a product id — one click to Get, on Windows 10 and 11
+ *  (2026-11-26: a Store-signed package never meets SmartScreen). */
+export function msStoreHref(id: string): string {
+  return `ms-windows-store://pdp/?ProductId=${encodeURIComponent(id)}&mode=mini`;
 }
 
 /** One tap from any Windows browser to Edge, which can install. Firefox asks once whether to open it. */

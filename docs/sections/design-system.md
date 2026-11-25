@@ -635,7 +635,11 @@ theme is another one is put back to that one on the next page.
   (`components/shell/useEmber.ts`) reads `<html data-palette>` and follows it live, and the app layout passes the cookie's
   (or the login's saved) answer so the first paint already has the right shape. Under it:
   - **The menu** (`Nav.tsx`): the `.deck > aside.ink-panel` is walnut — an inline SVG `feTurbulence` grain, vertical
-    streaks, a bronze rim — on a 28px radius with a 10px margin; the property is a dark card with a 44px orange key; each
+    streaks, a bronze rim — on a 28px radius with a 10px margin; the property is a dark card with a 44px orange key (**the open drawer's ✕ is a key inside that card**, 2026-11-26, the
+    owner: "that cross button design and placing is not looking good" — it was the round frosted key at `right-4 top-6`, which
+    is the card's own right edge, so it sat on the card's border with the name under it; now a graphite rounded square 12px in
+    from the card's right, centred on its 70px and level with the orange key, 40px / 44px on touch, and the card pads 64px on
+    the right so the name ends in "…" before it — Ember and the rail / dock / float-rail drawer only; probe `nav14.mjs`); each
     `.nav-group` is a dark tray and its `.nav-head` a gold chip sitting on the wood 28px above it; every row a 46px
     bevelled pill (`::before` the left marker, orange and glowing when current). **No arrow on a row that does not open** (2026-11-23, the owner: "the drop-down icon only
     where a drop-down is"): every plain row used to draw a down-arrow in `::after`, which read as a drop-down that was not

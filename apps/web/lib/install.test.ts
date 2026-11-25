@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chromeHref, detect, edgeHref, inAppShell, installPlan, installPlanFor, offersInstall, stepsPlan, waShareHref } from "./install";
+import { chromeHref, detect, edgeHref, inAppShell, installPlan, installPlanFor, msStoreHref, offersInstall, stepsPlan, waShareHref } from "./install";
 
 /* Real user agents, as each browser sends them. */
 const UA = {
@@ -115,7 +115,7 @@ describe("install — the links that move to a browser that can", () => {
 describe("install — one way per device (installPlanFor, 2026-10-20)", () => {
   const S = { canPrompt: false, standalone: false, here: false };
   const both = { android: true, windows: true }, nofiles = { android: false, windows: false };
-  const plan4 = (ua: string, s = S, f: { android: boolean; windows: boolean; ios?: boolean } | null = both, touch = 0) => installPlanFor(detect(ua, touch), s, f);
+  const plan4 = (ua: string, s = S, f: { android: boolean; windows: boolean; ios?: boolean; msstore?: boolean } | null = both, touch = 0) => installPlanFor(detect(ua, touch), s, f);
   it("Android with the .apk: the file only, even when the browser offers its install", () => {
     expect(plan4(UA.androidChrome).primary).toBe("apk");
     expect(plan4(UA.androidChrome, { ...S, canPrompt: true }).primary).toBe("apk");
@@ -135,6 +135,16 @@ describe("install — one way per device (installPlanFor, 2026-10-20)", () => {
     expect(plan4(UA.ipadDesktop, S, both, 5)).toMatchObject({ kind: "ios", primary: "browser", plan: "ios" });
     expect(plan4(UA.macSafari).kind).toBe("ios");          // Apple: iPhone, iPad and Mac are one platform (2026-11-25)
     expect(plan4(UA.linuxChrome).kind).toBe("desktop");
+  });
+  it("Windows with DineFlow on the Microsoft Store: the Store, before the .exe (2026-11-26)", () => {
+    const store = { ...both, msstore: true };
+    expect(plan4(UA.winEdge, S, store).primary).toBe("msstore");
+    expect(plan4(UA.winFirefox, S, store).primary).toBe("msstore");
+    expect(plan4(UA.winEdge, S, both).primary).toBe("exe");
+    expect(plan4(UA.androidChrome, S, store).primary).toBe("apk");
+    expect(plan4(UA.winEdge, { ...S, standalone: true }, store).primary).toBe("installed");
+    expect(offersInstall(plan4(UA.winEdge, S, store))).toBe(true);
+    expect(msStoreHref("9NBLGGH4R315")).toBe("ms-windows-store://pdp/?ProductId=9NBLGGH4R315&mode=mini");
   });
   it("Apple with the App Store link: one tap to the store on an iPhone or iPad; a Mac keeps its browser's way", () => {
     const store = { ...both, ios: true };

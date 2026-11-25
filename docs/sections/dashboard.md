@@ -60,6 +60,15 @@ API is refused too. Probe `ctl.mjs` (26), dry run `dry117.cjs` (11).
   until 0091 let it use the index.
 
 
+- **The greeting follows the clock, in four parts (2026-11-26, the owner: "night, and it still says Good morning").**
+  `lib/greeting.ts` (`greetingAt`, 3 tests): the hour in India — 05:00–11:59 *Good morning*, 12:00–16:59 *Good
+  afternoon*, 17:00–20:59 *Good evening*, 21:00–04:59 *Good night* (there was no night; 1 am said *Good morning*). It was
+  worked out once in `page.tsx`, so a board left open since the morning — or the app's saved copy of it — kept the
+  morning's word. Now `page.tsx` passes the server's word for the first paint and the first name apart (`greet`,
+  `name`); `Overview` recomputes it from the same 30-second `now` as the date, so it turns over by itself. The word is
+  its own `<span>` (`[data-greeting]`) so Tamil and Hindi translate it whole — "Good night" is in both dictionaries.
+  My day (`home/HomeClient.tsx`) has its own three-part greeting, left as it was. Probe `greet9d.mjs`.
+
 - **The header clock's hands are placed by script, not by CSS animation** (`components/ui/AnalogClock.tsx`).
   globals.css switches every animation off under `prefers-reduced-motion`, which would leave CSS-driven
   hands standing at twelve. It ticks from the time in India (UTC+5:30, no daylight saving) once a

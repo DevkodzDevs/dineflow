@@ -1059,3 +1059,12 @@ compute is on.
   rail and the dish column's sticky rows stay 12px under it (measured: gap 12 at 1920 / 1440 / 1194, ember and paper).
 - Probes: `topbar-scroll.mjs` (four themes × 1920 / 1440 / 1194 / 834 / 412, at rest and scrolled: bar top 12, bar right = card
   right, round top corners; 412 unchanged at 0, square), `till-scroll.mjs` (the till's gap).
+
+## 2026-11-26 — Windows: the Microsoft Store before the .exe
+- The owner: "'Windows protected your PC' must not show". The .exe is unsigned, and a certificate no longer removes
+  SmartScreen at once (EV lost that in 2024; Azure Artifact Signing is not offered in India) — the Store does. With
+  `NEXT_PUBLIC_MSSTORE_ID` set (`msStore()` in lib/installers.ts — a 12-character id or nothing; `installers.test.ts` 2),
+  `/api/download` answers `msstore`, `installPlanFor` gives a Windows PC primary `msstore` before `exe` (install.test.ts),
+  and InstallPanel draws **Get it from Microsoft Store** (`[data-ms-store]`, `msStoreHref` → `ms-windows-store://pdp/?ProductId=…&mode=mini`,
+  the Store app's install window); other devices' Windows row links to apps.microsoft.com/detail/<id>. Unset — today — the .exe stays.
+  The package: `apps/desktop` → `npm run dist:store` (docs/install-builds.md). Probe `msstore-get.mjs` 17 (a stand-in id).

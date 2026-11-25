@@ -59,7 +59,10 @@ export function resolveFile(key: string) {
 export type Download = { url: string; size: number | null; version: string | null; file: string };
 /** `ios` is not a file — Apple allows no file install on an iPhone or iPad — but DineFlow's App Store (or TestFlight)
  *  link when there is one: NEXT_PUBLIC_IOS_URL (2026-11-25). Unset, Apple devices get Add to Home Screen / Add to Dock. */
-export type Downloads = { android: Download | null; windows: Download | null; ios: Download | null };
+/** `msstore` is DineFlow on the Microsoft Store (2026-11-26): NEXT_PUBLIC_MSSTORE_ID, the 12-character Store product id.
+ *  A Windows PC is then sent to the Store — signed by Microsoft, so no SmartScreen warning, and the Store updates it —
+ *  instead of downloading the .exe. `url` is the Store's web page; the screens open the Store app itself on Windows. */
+export type Downloads = { android: Download | null; windows: Download | null; ios: Download | null; msstore?: Download | null };
 
 type Release = { platform: "android" | "windows"; version: string; file_path: string | null; external_url?: string | null; file_name: string; size_bytes: number | null };
 let releases: { at: number; rows: Release[] } | null = null;
@@ -100,11 +103,20 @@ export async function availableDownloads(): Promise<Downloads> {
     android: pick("android", process.env.NEXT_PUBLIC_APK_URL || process.env.NEXT_PUBLIC_DOWNLOAD_ANDROID, process.env.NEXT_PUBLIC_APK_VERSION, "DineFlow.apk"),
     windows: pick("windows", process.env.NEXT_PUBLIC_EXE_URL || process.env.NEXT_PUBLIC_DOWNLOAD_WINDOWS, process.env.NEXT_PUBLIC_EXE_VERSION, "DineFlow-Setup.exe"),
     ios: appStore(process.env.NEXT_PUBLIC_IOS_URL, process.env.NEXT_PUBLIC_IOS_VERSION),
+    msstore: msStore(process.env.NEXT_PUBLIC_MSSTORE_ID),
   };
 }
 
 /** DineFlow on the App Store or TestFlight. Only an https address on Apple's own hosts is believed, so a typo never
  *  sends an iPhone somewhere else. */
+/** DineFlow on the Microsoft Store, from its product id (12 letters and digits, e.g. 9NBLGGH4R315). Anything else is
+ *  ignored, so a typo never sends a PC somewhere else. */
+export function msStore(id: string | undefined): Download | null {
+  const v = (id ?? "").trim().toUpperCase();
+  if (!/^[0-9A-Z]{12}$/.test(v)) return null;
+  return { url: `https://apps.microsoft.com/detail/${v.toLowerCase()}`, size: null, version: null, file: v };
+}
+
 export function appStore(url: string | undefined, version?: string): Download | null {
   if (!url) return null;
   try {

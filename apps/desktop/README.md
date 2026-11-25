@@ -47,8 +47,11 @@ Windows shows *"Windows protected your PC"* on first run of every machine: **Mor
 anyway**, once. That is expected for an unsigned installer and is not a warning about this file in
 particular.
 
-To remove it, buy an OV code-signing certificate and give electron-builder `CSC_LINK` and
-`CSC_KEY_PASSWORD`; nothing else in the build has to change.
+**To remove it, publish on the Microsoft Store** (2026-11-26): `npm run dist:store` builds an MSIX package
+(`store.config.cjs`) that Microsoft signs on upload — it then installs with one click and no warning, and the Store
+updates it. Steps: `docs/install-builds.md` → *The Microsoft Store*. A bought certificate (`CSC_LINK` /
+`CSC_KEY_PASSWORD`) still works for the .exe, but since 2024 even EV starts with the warning until installs build
+reputation, and Microsoft's own signing service is not offered in India.
 
 ## What it adds over the browser
 

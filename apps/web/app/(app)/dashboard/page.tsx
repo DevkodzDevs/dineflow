@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { formatINR, todayIST } from "@/lib/format";
+import { greetingAt, istHour } from "@/lib/greeting";
 import { Live } from "./Live";
 import { Sun } from "lucide-react";
 import { Overview, type Flap, type LiveRow, type Money, type Rank, type Tile, type Tx, type Who } from "./Overview";
@@ -49,8 +50,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const ready = rooms?.filter((r) => r.status === "available").length ?? 0;
   const dishes: Rank[] = (fig?.top ?? []).map((d) => ({ name: d.name, value: Number(d.qty) }));
   const occupied = (tables ?? []).filter((t) => t.status === "occupied").length;
-  const hour = new Date(Date.now() + IST).getUTCHours();
-  const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  /* the first paint's greeting; Overview keeps it in step with the clock once it is on the device (lib/greeting.ts) */
+  const greet = greetingAt();
+  const hour = istHour();   // the Tomorrow's-brief card below shows from 17:00
   const late = (kots ?? []).filter((k) => Date.now() - new Date(k.created_at).getTime() > 15 * 60000 && k.status !== "ready").length;
   const hkCount = (hk as { count?: number | null })?.count ?? 0;
   const onlineGross = (online ?? []).reduce((t, o) => t + Number(o.gross), 0);
@@ -120,7 +122,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     <Live>
       {(await searchParams)?.locked && <div className="feather p-4 mb-4 text-sm flex items-center gap-3"><span className="h-9 w-9 rounded-xl bg-[var(--color-fill)] grid place-items-center">🔒</span><div><b>That section isn&apos;t switched on for this property.</b> <span className="text-steel">Ask the master admin.</span></div></div>}
       <Overview
-        greet={`${greet}, ${session.profile.full_name.split(" ")[0]}`}
+        greet={greet}
+        name={session.profile.full_name.split(" ")[0]}
         property={session.restaurant.name}
         owner={session.profile.full_name}
         money={sales + roomRevenue}

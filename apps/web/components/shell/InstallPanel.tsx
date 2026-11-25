@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Apple, AppWindow, Check, ChevronRight, Compass, Copy, Download, Globe, Menu, Monitor, MonitorDown, MoreHorizontal, MoreVertical, Share, Smartphone, SquarePlus } from "lucide-react";
 import { Loader, cn } from "../ui";
 import { copyText } from "@/lib/clipboard";
-import { browserName, chromeHref, deviceName, edgeHref, iconHome, PLATFORMS, stepsPlan, type Env, type Plan, type Platform } from "@/lib/install";
+import { browserName, chromeHref, deviceName, edgeHref, iconHome, msStoreHref, PLATFORMS, stepsPlan, type Env, type Plan, type Platform } from "@/lib/install";
 import type { Downloads } from "@/lib/installers";
 import { IosGuide } from "./IosGuide";
 import { FileButton } from "./DownloadFiles";
@@ -150,6 +150,8 @@ export function InstallPanel({ size = "md", url }: { size?: "md" | "lg"; url?: s
   // its own: it gets the three rows only.
   const own: Platform | null = offer.kind === "desktop" ? null : offer.kind;
   const mine = primary === "apk" ? <FileButton kind="android" file={files!.android} big />
+    : primary === "msstore" ? <Cta size={size} href={msStoreHref(files!.msstore!.file)} icon={<MonitorDown size={size === "lg" ? 22 : 20} />} title="Get it from Microsoft Store"
+      sub="One click · no warnings · updates itself" data-ms-store />
     : primary === "exe" ? <FileButton kind="windows" file={files!.windows} big />
     : primary === "store" ? <Cta size={size} href={files!.ios!.url} icon={<Apple size={size === "lg" ? 22 : 20} />} title="Get it on the App Store"
       sub={`One tap${files!.ios!.version ? ` · v${files!.ios!.version}` : ""}`} data-app-store />
@@ -176,23 +178,25 @@ const PLATFORM: Record<Platform, { title: string; tag: string; Icon: typeof Smar
  *  one line that installs it from the browser on that device. */
 function PlatformRow({ p, files, address }: { p: Platform; files: Downloads | null; address: string }) {
   const m = PLATFORM[p];
-  const f = files?.[p] ?? null;
+  // Windows: the Microsoft Store listing when there is one (no SmartScreen warning), else the .exe
+  const store = p === "windows" ? files?.msstore ?? null : null;
+  const f = store ?? files?.[p] ?? null;
   const mb = f?.size ? `${(f.size / 1048576).toFixed(f.size > 10485760 ? 0 : 1)} MB` : null;
   const sub = f
-    ? [p === "ios" ? "App Store · one tap" : "One-click install", f.version && `v${f.version}`, mb].filter(Boolean).join(" · ")
+    ? (store ? "Microsoft Store · one click, no warnings" : [p === "ios" ? "App Store · one tap" : "One-click install", f.version && `v${f.version}`, mb].filter(Boolean).join(" · "))
     : `Open ${address.replace(/^https?:\/\//, "")} ${m.how}`;
   const inner = <>
     <span className={cn("h-10 w-10 rounded-xl grid place-items-center shrink-0", f ? "bg-[var(--color-fill)] text-[var(--color-tint)]" : "bg-[var(--color-fill)] text-[var(--color-label-2)]")}><m.Icon size={18} aria-hidden /></span>
     <span className="flex-1 min-w-0">
-      <span className="block text-[14.5px] font-semibold leading-tight">{m.title} <span className="text-[var(--color-label-2)] font-medium">({m.tag})</span></span>
+      <span className="block text-[14.5px] font-semibold leading-tight">{m.title} <span className="text-[var(--color-label-2)] font-medium">({store ? "Microsoft Store" : m.tag})</span></span>
       <span className="block text-[12px] text-[var(--color-label-2)] mt-1 leading-snug break-words">{sub}</span>
     </span>
-    {f && (p === "ios" ? <ChevronRight size={17} className="shrink-0 text-[var(--color-label-2)]" aria-hidden /> : <Download size={17} className="shrink-0 text-[var(--color-label-2)]" aria-hidden />)}
+    {f && (p === "ios" || store ? <ChevronRight size={17} className="shrink-0 text-[var(--color-label-2)]" aria-hidden /> : <Download size={17} className="shrink-0 text-[var(--color-label-2)]" aria-hidden />)}
   </>;
   const cls = "w-full flex items-center gap-3 rounded-2xl border border-[var(--color-separator)] bg-[var(--color-bg-2)] px-3.5 py-3 min-h-14 text-left";
   if (!f) return <div className={cls} data-platform={p}>{inner}</div>;
-  return p === "ios"
-    ? <a href={f.url} target="_blank" rel="noopener" className={cn(cls, "hover:bg-[var(--color-fill)] transition-colors")} data-platform={p} data-app-store>{inner}</a>
+  return p === "ios" || store
+    ? <a href={f.url} target="_blank" rel="noopener" className={cn(cls, "hover:bg-[var(--color-fill)] transition-colors")} data-platform={p} {...(store ? { "data-ms-store": "" } : { "data-app-store": "" })}>{inner}</a>
     : <a href={f.url} download={f.file} rel="noopener" className={cn(cls, "hover:bg-[var(--color-fill)] transition-colors")} data-platform={p} data-download={p}>{inner}</a>;
 }
 

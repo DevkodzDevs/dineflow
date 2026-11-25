@@ -72,6 +72,6 @@ export function useInstall() {
 export function useInstallOffer() {
   const i = useInstall();
   const files = useDownloads();
-  const offer: InstallOffer | null = i.env && files ? installPlanFor(i.env, { canPrompt: i.canPrompt, standalone: i.standalone, here: i.here }, { android: !!files.android, windows: !!files.windows, ios: !!files.ios }) : null;
+  const offer: InstallOffer | null = i.env && files ? installPlanFor(i.env, { canPrompt: i.canPrompt, standalone: i.standalone, here: i.here }, { android: !!files.android, windows: !!files.windows, ios: !!files.ios, msstore: !!files.msstore }) : null;
   return { ...i, files, offer, offered: offer ? offersInstall(offer) : false };
 }

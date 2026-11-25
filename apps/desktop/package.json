@@ -7,7 +7,8 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win --publish never",
-    "dist:dir": "electron-builder --win --dir --publish never"
+    "dist:dir": "electron-builder --win --dir --publish never",
+    "dist:store": "electron-builder --win appx --publish never --config store.config.cjs"
   },
   "devDependencies": {
     "electron": "^33.2.1",

@@ -7,6 +7,7 @@ import { cn, FlapShuffle, FlapPercent } from "@/components/ui";
 import { AnalogClock } from "@/components/ui/AnalogClock";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatINR } from "@/lib/format";
+import { greetingAt } from "@/lib/greeting";
 
 /**
  * The control room as one board: what came in, where it came from, what is moving, and who is on.
@@ -264,12 +265,13 @@ function Week({ days }: { days: { day: string; value: number }[] }) {
 }
 
 export function Overview({
-  greet, property, money, parts, tiles, flaps, dishes, tx, staff, days, floor, rooms, web, onFloor,
+  greet, name, property, money, parts, tiles, flaps, dishes, tx, staff, days, floor, rooms, web, onFloor,
 }: {
   /* `owner` and `kitchen` are still taken — the page passes them and both are one line from being
      wanted again — but nothing on the board reads them now: the owner card said only what the
      sidebar already says, and the kitchen count is the flap next to it. */
-  greet: string; property: string; owner: string;
+  /* `greet` is the server's word for the first paint; `name` the person's first name */
+  greet: string; name: string; property: string; owner: string;
   money: number; parts: Money[]; tiles: Tile[]; flaps: Flap[];
   dishes: Rank[]; tx: Tx[]; staff: Who[]; days: { day: string; value: number }[];
   floor: LiveRow[]; rooms: LiveRow[]; web: LiveRow[]; onFloor: number; kitchen: number;
@@ -287,6 +289,11 @@ export function Overview({
   useEffect(() => { const t = () => setNow(new Date()); t(); const i = setInterval(t, 30000); return () => clearInterval(i); }, []);
   const weekday = now ? now.toLocaleDateString("en-IN", { weekday: "long", timeZone: "Asia/Kolkata" }) : "";
   const dayMonth = now ? now.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : "";
+  /* The greeting follows the same 30-second clock (2026-11-26, the owner: "night, and it still says Good morning"). It was
+     worked out once on the server, so a board left open from the morning — or one the app served from its saved copy —
+     kept the morning's word all day. The server's word is only the first paint (the same on both sides, no hydration
+     mismatch); from mount it is the device's time in India. */
+  const hello = now ? greetingAt(now) : greet;
 
   /* Every number on the board in one row. They were two grids in two columns — five tiles in a
      two-column grid leaves a hole at the end of it, and the other two sat in a grid of their own
@@ -312,7 +319,8 @@ export function Overview({
     <div className="space-y-4">
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div className="min-w-0">
-          <div className="text-[13px] text-steel">{greet}</div>
+          {/* the word in its own span, so Tamil and Hindi translate it whole (the name beside it is never translated) */}
+          <div className="text-[13px] text-steel" data-greeting><span>{hello}</span>{name ? <>, {name}</> : null}</div>
           <h1 className="text-[28px] md:text-[38px] leading-none mt-0.5 truncate">{property}</h1>
         </div>
         {/* the day, and the time as a wall clock — it was "SAT, 10 OCT" over "12:09" in small type */}

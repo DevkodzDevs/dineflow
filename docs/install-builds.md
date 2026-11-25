@@ -64,8 +64,44 @@ DINEFLOW_APP_URL="https://dineflow.cloud" npx electron-builder --win --publish n
 Out comes `apps/desktop/dist/DineFlow-Setup-<version>.exe` (~78 MB): one click installs it per user (no
 administrator), puts DineFlow on the Start menu and the desktop, and opens it. Bump `version` in
 `apps/desktop/package.json` for each release. **Unsigned**: Windows SmartScreen asks once per machine (More
-info → Run anyway); an OV/EV code-signing certificate given to electron-builder as `CSC_LINK` /
-`CSC_KEY_PASSWORD` removes that. More in `apps/desktop/README.md`.
+info → Run anyway). A certificate does not remove that at once any more — **the Microsoft Store does** (next section).
+More in `apps/desktop/README.md`.
+
+## The Microsoft Store — Windows installs with no warning (2026-11-26)
+
+The owner: *"'Windows protected your PC' must not show; it must install straight away, with no block."* SmartScreen
+warns about any installer not signed by a publisher it already trusts. Checked 2026-11-26: Microsoft's own signing
+service (Azure Artifact Signing) is **not offered in India** (individuals: US/Canada only; organisations: a list without
+India), and since 2024 **an EV certificate no longer skips the warning** — OV and EV both start with it and lose it only
+as installs build reputation. A package on the **Microsoft Store** is re-signed by Microsoft: the Store installs it with
+one click, no SmartScreen, and keeps it updated. Registration is free (individuals since September 2025, companies since
+May 2026).
+
+1. **Register** at **storedeveloper.microsoft.com** (Partner Center) → *Get started for free* → *Individual developer*
+   (or *Company*). Sign in with a Microsoft account; identity check by ID.
+2. **Reserve the name** *DineFlow*: Apps and games → New product → *MSIX or PWA app*.
+3. **Copy the three identity values**: the app → Product management → *Product identity* — Package/Identity/Name,
+   Package/Identity/Publisher (`CN=…`), Package/Properties/PublisherDisplayName.
+4. **Build** (Windows, in `apps/desktop`):
+   ```
+   set MSSTORE_IDENTITY_NAME=…& set MSSTORE_PUBLISHER=CN=…& set MSSTORE_PUBLISHER_NAME=…
+   set DINEFLOW_APP_URL=https://dineflow.cloud
+   npm run dist:store
+   ```
+   → `dist/DineFlow-<version>.appx` (~119 MB, unsigned — "Windows Store only build"; the Store signs it).
+   `MSSTORE_TEST=1 npm run dist:store` builds with stand-in values to check the machine (that file cannot be uploaded).
+5. **Submit**: Pricing *Free*, Markets *India* (and more), Properties *Business*, Age rating, Store listing (description,
+   at least one screenshot 1366×768 or larger), Packages ← the .appx. Certification takes ~1–3 working days. The app
+   asks for `runFullTrust` (a desktop app) — say so in *Submission options → Restricted capabilities*: "Electron desktop
+   app; full trust is needed to run its own window."
+6. **Point the install screens at it**: Vercel → `NEXT_PUBLIC_MSSTORE_ID` = the 12-character Store ID (Product
+   management → Product identity, or the end of its apps.microsoft.com address) → redeploy. A Windows PC then gets
+   **Get it from Microsoft Store** (`ms-windows-store://pdp/?ProductId=…&mode=mini` — the Store app's small install
+   window) instead of the .exe; other devices' Windows row links to the Store page. Unset, the .exe stays.
+
+Each release: bump `version` in `apps/desktop/package.json`, `npm run dist:store`, Partner Center → *Update* → upload.
+The tile images (`build/appx/`) were made from `build/icon.png`.
+
 
 ## Android — `apps/android-app` (Trusted Web Activity)
 
