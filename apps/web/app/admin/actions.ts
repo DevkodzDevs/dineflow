@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { runBackup } from "@/lib/backup/run";
 import { fmtBytes } from "@/lib/backup/bytes";
 import { sendOwnerEmailCode } from "@/lib/email";
+import { friendlyContactError } from "@/lib/contactErrors";
 const bump = () => revalidatePath("/admin", "layout");
 export async function issueKey(plan: "monthly" | "yearly", restaurantId: string | null) {
   const s = await createClient();
@@ -71,18 +72,28 @@ export async function verifyOwnerCode(id: string, code: string) {
  */
 export async function createProperty(
   name: string, type: "restaurant" | "hotel" | "resort", demo: boolean,
-  ownerEmail: string | undefined, ownerName: string | undefined, contactEmail: string, otpId: string,
+  ownerEmail: string | undefined, ownerName: string | undefined, contactEmail: string, otpId: string, ownerPhone: string,
 ) {
   if (!otpId) return { error: "Verify the owner's email first: send the code, then type the code they received." };
+  if (!ownerPhone.trim()) return { error: "Enter the owner's phone number." };
   const s = await createClient();
+  // 0196: eight arguments — the owner's phone, refused if any DineFlow account already has it (or the email)
   const { data, error } = await s.rpc("admin_create_property_verified", {
     p_otp: otpId, p_name: name, p_type: type, p_demo: demo,
     p_owner_email: ownerEmail?.trim() || null, p_owner_name: ownerName?.trim() || null,
-    p_contact_email: contactEmail.trim(),
+    p_contact_email: contactEmail.trim(), p_owner_phone: ownerPhone.trim(),
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyContactError(error.message) };
   revalidatePath("/", "layout");
   return { ok: true, ...(data as NewProperty) };
+}
+
+/** 0196: is this email / phone already used by any DineFlow account? (a master, or whoever may add staff) */
+export async function contactAvailable(email: string | null, phone: string | null) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("contact_available", { p_email: email?.trim() || null, p_phone: phone?.trim() || null });
+  if (error) return { error: error.message };
+  return { ok: true as const, ...(data as { email_taken: boolean; phone_taken: boolean }) };
 }
 
 export type PropertyDetail = {
@@ -139,7 +150,7 @@ export async function setContactEmail(restaurantId: string, contactEmail: string
   const { data, error } = await s.rpc("admin_set_contact_email", {
     p_restaurant_id: restaurantId, p_contact_email: contactEmail.trim() || null,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyContactError(error.message) };
   revalidatePath("/", "layout");
   return { ok: true, ...(data as { contact_email: string | null }) };
 }

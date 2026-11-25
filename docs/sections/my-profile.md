@@ -84,3 +84,7 @@ Notifications) · [auth-and-session.md](auth-and-session.md) (`/account/password
   steps to follow outside the app, printed and exported text, WhatsApp bodies and tooltips were left as they were.
 - **Collapse menu** (2026-10-30) sits under the six looks on This device (`SidebarPicker`, `[data-sidebar-fold]`) — the menu's own
   fold key is gone. The profile sheet has **Sign out** (shell-and-nav.md).
+
+## 2026-11-25 — a phone or email another account has is refused (0196)
+- `my_profile_save` is held by the unique indexes on profiles; `saveMyProfile` turns the raw "duplicate key … profiles_phone_uniq"
+  into "This phone number is already used by another DineFlow account…" (`friendlyContactError`, lib/contactErrors.ts — 2 tests).

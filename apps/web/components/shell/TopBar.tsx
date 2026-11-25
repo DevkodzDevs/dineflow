@@ -12,6 +12,7 @@ import { OutletSwitcher } from "./OutletSwitcher";
 import { BackButton } from "./BackButton";
 import { ProfileCard } from "./ProfileCard";
 import { useEmber } from "./useEmber";
+import { ALL_SECTIONS, isOn } from "./sections";
 import { ROLE_LABEL, type Role } from "@dineflow/shared";
 import type { Outlet } from "@/lib/auth";
 
@@ -23,6 +24,12 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
      picture. Only this theme draws them; the server passes the cookie's answer so the first paint has the right shape. */
   const ember = useEmber(emberAtFirst);
   const first = name.trim().split(/\s+/)[0] || name;
+  /* the page's name, for the pinned bar: the menu's own name for the row this path is under (isOn — the row the sidebar
+     lights), else the page's heading, else the person's name */
+  const row = ALL_SECTIONS.find((i) => isOn(path, i.href));
+  const [heading, setHeading] = useState<string | null>(null);
+  useEffect(() => { if (ember && !row) setHeading(document.querySelector("main h1")?.textContent?.trim() || null); }, [ember, row, path]);
+  const pageName = row?.label ?? heading ?? first;
   const stale = boxSync?.cursor ? Date.now() - new Date(boxSync.cursor).getTime() > 10 * 60 * 1000 : true;
   const trialSoon = membership === "trial" && daysLeft <= 3;
   /* Pinned, the bar runs edge to edge — from the sidebar to the right of the screen, square, a
@@ -42,7 +49,12 @@ export function TopBar({ membership, daysLeft, alerts, name, boxSync, accountHre
     <header data-stuck={stuck ? "" : undefined} className="topbar topbar-in material sticky top-[env(safe-area-inset-top,0px)] z-20 mb-8 flex items-center gap-3 px-4 py-2 rounded-[20px] max-[400px]:gap-1 max-[400px]:px-3">
       {/* Back, first, on every screen but home (BackButton.tsx, 2026-10-22) */}
       <Suspense fallback={null}><BackButton home={home} /></Suspense>
-      {ember && <div className="ember-greet" data-ember-greet><b>Hi, {first}! Welcome back.</b><span>Everything about today, in one place.</span></div>}
+      {/* Ember: the person's name at rest; pinned (scrolled), the page's own name in its place (2026-11-26, the owner: "show the
+          name only; when I scroll, change it into that page's name"). It was "Hi, <name>! Welcome back." over a second line. */}
+      {ember && <div className="ember-greet" data-ember-greet data-show={stuck ? "page" : "hi"}>
+        <b className="eg-hi" aria-hidden={stuck || undefined}>Hi, {first}</b>
+        <b className="eg-page" aria-hidden={!stuck || undefined} data-ember-page>{pageName}</b>
+      </div>}
       {/* Go to (components/shell/Keys.tsx): the hint said ⌘K for months and nothing answered it */}
       <button type="button" onClick={() => dispatchEvent(new Event("df-palette"))} data-goto-open className="hidden sm:flex items-center gap-2 text-steel text-sm flex-1 min-w-0 h-10 -my-1 px-1 rounded-xl text-left hover:text-[var(--color-label)] transition-colors"><Search size={18} className="shrink-0" /><span className="text-xs truncate">Go to a section…</span><kbd className="kbd ml-auto max-lg:!hidden">{mac ? "⌘" : "Ctrl"} K</kbd></button>
       {/* the wordmark goes home, like the sidebar's: /dashboard, or the first section this person holds */}

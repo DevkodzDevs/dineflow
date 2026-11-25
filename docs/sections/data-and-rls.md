@@ -85,6 +85,14 @@ Numbered, additive, applied in order. Recent ones give the flavour:
 0105_expenses_checklists_payouts_phone_tally — Batch 2: expenses (+ cash_movements link), checklists +
                                 checklist_runs, channel_settlements, orders.delivery_address + customers.address,
                                 phone_order_card / order_delivery, report_extra, tally_company / tally_ledgers + tally_days
+0196_unique_contacts_and_email_codes — unique indexes on profiles (contact email, login email, phone by its last 10 digits;
+                                0 repeats on 2026-11-25); _contact_taken; property_email_otps gains purpose / phone / code_plain (read
+                                once by email_code_reveal, service role) / used_by; staff_email_code / _verify / staff_create_login_verified;
+                                public_email_code / _verify / public_account_create (service role) + account_finish for /signup and /join;
+                                the 8-argument admin_create_property_verified (owner phone); contact_available; admin_set_contact_email
+                                refuses repeats; join_restaurant's ambiguous `code` fixed (Join with code failed on every call) — dry-run
+                                clean (`dry196.mjs`, 68), **applied 2026-11-25** alone. The after-deploy file now also closes the
+                                7-argument master create and gates staff_create_login. [auth-and-session.md](auth-and-session.md)
 0195_property_owner_email_otp — property_email_otps (RLS: master reads, nobody writes directly) + admin_owner_email_code /
                                 admin_owner_email_verify / admin_create_property_verified: a new property only with a verified
                                 owner-email code — dry-run clean (`dry195.mjs`, 26), **applied 2026-11-25** alone by `apply195.mjs

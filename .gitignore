@@ -15,3 +15,7 @@ apps/mobile/eas.json
 .vercel
 .env*
 .next-dev
+# private build/dev folders made by probes and parallel sessions (.next-build-14, .next-dev-93, …)
+.next-*
+# TypeScript's incremental cache — rewritten by every typecheck
+*.tsbuildinfo

@@ -482,8 +482,10 @@ export function PosClient({ categories, items, tables, initialTable, initialType
         // soon as the page scrolled. Measured, so a taller bar moves it. The dish column's search
         // row and category chips stick on the same line (--till-top, --till-head).
         const bar = document.querySelector<HTMLElement>("main header.material");
-        // the bar pins at the top edge (it was 16px down, sticky top-4): its height plus a 12px gap
-        const line = bar ? bar.offsetHeight + 12 : 24;
+        // the bar pins --tb-pin down (12px on a computer or tablet since 2026-11-26, the card's top edge; 0 on a phone and
+        // in the installed app — globals.css): that, its height, and a 12px gap
+        const pin = bar ? parseFloat(getComputedStyle(bar).getPropertyValue("--tb-pin")) || 0 : 0;
+        const line = bar ? pin + bar.offsetHeight + 12 : 24;
         el.style.top = `${line}px`;
         const box = el.parentElement; const head = box?.querySelector<HTMLElement>("[data-till-head]");
         box?.style.setProperty("--till-top", `${line}px`); box?.style.setProperty("--till-head", `${head?.offsetHeight ?? 56}px`);

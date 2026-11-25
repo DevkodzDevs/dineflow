@@ -106,11 +106,12 @@ PR descriptions end with:
   has no NAS yet — only the connection step is left. Private files (documents, attendance, support) copy only once
   `SUPABASE_SERVICE_ROLE_KEY` is on Vercel; public buckets copy today. Running DineFlow on the NAS is the next phase.
   [admin-and-membership.md](docs/sections/admin-and-membership.md)
-- **A new property needs email (0195, 2026-11-25):** Master control → Create property sends a code to the owner's real email
-  and creates nothing until it is verified. Until `GMAIL_USER` + `GMAIL_APP_PASSWORD` (a Gmail App Password — lib/email.ts)
-  or `RESEND_API_KEY` + `EMAIL_FROM` (a Resend-verified domain) are set on Vercel, no code is sent, so **no property can be
-  created**. After the deploy, apply
-  `supabase/pending/after_deploy_property_otp.sql`. [admin-and-membership.md](docs/sections/admin-and-membership.md)
+- **Every new login needs an emailed code; no repeats (0195/0196, 2026-11-25):** Master control → New property, Staff → Add
+  staff, /signup and /join send a code to the email and create nothing until it is verified; an email, phone or login id
+  another DineFlow account has is refused (unique indexes on profiles). Mail goes by Gmail (`GMAIL_USER` +
+  `GMAIL_APP_PASSWORD`, set on Vercel) or Resend; staff, sign-up and join also need `SUPABASE_SERVICE_ROLE_KEY` (on
+  Vercel). After the deploy, apply `supabase/pending/after_deploy_property_otp.sql`.
+  [auth-and-session.md](docs/sections/auth-and-session.md) · [staff-and-labour.md](docs/sections/staff-and-labour.md)
 - Seven legal facts in `lib/company.ts` are still `null` — blocks launch and blocks subscription
   checkout. [legal.md](docs/sections/legal.md)
 - Razorpay subscription checkout is built (0151) and **off until** `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,

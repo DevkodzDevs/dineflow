@@ -7,6 +7,10 @@ import { Button, Field, PasswordInput, Reveal, cn } from "@/components/ui";
 import { UtensilsCrossed, Building2, Palmtree, Sparkles } from "lucide-react";
 import { DemoDialog } from "./demo/DemoDialog";
 import { InstallRow } from "@/components/shell/InstallRow";
+import { EmailCodeField, sameEmail, type Verified } from "@/components/EmailCodeField";
+import { PhoneField } from "@/components/PhoneField";
+import { isMobile } from "@/lib/phone";
+import { publicSendCode, publicVerifyCode } from "./actions";
 
 type Action = (s: unknown, fd: FormData) => Promise<{ error?: string; go?: string } | void>;
 
@@ -18,6 +22,10 @@ export function AuthForm({ mode, action, pendingApproval }:
   useEffect(() => { if (state?.go) window.location.replace(state.go); }, [state]);
   const leaving = !!state?.go;
   const [ptype, setPtype] = useState("restaurant");
+  // 0196: sign-up and join prove the email with a code before the account exists
+  const [email, setEmail] = useState(""); const [ok, setOk] = useState<Verified | null>(null);
+  const [phone, setPhone] = useState(""); const [propertyName, setPropertyName] = useState("");
+  const verified = !!ok && sameEmail(ok.email, email);
   const [showDemo, setShowDemo] = useState(false);
   const idRef = useRef<HTMLInputElement>(null);
   /* "<id> / <password>" pasted whole (pasteLogin.ts): the id goes to Login ID — only when that box is empty or already
@@ -81,7 +89,7 @@ export function AuthForm({ mode, action, pendingApproval }:
             </div>
             <input type="hidden" name="property_type" value={ptype} />
           </Field>
-          <Field label={ptype === "restaurant" ? "Restaurant name" : ptype === "hotel" ? "Hotel name" : "Resort name"}><input name="restaurant" required placeholder={ptype === "restaurant" ? "Annapoorna Mess" : ptype === "hotel" ? "Hotel Tamizh Residency" : "Kanyakumari Bay Resort"} /></Field>
+          <Field label={ptype === "restaurant" ? "Restaurant name" : ptype === "hotel" ? "Hotel name" : "Resort name"}><input name="restaurant" required value={propertyName} onChange={(e) => setPropertyName(e.target.value)} placeholder={ptype === "restaurant" ? "Annapoorna Mess" : ptype === "hotel" ? "Hotel Tamizh Residency" : "Kanyakumari Bay Resort"} /></Field>
         </>)}
         {mode === "join" && (
           <Field label="DineFlow code" hint="Property code or invite code">
@@ -95,8 +103,16 @@ export function AuthForm({ mode, action, pendingApproval }:
               <input ref={idRef} onPaste={onPasteId} name="email" required autoFocus autoComplete="username" autoCapitalize="none"
                 autoCorrect="off" spellCheck={false} placeholder="Login ID or email" />
             </Field>
-          : <Field label="Email"><input name="email" type="email" required autoComplete="email" placeholder="Your email address" /></Field>}
-        <Field label="Password"><PasswordInput name="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"}
+          : (<>
+            {/* 0196: our code proves the email before the account exists; the phone (needed to open a property) must not
+                belong to another DineFlow account — the code is refused for either repeat */}
+            <PhoneField label={mode === "signup" ? "Your phone" : "Your phone (optional)"} hint="10 digits" value={phone} onValue={setPhone} name="phone" required={mode === "signup"} />
+            <EmailCodeField label="Email" email={email} onEmail={setEmail} verified={ok} onVerified={setOk} name="email"
+              placeholder="Your email address" hintIdle="We send a 6-digit code to confirm it" hintVerified="Verified"
+              canSend={mode !== "signup" || isMobile(phone)} cantSendHint="Enter your phone first"
+              send={(e) => publicSendCode(e, phone, mode === "signup" ? "signup" : "join", propertyName)} verify={publicVerifyCode} />
+          </>)}
+        <Field label="Password" hint={mode === "login" ? undefined : "At least 8 characters"}><PasswordInput name="password" required minLength={mode === "login" ? 6 : 8} autoComplete={mode === "login" ? "current-password" : "new-password"}
           onPaste={mode === "login" ? onPastePassword : undefined} /></Field>
         {mode === "login" && (
           <div className="text-right -mt-1">
@@ -104,7 +120,8 @@ export function AuthForm({ mode, action, pendingApproval }:
           </div>
         )}
         {state?.error && <p className="text-sm text-chili bg-chili-2 rounded-xl px-3 py-2">{state.error}</p>}
-        <Button size="lg" className="w-full" disabled={pending || leaving}>{pending || leaving ? "One moment…" : copy.cta}</Button>
+        <Button size="lg" className="w-full" disabled={pending || leaving || (mode !== "login" && !verified)} data-auth-submit>{pending || leaving ? "One moment…" : copy.cta}</Button>
+        {mode !== "login" && !verified && <p className="text-xs text-steel text-center -mt-2" data-auth-blocked>Verify your email to continue</p>}
       </form>
       {mode === "login" && (
         <button type="button" onClick={() => setShowDemo(true)}

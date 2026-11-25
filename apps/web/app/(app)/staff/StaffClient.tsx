@@ -5,7 +5,10 @@ import { SlidersHorizontal as AccessIcon, Plug, BarChart3 } from "lucide-react";
 import { Button, Field, Sheet, cn, useToast, FlapShuffle, PhoneInput } from "@/components/ui";
 import { ViewSwitch, useViewPref } from "@/components/ui/ViewSwitch";
 import { ROLE_LABEL, ROLE_HINT, ROLE_ACCESS, ROLE_DEFAULT, MODULE_GROUPS, MODULES_BY_TYPE, ALWAYS_ON, LEVELS, rolesIMayAssign, canManage, suggestedRole, positionByKey, departmentByKey, hierarchyFor, positionModules, sameModules, type Role, type PropertyType } from "@dineflow/shared";
-import { createInvite, setAccess, setPasswordRight, setAssistAccess, setGrant, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency, setStaffChecklists } from "./actions";
+import { createInvite, setAccess, setPasswordRight, setAssistAccess, setGrant, addStaff, staffLogin, resetStaffPassword, sendStaffVerification, verifyStaffContact, setPosition, setEmergency, setStaffChecklists, sendStaffEmailCode, verifyStaffEmailCode, staffContactAvailable } from "./actions";
+import { EmailCodeField, sameEmail, type Verified } from "@/components/EmailCodeField";
+import { PhoneField } from "@/components/PhoneField";
+import { okPhone } from "@/lib/phone";
 import { PositionFields, TeamChart, PositionsGuide, Avatar, DeptIcon, ModuleChips, titleOf, deptOf, levelFor, DEPT_ORDER, deptHue } from "./StaffPositions";
 import { StaffGrid, type Duty } from "./StaffGrid";
 import { StaffChecklists, type StaffList, type ListPick } from "./StaffChecklists";
@@ -180,12 +183,18 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
     const r = suggestedRole(positionByKey(v.position), assignable.filter((x) => x !== "owner")) ?? addRole;
     setAddRole(r); setAddTicks(posTicks(v.position, r));
   };
-  const [made, setMade] = useState<{ title: string; staff_code?: string | null; login_id: string; temp_password: string | null; verify?: { userId: string; email: string; mailed: boolean; mailError?: string | null; echoed?: string } } | null>(null);
+  const [made, setMade] = useState<{ title: string; staff_code?: string | null; login_id: string; temp_password: string | null; confirmed?: string; verify?: { userId: string; email: string; mailed: boolean; mailError?: string | null; echoed?: string } } | null>(null);
   const [addErr, setAddErr] = useState<string | null>(null);
+  // 0196: their email is proved by a code BEFORE the login is made, and their phone must not belong to another account
+  const [addEmail, setAddEmail] = useState(""); const [addOk, setAddOk] = useState<Verified | null>(null);
+  const [addPhone, setAddPhone] = useState(""); const [addPhoneTaken, setAddPhoneTaken] = useState(false);
+  const addForm = useRef<HTMLFormElement>(null);
+  const addVerified = !!addOk && sameEmail(addOk.email, addEmail);
   const [otp, setOtp] = useState(""); const [otpDone, setOtpDone] = useState(false); const [otpErr, setOtpErr] = useState<string | null>(null);
   const addOn = (k: string) => addTicks === null ? true : addTicks.includes(k);
   const addToggle = (k: string) => { const base = addTicks === null ? ceiling(addRole).filter((x) => x !== "dashboard") : addTicks; setAddTicks(base.includes(k) ? base.filter((x) => x !== k) : [...base, k]); };
-  const openAdd = () => { setAdd(true); setMade(null); setAddErr(null); setAddRole(assignable[assignable.length - 1] ?? "employee"); setAddTicks(null); setAddPos(posOf(null)); setAddLists(null); };
+  const openAdd = () => { setAdd(true); setMade(null); setAddErr(null); setAddRole(assignable[assignable.length - 1] ?? "employee"); setAddTicks(null); setAddPos(posOf(null)); setAddLists(null);
+    setAddEmail(""); setAddOk(null); setAddPhone(""); setAddPhoneTaken(false); };
   // the slip for someone already on the list
   const showLogin = (p: Staff) => start(async () => {
     const r = await staffLogin(p.id);
@@ -498,6 +507,7 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
         {made ? (
           <div className="space-y-4">
             <Credentials title={made.title} loginId={made.login_id} password={made.temp_password} staffCode={made.staff_code} canIssue={canIssue} />
+            {made.confirmed && <div className="feather p-4 flex items-center gap-2 text-sm" data-staff-email-confirmed><Check size={16} className="text-mint" /> <span><b>{made.confirmed}</b> confirmed</span></div>}
             {made.verify && (otpDone ? (
               <div className="feather p-4 flex items-center gap-2 text-sm"><Check size={16} className="text-mint" /> <span><b>{made.verify.email}</b> confirmed</span></div>
             ) : (
@@ -527,12 +537,13 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             <Button className="w-full" onClick={() => { setAdd(false); setMade(null); }}><Check size={16} /> Done</Button>
           </div>
         ) : (
-          <form className="space-y-5" action={(fd) => start(async () => {
+          <form ref={addForm} className="space-y-5" action={(fd) => start(async () => {
             setAddErr(null);
+            if (!addOk || !addVerified) { setAddErr("Verify their email first: send the code, then type the code they received."); return; }
             const r = await addStaff({
               full_name: String(fd.get("full_name") ?? ""), role: addRole,
               modules: addRole === "owner" ? null : addTicks,
-              login_id: String(fd.get("login_id") ?? ""), contact_email: String(fd.get("contact_email") ?? ""), phone: String(fd.get("phone") ?? ""),
+              login_id: String(fd.get("login_id") ?? ""), contact_email: addOk.email, phone: addPhone, otp: addOk.id,
             });
             if ("error" in r) { setAddErr(r.error!); return; }
             // their position goes on once the person exists; a failure here leaves the sign-in made and says so
@@ -543,8 +554,10 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             // their checklists (0162) once their position is on, so the database reads the same position the screen did
             { const x = await listSave(r.user_id, addRole, addLists); if ("error" in x) setAddErr(`Added — but the checklists were not saved: ${x.error}`); }
             setOtp(""); setOtpDone(false); setOtpErr(null);
+            // 0196: the address was proved before the login existed — nothing to confirm afterwards
             setMade({ title: `${r.full_name} · ${ROLE_LABEL[r.role as Role]}`, staff_code: r.staff_code, login_id: r.login_id, temp_password: r.temp_password,
-                      verify: { userId: r.user_id, email: r.contact_email, mailed: r.mailed, mailError: r.mailError, echoed: r.echoed } });
+                      confirmed: r.contact_email });
+            setAddEmail(""); setAddOk(null); setAddPhone("");
           })}>
             <Field label="Full name"><input name="full_name" required autoFocus placeholder="Ravi Kumar" /></Field>
             <div><div className="eyebrow mb-2">Position</div>
@@ -557,12 +570,16 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
             <Field label="Role" hint={ROLE_HINT[addRole]}>
               <select value={addRole} onChange={(e) => { setAddRole(e.target.value as Role); setAddTicks(null); }}>{assignable.filter((r) => r !== "owner").map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
             </Field>
-            <Field label="Their email" hint="For reset codes">
-              <input name="contact_email" type="email" required placeholder="ravi@example.com" />
-            </Field>
-            <Field label="Phone" hint="10 digits.">
-              <PhoneInput name="phone" placeholder="9876543210" />
-            </Field>
+            {/* 0196: a code to their email BEFORE the login is made; an email or phone another DineFlow account has is refused */}
+            <div data-add-email>
+              <EmailCodeField label="Their email *" email={addEmail} onEmail={setAddEmail} verified={addOk} onVerified={setAddOk}
+                placeholder="ravi@gmail.com" hintIdle="A code is sent here · they are added only after it is verified"
+                hintVerified="Verified · their reset codes go here" askWho="Ask them for it — inbox or spam."
+                send={(e) => sendStaffEmailCode(e, String((addForm.current?.elements.namedItem("full_name") as HTMLInputElement | null)?.value ?? ""))}
+                verify={verifyStaffEmailCode} />
+            </div>
+            <PhoneField label="Phone" hint="10 digits · must not belong to another account" value={addPhone} onValue={setAddPhone}
+              check={(ph) => staffContactAvailable(null, ph)} onTaken={setAddPhoneTaken} />
             {/* who to call if something happens to them (2026-10-23, 0134) — on file from the first day; they can change it on My profile */}
             <div className="grid gap-3 sm:grid-cols-2" data-add-emergency>
               <Field label="Emergency contact" hint="Name and relation. Optional.">
@@ -586,7 +603,8 @@ export function StaffClient({ me, myRole, myModules, type, enabled, staff, invit
               </div>
             </div>
             {addErr && <p className="text-sm text-chili">{addErr}</p>}
-            <Button className="w-full" disabled={pending}>Add staff</Button>
+            <Button className="w-full" disabled={pending || !addVerified || addPhoneTaken || (!!addPhone && !okPhone(addPhone))} data-add-staff-submit>Add staff</Button>
+            {!addVerified && <p className="text-xs text-steel text-center -mt-2" data-add-blocked>Verify their email to add them</p>}
           </form>
         )}
       </Sheet>

@@ -355,3 +355,18 @@ year. See [my-day.md](my-day.md).
   (`listSave` → `setStaffChecklists`); Access (`[data-acc-lists]`) starts from what is saved, follows a position change in the sheet,
   and saves with Save. The sheet's pick: null = untouched (nothing sent), "position" = Reset (sends null), a list = by hand. An owner,
   manager or supervisor reads "Sees every checklist" (`[data-staff-lists="every"]`); no lists → "No checklists yet · Make one".
+
+## 2026-11-25 — Add staff: the email is proved BEFORE the login exists; no repeats anywhere (0196)
+- The owner: "staff creation in the client section — the same email OTP process; phone, email and user id must never
+  repeat". Add staff's "Their email *" is `EmailCodeField` (components/EmailCodeField.tsx, `[data-add-email]`): Send code →
+  `sendStaffEmailCode` → `staff_email_code(email)` mints a code (refusing an email ANY DineFlow account has) and does NOT hand it
+  to the owner → the server reads it once (`email_code_reveal`, service role — lib/emailCodes.ts) and emails it
+  (`newStaffMail`) → type it → `staff_email_verify`. *Add staff* (`[data-add-staff-submit]`) stays off until then;
+  `addStaff` calls `staff_create_login_verified(otp, …)`, which marks the address confirmed from day one (no code afterwards —
+  the old "Confirm their email" panel only shows for people added before). The phone is `PhoneField`: optional, but a number
+  another account has is flagged when the box is left (`contact_available`) and refused by the database.
+- **Needs SUPABASE_SERVICE_ROLE_KEY on the server** (it is on Vercel). Without it Send says so — no staff can be added.
+- After the deploy, `supabase/pending/after_deploy_property_otp.sql` makes plain `staff_create_login` refuse a new login
+  unless it came through the verified path — except in a demo property (Flow tests add staff there) or for Master control.
+- Probe `forms-nokey.mjs` (no key: Add off until verified, a used phone flagged, "codes are off" said, no overflow at
+  1440 / 412); the database side in `dry196.mjs` (68).

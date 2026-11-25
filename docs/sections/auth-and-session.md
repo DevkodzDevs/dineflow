@@ -242,3 +242,19 @@ pnpm --filter @dineflow/web build
   `/site/<slug>`. Every other path on that host goes on through this middleware exactly as before — so `/login` on a
   client's domain is still DineFlow's sign-in page, and nothing about sessions changes. On our own hosts the branch is a
   string test and nothing more. website.md, *Ninth pass*.
+
+## 2026-11-25 — /signup and /join prove the email with OUR code; Join with code was broken (0196)
+- **Why:** both used `supabase.auth.signUp` with Supabase's *Confirm email* ON (`mailer_autoconfirm: false`), and Supabase's
+  built-in mailer delivers only to the project's own team — a new owner never got the mail and could not open a property.
+- **Now** (app/(auth)/actions.ts): the form asks for the phone (sign-up: required) and the email, *Send code* →
+  `publicSendCode` → `public_email_code` (service role; refuses an email or phone any DineFlow account has; 1 a minute / 5 an
+  hour per address, 300 an hour for all sign-ups, 8 an hour per visitor address in the server) → `email_code_reveal` →
+  `signupMail` / `joinMail` → type it → `publicVerifyCode`. The submit (`[data-auth-submit]`) stays off until verified.
+  `signup` / `join` then call `public_account_create` (a CONFIRMED login for the verified address, password ≥ 8), sign in,
+  run `create_restaurant` / `join_restaurant` as before, and `account_finish` (the verified email becomes the contact —
+  confirmed, so Forgot password works for self-signed-up owners, which had no contact email before — and the phone).
+  A signed-in person joining another property skips the code (their email was proved already).
+- **Join with code was broken on the live database** until 0196: `join_restaurant`'s variable `code` clashed with
+  `invites.code` / `restaurants.code` ("column reference "code" is ambiguous") — every join failed. Renamed `v_code`.
+- **Needs SUPABASE_SERVICE_ROLE_KEY** (on Vercel). Without it Send says "Email codes are off on this server…".
+- Probe `forms-nokey.mjs`: /signup at 412 and 1440, /join at 412.

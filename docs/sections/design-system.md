@@ -648,10 +648,24 @@ theme is another one is put back to that one on the next page.
     itself (`subOn` — the deepest sub-link the path is under is lit), a tap on the chevron opens or closes by hand, and a
     new screen folds the rest back. The `.nav-sub` tray is black and inset, its rows Oswald capitals at .2em.
     **Every other theme renders the flat menu exactly as before** — `fold()` is the identity when `ember` is false.
+  - **The menu's scroll window has the trays' corners** (2026-11-26, the owner's screenshot circling the four corners): a
+    tray the menu had scrolled under was cut square at the window's top, and the "there is more" fade every theme puts on
+    `.sidebar-scroll` melted the black tray into the wood at its foot — a brown smear with no corners. On Ember the
+    `.sidebar-scroll` has no mask and is `clip-path: inset(0 4px round 18px)` — the nav's 4px side padding, so the clip's
+    edges are the trays' edges — and `round 15px` on the closed icon looks (their trays are 15px); a cut tray ends in a
+    rounded corner at either edge. Dark, paper and royal keep the fade. Probe `corner9d.mjs` (scratchpad, a temporary
+    `/dine-corner9d` page with Nav.tsx's markup): 62/62 — eight looks and widths at rest and scrolled, clip = tray edges,
+    nothing whole clipped, the other three themes untouched.
   - **The clock** (`EmberClock.tsx`): between the menu and the foot, only on Ember; the device's time in orange LED
     digits, the date, and `navigator.onLine` as ● Online / ● Offline. Time arrives after mount (the server cannot know
     the device's clock).
-  - **The top bar** (`TopBar.tsx`): "Hi, <first name>! Welcome back." on the left from 1024px, the search as a 44px inset
+  - **The top bar** (`TopBar.tsx`): "Hi, <first name>" on the left from 1024px — one line; **pinned (scrolled), the page's
+    name slides up in its place** (2026-11-26, the owner: "show the name only; when I scroll, change it into that page's
+    name"; it was "Hi, <name>! Welcome back." over "Everything about today, in one place."). The page's name is the menu's
+    own for the row the path is under (`ALL_SECTIONS` + `isOn`, the row the sidebar lights), else `main h1`, else the name.
+    Both lines share one grid cell and trade opacity and a 10px slide on `data-show="hi|page"` (from the bar's `stuck`), so
+    the line never changes height; reduced motion drops the slide. Probe `top14.mjs` (harness: the real TopBar over a long
+    page; 1920 / 1440 / 1194 / 1024 — rest, scrolled, back; none under 1024 or in the other themes); the search as a 44px inset
     pill, the round keys graphite, and the avatar in a pill with the name and the position (`role` is a new prop) from 1280.
   - Cards are a graphite gradient with a black edge and a line of light (`.filled`, `.picked` and `.stat` keep their own);
     a stat's label is plain and its icon square sits top-right in its own colour (orange, violet, green, blue in turn);

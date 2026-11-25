@@ -603,3 +603,33 @@ Act as a property, confirm the banner, do something, confirm the `admin_log` row
   after-deploy revoke); `otp-ui.mjs` — 24, as a throwaway master on a dev server with the echo: Create off → wrong code
   refused → right code → Create on → Change/back → created; database shows the contact verified; the sheet at 1920 /
   1440 / 1194 / 834 / 412 with no overflow and every control ≥ 44px; put back what it made.
+- **Spam (2026-11-25, the owner: "the mails go to the spam folder").** The first live owner code (sent by Vercel through
+  Gmail) landed in Spam at the receiving Gmail. Its headers: plain text only, the digits first in the subject, "Give this
+  code to the person setting it up" (the hand-over-a-code pattern), and a personal Gmail submitting from an AWS address
+  (Vercel, ap-south-1) with a link-local EHLO. Now (`lib/email.ts`): every code email is HTML + text (`renderCodeMail`,
+  inline styles — mail clients know no tokens), a subject without digits, wording that says what the code is for and
+  "never share it", `Auto-Submitted: auto-generated`, EHLO `www.dineflow.cloud`; `email.test.ts` (8) keeps the wording
+  out of that pattern. The sender itself is the rest of the score: a personal Gmail from a cloud server stays suspicious
+  to strangers' inboxes — Resend on dineflow.cloud (SPF/DKIM/DMARC at Hostinger) is the full fix, and wins when set.
+- **The code email's design (2026-11-25, the owner: "ultra-modern, user-friendly, perfect when opened").** `renderCodeMail`: a
+  deep-green header (gradient, solid `#0b4a35` where gradients are dropped) with the app icon from `NEXT_PUBLIC_CLOUD_URL`
+  `/apple-touch-icon.png` and an eyebrow pill; the heading and a lead with the property bold; the code large and in ONE
+  piece (copies whole, iOS AutoFill can read it — six boxes would copy as six lines); Property / Valid for / Can be used;
+  three numbered steps; an amber never-share note; a quiet footer. Tables + inline styles; a `<style>` adds dark mode
+  (`prefers-color-scheme`, Outlook.com `[data-ogsc]`) and phone sizes. Probe `mail-shot.mts`: owner email at 390 / 1024,
+  light and dark, plus the password and staff emails — no overflow, the code one string; a real send arrived in the
+  Inbox.
+- **The design, second pass (same day, the owner: "better still").** The app icon and name above a 28px-radius card; a
+  check badge, an eyebrow chip, a centred heading; the code as six digit tiles that are still ONE string (spans with nothing
+  between them — a selection copies `856885`, checked in Chrome); an expiry chip and a copy tip; three small fact cards;
+  the steps in a panel; "Keep it private." note; a footer saying why the address got the email. **Phone-first**: the
+  default sizes fit a phone and `min-width:541px` grows them — with the `<style>` block stripped (Outlook, Gmail on another
+  provider's account) the first version ran 80px past a 360px screen; now 0 (`mail-nostyle.mjs`). A top gradient strip
+  was dropped: it could not follow the card's rounded corners in clients that do not clip.
+
+- **No repeats, and the owner's phone (2026-11-25, 0196 — the owner: "phone, email and user id must never repeat").** Create
+  a property now asks **Owner's phone \*** (`PhoneField`, required, flagged at once if another account has it) and calls the
+  8-argument `admin_create_property_verified(…, p_owner_phone)`; *Send code* refuses an email any DineFlow account has
+  (`_contact_taken`: contact emails, login emails, auth.users). `admin_set_contact_email` refuses a repeat too and
+  un-confirms a changed address. The box is the shared `EmailCodeField` now (`[data-email-*]`; `OwnerEmailVerify` wraps it).
+  Probe `otp-ui.mjs` 31: a used email refused, a used phone flagged, Create off until both are right, the phone saved.

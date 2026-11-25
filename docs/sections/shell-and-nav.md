@@ -277,7 +277,7 @@ follows; More opens the sheet).
 
 - **`TopBar`** — **its entrance is a CSS animation since 2026-11-17** (`.topbar-in`, globals.css): framer-motion's `initial`/`animate` pair wrote opacity 0 / translateY(-8px) into the server HTML and, whenever hydration came late, the client's first paint already had the animated values — React logged an attribute mismatch on whichever screen was open (seen on /work, /controls, /dashboard at 412 in the 2026-11-17 walk, never twice in a row). Search, theme switch, the bell (count comes from `session.lateKots`, already in
   the session bundle — no second query), the avatar.
-  **Pinned, it runs edge to edge** (2026-10-12): `sticky top-[env(safe-area-inset-top)]`; a 1px marker
+  **(From 768px superseded 2026-11-26 — *the pinned bar is the card's top edge*, at the end of this note; phones and the installed app unchanged.)** **Pinned, it runs edge to edge** (2026-10-12): `sticky top-[env(safe-area-inset-top)]`; a 1px marker
   above it and an IntersectionObserver set `data-stuck` once it reaches the top, and
   `.topbar[data-stuck]` (globals.css) pulls it out over the main column's padding to the sidebar's
   edge and over the frame's 12px gutter to the screen's right (`--bx` / `--br` per breakpoint: 16/16,
@@ -1044,3 +1044,18 @@ compute is on.
   /get as Windows 1920/1440, Android 412, iPhone 412, iPad 834/1194, Mac 1440, Linux 1440 — own platform first, exactly the
   other platforms as rows, no overflow, rows ≥ 44px, no page errors — 64/64; `themes.mjs` all four themes; `sheet.mjs` the
   sign-in row's sheet on Android, iPhone and Windows 1194.
+
+## 2026-11-26 — the pinned top bar is the card's top edge (from 768px)
+- **The owner (Ember, on a computer): "when scrolling, that corner does not look good".** Pinned, the bar jumped to the screen's
+  very top, square, from the sidebar's edge past the card to the screen's right — while the sidebar stays pinned 10px down
+  with round corners and the card (`main.deck-card`, `md:my-3 md:mr-3`) sits 12px in on the frame's dark colour. Measured:
+  bar top 0 / sidebar top 10 / bar right 1920 against a card ending at 1908. The two met in a hard, uneven corner.
+- **Now** (end of globals.css, `html:not([data-app])`, from 768px): pinned, the bar sits `--tb-pin` (12px) down — where the card's
+  top edge was — the card's width exactly (`margin-right: -var(--bx)`, no longer `--br`), round top corners
+  (`--radius-xl`), and the frame's colour (`--deck-bg`: #0a0a0d; royal #14213d; ember #0a0a0c — set on `.deck`) above it
+  (`::before`) and outside its corners (`::after`, two radial gradients), so the page scrolling up never shows there. At rest
+  it is the floating card, as before. Phones (< 768) keep the solid app bar; the installed app keeps `html[data-app]`'s rules.
+- **The till** measured the bar as pinned at 0 (`bar.offsetHeight + 12`); PosClient now adds `--tb-pin` read from the bar, so the
+  rail and the dish column's sticky rows stay 12px under it (measured: gap 12 at 1920 / 1440 / 1194, ember and paper).
+- Probes: `topbar-scroll.mjs` (four themes × 1920 / 1440 / 1194 / 834 / 412, at rest and scrolled: bar top 12, bar right = card
+  right, round top corners; 412 unchanged at 0, square), `till-scroll.mjs` (the till's gap).

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { emailConfigured, emailVia, gmailFrom } from "./email";
+import { contactMail, emailConfigured, emailVia, gmailFrom, joinMail, newStaffMail, ownerMail, passwordMail, renderCodeMail, signupMail } from "./email";
 
 const KEYS = ["RESEND_API_KEY", "EMAIL_FROM", "GMAIL_USER", "GMAIL_APP_PASSWORD"] as const;
 const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
@@ -31,5 +31,32 @@ describe("email — which way the codes go (2026-11-25)", () => {
     expect(gmailFrom("dineflow.otp@gmail.com", "DineFlow Codes <no-reply@dineflow.cloud>")).toBe("DineFlow Codes <dineflow.otp@gmail.com>");
     expect(gmailFrom(" x@gmail.com ", "\"Tan Resort\" <a@b.c>")).toBe("Tan Resort <x@gmail.com>");
     expect(gmailFrom("x@gmail.com", "just-an-address@b.c")).toBe("DineFlow <x@gmail.com>");
+  });
+});
+
+describe("email — code mails that stay out of Spam (2026-11-25)", () => {
+  const all = [ownerMail("801802", "Mano"), contactMail("801802", "Priya", "Mano"), passwordMail("801802", "Mano"),
+    newStaffMail("801802", "Ravi", "Mano"), signupMail("801802", "Mano"), joinMail("801802")];
+  it("never ask the reader to hand the code to someone, and keep the digits out of the subject", () => {
+    for (const m of all) {
+      const { text, html } = renderCodeMail(m);
+      expect(m.subject).not.toMatch(/\d{6}/);
+      for (const body of [text, html]) {
+        expect(body).not.toMatch(/give (this|it|the) code|give it to|whoever is setting/i);
+        expect(body).toMatch(/never share/i);
+        expect(body).toContain("801802");
+      }
+    }
+  });
+  it("say what the code is for, by the property's name", () => {
+    expect(renderCodeMail(ownerMail("123456", "Mano")).text).toMatch(/owner's email for Mano on DineFlow/);
+    expect(ownerMail("123456", "  ").subject).toBe("Confirm your email for your property on DineFlow");
+  });
+  it("carry an HTML part with the name escaped", () => {
+    const { html } = renderCodeMail(ownerMail("123456", `<script>alert(1)</script> & "Bay"`));
+    expect(html).toMatch(/^<!doctype html>/);
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+    expect(html).toContain("&amp; &quot;Bay&quot;");
   });
 });

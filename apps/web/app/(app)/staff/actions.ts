@@ -1,7 +1,9 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { sendContactVerification } from "@/lib/email";
+import { sendContactVerification, sendNewStaffCode } from "@/lib/email";
+import { revealAndSend } from "@/lib/emailCodes";
+import { friendlyContactError } from "@/lib/contactErrors";
 export async function createInvite(role: string) {
   const s = await createClient(); const { data, error } = await s.rpc("create_invite", { p_role: role });
   if (error) return { error: error.message }; revalidatePath("/staff"); return { ok: true, code: data as string };
@@ -10,24 +12,57 @@ export async function createInvite(role: string) {
 export type NewStaff = { user_id: string; full_name: string; role: string; staff_code: string; login_id: string; temp_password: string; contact_email: string; phone: string | null };
 
 /**
+ * 0196 (the owner: "staff creation in the client section — the same email OTP process"): a code for the new person's
+ * email BEFORE their login exists. The database mints it (staff_email_code — refusing an email any DineFlow account
+ * already uses) and does not hand it to the owner; the server reads it once and emails it (revealAndSend).
+ */
+export async function sendStaffEmailCode(email: string, name: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("staff_email_code", { p_email: email, p_phone: null });
+  if (error) return { error: friendlyContactError(error.message) };
+  const d = data as { id: string; email: string };
+  const sent = await revealAndSend(d.id, (to, code, property) => sendNewStaffCode(to, code, name, property || "your property"));
+  if ("error" in sent) return { error: sent.error };
+  return { ok: true as const, id: d.id, email: d.email, echoed: sent.echoed };
+}
+
+/** The code the new person received, typed back. A wrong code is an answer, not a throw (0098). */
+export async function verifyStaffEmailCode(id: string, code: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("staff_email_verify", { p_id: id, p_code: code });
+  if (error) return { error: error.message };
+  const r = data as { ok: boolean; error?: string; email?: string };
+  return r.ok ? { ok: true as const, email: r.email! } : { error: r.error ?? "That code is not right." };
+}
+
+/** 0196: is this email or phone already used by any DineFlow account? */
+export async function staffContactAvailable(email: string | null, phone: string | null) {
+  const s = await createClient();
+  const { data, error } = await s.rpc("contact_available", { p_email: email?.trim() || null, p_phone: phone?.trim() || null });
+  if (error) return { error: error.message };
+  return { ok: true as const, ...(data as { email_taken: boolean; phone_taken: boolean }) };
+}
+
+/**
  * Add someone and get their sign-in back in one go — for the person starting tomorrow who has no
  * email to receive an invite code. The database decides whether the caller may appoint this role and
  * trims the sections to ones they hold themselves, so this is not a way around the ladder.
+ *
+ * Since 0196 only with a verified code for their email (otp, from sendStaffEmailCode + verifyStaffEmailCode):
+ * staff_create_login_verified refuses anything else, refuses an email or phone another DineFlow account already has,
+ * and marks the address confirmed from the first day — no code is sent afterwards.
  */
-export async function addStaff(input: { full_name: string; role: string; modules: string[] | null; login_id?: string; contact_email?: string; phone?: string }) {
+export async function addStaff(input: { full_name: string; role: string; modules: string[] | null; login_id?: string; contact_email: string; phone?: string; otp: string }) {
+  if (!input.otp) return { error: "Verify their email first: send the code, then type the code they received." };
   const s = await createClient();
-  const { data, error } = await s.rpc("staff_create_login", {
-    p_full_name: input.full_name, p_role: input.role, p_modules: input.modules,
-    p_login_id: input.login_id || null, p_contact_email: input.contact_email || null, p_phone: input.phone || null,
+  const { data, error } = await s.rpc("staff_create_login_verified", {
+    p_otp: input.otp, p_full_name: input.full_name, p_role: input.role, p_modules: input.modules,
+    p_login_id: input.login_id || null, p_contact_email: input.contact_email, p_phone: input.phone || null,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyContactError(error.message) };
   revalidatePath("/staff");
-  const r = data as NewStaff & { verify_code: string; property: string };
-  // the account exists either way; a mail failure only means the address is not proved yet, so it is
-  // reported alongside the credentials rather than instead of them
-  const sent = await sendContactVerification(r.contact_email, r.verify_code, r.full_name, r.property);
-  const { verify_code: _c, property: _p, ...staff } = r;
-  return { ok: true as const, ...staff, mailed: sent.ok, mailError: sent.ok ? null : sent.error, echoed: sent.ok ? sent.echoed : undefined };
+  const { property: _p, ...staff } = data as NewStaff & { property: string; contact_verified: boolean };
+  return { ok: true as const, ...staff };
 }
 
 /** Send (or re-send) the code that proves the address on someone's record. */

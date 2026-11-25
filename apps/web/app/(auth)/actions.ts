@@ -3,6 +3,10 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient, serviceRoleConfigured } from "@/lib/supabase/admin";
 import { loginCandidates, modulesFor, positionHome, landsOnMyDay, type PropertyType, type Role } from "@dineflow/shared";
+import { sendJoinCode, sendSignupCode } from "@/lib/email";
+import { CODES_OFF, revealAndSend } from "@/lib/emailCodes";
+import { friendlyContactError } from "@/lib/contactErrors";
+import { allow } from "@/lib/ratelimit";
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40) + "-" + Math.random().toString(36).slice(2, 6);
 
@@ -73,32 +77,92 @@ async function startScreen(supabase: Awaited<ReturnType<typeof createClient>>, u
   } catch { return "/dashboard"; }
 }
 
-export async function signup(_: unknown, fd: FormData) {
-  const supabase = await createClient();
-  const email = String(fd.get("email")), password = String(fd.get("password"));
-  const fullName = String(fd.get("full_name")), restaurant = String(fd.get("restaurant")), type = String(fd.get("property_type") || "restaurant");
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+/**
+ * 0196 — /signup and /join prove the email with OUR code before any account exists (the owner: "the email OTP everywhere
+ * it is needed"). They used Supabase's own confirmation mail, which is switched on but goes through Supabase's built-in
+ * mailer — that delivers only to the project's own team, so a new owner never received it. Now:
+ *   publicSendCode   → public_email_code (server key) mints a code, refusing an email or phone any DineFlow account
+ *                      already has; email_code_reveal reads it once; Gmail / Resend sends it
+ *   publicVerifyCode → public_email_verify
+ *   signup / join    → public_account_create makes a CONFIRMED login for the verified address, then it signs in and runs
+ *                      create_restaurant / join_restaurant as before, then account_finish puts the verified email on as
+ *                      the contact (so Forgot password works) with the phone
+ * Everything needs SUPABASE_SERVICE_ROLE_KEY on the server (it is on Vercel). A visitor's address is limited too.
+ */
+async function visitor() {
+  const h = await headers();
+  return (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "local";
+}
+
+export async function publicSendCode(email: string, phone: string, purpose: "signup" | "join", propertyName: string) {
+  if (!serviceRoleConfigured()) return { error: CODES_OFF };
+  if (!allow(`code:${await visitor()}`, 8, 60 * 60_000)) return { error: "Too many codes from this connection. Try again in an hour." };
+  const db = adminClient();
+  const { data, error } = await db.rpc("public_email_code", { p_email: email, p_phone: phone || null, p_purpose: purpose });
+  if (error) return { error: friendlyContactError(error.message) };
+  const d = data as { id: string; email: string };
+  const sent = await revealAndSend(d.id, (to, code) => purpose === "signup" ? sendSignupCode(to, code, propertyName) : sendJoinCode(to, code));
+  if ("error" in sent) return { error: sent.error };
+  return { ok: true as const, id: d.id, email: d.email, echoed: sent.echoed };
+}
+
+export async function publicVerifyCode(id: string, code: string) {
+  if (!serviceRoleConfigured()) return { error: CODES_OFF };
+  if (!allow(`verify:${await visitor()}`, 30, 60 * 60_000)) return { error: "Too many tries from this connection. Try again in an hour." };
+  const { data, error } = await adminClient().rpc("public_email_verify", { p_id: id, p_code: code });
   if (error) return { error: error.message };
-  if (!data.session) return { error: "Confirm the email we sent you, then sign in." };
-  const { error: e2 } = await supabase.rpc("create_restaurant", { p_name: restaurant, p_slug: slugify(restaurant), p_full_name: fullName, p_type: type });
+  const r = data as { ok: boolean; error?: string; email?: string };
+  return r.ok ? { ok: true as const, email: r.email! } : { error: r.error ?? "That code is not right." };
+}
+
+/** A confirmed login for the verified address, signed in on this browser. */
+async function openAccount(otp: string, password: string, fullName: string) {
+  if (!serviceRoleConfigured()) return { error: CODES_OFF };
+  const { data, error } = await adminClient().rpc("public_account_create", { p_otp: otp, p_password: password, p_full_name: fullName });
+  if (error) return { error: friendlyContactError(error.message) };
+  const made = data as { email: string };
+  const supabase = await createClient();
+  const { error: e2 } = await supabase.auth.signInWithPassword({ email: made.email, password });
+  if (e2) return { error: `Your account was made, but signing in failed: ${e2.message}. Sign in with ${made.email}.` };
+  return { ok: true as const, supabase };
+}
+
+export async function signup(_: unknown, fd: FormData) {
+  const password = String(fd.get("password") ?? ""), otp = String(fd.get("email_otp") ?? "");
+  const fullName = String(fd.get("full_name") ?? "").trim(), restaurant = String(fd.get("restaurant") ?? "").trim(), type = String(fd.get("property_type") || "restaurant");
+  if (!otp) return { error: "Verify your email first: send the code, then type the code that arrived." };
+  if (!fullName || !restaurant) return { error: "Enter your name and your property's name." };
+  if (password.length < 8) return { error: "Use a password of at least 8 characters." };
+  const opened = await openAccount(otp, password, fullName);
+  if ("error" in opened) return { error: opened.error };
+  const { error: e2 } = await opened.supabase.rpc("create_restaurant", { p_name: restaurant, p_slug: slugify(restaurant), p_full_name: fullName, p_type: type });
   if (e2) return { error: e2.message };
+  const { error: e3 } = await opened.supabase.rpc("account_finish", { p_otp: otp });
+  if (e3) return { error: friendlyContactError(e3.message) };
   return { go: "/dashboard" };   // a full page load into the app (see login)
 }
 
 export async function join(_: unknown, fd: FormData) {
-  const supabase = await createClient();
+  let supabase = await createClient();
   // Not upper-cased any more: an invite code is hex and case-insensitive on the way in, but a
   // DineFlow code is lower case and matching it is done case-insensitively in the database.
   const code = String(fd.get("code")).trim();
   const fullName = String(fd.get("full_name"));
   const { data: { user } } = await supabase.auth.getUser();
+  let otp = "";
   if (!user) {
-    const { data, error } = await supabase.auth.signUp({ email: String(fd.get("email")), password: String(fd.get("password")), options: { data: { full_name: fullName } } });
-    if (error) return { error: error.message };
-    if (!data.session) return { error: "Confirm the email we sent you, then come back here." };
+    // 0196: a new account only for an email proved by our code
+    otp = String(fd.get("email_otp") ?? "");
+    const password = String(fd.get("password") ?? "");
+    if (!otp) return { error: "Verify your email first: send the code, then type the code that arrived." };
+    if (password.length < 8) return { error: "Use a password of at least 8 characters." };
+    const opened = await openAccount(otp, password, fullName);
+    if ("error" in opened) return { error: opened.error };
+    supabase = opened.supabase;
   }
   const { data, error } = await supabase.rpc("join_restaurant", { p_code: code, p_full_name: fullName });
   if (error) return { error: error.message };
+  if (otp) { const { error: e3 } = await supabase.rpc("account_finish", { p_otp: otp }); if (e3) return { error: friendlyContactError(e3.message) }; }
   // A DineFlow code gets you in the door but switched off, so there is nothing to show on the
   // dashboard yet. An invite code carries its role and goes straight through.
   const joined = data as { pending?: boolean } | null;

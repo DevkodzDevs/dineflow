@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendContactVerification } from "@/lib/email";
+import { friendlyContactError } from "@/lib/contactErrors";
 
 export type MyDetails = {
   display_name: string; phone: string; contact_email: string; emergency_name: string; emergency_phone: string;
@@ -16,7 +17,7 @@ export async function saveMyProfile(d: MyDetails) {
     p_display_name: d.display_name, p_phone: d.phone, p_contact_email: d.contact_email, p_emergency_name: d.emergency_name,
     p_emergency_phone: d.emergency_phone, p_about: d.about, p_languages: d.languages, p_avatar_tone: d.avatar_tone,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyContactError(error.message) };   // 0196: a phone or email another account has
   revalidatePath("/me"); revalidatePath("/staff");
   const r = data as Record<string, unknown>;
   const str = (k: string) => (r[k] as string | null) ?? "";

@@ -5,7 +5,7 @@ import { Building2, Palmtree, UtensilsCrossed, KeyRound, Copy, Pause, Play, Cloc
 import { Button, Sheet, Field, StatTile, cn, Pill, Waiting, ask } from "@/components/ui";
 import { formatINR, PROPERTY_LABEL, type PropertyType } from "@dineflow/shared";
 import { daysLeft } from "@/lib/format";
-import { issueKey, setMembership, matchChain, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, type DeletePreview, type DeleteResult, type PropertyDetail } from "./actions";
+import { issueKey, setMembership, matchChain, setMasterPassword, createProperty, installEstate, resetPropertyPassword, deletePreview, deleteProperty, propertyDetail, setContactEmail, contactAvailable, type DeletePreview, type DeleteResult, type PropertyDetail } from "./actions";
 import { Trash2 } from "lucide-react";
 import { PropertyDetailView, CopyBtn } from "./PropertyDetail";
 import { RowActions } from "./RowActions";
@@ -13,6 +13,8 @@ import { PropertyCards } from "./PropertyCards";
 import cardStyles from "./PropertyCards.module.css";
 import { LoginIdField } from "./LoginIdField";
 import { OwnerEmailVerify, sameEmail } from "./OwnerEmailVerify";
+import { PhoneField } from "@/components/PhoneField";
+import { isMobile } from "@/lib/phone";
 import { loginAddressProblem } from "@dineflow/shared";
 import { Boxes } from "lucide-react";
 import { Plus, UtensilsCrossed as UC, Building2 as B2, Palmtree as PT } from "lucide-react";
@@ -60,7 +62,8 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
   const [feats, setFeats] = useState<string[] | null>(null);   // 0175: the add-ons being edited there (null: follow the plan)
   const [pw, setPw] = useState("");
   // off by default: a new property should open empty unless sample data is asked for
-  const [np, setNp] = useState({ name: "", type: "resort" as "restaurant" | "hotel" | "resort", demo: false, email: "", owner: "", contact: "" });
+  const [np, setNp] = useState({ name: "", type: "resort" as "restaurant" | "hotel" | "resort", demo: false, email: "", owner: "", contact: "", phone: "" });
+  const [phoneTaken, setPhoneTaken] = useState(false);   // 0196: the owner's phone already belongs to another account
   // 0195: the owner-email code that was verified, and for which address — Create property needs it for np.contact exactly
   const [ownerOk, setOwnerOk] = useState<{ id: string; email: string } | null>(null);
   const ownerVerified = !!ownerOk && sameEmail(ownerOk.email, np.contact);
@@ -412,6 +415,9 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
             <LoginIdField value={np.email} onChange={(v) => setNp({ ...np, email: v })} name={np.name} type={np.type} ownerName={np.owner} />
             {/* 0195: the owner's real email is proved by an emailed code before the property can be created */}
             <OwnerEmailVerify email={np.contact} onEmail={(v) => setNp({ ...np, contact: v })} propertyName={np.name} verified={ownerOk} onVerified={setOwnerOk} />
+            {/* 0196: the owner's phone — required, and never one another DineFlow account already has */}
+            <PhoneField label="Owner's phone *" hint="10 digits · must not belong to another account" value={np.phone} required
+              onValue={(v) => setNp({ ...np, phone: v })} check={(ph) => contactAvailable(null, ph)} onTaken={setPhoneTaken} />
             {/* sample data toggle — a proper switch instead of a bare checkbox */}
             <button type="button" onClick={() => setNp({ ...np, demo: !np.demo })}
               className={cn("w-full rounded-2xl border p-4 text-left transition-colors",
@@ -429,14 +435,14 @@ export function AdminClient({ tenants, keys, log, tab, boxes = [], access = [], 
               </div>
             </button>
             {err && <p className="text-sm text-chili">{err}</p>}
-            <Button className="w-full" data-create-property disabled={pending || !np.name || !ownerVerified || !!loginAddressProblem(np.email)} onClick={() => start(async () => {
+            <Button className="w-full" data-create-property disabled={pending || !np.name || !ownerVerified || !isMobile(np.phone) || phoneTaken || !!loginAddressProblem(np.email)} onClick={() => start(async () => {
               if (!ownerOk || !ownerVerified) return;
               setErr(null);
-              const r = await createProperty(np.name, np.type, np.demo, np.email, np.owner, np.contact, ownerOk.id);
+              const r = await createProperty(np.name, np.type, np.demo, np.email, np.owner, np.contact, ownerOk.id, np.phone);
               if ("error" in r) setErr(r.error!);
-              else { setCreds({ title: `${np.name} is ready.`, email: r.login_email, password: r.temp_password, code: r.code }); setNp({ name: "", type: "resort", demo: false, email: "", owner: "", contact: "" }); setOwnerOk(null); }
+              else { setCreds({ title: `${np.name} is ready.`, email: r.login_email, password: r.temp_password, code: r.code }); setNp({ name: "", type: "resort", demo: false, email: "", owner: "", contact: "", phone: "" }); setOwnerOk(null); setPhoneTaken(false); }
             })}>Create property and login</Button>
-            {!ownerVerified && np.name && <p className="text-xs text-steel text-center -mt-1" data-create-blocked>Verify the owner&apos;s email to create the property</p>}
+            {(!ownerVerified || !isMobile(np.phone)) && np.name && <p className="text-xs text-steel text-center -mt-1" data-create-blocked>{!ownerVerified ? "Verify the owner's email to create the property" : "Enter the owner's phone to create the property"}</p>}
           </>)}
         </div>
       </Sheet>
